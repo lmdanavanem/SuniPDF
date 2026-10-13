@@ -47,9 +47,9 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
 | Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI) sauf pages vierges |
-| Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (moteur + CLI `merge`) ; signets planifiés |
-| Division (tous les n / pages choisies) | Déclaré | **Fait** (CLI `split --every`, `extract --pages`) |
-| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (`FPDF_ImportPages`) ; préservation à vérifier avec qpdf |
+| Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
+| Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
+| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; préservation à vérifier avec qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
@@ -59,9 +59,9 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| PDF → images | Déclaré (CLI render) | **Fait** (CLI `render`, PNG) |
+| PDF → images | Déclaré (CLI render) | **Fait** (UI export PNG 150 ppp, CLI `render`, `export-images`) |
 | PDF → texte | Déclaré | **Fait** (CLI `text`) |
-| Images → PDF | Déclaré (create) | Planifié (P4) |
+| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP) |
 | PDF → Word | Partiel (perd la mise en page) | Planifié (P4), fidélité à annoncer honnêtement |
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
 | Office → PDF | Absent | Planifié (P4) via LibreOffice/Word installé si présent ; sinon hors périmètre |

@@ -15,15 +15,17 @@ pub enum ToolTab {
     Read,
     Annotate,
     Pages,
+    Convert,
     Security,
 }
 
 impl ToolTab {
-    pub const ALL: [ToolTab; 5] = [
+    pub const ALL: [ToolTab; 6] = [
         ToolTab::All,
         ToolTab::Read,
         ToolTab::Annotate,
         ToolTab::Pages,
+        ToolTab::Convert,
         ToolTab::Security,
     ];
 
@@ -34,6 +36,7 @@ impl ToolTab {
             Self::Annotate => "toolbar.annotate",
             Self::Pages => "toolbar.pages",
             Self::Security => "toolbar.security",
+            Self::Convert => "toolbar.convert",
         }
     }
 
@@ -54,6 +57,12 @@ impl ToolTab {
                 Command::ToggleBookmarks,
                 Command::Properties,
                 Command::Protect,
+                Command::CombineFiles,
+                Command::SplitDocument,
+                Command::ExtractPages,
+                Command::CreateFromImages,
+                Command::ExportImages,
+                Command::Optimize,
                 Command::Undo,
                 Command::Redo,
                 Command::SaveAs,
@@ -79,6 +88,12 @@ impl ToolTab {
                 Command::ToggleComments,
                 Command::CopyText,
             ],
+            Self::Convert => &[
+                Command::CombineFiles,
+                Command::CreateFromImages,
+                Command::ExportImages,
+                Command::Optimize,
+            ],
             Self::Security => &[
                 Command::Protect,
                 Command::Unprotect,
@@ -87,6 +102,8 @@ impl ToolTab {
             ],
             Self::Pages => &[
                 Command::OrganizePages,
+                Command::SplitDocument,
+                Command::ExtractPages,
                 Command::RotateClockwise,
                 Command::RotateCounterClockwise,
                 Command::DeletePage,
@@ -141,6 +158,12 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::Protect => (glyph::LOCK, "🔒"),
         Command::Unprotect => (glyph::UNLOCK, "🔓"),
         Command::StripMetadata => (glyph::ERASE, "⌫"),
+        Command::CombineFiles => (glyph::COMBINE, "⧉"),
+        Command::SplitDocument => (glyph::SPLIT, "⫶"),
+        Command::ExtractPages => (glyph::EXTRACT, "⤴"),
+        Command::CreateFromImages => (glyph::PICTURE, "🖼"),
+        Command::ExportImages => (glyph::PICTURE, "🖼"),
+        Command::Optimize => (glyph::OPTIMIZE, "⤓"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -265,6 +288,7 @@ impl SuniApp {
                     self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
                     self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
                     self.command_menu(ctx, ui, "menu.pages", Menu::Pages, &[]);
+                    self.command_menu(ctx, ui, "menu.convert", Menu::Convert, &[]);
                     self.command_menu(ctx, ui, "menu.security", Menu::Security, &[]);
                     ui.menu_button(tr(lang, "menu.settings"), |ui| {
                         ui.menu_button(tr(lang, "menu.settings.language"), |ui| {
@@ -465,7 +489,7 @@ impl SuniApp {
 
                         ui.label(icons::semibold(tr(lang, "home.recommended"), 16.0));
                         ui.add_space(8.0);
-                        let cards: [(&str, &str, &str, &str); 5] = [
+                        let cards: [(&str, &str, &str, &str); 6] = [
                             (
                                 glyph::READ,
                                 "📖",
@@ -495,6 +519,12 @@ impl SuniApp {
                                 "🔒",
                                 "home.card.security.title",
                                 "home.card.security.desc",
+                            ),
+                            (
+                                glyph::PICTURE,
+                                "🖼",
+                                "home.card.convert.title",
+                                "home.card.convert.desc",
                             ),
                         ];
                         let mut open_clicked = false;
@@ -904,6 +934,11 @@ impl SuniApp {
                         ui.separator();
                         ui.spinner();
                         ui.label(muted(tr(lang, "status.rendering").into()));
+                    }
+                    if let Some(key) = self.tools.running {
+                        ui.separator();
+                        ui.spinner();
+                        ui.label(muted(tr(lang, key).into()));
                     }
                     if self.saving {
                         ui.separator();

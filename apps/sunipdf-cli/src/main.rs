@@ -163,6 +163,34 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Build a PDF from image files (one page per image).
+    Images2pdf {
+        #[arg(required = true)]
+        images: Vec<PathBuf>,
+        #[arg(long)]
+        out: PathBuf,
+        /// Pixels per inch used to size pages (150 = scanned page, 96 = screen).
+        #[arg(long, default_value_t = 150.0)]
+        dpi: f32,
+    },
+    /// Export every page as PNG into a directory.
+    ExportImages {
+        file: PathBuf,
+        #[arg(long)]
+        out_dir: PathBuf,
+        #[arg(long, default_value_t = 150.0)]
+        dpi: f32,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Lossless size optimisation (stream recompression, unused objects removed).
+    Optimize {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Search text; prints matches (page, rectangles in PDF points) as JSON.
     Search {
         file: PathBuf,
@@ -401,6 +429,31 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let bytes = sunipdf_core::security::strip_metadata(&input, password.as_deref())?;
             sunipdf_core::write_atomic(&out, &bytes)?;
             Ok(serde_json::json!({ "out": out }))
+        }
+        Command::Images2pdf { images, out, dpi } => {
+            let pages = engine.images_to_pdf(&images, &out, dpi)?;
+            Ok(serde_json::json!({ "out": out, "page_count": pages }))
+        }
+        Command::ExportImages {
+            file,
+            out_dir,
+            dpi,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let files = doc.export_images(&out_dir, dpi)?;
+            Ok(serde_json::json!({ "files": files, "count": files.len() }))
+        }
+        Command::Optimize {
+            file,
+            out,
+            password,
+        } => {
+            let r = sunipdf_core::convert::optimize_file(&file, &out, password.as_deref())?;
+            Ok(
+                serde_json::json!({ "out": out, "before": r.before, "after": r.after,
+                "saved_percent": if r.before > 0 { 100.0 * (1.0 - r.after as f64 / r.before as f64) } else { 0.0 } }),
+            )
         }
         Command::Search {
             file,

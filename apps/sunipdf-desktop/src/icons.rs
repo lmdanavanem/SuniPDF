@@ -48,6 +48,11 @@ pub mod glyph {
     pub const LOCK: &str = "\u{E72E}";
     pub const UNLOCK: &str = "\u{E785}";
     pub const ERASE: &str = "\u{E75C}";
+    pub const COMBINE: &str = "\u{E8F9}";
+    pub const SPLIT: &str = "\u{E8E4}";
+    pub const EXTRACT: &str = "\u{E8AB}";
+    pub const PICTURE: &str = "\u{E8B9}";
+    pub const OPTIMIZE: &str = "\u{E8BA}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

@@ -42,6 +42,12 @@ pub enum Command {
     Protect,
     Unprotect,
     StripMetadata,
+    CombineFiles,
+    SplitDocument,
+    ExtractPages,
+    CreateFromImages,
+    ExportImages,
+    Optimize,
     About,
 }
 
@@ -52,6 +58,7 @@ pub enum Menu {
     View,
     Pages,
     Security,
+    Convert,
     Help,
 }
 
@@ -113,6 +120,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "menu.file.save_as",
         Some("shortcut.save_as"),
         true,
+        File
+    ),
+    cmd!(
+        CombineFiles,
+        "file.combine",
+        "menu.file.combine",
+        None,
+        false,
         File
     ),
     cmd!(
@@ -260,6 +275,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         Pages
     ),
     cmd!(
+        SplitDocument,
+        "pages.split",
+        "menu.pages.split",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        ExtractPages,
+        "pages.extract",
+        "menu.pages.extract",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
         InsertPages,
         "pages.insert",
         "menu.pages.insert",
@@ -364,6 +395,30 @@ pub const REGISTRY: &[CommandInfo] = &[
         Security
     ),
     cmd!(
+        CreateFromImages,
+        "convert.images_to_pdf",
+        "menu.file.create_images",
+        None,
+        false,
+        Convert
+    ),
+    cmd!(
+        ExportImages,
+        "convert.export_images",
+        "menu.file.export_images",
+        None,
+        true,
+        Convert
+    ),
+    cmd!(
+        Optimize,
+        "convert.optimize",
+        "menu.file.optimize",
+        None,
+        true,
+        Convert
+    ),
+    cmd!(
         ToggleComments,
         "view.comments",
         "menu.view.comments",
@@ -437,6 +492,6 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 6);
+        assert_eq!(Command::in_menu(Menu::File).count(), 7);
     }
 }

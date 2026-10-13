@@ -8,6 +8,7 @@ mod organize;
 mod settings;
 mod shell;
 mod theme;
+mod tools;
 mod worker;
 
 fn main() -> eframe::Result<()> {

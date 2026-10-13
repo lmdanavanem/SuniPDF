@@ -18,6 +18,43 @@ const CACHE_BYTES: usize = 256 * 1024 * 1024;
 const UNDO_MAX_ENTRIES: usize = 50;
 const UNDO_MAX_BYTES: usize = 512 * 1024 * 1024;
 
+/// Tâche de fichiers (non annulable : produit de nouveaux fichiers, le document ouvert est intact).
+pub enum BatchOp {
+    Combine { inputs: Vec<PathBuf>, out: PathBuf },
+    Split { every: usize, out_dir: PathBuf },
+    Extract { pages: Vec<usize>, out: PathBuf },
+    CreateFromImages { images: Vec<PathBuf>, out: PathBuf },
+    ExportImages { out_dir: PathBuf, dpi: f32 },
+    Optimize { out: PathBuf },
+}
+
+pub enum BatchResult {
+    Combined {
+        out: PathBuf,
+        pages: usize,
+    },
+    Split {
+        files: Vec<PathBuf>,
+    },
+    Extracted {
+        out: PathBuf,
+        pages: usize,
+    },
+    Created {
+        out: PathBuf,
+        pages: usize,
+    },
+    Exported {
+        files: Vec<PathBuf>,
+    },
+    Optimized {
+        out: PathBuf,
+        before: u64,
+        after: u64,
+    },
+    Failed(EngineError),
+}
+
 /// Transformation d'octets (lopdf) : chiffrement, métadonnées.
 pub enum BytesOp {
     Protect(Protection),
@@ -94,6 +131,7 @@ pub enum Request {
     },
     Properties,
     Bookmarks,
+    Batch(BatchOp),
     Undo,
     Redo,
     Save {
@@ -146,6 +184,7 @@ pub enum Response {
     },
     Properties(Properties),
     Bookmarks(Vec<Bookmark>),
+    BatchDone(BatchResult),
     Saved {
         path: PathBuf,
     },
@@ -355,6 +394,65 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
     }
 }
 
+fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchResult {
+    let result: Result<BatchResult, EngineError> = (|| match op {
+        BatchOp::Combine { inputs, out } => {
+            let pages = engine.merge(&inputs, &out)?;
+            Ok(BatchResult::Combined { out, pages })
+        }
+        BatchOp::Split { every, out_dir } => {
+            let doc = doc.ok_or(EngineError::Other("no document".into()))?;
+            // L'état courant (éventuellement non enregistré) est divisé via un instantané temporaire.
+            let tmp = out_dir.join(format!(".sunipdf-split-{}.pdf", std::process::id()));
+            std::fs::create_dir_all(&out_dir)?;
+            sunipdf_core::write_atomic(&tmp, &doc.snapshot()?)?;
+            let stem_src = doc.info().path.clone();
+            let result = engine.split(&tmp, doc.password(), every, &out_dir);
+            let _ = std::fs::remove_file(&tmp);
+            let files = result?;
+            // Renommer d'après le nom du document d'origine.
+            let stem = stem_src
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "document".into());
+            let mut renamed = Vec::new();
+            for (i, f) in files.iter().enumerate() {
+                let target = out_dir.join(format!("{stem}-{}.pdf", i + 1));
+                std::fs::rename(f, &target)?;
+                renamed.push(target);
+            }
+            Ok(BatchResult::Split { files: renamed })
+        }
+        BatchOp::Extract { pages, out } => {
+            let doc = doc.ok_or(EngineError::Other("no document".into()))?;
+            let n = doc.extract_to(&pages, &out)?;
+            Ok(BatchResult::Extracted { out, pages: n })
+        }
+        BatchOp::CreateFromImages { images, out } => {
+            let pages = engine.images_to_pdf(&images, &out, 150.0)?;
+            Ok(BatchResult::Created { out, pages })
+        }
+        BatchOp::ExportImages { out_dir, dpi } => {
+            let doc = doc.ok_or(EngineError::Other("no document".into()))?;
+            Ok(BatchResult::Exported {
+                files: doc.export_images(&out_dir, dpi)?,
+            })
+        }
+        BatchOp::Optimize { out } => {
+            let doc = doc.ok_or(EngineError::Other("no document".into()))?;
+            let before = doc.snapshot()?;
+            let after = sunipdf_core::convert::optimize(&before, doc.password())?;
+            sunipdf_core::write_atomic(&out, &after)?;
+            Ok(BatchResult::Optimized {
+                out,
+                before: before.len() as u64,
+                after: after.len() as u64,
+            })
+        }
+    })();
+    result.unwrap_or_else(BatchResult::Failed)
+}
+
 fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     let engine = match Engine::new() {
         Ok(engine) => {
@@ -464,6 +562,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         continue;
                     }
                 }
+            }
+            Request::Batch(op) => {
+                Response::BatchDone(run_batch(&engine, state.document.as_ref(), op))
             }
             Request::Properties => {
                 let Some(doc) = &state.document else { continue };

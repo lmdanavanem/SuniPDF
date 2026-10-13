@@ -9,5 +9,9 @@ description = "Moteur documentaire SuniPDF : ouverture, inspection et rendu de p
 pdfium-render = { workspace = true }
 lopdf = { workspace = true }
 getrandom = "0.3"
+image = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
+
+[dev-dependencies]
+image = { workspace = true }

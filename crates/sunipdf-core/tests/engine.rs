@@ -512,3 +512,71 @@ fn protect_unprotect_and_metadata() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn images_to_pdf_export_images_and_optimize() {
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-conv-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    // Image rouge 300×150 px en PNG et une copie JPEG.
+    let png = dir.join("red.png");
+    let rgb: Vec<u8> = (0..300 * 150).flat_map(|_| [220u8, 20, 20]).collect();
+    image::save_buffer(&png, &rgb, 300, 150, image::ColorType::Rgb8).unwrap();
+    let jpg = dir.join("red.jpg");
+    image::save_buffer(&jpg, &rgb, 300, 150, image::ColorType::Rgb8).unwrap();
+
+    let out = dir.join("images.pdf");
+    assert_eq!(
+        engine
+            .images_to_pdf(&[png.clone(), jpg.clone()], &out, 150.0)
+            .unwrap(),
+        2
+    );
+    let doc = engine.open(&out, None).unwrap();
+    assert_eq!(doc.page_count(), 2);
+    let size = doc.page_size(0).unwrap();
+    assert!(
+        (size.width_pt - 144.0).abs() < 0.5 && (size.height_pt - 72.0).abs() < 0.5,
+        "{size:?}"
+    );
+    let img = doc.render_page(0, 1.0).unwrap();
+    let red = img
+        .rgba
+        .chunks(4)
+        .filter(|p| p[0] > 180 && p[1] < 80 && p[2] < 80)
+        .count();
+    assert!(
+        red > (img.width * img.height / 2) as usize,
+        "image rendue ({red} px rouges)"
+    );
+    assert!(engine.images_to_pdf(&[], &out, 150.0).is_err());
+    assert!(engine
+        .images_to_pdf(&[dir.join("missing.png")], &out, 150.0)
+        .is_err());
+
+    // Export de toutes les pages en PNG.
+    let exported = engine
+        .open(&fixture("two-pages.pdf"), None)
+        .unwrap()
+        .export_images(&dir.join("png"), 72.0)
+        .unwrap();
+    assert_eq!(exported.len(), 2);
+    let back = image::open(&exported[1]).unwrap();
+    assert_eq!((back.width(), back.height()), (792, 612));
+
+    // Optimisation : fichier valide, même contenu, pas plus gros qu'un simple aller-retour.
+    let res =
+        sunipdf_core::convert::optimize_file(&fixture("two-pages.pdf"), &dir.join("opt.pdf"), None)
+            .unwrap();
+    assert!(res.before > 0 && res.after > 0);
+    let opt = engine.open(&dir.join("opt.pdf"), None).unwrap();
+    assert_eq!(opt.page_count(), 2);
+    assert!(opt.page_text(0).unwrap().contains("SuniPDF page 1"));
+    assert_eq!(
+        opt.bookmarks().len(),
+        3,
+        "les signets survivent à l'optimisation"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

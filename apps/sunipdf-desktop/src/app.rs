@@ -90,7 +90,7 @@ pub struct SuniApp {
     pub in_flight: Option<(usize, f32)>,
     last_rendered: Option<(usize, f32)>,
     pub page_input: String,
-    error: Option<&'static str>,
+    pub error: Option<&'static str>,
     password_prompt: Option<PasswordPrompt>,
     show_about: bool,
     pending_file: Option<PathBuf>,
@@ -111,6 +111,7 @@ pub struct SuniApp {
     pub organize: crate::organize::OrganizeState,
     pub annotate: crate::annotate::AnnotateState,
     pub docinfo: crate::docinfo::DocInfoState,
+    pub tools: crate::tools::ToolsState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -135,6 +136,10 @@ impl SuniApp {
             organize: Default::default(),
             annotate: Default::default(),
             docinfo: Default::default(),
+            tools: crate::tools::ToolsState {
+                split_every: 1,
+                ..Default::default()
+            },
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -188,7 +193,7 @@ impl SuniApp {
         self.settings.language()
     }
 
-    fn t(&self, key: &str) -> &'static str {
+    pub fn t(&self, key: &str) -> &'static str {
         tr(self.lang(), key)
     }
 
@@ -435,6 +440,7 @@ impl SuniApp {
                         self.annotate.annotations = list;
                     }
                 }
+                Response::BatchDone(result) => self.on_batch_done(result),
                 Response::Properties(props) => {
                     self.docinfo.metadata_edit = props.metadata.clone();
                     self.docinfo.properties = Some(props);
@@ -544,7 +550,11 @@ impl SuniApp {
                 self.error = Some("error.not_pdf_dropped");
             }
         }
-        if self.password_prompt.is_some() || self.show_about || self.unsaved_prompt.is_some() {
+        if self.password_prompt.is_some()
+            || self.show_about
+            || self.unsaved_prompt.is_some()
+            || self.tools.split_open
+        {
             return;
         }
         if self.annotate.note_prompt.is_some() || ctx.memory(|m| m.focused().is_some()) {
@@ -804,6 +814,15 @@ impl SuniApp {
                     .unwrap_or_default();
                 self.annotate.drag = None;
             }
+            Command::CombineFiles => self.tool_combine(),
+            Command::SplitDocument => {
+                self.tools.split_every = self.tools.split_every.max(1);
+                self.tools.split_open = true;
+            }
+            Command::ExtractPages => self.tool_extract(),
+            Command::CreateFromImages => self.tool_create_from_images(),
+            Command::ExportImages => self.tool_export_images(),
+            Command::Optimize => self.tool_optimize(),
             Command::ToggleBookmarks => {
                 self.docinfo.bookmarks_open = !self.docinfo.bookmarks_open;
             }
@@ -1578,6 +1597,7 @@ impl eframe::App for SuniApp {
             self.unsaved_prompt = Some(PendingAction::Quit);
         }
         self.unsaved_dialog(&ctx);
+        self.split_dialog(&ctx);
         self.properties_dialog(&ctx);
         self.protect_dialog(&ctx);
         self.note_dialog(&ctx);
@@ -1622,7 +1642,7 @@ fn quantize(scale: f32) -> f32 {
     (scale * 200.0).round() / 200.0
 }
 
-fn error_key(e: &EngineError) -> &'static str {
+pub fn error_key(e: &EngineError) -> &'static str {
     match e {
         EngineError::LibraryNotFound(_) => "error.engine_missing",
         EngineError::LibraryLoad(_) => "error.engine_load",

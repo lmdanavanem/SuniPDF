@@ -10,6 +10,7 @@
 pub mod annot;
 pub mod cache;
 pub mod command;
+pub mod convert;
 mod error;
 pub mod pages;
 pub mod security;
@@ -18,6 +19,7 @@ pub mod text;
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
 pub use cache::{cache_key, RenderCache};
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
+pub use convert::Optimized;
 pub use error::EngineError;
 pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection};

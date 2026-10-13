@@ -15,8 +15,8 @@ Sélection à la souris sur la page (`PdfPageText::chars_inside_rect`), copie pr
 ## SUNI-021b — Annotations avancées (owner : PDF-EDITOR)
 Formes (rectangle, ellipse), dessin libre (ink), zone de texte libre, déplacement/redimensionnement des annotations existantes, fils de réponses.
 
-## SUNI-014d — Fusion / division / extraction depuis l'UI (owner : PAGE-MANAGER + UI-UX)
-Assistants « Combiner des fichiers » et « Diviser » branchés sur `Engine::merge` / `split` / `extract_to` ; vérification qpdf en CI ; fixtures AES-128/256 ; test « sauvegarde interrompue ».
+## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
+Rééchantillonnage des images (PDFium : objets image → DynamicImage → réencodage JPEG), vérification qpdf en CI, fixtures AES produites par qpdf, test « sauvegarde interrompue ».
 
 ## SUNI-015 — Identité visuelle et ressources Windows (owner : WINDOWS-RELEASE)
 Icône originale (SVG → ICO), manifeste DPI-aware, ressources de version (`winres`/`embed-resource`), signature différée.
