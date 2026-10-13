@@ -35,7 +35,7 @@ cargo run -p sunipdf-cli -- render fichier.pdf --page 1 --scale 2 --out page1.pn
 .\scripts\check-i18n.ps1
 python -I scripts\make_fixtures.py crates\sunipdf-core\tests\fixtures   # régénérer les PDF de test
 ```
-Sur ce poste : override rustup `stable-x86_64-pc-windows-gnu` (hors dépôt) tant que les Build Tools MSVC manquent.
+Cible MSVC active (Build Tools installés). Repli GNU + WinLibs documenté dans `scripts/dev-env.ps1` si un poste n'a pas de droits admin.
 
 ## Modules existants
 `crates/sunipdf-core` (Engine, Document, render), `crates/sunipdf-i18n`, `apps/sunipdf-desktop` (sunipdf.exe),

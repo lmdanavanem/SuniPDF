@@ -133,7 +133,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     writeln!(out, "\u{c}").map_err(EngineError::Io)?;
                 }
             }
-            return Ok(serde_json::Value::Null);
+            Ok(serde_json::Value::Null)
         }
         Command::Merge { inputs, out } => {
             let pages = engine.merge(&inputs, &out)?;
@@ -256,25 +256,6 @@ fn parse_pages(spec: &str, count: usize) -> Result<Vec<usize>, EngineError> {
     Ok(out)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_page_specifications() {
-        assert_eq!(parse_pages("all", 3).unwrap(), vec![0, 1, 2]);
-        assert_eq!(parse_pages("1,3-4", 5).unwrap(), vec![0, 2, 3]);
-        assert!(matches!(
-            parse_pages("2-9", 5),
-            Err(EngineError::PageOutOfRange(8))
-        ));
-        assert!(parse_pages("0", 5).is_err());
-        assert!(parse_pages("3-1", 5).is_err());
-        assert!(parse_pages("x", 5).is_err());
-        assert!(parse_pages("", 5).is_err());
-    }
-}
-
 fn main() -> ExitCode {
     match run(Cli::parse()) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
@@ -294,5 +275,24 @@ fn main() -> ExitCode {
                 _ => 1,
             })
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_page_specifications() {
+        assert_eq!(parse_pages("all", 3).unwrap(), vec![0, 1, 2]);
+        assert_eq!(parse_pages("1,3-4", 5).unwrap(), vec![0, 2, 3]);
+        assert!(matches!(
+            parse_pages("2-9", 5),
+            Err(EngineError::PageOutOfRange(8))
+        ));
+        assert!(parse_pages("0", 5).is_err());
+        assert!(parse_pages("3-1", 5).is_err());
+        assert!(parse_pages("x", 5).is_err());
+        assert!(parse_pages("", 5).is_err());
     }
 }

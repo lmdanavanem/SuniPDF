@@ -2,16 +2,15 @@
 
 ## Environnement de build (ce poste)
 
-1. **Pas de Visual Studio Build Tools ni de Windows SDK, pas de droits administrateur.** La cible MSVC
-   de référence n'a donc jamais été compilée ici. Contournement : toolchain GNU + WinLibs (D008).
-   À faire par l'utilisateur : installer « Build Tools pour Visual Studio » (charge de travail C++ Desktop),
-   puis `rustup override unset` dans le dossier pour revenir à MSVC.
+1. ~~Pas de Build Tools~~ **Résolu le 2026-10-13** : Build Tools installés, override GNU retiré, tests verts en MSVC.
+   Le repli GNU + WinLibs reste documenté dans `scripts/dev-env.ps1` pour un poste sans droits admin.
 2. **Mémoire limitée (14 Go, ~1,5 Go libres pendant la session).** Avec 16 cœurs, `cargo` lance 16 `rustc`
    et le système atteint sa limite de commit : abandons `0xC0000409` et erreurs trompeuses
    (« only metadata stub found », ICE). Contournement : `cargo build -j 2` (ou `CARGO_BUILD_JOBS=2`)
    et `debug = "line-tables-only"` en profil dev.
-3. **Les binutils livrés par rustup ne suffisent pas** pour les crates `raw-dylib` sur la cible GNU
-   (`dlltool` sans `as`). WinLibs complet requis (voir `scripts/dev-env.ps1`).
+3. (Repli GNU seulement) **Les binutils livrés par rustup ne suffisent pas** pour les crates `raw-dylib`
+   (`dlltool` sans `as`) et le rustc GNU abandonne sous clippy sur le crate `windows` : WinLibs complet requis,
+   clippy limité aux crates sans dépendance `windows`.
 
 ## Dépendances
 

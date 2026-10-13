@@ -3,8 +3,8 @@
 | Couche | Technologie | Version | Licence | Statut |
 |---|---|---|---|---|
 | Langage | Rust stable | 1.99.0 (rust-version min 1.85) | — | Utilisé |
-| Cible de référence | `x86_64-pc-windows-msvc` | — | — | **Non compilée sur ce poste** (Build Tools absents) |
-| Cible de travail actuelle | `x86_64-pc-windows-gnu` + MinGW-w64 (WinLibs, winget, scope utilisateur) | gcc 16.2.0 | GPL (outil, pas lié au produit) | Utilisé pour tous les tests de cette session |
+| Cible de référence | `x86_64-pc-windows-msvc` (Build Tools 2026 / MSVC 14.51, SDK 10.0.26100) | — | — | **Utilisée** depuis le 2026-10-13 soir : `cargo test --workspace` vert |
+| Cible de repli | `x86_64-pc-windows-gnu` + MinGW-w64 (WinLibs, winget, scope utilisateur) | gcc 16.2.0 | GPL (outil, pas lié au produit) | Utilisée avant l'installation des Build Tools ; conservée comme repli sans admin |
 | Cible future | `aarch64-pc-windows-msvc` | — | — | Planifié (P6) |
 | Moteur PDF | PDFium (bblanchon/pdfium-binaries, build 7881, sans V8/XFA) | 151.0.7881.0 | BSD-3-Clause (PDFium), MIT (packaging) | Utilisé |
 | Binding | `pdfium-render` | 0.9.4 | MIT OR Apache-2.0 | Utilisé |
@@ -33,8 +33,8 @@
 
 ## Environnement de développement sur ce poste
 
-- Ni Visual Studio ni Windows SDK installés ; pas de droits administrateur dans la session.
-- Solution retenue sans admin : toolchain rustup `stable-x86_64-pc-windows-gnu` (override de dossier,
+- Build Tools Visual Studio installés le 2026-10-13 (soir) : cible MSVC active (`rustup override unset`).
+- Avant cela, solution sans admin : toolchain rustup `stable-x86_64-pc-windows-gnu` (override de dossier,
   hors dépôt : `rustup override set stable-x86_64-pc-windows-gnu`) + MinGW-w64 WinLibs via winget
   (`--scope user`). Les binutils livrés par rustup ne suffisent pas (`dlltool` sans `as`) pour les crates
   `raw-dylib` (`windows-sys`, `libloading`, `chrono`).

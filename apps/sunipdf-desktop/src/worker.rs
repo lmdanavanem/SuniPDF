@@ -32,6 +32,16 @@ pub enum Request {
         match_case: bool,
         generation: u64,
     },
+    Rotate {
+        page: usize,
+        delta_degrees: i32,
+    },
+    DeletePage {
+        page: usize,
+    },
+    Save {
+        path: PathBuf,
+    },
     Close,
 }
 
@@ -59,6 +69,13 @@ pub enum Response {
         generation: u64,
         matches: Vec<TextMatch>,
     },
+    /// Pages modifiées en mémoire (rotation, suppression) : tailles rafraîchies, rendus invalidés.
+    DocumentChanged(DocumentInfo),
+    OperationFailed(EngineError),
+    Saved {
+        path: PathBuf,
+    },
+    SaveFailed(EngineError),
 }
 
 pub struct Worker {
@@ -218,6 +235,45 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             matches: Vec::new(),
                         }
                     }
+                }
+            }
+            Request::Rotate {
+                page,
+                delta_degrees,
+            } => {
+                let Some(doc) = &mut state.document else {
+                    continue;
+                };
+                let result = doc
+                    .page_rotation(page)
+                    .and_then(|r| doc.set_page_rotation(page, r.turned(delta_degrees)));
+                match result {
+                    Ok(()) => {
+                        state.cache.clear();
+                        state.prefetch.clear();
+                        Response::DocumentChanged(doc.info().clone())
+                    }
+                    Err(e) => Response::OperationFailed(e),
+                }
+            }
+            Request::DeletePage { page } => {
+                let Some(doc) = &mut state.document else {
+                    continue;
+                };
+                match doc.delete_page(page) {
+                    Ok(()) => {
+                        state.cache.clear();
+                        state.prefetch.clear();
+                        Response::DocumentChanged(doc.info().clone())
+                    }
+                    Err(e) => Response::OperationFailed(e),
+                }
+            }
+            Request::Save { path } => {
+                let Some(doc) = &state.document else { continue };
+                match doc.save_as(&path) {
+                    Ok(()) => Response::Saved { path },
+                    Err(e) => Response::SaveFailed(e),
                 }
             }
             Request::Close => {

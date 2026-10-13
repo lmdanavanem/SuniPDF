@@ -18,32 +18,33 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] i18n fr-FR / en-US : 76 clés, changement à chaud, préférence persistée (écriture atomique), thème clair/sombre.
 - [x] Rendu hors thread UI (thread moteur unique, générations, un rendu en vol).
 - [x] CLI : `info` (JSON), `render` (PNG), `commands` (registre), codes d'erreur stables, codes de sortie 3/4/5.
-- [x] SUNI-014 (moteur + CLI) Fusion, extraction, division, rotation, suppression de page, enregistrement atomique (`sunipdf-core::pages`, `write_atomic` partagé avec les préférences) ; CLI `merge`, `extract`, `split`, `rotate` ; 4 tests. **UI non branchée** (menu Pages à venir).
+- [x] SUNI-014b (UI) Menu Pages (pivoter à droite/gauche, supprimer la page), Enregistrer / Enregistrer sous (Ctrl+S, Ctrl+Maj+S), état « modifié » dans le titre, invite Enregistrer / Ne pas enregistrer / Annuler avant fermeture, ouverture ou quitter (y compris la croix de la fenêtre). 20 commandes au registre.
+- [x] SUNI-014 (moteur + CLI) Fusion, extraction, division, rotation, suppression de page, enregistrement atomique (`sunipdf-core::pages`, `write_atomic` partagé avec les préférences) ; CLI `merge`, `extract`, `split`, `rotate` ; 4 tests.
 - [x] SUNI-013 Recherche plein texte (Ctrl+F, barre de recherche, casse, occurrence suivante/précédente, surbrillance sur la page) et extraction de texte ; CLI `text` et `search` ; 1 test moteur.
 - [x] SUNI-011 Cache LRU de rendu plafonné (256 Mo, `sunipdf-core::cache`), pré-rendu des pages voisines, panneau de miniatures virtualisé (F4), 2 tests cache.
-- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 15 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
+- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 20 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
 - [x] Tests exécutés : `cargo test --workspace` → voir « Dernière exécution ».
 - [x] Test de fumée : `sunipdf.exe two-pages.pdf` démarre et reste actif (fenêtre non inspectée visuellement par l'agent).
 - [ ] Validation visuelle par l'utilisateur sur son écran (rendu, DPI, menus).
-- [ ] Compilation MSVC (cible de référence) : impossible sur ce poste sans Build Tools.
+- [x] Compilation MSVC (cible de référence) : Build Tools installés le 13/10 au soir, `cargo test --workspace` et `cargo clippy --workspace --all-targets -D warnings` verts.
 - [ ] Icône / ressources de version Windows.
 - [ ] CI GitHub Actions : fichier écrit, **jamais exécuté**.
 
-## Dernière exécution (2026-10-13, cible GNU, `-j 2`)
+## Dernière exécution (2026-10-13 soir, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
 | `cargo test -p sunipdf-core` | 16/16 OK (2 pages + 2 cache + 2 registre + fusion/extraction/division + rotation/suppression/enregistrement + texte/recherche + 7 moteur : fixture 2 pages, chiffré RC4 avec/sans mot de passe, fichier invalide, fichier absent, page hors limites, rendu trop grand, DLL absente) |
 | `cargo test -p sunipdf-i18n` | 6/6 OK (parité des clés, valeurs non vides, paramètres identiques, repli, codes, substitution) |
 | `cargo test -p sunipdf-desktop` | 5/5 OK (clés i18n utilisées, clés du registre, clés d'erreur, préférences atomiques, utilitaires) |
 | `cargo test -p sunipdf-cli` | 1/1 OK (analyse des plages de pages) |
-| `sunipdf-cli info/render/commands/text/search` | JSON correct ; PNG 1224×1584 vérifié visuellement ; texte extrait et 2 occurrences avec rectangles |
-| `cargo clippy -p sunipdf-core -p sunipdf-i18n -p sunipdf-cli --all-targets -D warnings` | OK, 0 avertissement. **Pas exécutable pour `sunipdf-desktop` sur ce poste** : rustc GNU abandonne (0xC0000409) sur le crate `windows` 0.62 faute de mémoire, même en `-j 1` (à vérifier en CI MSVC) |
+| `sunipdf-cli info/render/commands/text/search/merge/rotate/extract/split` | JSON correct ; PNG vérifié visuellement ; texte et occurrences ; fusion 4 pages, rotation pages 1 et 4 (tailles inversées), extraction 2-3, division en 2 fichiers |
+| `cargo clippy --workspace --all-targets -- -D warnings` | OK, 0 avertissement (MSVC) |
 | `cargo fmt --all -- --check` | OK |
 | `scripts\check-i18n.ps1` | OK : 76 clés bilingues |
 
 
 ## Non réalisé (ne pas confondre avec « fait »)
-Onglets, affichage continu, sélection/copie de texte, signets, toute édition, interface des opérations de pages (moteur et CLI faits), OCR, conversions, chiffrement à l'écriture, signatures, MSI, ARM64, benchmarks.
+Onglets, affichage continu, sélection/copie de texte, signets, annotations et édition de contenu, insertion/réorganisation de pages, undo/redo, OCR, conversions, chiffrement à l'écriture, signatures, MSI, ARM64, benchmarks.
 
 ## Journal
 - 2026-10-13 : audit PDFCraft, choix PDFium (D005), squelette → tranche verticale 1, environnement GNU faute de MSVC (D008),

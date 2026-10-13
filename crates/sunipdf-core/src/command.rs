@@ -17,6 +17,11 @@ pub enum Command {
     FitPage,
     ToggleThumbnails,
     Find,
+    Save,
+    SaveAs,
+    RotateClockwise,
+    RotateCounterClockwise,
+    DeletePage,
     About,
 }
 
@@ -25,6 +30,7 @@ pub enum Menu {
     File,
     Edit,
     View,
+    Pages,
     Help,
 }
 
@@ -69,6 +75,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         "file.close",
         "menu.file.close",
         Some("shortcut.close"),
+        true,
+        File
+    ),
+    cmd!(
+        Save,
+        "file.save",
+        "menu.file.save",
+        Some("shortcut.save"),
+        true,
+        File
+    ),
+    cmd!(
+        SaveAs,
+        "file.save_as",
+        "menu.file.save_as",
+        Some("shortcut.save_as"),
         true,
         File
     ),
@@ -161,6 +183,30 @@ pub const REGISTRY: &[CommandInfo] = &[
         View
     ),
     cmd!(
+        RotateClockwise,
+        "pages.rotate_cw",
+        "menu.pages.rotate_cw",
+        Some("shortcut.rotate_cw"),
+        true,
+        Pages
+    ),
+    cmd!(
+        RotateCounterClockwise,
+        "pages.rotate_ccw",
+        "menu.pages.rotate_ccw",
+        Some("shortcut.rotate_ccw"),
+        true,
+        Pages
+    ),
+    cmd!(
+        DeletePage,
+        "pages.delete",
+        "menu.pages.delete",
+        Some("shortcut.delete_page"),
+        true,
+        Pages
+    ),
+    cmd!(
         Find,
         "edit.find",
         "menu.edit.find",
@@ -210,6 +256,6 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 3);
+        assert_eq!(Command::in_menu(Menu::File).count(), 5);
     }
 }

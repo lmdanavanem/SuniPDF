@@ -44,6 +44,19 @@ struct PasswordPrompt {
     wrong: bool,
 }
 
+#[derive(Clone)]
+enum PendingAction {
+    Close,
+    Quit,
+    Open(PathBuf),
+}
+
+enum UnsavedChoice {
+    Save,
+    Discard,
+    Cancel,
+}
+
 struct FindState {
     open: bool,
     query: String,
@@ -78,6 +91,12 @@ pub struct SuniApp {
     thumbs_pending: HashSet<usize>,
     thumb_px: u32,
     find: FindState,
+    dirty: bool,
+    saving: bool,
+    allow_close: bool,
+    unsaved_prompt: Option<PendingAction>,
+    after_save: Option<PendingAction>,
+    status_msg: Option<String>,
 }
 
 impl SuniApp {
@@ -115,6 +134,12 @@ impl SuniApp {
                 current: 0,
                 focus_requested: false,
             },
+            dirty: false,
+            saving: false,
+            allow_close: false,
+            unsaved_prompt: None,
+            after_save: None,
+            status_msg: None,
         }
     }
 
@@ -140,6 +165,10 @@ impl SuniApp {
             self.pending_file = Some(path);
             return;
         }
+        if self.dirty && self.unsaved_prompt.is_none() {
+            self.unsaved_prompt = Some(PendingAction::Open(path));
+            return;
+        }
         self.error = None;
         self.close_document(false);
         self.opening = Some(path.clone());
@@ -158,6 +187,9 @@ impl SuniApp {
         self.thumbnails.clear();
         self.thumbs_pending.clear();
         self.close_find();
+        self.dirty = false;
+        self.saving = false;
+        self.status_msg = None;
         if announce {
             self.error = None;
         }
@@ -242,6 +274,8 @@ impl SuniApp {
                     self.password_prompt = None;
                     self.page_input = "1".into();
                     self.document = Some(OpenDocument { info, page: 0 });
+                    self.dirty = false;
+                    self.status_msg = None;
                     self.update_title(ctx);
                 }
                 Response::OpenFailed { path, error } => {
@@ -295,6 +329,50 @@ impl SuniApp {
                         self.thumbnails.insert(page, handle);
                     }
                 }
+                Response::DocumentChanged(info) => {
+                    if let Some(doc) = &mut self.document {
+                        doc.info = info;
+                        doc.page = doc.page.min(doc.info.page_count().saturating_sub(1));
+                        self.page_input = (doc.page + 1).to_string();
+                    }
+                    self.texture = None;
+                    self.last_rendered = None;
+                    self.in_flight = None;
+                    self.generation += 1;
+                    self.thumbnails.clear();
+                    self.thumbs_pending.clear();
+                    self.find.searched = None;
+                    self.find.matches.clear();
+                    self.dirty = true;
+                    self.status_msg = None;
+                    self.update_title(ctx);
+                }
+                Response::OperationFailed(e) => {
+                    log::warn!("opération impossible : {e}");
+                    self.error = Some(error_key(&e));
+                }
+                Response::Saved { path } => {
+                    self.saving = false;
+                    self.dirty = false;
+                    self.status_msg = Some(tr_args(
+                        self.lang(),
+                        "status.saved",
+                        &[("name", &file_name(&path))],
+                    ));
+                    if let Some(doc) = &mut self.document {
+                        doc.info.path = path;
+                    }
+                    self.update_title(ctx);
+                    if let Some(action) = self.after_save.take() {
+                        self.run_pending(ctx, action);
+                    }
+                }
+                Response::SaveFailed(e) => {
+                    self.saving = false;
+                    self.after_save = None;
+                    log::error!("enregistrement impossible : {e}");
+                    self.error = Some("error.save_failed");
+                }
                 Response::SearchResults {
                     generation,
                     matches,
@@ -325,7 +403,11 @@ impl SuniApp {
         let title = match &self.document {
             Some(doc) => tr_args(
                 self.lang(),
-                "app.title_with_document",
+                if self.dirty {
+                    "app.title_modified"
+                } else {
+                    "app.title_with_document"
+                },
                 &[("name", &file_name(&doc.info.path))],
             ),
             None => self.t("app.title").to_string(),
@@ -367,7 +449,7 @@ impl SuniApp {
                 self.error = Some("error.not_pdf_dropped");
             }
         }
-        if self.password_prompt.is_some() || self.show_about {
+        if self.password_prompt.is_some() || self.show_about || self.unsaved_prompt.is_some() {
             return;
         }
         if self.find.open && ctx.memory(|m| m.focused().is_some()) {
@@ -404,6 +486,19 @@ impl SuniApp {
             key(Modifiers::NONE, Key::End, Command::LastPage);
             key(Modifiers::NONE, Key::F4, Command::ToggleThumbnails);
             key(Modifiers::COMMAND, Key::F, Command::Find);
+            key(
+                Modifiers::COMMAND | Modifiers::SHIFT,
+                Key::S,
+                Command::SaveAs,
+            );
+            key(Modifiers::COMMAND, Key::S, Command::Save);
+            key(
+                Modifiers::COMMAND | Modifiers::SHIFT,
+                Key::R,
+                Command::RotateCounterClockwise,
+            );
+            key(Modifiers::COMMAND, Key::R, Command::RotateClockwise);
+            key(Modifiers::COMMAND, Key::Delete, Command::DeletePage);
         });
         for command in commands {
             self.execute(ctx, command);
@@ -417,8 +512,21 @@ impl SuniApp {
         }
         match command {
             Command::OpenDocument => self.open_file_dialog(),
-            Command::CloseDocument => self.close_document(true),
-            Command::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+            Command::CloseDocument => {
+                if self.dirty {
+                    self.unsaved_prompt = Some(PendingAction::Close);
+                } else {
+                    self.close_document(true);
+                }
+            }
+            Command::Quit => {
+                if self.dirty {
+                    self.unsaved_prompt = Some(PendingAction::Quit);
+                } else {
+                    self.allow_close = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            }
             Command::FirstPage => self.go_to_page(0),
             Command::PreviousPage => self.step_page(-1),
             Command::NextPage => self.step_page(1),
@@ -436,6 +544,28 @@ impl SuniApp {
                 self.find.open = true;
                 self.find.focus_requested = true;
             }
+            Command::Save => self.save_document(false),
+            Command::SaveAs => self.save_document(true),
+            Command::RotateClockwise | Command::RotateCounterClockwise => {
+                let page = self.document.as_ref().map(|d| d.page).unwrap_or(0);
+                let delta_degrees = if command == Command::RotateClockwise {
+                    90
+                } else {
+                    -90
+                };
+                self.worker.send(Request::Rotate {
+                    page,
+                    delta_degrees,
+                });
+            }
+            Command::DeletePage => {
+                let Some(doc) = &self.document else { return };
+                if doc.info.page_count() <= 1 {
+                    self.error = Some("error.last_page");
+                } else {
+                    self.worker.send(Request::DeletePage { page: doc.page });
+                }
+            }
             Command::About => self.show_about = true,
         }
     }
@@ -445,9 +575,16 @@ impl SuniApp {
     fn menu_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         egui::MenuBar::new().ui(ui, |ui| {
-            self.command_menu(ctx, ui, "menu.file", Menu::File, &[Command::Quit]);
+            self.command_menu(
+                ctx,
+                ui,
+                "menu.file",
+                Menu::File,
+                &[Command::Save, Command::Quit],
+            );
             self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
             self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
+            self.command_menu(ctx, ui, "menu.pages", Menu::Pages, &[]);
             ui.menu_button(tr(lang, "menu.settings"), |ui| {
                 ui.menu_button(tr(lang, "menu.settings.language"), |ui| {
                     for l in Language::ALL {
@@ -635,6 +772,14 @@ impl SuniApp {
                     ui.separator();
                     ui.spinner();
                     ui.label(tr(lang, "status.rendering"));
+                }
+                if self.saving {
+                    ui.separator();
+                    ui.spinner();
+                    ui.label(tr(lang, "status.saving"));
+                } else if let Some(msg) = &self.status_msg {
+                    ui.separator();
+                    ui.label(msg);
                 }
             }
             (_, None, None) => {
@@ -959,6 +1104,89 @@ impl SuniApp {
         }
     }
 
+    fn unsaved_dialog(&mut self, ctx: &egui::Context) {
+        let lang = self.lang();
+        let Some(action) = self.unsaved_prompt.clone() else {
+            return;
+        };
+        let name = self
+            .document
+            .as_ref()
+            .map(|d| file_name(&d.info.path))
+            .unwrap_or_default();
+        let mut choice = None;
+        egui::Modal::new(egui::Id::new("unsaved")).show(ctx, |ui| {
+            ui.set_width(420.0);
+            ui.heading(tr(lang, "dialog.unsaved.title"));
+            ui.label(tr_args(lang, "dialog.unsaved.text", &[("name", &name)]));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.button(tr(lang, "dialog.unsaved.save")).clicked() {
+                    choice = Some(UnsavedChoice::Save);
+                }
+                if ui.button(tr(lang, "dialog.unsaved.discard")).clicked() {
+                    choice = Some(UnsavedChoice::Discard);
+                }
+                if ui.button(tr(lang, "dialog.unsaved.cancel")).clicked() {
+                    choice = Some(UnsavedChoice::Cancel);
+                }
+            });
+        });
+        match choice {
+            Some(UnsavedChoice::Save) => {
+                self.unsaved_prompt = None;
+                self.after_save = Some(action);
+                self.save_document(false);
+            }
+            Some(UnsavedChoice::Discard) => {
+                self.unsaved_prompt = None;
+                self.dirty = false;
+                self.run_pending(ctx, action);
+            }
+            Some(UnsavedChoice::Cancel) => self.unsaved_prompt = None,
+            None => {}
+        }
+    }
+
+    fn run_pending(&mut self, ctx: &egui::Context, action: PendingAction) {
+        match action {
+            PendingAction::Close => self.close_document(true),
+            PendingAction::Quit => {
+                self.allow_close = true;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+            PendingAction::Open(path) => self.open_path(path, None),
+        }
+    }
+
+    /// Enregistre vers le chemin courant, ou demande un chemin (`ask_path`).
+    fn save_document(&mut self, ask_path: bool) {
+        let Some(doc) = &self.document else { return };
+        let mut path = doc.info.path.clone();
+        if ask_path {
+            let dialog = rfd::FileDialog::new()
+                .set_title(self.t("dialog.save.title"))
+                .add_filter(self.t("dialog.open.filter_pdf"), &["pdf"])
+                .set_file_name(file_name(&path));
+            let dialog = match path.parent() {
+                Some(dir) => dialog.set_directory(dir),
+                None => dialog,
+            };
+            match dialog.save_file() {
+                Some(chosen) => path = chosen,
+                None => {
+                    self.after_save = None;
+                    return;
+                }
+            }
+            if path.extension().is_none() {
+                path.set_extension("pdf");
+            }
+        }
+        self.saving = true;
+        self.worker.send(Request::Save { path });
+    }
+
     fn password_dialog(&mut self, ctx: &egui::Context) {
         let lang = self.lang();
         let Some(prompt) = &mut self.password_prompt else {
@@ -1058,6 +1286,11 @@ impl eframe::App for SuniApp {
             self.error_banner(ui);
             self.document_area(&ctx, ui);
         });
+        if ctx.input(|i| i.viewport().close_requested()) && self.dirty && !self.allow_close {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.unsaved_prompt = Some(PendingAction::Quit);
+        }
+        self.unsaved_dialog(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
     }
