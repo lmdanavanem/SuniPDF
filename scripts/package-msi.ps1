@@ -13,12 +13,12 @@ if (-not (Test-Path "$stage\sunipdf.exe")) { throw "Dossier portable absent : la
 
 $wixBin = $env:WIX_BIN
 if (-not $wixBin) {
-    $candidates = @("$env:WIX\bin", "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin", "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin")
+    $candidates = @((Join-Path $root "third_party\wix314"), "$env:WIX\bin", "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin", "${env:ProgramFiles(x86)}\WiX Toolset v3.11\bin")
     $wixBin = $candidates | Where-Object { $_ -and (Test-Path (Join-Path $_ "candle.exe")) } | Select-Object -First 1
 }
 if (-not $wixBin) {
     # Binaires autonomes officiels (aucune installation) : https://github.com/wixtoolset/wix3/releases
-    $dl = "$root	hird_party\wix314"
+    $dl = Join-Path $root "third_party\wix314"
     New-Item -ItemType Directory -Force $dl | Out-Null
     Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip" -OutFile "$dl\wix.zip" -UseBasicParsing
     Expand-Archive -Path "$dl\wix.zip" -DestinationPath $dl -Force
