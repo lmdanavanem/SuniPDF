@@ -19,6 +19,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// List the application's command registry (stable ids) as JSON.
+    Commands,
     /// Print document information (page count, page sizes, title) as JSON.
     Info {
         file: PathBuf,
@@ -42,8 +44,19 @@ enum Command {
 }
 
 fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
+    if let Command::Commands = cli.command {
+        return Ok(serde_json::json!(sunipdf_core::REGISTRY
+            .iter()
+            .map(|c| serde_json::json!({
+                "id": c.id,
+                "menu": format!("{:?}", c.menu).to_lowercase(),
+                "needs_document": c.needs_document,
+            }))
+            .collect::<Vec<_>>()));
+    }
     let engine = Engine::new()?;
     match cli.command {
+        Command::Commands => unreachable!(),
         Command::Info { file, password } => {
             let doc = engine.open(&file, password.as_deref())?;
             let info = doc.info();

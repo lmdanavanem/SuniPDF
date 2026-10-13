@@ -5,7 +5,7 @@ use crate::theme;
 use crate::worker::{Request, Response, Worker};
 use egui::{Key, Modifiers};
 use std::path::{Path, PathBuf};
-use sunipdf_core::{DocumentInfo, EngineError};
+use sunipdf_core::{Command, DocumentInfo, EngineError, Menu};
 use sunipdf_i18n::{tr, tr_args, Language};
 
 /// Points CSS par point PDF : à 100 %, une page de 612 pt occupe 816 px logiques (96 dpi).
@@ -306,44 +306,50 @@ impl SuniApp {
         if self.password_prompt.is_some() || self.show_about {
             return;
         }
-        let mut actions: Vec<fn(&mut SuniApp)> = Vec::new();
+        let mut commands = Vec::new();
         ctx.input_mut(|i| {
-            if i.consume_key(Modifiers::COMMAND, Key::O) {
-                actions.push(|a| a.open_file_dialog());
-            }
-            if i.consume_key(Modifiers::COMMAND, Key::W) {
-                actions.push(|a| a.close_document(true));
-            }
-            if i.consume_key(Modifiers::COMMAND, Key::Plus)
-                || i.consume_key(Modifiers::COMMAND, Key::Equals)
-            {
-                actions.push(|a| a.zoom_step(1));
-            }
-            if i.consume_key(Modifiers::COMMAND, Key::Minus) {
-                actions.push(|a| a.zoom_step(-1));
-            }
-            if i.consume_key(Modifiers::COMMAND, Key::Num0) {
-                actions.push(|a| a.zoom = Zoom::Fixed(1.0));
-            }
-            if i.consume_key(Modifiers::NONE, Key::PageDown)
-                || i.consume_key(Modifiers::NONE, Key::ArrowRight)
-            {
-                actions.push(|a| a.step_page(1));
-            }
-            if i.consume_key(Modifiers::NONE, Key::PageUp)
-                || i.consume_key(Modifiers::NONE, Key::ArrowLeft)
-            {
-                actions.push(|a| a.step_page(-1));
-            }
-            if i.consume_key(Modifiers::NONE, Key::Home) {
-                actions.push(|a| a.go_to_page(0));
-            }
-            if i.consume_key(Modifiers::NONE, Key::End) {
-                actions.push(|a| a.go_to_page(usize::MAX));
-            }
+            let mut key = |m: Modifiers, k: Key, c: Command| {
+                if i.consume_key(m, k) {
+                    commands.push(c);
+                }
+            };
+            key(Modifiers::COMMAND, Key::O, Command::OpenDocument);
+            key(Modifiers::COMMAND, Key::W, Command::CloseDocument);
+            key(Modifiers::COMMAND, Key::Plus, Command::ZoomIn);
+            key(Modifiers::COMMAND, Key::Equals, Command::ZoomIn);
+            key(Modifiers::COMMAND, Key::Minus, Command::ZoomOut);
+            key(Modifiers::COMMAND, Key::Num0, Command::ActualSize);
+            key(Modifiers::NONE, Key::PageDown, Command::NextPage);
+            key(Modifiers::NONE, Key::ArrowRight, Command::NextPage);
+            key(Modifiers::NONE, Key::PageUp, Command::PreviousPage);
+            key(Modifiers::NONE, Key::ArrowLeft, Command::PreviousPage);
+            key(Modifiers::NONE, Key::Home, Command::FirstPage);
+            key(Modifiers::NONE, Key::End, Command::LastPage);
         });
-        for action in actions {
-            action(self);
+        for command in commands {
+            self.execute(ctx, command);
+        }
+    }
+
+    /// Point d'entrée unique de toutes les commandes (menus, clavier, future palette / automatisation).
+    pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
+        if command.info().needs_document && self.document.is_none() {
+            return;
+        }
+        match command {
+            Command::OpenDocument => self.open_file_dialog(),
+            Command::CloseDocument => self.close_document(true),
+            Command::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+            Command::FirstPage => self.go_to_page(0),
+            Command::PreviousPage => self.step_page(-1),
+            Command::NextPage => self.step_page(1),
+            Command::LastPage => self.go_to_page(usize::MAX),
+            Command::ZoomIn => self.zoom_step(1),
+            Command::ZoomOut => self.zoom_step(-1),
+            Command::ActualSize => self.zoom = Zoom::Fixed(1.0),
+            Command::FitWidth => self.zoom = Zoom::FitWidth,
+            Command::FitPage => self.zoom = Zoom::FitPage,
+            Command::About => self.show_about = true,
         }
     }
 
@@ -351,100 +357,9 @@ impl SuniApp {
 
     fn menu_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let has_doc = self.document.is_some();
         egui::MenuBar::new().ui(ui, |ui| {
-            ui.menu_button(tr(lang, "menu.file"), |ui| {
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.file.open"),
-                    tr(lang, "shortcut.open"),
-                    true,
-                ) {
-                    self.open_file_dialog();
-                }
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.file.close"),
-                    tr(lang, "shortcut.close"),
-                    has_doc,
-                ) {
-                    self.close_document(true);
-                }
-                ui.separator();
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.file.quit"),
-                    tr(lang, "shortcut.quit"),
-                    true,
-                ) {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                }
-            });
-            ui.menu_button(tr(lang, "menu.view"), |ui| {
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.zoom_in"),
-                    tr(lang, "shortcut.zoom_in"),
-                    has_doc,
-                ) {
-                    self.zoom_step(1);
-                }
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.zoom_out"),
-                    tr(lang, "shortcut.zoom_out"),
-                    has_doc,
-                ) {
-                    self.zoom_step(-1);
-                }
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.actual_size"),
-                    tr(lang, "shortcut.actual_size"),
-                    has_doc,
-                ) {
-                    self.zoom = Zoom::Fixed(1.0);
-                }
-                if menu_item(ui, tr(lang, "menu.view.fit_width"), "", has_doc) {
-                    self.zoom = Zoom::FitWidth;
-                }
-                if menu_item(ui, tr(lang, "menu.view.fit_page"), "", has_doc) {
-                    self.zoom = Zoom::FitPage;
-                }
-                ui.separator();
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.first_page"),
-                    tr(lang, "shortcut.first_page"),
-                    has_doc,
-                ) {
-                    self.go_to_page(0);
-                }
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.previous_page"),
-                    tr(lang, "shortcut.previous_page"),
-                    has_doc,
-                ) {
-                    self.step_page(-1);
-                }
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.next_page"),
-                    tr(lang, "shortcut.next_page"),
-                    has_doc,
-                ) {
-                    self.step_page(1);
-                }
-                if menu_item(
-                    ui,
-                    tr(lang, "menu.view.last_page"),
-                    tr(lang, "shortcut.last_page"),
-                    has_doc,
-                ) {
-                    self.go_to_page(usize::MAX);
-                }
-            });
+            self.command_menu(ctx, ui, "menu.file", Menu::File, &[Command::Quit]);
+            self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
             ui.menu_button(tr(lang, "menu.settings"), |ui| {
                 ui.menu_button(tr(lang, "menu.settings.language"), |ui| {
                     for l in Language::ALL {
@@ -473,12 +388,32 @@ impl SuniApp {
                     }
                 });
             });
-            ui.menu_button(tr(lang, "menu.help"), |ui| {
-                if ui.button(tr(lang, "menu.help.about")).clicked() {
-                    self.show_about = true;
-                    ui.close();
+            self.command_menu(ctx, ui, "menu.help", Menu::Help, &[]);
+        });
+    }
+
+    /// Menu construit depuis le registre ; `separators_before` insère une ligne avant ces commandes.
+    fn command_menu(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        title_key: &str,
+        menu: Menu,
+        separators_before: &[Command],
+    ) {
+        let lang = self.lang();
+        let has_doc = self.document.is_some();
+        ui.menu_button(tr(lang, title_key), |ui| {
+            for info in Command::in_menu(menu) {
+                if separators_before.contains(&info.command) {
+                    ui.separator();
                 }
-            });
+                let shortcut = info.shortcut_key.map(|k| tr(lang, k)).unwrap_or("");
+                let enabled = !info.needs_document || has_doc;
+                if menu_item(ui, tr(lang, info.label_key), shortcut, enabled) {
+                    self.execute(ctx, info.command);
+                }
+            }
         });
     }
 
@@ -901,6 +836,17 @@ mod tests {
             }
         }
         assert!(checked > 40, "{checked} clés vérifiées");
+    }
+
+    #[test]
+    fn registry_keys_exist_in_both_catalogs() {
+        for info in sunipdf_core::REGISTRY {
+            for key in std::iter::once(info.label_key).chain(info.shortcut_key) {
+                for lang in Language::ALL {
+                    assert_ne!(tr(lang, key), key, "clé {key} absente en {}", lang.code());
+                }
+            }
+        }
     }
 
     #[test]

@@ -7,8 +7,10 @@
 //! sur un seul thread (le crate `pdfium-render` sérialise les appels, mais sans gain
 //! de parallélisme). L'application de bureau les confine dans un thread de travail.
 
+pub mod command;
 mod error;
 
+pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use error::EngineError;
 
 use pdfium_render::prelude::*;

@@ -67,11 +67,15 @@ Le zoom « ajuster à la largeur/page » est recalculé à chaque frame ; l'éch
 | `sunipdf-platform` | Explorateur Windows, associations, impression, DPI | P5 |
 | `sunipdf-ui` | composants egui réutilisables (si l'app grossit) | P3 |
 
-## Registre de commandes (P2)
+## Registre de commandes (SUNI-010, livré)
 
-Un enum `Command` + `CommandRegistry` dans `sunipdf-core` décrira chaque opération (identifiant stable,
-paramètres sérialisables, précondition). UI, CLI, palette de commandes, lots et MCP l'exploiteront ;
-l'historique undo/redo s'appuiera sur ce même registre.
+`crates/sunipdf-core/src/command.rs` : `Command` (enum), `REGISTRY` (tableau constant : identifiant stable,
+clé i18n du libellé, clé i18n du raccourci, `needs_document`, menu). Données pures, sans dépendance UI.
+- L'application construit ses menus Fichier / Affichage / Aide depuis le registre et route menus **et**
+  raccourcis clavier vers un seul point d'entrée `SuniApp::execute(ctx, Command)`.
+- La CLI expose `sunipdf-cli commands` (JSON). La palette de commandes, les raccourcis configurables,
+  l'undo/redo et l'automatisation s'appuieront sur ces mêmes identifiants.
+- Tests : unicité des identifiants, aller-retour `from_id`, existence des clés i18n dans les deux catalogues.
 
 ## Choix d'infrastructure
 

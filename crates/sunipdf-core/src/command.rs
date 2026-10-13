@@ -1,0 +1,196 @@
+//! Registre central des commandes. Données pures (aucune dépendance UI) : l'application, la CLI,
+//! la future palette de commandes et l'automatisation lisent le même tableau.
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Command {
+    OpenDocument,
+    CloseDocument,
+    Quit,
+    FirstPage,
+    PreviousPage,
+    NextPage,
+    LastPage,
+    ZoomIn,
+    ZoomOut,
+    ActualSize,
+    FitWidth,
+    FitPage,
+    About,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Menu {
+    File,
+    View,
+    Help,
+}
+
+#[derive(Debug)]
+pub struct CommandInfo {
+    pub command: Command,
+    /// Identifiant stable (CLI, automatisation, raccourcis configurables).
+    pub id: &'static str,
+    /// Clé i18n du libellé.
+    pub label_key: &'static str,
+    /// Clé i18n du raccourci affiché, s'il existe.
+    pub shortcut_key: Option<&'static str>,
+    pub needs_document: bool,
+    pub menu: Menu,
+}
+
+macro_rules! cmd {
+    ($c:ident, $id:literal, $label:literal, $shortcut:expr, $doc:literal, $menu:ident) => {
+        CommandInfo {
+            command: Command::$c,
+            id: $id,
+            label_key: $label,
+            shortcut_key: $shortcut,
+            needs_document: $doc,
+            menu: Menu::$menu,
+        }
+    };
+}
+
+/// Ordre = ordre d'affichage dans les menus.
+pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        OpenDocument,
+        "file.open",
+        "menu.file.open",
+        Some("shortcut.open"),
+        false,
+        File
+    ),
+    cmd!(
+        CloseDocument,
+        "file.close",
+        "menu.file.close",
+        Some("shortcut.close"),
+        true,
+        File
+    ),
+    cmd!(
+        Quit,
+        "app.quit",
+        "menu.file.quit",
+        Some("shortcut.quit"),
+        false,
+        File
+    ),
+    cmd!(
+        ZoomIn,
+        "view.zoom_in",
+        "menu.view.zoom_in",
+        Some("shortcut.zoom_in"),
+        true,
+        View
+    ),
+    cmd!(
+        ZoomOut,
+        "view.zoom_out",
+        "menu.view.zoom_out",
+        Some("shortcut.zoom_out"),
+        true,
+        View
+    ),
+    cmd!(
+        ActualSize,
+        "view.actual_size",
+        "menu.view.actual_size",
+        Some("shortcut.actual_size"),
+        true,
+        View
+    ),
+    cmd!(
+        FitWidth,
+        "view.fit_width",
+        "menu.view.fit_width",
+        None,
+        true,
+        View
+    ),
+    cmd!(
+        FitPage,
+        "view.fit_page",
+        "menu.view.fit_page",
+        None,
+        true,
+        View
+    ),
+    cmd!(
+        FirstPage,
+        "nav.first_page",
+        "menu.view.first_page",
+        Some("shortcut.first_page"),
+        true,
+        View
+    ),
+    cmd!(
+        PreviousPage,
+        "nav.previous_page",
+        "menu.view.previous_page",
+        Some("shortcut.previous_page"),
+        true,
+        View
+    ),
+    cmd!(
+        NextPage,
+        "nav.next_page",
+        "menu.view.next_page",
+        Some("shortcut.next_page"),
+        true,
+        View
+    ),
+    cmd!(
+        LastPage,
+        "nav.last_page",
+        "menu.view.last_page",
+        Some("shortcut.last_page"),
+        true,
+        View
+    ),
+    cmd!(About, "help.about", "menu.help.about", None, false, Help),
+];
+
+impl Command {
+    pub fn info(self) -> &'static CommandInfo {
+        REGISTRY
+            .iter()
+            .find(|c| c.command == self)
+            .expect("toute commande est enregistrée")
+    }
+
+    pub fn from_id(id: &str) -> Option<Command> {
+        REGISTRY.iter().find(|c| c.id == id).map(|c| c.command)
+    }
+
+    pub fn in_menu(menu: Menu) -> impl Iterator<Item = &'static CommandInfo> {
+        REGISTRY.iter().filter(move |c| c.menu == menu)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn ids_are_unique_and_round_trip() {
+        let ids: HashSet<&str> = REGISTRY.iter().map(|c| c.id).collect();
+        assert_eq!(ids.len(), REGISTRY.len());
+        for info in REGISTRY {
+            assert_eq!(Command::from_id(info.id), Some(info.command));
+            assert_eq!(info.command.info().id, info.id);
+        }
+        assert_eq!(Command::from_id("nope"), None);
+    }
+
+    #[test]
+    fn every_command_variant_is_registered() {
+        // Si une variante est ajoutée sans entrée dans REGISTRY, `info()` panique : on l'exerce ici.
+        for info in REGISTRY {
+            let _ = info.command.info();
+        }
+        assert_eq!(Command::in_menu(Menu::File).count(), 3);
+    }
+}

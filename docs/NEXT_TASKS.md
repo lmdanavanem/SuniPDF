@@ -5,10 +5,6 @@
 2. Installer « Build Tools pour Visual Studio » (C++ Desktop) puis `rustup override unset` dans le dossier : cible MSVC de référence.
 3. Pousser sur GitHub pour exécuter la CI (`.github/workflows/ci.yml`) une première fois.
 
-## SUNI-010 — Registre de commandes (owner : ARCHITECT → PDF-ENGINE)
-`Command` + `CommandRegistry` dans `sunipdf-core` ; l'UI et la CLI s'y branchent ; base de l'undo/redo et de la palette.
-Acceptation : chaque action de menu passe par une commande identifiée ; test listant les commandes.
-
 ## SUNI-011 — Cache de rendu et miniatures (owner : RENDERING)
 Crate `sunipdf-render` : LRU plafonné en octets, pré-rendu page suivante/précédente, miniatures 128 px.
 Acceptation : navigation sans re-rendu complet ; test de plafond mémoire.

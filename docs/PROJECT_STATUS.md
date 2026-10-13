@@ -17,7 +17,8 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] États UI : vide, moteur en démarrage, ouverture, rendu en cours (spinner), erreur (bandeau), moteur absent.
 - [x] i18n fr-FR / en-US : 76 clés, changement à chaud, préférence persistée (écriture atomique), thème clair/sombre.
 - [x] Rendu hors thread UI (thread moteur unique, générations, un rendu en vol).
-- [x] CLI : `info` (JSON) et `render` (PNG), codes d'erreur stables, codes de sortie 3/4/5.
+- [x] CLI : `info` (JSON), `render` (PNG), `commands` (registre), codes d'erreur stables, codes de sortie 3/4/5.
+- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 13 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
 - [x] Tests exécutés : `cargo test --workspace` → voir « Dernière exécution ».
 - [x] Test de fumée : `sunipdf.exe two-pages.pdf` démarre et reste actif (fenêtre non inspectée visuellement par l'agent).
 - [ ] Validation visuelle par l'utilisateur sur son écran (rendu, DPI, menus).
@@ -28,9 +29,9 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 ## Dernière exécution (2026-10-13, cible GNU, `-j 2`)
 | Commande | Résultat |
 |---|---|
-| `cargo test -p sunipdf-core` | 7/7 OK (fixture 2 pages, chiffré RC4 avec/sans mot de passe, fichier invalide, fichier absent, page hors limites, rendu trop grand, DLL absente) |
+| `cargo test -p sunipdf-core` | 9/9 OK (2 registre + 7 moteur : fixture 2 pages, chiffré RC4 avec/sans mot de passe, fichier invalide, fichier absent, page hors limites, rendu trop grand, DLL absente) |
 | `cargo test -p sunipdf-i18n` | 6/6 OK (parité des clés, valeurs non vides, paramètres identiques, repli, codes, substitution) |
-| `cargo test -p sunipdf-desktop` | 4/4 OK (clés i18n utilisées, clés d'erreur, préférences atomiques, utilitaires) |
+| `cargo test -p sunipdf-desktop` | 5/5 OK (clés i18n utilisées, clés du registre, clés d'erreur, préférences atomiques, utilitaires) |
 | `sunipdf-cli info/render` | JSON correct ; PNG 1224×1584 vérifié visuellement (texte + rectangle) |
 | `cargo clippy -p sunipdf-core -p sunipdf-i18n -p sunipdf-cli --all-targets -D warnings` | OK, 0 avertissement. **Pas exécutable pour `sunipdf-desktop` sur ce poste** : rustc GNU abandonne (0xC0000409) sur le crate `windows` 0.62 faute de mémoire, même en `-j 1` (à vérifier en CI MSVC) |
 | `cargo fmt --all -- --check` | OK |
