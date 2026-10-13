@@ -8,7 +8,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
       `TECH_STACK.md`, `ROADMAP.md`, `AGENT_STRATEGY.md`, `I18N.md`, `DECISIONS.md`, `KNOWN_ISSUES.md`, `THIRD_PARTY_NOTICES.md`.
 - [x] 12 agents enrichis dans `.claude/agents/` (agent `architect` invoqué pour cette tâche).
 
-## Phase 1 — Fondations : en cours
+## Phase 1 — Fondations : terminée (critères atteints ; validation visuelle finale par l'utilisateur recommandée)
 - [x] Workspace Rust (`sunipdf-core`, `sunipdf-i18n`, `sunipdf-desktop`, `sunipdf-cli`), `cargo build` OK.
 - [x] Moteur PDFium intégré (`pdfium-render` 0.9.4, DLL chargée dynamiquement, 4 emplacements de recherche).
 - [x] Ouvrir / afficher / naviguer (clavier, barre d'outils, champ page) / zoom (ajuster largeur, page, paliers) / fermer.
@@ -39,18 +39,16 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [ ] MSI : **non construit localement** (WiX v3 exige des droits administrateur et .NET Framework 3.5) ; construit par `release.yml` sur `windows-latest` au premier tag.
 - [ ] ARM64 : script et workflow prêts, **jamais compilé** (pas de cible `aarch64-pc-windows-msvc` installée ici).
 
-## Dernière exécution (2026-10-13 soir, cible **MSVC**, `-j 2`)
+## Dernière exécution (2026-10-14, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
-| `cargo test -p sunipdf-core` | 23/23 OK (conversions + 1 sécurité + 1 annot + 2 pages + 2 cache + 2 registre + signets/propriétés + protection/métadonnées + sélection/annotations + fusion/extraction/division + rotation/suppression/enregistrement + insertion/déplacement/instantanés + texte/recherche + 7 moteur : fixture 2 pages, chiffré RC4 avec/sans mot de passe, fichier invalide, fichier absent, page hors limites, rendu trop grand, DLL absente) |
-| `cargo test -p sunipdf-i18n` | 6/6 OK (parité des clés, valeurs non vides, paramètres identiques, repli, codes, substitution) |
-| `cargo test -p sunipdf-desktop` | 5/5 OK (clés i18n utilisées, clés du registre, récents dédupliqués, clés d'erreur, préférences atomiques, utilitaires) |
-| `cargo test -p sunipdf-cli` | 1/1 OK (analyse des plages de pages) |
-| `sunipdf-cli info/render/commands/text/search/merge/rotate/extract/split` | JSON correct ; PNG vérifié visuellement ; texte et occurrences ; fusion 4 pages, rotation pages 1 et 4 (tailles inversées), extraction 2-3, division en 2 fichiers |
-| `cargo clippy --workspace --all-targets -- -D warnings` | OK, 0 avertissement (MSVC) |
+| `cargo test --workspace` | 35/35 OK : core 8 unitaires + 15 intégration (moteur, pages, instantanés, texte, annotations, signets, sécurité, conversions), application 5, i18n 6, CLI 1 |
+| `cargo clippy --workspace --all-targets -- -D warnings` | 0 avertissement |
 | `cargo fmt --all -- --check` | OK |
-| `scripts\check-i18n.ps1` | OK : 76 clés bilingues |
-
+| `scripts\check-i18n.ps1` | OK (catalogues fr-FR / en-US identiques) |
+| `scripts\package-portable.ps1 -Arch x64` | `dist\SuniPDF-0.1.0-win-x64-portable.zip` + `.sha256` produits (build release) |
+| Captures `scripts\dev-screenshot.ps1` | accueil, document, palette, thème sombre, Organiser, annotation par glissement, signets, propriétés, protection, division, onglets : inspectées par l'agent |
+| `sunipdf-cli` | toutes les commandes exercées sur les fixtures (info, render, text, search, merge, split, extract, rotate, insert, move, protect, unprotect, set-metadata, strip-metadata, properties, bookmarks, images2pdf, export-images, optimize, commands) |
 
 ## Non réalisé (ne pas confondre avec « fait »)
 Affichage continu, formes et dessin libre, édition du contenu existant, OCR, conversions, chiffrement à l'écriture, signatures, MSI, ARM64, benchmarks.

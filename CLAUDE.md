@@ -41,9 +41,10 @@ python -I scripts\make_icon.py assets\icon                          # régénér
 Cible MSVC active (Build Tools installés). Repli GNU + WinLibs documenté dans `scripts/dev-env.ps1` si un poste n'a pas de droits admin.
 
 ## Modules existants
-`crates/sunipdf-core` (Engine, Document, render, text, pages, cache, command), `crates/sunipdf-i18n`,
-`apps/sunipdf-desktop` (sunipdf.exe : app.rs état/document, shell.rs chrome, worker.rs thread moteur, icons.rs polices système),
-`apps/sunipdf-cli`. Vérification visuelle : `.\scripts\dev-screenshot.ps1 -Out capture.png [-Pdf x.pdf] [-Keys "^k"]`. Crates futurs : voir `docs/ARCHITECTURE.md`.
+`crates/sunipdf-core` (Engine, Document, render, text, pages, annot, security, convert, cache, command), `crates/sunipdf-i18n`,
+`apps/sunipdf-desktop` (sunipdf.exe : app.rs état/document, shell.rs chrome, tabs.rs onglets, organize.rs grille, annotate.rs outils,
+docinfo.rs signets/propriétés/protection, tools.rs tâches de fichiers, worker.rs thread moteur + undo, icons.rs polices système),
+`apps/sunipdf-cli` (20 commandes JSON), `packaging/wix`, `scripts/` (dev-env, fetch-pdfium, package-portable, package-msi, dev-screenshot, make_icon, make_fixtures). Vérification visuelle : `.\scripts\dev-screenshot.ps1 -Out capture.png [-Pdf x.pdf] [-Keys "^k"]`. Crates futurs : voir `docs/ARCHITECTURE.md`.
 
 ## Orchestration
 12 agents dans `.claude/agents/` (stratégie : `docs/AGENT_STRATEGY.md`). Déléguer selon expertise, dépendances

@@ -1,5 +1,6 @@
 /target/
 /third_party/pdfium/
+/dist/
 *.pdb
 *.msi
 .claude/settings.local.json
