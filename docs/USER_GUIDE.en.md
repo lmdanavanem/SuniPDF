@@ -44,6 +44,18 @@ strikethrough (X), note (N). Drag a rectangle over text to apply a markup; click
 tool to type a comment. The **Comments** panel (F7) lists the annotations of the current page and lets you
 delete them. Every annotation can be undone (Ctrl+Z).
 
+## Editing content
+
+The **Edit** category (and the second half of the floating palette) changes the page content itself,
+not annotations: select object (E), add text (T), insert image (I), rectangle (R), ellipse (O), line (L).
+With the select tool, click a text, image or path: a blue frame appears; drag it to move the object,
+press **Del** to delete it, **F2** (or double-click) to edit a text. Click the page with the text tool to
+type new text (size, bold), with the image tool to pick a file (PNG, JPEG, BMP, GIF, TIFF, WebP), and drag
+a rectangle to draw a shape. Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
+
+Limits: no resizing or rotation, no colour or font choice; edited text keeps its original font, which may
+not contain every character you type.
+
 ## Organizing pages
 
 - **Organize pages** (F8): page grid with multi-selection (click, Ctrl+click, Shift+click), rotate, delete,

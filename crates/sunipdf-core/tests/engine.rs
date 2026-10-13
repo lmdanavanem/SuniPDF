@@ -580,3 +580,167 @@ fn images_to_pdf_export_images_and_optimize() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn edit_page_content_text_image_shapes() {
+    use sunipdf_core::{ObjectKind, ShapeKind, ShapeStyle, TextStyle};
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-edit-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let initial = doc.page_objects(0).unwrap();
+    assert!(
+        initial
+            .iter()
+            .any(|o| o.kind == ObjectKind::Text && o.text.as_deref() == Some("SuniPDF page 1")),
+        "{initial:?}"
+    );
+    assert!(
+        initial.iter().any(|o| o.kind == ObjectKind::Path),
+        "le rectangle bleu est un tracé"
+    );
+
+    // Texte ajouté avec accents, puis modifié, déplacé, retrouvé par position, supprimé.
+    doc.add_text(
+        0,
+        100.0,
+        300.0,
+        "Bonjour éditeur",
+        &TextStyle {
+            size_pt: 18.0,
+            bold: true,
+            rgb: (200, 0, 0),
+        },
+    )
+    .unwrap();
+    assert!(doc.page_text(0).unwrap().contains("Bonjour éditeur"));
+    let objs = doc.page_objects(0).unwrap();
+    let added = objs
+        .iter()
+        .find(|o| o.text.as_deref() == Some("Bonjour éditeur"))
+        .expect("objet texte ajouté");
+    assert!((added.font_size - 18.0).abs() < 0.5, "{added:?}");
+    assert!(
+        added.bounds.left >= 99.0 && added.bounds.bottom <= 301.0 && added.bounds.top > 300.0,
+        "{:?}",
+        added.bounds
+    );
+    let hit = doc
+        .object_at(0, added.bounds.left + 5.0, added.bounds.bottom + 3.0)
+        .unwrap()
+        .expect("objet sous le point");
+    assert_eq!(hit.index, added.index);
+    assert!(doc.object_at(0, 600.0, 10.0).unwrap().is_none());
+    doc.set_object_text(0, added.index, "Texte modifié")
+        .unwrap();
+    assert!(doc.page_text(0).unwrap().contains("Texte modifié"));
+    assert!(!doc.page_text(0).unwrap().contains("Bonjour"));
+    let before_move = doc.object_info(0, added.index).unwrap();
+    doc.move_object(0, added.index, 50.0, -20.0).unwrap();
+    let moved = doc.object_info(0, added.index).unwrap();
+    assert!(
+        (moved.bounds.left - before_move.bounds.left - 50.0).abs() < 1.0,
+        "{:?}",
+        moved.bounds
+    );
+    assert!((moved.bounds.bottom - before_move.bounds.bottom + 20.0).abs() < 1.0);
+
+    // Modification du texte d'origine du document.
+    let title = initial
+        .iter()
+        .find(|o| o.text.as_deref() == Some("SuniPDF page 1"))
+        .unwrap();
+    // Police d'origine (Type1 sans /Encoding) : l'ASCII est sûr, les accents dépendent de l'encodage.
+    doc.set_object_text(0, title.index, "SuniPDF modifie")
+        .unwrap();
+    let t = doc.page_text(0).unwrap();
+    assert!(t.contains("SuniPDF modifie"), "{t}");
+    assert!(doc.set_object_text(0, 99, "x").is_err());
+    assert!(doc
+        .add_text(0, 0.0, 0.0, "   ", &TextStyle::default())
+        .is_err());
+
+    // Image et formes : pixels visibles au rendu.
+    let png = dir.join("green.png");
+    let rgb: Vec<u8> = (0..40 * 20).flat_map(|_| [0u8, 160, 0]).collect();
+    image::save_buffer(&png, &rgb, 40, 20, image::ColorType::Rgb8).unwrap();
+    doc.add_image(0, &png, 300.0, 100.0, 200.0).unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        sunipdf_core::PointRect {
+            left: 400.0,
+            bottom: 300.0,
+            right: 500.0,
+            top: 400.0,
+        },
+        &ShapeStyle {
+            stroke_rgb: (0, 0, 0),
+            stroke_width: 1.0,
+            fill_rgb: Some((255, 0, 255)),
+        },
+    )
+    .unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Line,
+        sunipdf_core::PointRect {
+            left: 50.0,
+            bottom: 55.0,
+            right: 550.0,
+            top: 55.0,
+        },
+        &ShapeStyle::default(),
+    )
+    .unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Ellipse,
+        sunipdf_core::PointRect {
+            left: 100.0,
+            bottom: 350.0,
+            right: 200.0,
+            top: 450.0,
+        },
+        &ShapeStyle::default(),
+    )
+    .unwrap();
+    let img = doc.render_page(0, 1.0).unwrap();
+    let px = |x: usize, y_top: usize| {
+        let i = (y_top * 612 + x) * 4;
+        (img.rgba[i], img.rgba[i + 1], img.rgba[i + 2])
+    };
+    assert_eq!(
+        px(400, 792 - 150),
+        (0, 160, 0),
+        "image verte à (300..500, 100..200)"
+    );
+    assert_eq!(
+        px(450, 792 - 350),
+        (255, 0, 255),
+        "rectangle magenta rempli"
+    );
+    let blue_line = (50..550)
+        .filter(|&x| {
+            let p = px(x, 792 - 55);
+            p.2 > 150 && p.0 < 100
+        })
+        .count();
+    assert!(blue_line > 300, "ligne bleue ({blue_line} px)");
+
+    // Suppression, puis persistance après enregistrement.
+    let count_before = doc.page_objects(0).unwrap().len();
+    doc.delete_object(0, added.index).unwrap();
+    assert_eq!(doc.page_objects(0).unwrap().len(), count_before - 1);
+    assert!(!doc.page_text(0).unwrap().contains("Texte modifié"));
+    assert!(doc.delete_object(0, 999).is_err());
+    let out = dir.join("edited.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert!(again.page_text(0).unwrap().contains("SuniPDF modifie"));
+    let again_img = again.render_page(0, 1.0).unwrap();
+    let i = ((792 - 150) * 612 + 400) * 4;
+    assert_eq!((again_img.rgba[i], again_img.rgba[i + 1]), (0, 160));
+    let _ = std::fs::remove_dir_all(dir);
+}

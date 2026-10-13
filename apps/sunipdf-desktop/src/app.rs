@@ -114,6 +114,7 @@ pub struct SuniApp {
     pub docinfo: crate::docinfo::DocInfoState,
     pub tools: crate::tools::ToolsState,
     pub tabs: crate::tabs::TabsState,
+    pub edit: crate::editor::EditState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -143,6 +144,7 @@ impl SuniApp {
                 ..Default::default()
             },
             tabs: Default::default(),
+            edit: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -239,6 +241,7 @@ impl SuniApp {
         self.close_find();
         self.organize = Default::default();
         self.annotate = Default::default();
+        self.edit = Default::default();
         let bookmarks_open = self.docinfo.bookmarks_open;
         self.docinfo = Default::default();
         self.docinfo.bookmarks_open = bookmarks_open;
@@ -428,6 +431,12 @@ impl SuniApp {
                     self.find.matches.clear();
                     self.annotate.selection = None;
                     self.annotate.annotations_page = None;
+                    match self.edit.reselect.take() {
+                        Some((page, index)) => {
+                            self.worker.send(Request::ObjectInfo { page, index })
+                        }
+                        None => self.edit.selected = None,
+                    }
                     self.worker.send(Request::Bookmarks);
                     if self.docinfo.properties_open {
                         self.worker.send(Request::Properties);
@@ -455,6 +464,7 @@ impl SuniApp {
                     }
                 }
                 Response::BatchDone(result) => self.on_batch_done(result),
+                Response::ObjectSelected { page, info } => self.on_object_selected(page, info),
                 Response::Suspended(s) => self.on_suspended(s),
                 Response::Resumed(state) => self.on_resumed(state, ctx),
                 Response::Properties(props) => {
@@ -573,7 +583,10 @@ impl SuniApp {
         {
             return;
         }
-        if self.annotate.note_prompt.is_some() || ctx.memory(|m| m.focused().is_some()) {
+        if self.annotate.note_prompt.is_some()
+            || self.edit.text_prompt.is_some()
+            || ctx.memory(|m| m.focused().is_some())
+        {
             // Un champ de saisie a le clavier : seuls les raccourcis avec Ctrl restent actifs.
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
@@ -687,6 +700,14 @@ impl SuniApp {
             key(Modifiers::NONE, Key::U, Command::ToolUnderline);
             key(Modifiers::NONE, Key::X, Command::ToolStrikeOut);
             key(Modifiers::NONE, Key::N, Command::ToolNote);
+            key(Modifiers::NONE, Key::E, Command::ToolSelectObject);
+            key(Modifiers::NONE, Key::T, Command::ToolAddText);
+            key(Modifiers::NONE, Key::I, Command::ToolAddImage);
+            key(Modifiers::NONE, Key::R, Command::ToolRectangle);
+            key(Modifiers::NONE, Key::O, Command::ToolEllipse);
+            key(Modifiers::NONE, Key::L, Command::ToolLine);
+            key(Modifiers::NONE, Key::Delete, Command::DeleteObject);
+            key(Modifiers::NONE, Key::F2, Command::EditObjectText);
             key(Modifiers::COMMAND, Key::Z, Command::Undo);
             key(Modifiers::COMMAND, Key::Y, Command::Redo);
             key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z, Command::Redo);
@@ -840,16 +861,27 @@ impl SuniApp {
                 }
             }
             Command::CopyText => self.copy_selection(ctx),
+            Command::DeleteObject => self.delete_selected_object(),
+            Command::EditObjectText => self.open_text_prompt_for_selection(),
             Command::ToolSelect
             | Command::ToolHighlight
             | Command::ToolUnderline
             | Command::ToolStrikeOut
-            | Command::ToolNote => {
+            | Command::ToolNote
+            | Command::ToolSelectObject
+            | Command::ToolAddText
+            | Command::ToolAddImage
+            | Command::ToolRectangle
+            | Command::ToolEllipse
+            | Command::ToolLine => {
                 self.annotate.tool = crate::annotate::Tool::ALL
                     .into_iter()
                     .find(|t| t.command() == command)
                     .unwrap_or_default();
                 self.annotate.drag = None;
+                if !matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
+                    self.edit.selected = None;
+                }
             }
             Command::CombineFiles => self.tool_combine(),
             Command::SplitDocument => {
@@ -1048,6 +1080,7 @@ impl SuniApp {
                 }
                 self.paint_matches(&painter, page_rect, page_index, size.height_pt);
                 self.paint_selection(&painter, page_rect, page_index, size.height_pt);
+                self.paint_object_selection(&painter, page_rect, page_index, size.height_pt);
                 let interact = ui.interact(
                     page_rect,
                     egui::Id::new("page-interact"),
@@ -1068,6 +1101,12 @@ impl SuniApp {
                     }
                 } else if interact.drag_stopped() {
                     drag_event = Some(DragEvent::Stop);
+                } else if interact.double_clicked() {
+                    if let Some(pos) = interact.interact_pointer_pos() {
+                        drag_event = Some(DragEvent::DoubleClick(crate::annotate::to_pdf(
+                            pos, page_rect, zoom, page_h,
+                        )));
+                    }
                 } else if interact.clicked() {
                     if let Some(pos) = interact.interact_pointer_pos() {
                         drag_event = Some(DragEvent::Click(crate::annotate::to_pdf(
@@ -1102,12 +1141,23 @@ impl SuniApp {
             }
             Some(DragEvent::Click(pt)) => {
                 self.annotate.selection = None;
-                if matches!(self.annotate.tool, crate::annotate::Tool::Note) {
-                    self.finish_drag(crate::annotate::Drag {
-                        page: page_index,
-                        start: pt,
-                        current: pt,
-                    });
+                match self.annotate.tool {
+                    crate::annotate::Tool::Note
+                    | crate::annotate::Tool::AddText
+                    | crate::annotate::Tool::AddImage => {
+                        self.finish_drag(crate::annotate::Drag {
+                            page: page_index,
+                            start: pt,
+                            current: pt,
+                        });
+                    }
+                    crate::annotate::Tool::SelectObject => self.edit_click(page_index, pt),
+                    _ => {}
+                }
+            }
+            Some(DragEvent::DoubleClick(pt)) => {
+                if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
+                    self.edit_double_click(page_index, pt);
                 }
             }
             None => {}
@@ -1646,6 +1696,7 @@ impl eframe::App for SuniApp {
         self.split_dialog(&ctx);
         self.properties_dialog(&ctx);
         self.protect_dialog(&ctx);
+        self.text_prompt_dialog(&ctx);
         self.note_dialog(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
@@ -1658,6 +1709,7 @@ enum DragEvent {
     Move((f32, f32)),
     Stop,
     Click((f32, f32)),
+    DoubleClick((f32, f32)),
 }
 
 // ----- Utilitaires -----------------------------------------------------------

@@ -8,8 +8,8 @@ use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
     security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
-    Metadata, PointRect, Properties, Protection, RenderCache, RenderedPage, TextMatch,
-    TextSelection,
+    Metadata, ObjectInfo, PointRect, Properties, Protection, RenderCache, RenderedPage, ShapeKind,
+    ShapeStyle, TextMatch, TextSelection, TextStyle,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -108,6 +108,41 @@ pub enum EditOp {
         index: usize,
     },
     Bytes(BytesOp),
+    AddText {
+        page: usize,
+        x: f32,
+        y: f32,
+        text: String,
+        style: TextStyle,
+    },
+    SetText {
+        page: usize,
+        index: usize,
+        text: String,
+    },
+    MoveObject {
+        page: usize,
+        index: usize,
+        dx: f32,
+        dy: f32,
+    },
+    DeleteObject {
+        page: usize,
+        index: usize,
+    },
+    AddImage {
+        page: usize,
+        path: PathBuf,
+        x: f32,
+        y: f32,
+        width_pt: f32,
+    },
+    AddShape {
+        page: usize,
+        kind: ShapeKind,
+        rect: PointRect,
+        style: ShapeStyle,
+    },
 }
 
 pub enum Request {
@@ -140,6 +175,15 @@ pub enum Request {
     },
     Properties,
     Bookmarks,
+    ObjectAt {
+        page: usize,
+        x: f32,
+        y: f32,
+    },
+    ObjectInfo {
+        page: usize,
+        index: usize,
+    },
     Batch(BatchOp),
     /// Suspend le document actif (renvoie `Suspended`).
     Suspend,
@@ -199,6 +243,10 @@ pub enum Response {
     Properties(Properties),
     Bookmarks(Vec<Bookmark>),
     BatchDone(BatchResult),
+    ObjectSelected {
+        page: usize,
+        info: Option<ObjectInfo>,
+    },
     Suspended(SuspendedDoc),
     Resumed(DocState),
     Saved {
@@ -377,6 +425,34 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
         } => doc.add_markup(page, kind, &rects, rgb),
         EditOp::Note { page, x, y, text } => doc.add_note(page, x, y, &text),
         EditOp::DeleteAnnotation { page, index } => doc.delete_annotation(page, index),
+        EditOp::AddText {
+            page,
+            x,
+            y,
+            text,
+            style,
+        } => doc.add_text(page, x, y, &text, &style),
+        EditOp::SetText { page, index, text } => doc.set_object_text(page, index, &text),
+        EditOp::MoveObject {
+            page,
+            index,
+            dx,
+            dy,
+        } => doc.move_object(page, index, dx, dy),
+        EditOp::DeleteObject { page, index } => doc.delete_object(page, index),
+        EditOp::AddImage {
+            page,
+            path,
+            x,
+            y,
+            width_pt,
+        } => doc.add_image(page, &path, x, y, width_pt),
+        EditOp::AddShape {
+            page,
+            kind,
+            rect,
+            style,
+        } => doc.add_shape(page, kind, rect, &style),
         EditOp::Bytes(op) => {
             let current = doc.snapshot()?;
             let password = doc.password().map(str::to_owned);
@@ -620,6 +696,16 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         error,
                     },
                 }
+            }
+            Request::ObjectAt { page, x, y } => {
+                let Some(doc) = &state.document else { continue };
+                let info = doc.object_at(page, x, y).unwrap_or_default();
+                Response::ObjectSelected { page, info }
+            }
+            Request::ObjectInfo { page, index } => {
+                let Some(doc) = &state.document else { continue };
+                let info = doc.object_info(page, index).ok();
+                Response::ObjectSelected { page, info }
             }
             Request::Properties => {
                 let Some(doc) = &state.document else { continue };

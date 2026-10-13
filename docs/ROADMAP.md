@@ -30,7 +30,8 @@ Critère : opérations de bout en bout testées (fichier produit vérifié par q
 
 ## Phase 3 — Édition professionnelle — **partiellement livrée**
 Fait : notes, surlignage/soulignement/barré, commentaires (panneau), métadonnées, propriétés, palette de commandes.
-Reste : ajout de texte/images, modification de texte, formulaires, filigranes, liens, autosave/récupération, signature image.
+Fait (SUNI-031) : ajout de texte/images, formes, modification/déplacement/suppression d'objets existants.
+Reste : redimensionnement/rotation/couleur/police des objets, formulaires, filigranes, liens, autosave/récupération, signature image.
 
 ### Détail initial
 Ajout de texte/images ; modification de texte selon capacités PDFium ; formulaires AcroForm + FDF/XFDF ;

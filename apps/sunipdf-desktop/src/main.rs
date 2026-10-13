@@ -3,6 +3,7 @@
 mod annotate;
 mod app;
 mod docinfo;
+mod editor;
 mod icons;
 mod organize;
 mod settings;

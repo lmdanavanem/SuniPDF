@@ -40,3 +40,8 @@
    sans fixture dans le dépôt : à ajouter (qpdf en CI, P2).
 10. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle UI** le temps du choix :
     comportement natif Windows, acceptable.
+11. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
+    (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
+    Contournement : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
+12. **Édition du contenu : images insérées à 200 pt de large, non redimensionnables** ; les objets ne peuvent
+    pas être tournés ni recolorés (SUNI-031b).

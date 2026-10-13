@@ -53,6 +53,11 @@ pub mod glyph {
     pub const EXTRACT: &str = "\u{E8AB}";
     pub const PICTURE: &str = "\u{E8B9}";
     pub const OPTIMIZE: &str = "\u{E8BA}";
+    pub const CURSOR: &str = "\u{E8B0}";
+    pub const FONT: &str = "\u{E8D2}";
+    pub const RECT: &str = "\u{E739}";
+    pub const ELLIPSE: &str = "\u{EA3A}";
+    pub const LINE: &str = "\u{E738}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

@@ -16,15 +16,27 @@ pub enum Tool {
     Underline,
     StrikeOut,
     Note,
+    SelectObject,
+    AddText,
+    AddImage,
+    Rectangle,
+    Ellipse,
+    Line,
 }
 
 impl Tool {
-    pub const ALL: [Tool; 5] = [
+    pub const ALL: [Tool; 11] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Underline,
         Tool::StrikeOut,
         Tool::Note,
+        Tool::SelectObject,
+        Tool::AddText,
+        Tool::AddImage,
+        Tool::Rectangle,
+        Tool::Ellipse,
+        Tool::Line,
     ];
 
     pub fn command(self) -> Command {
@@ -34,6 +46,12 @@ impl Tool {
             Tool::Underline => Command::ToolUnderline,
             Tool::StrikeOut => Command::ToolStrikeOut,
             Tool::Note => Command::ToolNote,
+            Tool::SelectObject => Command::ToolSelectObject,
+            Tool::AddText => Command::ToolAddText,
+            Tool::AddImage => Command::ToolAddImage,
+            Tool::Rectangle => Command::ToolRectangle,
+            Tool::Ellipse => Command::ToolEllipse,
+            Tool::Line => Command::ToolLine,
         }
     }
 
@@ -109,6 +127,9 @@ impl SuniApp {
                     .show(ui, |ui| {
                         ui.vertical(|ui| {
                             for tool in Tool::ALL {
+                                if tool == Tool::SelectObject {
+                                    ui.separator();
+                                }
                                 let (g, f) = crate::shell::command_icon(tool.command());
                                 let resp = ui
                                     .add(
@@ -184,6 +205,12 @@ impl SuniApp {
                     });
                 }
             }
+            Tool::SelectObject
+            | Tool::AddText
+            | Tool::AddImage
+            | Tool::Rectangle
+            | Tool::Ellipse
+            | Tool::Line => self.edit_drag_finished(drag),
             _ => {
                 // Outils de texte : la sélection revient par TextSelected, puis l'annotation est créée.
                 if !tiny {

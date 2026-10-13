@@ -14,8 +14,13 @@ Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.
 ## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
 Sélection à la souris sur la page (`PdfPageText::chars_inside_rect`), copie presse-papiers, i18n `edit.copy`.
 
+## SUNI-031b — Édition du contenu, suite (owner : PDF-EDITOR)
+Fait en SUNI-031 : sélection, déplacement, suppression, texte (ajout/modification), image, rectangle/ellipse/ligne.
+Reste : redimensionnement par poignées (matrice d'objet), rotation, couleur de texte et de trait, choix de police (polices standard + système), opacité, sélection multiple, copier/coller d'objets, panneau « Objets » listant `page_objects`.
+Acceptation : chaque opération couverte par un test moteur avec rendu vérifié ; clés i18n `dialog.object.*`.
+
 ## SUNI-021b — Annotations avancées (owner : PDF-EDITOR)
-Formes (rectangle, ellipse), dessin libre (ink), zone de texte libre, déplacement/redimensionnement des annotations existantes, fils de réponses.
+Dessin libre (ink), zone de texte libre (FreeText), déplacement/redimensionnement des annotations existantes, fils de réponses.
 
 ## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
 Rééchantillonnage des images (PDFium : objets image → DynamicImage → réencodage JPEG), vérification qpdf en CI, fixtures AES produites par qpdf, test « sauvegarde interrompue ».

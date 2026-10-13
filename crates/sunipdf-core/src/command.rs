@@ -50,6 +50,14 @@ pub enum Command {
     Optimize,
     NextTab,
     PrevTab,
+    ToolSelectObject,
+    ToolAddText,
+    ToolAddImage,
+    ToolRectangle,
+    ToolEllipse,
+    ToolLine,
+    DeleteObject,
+    EditObjectText,
     About,
 }
 
@@ -435,6 +443,70 @@ pub const REGISTRY: &[CommandInfo] = &[
         None,
         true,
         Convert
+    ),
+    cmd!(
+        ToolSelectObject,
+        "tool.select_object",
+        "menu.edit.tool_select_object",
+        Some("shortcut.tool_select_object"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolAddText,
+        "tool.add_text",
+        "menu.edit.tool_add_text",
+        Some("shortcut.tool_add_text"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolAddImage,
+        "tool.add_image",
+        "menu.edit.tool_add_image",
+        Some("shortcut.tool_add_image"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolRectangle,
+        "tool.rectangle",
+        "menu.edit.tool_rectangle",
+        Some("shortcut.tool_rectangle"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolEllipse,
+        "tool.ellipse",
+        "menu.edit.tool_ellipse",
+        Some("shortcut.tool_ellipse"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolLine,
+        "tool.line",
+        "menu.edit.tool_line",
+        Some("shortcut.tool_line"),
+        true,
+        Edit
+    ),
+    cmd!(
+        DeleteObject,
+        "edit.delete_object",
+        "menu.edit.delete_object",
+        Some("shortcut.delete_object"),
+        true,
+        Edit
+    ),
+    cmd!(
+        EditObjectText,
+        "edit.edit_text",
+        "menu.edit.edit_text",
+        Some("shortcut.edit_text"),
+        true,
+        Edit
     ),
     cmd!(
         ToggleComments,

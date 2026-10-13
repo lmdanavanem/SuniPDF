@@ -18,6 +18,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] i18n fr-FR / en-US : 76 clés, changement à chaud, préférence persistée (écriture atomique), thème clair/sombre.
 - [x] Rendu hors thread UI (thread moteur unique, générations, un rendu en vol).
 - [x] CLI : `info` (JSON), `render` (PNG), `commands` (registre), codes d'erreur stables, codes de sortie 3/4/5.
+- [x] SUNI-031 Édition du contenu des pages : catégorie « Éditer » et outils dans la palette (sélectionner un objet E, ajouter du texte T, insérer une image I, rectangle R, ellipse O, ligne L), sélection d'un objet existant au clic (cadre + poignées), déplacement par glissement, suppression (Suppr), modification du texte d'un objet existant (F2 ou double-clic, police d'origine conservée), ajout de texte Helvetica / Helvetica-Bold avec taille, insertion d'image (PNG, JPEG, BMP, GIF, TIFF, WebP ; largeur 200 pt), formes vectorielles ; tout est annulable et enregistré dans le flux de contenu (pas des annotations) ; moteur `sunipdf-core::edit` (PDFium `FPDFPageObj_*`, régénération du contenu) ; 1 test moteur (ajout, hit-test, modification, déplacement, suppression, image et formes vérifiées au rendu, persistance après enregistrement). Limites : pas de redimensionnement ni de rotation d'objet, pas de choix de couleur ni de police, texte existant limité aux caractères de sa police.
 - [x] SUNI-012a Onglets multi-documents : plusieurs PDF ouverts (barre d'onglets, Ctrl+Tab / Ctrl+Maj+Tab, fermeture par onglet, accueil sans fermer), documents inactifs suspendus dans le moteur (octets + historique d'annulation conservés) et état d'interface conservé par onglet ; confirmation d'enregistrement onglet par onglet à la fermeture ; plusieurs fichiers acceptés en arguments de ligne de commande.
 - [x] SUNI-030 Livraison Windows : icône originale générée par `scripts/make_icon.py` (Pillow, aucune ressource tierce), icône + informations de version + manifeste DPI PerMonitorV2 intégrés à `sunipdf.exe` (`build.rs`, `winresource`), icône de fenêtre, `scripts/package-portable.ps1` (ZIP portable + SHA256, x64/arm64), `packaging/wix/SuniPDF.wxs` + `scripts/package-msi.ps1` (WiX v3), `.github/workflows/release.yml` (portable x64 + ARM64, MSI x64, signature si certificat), guides utilisateur FR/EN.
 - [x] SUNI-024 / 014d Outils de fichiers dans l'interface (catégorie « Convertir », menus, palette) : combiner des PDF, diviser (dialogue « pages par fichier »), extraire la sélection, créer un PDF à partir d'images (PNG, JPEG, BMP, GIF, TIFF, WebP), exporter les pages en PNG 150 ppp, optimiser sans perte (recompression lopdf, objets inutilisés) ; tâches sur le thread moteur avec état « en cours » ; CLI `images2pdf`, `export-images`, `optimize` ; 1 test moteur (images → PDF rendu vérifié, export PNG, optimisation avec signets conservés).
@@ -29,7 +30,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] SUNI-014 (moteur + CLI) Fusion, extraction, division, rotation, suppression de page, enregistrement atomique (`sunipdf-core::pages`, `write_atomic` partagé avec les préférences) ; CLI `merge`, `extract`, `split`, `rotate` ; 4 tests.
 - [x] SUNI-013 Recherche plein texte (Ctrl+F, barre de recherche, casse, occurrence suivante/précédente, surbrillance sur la page) et extraction de texte ; CLI `text` et `search` ; 1 test moteur.
 - [x] SUNI-011 Cache LRU de rendu plafonné (256 Mo, `sunipdf-core::cache`), pré-rendu des pages voisines, panneau de miniatures virtualisé (F4), 2 tests cache.
-- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 49 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
+- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 57 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
 - [x] Tests exécutés : `cargo test --workspace` → voir « Dernière exécution ».
 - [x] Test de fumée : `sunipdf.exe two-pages.pdf` démarre et reste actif (fenêtre non inspectée visuellement par l'agent).
 - [x] Captures d'écran réelles (accueil, document, palette) vérifiées par l'agent via `scripts/dev-screenshot.ps1` ; validation finale par l'utilisateur à faire.
@@ -42,17 +43,18 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 ## Dernière exécution (2026-10-14, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
-| `cargo test --workspace` | 35/35 OK : core 8 unitaires + 15 intégration (moteur, pages, instantanés, texte, annotations, signets, sécurité, conversions), application 5, i18n 6, CLI 1 |
+| `cargo test --workspace` | 36/36 OK : core 8 unitaires + 16 intégration (moteur, pages, instantanés, texte, annotations, signets, sécurité, conversions, édition du contenu), application 5, i18n 6, CLI 1 |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 avertissement |
 | `cargo fmt --all -- --check` | OK |
 | `scripts\check-i18n.ps1` | OK (catalogues fr-FR / en-US identiques) |
 | `scripts\package-portable.ps1 -Arch x64` | `dist\SuniPDF-0.1.0-win-x64-portable.zip` + `.sha256` produits (build release) |
-| Captures `scripts\dev-screenshot.ps1` | accueil, document, palette, thème sombre, Organiser, annotation par glissement, signets, propriétés, protection, division, onglets : inspectées par l'agent |
+| Captures `scripts\dev-screenshot.ps1` | accueil, document, palette, thème sombre, Organiser, annotation par glissement, signets, propriétés, protection, division, onglets, rectangle ajouté, objet texte sélectionné, dialogue d'ajout de texte : inspectées par l'agent |
 | `sunipdf-cli` | toutes les commandes exercées sur les fixtures (info, render, text, search, merge, split, extract, rotate, insert, move, protect, unprotect, set-metadata, strip-metadata, properties, bookmarks, images2pdf, export-images, optimize, commands) |
 
 ## Non réalisé (ne pas confondre avec « fait »)
-Affichage continu, formes et dessin libre, édition du contenu existant, OCR, conversions, chiffrement à l'écriture, signatures, MSI, ARM64, benchmarks.
+Affichage continu, dessin libre (encre), redimensionnement/rotation/couleur des objets édités, OCR, conversions Office, signatures, impression, ARM64, benchmarks, vérification de la CI.
 
 ## Journal
 - 2026-10-13 : audit PDFCraft, choix PDFium (D005), squelette → tranche verticale 1, environnement GNU faute de MSVC (D008),
   wgpu désactivé (D010), fixtures générées (`scripts/make_fixtures.py`), dépôt git initialisé.
+- 2026-10-14 : SUNI-031 édition du contenu (moteur `edit.rs` + catégorie « Éditer », D019) ; 36 tests, clippy vert, captures vérifiées.

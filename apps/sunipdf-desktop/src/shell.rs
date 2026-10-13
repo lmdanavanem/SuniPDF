@@ -14,16 +14,18 @@ pub enum ToolTab {
     All,
     Read,
     Annotate,
+    EditTab,
     Pages,
     Convert,
     Security,
 }
 
 impl ToolTab {
-    pub const ALL: [ToolTab; 6] = [
+    pub const ALL: [ToolTab; 7] = [
         ToolTab::All,
         ToolTab::Read,
         ToolTab::Annotate,
+        ToolTab::EditTab,
         ToolTab::Pages,
         ToolTab::Convert,
         ToolTab::Security,
@@ -34,6 +36,7 @@ impl ToolTab {
             Self::All => "toolbar.all_tools",
             Self::Read => "toolbar.read",
             Self::Annotate => "toolbar.annotate",
+            Self::EditTab => "toolbar.edit",
             Self::Pages => "toolbar.pages",
             Self::Security => "toolbar.security",
             Self::Convert => "toolbar.convert",
@@ -53,6 +56,9 @@ impl ToolTab {
                 Command::InsertPages,
                 Command::ToolHighlight,
                 Command::ToolNote,
+                Command::ToolSelectObject,
+                Command::ToolAddText,
+                Command::ToolAddImage,
                 Command::ToggleComments,
                 Command::ToggleBookmarks,
                 Command::Properties,
@@ -99,6 +105,18 @@ impl ToolTab {
                 Command::Unprotect,
                 Command::StripMetadata,
                 Command::Properties,
+            ],
+            Self::EditTab => &[
+                Command::ToolSelectObject,
+                Command::ToolAddText,
+                Command::ToolAddImage,
+                Command::ToolRectangle,
+                Command::ToolEllipse,
+                Command::ToolLine,
+                Command::EditObjectText,
+                Command::DeleteObject,
+                Command::Undo,
+                Command::Redo,
             ],
             Self::Pages => &[
                 Command::OrganizePages,
@@ -165,6 +183,14 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ExportImages => (glyph::PICTURE, "🖼"),
         Command::Optimize => (glyph::OPTIMIZE, "⤓"),
         Command::NextTab | Command::PrevTab => (glyph::DOCUMENT, "⇥"),
+        Command::ToolSelectObject => (glyph::CURSOR, "↖"),
+        Command::ToolAddText => (glyph::FONT, "T"),
+        Command::ToolAddImage => (glyph::PICTURE, "🖼"),
+        Command::ToolRectangle => (glyph::RECT, "▭"),
+        Command::ToolEllipse => (glyph::ELLIPSE, "◯"),
+        Command::ToolLine => (glyph::LINE, "╱"),
+        Command::DeleteObject => (glyph::DELETE, "🗑"),
+        Command::EditObjectText => (glyph::FONT, "T"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -528,7 +554,7 @@ impl SuniApp {
 
                         ui.label(icons::semibold(tr(lang, "home.recommended"), 16.0));
                         ui.add_space(8.0);
-                        let cards: [(&str, &str, &str, &str); 6] = [
+                        let cards: [(&str, &str, &str, &str); 7] = [
                             (
                                 glyph::READ,
                                 "📖",
@@ -564,6 +590,12 @@ impl SuniApp {
                                 "🖼",
                                 "home.card.convert.title",
                                 "home.card.convert.desc",
+                            ),
+                            (
+                                glyph::FONT,
+                                "T",
+                                "home.card.edit.title",
+                                "home.card.edit.desc",
                             ),
                         ];
                         let mut open_clicked = false;
