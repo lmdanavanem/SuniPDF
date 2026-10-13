@@ -55,7 +55,7 @@ Le zoom « ajuster à la largeur/page » est recalculé à chaque frame ; l'éch
 
 | Crate | Rôle | Phase |
 |---|---|---|
-| `sunipdf-render` | cache LRU plafonné, tuiles, pré-rendu des pages visibles, miniatures | P2 |
+| `sunipdf-render` | tuiles pour le zoom profond (le cache LRU, le pré-rendu et les miniatures sont déjà dans `sunipdf-core::cache` + `worker.rs`) | P2 |
 | `sunipdf-pages` | fusion, division, extraction, rotation, réorganisation (PDFium `FPDF_ImportPages`, `FPDFPage_*`) | P2 |
 | `sunipdf-editor` | annotations, texte, images, filigranes | P2–P3 |
 | `sunipdf-forms` | AcroForm (FPDF_FORMFILL), FDF/XFDF | P3 |

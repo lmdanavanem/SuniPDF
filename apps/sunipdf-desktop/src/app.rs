@@ -4,6 +4,7 @@ use crate::settings::Settings;
 use crate::theme;
 use crate::worker::{Request, Response, Worker};
 use egui::{Key, Modifiers};
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use sunipdf_core::{Command, DocumentInfo, EngineError, Menu};
 use sunipdf_i18n::{tr, tr_args, Language};
@@ -60,6 +61,9 @@ pub struct SuniApp {
     password_prompt: Option<PasswordPrompt>,
     show_about: bool,
     pending_file: Option<PathBuf>,
+    thumbnails: HashMap<usize, egui::TextureHandle>,
+    thumbs_pending: HashSet<usize>,
+    thumb_px: u32,
 }
 
 impl SuniApp {
@@ -83,6 +87,9 @@ impl SuniApp {
             password_prompt: None,
             show_about: false,
             pending_file: initial_file,
+            thumbnails: HashMap::new(),
+            thumbs_pending: HashSet::new(),
+            thumb_px: 0,
         }
     }
 
@@ -123,6 +130,8 @@ impl SuniApp {
         self.last_rendered = None;
         self.generation += 1;
         self.page_input.clear();
+        self.thumbnails.clear();
+        self.thumbs_pending.clear();
         if announce {
             self.error = None;
         }
@@ -245,6 +254,21 @@ impl SuniApp {
                         }
                     }
                 }
+                Response::Thumbnail { page, image } => {
+                    self.thumbs_pending.remove(&page);
+                    if image.width == self.thumb_px {
+                        let color = egui::ColorImage::from_rgba_unmultiplied(
+                            [image.width as usize, image.height as usize],
+                            &image.rgba,
+                        );
+                        let handle = ctx.load_texture(
+                            format!("sunipdf-thumb-{page}"),
+                            color,
+                            egui::TextureOptions::LINEAR,
+                        );
+                        self.thumbnails.insert(page, handle);
+                    }
+                }
                 Response::RenderFailed { generation, error } => {
                     self.in_flight = None;
                     if generation == self.generation {
@@ -325,6 +349,7 @@ impl SuniApp {
             key(Modifiers::NONE, Key::ArrowLeft, Command::PreviousPage);
             key(Modifiers::NONE, Key::Home, Command::FirstPage);
             key(Modifiers::NONE, Key::End, Command::LastPage);
+            key(Modifiers::NONE, Key::F4, Command::ToggleThumbnails);
         });
         for command in commands {
             self.execute(ctx, command);
@@ -349,6 +374,10 @@ impl SuniApp {
             Command::ActualSize => self.zoom = Zoom::Fixed(1.0),
             Command::FitWidth => self.zoom = Zoom::FitWidth,
             Command::FitPage => self.zoom = Zoom::FitPage,
+            Command::ToggleThumbnails => {
+                self.settings.show_thumbnails = !self.settings.show_thumbnails;
+                self.persist_settings();
+            }
             Command::About => self.show_about = true,
         }
     }
@@ -656,6 +685,75 @@ impl SuniApp {
             });
     }
 
+    /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
+    fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        ui.add_space(4.0);
+        ui.strong(tr(lang, "panel.thumbnails"));
+        ui.separator();
+        let Some(doc) = &self.document else { return };
+        let count = doc.info.page_count();
+        let current = doc.page;
+        let thumb_w = (ui.available_width() - 12.0).max(48.0);
+        // Largeur en pixels physiques, arrondie pour ne pas relancer les rendus à chaque pixel.
+        let px = ((thumb_w * ctx.pixels_per_point() / 16.0).round() * 16.0).max(16.0) as u32;
+        if px != self.thumb_px {
+            self.thumb_px = px;
+            self.thumbnails.clear();
+            self.thumbs_pending.clear();
+        }
+        let max_ratio = doc
+            .info
+            .page_sizes
+            .iter()
+            .map(|s| s.height_pt / s.width_pt)
+            .fold(0.0_f32, f32::max)
+            .max(0.1);
+        let row_h = thumb_w * max_ratio + 24.0;
+        let sizes = doc.info.page_sizes.clone();
+        let mut clicked = None;
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show_rows(ui, row_h, count, |ui, rows| {
+                for page in rows {
+                    let ratio = sizes[page].height_pt / sizes[page].width_pt;
+                    let size = egui::vec2(thumb_w, thumb_w * ratio);
+                    if !self.thumbnails.contains_key(&page) && self.thumbs_pending.insert(page) {
+                        self.worker.send(Request::Thumbnail { page, width_px: px });
+                    }
+                    ui.vertical_centered(|ui| {
+                        let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
+                        let stroke = if page == current {
+                            egui::Stroke::new(2.0, theme::BLUE)
+                        } else {
+                            egui::Stroke::new(1.0, egui::Color32::from_gray(160))
+                        };
+                        ui.painter().rect_filled(rect, 0.0, egui::Color32::WHITE);
+                        if let Some(tex) = self.thumbnails.get(&page) {
+                            ui.put(
+                                rect,
+                                egui::Image::new(egui::load::SizedTexture::new(tex.id(), size))
+                                    .alt_text(tr_args(
+                                        lang,
+                                        "a11y.thumbnail",
+                                        &[("page", &(page + 1).to_string())],
+                                    )),
+                            );
+                        }
+                        ui.painter()
+                            .rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Outside);
+                        if resp.clicked() {
+                            clicked = Some(page);
+                        }
+                        ui.label((page + 1).to_string());
+                    });
+                }
+            });
+        if let Some(page) = clicked {
+            self.go_to_page(page);
+        }
+    }
+
     fn password_dialog(&mut self, ctx: &egui::Context) {
         let lang = self.lang();
         let Some(prompt) = &mut self.password_prompt else {
@@ -741,6 +839,12 @@ impl eframe::App for SuniApp {
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(&ctx, ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
+        if self.settings.show_thumbnails && self.document.is_some() {
+            egui::Panel::left("thumbnails")
+                .resizable(true)
+                .default_size(170.0)
+                .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
+        }
         let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
         egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
             self.error_banner(ui);

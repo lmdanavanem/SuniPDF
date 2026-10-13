@@ -5,10 +5,6 @@
 2. Installer « Build Tools pour Visual Studio » (C++ Desktop) puis `rustup override unset` dans le dossier : cible MSVC de référence.
 3. Pousser sur GitHub pour exécuter la CI (`.github/workflows/ci.yml`) une première fois.
 
-## SUNI-011 — Cache de rendu et miniatures (owner : RENDERING)
-Crate `sunipdf-render` : LRU plafonné en octets, pré-rendu page suivante/précédente, miniatures 128 px.
-Acceptation : navigation sans re-rendu complet ; test de plafond mémoire.
-
 ## SUNI-012 — Affichage continu + onglets (owner : UI-UX)
 Vue continue avec virtualisation (seules les pages visibles sont rendues) ; onglets multi-documents ; raccourcis.
 Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.*`.

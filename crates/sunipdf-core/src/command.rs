@@ -15,6 +15,7 @@ pub enum Command {
     ActualSize,
     FitWidth,
     FitPage,
+    ToggleThumbnails,
     About,
 }
 
@@ -147,6 +148,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "menu.view.last_page",
         Some("shortcut.last_page"),
         true,
+        View
+    ),
+    cmd!(
+        ToggleThumbnails,
+        "view.thumbnails",
+        "menu.view.thumbnails",
+        Some("shortcut.thumbnails"),
+        false,
         View
     ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),

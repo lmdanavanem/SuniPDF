@@ -9,6 +9,7 @@ use sunipdf_i18n::Language;
 pub struct Settings {
     pub language: String,
     pub dark_theme: bool,
+    pub show_thumbnails: bool,
 }
 
 impl Default for Settings {
@@ -16,6 +17,7 @@ impl Default for Settings {
         Self {
             language: Language::DEFAULT.code().to_string(),
             dark_theme: false,
+            show_thumbnails: true,
         }
     }
 }

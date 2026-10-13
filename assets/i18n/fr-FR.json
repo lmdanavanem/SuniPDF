@@ -83,5 +83,9 @@
   "about.close": "Fermer",
 
   "a11y.document_canvas": "Zone d'affichage du document PDF",
-  "a11y.page_image": "Page {current} sur {total} de {name}"
+  "a11y.page_image": "Page {current} sur {total} de {name}",
+  "menu.view.thumbnails": "Miniatures",
+  "shortcut.thumbnails": "F4",
+  "panel.thumbnails": "Pages",
+  "a11y.thumbnail": "Miniature de la page {page}"
 }

@@ -1,8 +1,14 @@
 //! Thread de travail propriétaire du moteur PDF. L'UI n'appelle jamais PDFium directement.
+//! Cache LRU partagé (pages, miniatures) et pré-rendu des pages voisines quand la file est vide.
 
+use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, Sender, TryIter};
-use sunipdf_core::{DocumentInfo, Engine, EngineError, RenderedPage};
+use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
+use std::sync::Arc;
+use sunipdf_core::{Document, DocumentInfo, Engine, EngineError, RenderCache, RenderedPage};
+
+/// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
+const CACHE_BYTES: usize = 256 * 1024 * 1024;
 
 pub enum Request {
     Open {
@@ -13,6 +19,11 @@ pub enum Request {
         page: usize,
         scale: f32,
         generation: u64,
+    },
+    /// Miniature de `width_px` pixels de large (hauteur proportionnelle).
+    Thumbnail {
+        page: usize,
+        width_px: u32,
     },
     Close,
 }
@@ -27,11 +38,15 @@ pub enum Response {
     },
     Rendered {
         generation: u64,
-        image: RenderedPage,
+        image: Arc<RenderedPage>,
     },
     RenderFailed {
         generation: u64,
         error: EngineError,
+    },
+    Thumbnail {
+        page: usize,
+        image: Arc<RenderedPage>,
     },
 }
 
@@ -61,6 +76,37 @@ impl Worker {
     }
 }
 
+struct State<'a> {
+    document: Option<Document<'a>>,
+    cache: RenderCache,
+    /// Pages voisines à pré-rendre (échelle courante) quand aucune requête n'attend.
+    prefetch: VecDeque<(usize, f32)>,
+}
+
+impl State<'_> {
+    fn render_cached(&mut self, page: usize, scale: f32) -> Result<Arc<RenderedPage>, EngineError> {
+        if let Some(hit) = self.cache.get(page, scale) {
+            return Ok(hit);
+        }
+        let doc = self
+            .document
+            .as_ref()
+            .ok_or(EngineError::PageOutOfRange(page))?;
+        let image = doc.render_page(page, scale)?;
+        Ok(self.cache.insert(scale, image))
+    }
+
+    fn schedule_prefetch(&mut self, page: usize, scale: f32) {
+        self.prefetch.clear();
+        let count = self.document.as_ref().map_or(0, Document::page_count);
+        for neighbour in [page + 1, page.wrapping_sub(1)] {
+            if neighbour < count && !self.cache.contains(neighbour, scale) {
+                self.prefetch.push_back((neighbour, scale));
+            }
+        }
+    }
+}
+
 fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     let engine = match Engine::new() {
         Ok(engine) => {
@@ -74,13 +120,41 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         }
     };
     ctx.request_repaint();
-    let mut document = None;
-    for request in rx {
+    let mut state = State {
+        document: None,
+        cache: RenderCache::new(CACHE_BYTES),
+        prefetch: VecDeque::new(),
+    };
+    let mut queue: VecDeque<Request> = VecDeque::new();
+    loop {
+        // 1. Requête suivante : file locale, sinon pré-rendu si rien n'attend, sinon blocage.
+        let request = match queue.pop_front() {
+            Some(r) => r,
+            None => match rx.try_recv() {
+                Ok(r) => r,
+                Err(TryRecvError::Disconnected) => return,
+                Err(TryRecvError::Empty) => match state.prefetch.pop_front() {
+                    Some((page, scale)) => {
+                        if let Err(e) = state.render_cached(page, scale) {
+                            log::debug!("pré-rendu page {page} ignoré : {e}");
+                        }
+                        continue;
+                    }
+                    None => match rx.recv() {
+                        Ok(r) => r,
+                        Err(_) => return,
+                    },
+                },
+            },
+        };
+        // 2. Traitement.
         let response = match request {
             Request::Open { path, password } => match engine.open(&path, password.as_deref()) {
                 Ok(doc) => {
                     let info = doc.info().clone();
-                    document = Some(doc);
+                    state.document = Some(doc);
+                    state.cache.clear();
+                    state.prefetch.clear();
                     Response::Opened(info)
                 }
                 Err(error) => Response::OpenFailed { path, error },
@@ -89,15 +163,36 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 page,
                 scale,
                 generation,
-            } => match &document {
-                Some(doc) => match doc.render_page(page, scale) {
-                    Ok(image) => Response::Rendered { generation, image },
+            } => {
+                if state.document.is_none() {
+                    continue;
+                }
+                match state.render_cached(page, scale) {
+                    Ok(image) => {
+                        state.schedule_prefetch(page, scale);
+                        Response::Rendered { generation, image }
+                    }
                     Err(error) => Response::RenderFailed { generation, error },
-                },
-                None => continue,
-            },
+                }
+            }
+            Request::Thumbnail { page, width_px } => {
+                let Some(doc) = &state.document else { continue };
+                let Ok(size) = doc.page_size(page) else {
+                    continue;
+                };
+                let scale = width_px.max(1) as f32 / size.width_pt;
+                match state.render_cached(page, scale) {
+                    Ok(image) => Response::Thumbnail { page, image },
+                    Err(e) => {
+                        log::warn!("miniature page {page} impossible : {e}");
+                        continue;
+                    }
+                }
+            }
             Request::Close => {
-                document = None;
+                state.document = None;
+                state.cache.clear();
+                state.prefetch.clear();
                 continue;
             }
         };
@@ -105,5 +200,13 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             break;
         }
         ctx.request_repaint();
+        // 3. Vider la file d'attente avant tout pré-rendu.
+        loop {
+            match rx.try_recv() {
+                Ok(r) => queue.push_back(r),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => return,
+            }
+        }
     }
 }

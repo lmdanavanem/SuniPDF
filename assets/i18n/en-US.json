@@ -83,5 +83,9 @@
   "about.close": "Close",
 
   "a11y.document_canvas": "PDF document display area",
-  "a11y.page_image": "Page {current} of {total} of {name}"
+  "a11y.page_image": "Page {current} of {total} of {name}",
+  "menu.view.thumbnails": "Thumbnails",
+  "shortcut.thumbnails": "F4",
+  "panel.thumbnails": "Pages",
+  "a11y.thumbnail": "Thumbnail of page {page}"
 }
