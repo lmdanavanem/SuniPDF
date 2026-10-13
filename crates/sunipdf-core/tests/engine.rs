@@ -266,3 +266,63 @@ fn rotate_delete_and_save_atomically() {
     assert!(matches!(again.save_as(bad), Err(EngineError::Io(_))));
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn insert_move_and_snapshot_restore() {
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-insert-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let work = dir.join("work.pdf");
+    std::fs::copy(fixture("two-pages.pdf"), &work).unwrap();
+    let mut doc = engine.open(&work, None).unwrap();
+
+    // Insertion de la page 2 (paysage) de la fixture au début.
+    assert_eq!(
+        doc.insert_pages_from(&fixture("two-pages.pdf"), None, &[1], 0)
+            .unwrap(),
+        1
+    );
+    assert_eq!(doc.page_count(), 3);
+    assert_eq!(doc.page_size(0).unwrap().width_pt, 792.0);
+    assert!(doc.page_text(0).unwrap().contains("page 2"));
+    assert!(matches!(
+        doc.insert_pages_from(&fixture("two-pages.pdf"), None, &[], 9),
+        Err(EngineError::PageOutOfRange(9))
+    ));
+    assert!(matches!(
+        doc.insert_pages_from(&fixture("two-pages.pdf"), None, &[5], 0),
+        Err(EngineError::PageOutOfRange(5))
+    ));
+
+    // Déplacement : [L, P1, P2] → move(0, 2) → [P1, P2, L].
+    let before = doc.snapshot().unwrap();
+    doc.move_page(0, 2).unwrap();
+    assert!(doc.page_text(0).unwrap().contains("page 1"));
+    assert!(doc.page_text(2).unwrap().contains("page 2"));
+    assert_eq!(doc.page_size(2).unwrap().width_pt, 792.0);
+    doc.move_page(2, 0).unwrap();
+    assert_eq!(doc.page_size(0).unwrap().width_pt, 792.0);
+    assert!(matches!(
+        doc.move_page(7, 0),
+        Err(EngineError::PageOutOfRange(7))
+    ));
+
+    // Restauration de l'instantané : retour à [L, P1, P2] puis annulation complète vers 2 pages.
+    doc.delete_page(1).unwrap();
+    assert_eq!(doc.page_count(), 2);
+    doc.restore(before).unwrap();
+    assert_eq!(doc.page_count(), 3);
+    assert!(doc.page_text(1).unwrap().contains("page 1"));
+    doc.save_as(&work).unwrap();
+    assert_eq!(engine.open(&work, None).unwrap().page_count(), 3);
+
+    // Document chiffré : l'instantané se recharge avec le mot de passe mémorisé.
+    let mut enc = engine
+        .open(&fixture("encrypted-rc4.pdf"), Some("secret"))
+        .unwrap();
+    let snap = enc.snapshot().unwrap();
+    enc.restore(snap).unwrap();
+    assert_eq!(enc.page_count(), 1);
+    let _ = std::fs::remove_dir_all(dir);
+}

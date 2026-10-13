@@ -180,6 +180,83 @@ impl Document<'_> {
         Ok(())
     }
 
+    /// Insère des pages d'un autre fichier à la position `at` (`pages` vide = toutes les pages).
+    /// Renvoie le nombre de pages insérées.
+    pub fn insert_pages_from(
+        &mut self,
+        source: &Path,
+        password: Option<&str>,
+        pages: &[usize],
+        at: usize,
+    ) -> Result<usize, EngineError> {
+        if at > self.page_count() {
+            return Err(EngineError::PageOutOfRange(at));
+        }
+        let src = self.pdfium.load_pdf_from_file(source, password)?;
+        let src_count = src.pages().len() as usize;
+        let selection: Vec<usize> = if pages.is_empty() {
+            (0..src_count).collect()
+        } else {
+            pages.to_vec()
+        };
+        if let Some(&bad) = selection.iter().find(|&&p| p >= src_count) {
+            return Err(EngineError::PageOutOfRange(bad));
+        }
+        if selection.is_empty() {
+            return Err(EngineError::Other("no pages selected".into()));
+        }
+        let index = PdfPageIndex::try_from(at).map_err(|_| EngineError::PageOutOfRange(at))?;
+        self.inner.pages_mut().copy_pages_from_document(
+            &src,
+            &page_range_string(&selection),
+            index,
+        )?;
+        self.refresh_page_sizes()?;
+        Ok(selection.len())
+    }
+
+    /// Déplace la page `from` pour qu'elle occupe l'index `to` (indices avant déplacement).
+    pub fn move_page(&mut self, from: usize, to: usize) -> Result<(), EngineError> {
+        let count = self.page_count();
+        if from >= count {
+            return Err(EngineError::PageOutOfRange(from));
+        }
+        if to >= count {
+            return Err(EngineError::PageOutOfRange(to));
+        }
+        if from == to {
+            return Ok(());
+        }
+        // ponytail: copie via un document temporaire (FPDF_MovePages n'est pas exposé par pdfium-render).
+        let mut temp = self.pdfium.create_new_pdf()?;
+        let from_index =
+            PdfPageIndex::try_from(from).map_err(|_| EngineError::PageOutOfRange(from))?;
+        temp.pages_mut()
+            .copy_page_from_document(&self.inner, from_index, 0)?;
+        self.inner.pages().get(from_index)?.delete()?;
+        let to_index = PdfPageIndex::try_from(to).map_err(|_| EngineError::PageOutOfRange(to))?;
+        self.inner
+            .pages_mut()
+            .copy_page_from_document(&temp, 0, to_index)?;
+        self.refresh_page_sizes()?;
+        Ok(())
+    }
+
+    /// Instantané complet du document (octets PDF), base de l'annulation.
+    pub fn snapshot(&self) -> Result<Vec<u8>, EngineError> {
+        Ok(self.inner.save_to_bytes()?)
+    }
+
+    /// Recharge le document depuis un instantané produit par [`Document::snapshot`].
+    pub fn restore(&mut self, bytes: Vec<u8>) -> Result<(), EngineError> {
+        let inner = self
+            .pdfium
+            .load_pdf_from_byte_vec(bytes, self.password.as_deref())?;
+        self.inner = inner;
+        self.refresh_page_sizes()?;
+        Ok(())
+    }
+
     /// Enregistre l'état courant (atomiquement) dans `output`. Le chemin peut être l'original.
     pub fn save_as(&self, output: &Path) -> Result<(), EngineError> {
         let bytes = self.inner.save_to_bytes()?;

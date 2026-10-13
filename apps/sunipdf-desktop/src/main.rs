@@ -2,6 +2,7 @@
 
 mod app;
 mod icons;
+mod organize;
 mod settings;
 mod shell;
 mod theme;

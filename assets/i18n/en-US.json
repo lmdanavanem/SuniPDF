@@ -153,5 +153,22 @@
   "home.recent": "Recent",
   "home.recent.empty": "Files you open in SuniPDF appear here. Drop a PDF anywhere to open it.",
   "home.privacy": "PRIVACY",
-  "home.privacy.text": "SuniPDF works offline. No telemetry, no account, no cloud processing."
+  "home.privacy.text": "SuniPDF works offline. No telemetry, no account, no cloud processing.",
+  "menu.edit.undo": "Undo",
+  "menu.edit.redo": "Redo",
+  "shortcut.undo": "Ctrl+Z",
+  "shortcut.redo": "Ctrl+Y",
+  "menu.pages.insert": "Insert Pages from File…",
+  "shortcut.insert": "Ctrl+Shift+I",
+  "menu.pages.move_left": "Move Forward",
+  "menu.pages.move_right": "Move Backward",
+  "menu.view.organize": "Organize Pages",
+  "shortcut.organize": "F8",
+  "organize.selected": "{count} / {total} page(s) selected",
+  "organize.select_all": "Select All",
+  "organize.close": "Close",
+  "organize.hint": "Click: select · Ctrl+click: add · Shift+click: extend · Drag: reorder · Double-click: view",
+  "dialog.insert.title": "Insert pages from a PDF",
+  "status.undo": "Undone",
+  "status.redo": "Redone"
 }

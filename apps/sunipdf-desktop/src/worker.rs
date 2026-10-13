@@ -1,5 +1,6 @@
 //! Thread de travail propriétaire du moteur PDF. L'UI n'appelle jamais PDFium directement.
-//! Cache LRU partagé (pages, miniatures) et pré-rendu des pages voisines quand la file est vide.
+//! Cache LRU partagé (pages, miniatures), pré-rendu des pages voisines quand la file est vide,
+//! journal d'annulation par instantanés (octets PDF) pour toutes les modifications de pages.
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -11,6 +12,30 @@ use sunipdf_core::{
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
 const CACHE_BYTES: usize = 256 * 1024 * 1024;
+/// Plafonds du journal d'annulation (instantanés complets du PDF).
+const UNDO_MAX_ENTRIES: usize = 50;
+const UNDO_MAX_BYTES: usize = 512 * 1024 * 1024;
+
+/// Modification de pages, appliquée sous instantané (annulable).
+pub enum EditOp {
+    Rotate {
+        pages: Vec<usize>,
+        delta_degrees: i32,
+    },
+    Delete {
+        pages: Vec<usize>,
+    },
+    Insert {
+        source: PathBuf,
+        password: Option<String>,
+        pages: Vec<usize>,
+        at: usize,
+    },
+    Move {
+        from: usize,
+        to: usize,
+    },
+}
 
 pub enum Request {
     Open {
@@ -32,23 +57,26 @@ pub enum Request {
         match_case: bool,
         generation: u64,
     },
-    Rotate {
-        page: usize,
-        delta_degrees: i32,
-    },
-    DeletePage {
-        page: usize,
-    },
+    Edit(EditOp),
+    Undo,
+    Redo,
     Save {
         path: PathBuf,
     },
     Close,
 }
 
+#[derive(Clone)]
+pub struct DocState {
+    pub info: DocumentInfo,
+    pub can_undo: bool,
+    pub can_redo: bool,
+}
+
 pub enum Response {
     EngineReady,
     EngineFailed(EngineError),
-    Opened(DocumentInfo),
+    Opened(DocState),
     OpenFailed {
         path: PathBuf,
         error: EngineError,
@@ -69,8 +97,8 @@ pub enum Response {
         generation: u64,
         matches: Vec<TextMatch>,
     },
-    /// Pages modifiées en mémoire (rotation, suppression) : tailles rafraîchies, rendus invalidés.
-    DocumentChanged(DocumentInfo),
+    /// Pages modifiées en mémoire : tailles rafraîchies, rendus invalidés.
+    DocumentChanged(DocState),
     OperationFailed(EngineError),
     Saved {
         path: PathBuf,
@@ -109,6 +137,8 @@ struct State<'a> {
     cache: RenderCache,
     /// Pages voisines à pré-rendre (échelle courante) quand aucune requête n'attend.
     prefetch: VecDeque<(usize, f32)>,
+    undo: Vec<Vec<u8>>,
+    redo: Vec<Vec<u8>>,
 }
 
 impl State<'_> {
@@ -133,6 +163,112 @@ impl State<'_> {
             }
         }
     }
+
+    fn invalidate(&mut self) {
+        self.cache.clear();
+        self.prefetch.clear();
+    }
+
+    fn doc_state(&self) -> Option<DocState> {
+        self.document.as_ref().map(|d| DocState {
+            info: d.info().clone(),
+            can_undo: !self.undo.is_empty(),
+            can_redo: !self.redo.is_empty(),
+        })
+    }
+
+    fn push_undo(&mut self, snapshot: Vec<u8>) {
+        self.undo.push(snapshot);
+        self.redo.clear();
+        while self.undo.len() > UNDO_MAX_ENTRIES
+            || (self.undo.len() > 1
+                && self.undo.iter().map(Vec::len).sum::<usize>() > UNDO_MAX_BYTES)
+        {
+            self.undo.remove(0);
+        }
+    }
+
+    /// Applique une modification sous instantané. Toute erreur laisse le document intact
+    /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
+    fn edit(&mut self, op: EditOp) -> Response {
+        let Some(doc) = &mut self.document else {
+            return Response::OperationFailed(EngineError::Other("no document".into()));
+        };
+        let snapshot = match doc.snapshot() {
+            Ok(s) => s,
+            Err(e) => return Response::OperationFailed(e),
+        };
+        match apply(doc, op) {
+            Ok(()) => {
+                self.push_undo(snapshot);
+                self.invalidate();
+                Response::DocumentChanged(self.doc_state().expect("document ouvert"))
+            }
+            Err(e) => {
+                if let Err(restore) = doc.restore(snapshot) {
+                    log::error!("restauration impossible après échec : {restore}");
+                }
+                Response::OperationFailed(e)
+            }
+        }
+    }
+
+    fn undo_redo(&mut self, undo: bool) -> Option<Response> {
+        let doc = self.document.as_mut()?;
+        let (from, to) = if undo {
+            (&mut self.undo, &mut self.redo)
+        } else {
+            (&mut self.redo, &mut self.undo)
+        };
+        let target = from.pop()?;
+        match doc.snapshot() {
+            Ok(current) => to.push(current),
+            Err(e) => return Some(Response::OperationFailed(e)),
+        }
+        if let Err(e) = doc.restore(target) {
+            return Some(Response::OperationFailed(e));
+        }
+        self.invalidate();
+        Some(Response::DocumentChanged(self.doc_state()?))
+    }
+}
+
+fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
+    match op {
+        EditOp::Rotate {
+            pages,
+            delta_degrees,
+        } => {
+            for page in pages {
+                let current = doc.page_rotation(page)?;
+                doc.set_page_rotation(page, current.turned(delta_degrees))?;
+            }
+            Ok(())
+        }
+        EditOp::Delete { mut pages } => {
+            pages.sort_unstable();
+            pages.dedup();
+            if pages.len() >= doc.page_count() {
+                return Err(EngineError::Other(
+                    "a document must keep at least one page".into(),
+                ));
+            }
+            // Du plus grand au plus petit pour garder les indices valides.
+            for page in pages.into_iter().rev() {
+                doc.delete_page(page)?;
+            }
+            Ok(())
+        }
+        EditOp::Insert {
+            source,
+            password,
+            pages,
+            at,
+        } => doc
+            .insert_pages_from(&source, password.as_deref(), &pages, at)
+            .map(|_| ()),
+        EditOp::Move { from, to } => doc.move_page(from, to),
+    }
 }
 
 fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
@@ -152,6 +288,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         document: None,
         cache: RenderCache::new(CACHE_BYTES),
         prefetch: VecDeque::new(),
+        undo: Vec::new(),
+        redo: Vec::new(),
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     loop {
@@ -179,11 +317,11 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         let response = match request {
             Request::Open { path, password } => match engine.open(&path, password.as_deref()) {
                 Ok(doc) => {
-                    let info = doc.info().clone();
                     state.document = Some(doc);
-                    state.cache.clear();
-                    state.prefetch.clear();
-                    Response::Opened(info)
+                    state.invalidate();
+                    state.undo.clear();
+                    state.redo.clear();
+                    Response::Opened(state.doc_state().expect("document ouvert"))
                 }
                 Err(error) => Response::OpenFailed { path, error },
             },
@@ -223,52 +361,24 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 generation,
             } => {
                 let Some(doc) = &state.document else { continue };
-                match doc.search(&query, match_case) {
-                    Ok(matches) => Response::SearchResults {
-                        generation,
-                        matches,
-                    },
-                    Err(e) => {
-                        log::warn!("recherche impossible : {e}");
-                        Response::SearchResults {
-                            generation,
-                            matches: Vec::new(),
-                        }
-                    }
+                let matches = doc.search(&query, match_case).unwrap_or_else(|e| {
+                    log::warn!("recherche impossible : {e}");
+                    Vec::new()
+                });
+                Response::SearchResults {
+                    generation,
+                    matches,
                 }
             }
-            Request::Rotate {
-                page,
-                delta_degrees,
-            } => {
-                let Some(doc) = &mut state.document else {
-                    continue;
-                };
-                let result = doc
-                    .page_rotation(page)
-                    .and_then(|r| doc.set_page_rotation(page, r.turned(delta_degrees)));
-                match result {
-                    Ok(()) => {
-                        state.cache.clear();
-                        state.prefetch.clear();
-                        Response::DocumentChanged(doc.info().clone())
-                    }
-                    Err(e) => Response::OperationFailed(e),
-                }
-            }
-            Request::DeletePage { page } => {
-                let Some(doc) = &mut state.document else {
-                    continue;
-                };
-                match doc.delete_page(page) {
-                    Ok(()) => {
-                        state.cache.clear();
-                        state.prefetch.clear();
-                        Response::DocumentChanged(doc.info().clone())
-                    }
-                    Err(e) => Response::OperationFailed(e),
-                }
-            }
+            Request::Edit(op) => state.edit(op),
+            Request::Undo => match state.undo_redo(true) {
+                Some(r) => r,
+                None => continue,
+            },
+            Request::Redo => match state.undo_redo(false) {
+                Some(r) => r,
+                None => continue,
+            },
             Request::Save { path } => {
                 let Some(doc) = &state.document else { continue };
                 match doc.save_as(&path) {
@@ -278,8 +388,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::Close => {
                 state.document = None;
-                state.cache.clear();
-                state.prefetch.clear();
+                state.invalidate();
+                state.undo.clear();
+                state.redo.clear();
                 continue;
             }
         };

@@ -5,7 +5,9 @@ param(
     [string]$Pdf = "",
     [double]$Delay = 4,
     [string]$Exe = "",
-    [string]$Keys = ""
+    [string]$Keys = "",
+    # Identifiants de commandes exécutés après l'ouverture (ex. "view.organize,edit.find").
+    [string]$Commands = ""
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -24,6 +26,7 @@ public static class Win {
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 }
 "@
+if ($Commands) { $env:SUNIPDF_STARTUP_COMMANDS = $Commands } else { Remove-Item Env:SUNIPDF_STARTUP_COMMANDS -ErrorAction SilentlyContinue }
 $args_ = @(); if ($Pdf) { $args_ = @($Pdf) }
 $proc = if ($args_.Count -gt 0) { Start-Process -FilePath $Exe -ArgumentList $args_ -PassThru } else { Start-Process -FilePath $Exe -PassThru }
 try {
@@ -36,8 +39,12 @@ try {
     [Win]::SetWindowPos($h, [IntPtr](-1), 0, 0, 0, 0, 0x41) | Out-Null
     [Win]::SetForegroundWindow($h) | Out-Null
     Start-Sleep -Milliseconds 700
-    if ($Keys) { Start-Sleep -Milliseconds 500; [System.Windows.Forms.SendKeys]::SendWait($Keys); Start-Sleep -Seconds 1.5 }
     $r = New-Object Win+RECT
+    # Le passage au premier plan peut produire un clic parasite : placer la souris au centre (zone document).
+    [Win]::GetWindowRect($h, [ref]$r) | Out-Null
+    [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point((($r.Left + $r.Right) / 2), (($r.Top + $r.Bottom) / 2))
+    Start-Sleep -Milliseconds 300
+    if ($Keys) { Start-Sleep -Milliseconds 500; [System.Windows.Forms.SendKeys]::SendWait($Keys); Start-Sleep -Seconds 1.5 }
     # DWMWA_EXTENDED_FRAME_BOUNDS = 9 : rectangle visible sans l'ombre invisible de Windows 10/11.
     if ([Win]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [Win]::GetWindowRect($h, [ref]$r) | Out-Null }
     $w = $r.Right - $r.Left; $hgt = $r.Bottom - $r.Top

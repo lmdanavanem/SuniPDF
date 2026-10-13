@@ -24,6 +24,12 @@ pub enum Command {
     DeletePage,
     ToggleTools,
     CommandPalette,
+    Undo,
+    Redo,
+    InsertPages,
+    MovePageLeft,
+    MovePageRight,
+    OrganizePages,
     About,
 }
 
@@ -185,6 +191,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         View
     ),
     cmd!(
+        OrganizePages,
+        "view.organize",
+        "menu.view.organize",
+        Some("shortcut.organize"),
+        true,
+        View
+    ),
+    cmd!(
         ToggleTools,
         "view.tools",
         "menu.view.tools",
@@ -223,6 +237,46 @@ pub const REGISTRY: &[CommandInfo] = &[
         Some("shortcut.delete_page"),
         true,
         Pages
+    ),
+    cmd!(
+        InsertPages,
+        "pages.insert",
+        "menu.pages.insert",
+        Some("shortcut.insert"),
+        true,
+        Pages
+    ),
+    cmd!(
+        MovePageLeft,
+        "pages.move_left",
+        "menu.pages.move_left",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        MovePageRight,
+        "pages.move_right",
+        "menu.pages.move_right",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        Undo,
+        "edit.undo",
+        "menu.edit.undo",
+        Some("shortcut.undo"),
+        true,
+        Edit
+    ),
+    cmd!(
+        Redo,
+        "edit.redo",
+        "menu.edit.redo",
+        Some("shortcut.redo"),
+        true,
+        Edit
     ),
     cmd!(
         Find,

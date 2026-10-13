@@ -70,6 +70,32 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Insert pages of another PDF (1-based list, default all) before page --at (1-based; 0 = append).
+    Insert {
+        file: PathBuf,
+        #[arg(long)]
+        from: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value_t = 0)]
+        at: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Move one page (1-based) to a new position (1-based).
+    Move {
+        file: PathBuf,
+        #[arg(long)]
+        from: usize,
+        #[arg(long)]
+        to: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Search text; prints matches (page, rectangles in PDF points) as JSON.
     Search {
         file: PathBuf,
@@ -174,6 +200,38 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             }
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "rotated": selection.len() }))
+        }
+        Command::Insert {
+            file,
+            from,
+            pages,
+            at,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let src_count = engine.open(&from, None)?.page_count();
+            let selection = parse_pages(&pages, src_count)?;
+            let at = if at == 0 { doc.page_count() } else { at - 1 };
+            let n = doc.insert_pages_from(&from, None, &selection, at)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "inserted": n, "page_count": doc.page_count() }))
+        }
+        Command::Move {
+            file,
+            from,
+            to,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let (from, to) = (
+                from.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?,
+                to.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?,
+            );
+            doc.move_page(from, to)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "moved": from + 1, "to": to + 1 }))
         }
         Command::Search {
             file,

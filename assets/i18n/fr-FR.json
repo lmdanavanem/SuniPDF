@@ -153,5 +153,22 @@
   "home.recent": "Récents",
   "home.recent.empty": "Les fichiers ouverts dans SuniPDF apparaîtront ici. Déposez un PDF n'importe où pour l'ouvrir.",
   "home.privacy": "CONFIDENTIALITÉ",
-  "home.privacy.text": "SuniPDF fonctionne hors ligne. Aucune télémétrie, aucun compte, aucun traitement dans le cloud."
+  "home.privacy.text": "SuniPDF fonctionne hors ligne. Aucune télémétrie, aucun compte, aucun traitement dans le cloud.",
+  "menu.edit.undo": "Annuler",
+  "menu.edit.redo": "Rétablir",
+  "shortcut.undo": "Ctrl+Z",
+  "shortcut.redo": "Ctrl+Y",
+  "menu.pages.insert": "Insérer des pages depuis un fichier…",
+  "shortcut.insert": "Ctrl+Maj+I",
+  "menu.pages.move_left": "Déplacer vers l'avant",
+  "menu.pages.move_right": "Déplacer vers l'arrière",
+  "menu.view.organize": "Organiser les pages",
+  "shortcut.organize": "F8",
+  "organize.selected": "{count} / {total} page(s) sélectionnée(s)",
+  "organize.select_all": "Tout sélectionner",
+  "organize.close": "Fermer",
+  "organize.hint": "Clic : sélectionner · Ctrl+clic : ajouter · Maj+clic : étendre · Glisser : réordonner · Double-clic : afficher",
+  "dialog.insert.title": "Insérer les pages d'un PDF",
+  "status.undo": "Annulé",
+  "status.redo": "Rétabli"
 }

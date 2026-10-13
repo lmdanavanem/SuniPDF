@@ -65,6 +65,8 @@ pub struct Document<'a> {
     inner: PdfDocument<'a>,
     pdfium: &'a Pdfium,
     info: DocumentInfo,
+    /// Mot de passe d'ouverture, réutilisé pour recharger un instantané (undo/redo).
+    password: Option<String>,
 }
 
 /// Répertoires explorés pour trouver `pdfium.dll`, dans l'ordre.
@@ -147,6 +149,7 @@ impl Engine {
         Ok(Document {
             inner,
             pdfium: &self.pdfium,
+            password: password.map(str::to_owned),
             info: DocumentInfo {
                 path: path.to_path_buf(),
                 title,

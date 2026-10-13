@@ -32,10 +32,14 @@ impl ToolTab {
             Self::All => &[
                 Command::OpenDocument,
                 Command::Find,
+                Command::OrganizePages,
                 Command::ToggleThumbnails,
                 Command::RotateClockwise,
                 Command::RotateCounterClockwise,
                 Command::DeletePage,
+                Command::InsertPages,
+                Command::Undo,
+                Command::Redo,
                 Command::SaveAs,
                 Command::CommandPalette,
             ],
@@ -47,9 +51,15 @@ impl ToolTab {
                 Command::ActualSize,
             ],
             Self::Pages => &[
+                Command::OrganizePages,
                 Command::RotateClockwise,
                 Command::RotateCounterClockwise,
                 Command::DeletePage,
+                Command::InsertPages,
+                Command::MovePageLeft,
+                Command::MovePageRight,
+                Command::Undo,
+                Command::Redo,
                 Command::SaveAs,
             ],
         }
@@ -71,6 +81,12 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::RotateClockwise => (glyph::ROTATE, "↻"),
         Command::RotateCounterClockwise => (glyph::UNDO, "↺"),
         Command::DeletePage => (glyph::DELETE, "🗑"),
+        Command::InsertPages => (glyph::OPEN, "⤵"),
+        Command::MovePageLeft => (glyph::CHEVRON_UP, "◀"),
+        Command::MovePageRight => (glyph::CHEVRON_DOWN, "▶"),
+        Command::Undo => (glyph::UNDO, "↶"),
+        Command::Redo => (glyph::ROTATE, "↷"),
+        Command::OrganizePages => (glyph::GRID, "▦"),
         Command::FirstPage | Command::PreviousPage => (glyph::CHEVRON_UP, "▲"),
         Command::NextPage | Command::LastPage => (glyph::CHEVRON_DOWN, "▼"),
         Command::ZoomIn => (glyph::ZOOM_IN, "+"),
@@ -330,7 +346,12 @@ impl SuniApp {
         let mut run = None;
         for &command in self.tool_tab.commands() {
             let info = command.info();
-            let enabled = !info.needs_document || has_doc;
+            let enabled = (!info.needs_document || has_doc)
+                && match command {
+                    Command::Undo => self.can_undo,
+                    Command::Redo => self.can_redo,
+                    _ => true,
+                };
             let (g, f) = command_icon(command);
             let resp = ui.add_enabled(
                 enabled,
@@ -550,6 +571,16 @@ impl SuniApp {
                 .on_hover_text(tr(lang, "menu.view.thumbnails"));
             if thumbs.clicked() {
                 self.execute(ctx, Command::ToggleThumbnails);
+            }
+            let organize = ui
+                .add(
+                    Button::new(self.icon(glyph::PAGES, "▦", 16.0))
+                        .frame(false)
+                        .selected(self.organize.active),
+                )
+                .on_hover_text(tr(lang, "menu.view.organize"));
+            if organize.clicked() {
+                self.execute(ctx, Command::OrganizePages);
             }
             let find = ui
                 .add(

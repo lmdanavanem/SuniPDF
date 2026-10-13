@@ -2,7 +2,7 @@
 
 use crate::settings::Settings;
 use crate::theme;
-use crate::worker::{Request, Response, Worker};
+use crate::worker::{DocState, EditOp, Request, Response, Worker};
 use egui::{Key, Modifiers};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -79,7 +79,7 @@ pub struct PaletteState {
 
 pub struct SuniApp {
     pub settings: Settings,
-    worker: Worker,
+    pub worker: Worker,
     pub engine: EngineState,
     pub document: Option<OpenDocument>,
     pub opening: Option<PathBuf>,
@@ -94,9 +94,9 @@ pub struct SuniApp {
     password_prompt: Option<PasswordPrompt>,
     show_about: bool,
     pending_file: Option<PathBuf>,
-    thumbnails: HashMap<usize, egui::TextureHandle>,
-    thumbs_pending: HashSet<usize>,
-    thumb_px: u32,
+    pub thumbnails: HashMap<usize, egui::TextureHandle>,
+    pub thumbs_pending: HashSet<usize>,
+    pub thumb_px: u32,
     pub find: FindState,
     pub dirty: bool,
     pub saving: bool,
@@ -108,6 +108,11 @@ pub struct SuniApp {
     pub show_tools: bool,
     pub tool_tab: crate::shell::ToolTab,
     pub palette: PaletteState,
+    pub organize: crate::organize::OrganizeState,
+    pub can_undo: bool,
+    pub can_redo: bool,
+    /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
+    startup_commands: Vec<Command>,
 }
 
 impl SuniApp {
@@ -125,6 +130,17 @@ impl SuniApp {
                 selected: 0,
                 focus_requested: false,
             },
+            organize: Default::default(),
+            can_undo: false,
+            can_redo: false,
+            startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
+                .ok()
+                .map(|v| {
+                    v.split(',')
+                        .filter_map(|id| Command::from_id(id.trim()))
+                        .collect()
+                })
+                .unwrap_or_default(),
             worker: Worker::spawn(cc.egui_ctx.clone()),
             settings,
             engine: EngineState::Starting,
@@ -208,6 +224,9 @@ impl SuniApp {
         self.thumbnails.clear();
         self.thumbs_pending.clear();
         self.close_find();
+        self.organize = Default::default();
+        self.can_undo = false;
+        self.can_redo = false;
         self.dirty = false;
         self.saving = false;
         self.status_msg = None;
@@ -290,16 +309,21 @@ impl SuniApp {
                     log::error!("moteur indisponible : {e}");
                     self.engine = EngineState::Failed;
                 }
-                Response::Opened(info) => {
+                Response::Opened(DocState { info, .. }) => {
                     self.opening = None;
                     self.password_prompt = None;
                     self.page_input = "1".into();
                     self.settings.push_recent(&info.path);
                     self.persist_settings();
+                    self.can_undo = false;
+                    self.can_redo = false;
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.dirty = false;
                     self.status_msg = None;
                     self.update_title(ctx);
+                    for command in std::mem::take(&mut self.startup_commands) {
+                        self.execute(ctx, command);
+                    }
                 }
                 Response::OpenFailed { path, error } => {
                     self.opening = None;
@@ -352,7 +376,15 @@ impl SuniApp {
                         self.thumbnails.insert(page, handle);
                     }
                 }
-                Response::DocumentChanged(info) => {
+                Response::DocumentChanged(DocState {
+                    info,
+                    can_undo,
+                    can_redo,
+                }) => {
+                    self.can_undo = can_undo;
+                    self.can_redo = can_redo;
+                    let count = info.page_count();
+                    self.organize.selected.retain(|p| *p < count);
                     if let Some(doc) = &mut self.document {
                         doc.info = info;
                         doc.page = doc.page.min(doc.info.page_count().saturating_sub(1));
@@ -500,6 +532,30 @@ impl SuniApp {
             }
             return;
         }
+        if log::log_enabled!(log::Level::Trace) {
+            ctx.input(|i| {
+                for e in &i.events {
+                    if let egui::Event::Key {
+                        key,
+                        pressed: true,
+                        modifiers,
+                        ..
+                    } = e
+                    {
+                        log::trace!("touche {key:?} {modifiers:?}");
+                    }
+                    if let egui::Event::PointerButton {
+                        pos,
+                        button,
+                        pressed,
+                        ..
+                    } = e
+                    {
+                        log::trace!("souris {button:?} pressed={pressed} {pos:?}");
+                    }
+                }
+            });
+        }
         let mut commands = Vec::new();
         ctx.input_mut(|i| {
             let mut key = |m: Modifiers, k: Key, c: Command| {
@@ -535,6 +591,15 @@ impl SuniApp {
             key(Modifiers::COMMAND, Key::R, Command::RotateClockwise);
             key(Modifiers::COMMAND, Key::Delete, Command::DeletePage);
             key(Modifiers::NONE, Key::F9, Command::ToggleTools);
+            key(Modifiers::NONE, Key::F8, Command::OrganizePages);
+            key(Modifiers::COMMAND, Key::Z, Command::Undo);
+            key(Modifiers::COMMAND, Key::Y, Command::Redo);
+            key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z, Command::Redo);
+            key(
+                Modifiers::COMMAND | Modifiers::SHIFT,
+                Key::I,
+                Command::InsertPages,
+            );
             key(Modifiers::COMMAND, Key::K, Command::CommandPalette);
         });
         for command in commands {
@@ -544,6 +609,7 @@ impl SuniApp {
 
     /// Point d'entrée unique de toutes les commandes (menus, clavier, future palette / automatisation).
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
+        log::debug!("commande {}", command.info().id);
         if command.info().needs_document && self.document.is_none() {
             return;
         }
@@ -584,23 +650,87 @@ impl SuniApp {
             Command::Save => self.save_document(false),
             Command::SaveAs => self.save_document(true),
             Command::RotateClockwise | Command::RotateCounterClockwise => {
-                let page = self.document.as_ref().map(|d| d.page).unwrap_or(0);
+                let pages = self.target_pages();
                 let delta_degrees = if command == Command::RotateClockwise {
                     90
                 } else {
                     -90
                 };
-                self.worker.send(Request::Rotate {
-                    page,
+                self.worker.send(Request::Edit(EditOp::Rotate {
+                    pages,
                     delta_degrees,
-                });
+                }));
             }
             Command::DeletePage => {
                 let Some(doc) = &self.document else { return };
-                if doc.info.page_count() <= 1 {
+                let pages = self.target_pages();
+                if pages.len() >= doc.info.page_count() {
                     self.error = Some("error.last_page");
                 } else {
-                    self.worker.send(Request::DeletePage { page: doc.page });
+                    self.worker.send(Request::Edit(EditOp::Delete { pages }));
+                }
+            }
+            Command::Undo => {
+                if self.can_undo {
+                    self.worker.send(Request::Undo);
+                }
+            }
+            Command::Redo => {
+                if self.can_redo {
+                    self.worker.send(Request::Redo);
+                }
+            }
+            Command::InsertPages => {
+                let Some(doc) = &self.document else { return };
+                let at = self
+                    .target_pages()
+                    .last()
+                    .map(|p| p + 1)
+                    .unwrap_or(doc.page + 1);
+                let dialog = rfd::FileDialog::new()
+                    .set_title(self.t("dialog.insert.title"))
+                    .add_filter(self.t("dialog.open.filter_pdf"), &["pdf"]);
+                if let Some(source) = dialog.pick_file() {
+                    self.worker.send(Request::Edit(EditOp::Insert {
+                        source,
+                        password: None,
+                        pages: Vec::new(),
+                        at,
+                    }));
+                }
+            }
+            Command::MovePageLeft | Command::MovePageRight => {
+                let Some(doc) = &self.document else { return };
+                let pages = self.target_pages();
+                let (Some(&first), Some(&last)) = (pages.first(), pages.last()) else {
+                    return;
+                };
+                if pages.len() != 1 {
+                    return; // ponytail: un seul déplacement à la fois ; blocs contigus plus tard.
+                }
+                let count = doc.info.page_count();
+                let to = if command == Command::MovePageLeft {
+                    first.checked_sub(1)
+                } else if last + 1 < count {
+                    Some(last + 1)
+                } else {
+                    None
+                };
+                if let Some(to) = to {
+                    self.worker
+                        .send(Request::Edit(EditOp::Move { from: first, to }));
+                    self.organize.selected = std::iter::once(to).collect();
+                    self.organize.anchor = Some(to);
+                }
+            }
+            Command::OrganizePages => {
+                self.organize.active = !self.organize.active;
+                if self.organize.active {
+                    if let Some(doc) = &self.document {
+                        self.organize.selected = std::iter::once(doc.page).collect();
+                        self.organize.anchor = Some(doc.page);
+                    }
+                    self.close_find();
                 }
             }
             Command::ToggleTools => {
@@ -775,6 +905,7 @@ impl SuniApp {
         let row_h = thumb_w * max_ratio + 24.0;
         let sizes = doc.info.page_sizes.clone();
         let mut clicked = None;
+        let mut moved: Option<(usize, usize)> = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show_rows(ui, row_h, count, |ui, rows| {
@@ -785,7 +916,39 @@ impl SuniApp {
                         self.worker.send(Request::Thumbnail { page, width_px: px });
                     }
                     ui.vertical_centered(|ui| {
-                        let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click());
+                        let (rect, resp) =
+                            ui.allocate_exact_size(size, egui::Sense::click_and_drag());
+                        resp.dnd_set_drag_payload(page);
+                        if let Some(payload) = resp.dnd_hover_payload::<usize>() {
+                            if *payload != page {
+                                let above = ui
+                                    .input(|i| i.pointer.hover_pos())
+                                    .is_some_and(|pos| pos.y < rect.center().y);
+                                let y = if above {
+                                    rect.top() - 6.0
+                                } else {
+                                    rect.bottom() + 6.0
+                                };
+                                ui.painter().hline(
+                                    rect.x_range(),
+                                    y,
+                                    egui::Stroke::new(3.0, theme::BLUE),
+                                );
+                            }
+                        }
+                        if let Some(payload) = resp.dnd_release_payload::<usize>() {
+                            let from = *payload;
+                            if from != page {
+                                let above = ui
+                                    .input(|i| i.pointer.latest_pos())
+                                    .is_some_and(|pos| pos.y < rect.center().y);
+                                let mut to = if above { page } else { page + 1 };
+                                if from < to {
+                                    to -= 1;
+                                }
+                                moved = Some((from, to));
+                            }
+                        }
                         let stroke = if page == current {
                             egui::Stroke::new(2.0, theme::BLUE)
                         } else {
@@ -814,6 +977,10 @@ impl SuniApp {
             });
         if let Some(page) = clicked {
             self.go_to_page(page);
+        }
+        if let Some((from, to)) = moved {
+            self.worker.send(Request::Edit(EditOp::Move { from, to }));
+            self.go_to_page(to);
         }
     }
 
@@ -1168,7 +1335,7 @@ impl eframe::App for SuniApp {
                 .default_size(48.0)
                 .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
                 .show(ui, |ui| self.right_rail(&ctx, ui));
-            if self.settings.show_thumbnails {
+            if self.settings.show_thumbnails && !self.organize.active {
                 egui::Panel::left("thumbnails")
                     .resizable(true)
                     .default_size(170.0)
@@ -1176,7 +1343,22 @@ impl eframe::App for SuniApp {
                     .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
             }
         }
-        if self.document.is_some() {
+        if self.document.is_some() && self.organize.active {
+            let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
+            egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
+                self.error_banner(ui);
+                egui::Frame::new()
+                    .fill(p.surface)
+                    .inner_margin(egui::Margin::symmetric(8, 6))
+                    .show(ui, |ui| self.organize_toolbar(&ctx, ui));
+                ui.label(
+                    egui::RichText::new(sunipdf_i18n::tr(self.lang(), "organize.hint"))
+                        .size(12.0)
+                        .color(p.text_muted),
+                );
+                self.organize_grid(&ctx, ui);
+            });
+        } else if self.document.is_some() {
             let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
             egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
                 self.error_banner(ui);

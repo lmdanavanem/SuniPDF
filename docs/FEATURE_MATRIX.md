@@ -46,12 +46,12 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | Rotation et suppression **Faites** (moteur + CLI, UI P2) ; insertion/déplacement planifiés |
+| Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI) sauf pages vierges |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (moteur + CLI `merge`) ; signets planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (CLI `split --every`, `extract --pages`) |
 | Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (`FPDF_ImportPages`) ; préservation à vérifier avec qpdf |
-| Réorganisation par glisser-déposer | Déclaré | Planifié (P2) |
-| Undo/redo nommé survivant à la sauvegarde | Déclaré | Planifié (P2) |
+| Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
+| Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
 | Traitement par lots | Déclaré (CLI batch) | Planifié (P4/P5) |
 

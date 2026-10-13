@@ -70,6 +70,11 @@ Le zoom « ajuster à la largeur/page » est recalculé à chaque frame ; l'éch
 
 ## Registre de commandes (SUNI-010, livré)
 
+Annulation : chaque modification de pages passe par `worker.rs::State::edit`, qui prend un instantané
+(`Document::snapshot`, octets PDF) avant d'appliquer l'opération ; `Undo`/`Redo` rechargent l'instantané
+(`Document::restore`). Journal plafonné (50 entrées, 512 Mo). Simple, générique, borné en mémoire ;
+un journal de commandes nommées viendra si la mémoire devient contraignante.
+
 `crates/sunipdf-core/src/command.rs` : `Command` (enum), `REGISTRY` (tableau constant : identifiant stable,
 clé i18n du libellé, clé i18n du raccourci, `needs_document`, menu). Données pures, sans dépendance UI.
 - L'application construit ses menus Fichier / Affichage / Aide depuis le registre et route menus **et**
