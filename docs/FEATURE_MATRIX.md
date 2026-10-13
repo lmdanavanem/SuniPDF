@@ -21,7 +21,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** (sélection rectangulaire, lignes fusionnées) | ordre de lecture complexe planifié |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
-| Signets (outline) | Déclaré | Planifié (P2) | |
+| Signets (outline) | Déclaré | **Fait** (panneau, navigation ; édition planifiée) | |
 | Étiquettes de pages | Déclaré | Planifié (P3) | |
 | Historique de navigation, onglets rouverts | Déclaré | Fichiers récents **Faits** (accueil) ; historique de navigation planifié (P3) | |
 | Mode lecture / plein écran | Déclaré | Planifié (P3) | |
@@ -72,10 +72,10 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| Ouvrir chiffré, honorer les permissions | Déclaré | **Fait** (ouverture) ; permissions P5 |
-| Ajouter/modifier mot de passe, AES-256 | Déclaré | Planifié (P5) : PDFium ne chiffre pas → `lopdf`/crate dédié + vérification qpdf |
+| Ouvrir chiffré, honorer les permissions | Déclaré | **Fait** (ouverture ; permissions affichées dans les propriétés) |
+| Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions) via `lopdf`, relu par PDFium ; vérification qpdf à ajouter |
 | Caviardage irréversible | Déclaré (crate redact) | Planifié (P5) avec test d'absence des données |
-| Nettoyage des métadonnées | Déclaré | Planifié (P5) |
+| Nettoyage des métadonnées | Déclaré | **Fait** (Info + XMP) |
 | Signature manuscrite (image) | Déclaré | Planifié (P3), jamais présentée comme signature certifiée |
 | Signature numérique CMS/PKCS#12, horodatage | Déclaré | Planifié (P5) |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
