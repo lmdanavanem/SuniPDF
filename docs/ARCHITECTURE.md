@@ -68,6 +68,14 @@ Le zoom « ajuster à la largeur/page » est recalculé à chaque frame ; l'éch
 | `sunipdf-platform` | Explorateur Windows, associations, impression, DPI | P5 |
 | `sunipdf-ui` | composants egui réutilisables (si l'app grossit) | P3 |
 
+## Onglets (SUNI-012a)
+
+Le moteur ne tient qu'un document actif. Un changement d'onglet envoie `Suspend` (le moteur renvoie
+les octets du document, son mot de passe et son historique d'annulation) puis `Resume`/`ResumeDoc` (rechargement
+depuis les octets via `Engine::open_bytes`). L'état d'interface du document (page, zoom, miniatures, recherche,
+sélection, annotations, signets…) est échangé par `tabs.rs::take_tab` / `put_tab`. Coût : une sérialisation
+PDFium par changement d'onglet ; mémoire : un instantané par onglet inactif.
+
 ## Registre de commandes (SUNI-010, livré)
 
 Annulation : chaque modification de pages passe par `worker.rs::State::edit`, qui prend un instantané

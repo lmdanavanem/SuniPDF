@@ -1,4 +1,4 @@
-# Lance l'application, capture sa fenêtre en PNG, puis la ferme. Outil de développement/QA visuelle.
+﻿# Lance l'application, capture sa fenÃªtre en PNG, puis la ferme. Outil de dÃ©veloppement/QA visuelle.
 # Usage : .\scripts\dev-screenshot.ps1 -Out capture.png [-Pdf fichier.pdf] [-Delay 4] [-Exe target\debug\sunipdf.exe]
 param(
     [string]$Out = "capture.png",
@@ -6,9 +6,9 @@ param(
     [double]$Delay = 4,
     [string]$Exe = "",
     [string]$Keys = "",
-    # Identifiants de commandes exécutés après l'ouverture (ex. "view.organize,edit.find").
+    # Identifiants de commandes exÃ©cutÃ©s aprÃ¨s l'ouverture (ex. "view.organize,edit.find").
     [string]$Commands = "",
-    # Glissement souris relatif à la fenêtre : "x1,y1,x2,y2" (points logiques).
+    # Glissement souris relatif Ã  la fenÃªtre : "x1,y1,x2,y2" (points logiques).
     [string]$Drag = ""
 )
 $ErrorActionPreference = "Stop"
@@ -30,13 +30,13 @@ public static class Win {
 }
 "@
 if ($Commands) { $env:SUNIPDF_STARTUP_COMMANDS = $Commands } else { Remove-Item Env:SUNIPDF_STARTUP_COMMANDS -ErrorAction SilentlyContinue }
-$args_ = @(); if ($Pdf) { $args_ = @($Pdf) }
+$args_ = @(); if ($Pdf) { $args_ = $Pdf.Split(";") | ForEach-Object { "`"$_`"" } }
 $proc = if ($args_.Count -gt 0) { Start-Process -FilePath $Exe -ArgumentList $args_ -PassThru } else { Start-Process -FilePath $Exe -PassThru }
 try {
     Start-Sleep -Seconds $Delay
     $proc.Refresh()
     $h = $proc.MainWindowHandle
-    if ($h -eq [IntPtr]::Zero) { throw "Fenêtre introuvable (processus $($proc.Id))." }
+    if ($h -eq [IntPtr]::Zero) { throw "FenÃªtre introuvable (processus $($proc.Id))." }
     # Premier plan + position (0,0) sans redimensionner (SWP_NOSIZE=1, SWP_SHOWWINDOW=0x40), HWND_TOPMOST=-1.
     [Win]::ShowWindow($h, 5) | Out-Null
     [Win]::SetWindowPos($h, [IntPtr](-1), 0, 0, 0, 0, 0x41) | Out-Null

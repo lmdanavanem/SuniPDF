@@ -1,0 +1,54 @@
+# Livraison Windows : portable ZIP x64 + ARM64, MSI x64 (WiX 3 préinstallé sur windows-latest).
+# Déclenchée par un tag v* ou à la main. Non encore exécutée : à valider au premier tag.
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Portable (${{ matrix.arch }})
+        run: .\scripts\package-portable.ps1 -Arch ${{ matrix.arch }}
+      - name: MSI (x64 seulement)
+        if: matrix.arch == 'x64'
+        run: .\scripts\package-msi.ps1 -Arch x64
+      - name: Signature de code (si certificat fourni)
+        if: matrix.arch == 'x64' && env.SIGN_PFX_BASE64 != ''
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+        run: |
+          [IO.File]::WriteAllBytes("sign.pfx", [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match "x64" } | Select-Object -First 1 -ExpandProperty FullName
+          & $signtool sign /f sign.pfx /p $env:SIGN_PFX_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 (Get-ChildItem dist\*.msi).FullName
+          Remove-Item sign.pfx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunipdf-${{ matrix.arch }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+            dist/*.msi
+  publish:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

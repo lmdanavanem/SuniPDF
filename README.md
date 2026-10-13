@@ -16,7 +16,13 @@ mot de passe, glisser-déposer, thèmes clair/sombre, CLI `info`/`render`. Voir 
 - PDFium : téléchargé par `scripts\fetch-pdfium.ps1` (binaires bblanchon/pdfium-binaries, BSD-3-Clause).
 - Python 3 (optionnel, régénération des PDF de test).
 
-## Démarrage
+## Installation (utilisateurs)
+
+- Portable : `scripts\package-portable.ps1` produit `dist\SuniPDF-<version>-win-x64-portable.zip` (+ SHA256). Décompresser et lancer `sunipdf.exe`.
+- MSI : `scripts\package-msi.ps1` (WiX v3 requis) ou artefact de `release.yml`.
+- Guides : `docs/USER_GUIDE.fr.md`, `docs/USER_GUIDE.en.md`.
+
+## Démarrage (développeurs)
 
 ```powershell
 cd C:\dev_suniworks\SuniPDF

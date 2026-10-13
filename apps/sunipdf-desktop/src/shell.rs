@@ -164,6 +164,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::CreateFromImages => (glyph::PICTURE, "🖼"),
         Command::ExportImages => (glyph::PICTURE, "🖼"),
         Command::Optimize => (glyph::OPTIMIZE, "⤓"),
+        Command::NextTab | Command::PrevTab => (glyph::DOCUMENT, "⇥"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -205,30 +206,68 @@ impl SuniApp {
                 )
                 .on_hover_text(tr(lang, "tabs.home"));
             if home.clicked() && !home_selected {
-                self.execute(ctx, Command::CloseDocument);
+                // Accueil sans fermer : le document actif est suspendu dans son onglet.
+                self.suspend_active();
+                self.update_title(ctx);
             }
-            if let Some(doc) = &self.document {
-                let name = file_name(&doc.info.path);
-                let title = if self.dirty {
-                    format!("{name} •")
+            let mut switch = None;
+            let mut close = None;
+            let active = self.tabs.active;
+            for (i, tab) in self.tabs.tabs.iter().enumerate() {
+                let is_active = active == Some(i);
+                let name = file_name(&tab.path);
+                let dirty = if is_active { self.dirty } else { tab.dirty };
+                let title = if dirty { format!("{name} •") } else { name };
+                let fill = if is_active {
+                    p.surface
                 } else {
-                    name
+                    egui::Color32::TRANSPARENT
                 };
-                Frame::new()
-                    .fill(p.surface)
-                    .stroke(Stroke::new(1.0, p.border))
+                let stroke = if is_active {
+                    Stroke::new(1.0, p.border)
+                } else {
+                    Stroke::NONE
+                };
+                let resp = Frame::new()
+                    .fill(fill)
+                    .stroke(stroke)
                     .corner_radius(6)
                     .inner_margin(Margin::symmetric(10, 4))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            ui.label(self.icon(glyph::DOCUMENT, "▤", 14.0).color(p.accent));
-                            ui.label(RichText::new(title).size(14.0));
-                            if self.icon_button(ui, glyph::CLOSE, "✕", tr(lang, "menu.file.close"))
-                            {
-                                self.execute(ctx, Command::CloseDocument);
+                            ui.label(self.icon(glyph::DOCUMENT, "▤", 14.0).color(if is_active {
+                                p.accent
+                            } else {
+                                p.text_muted
+                            }));
+                            ui.label(RichText::new(title).size(14.0).color(if is_active {
+                                p.text
+                            } else {
+                                p.text_muted
+                            }));
+                            if self.icon_button(ui, glyph::CLOSE, "✕", tr(lang, "tabs.close")) {
+                                close = Some(i);
                             }
                         });
-                    });
+                    })
+                    .response
+                    .interact(egui::Sense::click());
+                if resp.clicked() && !is_active {
+                    switch = Some(i);
+                }
+                if resp.hovered() && !is_active {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                }
+            }
+            if let Some(i) = close {
+                if active == Some(i) {
+                    self.execute(ctx, Command::CloseDocument);
+                } else {
+                    switch = Some(i);
+                }
+            }
+            if let Some(i) = switch {
+                self.switch_to(i);
             }
             let open =
                 ui.add(Button::new(format!("{}  {}", "+", tr(lang, "tabs.open"))).frame(false));
@@ -950,7 +989,12 @@ impl SuniApp {
                     }
                 }
                 (_, None, None) => {
-                    ui.label(muted(tr(lang, "status.ready").into()));
+                    if self.tabs.resuming.is_some() {
+                        ui.spinner();
+                        ui.label(muted(tr(lang, "tabs.switching").into()));
+                    } else {
+                        ui.label(muted(tr(lang, "status.ready").into()));
+                    }
                 }
             }
         });

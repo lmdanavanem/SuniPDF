@@ -3,7 +3,9 @@
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Lancer `scripts\start.ps1 -Pdf <un vrai PDF>` et valider la nouvelle interface (accueil, panneau d'outils, rail droit, palette Ctrl+K, thème sombre, FR/EN). Dire ce qui s'éloigne encore de la cible.
 2. ~~Installer les Build Tools~~ fait le 13/10 au soir.
-3. Pousser sur GitHub pour exécuter la CI (`.github/workflows/ci.yml`) une première fois.
+3. Pousser sur GitHub pour exécuter la CI (`ci.yml`) puis créer un tag `v0.1.0` pour `release.yml` (portable x64/ARM64, MSI x64).
+4. En session administrateur : `winget install WiXToolset.WiXToolset` pour construire le MSI localement (`scripts\package-msi.ps1`).
+5. `rustup target add aarch64-pc-windows-msvc` puis `scripts\package-portable.ps1 -Arch arm64` pour vérifier la compilation ARM64.
 
 ## SUNI-012 — Affichage continu + onglets (owner : UI-UX)
 Vue continue avec virtualisation (seules les pages visibles sont rendues) ; onglets multi-documents ; raccourcis.

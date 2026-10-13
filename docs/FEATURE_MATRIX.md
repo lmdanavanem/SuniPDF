@@ -15,7 +15,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Navigation page/précédente/suivante/aller à | Déclaré | **Fait** (UI) | Clavier + barre d'outils |
 | Zoom, ajuster largeur/page, taille réelle | Déclaré | **Fait** (UI) | Rendu à la résolution physique (DPI) |
 | Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, générations anti-obsolescence |
-| Onglets multi-documents | Déclaré | Planifié (P2) | |
+| Onglets multi-documents | Déclaré | **Fait** (suspension des documents inactifs, état d'interface conservé) | |
 | Affichage continu, double page, rotation de vue | Déclaré | Planifié (P2) | |
 | Rendu en tuiles, cache plafonné | Déclaré | Cache **Fait** (LRU 256 Mo, pré-rendu) ; tuiles planifiées (P2) | |
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |

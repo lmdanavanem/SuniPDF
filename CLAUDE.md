@@ -34,6 +34,9 @@ cargo run -p sunipdf-cli -- info fichier.pdf
 cargo run -p sunipdf-cli -- render fichier.pdf --page 1 --scale 2 --out page1.png
 .\scripts\check-i18n.ps1
 python -I scripts\make_fixtures.py crates\sunipdf-core\tests\fixtures   # régénérer les PDF de test
+python -I scripts\make_icon.py assets\icon                          # régénérer l'icône
+.\scripts\package-portable.ps1 -Arch x64                          # ZIP portable + SHA256 (release)
+.\scripts\package-msi.ps1 -Arch x64                               # MSI (WiX v3 requis)
 ```
 Cible MSVC active (Build Tools installés). Repli GNU + WinLibs documenté dans `scripts/dev-env.ps1` si un poste n'a pas de droits admin.
 

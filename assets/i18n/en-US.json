@@ -346,5 +346,11 @@
   "home.card.convert.title": "Convert",
   "home.card.convert.desc": "Images → PDF · PDF → PNG · Optimize",
   "toolbar.convert": "Convert",
-  "menu.convert": "Convert"
+  "menu.convert": "Convert",
+  "tabs.close": "Close tab",
+  "menu.view.next_tab": "Next Tab",
+  "menu.view.prev_tab": "Previous Tab",
+  "shortcut.next_tab": "Ctrl+Tab",
+  "shortcut.prev_tab": "Ctrl+Shift+Tab",
+  "tabs.switching": "Switching tab…"
 }

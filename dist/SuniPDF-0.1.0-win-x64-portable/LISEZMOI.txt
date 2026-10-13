@@ -1,0 +1,4 @@
+﻿SuniPDF 0.1.0 (portable, Windows x64)
+Lancer sunipdf.exe. Aucune installation, aucune tÃ©lÃ©mÃ©trie. Les prÃ©fÃ©rences sont dans %APPDATA%\SuniPDF.
+Ligne de commande : sunipdf-cli.exe --help
+Licences : dossier licenses\

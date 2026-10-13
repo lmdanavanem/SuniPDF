@@ -18,6 +18,15 @@ const CACHE_BYTES: usize = 256 * 1024 * 1024;
 const UNDO_MAX_ENTRIES: usize = 50;
 const UNDO_MAX_BYTES: usize = 512 * 1024 * 1024;
 
+/// Document suspendu (onglet inactif) : octets, mot de passe, chemin, historique d'annulation.
+pub struct SuspendedDoc {
+    pub bytes: Vec<u8>,
+    pub password: Option<String>,
+    pub path: PathBuf,
+    pub undo: Vec<Vec<u8>>,
+    pub redo: Vec<Vec<u8>>,
+}
+
 /// Tâche de fichiers (non annulable : produit de nouveaux fichiers, le document ouvert est intact).
 pub enum BatchOp {
     Combine { inputs: Vec<PathBuf>, out: PathBuf },
@@ -132,6 +141,11 @@ pub enum Request {
     Properties,
     Bookmarks,
     Batch(BatchOp),
+    /// Suspend le document actif (renvoie `Suspended`).
+    Suspend,
+    /// Annonce la reprise de l'onglet `usize` ; le document suit dans `ResumeDoc`.
+    Resume(usize),
+    ResumeDoc(SuspendedDoc),
     Undo,
     Redo,
     Save {
@@ -185,6 +199,8 @@ pub enum Response {
     Properties(Properties),
     Bookmarks(Vec<Bookmark>),
     BatchDone(BatchResult),
+    Suspended(SuspendedDoc),
+    Resumed(DocState),
     Saved {
         path: PathBuf,
     },
@@ -565,6 +581,45 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::Batch(op) => {
                 Response::BatchDone(run_batch(&engine, state.document.as_ref(), op))
+            }
+            Request::Suspend => {
+                let Some(doc) = state.document.take() else {
+                    continue;
+                };
+                state.invalidate();
+                let suspended = SuspendedDoc {
+                    bytes: match doc.snapshot() {
+                        Ok(b) => b,
+                        Err(e) => {
+                            log::error!("suspension impossible : {e}");
+                            continue;
+                        }
+                    },
+                    password: doc.password().map(str::to_owned),
+                    path: doc.info().path.clone(),
+                    undo: std::mem::take(&mut state.undo),
+                    redo: std::mem::take(&mut state.redo),
+                };
+                Response::Suspended(suspended)
+            }
+            Request::Resume(index) => {
+                log::debug!("reprise de l'onglet {index}");
+                continue;
+            }
+            Request::ResumeDoc(s) => {
+                match engine.open_bytes(s.bytes, s.password.as_deref(), &s.path) {
+                    Ok(doc) => {
+                        state.document = Some(doc);
+                        state.invalidate();
+                        state.undo = s.undo;
+                        state.redo = s.redo;
+                        Response::Resumed(state.doc_state().expect("document repris"))
+                    }
+                    Err(error) => Response::OpenFailed {
+                        path: s.path,
+                        error,
+                    },
+                }
             }
             Request::Properties => {
                 let Some(doc) = &state.document else { continue };

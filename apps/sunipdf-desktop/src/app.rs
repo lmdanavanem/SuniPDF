@@ -33,9 +33,9 @@ pub struct OpenDocument {
     pub page: usize,
 }
 
-struct PageTexture {
-    handle: egui::TextureHandle,
-    page: usize,
+pub struct PageTexture {
+    pub handle: egui::TextureHandle,
+    pub page: usize,
 }
 
 struct PasswordPrompt {
@@ -48,7 +48,6 @@ struct PasswordPrompt {
 enum PendingAction {
     Close,
     Quit,
-    Open(PathBuf),
 }
 
 enum UnsavedChoice {
@@ -57,6 +56,7 @@ enum UnsavedChoice {
     Cancel,
 }
 
+#[derive(Default)]
 pub struct FindState {
     pub open: bool,
     query: String,
@@ -85,15 +85,16 @@ pub struct SuniApp {
     pub opening: Option<PathBuf>,
     pub zoom: Zoom,
     pub effective_zoom: f32,
-    texture: Option<PageTexture>,
-    generation: u64,
+    pub texture: Option<PageTexture>,
+    pub generation: u64,
     pub in_flight: Option<(usize, f32)>,
-    last_rendered: Option<(usize, f32)>,
+    pub last_rendered: Option<(usize, f32)>,
     pub page_input: String,
     pub error: Option<&'static str>,
     password_prompt: Option<PasswordPrompt>,
     show_about: bool,
-    pending_file: Option<PathBuf>,
+    /// Fichiers à ouvrir dès que le moteur est prêt (arguments de ligne de commande), un onglet chacun.
+    pending_files: Vec<PathBuf>,
     pub thumbnails: HashMap<usize, egui::TextureHandle>,
     pub thumbs_pending: HashSet<usize>,
     pub thumb_px: u32,
@@ -112,6 +113,7 @@ pub struct SuniApp {
     pub annotate: crate::annotate::AnnotateState,
     pub docinfo: crate::docinfo::DocInfoState,
     pub tools: crate::tools::ToolsState,
+    pub tabs: crate::tabs::TabsState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -119,7 +121,7 @@ pub struct SuniApp {
 }
 
 impl SuniApp {
-    pub fn new(cc: &eframe::CreationContext<'_>, initial_file: Option<PathBuf>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>, initial_files: Vec<PathBuf>) -> Self {
         let settings = Settings::load();
         let has_icons = crate::icons::install(&cc.egui_ctx);
         theme::apply(&cc.egui_ctx, settings.dark_theme);
@@ -140,6 +142,7 @@ impl SuniApp {
                 split_every: 1,
                 ..Default::default()
             },
+            tabs: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -165,7 +168,7 @@ impl SuniApp {
             error: None,
             password_prompt: None,
             show_about: false,
-            pending_file: initial_file,
+            pending_files: initial_files,
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
             thumb_px: 0,
@@ -208,15 +211,16 @@ impl SuniApp {
 
     pub fn open_path(&mut self, path: PathBuf, password: Option<String>) {
         if !matches!(self.engine, EngineState::Ready) {
-            self.pending_file = Some(path);
+            self.pending_files.push(path);
             return;
         }
-        if self.dirty && self.unsaved_prompt.is_none() {
-            self.unsaved_prompt = Some(PendingAction::Open(path));
+        if self.tabs.resuming.is_some() {
             return;
         }
         self.error = None;
-        self.close_document(false);
+        if self.document.is_some() {
+            self.suspend_active();
+        }
         self.opening = Some(path.clone());
         self.worker.send(Request::Open { path, password });
     }
@@ -246,6 +250,7 @@ impl SuniApp {
         if announce {
             self.error = None;
         }
+        self.on_active_closed();
     }
 
     pub fn go_to_page(&mut self, page: usize) {
@@ -313,9 +318,7 @@ impl SuniApp {
             match response {
                 Response::EngineReady => {
                     self.engine = EngineState::Ready;
-                    if let Some(path) = self.pending_file.take() {
-                        self.open_path(path, None);
-                    }
+                    self.open_next_pending();
                 }
                 Response::EngineFailed(e) => {
                     self.error = Some(error_key(&e));
@@ -330,17 +333,28 @@ impl SuniApp {
                     self.persist_settings();
                     self.can_undo = false;
                     self.can_redo = false;
+                    let opened_path = info.path.clone();
                     self.document = Some(OpenDocument { info, page: 0 });
+                    self.register_opened_tab(opened_path);
                     self.dirty = false;
                     self.status_msg = None;
                     self.update_title(ctx);
                     self.worker.send(Request::Bookmarks);
-                    for command in std::mem::take(&mut self.startup_commands) {
-                        self.execute(ctx, command);
+                    if self.pending_files.is_empty() {
+                        for command in std::mem::take(&mut self.startup_commands) {
+                            self.execute(ctx, command);
+                        }
+                    } else {
+                        self.open_next_pending();
                     }
                 }
                 Response::OpenFailed { path, error } => {
                     self.opening = None;
+                    if let Some(i) = self.tabs.resuming.take() {
+                        if i < self.tabs.tabs.len() {
+                            self.tabs.tabs.remove(i);
+                        }
+                    }
                     if matches!(error, EngineError::PasswordRequired) {
                         let wrong = self
                             .password_prompt
@@ -441,6 +455,8 @@ impl SuniApp {
                     }
                 }
                 Response::BatchDone(result) => self.on_batch_done(result),
+                Response::Suspended(s) => self.on_suspended(s),
+                Response::Resumed(state) => self.on_resumed(state, ctx),
                 Response::Properties(props) => {
                     self.docinfo.metadata_edit = props.metadata.clone();
                     self.docinfo.properties = Some(props);
@@ -680,6 +696,12 @@ impl SuniApp {
                 Command::InsertPages,
             );
             key(Modifiers::COMMAND, Key::K, Command::CommandPalette);
+            key(
+                Modifiers::COMMAND | Modifiers::SHIFT,
+                Key::Tab,
+                Command::PrevTab,
+            );
+            key(Modifiers::COMMAND, Key::Tab, Command::NextTab);
         });
         for command in commands {
             self.execute(ctx, command);
@@ -687,6 +709,18 @@ impl SuniApp {
     }
 
     /// Point d'entrée unique de toutes les commandes (menus, clavier, future palette / automatisation).
+    /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
+    fn open_next_pending(&mut self) {
+        if !self.pending_files.is_empty() {
+            let path = self.pending_files.remove(0);
+            self.open_path(path, None);
+        }
+    }
+
+    pub fn request_quit_prompt(&mut self) {
+        self.unsaved_prompt = Some(PendingAction::Quit);
+    }
+
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
         if command.info().needs_document && self.document.is_none() {
@@ -704,6 +738,9 @@ impl SuniApp {
             Command::Quit => {
                 if self.dirty {
                     self.unsaved_prompt = Some(PendingAction::Quit);
+                } else if let Some(i) = self.any_background_dirty() {
+                    self.tabs.quit_pending = true;
+                    self.switch_to(i);
                 } else {
                     self.allow_close = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -863,6 +900,8 @@ impl SuniApp {
                     self.close_find();
                 }
             }
+            Command::NextTab => self.next_tab(1),
+            Command::PrevTab => self.next_tab(-1),
             Command::ToggleTools => {
                 self.show_tools = !self.show_tools;
                 self.settings.show_tools = self.show_tools;
@@ -1374,10 +1413,14 @@ impl SuniApp {
         match action {
             PendingAction::Close => self.close_document(true),
             PendingAction::Quit => {
-                self.allow_close = true;
-                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                if let Some(i) = self.any_background_dirty() {
+                    self.tabs.quit_pending = true;
+                    self.switch_to(i);
+                } else {
+                    self.allow_close = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
             }
-            PendingAction::Open(path) => self.open_path(path, None),
         }
     }
 
@@ -1592,7 +1635,10 @@ impl eframe::App for SuniApp {
                     self.home(&ctx, ui);
                 });
         }
-        if ctx.input(|i| i.viewport().close_requested()) && self.dirty && !self.allow_close {
+        if ctx.input(|i| i.viewport().close_requested())
+            && (self.dirty || self.any_background_dirty().is_some())
+            && !self.allow_close
+        {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.unsaved_prompt = Some(PendingAction::Quit);
         }

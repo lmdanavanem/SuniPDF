@@ -48,6 +48,8 @@ pub enum Command {
     CreateFromImages,
     ExportImages,
     Optimize,
+    NextTab,
+    PrevTab,
     About,
 }
 
@@ -231,6 +233,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         "view.organize",
         "menu.view.organize",
         Some("shortcut.organize"),
+        true,
+        View
+    ),
+    cmd!(
+        NextTab,
+        "view.next_tab",
+        "menu.view.next_tab",
+        Some("shortcut.next_tab"),
+        true,
+        View
+    ),
+    cmd!(
+        PrevTab,
+        "view.prev_tab",
+        "menu.view.prev_tab",
+        Some("shortcut.prev_tab"),
         true,
         View
     ),

@@ -135,9 +135,29 @@ impl Engine {
         }
     }
 
+    /// Ouvre un document depuis des octets en mémoire (instantané suspendu), en conservant `path`.
+    pub fn open_bytes(
+        &self,
+        bytes: Vec<u8>,
+        password: Option<&str>,
+        path: &Path,
+    ) -> Result<Document<'_>, EngineError> {
+        let inner = self.pdfium.load_pdf_from_byte_vec(bytes, password)?;
+        self.wrap(inner, path, password)
+    }
+
     /// Ouvre un document. `password` : mot de passe utilisateur ou propriétaire.
     pub fn open(&self, path: &Path, password: Option<&str>) -> Result<Document<'_>, EngineError> {
         let inner = self.pdfium.load_pdf_from_file(path, password)?;
+        self.wrap(inner, path, password)
+    }
+
+    fn wrap<'a>(
+        &'a self,
+        inner: PdfDocument<'a>,
+        path: &Path,
+        password: Option<&str>,
+    ) -> Result<Document<'a>, EngineError> {
         let page_sizes = inner
             .pages()
             .page_sizes()?

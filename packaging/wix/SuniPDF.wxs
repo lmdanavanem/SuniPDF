@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Installateur MSI SuniPDF (WiX Toolset v3). Construit par scripts/package-msi.ps1 (candle + light).
+  Variables : Version, SourceDir (dossier portable préparé), Arch (x64|arm64).
+  Installation par machine dans Program Files, raccourci Menu Démarrer, association .pdf facultative
+  (« Ouvrir avec » uniquement : SuniPDF ne s'impose pas comme lecteur par défaut).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?if $(var.Arch) = "arm64" ?>
+    <?define Platform = "arm64" ?>
+    <?define ProgramFilesFolder = "ProgramFiles64Folder" ?>
+  <?else ?>
+    <?define Platform = "x64" ?>
+    <?define ProgramFilesFolder = "ProgramFiles64Folder" ?>
+  <?endif ?>
+
+  <Product Id="*" Name="SuniPDF" Language="1036" Version="$(var.Version)" Manufacturer="SuniWorks"
+           UpgradeCode="7C3C3E0E-5B6A-4C2B-9F1E-2A0F1D4B9C11">
+    <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="$(var.Platform)"
+             Description="SuniPDF — lecteur et éditeur PDF pour Windows" Languages="1036" SummaryCodepage="1252" />
+    <MajorUpgrade DowngradeErrorMessage="Une version plus récente de SuniPDF est déjà installée." />
+    <MediaTemplate EmbedCab="yes" />
+    <Icon Id="SuniPDF.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="SuniPDF.ico" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+
+    <Feature Id="Main" Title="SuniPDF" Level="1" Absent="disallow">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+    <Feature Id="OpenWith" Title="Ouvrir avec SuniPDF (fichiers .pdf)" Level="1">
+      <ComponentRef Id="OpenWithPdf" />
+    </Feature>
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="$(var.ProgramFilesFolder)">
+        <Directory Id="INSTALLFOLDER" Name="SuniPDF">
+          <Directory Id="LicensesFolder" Name="licenses" />
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="AppMenuFolder" Name="SuniPDF" />
+      </Directory>
+    </Directory>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Component Id="MainExe" Guid="*" Win64="yes">
+        <File Id="SunipdfExe" Source="$(var.SourceDir)\sunipdf.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="CliExe" Guid="*" Win64="yes">
+        <File Id="SunipdfCliExe" Source="$(var.SourceDir)\sunipdf-cli.exe" KeyPath="yes" />
+      </Component>
+      <Component Id="PdfiumDll" Guid="*" Win64="yes">
+        <File Id="PdfiumDll" Source="$(var.SourceDir)\pdfium.dll" KeyPath="yes" />
+      </Component>
+      <Component Id="ReadMe" Guid="*" Win64="yes">
+        <File Id="LisezMoi" Source="$(var.SourceDir)\LISEZMOI.txt" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <DirectoryRef Id="AppMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="4D1F6B2A-9C3E-4F7B-8A1D-5E2C7B9F0A21" Win64="yes">
+        <Shortcut Id="StartMenuSuniPDF" Name="SuniPDF" Description="Lecteur et éditeur PDF"
+                  Target="[INSTALLFOLDER]sunipdf.exe" WorkingDirectory="INSTALLFOLDER" Icon="SuniPDF.ico" />
+        <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
+        <RegistryValue Root="HKCU" Key="Software\SuniWorks\SuniPDF" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="OpenWithPdf" Guid="A2B7D4C1-3E5F-4A6B-9C8D-1F2E3D4C5B6A" Win64="yes">
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\sunipdf.exe\shell\open\command"
+                       Type="string" Value="&quot;[INSTALLFOLDER]sunipdf.exe&quot; &quot;%1&quot;" KeyPath="yes" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\sunipdf.exe" Name="FriendlyAppName" Type="string" Value="SuniPDF" />
+        <RegistryValue Root="HKLM" Key="Software\Classes\.pdf\OpenWithList\sunipdf.exe" Type="string" Value="" />
+      </Component>
+    </DirectoryRef>
+  </Product>
+</Wix>
