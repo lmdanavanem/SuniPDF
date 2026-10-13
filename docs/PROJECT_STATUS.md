@@ -18,13 +18,14 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] i18n fr-FR / en-US : 76 clés, changement à chaud, préférence persistée (écriture atomique), thème clair/sombre.
 - [x] Rendu hors thread UI (thread moteur unique, générations, un rendu en vol).
 - [x] CLI : `info` (JSON), `render` (PNG), `commands` (registre), codes d'erreur stables, codes de sortie 3/4/5.
+- [x] SUNI-021 Annotations : sélection de texte par glissement et copie (Ctrl+C), outils surligner / souligner / barrer / note (palette flottante, raccourcis V H U X N), panneau Commentaires (F7, liste par page, suppression), catégorie « Annoter », toutes annulables ; moteur `sunipdf-core::annot` (PDFium génère les apparences) ; 1 test moteur avec vérification du rendu.
 - [x] SUNI-014c Annuler/Rétablir par instantanés (Ctrl+Z / Ctrl+Y, 50 niveaux, 512 Mo max), insertion de pages depuis un autre PDF, déplacement de pages (glisser-déposer dans les miniatures et dans la vue Organiser, boutons avant/arrière), vue **Organiser les pages** (F8 : grille, sélection multiple clic/Ctrl/Maj, actions groupées), variable `SUNIPDF_STARTUP_COMMANDS` pour l'automatisation des captures ; CLI `insert`, `move` ; 1 test moteur (insertion, déplacement, instantané, chiffré).
 - [x] SUNI-020 (UI) Coquille façon PDFCraft : barre d'onglets (accueil, document, + Ouvrir, langue, aide, thème), barre d'outils (Menu, catégories Tous les outils / Lire / Pages, recherche de commandes), panneau « Tous les outils », page d'accueil (cartes, fichiers récents persistés, confidentialité), rail droit (miniatures, recherche, page, zoom, ajustements, rotation), palette de commandes Ctrl+K, polices système Segoe UI + Segoe Fluent Icons chargées à l'exécution, thèmes clair/sombre retravaillés. Captures vérifiées par `scripts/dev-screenshot.ps1`.
 - [x] SUNI-014b (UI) Menu Pages (pivoter à droite/gauche, supprimer la page), Enregistrer / Enregistrer sous (Ctrl+S, Ctrl+Maj+S), état « modifié » dans le titre, invite Enregistrer / Ne pas enregistrer / Annuler avant fermeture, ouverture ou quitter (y compris la croix de la fenêtre). 20 commandes au registre.
 - [x] SUNI-014 (moteur + CLI) Fusion, extraction, division, rotation, suppression de page, enregistrement atomique (`sunipdf-core::pages`, `write_atomic` partagé avec les préférences) ; CLI `merge`, `extract`, `split`, `rotate` ; 4 tests.
 - [x] SUNI-013 Recherche plein texte (Ctrl+F, barre de recherche, casse, occurrence suivante/précédente, surbrillance sur la page) et extraction de texte ; CLI `text` et `search` ; 1 test moteur.
 - [x] SUNI-011 Cache LRU de rendu plafonné (256 Mo, `sunipdf-core::cache`), pré-rendu des pages voisines, panneau de miniatures virtualisé (F4), 2 tests cache.
-- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 28 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
+- [x] SUNI-010 Registre de commandes (`sunipdf-core::command`) : 35 commandes, menus et raccourcis routés par `SuniApp::execute`, 3 tests.
 - [x] Tests exécutés : `cargo test --workspace` → voir « Dernière exécution ».
 - [x] Test de fumée : `sunipdf.exe two-pages.pdf` démarre et reste actif (fenêtre non inspectée visuellement par l'agent).
 - [x] Captures d'écran réelles (accueil, document, palette) vérifiées par l'agent via `scripts/dev-screenshot.ps1` ; validation finale par l'utilisateur à faire.
@@ -35,7 +36,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 ## Dernière exécution (2026-10-13 soir, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
-| `cargo test -p sunipdf-core` | 17/17 OK (2 pages + 2 cache + 2 registre + fusion/extraction/division + rotation/suppression/enregistrement + insertion/déplacement/instantanés + texte/recherche + 7 moteur : fixture 2 pages, chiffré RC4 avec/sans mot de passe, fichier invalide, fichier absent, page hors limites, rendu trop grand, DLL absente) |
+| `cargo test -p sunipdf-core` | 19/19 OK (1 annot + 2 pages + 2 cache + 2 registre + sélection/annotations + fusion/extraction/division + rotation/suppression/enregistrement + insertion/déplacement/instantanés + texte/recherche + 7 moteur : fixture 2 pages, chiffré RC4 avec/sans mot de passe, fichier invalide, fichier absent, page hors limites, rendu trop grand, DLL absente) |
 | `cargo test -p sunipdf-i18n` | 6/6 OK (parité des clés, valeurs non vides, paramètres identiques, repli, codes, substitution) |
 | `cargo test -p sunipdf-desktop` | 5/5 OK (clés i18n utilisées, clés du registre, récents dédupliqués, clés d'erreur, préférences atomiques, utilitaires) |
 | `cargo test -p sunipdf-cli` | 1/1 OK (analyse des plages de pages) |
@@ -46,7 +47,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 
 
 ## Non réalisé (ne pas confondre avec « fait »)
-Onglets multiples, affichage continu, sélection/copie de texte, signets, annotations et édition de contenu, OCR, conversions, chiffrement à l'écriture, signatures, MSI, ARM64, benchmarks.
+Onglets multiples, affichage continu, signets, formes et dessin libre, édition du contenu existant, OCR, conversions, chiffrement à l'écriture, signatures, MSI, ARM64, benchmarks.
 
 ## Journal
 - 2026-10-13 : audit PDFCraft, choix PDFium (D005), squelette → tranche verticale 1, environnement GNU faute de MSVC (D008),

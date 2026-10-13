@@ -7,7 +7,9 @@ param(
     [string]$Exe = "",
     [string]$Keys = "",
     # Identifiants de commandes exécutés après l'ouverture (ex. "view.organize,edit.find").
-    [string]$Commands = ""
+    [string]$Commands = "",
+    # Glissement souris relatif à la fenêtre : "x1,y1,x2,y2" (points logiques).
+    [string]$Drag = ""
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -22,6 +24,7 @@ public static class Win {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 }
@@ -45,6 +48,23 @@ try {
     [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point((($r.Left + $r.Right) / 2), (($r.Top + $r.Bottom) / 2))
     Start-Sleep -Milliseconds 300
     if ($Keys) { Start-Sleep -Milliseconds 500; [System.Windows.Forms.SendKeys]::SendWait($Keys); Start-Sleep -Seconds 1.5 }
+    if ($Drag) {
+        $d = $Drag.Split(",") | ForEach-Object { [int]$_ }
+        $scale = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width / [System.Windows.Forms.SystemInformation]::VirtualScreen.Width
+        $x1 = $r.Left + $d[0]; $y1 = $r.Top + $d[1]; $x2 = $r.Left + $d[2]; $y2 = $r.Top + $d[3]
+        [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point($x1, $y1)
+        Start-Sleep -Milliseconds 200
+        [Win]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)   # LEFTDOWN
+        Start-Sleep -Milliseconds 150
+        $steps = 12
+        for ($i = 1; $i -le $steps; $i++) {
+            $x = $x1 + ($x2 - $x1) * $i / $steps; $y = $y1 + ($y2 - $y1) * $i / $steps
+            [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point([int]$x, [int]$y)
+            Start-Sleep -Milliseconds 30
+        }
+        [Win]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)   # LEFTUP
+        Start-Sleep -Seconds 1.5
+    }
     # DWMWA_EXTENDED_FRAME_BOUNDS = 9 : rectangle visible sans l'ombre invisible de Windows 10/11.
     if ([Win]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [Win]::GetWindowRect($h, [ref]$r) | Out-Null }
     $w = $r.Right - $r.Left; $hgt = $r.Bottom - $r.Top

@@ -38,6 +38,12 @@ pub mod glyph {
     pub const READ: &str = "\u{E736}";
     pub const PAGES: &str = "\u{E7C3}";
     pub const SEARCH_BOX: &str = "\u{E721}";
+    pub const SELECT: &str = "\u{E8E6}";
+    pub const HIGHLIGHT: &str = "\u{E7E6}";
+    pub const UNDERLINE: &str = "\u{E8DC}";
+    pub const STRIKE: &str = "\u{EDE0}";
+    pub const NOTE: &str = "\u{E70B}";
+    pub const COMMENT: &str = "\u{E90A}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

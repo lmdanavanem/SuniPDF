@@ -19,7 +19,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Affichage continu, double page, rotation de vue | Déclaré | Planifié (P2) | |
 | Rendu en tuiles, cache plafonné | Déclaré | Cache **Fait** (LRU 256 Mo, pré-rendu) ; tuiles planifiées (P2) | |
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
-| Sélection / copie de texte en ordre de lecture | Déclaré | Planifié (P2) | |
+| Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** (sélection rectangulaire, lignes fusionnées) | ordre de lecture complexe planifié |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | Planifié (P2) | |
 | Étiquettes de pages | Déclaré | Planifié (P3) | |
@@ -34,8 +34,8 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | Planifié (P2/P3) |
-| Fils de réponses, statut des commentaires | Déclaré | Planifié (P3) |
+| Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | Notes, surlignage, souligné, barré **Faits** ; formes, encre, zones de texte planifiés (P3) |
+| Fils de réponses, statut des commentaires | Déclaré | Panneau Commentaires **Fait** (liste, suppression) ; fils et statuts planifiés (P3) |
 | Ajout de texte / d'images | Déclaré | Planifié (P3) |
 | Modification de texte existant | Partiel (faible en CJK/bidi) | Planifié (P3, selon PDFium `FPDFText*` edit) |
 | Liens | Déclaré | Planifié (P3) |

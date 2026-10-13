@@ -7,7 +7,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
-    Document, DocumentInfo, Engine, EngineError, RenderCache, RenderedPage, TextMatch,
+    AnnotationInfo, Document, DocumentInfo, Engine, EngineError, MarkupKind, PointRect,
+    RenderCache, RenderedPage, TextMatch, TextSelection,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -35,6 +36,22 @@ pub enum EditOp {
         from: usize,
         to: usize,
     },
+    Markup {
+        page: usize,
+        kind: MarkupKind,
+        rects: Vec<PointRect>,
+        rgb: (u8, u8, u8),
+    },
+    Note {
+        page: usize,
+        x: f32,
+        y: f32,
+        text: String,
+    },
+    DeleteAnnotation {
+        page: usize,
+        index: usize,
+    },
 }
 
 pub enum Request {
@@ -58,6 +75,13 @@ pub enum Request {
         generation: u64,
     },
     Edit(EditOp),
+    TextInRect {
+        page: usize,
+        rect: PointRect,
+    },
+    Annotations {
+        page: usize,
+    },
     Undo,
     Redo,
     Save {
@@ -100,6 +124,14 @@ pub enum Response {
     /// Pages modifiées en mémoire : tailles rafraîchies, rendus invalidés.
     DocumentChanged(DocState),
     OperationFailed(EngineError),
+    TextSelected {
+        page: usize,
+        selection: TextSelection,
+    },
+    Annotations {
+        page: usize,
+        list: Vec<AnnotationInfo>,
+    },
     Saved {
         path: PathBuf,
     },
@@ -268,6 +300,14 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             .insert_pages_from(&source, password.as_deref(), &pages, at)
             .map(|_| ()),
         EditOp::Move { from, to } => doc.move_page(from, to),
+        EditOp::Markup {
+            page,
+            kind,
+            rects,
+            rgb,
+        } => doc.add_markup(page, kind, &rects, rgb),
+        EditOp::Note { page, x, y, text } => doc.add_note(page, x, y, &text),
+        EditOp::DeleteAnnotation { page, index } => doc.delete_annotation(page, index),
     }
 }
 
@@ -371,6 +411,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
             }
             Request::Edit(op) => state.edit(op),
+            Request::TextInRect { page, rect } => {
+                let Some(doc) = &state.document else { continue };
+                match doc.text_in_rect(page, rect) {
+                    Ok(selection) => Response::TextSelected { page, selection },
+                    Err(e) => {
+                        log::warn!("sélection impossible : {e}");
+                        continue;
+                    }
+                }
+            }
+            Request::Annotations { page } => {
+                let Some(doc) = &state.document else { continue };
+                let list = doc.annotations(page).unwrap_or_default();
+                Response::Annotations { page, list }
+            }
             Request::Undo => match state.undo_redo(true) {
                 Some(r) => r,
                 None => continue,

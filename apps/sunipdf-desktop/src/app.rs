@@ -10,7 +10,7 @@ use sunipdf_core::{Command, DocumentInfo, EngineError, Menu};
 use sunipdf_i18n::{tr, tr_args, Language};
 
 /// Points CSS par point PDF : à 100 %, une page de 612 pt occupe 816 px logiques (96 dpi).
-const SCREEN_PER_PDF_POINT: f32 = 96.0 / 72.0;
+pub const SCREEN_PER_PDF_POINT: f32 = 96.0 / 72.0;
 pub const ZOOM_STEPS: [f32; 12] = [
     0.25, 0.33, 0.5, 0.67, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0,
 ];
@@ -109,6 +109,7 @@ pub struct SuniApp {
     pub tool_tab: crate::shell::ToolTab,
     pub palette: PaletteState,
     pub organize: crate::organize::OrganizeState,
+    pub annotate: crate::annotate::AnnotateState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -131,6 +132,7 @@ impl SuniApp {
                 focus_requested: false,
             },
             organize: Default::default(),
+            annotate: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -225,6 +227,7 @@ impl SuniApp {
         self.thumbs_pending.clear();
         self.close_find();
         self.organize = Default::default();
+        self.annotate = Default::default();
         self.can_undo = false;
         self.can_redo = false;
         self.dirty = false;
@@ -398,9 +401,29 @@ impl SuniApp {
                     self.thumbs_pending.clear();
                     self.find.searched = None;
                     self.find.matches.clear();
+                    self.annotate.selection = None;
+                    self.annotate.annotations_page = None;
                     self.dirty = true;
                     self.status_msg = None;
                     self.update_title(ctx);
+                }
+                Response::TextSelected { page, selection } => match self.annotate.tool.markup() {
+                    Some((kind, rgb)) if !selection.rects.is_empty() => {
+                        self.worker.send(Request::Edit(EditOp::Markup {
+                            page,
+                            kind,
+                            rects: selection.rects,
+                            rgb,
+                        }));
+                        self.annotate.selection = None;
+                    }
+                    Some(_) => self.annotate.selection = None,
+                    None => self.annotate.selection = Some((page, selection)),
+                },
+                Response::Annotations { page, list } => {
+                    if self.annotate.annotations_page == Some(page) {
+                        self.annotate.annotations = list;
+                    }
                 }
                 Response::OperationFailed(e) => {
                     log::warn!("opération impossible : {e}");
@@ -507,6 +530,26 @@ impl SuniApp {
         if self.password_prompt.is_some() || self.show_about || self.unsaved_prompt.is_some() {
             return;
         }
+        if self.annotate.note_prompt.is_some() || ctx.memory(|m| m.focused().is_some()) {
+            // Un champ de saisie a le clavier : seuls les raccourcis avec Ctrl restent actifs.
+            let mut cmds = Vec::new();
+            ctx.input_mut(|i| {
+                for (k, c) in [
+                    (Key::O, Command::OpenDocument),
+                    (Key::S, Command::Save),
+                    (Key::K, Command::CommandPalette),
+                    (Key::F, Command::Find),
+                ] {
+                    if i.consume_key(Modifiers::COMMAND, k) {
+                        cmds.push(c);
+                    }
+                }
+            });
+            for c in cmds {
+                self.execute(ctx, c);
+            }
+            return;
+        }
         if self.palette.open {
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
@@ -592,6 +635,13 @@ impl SuniApp {
             key(Modifiers::COMMAND, Key::Delete, Command::DeletePage);
             key(Modifiers::NONE, Key::F9, Command::ToggleTools);
             key(Modifiers::NONE, Key::F8, Command::OrganizePages);
+            key(Modifiers::NONE, Key::F7, Command::ToggleComments);
+            key(Modifiers::COMMAND, Key::C, Command::CopyText);
+            key(Modifiers::NONE, Key::V, Command::ToolSelect);
+            key(Modifiers::NONE, Key::H, Command::ToolHighlight);
+            key(Modifiers::NONE, Key::U, Command::ToolUnderline);
+            key(Modifiers::NONE, Key::X, Command::ToolStrikeOut);
+            key(Modifiers::NONE, Key::N, Command::ToolNote);
             key(Modifiers::COMMAND, Key::Z, Command::Undo);
             key(Modifiers::COMMAND, Key::Y, Command::Redo);
             key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z, Command::Redo);
@@ -723,6 +773,22 @@ impl SuniApp {
                     self.organize.anchor = Some(to);
                 }
             }
+            Command::CopyText => self.copy_selection(ctx),
+            Command::ToolSelect
+            | Command::ToolHighlight
+            | Command::ToolUnderline
+            | Command::ToolStrikeOut
+            | Command::ToolNote => {
+                self.annotate.tool = crate::annotate::Tool::ALL
+                    .into_iter()
+                    .find(|t| t.command() == command)
+                    .unwrap_or_default();
+                self.annotate.drag = None;
+            }
+            Command::ToggleComments => {
+                self.annotate.comments_open = !self.annotate.comments_open;
+                self.annotate.annotations_page = None;
+            }
             Command::OrganizePages => {
                 self.organize.active = !self.organize.active;
                 if self.organize.active {
@@ -830,6 +896,9 @@ impl SuniApp {
         let total = doc.info.page_count();
         let name = file_name(&doc.info.path);
         self.request_render_if_needed(ctx);
+        self.refresh_annotations_if_needed();
+        let mut drag_event: Option<DragEvent> = None;
+        let palette_origin = ui.max_rect().min + egui::vec2(14.0, 14.0);
 
         egui::ScrollArea::both()
             .auto_shrink([false, false])
@@ -875,7 +944,72 @@ impl SuniApp {
                     }
                 }
                 self.paint_matches(&painter, page_rect, page_index, size.height_pt);
+                self.paint_selection(&painter, page_rect, page_index, size.height_pt);
+                let interact = ui.interact(
+                    page_rect,
+                    egui::Id::new("page-interact"),
+                    egui::Sense::click_and_drag(),
+                );
+                let zoom = self.effective_zoom;
+                let page_h = size.height_pt;
+                if interact.drag_started() {
+                    if let Some(pos) = interact.interact_pointer_pos() {
+                        let pt = crate::annotate::to_pdf(pos, page_rect, zoom, page_h);
+                        drag_event = Some(DragEvent::Start(pt));
+                    }
+                } else if interact.dragged() {
+                    if let Some(pos) = interact.interact_pointer_pos() {
+                        drag_event = Some(DragEvent::Move(crate::annotate::to_pdf(
+                            pos, page_rect, zoom, page_h,
+                        )));
+                    }
+                } else if interact.drag_stopped() {
+                    drag_event = Some(DragEvent::Stop);
+                } else if interact.clicked() {
+                    if let Some(pos) = interact.interact_pointer_pos() {
+                        drag_event = Some(DragEvent::Click(crate::annotate::to_pdf(
+                            pos, page_rect, zoom, page_h,
+                        )));
+                    }
+                }
+                if matches!(self.annotate.tool, crate::annotate::Tool::Note) {
+                    interact.on_hover_cursor(egui::CursorIcon::Crosshair);
+                } else {
+                    interact.on_hover_cursor(egui::CursorIcon::Text);
+                }
             });
+        match drag_event {
+            Some(DragEvent::Start(pt)) => {
+                self.annotate.drag = Some(crate::annotate::Drag {
+                    page: page_index,
+                    start: pt,
+                    current: pt,
+                });
+                self.annotate.selection = None;
+            }
+            Some(DragEvent::Move(pt)) => {
+                if let Some(d) = &mut self.annotate.drag {
+                    d.current = pt;
+                }
+            }
+            Some(DragEvent::Stop) => {
+                if let Some(d) = self.annotate.drag.take() {
+                    self.finish_drag(d);
+                }
+            }
+            Some(DragEvent::Click(pt)) => {
+                self.annotate.selection = None;
+                if matches!(self.annotate.tool, crate::annotate::Tool::Note) {
+                    self.finish_drag(crate::annotate::Drag {
+                        page: page_index,
+                        start: pt,
+                        current: pt,
+                    });
+                }
+            }
+            None => {}
+        }
+        self.tool_palette(ctx, ui, palette_origin);
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
@@ -1329,6 +1463,17 @@ impl eframe::App for SuniApp {
                 )
                 .show(ui, |ui| self.tools_panel(&ctx, ui));
         }
+        if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
+            egui::Panel::right("comments")
+                .resizable(true)
+                .default_size(280.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.chrome)
+                        .inner_margin(egui::Margin::symmetric(8, 4)),
+                )
+                .show(ui, |ui| self.comments_panel(&ctx, ui));
+        }
         if self.document.is_some() {
             egui::Panel::right("rail")
                 .resizable(false)
@@ -1377,10 +1522,18 @@ impl eframe::App for SuniApp {
             self.unsaved_prompt = Some(PendingAction::Quit);
         }
         self.unsaved_dialog(&ctx);
+        self.note_dialog(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
         self.command_palette(&ctx);
     }
+}
+
+enum DragEvent {
+    Start((f32, f32)),
+    Move((f32, f32)),
+    Stop,
+    Click((f32, f32)),
 }
 
 // ----- Utilitaires -----------------------------------------------------------

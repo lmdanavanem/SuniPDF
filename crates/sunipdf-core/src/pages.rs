@@ -264,7 +264,7 @@ impl Document<'_> {
         Ok(())
     }
 
-    fn page_handle(&self, page_index: usize) -> Result<PdfPage<'_>, EngineError> {
+    pub(crate) fn page_handle(&self, page_index: usize) -> Result<PdfPage<'_>, EngineError> {
         if page_index >= self.page_count() {
             return Err(EngineError::PageOutOfRange(page_index));
         }

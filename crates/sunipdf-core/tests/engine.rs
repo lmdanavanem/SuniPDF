@@ -326,3 +326,73 @@ fn insert_move_and_snapshot_restore() {
     assert_eq!(enc.page_count(), 1);
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn text_selection_and_annotations_round_trip() {
+    use sunipdf_core::{MarkupKind, PointRect};
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-annot-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    // Le texte « SuniPDF page 1 » (24 pt) est placé en (72, 700) : rectangle large autour.
+    let sel = doc
+        .text_in_rect(
+            0,
+            PointRect {
+                left: 60.0,
+                bottom: 690.0,
+                right: 400.0,
+                top: 730.0,
+            },
+        )
+        .unwrap();
+    assert_eq!(sel.text, "SuniPDF page 1");
+    assert_eq!(sel.rects.len(), 1, "une seule ligne");
+    assert!(sel.rects[0].left >= 60.0 && sel.rects[0].right <= 400.0);
+    let empty = doc
+        .text_in_rect(
+            0,
+            PointRect {
+                left: 400.0,
+                bottom: 100.0,
+                right: 500.0,
+                top: 150.0,
+            },
+        )
+        .unwrap();
+    assert!(empty.text.is_empty());
+
+    doc.add_markup(0, MarkupKind::Highlight, &sel.rects, (255, 230, 0))
+        .unwrap();
+    doc.add_markup(0, MarkupKind::Underline, &sel.rects, (0, 0, 255))
+        .unwrap();
+    doc.add_note(0, 300.0, 600.0, "Relire ce paragraphe")
+        .unwrap();
+    let list = doc.annotations(0).unwrap();
+    assert_eq!(list.len(), 3);
+    assert_eq!(list[0].kind, "Highlight");
+    assert_eq!(list[2].kind, "Text");
+    assert_eq!(list[2].contents.as_deref(), Some("Relire ce paragraphe"));
+
+    // Le surlignage est visible au rendu : pixels jaunes dans la zone du texte.
+    let img = doc.render_page(0, 1.0).unwrap();
+    let yellow = img
+        .rgba
+        .chunks(4)
+        .filter(|p| p[0] > 200 && p[1] > 180 && p[2] < 120)
+        .count();
+    assert!(yellow > 500, "surlignage rendu ({yellow} pixels)");
+
+    let out = dir.join("annotated.pdf");
+    doc.save_as(&out).unwrap();
+    let mut again = engine.open(&out, None).unwrap();
+    assert_eq!(again.annotations(0).unwrap().len(), 3);
+    again.delete_annotation(0, 1).unwrap();
+    assert_eq!(again.annotations(0).unwrap().len(), 2);
+    assert!(again.delete_annotation(0, 9).is_err());
+    assert!(doc
+        .add_markup(0, MarkupKind::StrikeOut, &[], (0, 0, 0))
+        .is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}

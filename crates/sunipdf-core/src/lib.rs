@@ -7,12 +7,14 @@
 //! sur un seul thread (le crate `pdfium-render` sérialise les appels, mais sans gain
 //! de parallélisme). L'application de bureau les confine dans un thread de travail.
 
+pub mod annot;
 pub mod cache;
 pub mod command;
 mod error;
 pub mod pages;
 pub mod text;
 
+pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
 pub use cache::{cache_key, RenderCache};
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use error::EngineError;

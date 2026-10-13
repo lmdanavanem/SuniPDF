@@ -30,6 +30,13 @@ pub enum Command {
     MovePageLeft,
     MovePageRight,
     OrganizePages,
+    CopyText,
+    ToolSelect,
+    ToolHighlight,
+    ToolUnderline,
+    ToolStrikeOut,
+    ToolNote,
+    ToggleComments,
     About,
 }
 
@@ -261,6 +268,62 @@ pub const REGISTRY: &[CommandInfo] = &[
         None,
         true,
         Pages
+    ),
+    cmd!(
+        CopyText,
+        "edit.copy",
+        "menu.edit.copy",
+        Some("shortcut.copy"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolSelect,
+        "tool.select",
+        "menu.edit.tool_select",
+        Some("shortcut.tool_select"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolHighlight,
+        "tool.highlight",
+        "menu.edit.tool_highlight",
+        Some("shortcut.tool_highlight"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolUnderline,
+        "tool.underline",
+        "menu.edit.tool_underline",
+        Some("shortcut.tool_underline"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolStrikeOut,
+        "tool.strikeout",
+        "menu.edit.tool_strikeout",
+        Some("shortcut.tool_strikeout"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolNote,
+        "tool.note",
+        "menu.edit.tool_note",
+        Some("shortcut.tool_note"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToggleComments,
+        "view.comments",
+        "menu.view.comments",
+        Some("shortcut.comments"),
+        true,
+        View
     ),
     cmd!(
         Undo,

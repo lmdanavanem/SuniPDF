@@ -13,16 +13,23 @@ use sunipdf_i18n::{tr, tr_args};
 pub enum ToolTab {
     All,
     Read,
+    Annotate,
     Pages,
 }
 
 impl ToolTab {
-    pub const ALL: [ToolTab; 3] = [ToolTab::All, ToolTab::Read, ToolTab::Pages];
+    pub const ALL: [ToolTab; 4] = [
+        ToolTab::All,
+        ToolTab::Read,
+        ToolTab::Annotate,
+        ToolTab::Pages,
+    ];
 
     fn label_key(self) -> &'static str {
         match self {
             Self::All => "toolbar.all_tools",
             Self::Read => "toolbar.read",
+            Self::Annotate => "toolbar.annotate",
             Self::Pages => "toolbar.pages",
         }
     }
@@ -38,6 +45,9 @@ impl ToolTab {
                 Command::RotateCounterClockwise,
                 Command::DeletePage,
                 Command::InsertPages,
+                Command::ToolHighlight,
+                Command::ToolNote,
+                Command::ToggleComments,
                 Command::Undo,
                 Command::Redo,
                 Command::SaveAs,
@@ -45,10 +55,21 @@ impl ToolTab {
             ],
             Self::Read => &[
                 Command::Find,
+                Command::ToolSelect,
+                Command::CopyText,
                 Command::ToggleThumbnails,
                 Command::FitWidth,
                 Command::FitPage,
                 Command::ActualSize,
+            ],
+            Self::Annotate => &[
+                Command::ToolSelect,
+                Command::ToolHighlight,
+                Command::ToolUnderline,
+                Command::ToolStrikeOut,
+                Command::ToolNote,
+                Command::ToggleComments,
+                Command::CopyText,
             ],
             Self::Pages => &[
                 Command::OrganizePages,
@@ -94,6 +115,13 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ActualSize => (glyph::DOCUMENT, "1:1"),
         Command::FitWidth => (glyph::FIT_WIDTH, "↔"),
         Command::FitPage => (glyph::FIT_PAGE, "▭"),
+        Command::CopyText => (glyph::DOCUMENT, "⎘"),
+        Command::ToolSelect => (glyph::SELECT, "I"),
+        Command::ToolHighlight => (glyph::HIGHLIGHT, "▬"),
+        Command::ToolUnderline => (glyph::UNDERLINE, "_"),
+        Command::ToolStrikeOut => (glyph::STRIKE, "S"),
+        Command::ToolNote => (glyph::NOTE, "✎"),
+        Command::ToggleComments => (glyph::COMMENT, "💬"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -417,7 +445,7 @@ impl SuniApp {
 
                         ui.label(icons::semibold(tr(lang, "home.recommended"), 16.0));
                         ui.add_space(8.0);
-                        let cards: [(&str, &str, &str, &str); 3] = [
+                        let cards: [(&str, &str, &str, &str); 4] = [
                             (
                                 glyph::READ,
                                 "📖",
@@ -435,6 +463,12 @@ impl SuniApp {
                                 "▦",
                                 "home.card.pages.title",
                                 "home.card.pages.desc",
+                            ),
+                            (
+                                glyph::HIGHLIGHT,
+                                "▬",
+                                "home.card.annot.title",
+                                "home.card.annot.desc",
                             ),
                         ];
                         let mut open_clicked = false;
@@ -581,6 +615,16 @@ impl SuniApp {
                 .on_hover_text(tr(lang, "menu.view.organize"));
             if organize.clicked() {
                 self.execute(ctx, Command::OrganizePages);
+            }
+            let comments = ui
+                .add(
+                    Button::new(self.icon(glyph::COMMENT, "💬", 16.0))
+                        .frame(false)
+                        .selected(self.annotate.comments_open),
+                )
+                .on_hover_text(tr(lang, "menu.view.comments"));
+            if comments.clicked() {
+                self.execute(ctx, Command::ToggleComments);
             }
             let find = ui
                 .add(
