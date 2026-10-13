@@ -46,18 +46,8 @@ impl Settings {
         let Some(path) = Self::path() else {
             return Ok(());
         };
-        save_atomic(&path, &serde_json::to_vec_pretty(self)?)
+        sunipdf_core::write_atomic(&path, &serde_json::to_vec_pretty(self)?)
     }
-}
-
-/// Écrit dans un fichier temporaire voisin puis renomme : jamais de fichier tronqué.
-pub fn save_atomic(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, bytes)?;
-    std::fs::rename(&tmp, path)
 }
 
 #[cfg(test)]
@@ -72,11 +62,11 @@ mod tests {
         assert_eq!(s.language(), Language::French);
         s.set_language(Language::English);
         s.dark_theme = true;
-        save_atomic(&path, &serde_json::to_vec(&s).unwrap()).unwrap();
+        sunipdf_core::write_atomic(&path, &serde_json::to_vec(&s).unwrap()).unwrap();
         let back: Settings =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(back, s);
-        assert!(!path.with_extension("json.tmp").exists());
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         let bad: Settings = serde_json::from_str(r#"{"language":"xx-XX"}"#).unwrap();
         assert_eq!(bad.language(), Language::French);
         let _ = std::fs::remove_dir_all(dir);

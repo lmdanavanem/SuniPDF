@@ -10,11 +10,13 @@
 pub mod cache;
 pub mod command;
 mod error;
+pub mod pages;
 pub mod text;
 
 pub use cache::{cache_key, RenderCache};
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use error::EngineError;
+pub use pages::{write_atomic, Rotation};
 pub use text::{PointRect, TextMatch};
 
 use pdfium_render::prelude::*;
@@ -61,6 +63,7 @@ pub struct Engine {
 /// Document ouvert, lié à la durée de vie de son [`Engine`].
 pub struct Document<'a> {
     inner: PdfDocument<'a>,
+    pdfium: &'a Pdfium,
     info: DocumentInfo,
 }
 
@@ -143,12 +146,19 @@ impl Engine {
             .filter(|s| !s.trim().is_empty());
         Ok(Document {
             inner,
+            pdfium: &self.pdfium,
             info: DocumentInfo {
                 path: path.to_path_buf(),
                 title,
                 page_sizes,
             },
         })
+    }
+}
+
+impl<'a> Document<'a> {
+    pub(crate) fn pdfium(&self) -> &'a Pdfium {
+        self.pdfium
     }
 }
 

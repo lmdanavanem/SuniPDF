@@ -173,3 +173,96 @@ fn extracts_text_and_finds_matches_with_bounds() {
     assert_eq!(doc.search("   ", false).unwrap().len(), 0);
     assert_eq!(doc.search_page(1, "page 2", false).unwrap().len(), 1);
 }
+
+#[test]
+fn merge_extract_split_round_trip() {
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-pages-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let src = fixture("two-pages.pdf");
+
+    let merged = dir.join("merged.pdf");
+    assert_eq!(
+        engine.merge(&[src.clone(), src.clone()], &merged).unwrap(),
+        4
+    );
+    let doc = engine.open(&merged, None).unwrap();
+    assert_eq!(doc.page_count(), 4);
+    assert_eq!(doc.page_size(3).unwrap().width_pt, 792.0);
+    assert!(doc.page_text(2).unwrap().contains("SuniPDF page 1"));
+
+    let extracted = dir.join("sub").join("extracted.pdf");
+    assert_eq!(doc.extract_to(&[3, 0], &extracted).unwrap(), 2);
+    let sub = engine.open(&extracted, None).unwrap();
+    assert_eq!(sub.page_count(), 2);
+    assert_eq!(
+        sub.page_size(0).unwrap().width_pt,
+        792.0,
+        "ordre demandé conservé"
+    );
+    assert!(matches!(
+        doc.extract_to(&[9], &extracted),
+        Err(EngineError::PageOutOfRange(9))
+    ));
+    assert!(doc.extract_to(&[], &extracted).is_err());
+
+    let parts = engine.split(&merged, None, 3, &dir.join("parts")).unwrap();
+    assert_eq!(parts.len(), 2);
+    assert_eq!(engine.open(&parts[0], None).unwrap().page_count(), 3);
+    assert_eq!(engine.open(&parts[1], None).unwrap().page_count(), 1);
+    assert!(parts[1].ends_with("merged-2.pdf"));
+    assert!(engine.split(&merged, None, 0, &dir).is_err());
+    assert!(engine.merge(&[], &dir.join("x.pdf")).is_err());
+    assert!(std::fs::read_dir(&dir).unwrap().all(|e| !e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .ends_with(".tmp")));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn rotate_delete_and_save_atomically() {
+    use sunipdf_core::Rotation;
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-rotate-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let work = dir.join("work.pdf");
+    std::fs::copy(fixture("two-pages.pdf"), &work).unwrap();
+
+    let mut doc = engine.open(&work, None).unwrap();
+    assert_eq!(doc.page_rotation(0).unwrap(), Rotation::R0);
+    doc.set_page_rotation(0, Rotation::R90).unwrap();
+    assert_eq!(doc.page_rotation(0).unwrap(), Rotation::R90);
+    assert_eq!(
+        doc.page_size(0).unwrap().width_pt,
+        792.0,
+        "taille affichée après rotation"
+    );
+    assert!(matches!(
+        doc.set_page_rotation(5, Rotation::R90),
+        Err(EngineError::PageOutOfRange(5))
+    ));
+    doc.save_as(&work).unwrap();
+    drop(doc);
+
+    let mut again = engine.open(&work, None).unwrap();
+    assert_eq!(again.page_rotation(0).unwrap(), Rotation::R90);
+    assert_eq!(again.page_count(), 2);
+    again.delete_page(0).unwrap();
+    assert_eq!(again.page_count(), 1);
+    assert!(again.page_text(0).unwrap().contains("page 2"));
+    assert!(
+        again.delete_page(0).is_err(),
+        "la dernière page ne peut pas être supprimée"
+    );
+    let out = dir.join("one.pdf");
+    again.save_as(&out).unwrap();
+    assert_eq!(engine.open(&out, None).unwrap().page_count(), 1);
+    // Un enregistrement vers un dossier impossible échoue proprement, sans fichier temporaire.
+    let bad = Path::new("Z:\\sunipdf-no-such-drive\\x.pdf");
+    assert!(matches!(again.save_as(bad), Err(EngineError::Io(_))));
+    let _ = std::fs::remove_dir_all(dir);
+}

@@ -12,9 +12,8 @@ Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.
 ## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
 Sélection à la souris sur la page (`PdfPageText::chars_inside_rect`), copie presse-papiers, i18n `edit.copy`.
 
-## SUNI-014 — Pages : fusion, division, extraction, rotation, réorganisation, sauvegarde (owner : PAGE-MANAGER)
-`FPDF_ImportPages`, `FPDFPage_SetRotation`, `save_to_file` → écriture atomique ; vérification qpdf en CI ;
-fixtures AES-128/256 (qpdf) pour `encrypted_*` ; test « sauvegarde interrompue ».
+## SUNI-014b — Interface des opérations de pages (owner : UI-UX + PAGE-MANAGER)
+Menu Pages (rotation de la page courante, suppression, extraction, fusion, division, Enregistrer sous) branché sur `sunipdf-core::pages` via le registre ; état « modifié » et invite à l'enregistrement ; vérification qpdf en CI ; fixtures AES-128/256 ; test « sauvegarde interrompue ».
 
 ## SUNI-015 — Identité visuelle et ressources Windows (owner : WINDOWS-RELEASE)
 Icône originale (SVG → ICO), manifeste DPI-aware, ressources de version (`winres`/`embed-resource`), signature différée.

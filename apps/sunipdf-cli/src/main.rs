@@ -31,6 +31,45 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Merge several PDFs (in order) into one output file.
+    Merge {
+        #[arg(required = true)]
+        inputs: Vec<PathBuf>,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Extract pages (1-based, e.g. "1,3-5") into a new file, in the given order.
+    Extract {
+        file: PathBuf,
+        #[arg(long)]
+        pages: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Split into files of N pages each, written to a directory.
+    Split {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        every: usize,
+        #[arg(long)]
+        out_dir: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Rotate pages (1-based list, or "all") by 90, 180 or 270 degrees and save to --out.
+    Rotate {
+        file: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long)]
+        degrees: i32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Search text; prints matches (page, rectangles in PDF points) as JSON.
     Search {
         file: PathBuf,
@@ -96,6 +135,46 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             }
             return Ok(serde_json::Value::Null);
         }
+        Command::Merge { inputs, out } => {
+            let pages = engine.merge(&inputs, &out)?;
+            Ok(serde_json::json!({ "out": out, "page_count": pages }))
+        }
+        Command::Extract {
+            file,
+            pages,
+            out,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let selection = parse_pages(&pages, doc.page_count())?;
+            let n = doc.extract_to(&selection, &out)?;
+            Ok(serde_json::json!({ "out": out, "page_count": n }))
+        }
+        Command::Split {
+            file,
+            every,
+            out_dir,
+            password,
+        } => {
+            let files = engine.split(&file, password.as_deref(), every, &out_dir)?;
+            Ok(serde_json::json!({ "files": files, "count": files.len() }))
+        }
+        Command::Rotate {
+            file,
+            pages,
+            degrees,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = parse_pages(&pages, doc.page_count())?;
+            for p in &selection {
+                let current = doc.page_rotation(*p)?;
+                doc.set_page_rotation(*p, current.turned(degrees))?;
+            }
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "rotated": selection.len() }))
+        }
         Command::Search {
             file,
             query,
@@ -147,6 +226,52 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 serde_json::json!({ "out": out, "width": img.width, "height": img.height, "page": page }),
             )
         }
+    }
+}
+
+/// "all", "1,3-5" (1-based) → indices 0-based validés.
+fn parse_pages(spec: &str, count: usize) -> Result<Vec<usize>, EngineError> {
+    if spec.trim().eq_ignore_ascii_case("all") {
+        return Ok((0..count).collect());
+    }
+    let mut out = Vec::new();
+    for part in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let (a, b) = match part.split_once('-') {
+            Some((a, b)) => (a.trim(), b.trim()),
+            None => (part, part),
+        };
+        let bad = || EngineError::Other(format!("invalid page specification: {part}"));
+        let (a, b): (usize, usize) = (a.parse().map_err(|_| bad())?, b.parse().map_err(|_| bad())?);
+        if a == 0 || b < a {
+            return Err(bad());
+        }
+        if b > count {
+            return Err(EngineError::PageOutOfRange(b - 1));
+        }
+        out.extend((a - 1)..b);
+    }
+    if out.is_empty() {
+        return Err(EngineError::Other("no pages selected".into()));
+    }
+    Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_page_specifications() {
+        assert_eq!(parse_pages("all", 3).unwrap(), vec![0, 1, 2]);
+        assert_eq!(parse_pages("1,3-4", 5).unwrap(), vec![0, 2, 3]);
+        assert!(matches!(
+            parse_pages("2-9", 5),
+            Err(EngineError::PageOutOfRange(8))
+        ));
+        assert!(parse_pages("0", 5).is_err());
+        assert!(parse_pages("3-1", 5).is_err());
+        assert!(parse_pages("x", 5).is_err());
+        assert!(parse_pages("", 5).is_err());
     }
 }
 
