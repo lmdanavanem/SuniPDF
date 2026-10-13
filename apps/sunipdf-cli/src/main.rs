@@ -96,6 +96,73 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Print document properties (metadata, version, encryption, permissions) as JSON.
+    Properties {
+        file: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Print the bookmark tree (title, page, depth) as JSON.
+    Bookmarks {
+        file: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Encrypt with AES-256 (or AES-128 with --aes128): passwords and permissions.
+    Protect {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, default_value = "")]
+        user_password: String,
+        #[arg(long, default_value = "")]
+        owner_password: String,
+        #[arg(long)]
+        no_print: bool,
+        #[arg(long)]
+        no_copy: bool,
+        #[arg(long)]
+        no_modify: bool,
+        #[arg(long)]
+        no_annotate: bool,
+        #[arg(long)]
+        aes128: bool,
+        /// Password of the input file if it is already encrypted.
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Remove encryption (owner or user password required).
+    Unprotect {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: String,
+    },
+    /// Set title, author, subject, keywords (omitted fields are left unchanged; "" clears).
+    SetMetadata {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        subject: Option<String>,
+        #[arg(long)]
+        keywords: Option<String>,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Remove all document metadata (Info dictionary and XMP stream).
+    StripMetadata {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Search text; prints matches (page, rectangles in PDF points) as JSON.
     Search {
         file: PathBuf,
@@ -232,6 +299,108 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             doc.move_page(from, to)?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "moved": from + 1, "to": to + 1 }))
+        }
+        Command::Properties { file, password } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let p = doc.properties();
+            Ok(serde_json::json!({
+                "title": p.metadata.title, "author": p.metadata.author, "subject": p.metadata.subject,
+                "keywords": p.metadata.keywords, "creator": p.creator, "producer": p.producer,
+                "created": p.created, "modified": p.modified, "version": p.version,
+                "page_count": p.page_count, "encrypted": p.encrypted, "file_size": p.file_size,
+                "permissions": { "print": p.can_print, "copy": p.can_copy, "modify": p.can_modify, "annotate": p.can_annotate },
+            }))
+        }
+        Command::Bookmarks { file, password } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            Ok(serde_json::json!(doc
+                .bookmarks()
+                .iter()
+                .map(|b| serde_json::json!({
+                    "title": b.title, "page": b.page.map(|p| p + 1), "depth": b.depth,
+                }))
+                .collect::<Vec<_>>()))
+        }
+        Command::Protect {
+            file,
+            out,
+            user_password,
+            owner_password,
+            no_print,
+            no_copy,
+            no_modify,
+            no_annotate,
+            aes128,
+            password,
+        } => {
+            let input = std::fs::read(&file)?;
+            let bytes = sunipdf_core::security::protect(
+                &input,
+                password.as_deref(),
+                &sunipdf_core::Protection {
+                    user_password,
+                    owner_password,
+                    allow_print: !no_print,
+                    allow_copy: !no_copy,
+                    allow_modify: !no_modify,
+                    allow_annotate: !no_annotate,
+                    aes256: !aes128,
+                },
+            )?;
+            sunipdf_core::write_atomic(&out, &bytes)?;
+            Ok(
+                serde_json::json!({ "out": out, "cipher": if aes128 { "AES-128" } else { "AES-256" } }),
+            )
+        }
+        Command::Unprotect {
+            file,
+            out,
+            password,
+        } => {
+            let input = std::fs::read(&file)?;
+            let bytes = sunipdf_core::security::unprotect(&input, &password)?;
+            sunipdf_core::write_atomic(&out, &bytes)?;
+            Ok(serde_json::json!({ "out": out }))
+        }
+        Command::SetMetadata {
+            file,
+            out,
+            title,
+            author,
+            subject,
+            keywords,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let current = doc.properties().metadata;
+            drop(doc);
+            let pick = |new: Option<String>, old: Option<String>| match new {
+                Some(v) if v.is_empty() => None,
+                Some(v) => Some(v),
+                None => old,
+            };
+            let meta = sunipdf_core::Metadata {
+                title: pick(title, current.title),
+                author: pick(author, current.author),
+                subject: pick(subject, current.subject),
+                keywords: pick(keywords, current.keywords),
+            };
+            let input = std::fs::read(&file)?;
+            let bytes = sunipdf_core::security::set_metadata(&input, password.as_deref(), &meta)?;
+            sunipdf_core::write_atomic(&out, &bytes)?;
+            Ok(
+                serde_json::json!({ "out": out, "title": meta.title, "author": meta.author, "subject": meta.subject, "keywords": meta.keywords }),
+            )
+        }
+        Command::StripMetadata {
+            file,
+            out,
+            password,
+        } => {
+            let input = std::fs::read(&file)?;
+            let bytes = sunipdf_core::security::strip_metadata(&input, password.as_deref())?;
+            sunipdf_core::write_atomic(&out, &bytes)?;
+            Ok(serde_json::json!({ "out": out }))
         }
         Command::Search {
             file,

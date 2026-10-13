@@ -37,6 +37,11 @@ pub enum Command {
     ToolStrikeOut,
     ToolNote,
     ToggleComments,
+    ToggleBookmarks,
+    Properties,
+    Protect,
+    Unprotect,
+    StripMetadata,
     About,
 }
 
@@ -46,6 +51,7 @@ pub enum Menu {
     Edit,
     View,
     Pages,
+    Security,
     Help,
 }
 
@@ -106,6 +112,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "file.save_as",
         "menu.file.save_as",
         Some("shortcut.save_as"),
+        true,
+        File
+    ),
+    cmd!(
+        Properties,
+        "file.properties",
+        "menu.file.properties",
+        Some("shortcut.properties"),
         true,
         File
     ),
@@ -318,6 +332,38 @@ pub const REGISTRY: &[CommandInfo] = &[
         Edit
     ),
     cmd!(
+        ToggleBookmarks,
+        "view.bookmarks",
+        "menu.view.bookmarks",
+        Some("shortcut.bookmarks"),
+        true,
+        View
+    ),
+    cmd!(
+        Protect,
+        "security.protect",
+        "menu.security.protect",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        Unprotect,
+        "security.unprotect",
+        "menu.security.unprotect",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        StripMetadata,
+        "security.strip_metadata",
+        "menu.security.strip_metadata",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
         ToggleComments,
         "view.comments",
         "menu.view.comments",
@@ -391,6 +437,6 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 5);
+        assert_eq!(Command::in_menu(Menu::File).count(), 6);
     }
 }

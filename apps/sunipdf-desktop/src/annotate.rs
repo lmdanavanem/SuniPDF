@@ -93,7 +93,7 @@ impl SuniApp {
         let mut chosen = None;
         egui::Area::new(egui::Id::new("tool-palette"))
             .fixed_pos(origin)
-            .order(egui::Order::Foreground)
+            .order(egui::Order::Middle)
             .show(ctx, |ui| {
                 Frame::new()
                     .fill(p.surface)

@@ -44,6 +44,10 @@ pub mod glyph {
     pub const STRIKE: &str = "\u{EDE0}";
     pub const NOTE: &str = "\u{E70B}";
     pub const COMMENT: &str = "\u{E90A}";
+    pub const BOOKMARK: &str = "\u{E8A4}";
+    pub const LOCK: &str = "\u{E72E}";
+    pub const UNLOCK: &str = "\u{E785}";
+    pub const ERASE: &str = "\u{E75C}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

@@ -7,8 +7,9 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
-    AnnotationInfo, Document, DocumentInfo, Engine, EngineError, MarkupKind, PointRect,
-    RenderCache, RenderedPage, TextMatch, TextSelection,
+    security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
+    Metadata, PointRect, Properties, Protection, RenderCache, RenderedPage, TextMatch,
+    TextSelection,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -16,6 +17,14 @@ const CACHE_BYTES: usize = 256 * 1024 * 1024;
 /// Plafonds du journal d'annulation (instantanés complets du PDF).
 const UNDO_MAX_ENTRIES: usize = 50;
 const UNDO_MAX_BYTES: usize = 512 * 1024 * 1024;
+
+/// Transformation d'octets (lopdf) : chiffrement, métadonnées.
+pub enum BytesOp {
+    Protect(Protection),
+    Unprotect,
+    SetMetadata(Metadata),
+    StripMetadata,
+}
 
 /// Modification de pages, appliquée sous instantané (annulable).
 pub enum EditOp {
@@ -52,6 +61,7 @@ pub enum EditOp {
         page: usize,
         index: usize,
     },
+    Bytes(BytesOp),
 }
 
 pub enum Request {
@@ -82,6 +92,8 @@ pub enum Request {
     Annotations {
         page: usize,
     },
+    Properties,
+    Bookmarks,
     Undo,
     Redo,
     Save {
@@ -132,6 +144,8 @@ pub enum Response {
         page: usize,
         list: Vec<AnnotationInfo>,
     },
+    Properties(Properties),
+    Bookmarks(Vec<Bookmark>),
     Saved {
         path: PathBuf,
     },
@@ -308,6 +322,36 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
         } => doc.add_markup(page, kind, &rects, rgb),
         EditOp::Note { page, x, y, text } => doc.add_note(page, x, y, &text),
         EditOp::DeleteAnnotation { page, index } => doc.delete_annotation(page, index),
+        EditOp::Bytes(op) => {
+            let current = doc.snapshot()?;
+            let password = doc.password().map(str::to_owned);
+            match op {
+                BytesOp::Protect(p) => {
+                    let bytes = security::protect(&current, password.as_deref(), &p)?;
+                    let new_password = if p.user_password.is_empty() {
+                        p.owner_password
+                    } else {
+                        p.user_password
+                    };
+                    doc.restore_with_password(bytes, Some(new_password))
+                }
+                BytesOp::Unprotect => {
+                    let Some(pw) = password else {
+                        return Err(EngineError::Other("not encrypted".into()));
+                    };
+                    let bytes = security::unprotect(&current, &pw)?;
+                    doc.restore_with_password(bytes, None)
+                }
+                BytesOp::SetMetadata(m) => {
+                    let bytes = security::set_metadata(&current, password.as_deref(), &m)?;
+                    doc.restore(bytes)
+                }
+                BytesOp::StripMetadata => {
+                    let bytes = security::strip_metadata(&current, password.as_deref())?;
+                    doc.restore(bytes)
+                }
+            }
+        }
     }
 }
 
@@ -420,6 +464,14 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         continue;
                     }
                 }
+            }
+            Request::Properties => {
+                let Some(doc) = &state.document else { continue };
+                Response::Properties(doc.properties())
+            }
+            Request::Bookmarks => {
+                let Some(doc) = &state.document else { continue };
+                Response::Bookmarks(doc.bookmarks())
             }
             Request::Annotations { page } => {
                 let Some(doc) = &state.document else { continue };

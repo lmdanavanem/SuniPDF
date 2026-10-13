@@ -15,14 +15,16 @@ pub enum ToolTab {
     Read,
     Annotate,
     Pages,
+    Security,
 }
 
 impl ToolTab {
-    pub const ALL: [ToolTab; 4] = [
+    pub const ALL: [ToolTab; 5] = [
         ToolTab::All,
         ToolTab::Read,
         ToolTab::Annotate,
         ToolTab::Pages,
+        ToolTab::Security,
     ];
 
     fn label_key(self) -> &'static str {
@@ -31,6 +33,7 @@ impl ToolTab {
             Self::Read => "toolbar.read",
             Self::Annotate => "toolbar.annotate",
             Self::Pages => "toolbar.pages",
+            Self::Security => "toolbar.security",
         }
     }
 
@@ -48,6 +51,9 @@ impl ToolTab {
                 Command::ToolHighlight,
                 Command::ToolNote,
                 Command::ToggleComments,
+                Command::ToggleBookmarks,
+                Command::Properties,
+                Command::Protect,
                 Command::Undo,
                 Command::Redo,
                 Command::SaveAs,
@@ -55,6 +61,8 @@ impl ToolTab {
             ],
             Self::Read => &[
                 Command::Find,
+                Command::ToggleBookmarks,
+                Command::Properties,
                 Command::ToolSelect,
                 Command::CopyText,
                 Command::ToggleThumbnails,
@@ -70,6 +78,12 @@ impl ToolTab {
                 Command::ToolNote,
                 Command::ToggleComments,
                 Command::CopyText,
+            ],
+            Self::Security => &[
+                Command::Protect,
+                Command::Unprotect,
+                Command::StripMetadata,
+                Command::Properties,
             ],
             Self::Pages => &[
                 Command::OrganizePages,
@@ -122,6 +136,11 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ToolStrikeOut => (glyph::STRIKE, "S"),
         Command::ToolNote => (glyph::NOTE, "✎"),
         Command::ToggleComments => (glyph::COMMENT, "💬"),
+        Command::ToggleBookmarks => (glyph::BOOKMARK, "🔖"),
+        Command::Properties => (glyph::INFO, "i"),
+        Command::Protect => (glyph::LOCK, "🔒"),
+        Command::Unprotect => (glyph::UNLOCK, "🔓"),
+        Command::StripMetadata => (glyph::ERASE, "⌫"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -246,6 +265,7 @@ impl SuniApp {
                     self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
                     self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
                     self.command_menu(ctx, ui, "menu.pages", Menu::Pages, &[]);
+                    self.command_menu(ctx, ui, "menu.security", Menu::Security, &[]);
                     ui.menu_button(tr(lang, "menu.settings"), |ui| {
                         ui.menu_button(tr(lang, "menu.settings.language"), |ui| {
                             for l in sunipdf_i18n::Language::ALL {
@@ -445,7 +465,7 @@ impl SuniApp {
 
                         ui.label(icons::semibold(tr(lang, "home.recommended"), 16.0));
                         ui.add_space(8.0);
-                        let cards: [(&str, &str, &str, &str); 4] = [
+                        let cards: [(&str, &str, &str, &str); 5] = [
                             (
                                 glyph::READ,
                                 "📖",
@@ -469,6 +489,12 @@ impl SuniApp {
                                 "▬",
                                 "home.card.annot.title",
                                 "home.card.annot.desc",
+                            ),
+                            (
+                                glyph::LOCK,
+                                "🔒",
+                                "home.card.security.title",
+                                "home.card.security.desc",
                             ),
                         ];
                         let mut open_clicked = false;
@@ -615,6 +641,16 @@ impl SuniApp {
                 .on_hover_text(tr(lang, "menu.view.organize"));
             if organize.clicked() {
                 self.execute(ctx, Command::OrganizePages);
+            }
+            let bookmarks = ui
+                .add(
+                    Button::new(self.icon(glyph::BOOKMARK, "🔖", 16.0))
+                        .frame(false)
+                        .selected(self.docinfo.bookmarks_open),
+                )
+                .on_hover_text(tr(lang, "menu.view.bookmarks"));
+            if bookmarks.clicked() {
+                self.execute(ctx, Command::ToggleBookmarks);
             }
             let comments = ui
                 .add(

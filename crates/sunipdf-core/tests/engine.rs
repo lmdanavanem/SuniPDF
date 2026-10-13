@@ -396,3 +396,119 @@ fn text_selection_and_annotations_round_trip() {
         .is_err());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn bookmarks_and_properties() {
+    let engine = engine();
+    let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let marks = doc.bookmarks();
+    assert_eq!(marks.len(), 3, "{marks:?}");
+    assert_eq!(
+        (marks[0].title.as_str(), marks[0].page, marks[0].depth),
+        ("Premiere page", Some(0), 0)
+    );
+    assert_eq!(
+        (marks[1].title.as_str(), marks[1].page, marks[1].depth),
+        ("Rectangle bleu", Some(0), 1)
+    );
+    assert_eq!(
+        (marks[2].title.as_str(), marks[2].page, marks[2].depth),
+        ("Deuxieme page", Some(1), 0)
+    );
+    let props = doc.properties();
+    assert_eq!(props.metadata.title.as_deref(), Some("SuniPDF fixture"));
+    assert_eq!(props.metadata.author.as_deref(), Some("SuniPDF tests"));
+    assert_eq!(props.page_count, 2);
+    assert!(!props.encrypted);
+    assert!(props.can_print && props.can_copy);
+    assert_eq!(props.version, "1.4");
+    assert!(props.file_size.unwrap() > 1000);
+}
+
+#[test]
+fn protect_unprotect_and_metadata() {
+    use sunipdf_core::{security, Metadata, Protection};
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-sec-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+
+    for aes256 in [false, true] {
+        let p = Protection {
+            user_password: "user".into(),
+            owner_password: "owner".into(),
+            allow_print: false,
+            allow_copy: false,
+            aes256,
+            ..Default::default()
+        };
+        let bytes = security::protect(&input, None, &p).unwrap();
+        let path = dir.join(format!("protected-{aes256}.pdf"));
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(
+            matches!(engine.open(&path, None), Err(EngineError::PasswordRequired)),
+            "aes256={aes256}"
+        );
+        assert!(matches!(
+            engine.open(&path, Some("nope")),
+            Err(EngineError::PasswordRequired)
+        ));
+        let doc = engine.open(&path, Some("user")).unwrap();
+        assert_eq!(doc.page_count(), 2);
+        assert!(
+            doc.page_text(0).unwrap().contains("SuniPDF page 1"),
+            "contenu lisible après déchiffrement"
+        );
+        let props = doc.properties();
+        assert!(props.encrypted);
+        assert!(
+            !props.can_print && !props.can_copy,
+            "permissions appliquées (aes256={aes256})"
+        );
+        assert!(engine.open(&path, Some("owner")).is_ok());
+        // Rendu intact.
+        let img = doc.render_page(0, 0.5).unwrap();
+        assert!(img.rgba.chunks(4).any(|px| px[2] == 255 && px[0] == 0));
+
+        let clear = security::unprotect(&bytes, "owner").unwrap();
+        let clear_path = dir.join(format!("clear-{aes256}.pdf"));
+        std::fs::write(&clear_path, &clear).unwrap();
+        let reopened = engine.open(&clear_path, None).unwrap();
+        assert!(!reopened.properties().encrypted);
+        assert_eq!(reopened.page_count(), 2);
+        assert!(matches!(
+            security::unprotect(&bytes, "wrong"),
+            Err(EngineError::PasswordRequired)
+        ));
+    }
+    assert!(
+        security::protect(&input, None, &Protection::default()).is_err(),
+        "mot de passe obligatoire"
+    );
+
+    let meta = Metadata {
+        title: Some("Titre modifié".into()),
+        author: None,
+        subject: Some("Sujet".into()),
+        keywords: Some("a, b".into()),
+    };
+    let edited = security::set_metadata(&input, None, &meta).unwrap();
+    let edited_path = dir.join("meta.pdf");
+    std::fs::write(&edited_path, &edited).unwrap();
+    let props = engine.open(&edited_path, None).unwrap().properties();
+    assert_eq!(props.metadata.title.as_deref(), Some("Titre modifié"));
+    assert_eq!(props.metadata.author, None);
+    assert_eq!(props.metadata.subject.as_deref(), Some("Sujet"));
+
+    let stripped = security::strip_metadata(&input, None).unwrap();
+    let stripped_path = dir.join("stripped.pdf");
+    std::fs::write(&stripped_path, &stripped).unwrap();
+    let props = engine.open(&stripped_path, None).unwrap().properties();
+    assert_eq!(props.metadata, Metadata::default());
+    assert!(
+        !String::from_utf8_lossy(&stripped).contains("SuniPDF tests"),
+        "aucune trace de l'auteur"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

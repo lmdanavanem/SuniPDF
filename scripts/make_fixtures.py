@@ -39,7 +39,7 @@ def two_pages(path):
           b"BT /F1 24 Tf 72 700 Td (SuniPDF page 1) Tj ET\n")
     c2 = b"1 0 0 rg 72 72 300 100 re f\nBT /F1 24 Tf 72 400 Td (SuniPDF page 2) Tj ET\n"
     objs = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Catalog /Pages 2 0 R /Outlines 9 0 R /PageMode /UseOutlines >>",
         b"<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R >> >> >>",
         stream(c1),
@@ -47,6 +47,10 @@ def two_pages(path):
         stream(c2),
         b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
         b"<< /Title (SuniPDF fixture) /Author (SuniPDF tests) >>",
+        b"<< /Type /Outlines /First 10 0 R /Last 11 0 R /Count 3 >>",
+        b"<< /Title (Premiere page) /Parent 9 0 R /Next 11 0 R /First 12 0 R /Last 12 0 R /Count 1 /Dest [3 0 R /Fit] >>",
+        b"<< /Title (Deuxieme page) /Parent 9 0 R /Prev 10 0 R /Dest [5 0 R /Fit] >>",
+        b"<< /Title (Rectangle bleu) /Parent 10 0 R /Dest [3 0 R /XYZ 72 650 0] >>",
     ]
     data = build(objs, trailer_extra=b"/Info 8 0 R")
     open(path, "wb").write(data)

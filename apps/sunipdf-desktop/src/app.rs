@@ -2,7 +2,7 @@
 
 use crate::settings::Settings;
 use crate::theme;
-use crate::worker::{DocState, EditOp, Request, Response, Worker};
+use crate::worker::{BytesOp, DocState, EditOp, Request, Response, Worker};
 use egui::{Key, Modifiers};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -110,6 +110,7 @@ pub struct SuniApp {
     pub palette: PaletteState,
     pub organize: crate::organize::OrganizeState,
     pub annotate: crate::annotate::AnnotateState,
+    pub docinfo: crate::docinfo::DocInfoState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -133,6 +134,7 @@ impl SuniApp {
             },
             organize: Default::default(),
             annotate: Default::default(),
+            docinfo: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -228,6 +230,9 @@ impl SuniApp {
         self.close_find();
         self.organize = Default::default();
         self.annotate = Default::default();
+        let bookmarks_open = self.docinfo.bookmarks_open;
+        self.docinfo = Default::default();
+        self.docinfo.bookmarks_open = bookmarks_open;
         self.can_undo = false;
         self.can_redo = false;
         self.dirty = false;
@@ -324,6 +329,7 @@ impl SuniApp {
                     self.dirty = false;
                     self.status_msg = None;
                     self.update_title(ctx);
+                    self.worker.send(Request::Bookmarks);
                     for command in std::mem::take(&mut self.startup_commands) {
                         self.execute(ctx, command);
                     }
@@ -403,6 +409,10 @@ impl SuniApp {
                     self.find.matches.clear();
                     self.annotate.selection = None;
                     self.annotate.annotations_page = None;
+                    self.worker.send(Request::Bookmarks);
+                    if self.docinfo.properties_open {
+                        self.worker.send(Request::Properties);
+                    }
                     self.dirty = true;
                     self.status_msg = None;
                     self.update_title(ctx);
@@ -424,6 +434,13 @@ impl SuniApp {
                     if self.annotate.annotations_page == Some(page) {
                         self.annotate.annotations = list;
                     }
+                }
+                Response::Properties(props) => {
+                    self.docinfo.metadata_edit = props.metadata.clone();
+                    self.docinfo.properties = Some(props);
+                }
+                Response::Bookmarks(list) => {
+                    self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
                     log::warn!("opération impossible : {e}");
@@ -636,6 +653,8 @@ impl SuniApp {
             key(Modifiers::NONE, Key::F9, Command::ToggleTools);
             key(Modifiers::NONE, Key::F8, Command::OrganizePages);
             key(Modifiers::NONE, Key::F7, Command::ToggleComments);
+            key(Modifiers::NONE, Key::F6, Command::ToggleBookmarks);
+            key(Modifiers::COMMAND, Key::D, Command::Properties);
             key(Modifiers::COMMAND, Key::C, Command::CopyText);
             key(Modifiers::NONE, Key::V, Command::ToolSelect);
             key(Modifiers::NONE, Key::H, Command::ToolHighlight);
@@ -784,6 +803,32 @@ impl SuniApp {
                     .find(|t| t.command() == command)
                     .unwrap_or_default();
                 self.annotate.drag = None;
+            }
+            Command::ToggleBookmarks => {
+                self.docinfo.bookmarks_open = !self.docinfo.bookmarks_open;
+            }
+            Command::Properties => {
+                self.docinfo.properties = None;
+                self.docinfo.properties_open = true;
+                self.worker.send(Request::Properties);
+            }
+            Command::Protect => {
+                self.docinfo.protection = sunipdf_core::Protection::default();
+                self.docinfo.protect_error = None;
+                self.docinfo.protect_open = true;
+            }
+            Command::Unprotect => {
+                let encrypted = self.docinfo.properties.as_ref().map(|p| p.encrypted);
+                if encrypted == Some(false) {
+                    self.error = Some("error.not_encrypted");
+                } else {
+                    self.worker
+                        .send(Request::Edit(EditOp::Bytes(BytesOp::Unprotect)));
+                }
+            }
+            Command::StripMetadata => {
+                self.worker
+                    .send(Request::Edit(EditOp::Bytes(BytesOp::StripMetadata)));
             }
             Command::ToggleComments => {
                 self.annotate.comments_open = !self.annotate.comments_open;
@@ -1463,6 +1508,17 @@ impl eframe::App for SuniApp {
                 )
                 .show(ui, |ui| self.tools_panel(&ctx, ui));
         }
+        if self.document.is_some() && self.docinfo.bookmarks_open && !self.organize.active {
+            egui::Panel::left("bookmarks")
+                .resizable(true)
+                .default_size(220.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.chrome)
+                        .inner_margin(egui::Margin::symmetric(8, 4)),
+                )
+                .show(ui, |ui| self.bookmarks_panel(&ctx, ui));
+        }
         if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
             egui::Panel::right("comments")
                 .resizable(true)
@@ -1522,6 +1578,8 @@ impl eframe::App for SuniApp {
             self.unsaved_prompt = Some(PendingAction::Quit);
         }
         self.unsaved_dialog(&ctx);
+        self.properties_dialog(&ctx);
+        self.protect_dialog(&ctx);
         self.note_dialog(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);

@@ -247,6 +247,21 @@ impl Document<'_> {
         Ok(self.inner.save_to_bytes()?)
     }
 
+    /// Mot de passe utilisé à l'ouverture (ou défini par une protection appliquée en mémoire).
+    pub fn password(&self) -> Option<&str> {
+        self.password.as_deref()
+    }
+
+    /// Recharge depuis un instantané en changeant le mot de passe mémorisé (protection/déprotection).
+    pub fn restore_with_password(
+        &mut self,
+        bytes: Vec<u8>,
+        password: Option<String>,
+    ) -> Result<(), EngineError> {
+        self.password = password;
+        self.restore(bytes)
+    }
+
     /// Recharge le document depuis un instantané produit par [`Document::snapshot`].
     pub fn restore(&mut self, bytes: Vec<u8>) -> Result<(), EngineError> {
         let inner = self
