@@ -52,7 +52,8 @@ impl Settings {
     pub fn load() -> Self {
         Self::path()
             .and_then(|p| std::fs::read_to_string(p).ok())
-            .and_then(|s| serde_json::from_str(&s).ok())
+            // Tolère le BOM UTF-8 ajouté par certains éditeurs (Bloc-notes, PowerShell 5).
+            .and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok())
             .unwrap_or_default()
     }
 
@@ -84,6 +85,10 @@ mod tests {
         let bad: Settings = serde_json::from_str(r#"{"language":"xx-XX"}"#).unwrap();
         assert_eq!(bad.language(), Language::French);
         assert!(bad.show_tools && bad.recent.is_empty());
+        let with_bom = "\u{feff}{\"dark_theme\":true}";
+        let parsed: Settings =
+            serde_json::from_str(with_bom.trim_start_matches('\u{feff}')).unwrap();
+        assert!(parsed.dark_theme);
         let mut r = Settings::default();
         for i in 0..10 {
             r.push_recent(std::path::Path::new(&format!("c:/f{i}.pdf")));
