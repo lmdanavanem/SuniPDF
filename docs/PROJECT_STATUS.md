@@ -35,8 +35,8 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] Captures d'écran réelles (accueil, document, palette) vérifiées par l'agent via `scripts/dev-screenshot.ps1` ; validation finale par l'utilisateur à faire.
 - [x] Compilation MSVC (cible de référence) : Build Tools installés le 13/10 au soir, `cargo test --workspace` et `cargo clippy --workspace --all-targets -D warnings` verts.
 - [x] Icône / ressources de version Windows (vérifié : `(Get-Item sunipdf.exe).VersionInfo` → SuniPDF, SuniWorks, 0.1.0).
-- [ ] CI GitHub Actions (`ci.yml`, `release.yml`) : fichiers écrits, **jamais exécutés** (pas de dépôt distant configuré).
-- [ ] MSI : **non construit localement** (WiX v3 exige des droits administrateur et .NET Framework 3.5) ; construit par `release.yml` sur `windows-latest` au premier tag.
+- [ ] CI GitHub Actions (`ci.yml`, `release.yml`) : déclenchées le 2026-10-14 par le push de `main` et du tag `v0.1.0` sur https://github.com/lmdanavanem/SuniPDF (dépôt privé : résultat à lire dans l'onglet Actions).
+- [x] MSI x64 construit localement avec les binaires WiX 3.14 autonomes : `dist\SuniPDF-0.1.0-win-x64.msi` (10,8 Mo) + SHA256 ; validé par `smoke.exe` et une extraction administrative.
 - [ ] ARM64 : script et workflow prêts, **jamais compilé** (pas de cible `aarch64-pc-windows-msvc` installée ici).
 
 ## Dernière exécution (2026-10-14, cible **MSVC**, `-j 2`)

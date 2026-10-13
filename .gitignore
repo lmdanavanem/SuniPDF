@@ -1,5 +1,6 @@
 /target/
 /third_party/pdfium/
+/third_party/wix314/
 /dist/
 *.pdb
 *.msi

@@ -20,9 +20,9 @@
 5. **pdfium-render 0.9.4 cible le build PDFium 7881** ; les builds plus récents (8100 au 2026-10-12)
    fonctionnent probablement mais ne sont pas testés. Version épinglée dans `scripts/fetch-pdfium.ps1`.
 
-11. **MSI non construit sur ce poste** : `winget install WiXToolset.WiXToolset` échoue sans élévation (exige
-    .NET Framework 3.5 et des droits administrateur). Le script `package-msi.ps1` est prêt ; la CI `release.yml`
-    utilise le WiX 3.14 préinstallé sur `windows-latest`. Alternative locale : installer WiX en session administrateur.
+11. ~~MSI non construit~~ **Résolu le 2026-10-14** : binaires WiX 3.14 autonomes (`third_party/wix314`, zip officiel, sans
+    installation ni droits admin) ; `scripts/package-msi.ps1` les détecte via `WIX_BIN` ; MSI x64 produit et validé
+    (ICE `smoke.exe`, extraction administrative).
 12. **Build ARM64 non vérifié** : `package-portable.ps1 -Arch arm64` compile pour `aarch64-pc-windows-msvc`
     (binaires PDFium ARM64 disponibles) mais n'a jamais été exécuté ici.
 

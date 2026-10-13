@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!--
   Installateur MSI SuniPDF (WiX Toolset v3). Construit par scripts/package-msi.ps1 (candle + light).
   Variables : Version, SourceDir (dossier portable préparé), Arch (x64|arm64).
@@ -14,7 +14,7 @@
     <?define ProgramFilesFolder = "ProgramFiles64Folder" ?>
   <?endif ?>
 
-  <Product Id="*" Name="SuniPDF" Language="1036" Version="$(var.Version)" Manufacturer="SuniWorks"
+  <Product Id="*" Name="SuniPDF" Language="1036" Codepage="1252" Version="$(var.Version)" Manufacturer="SuniWorks"
            UpgradeCode="7C3C3E0E-5B6A-4C2B-9F1E-2A0F1D4B9C11">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="$(var.Platform)"
              Description="SuniPDF — lecteur et éditeur PDF pour Windows" Languages="1036" SummaryCodepage="1252" />
