@@ -21,14 +21,15 @@
 ```
 SuniPDF/
 ├── apps/
-│   ├── sunipdf-desktop/      binaire `sunipdf` (egui/eframe) — main.rs, app.rs, worker.rs, settings.rs, theme.rs
+│   ├── sunipdf-desktop/      binaire `sunipdf` (egui/eframe) — main.rs, app.rs (état + document), shell.rs (chrome : onglets,
+│   │                         barre d'outils, panneau outils, accueil, rail, palette), worker.rs, settings.rs, theme.rs, icons.rs
 │   └── sunipdf-cli/          binaire `sunipdf-cli` (clap) — sortie JSON, codes d'erreur stables
 ├── crates/
 │   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; tests/fixtures/*.pdf
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), catalogues embarqués
 ├── assets/i18n/              fr-FR.json, en-US.json (source de vérité des textes)
 ├── third_party/pdfium/       binaires PDFium (ignorés par git, scripts/fetch-pdfium.ps1)
-├── scripts/                  dev-env.ps1, fetch-pdfium.ps1, start.ps1, check-i18n.ps1, make_fixtures.py
+├── scripts/                  dev-env.ps1, fetch-pdfium.ps1, start.ps1, check-i18n.ps1, make_fixtures.py, dev-screenshot.ps1 (capture de la fenêtre)
 ├── docs/                     cette documentation
 └── .claude/agents/           12 sous-agents
 ```

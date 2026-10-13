@@ -1,7 +1,7 @@
 # Prochaines tâches (ordre conseillé)
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
-1. Lancer `scripts\start.ps1 -Pdf <un vrai PDF>` et valider visuellement : rendu, zoom, DPI, menus FR/EN, thème sombre, mot de passe.
+1. Lancer `scripts\start.ps1 -Pdf <un vrai PDF>` et valider la nouvelle interface (accueil, panneau d'outils, rail droit, palette Ctrl+K, thème sombre, FR/EN). Dire ce qui s'éloigne encore de la cible.
 2. ~~Installer les Build Tools~~ fait le 13/10 au soir.
 3. Pousser sur GitHub pour exécuter la CI (`.github/workflows/ci.yml`) une première fois.
 

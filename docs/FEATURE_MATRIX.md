@@ -23,11 +23,11 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | Planifié (P2) | |
 | Étiquettes de pages | Déclaré | Planifié (P3) | |
-| Historique de navigation, onglets rouverts | Déclaré | Planifié (P3) | |
+| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents **Faits** (accueil) ; historique de navigation planifié (P3) | |
 | Mode lecture / plein écran | Déclaré | Planifié (P3) | |
 | Impression Windows | Déclaré (fidélité limitée) | Planifié (P5) | API Windows (`sunipdf-platform`) |
 | Récupération après plantage, autosave | Déclaré | Planifié (P3) | |
-| Thèmes clair/sombre | Déclaré | **Fait** | Design system `theme.rs` |
+| Thèmes clair/sombre | Déclaré | **Fait** | Design system `theme.rs`, bascule dans la barre d'onglets |
 | Interface traduisible | Déclaré (EN, JA + 22 catalogues) | **Fait** (fr-FR défaut, en-US) | Changement à chaud, préférence persistée |
 
 ## B. Édition et annotation
@@ -98,7 +98,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Registre de commandes commun UI/CLI | Déclaré (tool table) | **Fait** (`sunipdf-cli commands`) |
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
-| Palette de commandes | Déclaré | Planifié (P3) |
+| Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier) |
 | Workflows locaux, profils de conversion | Absent | Planifié (P5) |
 
 ## H. Distribution

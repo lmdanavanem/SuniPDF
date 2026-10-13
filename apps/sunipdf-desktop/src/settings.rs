@@ -10,6 +10,9 @@ pub struct Settings {
     pub language: String,
     pub dark_theme: bool,
     pub show_thumbnails: bool,
+    pub show_tools: bool,
+    /// Fichiers récents, le plus récent en premier.
+    pub recent: Vec<String>,
 }
 
 impl Default for Settings {
@@ -18,6 +21,8 @@ impl Default for Settings {
             language: Language::DEFAULT.code().to_string(),
             dark_theme: false,
             show_thumbnails: true,
+            show_tools: true,
+            recent: Vec::new(),
         }
     }
 }
@@ -29,6 +34,15 @@ impl Settings {
 
     pub fn set_language(&mut self, language: Language) {
         self.language = language.code().to_string();
+    }
+
+    pub fn push_recent(&mut self, path: &std::path::Path) {
+        // Chemins Windows : séparateurs et casse non significatifs.
+        let entry = path.to_string_lossy().replace('/', "\\");
+        let key = entry.to_lowercase();
+        self.recent.retain(|r| r.to_lowercase() != key);
+        self.recent.insert(0, entry);
+        self.recent.truncate(8);
     }
 
     pub fn path() -> Option<PathBuf> {
@@ -69,6 +83,21 @@ mod tests {
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         let bad: Settings = serde_json::from_str(r#"{"language":"xx-XX"}"#).unwrap();
         assert_eq!(bad.language(), Language::French);
+        assert!(bad.show_tools && bad.recent.is_empty());
+        let mut r = Settings::default();
+        for i in 0..10 {
+            r.push_recent(std::path::Path::new(&format!("c:/f{i}.pdf")));
+        }
+        r.push_recent(std::path::Path::new(r"C:\F5.PDF"));
+        assert_eq!(r.recent.len(), 8);
+        assert_eq!(r.recent[0], r"C:\F5.PDF");
+        assert_eq!(
+            r.recent
+                .iter()
+                .filter(|x| x.eq_ignore_ascii_case(r"c:\f5.pdf"))
+                .count(),
+            1
+        );
         let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -22,6 +22,8 @@ pub enum Command {
     RotateClockwise,
     RotateCounterClockwise,
     DeletePage,
+    ToggleTools,
+    CommandPalette,
     About,
 }
 
@@ -179,6 +181,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         "view.thumbnails",
         "menu.view.thumbnails",
         Some("shortcut.thumbnails"),
+        false,
+        View
+    ),
+    cmd!(
+        ToggleTools,
+        "view.tools",
+        "menu.view.tools",
+        Some("shortcut.tools"),
+        false,
+        View
+    ),
+    cmd!(
+        CommandPalette,
+        "app.palette",
+        "menu.view.palette",
+        Some("shortcut.palette"),
         false,
         View
     ),

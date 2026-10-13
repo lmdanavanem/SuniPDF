@@ -11,26 +11,26 @@ use sunipdf_i18n::{tr, tr_args, Language};
 
 /// Points CSS par point PDF : à 100 %, une page de 612 pt occupe 816 px logiques (96 dpi).
 const SCREEN_PER_PDF_POINT: f32 = 96.0 / 72.0;
-const ZOOM_STEPS: [f32; 12] = [
+pub const ZOOM_STEPS: [f32; 12] = [
     0.25, 0.33, 0.5, 0.67, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0,
 ];
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum Zoom {
+pub enum Zoom {
     FitWidth,
     FitPage,
     Fixed(f32),
 }
 
-enum EngineState {
+pub enum EngineState {
     Starting,
     Ready,
     Failed,
 }
 
-struct OpenDocument {
-    info: DocumentInfo,
-    page: usize,
+pub struct OpenDocument {
+    pub info: DocumentInfo,
+    pub page: usize,
 }
 
 struct PageTexture {
@@ -57,8 +57,8 @@ enum UnsavedChoice {
     Cancel,
 }
 
-struct FindState {
-    open: bool,
+pub struct FindState {
+    pub open: bool,
     query: String,
     match_case: bool,
     /// Requête dont les résultats sont affichés (évite de relancer à chaque frame).
@@ -70,19 +70,26 @@ struct FindState {
     focus_requested: bool,
 }
 
+pub struct PaletteState {
+    pub open: bool,
+    pub query: String,
+    pub selected: usize,
+    pub focus_requested: bool,
+}
+
 pub struct SuniApp {
-    settings: Settings,
+    pub settings: Settings,
     worker: Worker,
-    engine: EngineState,
-    document: Option<OpenDocument>,
-    opening: Option<PathBuf>,
-    zoom: Zoom,
-    effective_zoom: f32,
+    pub engine: EngineState,
+    pub document: Option<OpenDocument>,
+    pub opening: Option<PathBuf>,
+    pub zoom: Zoom,
+    pub effective_zoom: f32,
     texture: Option<PageTexture>,
     generation: u64,
-    in_flight: Option<(usize, f32)>,
+    pub in_flight: Option<(usize, f32)>,
     last_rendered: Option<(usize, f32)>,
-    page_input: String,
+    pub page_input: String,
     error: Option<&'static str>,
     password_prompt: Option<PasswordPrompt>,
     show_about: bool,
@@ -90,20 +97,34 @@ pub struct SuniApp {
     thumbnails: HashMap<usize, egui::TextureHandle>,
     thumbs_pending: HashSet<usize>,
     thumb_px: u32,
-    find: FindState,
-    dirty: bool,
-    saving: bool,
+    pub find: FindState,
+    pub dirty: bool,
+    pub saving: bool,
     allow_close: bool,
     unsaved_prompt: Option<PendingAction>,
     after_save: Option<PendingAction>,
-    status_msg: Option<String>,
+    pub status_msg: Option<String>,
+    pub has_icons: bool,
+    pub show_tools: bool,
+    pub tool_tab: crate::shell::ToolTab,
+    pub palette: PaletteState,
 }
 
 impl SuniApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_file: Option<PathBuf>) -> Self {
         let settings = Settings::load();
+        let has_icons = crate::icons::install(&cc.egui_ctx);
         theme::apply(&cc.egui_ctx, settings.dark_theme);
         Self {
+            has_icons,
+            show_tools: settings.show_tools,
+            tool_tab: crate::shell::ToolTab::All,
+            palette: PaletteState {
+                open: false,
+                query: String::new(),
+                selected: 0,
+                focus_requested: false,
+            },
             worker: Worker::spawn(cc.egui_ctx.clone()),
             settings,
             engine: EngineState::Starting,
@@ -143,7 +164,7 @@ impl SuniApp {
         }
     }
 
-    fn lang(&self) -> Language {
+    pub fn lang(&self) -> Language {
         self.settings.language()
     }
 
@@ -160,7 +181,7 @@ impl SuniApp {
         }
     }
 
-    fn open_path(&mut self, path: PathBuf, password: Option<String>) {
+    pub fn open_path(&mut self, path: PathBuf, password: Option<String>) {
         if !matches!(self.engine, EngineState::Ready) {
             self.pending_file = Some(path);
             return;
@@ -195,7 +216,7 @@ impl SuniApp {
         }
     }
 
-    fn go_to_page(&mut self, page: usize) {
+    pub fn go_to_page(&mut self, page: usize) {
         if let Some(doc) = &mut self.document {
             let clamped = page.min(doc.info.page_count().saturating_sub(1));
             if clamped != doc.page {
@@ -231,14 +252,14 @@ impl SuniApp {
         }
     }
 
-    fn set_language(&mut self, language: Language) {
+    pub fn set_language(&mut self, language: Language) {
         if self.lang() != language {
             self.settings.set_language(language);
             self.persist_settings();
         }
     }
 
-    fn set_theme(&mut self, ctx: &egui::Context, dark: bool) {
+    pub fn set_theme(&mut self, ctx: &egui::Context, dark: bool) {
         if self.settings.dark_theme != dark {
             self.settings.dark_theme = dark;
             theme::apply(ctx, dark);
@@ -246,7 +267,7 @@ impl SuniApp {
         }
     }
 
-    fn persist_settings(&self) {
+    pub fn persist_settings(&self) {
         if let Err(e) = self.settings.save() {
             log::warn!("préférences non enregistrées : {e}");
         }
@@ -273,6 +294,8 @@ impl SuniApp {
                     self.opening = None;
                     self.password_prompt = None;
                     self.page_input = "1".into();
+                    self.settings.push_recent(&info.path);
+                    self.persist_settings();
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.dirty = false;
                     self.status_msg = None;
@@ -399,7 +422,7 @@ impl SuniApp {
         }
     }
 
-    fn update_title(&self, ctx: &egui::Context) {
+    pub fn update_title(&self, ctx: &egui::Context) {
         let title = match &self.document {
             Some(doc) => tr_args(
                 self.lang(),
@@ -452,6 +475,18 @@ impl SuniApp {
         if self.password_prompt.is_some() || self.show_about || self.unsaved_prompt.is_some() {
             return;
         }
+        if self.palette.open {
+            let mut cmds = Vec::new();
+            ctx.input_mut(|i| {
+                if i.consume_key(Modifiers::COMMAND, Key::K) {
+                    cmds.push(Command::CommandPalette);
+                }
+            });
+            for c in cmds {
+                self.execute(ctx, c);
+            }
+            return;
+        }
         if self.find.open && ctx.memory(|m| m.focused().is_some()) {
             // Le champ de recherche a le clavier : seuls Ctrl+F et Échap restent globaux.
             let mut cmds = Vec::new();
@@ -499,6 +534,8 @@ impl SuniApp {
             );
             key(Modifiers::COMMAND, Key::R, Command::RotateClockwise);
             key(Modifiers::COMMAND, Key::Delete, Command::DeletePage);
+            key(Modifiers::NONE, Key::F9, Command::ToggleTools);
+            key(Modifiers::COMMAND, Key::K, Command::CommandPalette);
         });
         for command in commands {
             self.execute(ctx, command);
@@ -566,59 +603,25 @@ impl SuniApp {
                     self.worker.send(Request::DeletePage { page: doc.page });
                 }
             }
+            Command::ToggleTools => {
+                self.show_tools = !self.show_tools;
+                self.settings.show_tools = self.show_tools;
+                self.persist_settings();
+            }
+            Command::CommandPalette => {
+                self.palette.open = !self.palette.open;
+                self.palette.query.clear();
+                self.palette.selected = 0;
+                self.palette.focus_requested = self.palette.open;
+            }
             Command::About => self.show_about = true,
         }
     }
 
     // ----- Interface -------------------------------------------------------
 
-    fn menu_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        let lang = self.lang();
-        egui::MenuBar::new().ui(ui, |ui| {
-            self.command_menu(
-                ctx,
-                ui,
-                "menu.file",
-                Menu::File,
-                &[Command::Save, Command::Quit],
-            );
-            self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
-            self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
-            self.command_menu(ctx, ui, "menu.pages", Menu::Pages, &[]);
-            ui.menu_button(tr(lang, "menu.settings"), |ui| {
-                ui.menu_button(tr(lang, "menu.settings.language"), |ui| {
-                    for l in Language::ALL {
-                        if ui.radio(lang == l, l.native_name()).clicked() {
-                            self.set_language(l);
-                            self.update_title(ctx);
-                            ui.close();
-                        }
-                    }
-                });
-                ui.menu_button(tr(lang, "menu.settings.theme"), |ui| {
-                    let dark = self.settings.dark_theme;
-                    if ui
-                        .radio(!dark, tr(lang, "menu.settings.theme.light"))
-                        .clicked()
-                    {
-                        self.set_theme(ctx, false);
-                        ui.close();
-                    }
-                    if ui
-                        .radio(dark, tr(lang, "menu.settings.theme.dark"))
-                        .clicked()
-                    {
-                        self.set_theme(ctx, true);
-                        ui.close();
-                    }
-                });
-            });
-            self.command_menu(ctx, ui, "menu.help", Menu::Help, &[]);
-        });
-    }
-
     /// Menu construit depuis le registre ; `separators_before` insère une ligne avant ces commandes.
-    fn command_menu(
+    pub fn command_menu(
         &mut self,
         ctx: &egui::Context,
         ui: &mut egui::Ui,
@@ -638,152 +641,6 @@ impl SuniApp {
                 if menu_item(ui, tr(lang, info.label_key), shortcut, enabled) {
                     self.execute(ctx, info.command);
                 }
-            }
-        });
-    }
-
-    fn toolbar(&mut self, ui: &mut egui::Ui) {
-        let lang = self.lang();
-        let (has_doc, page, count) = match &self.document {
-            Some(d) => (true, d.page, d.info.page_count()),
-            None => (false, 0, 0),
-        };
-        ui.horizontal(|ui| {
-            if ui
-                .button("📂")
-                .on_hover_text(tr(lang, "toolbar.open"))
-                .clicked()
-            {
-                self.open_file_dialog();
-            }
-            ui.separator();
-            if ui
-                .add_enabled(has_doc && page > 0, egui::Button::new("◀"))
-                .on_hover_text(tr(lang, "toolbar.previous_page"))
-                .clicked()
-            {
-                self.step_page(-1);
-            }
-            let field = ui.add_enabled(
-                has_doc,
-                egui::TextEdit::singleline(&mut self.page_input)
-                    .desired_width(44.0)
-                    .horizontal_align(egui::Align::Center),
-            );
-            field.clone().on_hover_text(tr(lang, "toolbar.page_field"));
-            if field.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                match self.page_input.trim().parse::<usize>() {
-                    Ok(n) if n >= 1 => self.go_to_page(n - 1),
-                    _ => self.page_input = (page + 1).to_string(),
-                }
-            }
-            ui.label(format!("/ {count}"));
-            if ui
-                .add_enabled(has_doc && page + 1 < count, egui::Button::new("▶"))
-                .on_hover_text(tr(lang, "toolbar.next_page"))
-                .clicked()
-            {
-                self.step_page(1);
-            }
-            ui.separator();
-            ui.add_enabled_ui(has_doc, |ui| {
-                if ui
-                    .button("−")
-                    .on_hover_text(tr(lang, "menu.view.zoom_out"))
-                    .clicked()
-                {
-                    self.zoom_step(-1);
-                }
-                let selected = match self.zoom {
-                    Zoom::FitWidth => tr(lang, "toolbar.fit_width").to_string(),
-                    Zoom::FitPage => tr(lang, "toolbar.fit_page").to_string(),
-                    Zoom::Fixed(_) => format!("{} %", (self.effective_zoom * 100.0).round()),
-                };
-                egui::ComboBox::from_id_salt("zoom")
-                    .selected_text(selected)
-                    .width(90.0)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.zoom,
-                            Zoom::FitWidth,
-                            tr(lang, "menu.view.fit_width"),
-                        );
-                        ui.selectable_value(
-                            &mut self.zoom,
-                            Zoom::FitPage,
-                            tr(lang, "menu.view.fit_page"),
-                        );
-                        for z in ZOOM_STEPS {
-                            ui.selectable_value(
-                                &mut self.zoom,
-                                Zoom::Fixed(z),
-                                format!("{} %", (z * 100.0).round()),
-                            );
-                        }
-                    });
-                if ui
-                    .button("+")
-                    .on_hover_text(tr(lang, "menu.view.zoom_in"))
-                    .clicked()
-                {
-                    self.zoom_step(1);
-                }
-            });
-        });
-    }
-
-    fn status_bar(&self, ui: &mut egui::Ui) {
-        let lang = self.lang();
-        ui.horizontal(|ui| match (&self.engine, &self.document, &self.opening) {
-            (EngineState::Starting, _, _) => {
-                ui.spinner();
-                ui.label(tr(lang, "status.engine_starting"));
-            }
-            (EngineState::Failed, _, _) => {
-                ui.colored_label(theme::ERROR, tr(lang, "error.engine_load"));
-            }
-            (_, _, Some(path)) => {
-                ui.spinner();
-                ui.label(tr_args(
-                    lang,
-                    "status.opening",
-                    &[("name", &file_name(path))],
-                ));
-            }
-            (_, Some(doc), None) => {
-                ui.label(tr_args(
-                    lang,
-                    "status.page_of",
-                    &[
-                        ("current", &(doc.page + 1).to_string()),
-                        ("total", &doc.info.page_count().to_string()),
-                    ],
-                ));
-                ui.separator();
-                ui.label(tr_args(
-                    lang,
-                    "status.zoom",
-                    &[(
-                        "percent",
-                        &format!("{}", (self.effective_zoom * 100.0).round()),
-                    )],
-                ));
-                if self.in_flight.is_some() {
-                    ui.separator();
-                    ui.spinner();
-                    ui.label(tr(lang, "status.rendering"));
-                }
-                if self.saving {
-                    ui.separator();
-                    ui.spinner();
-                    ui.label(tr(lang, "status.saving"));
-                } else if let Some(msg) = &self.status_msg {
-                    ui.separator();
-                    ui.label(msg);
-                }
-            }
-            (_, None, None) => {
-                ui.label(tr(lang, "status.ready"));
             }
         });
     }
@@ -895,7 +752,7 @@ impl SuniApp {
     fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         ui.add_space(4.0);
-        ui.strong(tr(lang, "panel.thumbnails"));
+        ui.label(crate::icons::semibold(tr(lang, "panel.thumbnails"), 14.0));
         ui.separator();
         let Some(doc) = &self.document else { return };
         let count = doc.info.page_count();
@@ -1043,7 +900,7 @@ impl SuniApp {
         }
     }
 
-    fn close_find(&mut self) {
+    pub fn close_find(&mut self) {
         self.find.open = false;
         self.find.matches.clear();
         self.find.searched = None;
@@ -1268,24 +1125,71 @@ impl eframe::App for SuniApp {
         let ctx = ui.ctx().clone();
         self.handle_responses(&ctx);
         self.handle_input(&ctx);
+        let p = theme::palette(self.settings.dark_theme);
+        let chrome = |fill: egui::Color32| {
+            egui::Frame::new()
+                .fill(fill)
+                .inner_margin(egui::Margin::symmetric(6, 4))
+        };
 
-        egui::Panel::top("menu").show(ui, |ui| self.menu_bar(&ctx, ui));
-        egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
+        egui::Panel::top("tabstrip")
+            .frame(chrome(p.chrome))
+            .show(ui, |ui| self.tab_strip(&ctx, ui));
+        egui::Panel::top("toolbar")
+            .frame(
+                egui::Frame::new()
+                    .fill(p.surface)
+                    .stroke(egui::Stroke::new(1.0, p.border))
+                    .inner_margin(egui::Margin::symmetric(6, 6)),
+            )
+            .show(ui, |ui| self.toolbar(&ctx, ui));
         if self.find.open && self.document.is_some() {
-            egui::Panel::top("find").show(ui, |ui| self.find_bar(ui));
+            egui::Panel::top("find")
+                .frame(chrome(p.chrome))
+                .show(ui, |ui| self.find_bar(ui));
         }
-        egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
-        if self.settings.show_thumbnails && self.document.is_some() {
-            egui::Panel::left("thumbnails")
+        egui::Panel::bottom("status")
+            .frame(chrome(p.chrome))
+            .show(ui, |ui| self.status_bar(ui));
+        if self.show_tools {
+            egui::Panel::left("tools")
                 .resizable(true)
-                .default_size(170.0)
-                .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
+                .default_size(250.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.surface)
+                        .inner_margin(egui::Margin::symmetric(8, 4)),
+                )
+                .show(ui, |ui| self.tools_panel(&ctx, ui));
         }
-        let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
-        egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
-            self.error_banner(ui);
-            self.document_area(&ctx, ui);
-        });
+        if self.document.is_some() {
+            egui::Panel::right("rail")
+                .resizable(false)
+                .default_size(48.0)
+                .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
+                .show(ui, |ui| self.right_rail(&ctx, ui));
+            if self.settings.show_thumbnails {
+                egui::Panel::left("thumbnails")
+                    .resizable(true)
+                    .default_size(170.0)
+                    .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
+                    .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
+            }
+        }
+        if self.document.is_some() {
+            let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
+            egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
+                self.error_banner(ui);
+                self.document_area(&ctx, ui);
+            });
+        } else {
+            egui::CentralPanel::default()
+                .frame(egui::Frame::new().fill(p.chrome))
+                .show(ui, |ui| {
+                    self.error_banner(ui);
+                    self.home(&ctx, ui);
+                });
+        }
         if ctx.input(|i| i.viewport().close_requested()) && self.dirty && !self.allow_close {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             self.unsaved_prompt = Some(PendingAction::Quit);
@@ -1293,6 +1197,7 @@ impl eframe::App for SuniApp {
         self.unsaved_dialog(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
+        self.command_palette(&ctx);
     }
 }
 

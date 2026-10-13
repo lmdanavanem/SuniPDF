@@ -22,6 +22,9 @@
 
 ## Application
 
+0. **Icônes Fluent** : lues dans `C:\Windows\Fonts\SegoeIcons.ttf` (ou `segmdl2.ttf`). Sur un Windows sans ces
+   polices (cas rare : LTSC allégé), les icônes sont remplacées par des symboles texte, moins élégants mais lisibles.
+
 6. **Pas encore d'icône ni de ressources de version Windows** (`.rc`) pour l'exécutable.
 7. **Affichage page unique seulement** ; pas d'onglets, pas de cache de rendu : chaque changement de
    page ou de zoom relance un rendu complet (acceptable pour la tranche 1, voir P2).

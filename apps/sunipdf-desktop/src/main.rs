@@ -1,7 +1,9 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod app;
+mod icons;
 mod settings;
+mod shell;
 mod theme;
 mod worker;
 
@@ -12,7 +14,7 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_title("SuniPDF")
             .with_app_id("sunipdf")
-            .with_inner_size([1280.0, 820.0])
+            .with_inner_size([1280.0, 780.0])
             .with_min_inner_size([720.0, 480.0])
             .with_drag_and_drop(true),
         ..Default::default()
