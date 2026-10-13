@@ -1,0 +1,43 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/sunipdf-desktop",
+    "apps/sunipdf-cli",
+    "crates/sunipdf-core",
+    "crates/sunipdf-i18n",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+version = "0.1.0"
+rust-version = "1.85"
+repository = "https://github.com/suniworks/SuniPDF"
+
+[workspace.dependencies]
+sunipdf-core = { path = "crates/sunipdf-core" }
+sunipdf-i18n = { path = "crates/sunipdf-i18n" }
+pdfium-render = "0.9.4"
+# Backend glow (OpenGL) : le backend wgpu/DX12 ne compile pas (wgpu-hal 30.0.1 vs gpu-allocator 0.28), voir KNOWN_ISSUES.
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "glow", "links"] }
+egui = "0.36"
+rfd = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+log = "0.4"
+env_logger = "0.11"
+clap = { version = "4", features = ["derive"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+# Moins de mémoire et de disque par processus rustc (poste à 14 Go, cf. KNOWN_ISSUES).
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2

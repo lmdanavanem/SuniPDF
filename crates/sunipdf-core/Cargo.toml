@@ -1,0 +1,11 @@
+[package]
+name = "sunipdf-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Moteur documentaire SuniPDF : ouverture, inspection et rendu de pages (PDFium via pdfium-render)."
+
+[dependencies]
+pdfium-render = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }

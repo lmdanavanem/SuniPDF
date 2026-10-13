@@ -1,0 +1,21 @@
+[package]
+name = "sunipdf-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Application de bureau SuniPDF (Windows 10/11)."
+
+[[bin]]
+name = "sunipdf"
+path = "src/main.rs"
+
+[dependencies]
+sunipdf-core = { workspace = true }
+sunipdf-i18n = { workspace = true }
+eframe = { workspace = true }
+egui = { workspace = true }
+rfd = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }

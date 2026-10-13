@@ -1,0 +1,38 @@
+# CI Windows (cible de référence MSVC). Non encore exécutée : à valider lors du premier push.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: PDFium (x64)
+        run: .\scripts\fetch-pdfium.ps1 -Arch x64
+      - name: Parité des catalogues i18n
+        run: .\scripts\check-i18n.ps1
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --workspace
+      - name: Build release x64
+        run: cargo build --release --workspace
+      - name: Artefacts portables
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item target\release\sunipdf.exe, target\release\sunipdf-cli.exe, third_party\pdfium\win-x64\bin\pdfium.dll dist\
+          Copy-Item third_party\pdfium\win-x64\LICENSE dist\LICENSE-pdfium-binaries.txt
+          Copy-Item third_party\pdfium\win-x64\licenses\pdfium.txt dist\LICENSE-pdfium.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sunipdf-win-x64-portable
+          path: dist

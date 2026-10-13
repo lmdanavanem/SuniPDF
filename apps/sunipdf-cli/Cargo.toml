@@ -1,0 +1,12 @@
+[package]
+name = "sunipdf-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Interface en ligne de commande SuniPDF."
+
+[dependencies]
+sunipdf-core = { workspace = true }
+clap = { workspace = true }
+serde_json = { workspace = true }
+image = { workspace = true }
