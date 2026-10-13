@@ -10,10 +10,12 @@
 pub mod cache;
 pub mod command;
 mod error;
+pub mod text;
 
 pub use cache::{cache_key, RenderCache};
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use error::EngineError;
+pub use text::{PointRect, TextMatch};
 
 use pdfium_render::prelude::*;
 use std::path::{Path, PathBuf};

@@ -2,6 +2,7 @@
 //! Même moteur que l'application de bureau : `sunipdf-core`.
 
 use clap::{Parser, Subcommand};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use sunipdf_core::{Engine, EngineError};
@@ -21,6 +22,24 @@ struct Cli {
 enum Command {
     /// List the application's command registry (stable ids) as JSON.
     Commands,
+    /// Extract text (all pages, or one page) to stdout as plain text.
+    Text {
+        file: PathBuf,
+        /// 1-based page number; omit for the whole document.
+        #[arg(long)]
+        page: Option<usize>,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Search text; prints matches (page, rectangles in PDF points) as JSON.
+    Search {
+        file: PathBuf,
+        query: String,
+        #[arg(long)]
+        match_case: bool,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Print document information (page count, page sizes, title) as JSON.
     Info {
         file: PathBuf,
@@ -57,6 +76,43 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
     let engine = Engine::new()?;
     match cli.command {
         Command::Commands => unreachable!(),
+        Command::Text {
+            file,
+            page,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let pages: Vec<usize> = match page {
+                Some(n) => vec![n.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?],
+                None => (0..doc.page_count()).collect(),
+            };
+            let mut out = std::io::stdout().lock();
+            for p in pages {
+                let text = doc.page_text(p)?;
+                writeln!(out, "{text}").map_err(EngineError::Io)?;
+                if page.is_none() {
+                    writeln!(out, "\u{c}").map_err(EngineError::Io)?;
+                }
+            }
+            return Ok(serde_json::Value::Null);
+        }
+        Command::Search {
+            file,
+            query,
+            match_case,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let matches = doc.search(&query, match_case)?;
+            Ok(serde_json::json!({
+                "query": query,
+                "count": matches.len(),
+                "matches": matches.iter().map(|m| serde_json::json!({
+                    "page": m.page + 1,
+                    "rects": m.rects.iter().map(|r| serde_json::json!([r.left, r.bottom, r.right, r.top])).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+            }))
+        }
         Command::Info { file, password } => {
             let doc = engine.open(&file, password.as_deref())?;
             let info = doc.info();
@@ -96,6 +152,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 
 fn main() -> ExitCode {
     match run(Cli::parse()) {
+        Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
             println!("{}", serde_json::to_string_pretty(&value).expect("json"));
             ExitCode::SUCCESS

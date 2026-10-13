@@ -87,5 +87,16 @@
   "menu.view.thumbnails": "Miniatures",
   "shortcut.thumbnails": "F4",
   "panel.thumbnails": "Pages",
-  "a11y.thumbnail": "Miniature de la page {page}"
+  "a11y.thumbnail": "Miniature de la page {page}",
+  "menu.edit": "Édition",
+  "menu.edit.find": "Rechercher…",
+  "shortcut.find": "Ctrl+F",
+  "find.placeholder": "Rechercher dans le document",
+  "find.previous": "Occurrence précédente",
+  "find.next": "Occurrence suivante",
+  "find.close": "Fermer la recherche",
+  "find.count": "{current} / {total}",
+  "find.none": "Aucune occurrence",
+  "find.searching": "Recherche…",
+  "find.match_case": "Respecter la casse"
 }

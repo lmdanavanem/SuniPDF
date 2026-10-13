@@ -9,8 +9,8 @@
 Vue continue avec virtualisation (seules les pages visibles sont rendues) ; onglets multi-documents ; raccourcis.
 Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.*`.
 
-## SUNI-013 — Recherche, sélection et copie de texte (owner : PDF-ENGINE + UI-UX)
-`FPDFText_*` via pdfium-render : `Document::search`, `Document::text_rects` ; surbrillance ; copie presse-papiers.
+## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
+Sélection à la souris sur la page (`PdfPageText::chars_inside_rect`), copie presse-papiers, i18n `edit.copy`.
 
 ## SUNI-014 — Pages : fusion, division, extraction, rotation, réorganisation, sauvegarde (owner : PAGE-MANAGER)
 `FPDF_ImportPages`, `FPDFPage_SetRotation`, `save_to_file` → écriture atomique ; vérification qpdf en CI ;

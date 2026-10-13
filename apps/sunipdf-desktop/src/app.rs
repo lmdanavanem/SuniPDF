@@ -44,6 +44,19 @@ struct PasswordPrompt {
     wrong: bool,
 }
 
+struct FindState {
+    open: bool,
+    query: String,
+    match_case: bool,
+    /// Requête dont les résultats sont affichés (évite de relancer à chaque frame).
+    searched: Option<(String, bool)>,
+    generation: u64,
+    in_flight: bool,
+    matches: Vec<sunipdf_core::TextMatch>,
+    current: usize,
+    focus_requested: bool,
+}
+
 pub struct SuniApp {
     settings: Settings,
     worker: Worker,
@@ -64,6 +77,7 @@ pub struct SuniApp {
     thumbnails: HashMap<usize, egui::TextureHandle>,
     thumbs_pending: HashSet<usize>,
     thumb_px: u32,
+    find: FindState,
 }
 
 impl SuniApp {
@@ -90,6 +104,17 @@ impl SuniApp {
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
             thumb_px: 0,
+            find: FindState {
+                open: false,
+                query: String::new(),
+                match_case: false,
+                searched: None,
+                generation: 0,
+                in_flight: false,
+                matches: Vec::new(),
+                current: 0,
+                focus_requested: false,
+            },
         }
     }
 
@@ -132,6 +157,7 @@ impl SuniApp {
         self.page_input.clear();
         self.thumbnails.clear();
         self.thumbs_pending.clear();
+        self.close_find();
         if announce {
             self.error = None;
         }
@@ -269,6 +295,20 @@ impl SuniApp {
                         self.thumbnails.insert(page, handle);
                     }
                 }
+                Response::SearchResults {
+                    generation,
+                    matches,
+                } => {
+                    if generation == self.find.generation {
+                        self.find.in_flight = false;
+                        self.find.matches = matches;
+                        self.find.current = 0;
+                        if let Some(first) = self.find.matches.first() {
+                            let page = first.page;
+                            self.go_to_page(page);
+                        }
+                    }
+                }
                 Response::RenderFailed { generation, error } => {
                     self.in_flight = None;
                     if generation == self.generation {
@@ -330,6 +370,19 @@ impl SuniApp {
         if self.password_prompt.is_some() || self.show_about {
             return;
         }
+        if self.find.open && ctx.memory(|m| m.focused().is_some()) {
+            // Le champ de recherche a le clavier : seuls Ctrl+F et Échap restent globaux.
+            let mut cmds = Vec::new();
+            ctx.input_mut(|i| {
+                if i.consume_key(Modifiers::COMMAND, Key::F) {
+                    cmds.push(Command::Find);
+                }
+            });
+            for c in cmds {
+                self.execute(ctx, c);
+            }
+            return;
+        }
         let mut commands = Vec::new();
         ctx.input_mut(|i| {
             let mut key = |m: Modifiers, k: Key, c: Command| {
@@ -350,6 +403,7 @@ impl SuniApp {
             key(Modifiers::NONE, Key::Home, Command::FirstPage);
             key(Modifiers::NONE, Key::End, Command::LastPage);
             key(Modifiers::NONE, Key::F4, Command::ToggleThumbnails);
+            key(Modifiers::COMMAND, Key::F, Command::Find);
         });
         for command in commands {
             self.execute(ctx, command);
@@ -378,6 +432,10 @@ impl SuniApp {
                 self.settings.show_thumbnails = !self.settings.show_thumbnails;
                 self.persist_settings();
             }
+            Command::Find => {
+                self.find.open = true;
+                self.find.focus_requested = true;
+            }
             Command::About => self.show_about = true,
         }
     }
@@ -388,6 +446,7 @@ impl SuniApp {
         let lang = self.lang();
         egui::MenuBar::new().ui(ui, |ui| {
             self.command_menu(ctx, ui, "menu.file", Menu::File, &[Command::Quit]);
+            self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
             self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
             ui.menu_button(tr(lang, "menu.settings"), |ui| {
                 ui.menu_button(tr(lang, "menu.settings.language"), |ui| {
@@ -658,6 +717,7 @@ impl SuniApp {
                     egui::Color32::from_black_alpha(60),
                 );
                 painter.rect_filled(page_rect, 0.0, egui::Color32::WHITE);
+                let painter = painter.clone();
                 match &self.texture {
                     Some(tex) if tex.page == page_index => {
                         let alt = tr_args(
@@ -682,6 +742,7 @@ impl SuniApp {
                         ui.put(page_rect, egui::Spinner::new().size(32.0));
                     }
                 }
+                self.paint_matches(&painter, page_rect, page_index, size.height_pt);
             });
     }
 
@@ -751,6 +812,150 @@ impl SuniApp {
             });
         if let Some(page) = clicked {
             self.go_to_page(page);
+        }
+    }
+
+    fn find_bar(&mut self, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let mut step: isize = 0;
+        let mut close = false;
+        ui.horizontal(|ui| {
+            ui.label("🔍");
+            let field = ui.add(
+                egui::TextEdit::singleline(&mut self.find.query)
+                    .hint_text(tr(lang, "find.placeholder"))
+                    .desired_width(260.0),
+            );
+            if self.find.focus_requested {
+                field.request_focus();
+                self.find.focus_requested = false;
+            }
+            if field.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
+                step = if ui.input(|i| i.modifiers.shift) {
+                    -1
+                } else {
+                    1
+                };
+                self.find.focus_requested = true;
+            }
+            ui.checkbox(&mut self.find.match_case, tr(lang, "find.match_case"));
+            let has_matches = !self.find.matches.is_empty();
+            if ui
+                .add_enabled(has_matches, egui::Button::new("▲"))
+                .on_hover_text(tr(lang, "find.previous"))
+                .clicked()
+            {
+                step = -1;
+            }
+            if ui
+                .add_enabled(has_matches, egui::Button::new("▼"))
+                .on_hover_text(tr(lang, "find.next"))
+                .clicked()
+            {
+                step = 1;
+            }
+            if self.find.in_flight {
+                ui.spinner();
+                ui.label(tr(lang, "find.searching"));
+            } else if self.find.searched.is_some() {
+                if has_matches {
+                    ui.label(tr_args(
+                        lang,
+                        "find.count",
+                        &[
+                            ("current", &(self.find.current + 1).to_string()),
+                            ("total", &self.find.matches.len().to_string()),
+                        ],
+                    ));
+                } else {
+                    ui.colored_label(theme::ERROR, tr(lang, "find.none"));
+                }
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui
+                    .button("✕")
+                    .on_hover_text(tr(lang, "find.close"))
+                    .clicked()
+                {
+                    close = true;
+                }
+            });
+        });
+        if close {
+            self.close_find();
+            return;
+        }
+        if ui.input(|i| i.key_pressed(Key::Escape)) {
+            self.close_find();
+            return;
+        }
+        self.request_search_if_needed();
+        if step != 0 && !self.find.matches.is_empty() {
+            let n = self.find.matches.len() as isize;
+            self.find.current = ((self.find.current as isize + step).rem_euclid(n)) as usize;
+            let page = self.find.matches[self.find.current].page;
+            self.go_to_page(page);
+        }
+    }
+
+    fn close_find(&mut self) {
+        self.find.open = false;
+        self.find.matches.clear();
+        self.find.searched = None;
+        self.find.in_flight = false;
+    }
+
+    fn request_search_if_needed(&mut self) {
+        let wanted = (self.find.query.clone(), self.find.match_case);
+        if self.find.in_flight
+            || self.find.searched.as_ref() == Some(&wanted)
+            || self.document.is_none()
+        {
+            return;
+        }
+        if wanted.0.trim().is_empty() {
+            self.find.matches.clear();
+            self.find.searched = Some(wanted);
+            return;
+        }
+        self.find.generation += 1;
+        self.find.in_flight = true;
+        self.find.searched = Some(wanted.clone());
+        self.worker.send(Request::Search {
+            query: wanted.0,
+            match_case: wanted.1,
+            generation: self.find.generation,
+        });
+    }
+
+    /// Surbrillance des occurrences de la page affichée (coordonnées PDF → écran).
+    fn paint_matches(
+        &self,
+        painter: &egui::Painter,
+        page_rect: egui::Rect,
+        page_index: usize,
+        page_h_pt: f32,
+    ) {
+        if !self.find.open {
+            return;
+        }
+        let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
+        for (i, m) in self.find.matches.iter().enumerate() {
+            if m.page != page_index {
+                continue;
+            }
+            let color = if i == self.find.current {
+                egui::Color32::from_rgba_unmultiplied(0xF5, 0x9E, 0x0B, 150)
+            } else {
+                egui::Color32::from_rgba_unmultiplied(0xFD, 0xE0, 0x47, 110)
+            };
+            for r in &m.rects {
+                let rect = egui::Rect::from_min_max(
+                    page_rect.min + egui::vec2(r.left * k, (page_h_pt - r.top) * k),
+                    page_rect.min + egui::vec2(r.right * k, (page_h_pt - r.bottom) * k),
+                );
+                painter.rect_filled(rect, 2.0, color);
+            }
         }
     }
 
@@ -838,6 +1043,9 @@ impl eframe::App for SuniApp {
 
         egui::Panel::top("menu").show(ui, |ui| self.menu_bar(&ctx, ui));
         egui::Panel::top("toolbar").show(ui, |ui| self.toolbar(ui));
+        if self.find.open && self.document.is_some() {
+            egui::Panel::top("find").show(ui, |ui| self.find_bar(ui));
+        }
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
         if self.settings.show_thumbnails && self.document.is_some() {
             egui::Panel::left("thumbnails")

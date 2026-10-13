@@ -17,10 +17,10 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, générations anti-obsolescence |
 | Onglets multi-documents | Déclaré | Planifié (P2) | |
 | Affichage continu, double page, rotation de vue | Déclaré | Planifié (P2) | |
-| Rendu en tuiles, cache plafonné | Déclaré | Planifié (P2) | Crate `sunipdf-render` |
-| Recherche plein texte | Déclaré | Planifié (P2) | PDFium `FPDFText_FindStart` |
+| Rendu en tuiles, cache plafonné | Déclaré | Cache **Fait** (LRU 256 Mo, pré-rendu) ; tuiles planifiées (P2) | |
+| Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | Planifié (P2) | |
-| Miniatures | Déclaré | Planifié (P2) | |
+| Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | Planifié (P2) | |
 | Étiquettes de pages | Déclaré | Planifié (P3) | |
 | Historique de navigation, onglets rouverts | Déclaré | Planifié (P3) | |
@@ -60,7 +60,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
 | PDF → images | Déclaré (CLI render) | **Fait** (CLI `render`, PNG) |
-| PDF → texte | Déclaré | Planifié (P4) |
+| PDF → texte | Déclaré | **Fait** (CLI `text`) |
 | Images → PDF | Déclaré (create) | Planifié (P4) |
 | PDF → Word | Partiel (perd la mise en page) | Planifié (P4), fidélité à annoncer honnêtement |
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
@@ -95,7 +95,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
 | CLI JSON | Déclaré | **Fait** (`info`, `render`) ; extension P5 |
-| Registre de commandes commun UI/CLI | Déclaré (tool table) | Planifié (P2) |
+| Registre de commandes commun UI/CLI | Déclaré (tool table) | **Fait** (`sunipdf-cli commands`) |
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | Planifié (P3) |

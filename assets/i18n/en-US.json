@@ -87,5 +87,16 @@
   "menu.view.thumbnails": "Thumbnails",
   "shortcut.thumbnails": "F4",
   "panel.thumbnails": "Pages",
-  "a11y.thumbnail": "Thumbnail of page {page}"
+  "a11y.thumbnail": "Thumbnail of page {page}",
+  "menu.edit": "Edit",
+  "menu.edit.find": "Find…",
+  "shortcut.find": "Ctrl+F",
+  "find.placeholder": "Search in document",
+  "find.previous": "Previous match",
+  "find.next": "Next match",
+  "find.close": "Close search",
+  "find.count": "{current} / {total}",
+  "find.none": "No matches",
+  "find.searching": "Searching…",
+  "find.match_case": "Match case"
 }

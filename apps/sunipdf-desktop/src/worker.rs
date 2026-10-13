@@ -5,7 +5,9 @@ use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
-use sunipdf_core::{Document, DocumentInfo, Engine, EngineError, RenderCache, RenderedPage};
+use sunipdf_core::{
+    Document, DocumentInfo, Engine, EngineError, RenderCache, RenderedPage, TextMatch,
+};
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
 const CACHE_BYTES: usize = 256 * 1024 * 1024;
@@ -24,6 +26,11 @@ pub enum Request {
     Thumbnail {
         page: usize,
         width_px: u32,
+    },
+    Search {
+        query: String,
+        match_case: bool,
+        generation: u64,
     },
     Close,
 }
@@ -47,6 +54,10 @@ pub enum Response {
     Thumbnail {
         page: usize,
         image: Arc<RenderedPage>,
+    },
+    SearchResults {
+        generation: u64,
+        matches: Vec<TextMatch>,
     },
 }
 
@@ -186,6 +197,26 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Err(e) => {
                         log::warn!("miniature page {page} impossible : {e}");
                         continue;
+                    }
+                }
+            }
+            Request::Search {
+                query,
+                match_case,
+                generation,
+            } => {
+                let Some(doc) = &state.document else { continue };
+                match doc.search(&query, match_case) {
+                    Ok(matches) => Response::SearchResults {
+                        generation,
+                        matches,
+                    },
+                    Err(e) => {
+                        log::warn!("recherche impossible : {e}");
+                        Response::SearchResults {
+                            generation,
+                            matches: Vec::new(),
+                        }
                     }
                 }
             }

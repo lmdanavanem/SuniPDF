@@ -16,12 +16,14 @@ pub enum Command {
     FitWidth,
     FitPage,
     ToggleThumbnails,
+    Find,
     About,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Menu {
     File,
+    Edit,
     View,
     Help,
 }
@@ -157,6 +159,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         Some("shortcut.thumbnails"),
         false,
         View
+    ),
+    cmd!(
+        Find,
+        "edit.find",
+        "menu.edit.find",
+        Some("shortcut.find"),
+        true,
+        Edit
     ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),
 ];

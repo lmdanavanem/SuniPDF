@@ -149,3 +149,27 @@ fn encrypted_document_requires_correct_password() {
         "le rectangle vert déchiffré doit être visible ({green})"
     );
 }
+
+#[test]
+fn extracts_text_and_finds_matches_with_bounds() {
+    let engine = engine();
+    let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    assert!(doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+    assert!(doc.page_text(1).unwrap().contains("SuniPDF page 2"));
+    assert!(matches!(
+        doc.page_text(7),
+        Err(EngineError::PageOutOfRange(7))
+    ));
+
+    let all = doc.search("page", false).unwrap();
+    assert_eq!(all.len(), 2);
+    assert_eq!((all[0].page, all[1].page), (0, 1));
+    let rect = all[0].rects[0];
+    // Texte à 24 pt, placé en (72, 700) : l'occurrence est dans la zone du texte.
+    assert!(rect.left > 72.0 && rect.right < 400.0, "{rect:?}");
+    assert!(rect.bottom > 690.0 && rect.top < 730.0, "{rect:?}");
+    assert_eq!(doc.search("sunipdf", true).unwrap().len(), 0);
+    assert_eq!(doc.search("sunipdf", false).unwrap().len(), 2);
+    assert_eq!(doc.search("   ", false).unwrap().len(), 0);
+    assert_eq!(doc.search_page(1, "page 2", false).unwrap().len(), 1);
+}
