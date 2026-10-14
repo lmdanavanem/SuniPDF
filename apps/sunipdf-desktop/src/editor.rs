@@ -194,6 +194,8 @@ pub struct EditState {
     pending_copy: Option<(bool, Option<(PathBuf, usize)>)>,
     /// Message affiché après la prochaine modification réussie.
     pub pending_status: Option<String>,
+    /// Ce message survit à la resélection qui suit l'opération.
+    pub hold_status: bool,
     /// Panneau Objets ouvert.
     pub objects_open: bool,
     /// Objets de `objects_page` (panneau, prise directe au glisser).
@@ -205,6 +207,8 @@ pub struct EditState {
     pub font_filter: String,
     /// Le prochain clic de l'outil Texte valide l'éditeur au lieu d'en ouvrir un autre.
     pub swallow_click: bool,
+    /// Page affichée à l'image précédente : (index, rectangle écran, hauteur en points).
+    pub page_view: Option<(usize, egui::Rect, f32)>,
 }
 
 impl Default for EditState {
@@ -231,6 +235,7 @@ impl Default for EditState {
             clip: None,
             pending_copy: None,
             pending_status: None,
+            hold_status: false,
             objects_open: false,
             objects: Vec::new(),
             objects_page: None,
@@ -239,6 +244,7 @@ impl Default for EditState {
             fonts_requested: false,
             font_filter: String::new(),
             swallow_click: false,
+            page_view: None,
         }
     }
 }
@@ -255,6 +261,7 @@ impl EditState {
         self.last_prompt = None;
         self.pending_copy = None;
         self.pending_status = None;
+        self.hold_status = false;
         self.objects.clear();
         self.objects_page = None;
         self.hover_index = None;
@@ -446,6 +453,15 @@ impl SuniApp {
 
     fn zoom_k(&self) -> f32 {
         self.effective_zoom * SCREEN_PER_PDF_POINT
+    }
+
+    /// Rectangle écran de la sélection (page affichée), poignées comprises.
+    fn selection_screen_rect(&self) -> Option<egui::Rect> {
+        let (page, page_rect, h) = self.edit.page_view?;
+        let b = self.selection_on(page)?.union_bounds();
+        let k = self.zoom_k();
+        let pt = |x: f32, y: f32| page_rect.min + egui::vec2(x * k, (h - y) * k);
+        Some(egui::Rect::from_two_pos(pt(b.left, b.top), pt(b.right, b.bottom)).expand(6.0))
     }
 
     fn corner_at(&self, page: usize, pt: (f32, f32)) -> Option<Corner> {
@@ -836,19 +852,21 @@ impl SuniApp {
             return;
         }
         let first = objects[0].clone();
-        self.status_msg = Some(if objects.len() == 1 {
-            tr_args(
-                lang,
-                "status.object_selected",
-                &[("kind", tr(lang, kind_key(first.kind)))],
-            )
-        } else {
-            tr_args(
-                lang,
-                "status.objects_selected",
-                &[("count", &objects.len().to_string())],
-            )
-        });
+        if !std::mem::take(&mut self.edit.hold_status) {
+            self.status_msg = Some(if objects.len() == 1 {
+                tr_args(
+                    lang,
+                    "status.object_selected",
+                    &[("kind", tr(lang, kind_key(first.kind)))],
+                )
+            } else {
+                tr_args(
+                    lang,
+                    "status.objects_selected",
+                    &[("count", &objects.len().to_string())],
+                )
+            });
+        }
         // La barre d'objet reflète le premier objet sélectionné.
         if let Some(c) = first.stroke_rgb {
             self.edit.stroke_rgb = rgb_arr(c);
@@ -1223,10 +1241,18 @@ impl SuniApp {
     }
 
     /// Barre flottante des propriétés d'objet (couleurs, épaisseur, opacité, angle, presse-papiers),
-    /// en haut à gauche de la zone document `bounds`, qu'elle ne déborde pas : en fenêtre étroite
-    /// elle passe à la ligne au lieu de recouvrir le rail.
+    /// posée sous la sélection (ou en haut à gauche de la zone document `bounds` pour un outil de
+    /// création), sans déborder de `bounds` : en fenêtre étroite elle passe à la ligne.
     pub fn object_bar(&mut self, ctx: &egui::Context, bounds: egui::Rect) {
-        if !self.annotate.tool.is_edit() || self.edit.text_prompt.as_ref().is_some_and(|p| p.inline)
+        // Sans sélection, la barre ne sert qu'aux outils de création (style des prochaines
+        // formes et images) : elle ne masque pas la page pour rien.
+        let creating = matches!(
+            self.annotate.tool,
+            Tool::Rectangle | Tool::Ellipse | Tool::Line | Tool::AddImage
+        );
+        if !self.annotate.tool.is_edit()
+            || self.edit.text_prompt.as_ref().is_some_and(|p| p.inline)
+            || (self.edit.selection.is_none() && !creating)
         {
             return;
         }
@@ -1239,6 +1265,21 @@ impl SuniApp {
         const GAP: f32 = 14.0;
         // Écarts de part et d'autre, marges intérieures (8 + 8) et trait du cadre (1 + 1).
         let max_w = (bounds.width() - 2.0 * GAP - 18.0).max(80.0);
+        let id = egui::Id::new("object-bar");
+        // Barre contextuelle : sous la sélection, ou au-dessus (place laissée à la poignée de
+        // rotation) si elle ne tient pas dessous ; sans sélection, en haut à gauche.
+        let bar_h = ctx.memory(|m| m.area_rect(id)).map_or(44.0, |r| r.height());
+        let pos = match self.selection_screen_rect() {
+            Some(r) if r.bottom() + 16.0 + bar_h <= bounds.bottom() - 8.0 => {
+                egui::pos2(r.left(), r.bottom() + 16.0)
+            }
+            Some(r) => egui::pos2(r.left(), r.top() - bar_h - ROTATE_GAP_PX - 24.0),
+            None => bounds.min + egui::vec2(GAP, GAP),
+        };
+        let pos = pos.clamp(
+            bounds.min + egui::vec2(GAP, GAP),
+            bounds.max - egui::vec2(GAP, GAP),
+        );
         let sel = self.edit.selection.clone();
         let single = sel.as_ref().and_then(|s| s.single().cloned());
         let all_forms = sel.as_ref().is_some_and(|s| {
@@ -1247,8 +1288,8 @@ impl SuniApp {
                 .all(|o| matches!(o.kind, ObjectKind::Form | ObjectKind::Other))
         });
         let can_paste = self.edit.clip.is_some();
-        egui::Area::new(egui::Id::new("object-bar"))
-            .fixed_pos(bounds.min + egui::vec2(GAP, GAP))
+        egui::Area::new(id)
+            .fixed_pos(pos)
             .constrain_to(bounds)
             .order(egui::Order::Middle)
             .show(ctx, |ui| {
@@ -1266,6 +1307,26 @@ impl SuniApp {
                     .show(ui, |ui| {
                         // Fixe la largeur de coupure (l'Area ne connaît que sa taille précédente).
                         ui.set_max_width(max_w);
+                        let icon = |ui: &mut egui::Ui, c: Command, enabled: bool| {
+                            let (g, f) = crate::shell::command_icon(c);
+                            let info = c.info();
+                            let tip = match info.shortcut_key {
+                                Some(key) => {
+                                    format!("{}  ({})", tr(lang, info.label_key), tr(lang, key))
+                                }
+                                None => tr(lang, info.label_key).to_string(),
+                            };
+                            ui.add_enabled(
+                                enabled,
+                                egui::Button::new(crate::icons::icon(has_icons, g, f, 15.0))
+                                    .frame(false),
+                            )
+                            .on_hover_text(&tip)
+                            .on_disabled_hover_text(&tip)
+                            .clicked()
+                        };
+                        // Rangée 1 : propriétés ; rangée 2 : actions. Chaque rangée passe à la
+                        // ligne si la zone document est étroite.
                         ui.horizontal_wrapped(|ui| {
                             if let Some(s) = sel.as_ref().filter(|s| s.objects.len() > 1) {
                                 ui.label(crate::icons::semibold(
@@ -1323,8 +1384,9 @@ impl SuniApp {
                                     angle_target = Some(self.edit.angle_field);
                                 }
                             }
+                        });
+                        ui.horizontal_wrapped(|ui| {
                             if sel.is_some() {
-                                ui.separator();
                                 if ui
                                     .button(tr(lang, "bar.apply"))
                                     .on_hover_text(tr_args(
@@ -1344,26 +1406,8 @@ impl SuniApp {
                                 {
                                     apply = true;
                                 }
+                                ui.separator();
                             }
-                            ui.separator();
-                            let icon = |ui: &mut egui::Ui, c: Command, enabled: bool| {
-                                let (g, f) = crate::shell::command_icon(c);
-                                let info = c.info();
-                                let tip = match info.shortcut_key {
-                                    Some(key) => {
-                                        format!("{}  ({})", tr(lang, info.label_key), tr(lang, key))
-                                    }
-                                    None => tr(lang, info.label_key).to_string(),
-                                };
-                                ui.add_enabled(
-                                    enabled,
-                                    egui::Button::new(crate::icons::icon(has_icons, g, f, 15.0))
-                                        .frame(false),
-                                )
-                                .on_hover_text(&tip)
-                                .on_disabled_hover_text(&tip)
-                                .clicked()
-                            };
                             for (c, enabled) in [
                                 (Command::CopyObjects, sel.is_some()),
                                 (Command::CutObjects, sel.is_some()),

@@ -252,6 +252,12 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// List the installed TrueType (.ttf) system fonts that can be embedded by add-text.
+    Fonts {
+        /// Case-insensitive substring of the font name.
+        #[arg(long)]
+        filter: Option<String>,
+    },
     /// Render one page to a PNG file.
     Render {
         file: PathBuf,
@@ -269,6 +275,16 @@ enum Command {
 }
 
 fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
+    if let Command::Fonts { filter } = &cli.command {
+        let filter = filter.as_deref().unwrap_or("").to_lowercase();
+        return Ok(serde_json::json!(sunipdf_core::fonts::system_fonts()
+            .into_iter()
+            .filter(|f| f.name.to_lowercase().contains(&filter))
+            .map(|f| serde_json::json!({
+                "name": f.name, "path": f.path, "size_bytes": f.size_bytes,
+            }))
+            .collect::<Vec<_>>()));
+    }
     if let Command::Commands = cli.command {
         return Ok(serde_json::json!(sunipdf_core::REGISTRY
             .iter()
@@ -292,7 +308,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
     }
     let engine = Engine::new()?;
     match cli.command {
-        Command::Commands => unreachable!(),
+        Command::Commands | Command::Fonts { .. } => unreachable!(),
         Command::Text {
             file,
             page,

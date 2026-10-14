@@ -483,6 +483,8 @@ impl SuniApp {
                     }
                     self.dirty = true;
                     self.status_msg = self.edit.pending_status.take();
+                    // Le message de l'opération reste affiché après la resélection.
+                    self.edit.hold_status = self.status_msg.is_some();
                     self.update_title(ctx);
                 }
                 Response::TextSelected { page, selection } => match self.annotate.tool.markup() {
@@ -514,7 +516,10 @@ impl SuniApp {
                     }
                 }
                 Response::Copied { count, text } => self.on_copied(ctx, count, text),
-                Response::SystemFonts(list) => self.edit.system_fonts = Some(list),
+                Response::SystemFonts(list) => {
+                    log::debug!("{} polices système incorporables", list.len());
+                    self.edit.system_fonts = Some(list);
+                }
                 Response::Suspended(s) => self.on_suspended(s),
                 Response::Resumed(state) => self.on_resumed(state, ctx),
                 Response::ResumeFailed(error) => {
@@ -1277,6 +1282,7 @@ impl SuniApp {
                 self.paint_matches(&painter, page_rect, page_index, size.height_pt);
                 self.paint_selection(&painter, page_rect, page_index, size.height_pt);
                 self.paint_object_selection(&painter, page_rect, page_index, size.height_pt);
+                self.edit.page_view = Some((page_index, page_rect, size.height_pt));
                 self.inline_text_editor(ctx, page_rect, page_index, size.height_pt);
                 let interact = ui.interact(
                     page_rect,

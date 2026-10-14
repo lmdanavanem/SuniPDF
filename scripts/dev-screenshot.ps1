@@ -10,6 +10,7 @@ param(
     [string]$Commands = "",
     # Glissement souris relatif à la fenêtre : "x1,y1,x2,y2" (points logiques).
     [string]$Drag = "",
+    # Touches après les glissements ; plusieurs saisies séparées par "|", ex. "^c|^v".
     [string]$KeysAfter = "",
     # Taille de fenetre imposee (pixels), ex. -Width 720 -Height 600 ; 0 = taille par defaut.
     [int]$Width = 0,
@@ -79,7 +80,8 @@ try {
         [Win]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)   # LEFTUP
         Start-Sleep -Seconds 1.5
     }
-    if ($KeysAfter) { [System.Windows.Forms.SendKeys]::SendWait($KeysAfter); Start-Sleep -Seconds 1.5 }
+    # Plusieurs saisies séparées par "|" (1,5 s entre elles) : "^c|^v".
+    foreach ($k in ($KeysAfter -split "\|" | Where-Object { $_ })) { [System.Windows.Forms.SendKeys]::SendWait($k); Start-Sleep -Seconds 1.5 }
     # DWMWA_EXTENDED_FRAME_BOUNDS = 9 : rectangle visible sans l'ombre invisible de Windows 10/11.
     if ([Win]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [Win]::GetWindowRect($h, [ref]$r) | Out-Null }
     $w = $r.Right - $r.Left; $hgt = $r.Bottom - $r.Top
