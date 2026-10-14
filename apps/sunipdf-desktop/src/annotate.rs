@@ -175,7 +175,7 @@ impl SuniApp {
             }
         }
         if let Some(drag) = &self.annotate.drag {
-            if drag.page == page_index {
+            if drag.page == page_index && !self.annotate.tool.is_edit() {
                 painter.rect_stroke(
                     to_screen(&drag.rect()),
                     0.0,

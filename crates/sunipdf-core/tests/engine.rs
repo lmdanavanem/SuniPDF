@@ -611,6 +611,7 @@ fn edit_page_content_text_image_shapes() {
             size_pt: 18.0,
             bold: true,
             rgb: (200, 0, 0),
+            ..Default::default()
         },
     )
     .unwrap();
@@ -743,4 +744,128 @@ fn edit_page_content_text_image_shapes() {
     let i = ((792 - 150) * 612 + 400) * 4;
     assert_eq!((again_img.rgba[i], again_img.rgba[i + 1]), (0, 160));
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn edit_resize_style_text_size_and_fonts() {
+    use sunipdf_core::{FontFamily, ObjectStyle, PointRect, ShapeKind, ShapeStyle, TextStyle};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    // Rectangle magenta plein, redimensionné puis recoloré en vert : pixels vérifiés.
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        PointRect {
+            left: 100.0,
+            bottom: 100.0,
+            right: 200.0,
+            top: 150.0,
+        },
+        &ShapeStyle {
+            stroke_rgb: (0, 0, 0),
+            stroke_width: 1.0,
+            fill_rgb: Some((255, 0, 255)),
+        },
+    )
+    .unwrap();
+    let index = doc.page_objects(0).unwrap().len() - 1;
+    let info = doc.object_info(0, index).unwrap();
+    assert_eq!(info.fill_rgb, Some((255, 0, 255)));
+    assert_eq!(info.stroke_rgb, Some((0, 0, 0)));
+    doc.resize_object(
+        0,
+        index,
+        PointRect {
+            left: 300.0,
+            bottom: 400.0,
+            right: 500.0,
+            top: 600.0,
+        },
+    )
+    .unwrap();
+    let b = doc.object_info(0, index).unwrap().bounds;
+    assert!(
+        (b.left - 300.0).abs() < 1.5
+            && (b.right - 500.0).abs() < 1.5
+            && (b.bottom - 400.0).abs() < 1.5
+            && (b.top - 600.0).abs() < 1.5,
+        "{b:?}"
+    );
+    doc.set_object_style(
+        0,
+        index,
+        &ObjectStyle {
+            fill_rgb: Some((0, 160, 0)),
+            stroke_rgb: None,
+            stroke_width: Some(0.5),
+        },
+    )
+    .unwrap();
+    let img = doc.render_page(0, 1.0).unwrap();
+    let px = |x: usize, y_top: usize| {
+        let i = (y_top * 612 + x) * 4;
+        (img.rgba[i], img.rgba[i + 1], img.rgba[i + 2])
+    };
+    assert_eq!(
+        px(400, 792 - 500),
+        (0, 160, 0),
+        "rectangle redimensionné et recoloré"
+    );
+    assert_eq!(
+        px(150, 792 - 125),
+        (255, 255, 255),
+        "ancienne position vide"
+    );
+    assert!(doc
+        .resize_object(
+            0,
+            index,
+            PointRect {
+                left: 0.0,
+                bottom: 0.0,
+                right: 0.0,
+                top: 10.0
+            }
+        )
+        .is_err());
+
+    // Texte Times italique rouge, puis taille changée : hauteur des limites doublée.
+    doc.add_text(
+        0,
+        100.0,
+        700.0,
+        "Times italique",
+        &TextStyle {
+            size_pt: 10.0,
+            bold: false,
+            italic: true,
+            family: FontFamily::Times,
+            rgb: (200, 0, 0),
+        },
+    )
+    .unwrap();
+    let t = doc
+        .page_objects(0)
+        .unwrap()
+        .into_iter()
+        .find(|o| o.text.as_deref() == Some("Times italique"))
+        .unwrap();
+    assert!(
+        t.font_name
+            .as_deref()
+            .unwrap_or("")
+            .to_lowercase()
+            .contains("times"),
+        "{:?}",
+        t.font_name
+    );
+    assert_eq!(t.fill_rgb, Some((200, 0, 0)));
+    let h1 = t.bounds.top - t.bounds.bottom;
+    doc.set_text_size(0, t.index, 20.0).unwrap();
+    let t2 = doc.object_info(0, t.index).unwrap();
+    assert!((t2.font_size - 20.0).abs() < 0.5, "{t2:?}");
+    let h2 = t2.bounds.top - t2.bounds.bottom;
+    assert!((h2 / h1 - 2.0).abs() < 0.2, "{h1} → {h2}");
+    assert!(doc.set_text_size(0, index, 20.0).is_err(), "pas un texte");
+    assert!(doc.page_text(0).unwrap().contains("Times italique"));
 }

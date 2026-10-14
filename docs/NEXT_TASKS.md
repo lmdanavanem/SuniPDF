@@ -14,9 +14,9 @@ Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.
 ## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
 Sélection à la souris sur la page (`PdfPageText::chars_inside_rect`), copie presse-papiers, i18n `edit.copy`.
 
-## SUNI-031b — Édition du contenu, suite (owner : PDF-EDITOR)
-Fait en SUNI-031 : sélection, déplacement, suppression, texte (ajout/modification), image, rectangle/ellipse/ligne.
-Reste : redimensionnement par poignées (matrice d'objet), rotation, couleur de texte et de trait, choix de police (polices standard + système), opacité, sélection multiple, copier/coller d'objets, panneau « Objets » listant `page_objects`.
+## SUNI-031c — Édition du contenu, suite (owner : PDF-EDITOR)
+Fait en SUNI-031/031b : sélection, déplacement, redimensionnement, suppression, texte (ajout/modification, taille, couleur, 3 familles standard), image, rectangle/ellipse/ligne, couleurs et épaisseur.
+Reste : rotation, polices système incorporées (TrueType), opacité, sélection multiple, copier/coller d'objets, déplacement au clavier (flèches), panneau « Objets » listant `page_objects`.
 Acceptation : chaque opération couverte par un test moteur avec rendu vérifié ; clés i18n `dialog.object.*`.
 
 ## SUNI-021b — Annotations avancées (owner : PDF-EDITOR)

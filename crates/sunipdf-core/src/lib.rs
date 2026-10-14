@@ -21,7 +21,7 @@ pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
 pub use cache::{cache_key, RenderCache};
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use convert::Optimized;
-pub use edit::{ObjectInfo, ObjectKind, ShapeKind, ShapeStyle, TextStyle};
+pub use edit::{FontFamily, ObjectInfo, ObjectKind, ObjectStyle, ShapeKind, ShapeStyle, TextStyle};
 pub use error::EngineError;
 pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection};

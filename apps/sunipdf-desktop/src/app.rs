@@ -1089,7 +1089,11 @@ impl SuniApp {
                 let zoom = self.effective_zoom;
                 let page_h = size.height_pt;
                 if interact.drag_started() {
-                    if let Some(pos) = interact.interact_pointer_pos() {
+                    // Origine réelle de la pression : le glissement n'est détecté qu'après le seuil.
+                    let origin = ui
+                        .input(|i| i.pointer.press_origin())
+                        .or_else(|| interact.interact_pointer_pos());
+                    if let Some(pos) = origin {
                         let pt = crate::annotate::to_pdf(pos, page_rect, zoom, page_h);
                         drag_event = Some(DragEvent::Start(pt));
                     }
@@ -1114,14 +1118,14 @@ impl SuniApp {
                         )));
                     }
                 }
-                if matches!(self.annotate.tool, crate::annotate::Tool::Note) {
-                    interact.on_hover_cursor(egui::CursorIcon::Crosshair);
-                } else {
-                    interact.on_hover_cursor(egui::CursorIcon::Text);
-                }
+                let hover = interact
+                    .hover_pos()
+                    .map(|pos| crate::annotate::to_pdf(pos, page_rect, zoom, page_h));
+                interact.on_hover_cursor(self.page_cursor(page_index, hover));
             });
         match drag_event {
             Some(DragEvent::Start(pt)) => {
+                self.edit_drag_start(page_index, pt);
                 self.annotate.drag = Some(crate::annotate::Drag {
                     page: page_index,
                     start: pt,
@@ -1163,6 +1167,7 @@ impl SuniApp {
             None => {}
         }
         self.tool_palette(ctx, ui, palette_origin);
+        self.object_bar(ctx, palette_origin + egui::vec2(46.0, 0.0));
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).

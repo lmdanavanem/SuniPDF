@@ -9,7 +9,8 @@ param(
     # Identifiants de commandes exÃ©cutÃ©s aprÃ¨s l'ouverture (ex. "view.organize,edit.find").
     [string]$Commands = "",
     # Glissement souris relatif Ã  la fenÃªtre : "x1,y1,x2,y2" (points logiques).
-    [string]$Drag = ""
+    [string]$Drag = "",
+    [string]$KeysAfter = ""
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -31,7 +32,11 @@ public static class Win {
 "@
 if ($Commands) { $env:SUNIPDF_STARTUP_COMMANDS = $Commands } else { Remove-Item Env:SUNIPDF_STARTUP_COMMANDS -ErrorAction SilentlyContinue }
 $args_ = @(); if ($Pdf) { $args_ = $Pdf.Split(";") | ForEach-Object { "`"$_`"" } }
-$proc = if ($args_.Count -gt 0) { Start-Process -FilePath $Exe -ArgumentList $args_ -PassThru } else { Start-Process -FilePath $Exe -PassThru }
+# $env:SUNIPDF_LOG = chemin : la sortie d'erreur (journal env_logger, RUST_LOG) y est redirigee.
+$sp = @{ FilePath = $Exe; PassThru = $true }
+if ($args_.Count -gt 0) { $sp.ArgumentList = $args_ }
+if ($env:SUNIPDF_LOG) { $sp.RedirectStandardError = $env:SUNIPDF_LOG }
+$proc = Start-Process @sp
 try {
     Start-Sleep -Seconds $Delay
     $proc.Refresh()
@@ -48,8 +53,9 @@ try {
     [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point((($r.Left + $r.Right) / 2), (($r.Top + $r.Bottom) / 2))
     Start-Sleep -Milliseconds 300
     if ($Keys) { Start-Sleep -Milliseconds 500; [System.Windows.Forms.SendKeys]::SendWait($Keys); Start-Sleep -Seconds 1.5 }
-    if ($Drag) {
-        $d = $Drag.Split(",") | ForEach-Object { [int]$_ }
+    # Plusieurs glissements séparés par ";" : "x1,y1,x2,y2;x1,y1,x2,y2".
+    foreach ($one in ($Drag -split ";" | Where-Object { $_ })) {
+        $d = $one.Split(",") | ForEach-Object { [int]$_ }
         $scale = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds.Width / [System.Windows.Forms.SystemInformation]::VirtualScreen.Width
         $x1 = $r.Left + $d[0]; $y1 = $r.Top + $d[1]; $x2 = $r.Left + $d[2]; $y2 = $r.Top + $d[3]
         [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point($x1, $y1)
@@ -65,6 +71,7 @@ try {
         [Win]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)   # LEFTUP
         Start-Sleep -Seconds 1.5
     }
+    if ($KeysAfter) { [System.Windows.Forms.SendKeys]::SendWait($KeysAfter); Start-Sleep -Seconds 1.5 }
     # DWMWA_EXTENDED_FRAME_BOUNDS = 9 : rectangle visible sans l'ombre invisible de Windows 10/11.
     if ([Win]::DwmGetWindowAttribute($h, 9, [ref]$r, 16) -ne 0) { [Win]::GetWindowRect($h, [ref]$r) | Out-Null }
     $w = $r.Right - $r.Left; $hgt = $r.Bottom - $r.Top

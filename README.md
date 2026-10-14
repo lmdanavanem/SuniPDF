@@ -3,9 +3,11 @@
 Lecteur et éditeur PDF professionnel pour Windows 10/11, natif (Rust), hors ligne, sans télémétrie,
 entièrement bilingue français / anglais. Moteur de rendu : PDFium.
 
-État : **phase 1 (fondations)** — ouvrir, afficher, naviguer, zoomer, fermer un PDF, documents protégés par
-mot de passe, glisser-déposer, thèmes clair/sombre, CLI `info`/`render`. Voir `docs/PROJECT_STATUS.md`
-(fait vs planifié) et `docs/ROADMAP.md`.
+État : **version 0.2.0** — lecture (onglets, miniatures, recherche, signets), annotations, organisation des
+pages, fusion / division / extraction, conversions images, optimisation, protection AES, édition du contenu
+(texte, images, formes, objets existants : déplacer, redimensionner, recolorer), CLI JSON. Détail fait vs
+planifié : `docs/PROJECT_STATUS.md`, `docs/FEATURE_MATRIX.md`, `docs/ROADMAP.md`, `CHANGELOG.md`.
+Téléchargements : page **Releases** GitHub (ZIP portable x64/ARM64, MSI x64, produits par `release.yml`).
 
 ## Prérequis
 
@@ -35,8 +37,10 @@ Ou manuellement : `cargo test --workspace -j 2`, `cargo run -p sunipdf-desktop`,
 
 ## Raccourcis
 
-Ctrl+O ouvrir · Ctrl+W fermer · Page suiv./préc., ← → naviguer · Origine/Fin première/dernière page ·
-Ctrl + / Ctrl − zoom · Ctrl 0 taille réelle.
+Ctrl+O ouvrir · Ctrl+W fermer · Ctrl+S enregistrer · Ctrl+K palette de commandes · Ctrl+F rechercher ·
+Page suiv./préc., ← → naviguer · Ctrl + / Ctrl − zoom · Ctrl 0 taille réelle · Ctrl+Z / Ctrl+Y annuler, rétablir ·
+V H U X N outils d'annotation · E T I R O L outils d'édition · F2 modifier le texte · Suppr supprimer l'objet ·
+F4 miniatures · F6 signets · F7 commentaires · F8 organiser · F9 panneau d'outils. Liste complète : guides utilisateur.
 
 ## Structure
 

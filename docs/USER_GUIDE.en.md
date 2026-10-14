@@ -49,12 +49,15 @@ delete them. Every annotation can be undone (Ctrl+Z).
 The **Edit** category (and the second half of the floating palette) changes the page content itself,
 not annotations: select object (E), add text (T), insert image (I), rectangle (R), ellipse (O), line (L).
 With the select tool, click a text, image or path: a blue frame appears; drag it to move the object,
-press **Del** to delete it, **F2** (or double-click) to edit a text. Click the page with the text tool to
-type new text (size, bold), with the image tool to pick a file (PNG, JPEG, BMP, GIF, TIFF, WebP), and drag
-a rectangle to draw a shape. Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
+pull a corner handle to resize it, press **Del** to delete it, **F2** (or double-click) to edit a text
+(content, size, colour). Click the page with the text tool to type new text (Helvetica / Times / Courier,
+bold, italic, size, colour), with the image tool to pick a file (PNG, JPEG, BMP, GIF, TIFF, WebP; the
+clicked point becomes the top-left corner), and drag a rectangle to draw a shape. The bar next to the
+palette sets stroke colour, stroke width and fill for new shapes; **Apply to object** recolours the
+selected object. Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
 
-Limits: no resizing or rotation, no colour or font choice; edited text keeps its original font, which may
-not contain every character you type.
+Limits: no rotation; fonts limited to the 14 standard fonts; edited text keeps its original font, which
+may not contain every character you type.
 
 ## Organizing pages
 

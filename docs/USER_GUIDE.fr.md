@@ -50,13 +50,16 @@ et permet de les supprimer. Toute annotation est annulable (Ctrl+Z).
 La catégorie **Éditer** (et la seconde moitié de la palette flottante) modifie le contenu même des pages,
 pas des annotations : sélectionner un objet (E), ajouter du texte (T), insérer une image (I), rectangle (R),
 ellipse (O), ligne (L). Avec l'outil de sélection, cliquez sur un texte, une image ou un tracé : un cadre bleu
-apparaît ; glissez-le pour le déplacer, appuyez sur **Suppr** pour le supprimer, sur **F2** (ou double-clic) pour
-modifier un texte. Cliquez sur la page avec l'outil texte pour saisir un nouveau texte (taille, gras), avec
-l'outil image pour choisir un fichier (PNG, JPEG, BMP, GIF, TIFF, WebP), tracez un rectangle pour une forme.
-Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
+apparaît ; glissez-le pour le déplacer, tirez une poignée d'angle pour le redimensionner, appuyez sur **Suppr**
+pour le supprimer, sur **F2** (ou double-clic) pour modifier un texte (contenu, taille, couleur). Cliquez sur la
+page avec l'outil texte pour saisir un nouveau texte (police Helvetica / Times / Courier, gras, italique, taille,
+couleur), avec l'outil image pour choisir un fichier (PNG, JPEG, BMP, GIF, TIFF, WebP ; le point cliqué devient
+le coin haut-gauche), tracez un rectangle pour une forme. La barre à droite de la palette règle la couleur et
+l'épaisseur du trait et le remplissage des nouvelles formes ; **Appliquer à l'objet** recolore l'objet
+sélectionné. Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
 
-Limites : pas de redimensionnement ni de rotation, pas de choix de couleur ni de police ; le texte modifié
-conserve sa police d'origine, qui peut ne pas contenir tous les caractères saisis.
+Limites : pas de rotation ; polices limitées aux 14 polices standard ; le texte modifié conserve sa police
+d'origine, qui peut ne pas contenir tous les caractères saisis.
 
 ## Organiser les pages
 

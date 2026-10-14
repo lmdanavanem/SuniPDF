@@ -8,8 +8,8 @@ use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
     security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
-    Metadata, ObjectInfo, PointRect, Properties, Protection, RenderCache, RenderedPage, ShapeKind,
-    ShapeStyle, TextMatch, TextSelection, TextStyle,
+    Metadata, ObjectInfo, ObjectStyle, PointRect, Properties, Protection, RenderCache,
+    RenderedPage, ShapeKind, ShapeStyle, TextMatch, TextSelection, TextStyle,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -118,7 +118,19 @@ pub enum EditOp {
     SetText {
         page: usize,
         index: usize,
-        text: String,
+        text: Option<String>,
+        size: Option<f32>,
+        rgb: Option<(u8, u8, u8)>,
+    },
+    ResizeObject {
+        page: usize,
+        index: usize,
+        bounds: PointRect,
+    },
+    SetObjectStyle {
+        page: usize,
+        index: usize,
+        style: ObjectStyle,
     },
     MoveObject {
         page: usize,
@@ -432,7 +444,37 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             text,
             style,
         } => doc.add_text(page, x, y, &text, &style),
-        EditOp::SetText { page, index, text } => doc.set_object_text(page, index, &text),
+        EditOp::SetText {
+            page,
+            index,
+            text,
+            size,
+            rgb,
+        } => {
+            if let Some(text) = text {
+                doc.set_object_text(page, index, &text)?;
+            }
+            if let Some(size) = size {
+                doc.set_text_size(page, index, size)?;
+            }
+            if let Some(rgb) = rgb {
+                doc.set_object_style(
+                    page,
+                    index,
+                    &ObjectStyle {
+                        fill_rgb: Some(rgb),
+                        ..Default::default()
+                    },
+                )?;
+            }
+            Ok(())
+        }
+        EditOp::ResizeObject {
+            page,
+            index,
+            bounds,
+        } => doc.resize_object(page, index, bounds),
+        EditOp::SetObjectStyle { page, index, style } => doc.set_object_style(page, index, &style),
         EditOp::MoveObject {
             page,
             index,

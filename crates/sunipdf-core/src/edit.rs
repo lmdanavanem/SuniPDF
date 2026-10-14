@@ -21,12 +21,26 @@ pub struct ObjectInfo {
     /// Contenu d'un objet texte.
     pub text: Option<String>,
     pub font_size: f32,
+    pub font_name: Option<String>,
+    pub fill_rgb: Option<(u8, u8, u8)>,
+    pub stroke_rgb: Option<(u8, u8, u8)>,
+    pub stroke_width: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FontFamily {
+    #[default]
+    Helvetica,
+    Times,
+    Courier,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TextStyle {
     pub size_pt: f32,
     pub bold: bool,
+    pub italic: bool,
+    pub family: FontFamily,
     pub rgb: (u8, u8, u8),
 }
 
@@ -35,9 +49,19 @@ impl Default for TextStyle {
         Self {
             size_pt: 12.0,
             bold: false,
+            italic: false,
+            family: FontFamily::Helvetica,
             rgb: (0, 0, 0),
         }
     }
+}
+
+/// Couleurs et épaisseur à appliquer à un objet existant (`None` = inchangé).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct ObjectStyle {
+    pub fill_rgb: Option<(u8, u8, u8)>,
+    pub stroke_rgb: Option<(u8, u8, u8)>,
+    pub stroke_width: Option<f32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,16 +114,43 @@ fn describe(index: usize, object: &PdfPageObject<'_>) -> ObjectInfo {
         right: 0.0,
         top: 0.0,
     });
-    let (text, font_size) = match object.as_text_object() {
-        Some(t) => (Some(t.text()), t.scaled_font_size().value),
-        None => (None, 0.0),
+    let (text, font_size, font_name) = match object.as_text_object() {
+        Some(t) => (
+            Some(t.text()),
+            t.scaled_font_size().value,
+            Some(t.font().family()).filter(|n| !n.is_empty()),
+        ),
+        None => (None, 0.0, None),
     };
+    let rgb = |c: PdfColor| (c.red(), c.green(), c.blue());
     ObjectInfo {
         index,
         kind,
         bounds,
         text,
         font_size,
+        font_name,
+        fill_rgb: object.fill_color().ok().map(rgb),
+        stroke_rgb: object.stroke_color().ok().map(rgb),
+        stroke_width: object.stroke_width().map(|w| w.value).unwrap_or(0.0),
+    }
+}
+
+fn font_token(fonts: &mut PdfFonts, style: &TextStyle) -> PdfFontToken {
+    use FontFamily::*;
+    match (style.family, style.bold, style.italic) {
+        (Helvetica, false, false) => fonts.helvetica(),
+        (Helvetica, true, false) => fonts.helvetica_bold(),
+        (Helvetica, false, true) => fonts.helvetica_oblique(),
+        (Helvetica, true, true) => fonts.helvetica_bold_oblique(),
+        (Times, false, false) => fonts.times_roman(),
+        (Times, true, false) => fonts.times_bold(),
+        (Times, false, true) => fonts.times_italic(),
+        (Times, true, true) => fonts.times_bold_italic(),
+        (Courier, false, false) => fonts.courier(),
+        (Courier, true, false) => fonts.courier_bold(),
+        (Courier, false, true) => fonts.courier_oblique(),
+        (Courier, true, true) => fonts.courier_bold_oblique(),
     }
 }
 
@@ -137,7 +188,7 @@ impl Document<'_> {
         }))
     }
 
-    /// Ajoute un objet texte (Helvetica, WinAnsi : accents latins pris en charge) dont le coin
+    /// Ajoute un objet texte (police standard, WinAnsi : accents latins pris en charge) dont le coin
     /// bas-gauche de la ligne de base est en (x, y).
     pub fn add_text(
         &mut self,
@@ -153,11 +204,7 @@ impl Document<'_> {
         if !(style.size_pt.is_finite() && style.size_pt > 0.0) {
             return Err(EngineError::Other("invalid font size".into()));
         }
-        let font = if style.bold {
-            self.inner.fonts_mut().helvetica_bold()
-        } else {
-            self.inner.fonts_mut().helvetica()
-        };
+        let font = font_token(self.inner.fonts_mut(), style);
         let mut page = self.page_handle(page_index)?;
         let mut object =
             PdfPageTextObject::new(&self.inner, text, font, PdfPoints::new(style.size_pt))?;
@@ -207,6 +254,95 @@ impl Document<'_> {
         object.translate(PdfPoints::new(dx), PdfPoints::new(dy))?;
         drop(object);
         // Les objets modifiés en place ne régénèrent pas le flux de contenu : le faire explicitement.
+        page.regenerate_content()?;
+        Ok(())
+    }
+
+    /// Redimensionne un objet pour que ses limites deviennent `bounds` (mise à l'échelle de sa
+    /// matrice ; le coin bas-gauche d'origine est ramené sur le nouveau coin bas-gauche).
+    pub fn resize_object(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        bounds: PointRect,
+    ) -> Result<(), EngineError> {
+        let current = self.object_info(page_index, index)?.bounds;
+        let (old_w, old_h) = (current.right - current.left, current.top - current.bottom);
+        let (new_w, new_h) = (bounds.right - bounds.left, bounds.top - bounds.bottom);
+        if !(old_w > 0.0 && old_h > 0.0 && new_w > 0.0 && new_h > 0.0) {
+            return Err(EngineError::Other("invalid object size".into()));
+        }
+        let mut page = self.page_handle(page_index)?;
+        let mut object = page
+            .objects()
+            .get(index as PdfPageObjectIndex)
+            .map_err(|_| EngineError::Other(format!("object {index} not found")))?;
+        object.translate(
+            PdfPoints::new(-current.left),
+            PdfPoints::new(-current.bottom),
+        )?;
+        object.scale(new_w / old_w, new_h / old_h)?;
+        object.translate(PdfPoints::new(bounds.left), PdfPoints::new(bounds.bottom))?;
+        drop(object);
+        page.regenerate_content()?;
+        Ok(())
+    }
+
+    /// Change les couleurs et l'épaisseur de trait d'un objet (texte : couleur de remplissage).
+    pub fn set_object_style(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        style: &ObjectStyle,
+    ) -> Result<(), EngineError> {
+        let mut page = self.page_handle(page_index)?;
+        let mut object = page
+            .objects()
+            .get(index as PdfPageObjectIndex)
+            .map_err(|_| EngineError::Other(format!("object {index} not found")))?;
+        if let Some(rgb) = style.fill_rgb {
+            object.set_fill_color(color(rgb))?;
+        }
+        if let Some(rgb) = style.stroke_rgb {
+            object.set_stroke_color(color(rgb))?;
+        }
+        if let Some(w) = style.stroke_width {
+            object.set_stroke_width(PdfPoints::new(w.max(0.0)))?;
+        }
+        drop(object);
+        page.regenerate_content()?;
+        Ok(())
+    }
+
+    /// Change la taille affichée (points) d'un objet texte existant.
+    pub fn set_text_size(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        size_pt: f32,
+    ) -> Result<(), EngineError> {
+        if !(size_pt.is_finite() && size_pt > 0.0) {
+            return Err(EngineError::Other("invalid font size".into()));
+        }
+        let mut page = self.page_handle(page_index)?;
+        let object = page
+            .objects()
+            .get(index as PdfPageObjectIndex)
+            .map_err(|_| EngineError::Other(format!("object {index} not found")))?;
+        let Some(text_object) = object.as_text_object() else {
+            return Err(EngineError::Other("not a text object".into()));
+        };
+        let (scaled, unscaled) = (
+            text_object.scaled_font_size().value,
+            text_object.unscaled_font_size().value,
+        );
+        let ratio = if unscaled > 0.0 && scaled > 0.0 {
+            scaled / unscaled
+        } else {
+            1.0
+        };
+        text_object.set_unscaled_font_size(PdfPoints::new(size_pt / ratio))?;
+        drop(object);
         page.regenerate_content()?;
         Ok(())
     }
