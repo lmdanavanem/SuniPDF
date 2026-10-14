@@ -60,7 +60,7 @@ scrolls without loading everything.
 | Next / previous page | → ← arrows, right-rail buttons |
 | First / last page | Home / End |
 | Go to page | Type the number in the right-rail box, then Enter, or click a thumbnail: the page comes to the top of the screen |
-| Zoom | Ctrl + mouse wheel (zooms **around the pointer**, touchpad pinch too), Ctrl + / Ctrl − (around the centre), Ctrl 0 (actual size), zoom list (25 to 1600%), "Width", "Page"; up to 3200% with the wheel, staying sharp (tiled rendering) |
+| Zoom | Ctrl + mouse wheel (zooms **around the pointer**; touchpad pinch takes the same path, untested), Ctrl + / Ctrl − (around the centre), Ctrl 0 (actual size), zoom list (25 to 1600%), "Width", "Page"; up to 3200% with the wheel, staying sharp (tiled rendering) |
 | Continuous / single page | F5, right-rail button, View menu |
 | Thumbnails | **Pages** panel on the left (grid button on the right rail); drag a thumbnail to reorder |
 | Bookmarks | F6 or the list button on the right rail |

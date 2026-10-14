@@ -205,6 +205,8 @@ impl SuniApp {
                     page: 0,
                 });
                 self.page_input = "1".into();
+                // La zone de défilement est partagée entre onglets : repartir du haut.
+                self.view.request(crate::view::ScrollRequest::Page(0));
             }
         }
         self.can_undo = state.can_undo;

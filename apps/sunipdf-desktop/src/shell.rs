@@ -923,9 +923,24 @@ impl SuniApp {
                 .ctx()
                 .data(|d| d.get_temp::<f32>(bottom_id))
                 .unwrap_or(340.0);
+            // Icônes entières seulement (pas « tranchées ») ; pas d'une icône mesuré à l'image
+            // précédente. Barre visible sans survol : signale les icônes masquées.
+            let pitch_id = ui.id().with("rail-pitch");
+            let gap = ui.spacing().item_spacing.y;
+            let room = (ui.available_height() - bottom_h - 12.0).max(34.0);
+            let room = match ui.ctx().data(|d| d.get_temp::<f32>(pitch_id)) {
+                Some(pitch) if pitch > 1.0 => {
+                    6.0 + ((room - 6.0 + gap) / pitch).floor().max(1.0) * pitch - gap
+                }
+                _ => room,
+            };
+            ui.spacing_mut().scroll.dormant_handle_opacity = 0.6;
+            // Sans `min_scrolled_height`, egui garde 64 px au moins et le groupe du bas recouvre
+            // une icône tranchée.
             egui::ScrollArea::vertical()
                 .id_salt("rail-top")
-                .max_height((ui.available_height() - bottom_h - 12.0).max(34.0))
+                .max_height(room)
+                .min_scrolled_height(0.0)
                 .show(ui, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.add_space(6.0);
@@ -935,6 +950,8 @@ impl SuniApp {
                                 self.icon(glyph::GRID, "▦", 16.0),
                             ))
                             .on_hover_text(tr(lang, "menu.view.thumbnails"));
+                        let pitch = thumbs.rect.height() + gap;
+                        ui.ctx().data_mut(|d| d.insert_temp(pitch_id, pitch));
                         if thumbs.clicked() {
                             self.execute(ctx, Command::ToggleThumbnails);
                         }

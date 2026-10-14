@@ -13,7 +13,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 - La **page courante suit le défilement** (champ du rail, barre d'état, miniature ramenée dans le panneau,
   panneau des commentaires) ; un clic sur une page la rend courante ; « aller à » (champ, miniature, signet,
   Origine / Fin, page suivante / précédente, résultat de recherche) amène la page en haut de l'écran.
-- **Zoom ancré** : Ctrl + molette (et pincement du pavé tactile) zoome autour du pointeur, boutons et liste
+- **Zoom ancré** : Ctrl + molette zoome autour du pointeur (pincement du pavé tactile : même chemin, non testé), boutons et liste
   autour du centre ; liste étendue à 800, 1200 et 1600 %, molette jusqu'à 3200 % ; pendant le zoom l'image
   précédente reste affichée, étirée, jusqu'au nouveau rendu.
 - **Rendu en tuiles** (1024 px) au-delà de 4096 px de côté : le zoom profond reste net sans plafond de
@@ -25,8 +25,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   CLI `render --region x,y,w,h` (sortie `region`, `page_pixels`).
 - Fixture `many-pages.pdf` (120 pages de tailles mixtes, `make_fixtures.py --many N` pour plus) ; 7 tests
   d'intégration (régions = découpe du rendu complet, page pivotée, zoom ×40 au-delà de 16 384 px, page image,
-  erreurs, recollage des tuiles), 13 tests de la vue (mise en page, virtualisation de 600 pages, ancre de zoom,
-  plafonds, pool de textures borné, tuiles voulues) ; `dev-screenshot.ps1 -Wheel` pour Ctrl + molette.
+  erreurs, recollage des tuiles), 14 tests de la vue (mise en page, virtualisation de 600 pages, ancre de zoom,
+  plafonds, pool de textures borné, tuiles voulues, Espace / Maj+Espace) ; `dev-screenshot.ps1 -Wheel` pour Ctrl + molette.
 
 ### Modifié (vue continue)
 - Le **panneau Objets passe de F5 à F3** (F5 bascule désormais la vue).

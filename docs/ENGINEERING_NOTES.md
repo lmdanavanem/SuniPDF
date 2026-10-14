@@ -122,7 +122,10 @@ sortie) ; tester sur `tests/fixtures/boxes.pdf` (pages pivotées 90/180/270 et r
 - Le fond « inactif » du thème est la couleur de surface : un `Slider` a besoin d'un
   `ui.visuals_mut().widgets.inactive.bg_fill` local pour que son rail soit visible.
 - Clavier : `ctx.input_mut(|i| i.consume_key(Modifiers::…, Key::…))` pour éviter qu'une touche serve
-  deux fois dans la même image.
+  deux fois dans la même image. `consume_key` ignore une touche Maj ou Alt en trop (`matches_logically`) :
+  lire la variante avec Maj **avant** la variante simple (Maj+Espace avant Espace).
+- `ScrollArea::max_height(h)` ne descend pas sous 64 px (`min_scrolled_height`) : pour une zone plus basse,
+  ajouter `.min_scrolled_height(0.0)`, sinon le contenu voisin la recouvre.
 - Origine d'un glissement : `ui.input(|i| i.pointer.press_origin())`, pas la position au moment où le
   seuil de glissement est franchi.
 - Widget dessiné à la main : `allocate_exact_size(.., Sense::click())` (focalisable), puis

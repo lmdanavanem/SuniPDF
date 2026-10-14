@@ -49,7 +49,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 ## Dernière exécution (2026-10-14, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
-| `cargo test --workspace -j 2` | 111/111 OK, 2 ignorés (mesures) : core 24 unitaires (dont tuiles et cache de tuiles) + 38 intégration (dont 7 de la tranche continuous-view : régions rendues = découpe du rendu complet, page pivotée, zoom ×40, page image, erreurs, fixture 120 pages, recollage des tuiles), application 38 (dont 13 de la vue continue), i18n 6, CLI 5 |
+| `cargo test --workspace -j 2` | 112/112 OK, 2 ignorés (mesures) : core 24 unitaires (dont tuiles et cache de tuiles) + 38 intégration (dont 7 de la tranche continuous-view : régions rendues = découpe du rendu complet, page pivotée, zoom ×40, page image, erreurs, fixture 120 pages, recollage des tuiles), application 39 (dont 14 de la vue continue), i18n 6, CLI 5 |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 avertissement |
 | `cargo fmt --all -- --check` | OK |
 | `scripts\check-i18n.ps1` | OK : 485 clés bilingues (fr-FR / en-US identiques) |
@@ -69,5 +69,6 @@ Double page et rotation de vue, sélection de texte sur plusieurs pages, dessin 
 - 2026-10-14 : tranche tool-hub (SUNI-040) : hub « Tous les outils », barre contextuelle, finition du chrome (D021–D026) ; 55 tests, clippy et fmt verts, captures inspectées.
 - 2026-10-14 : correctifs de la revue du hub : Échap avec un menu ouvert ferme le menu (point unique `workspace::take_escape`, ordre testé), icônes de rotation et de déplacement distinctes, barre d'objet bornée à la zone document, palette, focus de l'accès rapide, chemin absolu des fichiers récents ; 58 tests, clippy et fmt verts, captures inspectées.
 - 2026-10-14 : SUNI-032 finition visuelle (dialogues, accueil, outils colorés, À propos) + édition (rotation, duplication, ordre Z, clavier), version 0.3.0, tag `v0.3.0`.
+- 2026-10-14 : correctifs de la revue de la vue continue : Maj+Espace remonte d'un écran au lieu de descendre (lu avant Espace, test sans fenêtre), textures périmées dessinées sous les rendus à jour d'une autre échelle, commandes scriptées (`SUNIPDF_STARTUP_COMMANDS`) exécutées après la première image du document (3 × zoom arrière : 33 % depuis l'ajustement à 71 %), onglet repris sans état ramené en haut, rail droit en fenêtre basse limité à des icônes entières avec barre de défilement visible ; 112 tests, clippy et fmt verts, captures inspectées (Maj+Espace, fenêtres 1000 x 560 / 680 et pleine hauteur).
 - 2026-10-14 : SUNI-012b vue continue (tranche continuous-view) : défilement continu par défaut, tuiles, zoom ancré, virtualisation, mesures ; décisions D038–D045 ; 111 tests, clippy et fmt verts, captures inspectées.
 - 2026-10-14 : SUNI-031c édition avancée (tranche edit-advanced) : espace d'affichage, opacité, rotation libre, sélection multiple, presse-papiers d'objets, panneau Objets, texte sur la page, polices système, cadres de page, CLI ; décisions D027–D037 ; 83 tests, clippy et fmt verts, captures inspectées.

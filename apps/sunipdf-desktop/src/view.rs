@@ -23,8 +23,8 @@ pub const ZOOM_MAX: f32 = 32.0;
 /// Hauteur totale logique maximale (précision des positions en `f32`).
 pub const MAX_CONTENT_PX: f32 = 8_000_000.0;
 /// Défilement clavier : une ligne (flèches) et une fraction d'écran (Page suiv., Espace).
-pub const LINE_SCROLL_PX: f32 = 48.0;
-pub const SCREEN_SCROLL: f32 = 0.9;
+const LINE_SCROLL_PX: f32 = 48.0;
+const SCREEN_SCROLL: f32 = 0.9;
 /// Miniatures gardées au plus (au-delà, seules celles proches de la page courante restent).
 pub const THUMB_KEEP: usize = 256;
 /// Textures GPU des pages, hors textures dessinées dans l'image courante.
@@ -159,8 +159,34 @@ impl ViewState {
         });
     }
 
+    /// Défilement clavier : flèches ↑ ↓ d'une ligne ; en continu, Page suiv./préc. et Espace
+    /// d'un écran (en page unique, Page suiv./préc. changent de page dans `handle_input`).
+    /// `consume_key` ignore une touche Maj en trop : Maj+Espace est lu avant Espace.
+    pub fn scroll_keys(&mut self, ctx: &egui::Context) {
+        use egui::{Key, Modifiers};
+        let screen = SCREEN_SCROLL * self.screen_height();
+        let continuous = self.mode == ViewMode::Continuous;
+        let mut dy = 0.0;
+        ctx.input_mut(|i| {
+            let mut each = |m: Modifiers, k: Key, d: f32| {
+                dy += d * i.count_and_consume_key(m, k) as f32;
+            };
+            each(Modifiers::NONE, Key::ArrowDown, LINE_SCROLL_PX);
+            each(Modifiers::NONE, Key::ArrowUp, -LINE_SCROLL_PX);
+            if continuous {
+                each(Modifiers::SHIFT, Key::Space, -screen);
+                each(Modifiers::NONE, Key::Space, screen);
+                each(Modifiers::NONE, Key::PageDown, screen);
+                each(Modifiers::NONE, Key::PageUp, -screen);
+            }
+        });
+        if dy != 0.0 {
+            self.scroll_by(dy);
+        }
+    }
+
     /// Hauteur de la zone visible à l'image précédente (défilement d'un écran).
-    pub fn screen_height(&self) -> f32 {
+    fn screen_height(&self) -> f32 {
         if self.inner.is_positive() {
             self.inner.height()
         } else {
@@ -571,7 +597,8 @@ impl<H> TexturePool<H> {
 
     /// Replis de la page qui coupent `area` (fraction de page) : autres échelles et textures
     /// périmées, de la plus éloignée de `scale_milli` à la plus proche (la plus proche est
-    /// dessinée en dernier, donc au-dessus).
+    /// dessinée en dernier, donc au-dessus). Les périmées passent sous les autres : après une
+    /// retouche, l'ancien contenu ne recouvre jamais un rendu à jour d'une autre échelle.
     pub fn fallbacks(&mut self, page: usize, scale_milli: u32, area: Rect) -> Vec<(Rect, &H)> {
         let frame = self.frame;
         let Some(list) = self.pages.get_mut(&page) else {
@@ -581,7 +608,12 @@ impl<H> TexturePool<H> {
             .iter_mut()
             .filter(|t| (t.stale || t.scale_milli != scale_milli) && t.norm().intersects(area))
             .collect();
-        v.sort_by_key(|t| std::cmp::Reverse(t.scale_milli.abs_diff(scale_milli)));
+        v.sort_by_key(|t| {
+            (
+                !t.stale,
+                std::cmp::Reverse(t.scale_milli.abs_diff(scale_milli)),
+            )
+        });
         v.into_iter()
             .map(|t| {
                 t.used = frame;
@@ -1439,28 +1471,67 @@ mod tests {
         assert!(pool.whole(0).is_none());
         // Ordre : du plus éloigné de l'échelle voulue au plus proche (dessiné en dernier).
         let mut pool = TexturePool::<u32>::default();
+        let tile = |scale_milli: u32, handle: u32, stale: bool| TileTex {
+            scale_milli,
+            region: PixelRect::new(0, 0, 10, 10),
+            page_px: (10, 10),
+            handle,
+            bytes: 1,
+            used: 0,
+            stale,
+        };
         for (s, h) in [(1500u32, 1u32), (400, 2), (1000, 3)] {
-            let t = TileTex {
-                scale_milli: s,
-                region: PixelRect::new(0, 0, 10, 10),
-                page_px: (10, 10),
-                handle: h,
-                bytes: 1,
-                used: 0,
-                stale: false,
-            };
-            pool.insert(4, t);
+            pool.insert(4, tile(s, h, false));
         }
-        let order: Vec<u32> = pool
-            .fallbacks(4, 1100, all)
-            .into_iter()
-            .map(|(_, h)| *h)
-            .collect();
-        assert_eq!(order, [2, 1, 3]);
+        let order = |pool: &mut TexturePool<u32>| -> Vec<u32> {
+            pool.fallbacks(4, 1100, all)
+                .into_iter()
+                .map(|(_, h)| *h)
+                .collect()
+        };
+        assert_eq!(order(&mut pool), [2, 1, 3]);
         assert!(pool
             .fallbacks(4, 1100, Rect::from_min_size(pos2(2.0, 2.0), vec2(1.0, 1.0)))
             .is_empty());
         assert_eq!(pool.whole(4), Some(&1));
+        // Après une retouche, la texture périmée de l'échelle voulue passe sous les replis à jour.
+        pool.insert(4, tile(1100, 4, true));
+        assert_eq!(order(&mut pool), [4, 2, 1, 3]);
+    }
+
+    /// Maj+Espace remonte d'un écran, Espace descend (Maj n'est pas ignorée, egui 0.36).
+    #[test]
+    fn space_and_shift_space_scroll_one_screen() {
+        let ctx = egui::Context::default();
+        let mut v = ViewState::new(true);
+        v.inner = Rect::from_min_size(Pos2::ZERO, vec2(800.0, 600.0));
+        let press = |v: &mut ViewState, modifiers: egui::Modifiers| {
+            let input = egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: egui::Key::Space,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                }],
+                ..Default::default()
+            };
+            let mut out = ctx.run_ui(input, |ui| v.scroll_keys(ui.ctx()));
+            out.textures_delta.clear();
+            v.pending.take()
+        };
+        let screen = SCREEN_SCROLL * 600.0;
+        assert_eq!(
+            press(&mut v, egui::Modifiers::SHIFT),
+            Some(ScrollRequest::By(-screen))
+        );
+        assert_eq!(
+            press(&mut v, egui::Modifiers::NONE),
+            Some(ScrollRequest::By(screen))
+        );
+        // Page unique : Espace ne défile pas (Page suiv./préc. changent de page).
+        v.mode = ViewMode::Single;
+        assert_eq!(press(&mut v, egui::Modifiers::SHIFT), None);
     }
 
     fn plan(

@@ -64,7 +64,7 @@ pages s'ouvre et défile sans tout charger.
 | Page suivante / précédente | Flèches → ←, boutons du rail droit |
 | Première / dernière page | Origine / Fin |
 | Aller à une page | Saisir le numéro dans la case du rail droit puis Entrée, ou cliquer une miniature : la page vient en haut de l'écran |
-| Zoom | Ctrl + molette (zoom **autour du pointeur**, pincement du pavé tactile aussi), Ctrl + / Ctrl − (autour du centre), Ctrl 0 (taille réelle), liste de zoom (25 à 1600 %), « Largeur », « Page » ; jusqu'à 3200 % à la molette, la netteté est conservée (rendu en tuiles) |
+| Zoom | Ctrl + molette (zoom **autour du pointeur** ; le pincement du pavé tactile passe par le même chemin, non testé), Ctrl + / Ctrl − (autour du centre), Ctrl 0 (taille réelle), liste de zoom (25 à 1600 %), « Largeur », « Page » ; jusqu'à 3200 % à la molette, la netteté est conservée (rendu en tuiles) |
 | Défilement continu / page unique | F5, bouton du rail droit, menu Affichage |
 | Miniatures | Panneau **Pages** à gauche (bouton grille du rail droit) ; glisser une miniature pour réordonner |
 | Signets | F6 ou bouton liste du rail droit |

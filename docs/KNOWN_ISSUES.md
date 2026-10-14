@@ -113,7 +113,8 @@ A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'u
      image (impossible au clavier, possible par injection) peuvent encore produire deux effets.
 A15. ~~Rail droit en fenêtre basse : chevauchement~~ **Corrigé (SUNI-012b)** : sous ~700 px de haut, le groupe du
      haut (panneaux, bascule de vue, recherche) défile (molette au survol) au lieu de chevaucher la navigation ;
-     ses dernières icônes sont alors masquées tant qu'on ne fait pas défiler.
+     ses dernières icônes sont alors masquées tant qu'on ne fait pas défiler. Seules des icônes entières sont
+     montrées et une fine barre de défilement, visible sans survol, signale la suite (capture 1000 x 560).
 A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute séquence `{n}` d'un texte d'aide
      par un saut de ligne (`clap_builder` 4.6, sans échappement possible) ; l'aide affiche donc « : ⏎ = page
      number » au lieu de `{n}`. Les variables `{n}` et `{total}` fonctionnent ; seul le texte d'aide est
@@ -125,7 +126,8 @@ A25. **Vue continue : limites (SUNI-012b)**.
      - Une **sélection de texte reste sur sa page** (le glissement est borné à la page d'origine) : pas de
        sélection à cheval sur deux pages, pas de défilement automatique quand on glisse près du bord.
      - Défilement **sans animation ni inertie** pour les « aller à » et le clavier (saut direct).
-     - **Pincement tactile** : même chemin que Ctrl + molette (`zoom_delta`), non testé faute d'écran tactile.
+     - **Pincement** (pavé tactile ou écran tactile) : même chemin que Ctrl + molette (`zoom_delta`), non testé
+       (aucun test sur ce poste).
        Ctrl + molette vérifié par capture (`dev-screenshot.ps1 -Wheel`).
      - Un **rendu de tuile déjà commencé ne s'interrompt pas** : en défilant vite, la latence d'annulation est
        la durée d'une tuile (mesurée : 1,2 ms par tuile 1024² sur `many-pages.pdf`, plus pour une page lourde).

@@ -399,13 +399,8 @@ impl SuniApp {
                     }
                     self.update_title(ctx);
                     self.worker.send(Request::Bookmarks);
-                    if self.pending_files.is_empty() {
-                        for command in std::mem::take(&mut self.startup_commands) {
-                            self.execute(ctx, command);
-                        }
-                    } else {
-                        self.open_next_pending();
-                    }
+                    // Les commandes scriptées attendent la première image du document (fin de `ui`).
+                    self.open_next_pending();
                 }
                 Response::OpenFailed { path, error } => {
                     self.opening = None;
@@ -747,28 +742,7 @@ impl SuniApp {
         }
         let continuous = self.view.mode == ViewMode::Continuous;
         if self.document.is_some() && !self.organize.active {
-            // Défilement : flèches haut/bas d'une ligne ; en continu, Page suiv./préc. et Espace
-            // d'un écran (en page unique, Page suiv./préc. changent de page plus bas).
-            let screen = crate::view::SCREEN_SCROLL * self.view.screen_height();
-            let mut dy = 0.0;
-            ctx.input_mut(|i| {
-                let mut each = |m: Modifiers, k: Key, d: f32| {
-                    while i.consume_key(m, k) {
-                        dy += d;
-                    }
-                };
-                each(Modifiers::NONE, Key::ArrowDown, crate::view::LINE_SCROLL_PX);
-                each(Modifiers::NONE, Key::ArrowUp, -crate::view::LINE_SCROLL_PX);
-                if continuous {
-                    each(Modifiers::NONE, Key::PageDown, screen);
-                    each(Modifiers::NONE, Key::Space, screen);
-                    each(Modifiers::NONE, Key::PageUp, -screen);
-                    each(Modifiers::SHIFT, Key::Space, -screen);
-                }
-            });
-            if dy != 0.0 {
-                self.view.scroll_by(dy);
-            }
+            self.view.scroll_keys(ctx);
         }
         let mut commands = Vec::new();
         if esc == Some(Esc::Leave) {
@@ -1918,6 +1892,18 @@ impl eframe::App for SuniApp {
                     self.error_banner(ui);
                     self.home(&ctx, ui);
                 });
+        }
+        // Commandes scriptées : après la première image du dernier fichier ouvert, pour partir du
+        // zoom ajusté et de l'ancre de la vue, comme un clic.
+        if !self.startup_commands.is_empty()
+            && self.document.is_some()
+            && self.opening.is_none()
+            && self.pending_files.is_empty()
+        {
+            for command in std::mem::take(&mut self.startup_commands) {
+                self.execute(&ctx, command);
+            }
+            ctx.request_repaint();
         }
         if ctx.input(|i| i.viewport().close_requested())
             && (self.dirty || self.any_background_dirty().is_some())
