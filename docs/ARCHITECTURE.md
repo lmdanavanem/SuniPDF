@@ -23,10 +23,15 @@ SuniPDF/
 ├── apps/
 │   ├── sunipdf-desktop/      binaire `sunipdf` (egui/eframe) — main.rs, app.rs (état + document), shell.rs (chrome : onglets,
 │   │                         barre d'outils, panneau « Tous les outils », accueil, rail, palette), workspace.rs (hub : table des
-│   │                         outils → commandes du registre, outil actif, barre contextuelle), worker.rs, settings.rs, theme.rs, icons.rs
+│   │                         outils → commandes du registre, outil actif, barre contextuelle), worker.rs, settings.rs, theme.rs, icons.rs,
+│   │                         editor.rs (sélection, poignées, rotation, presse-papiers d'objets, barre d'objet), inline_text.rs
+│   │                         (texte sur la page, sélecteur de polices), objects.rs (panneau Objets), pagesetup.rs (recadrer,
+│   │                         redimensionner, page vierge)
 │   └── sunipdf-cli/          binaire `sunipdf-cli` (clap) — sortie JSON, codes d'erreur stables
 ├── crates/
-│   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; tests/fixtures/*.pdf
+│   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; edit.rs (objets), geometry.rs (espace d'affichage),
+│   │                         clipboard.rs (copier/coller d'objets), fonts.rs (polices système), boxes.rs (cadres de page) ;
+│   │                         tests/fixtures/*.pdf (dont boxes.pdf : pages pivotées et rognées)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), catalogues embarqués
 ├── assets/i18n/              fr-FR.json, en-US.json (source de vérité des textes)
 ├── third_party/pdfium/       binaires PDFium (ignorés par git, scripts/fetch-pdfium.ps1)
@@ -75,7 +80,18 @@ Le moteur ne tient qu'un document actif. Un changement d'onglet envoie `Suspend`
 les octets du document, son mot de passe et son historique d'annulation) puis `Resume`/`ResumeDoc` (rechargement
 depuis les octets via `Engine::open_bytes`). L'état d'interface du document (page, zoom, miniatures, recherche,
 sélection, annotations, signets…) est échangé par `tabs.rs::take_tab` / `put_tab`. Coût : une sérialisation
-PDFium par changement d'onglet ; mémoire : un instantané par onglet inactif.
+PDFium par changement d'onglet ; mémoire : un instantané par onglet inactif. Le presse-papiers d'objets
+(`ObjectClip`, un PDF d'une page en mémoire) vit dans l'état du moteur, hors document : il survit aux
+changements d'onglet, ce qui permet de copier dans un document et de coller dans un autre.
+
+## Coordonnées (SUNI-031c)
+
+Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,
+origine au coin bas-gauche de la page telle qu'affichée (après `/Rotate`, boîte MediaBox ∩ CropBox), Y vers
+le haut — l'espace de `Document::page_size` et du rendu. `sunipdf-core::geometry::PageGeometry` convertit
+vers l'espace utilisateur PDF (objets, texte, annotations) ; c'est le seul endroit qui connaît `/Rotate` et
+les boîtes. L'UI convertit seulement écran ↔ affichage (`annotate::to_pdf`). Les tests
+`geometry_matches_rendered_pixels_on_rotated_and_cropped_pages` et suivants vérifient la convention au pixel.
 
 ## Registre de commandes (SUNI-010, livré)
 

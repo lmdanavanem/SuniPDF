@@ -71,21 +71,49 @@ delete them. Every annotation can be undone (Ctrl+Z).
 
 The **Edit a PDF** tool changes the page content itself,
 not annotations: select object (E), add text (T), insert image (I), rectangle (R), ellipse (O), line (L).
-With the select tool, click a text, image or path: a blue frame appears; drag it to move the object,
-pull a corner handle to resize it, press **Del** to delete it, **F2** (or double-click) to edit a text
-(content, size, colour). Click the page with the text tool to type new text (Helvetica / Times / Courier,
-bold, italic, size, colour), with the image tool to pick a file (PNG, JPEG, BMP, GIF, TIFF, WebP; the
-clicked point becomes the top-left corner), and drag a rectangle to draw a shape. The small bar at the
-top left of the page sets stroke colour, stroke width and fill for new shapes; **Apply to object** recolours the
-selected object. Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
+Everything also works on rotated or cropped pages: objects land where you click and added text is always
+upright on screen.
 
-With an object selected, the tool bar also enables: edit text (F2), rotate left / right (90°), duplicate (Ctrl+Shift+D),
-bring to front (Ctrl+]) or send to back (Ctrl+[), delete. Arrow keys nudge the object by one point
-(Shift: ten points), Escape deselects it. Images keep their proportions when resized (Shift to free
-them); other objects resize freely (Shift to lock).
+**Selecting.** With the select tool, click a text, image or path (or press on it and drag straight away to
+move it). **Shift+click** or **Ctrl+click** adds or removes an object; dragging on an empty area draws a
+**selection rectangle** (objects fully inside; **Alt**: objects merely touched); **Ctrl+A** selects every
+object of the page. A selected group moves as one (mouse or arrows), is deleted, duplicated, brought to
+front or sent to back, and receives the same colours and opacity.
 
-Limits: no free-angle rotation; fonts limited to the 14 standard fonts; edited text keeps its original
-font, which may not contain every character you type.
+**Transforming.** Drag the selection to move it, pull a corner handle to resize (images keep their
+proportions, Shift to free them; other objects: Shift to lock), drag the **round handle** above the frame to
+rotate freely (Shift: 15° steps, the angle shows in the status bar) or type an **angle** in the object bar.
+Arrows nudge by one point (Shift: ten points), **Del** deletes, Escape deselects. The tool bar also offers
+rotate by 90°, duplicate (Ctrl+Shift+D), bring to front (Ctrl+]) and send to back (Ctrl+[).
+
+**Object bar.** Below the selection, a floating bar sets the stroke (colour, width), fill, **opacity**
+(0 to 100%) and angle; **Apply to object** applies colours and opacity. With no selection, a shape or image
+tool uses it for the next shapes and images. It also carries Copy, Cut, Paste and, for an image, **Replace
+image** (same frame, new picture fitted and centred).
+
+**Copy, cut, paste.** Ctrl+C / Ctrl+X / Ctrl+V (or the Edit menu) copy objects from one page to another, and
+from one tab to another. Pasted objects form a **group**: it moves, resizes, rotates and deletes, but its
+text can no longer be edited as text. Pasting at the same place offsets each copy by 12 points.
+
+**Text.** Click the page with the text tool: a field opens **on the page**, at the zoom size, with a mini bar
+(size, colour, font, bold, italic). **Enter** applies, **Shift+Enter** starts a new line, **Esc** cancels,
+clicking elsewhere applies. The font list offers Helvetica, Times and Courier, then the **TrueType system
+fonts** (search by name, for example "Segoe UI" or "Arial Bold"): they allow Cyrillic, Greek or extended Latin;
+the font is **embedded whole** in the PDF (the mini bar shows its size). If the chosen font lacks a typed
+character (for example Cyrillic with Helvetica), SuniPDF says so and reopens the field instead of losing the
+character. For existing text that is upright on screen, **F2** or double-click opens the same on-page field
+(content, size, colour; its original font is kept); rotated text is edited in a dialog.
+
+**Objects panel** (F5, the layers icon of the right rail, or the tool bar button): the page's objects, front
+to back. Click: select (Ctrl: add or remove, Shift: add); hover: orange marker on the page; buttons bring
+forward / send backward and delete.
+
+Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
+
+Limits: a pasted or duplicated group can no longer be edited as text; rotating or resizing a group of several
+objects is not offered yet (moving only); `.otf` and `.ttc` fonts are not offered; fonts are embedded whole
+(no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
+keeps its original font, which may not contain every character you type.
 
 ## Stamps, watermarks and page numbers
 
@@ -105,6 +133,13 @@ number from a template: `{n}` is the page number, `{total}` the page count (for 
 - **Split document**: choose pages per file and a destination folder.
 - **Extract selected pages**: creates a new PDF with the selection.
 - **Combine PDF files**: pick files in order, then the output file; it opens afterwards.
+- **Insert Blank Page…**: size of the current page, A3, A4, A5, Letter, Legal or custom (portrait or
+  landscape), number of pages, before or after the current page or at the end.
+- **Crop Pages…**: left, right, top and bottom margins in millimetres, with a preview on the page render;
+  current page (or grid selection) or all pages; **Restore original frame** undoes a crop. Cropping **hides**
+  the edges: content outside the frame stays in the file (this is not redaction).
+- **Resize Pages…**: size (A3 to Legal or custom, landscape); the content is either kept as is (anchored
+  top-left) or scaled and centred. Existing annotations and links do not follow the scaling.
 
 ## Converting
 
@@ -138,10 +173,15 @@ the colour of its tool; entries such as "Edit a PDF" or "Add comments" open the 
 
 `sunipdf-cli.exe --help` lists the commands: `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
-`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`.
+`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, and for
+content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--font-name "Arial"` or
+`--font-file` for an embedded system font; `\n` for a new line), `set-opacity`, `rotate-object` (free angle),
+`copy-objects` (to another page, `--into` for another document), `replace-image`, `crop` (`--unit mm`,
+`--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
 Output is JSON; exit codes distinguish password required (3), invalid file (4), unreadable file (5) and
 existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
-writes PNG; `rotate` accepts 90, 180, 270 or -90.
+writes PNG; `rotate` accepts 90, 180, 270 or -90. Coordinates (`search`, `objects`, `add-text`…) are in
+points, origin at the bottom-left of the page **as displayed** (after rotation and cropping).
 
 ## Current limits
 

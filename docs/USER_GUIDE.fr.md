@@ -75,23 +75,54 @@ et permet de les supprimer. Toute annotation est annulable (Ctrl+Z).
 
 L'outil **Modifier un PDF** modifie le contenu même des pages,
 pas des annotations : sélectionner un objet (E), ajouter du texte (T), insérer une image (I), rectangle (R),
-ellipse (O), ligne (L). Avec l'outil de sélection, cliquez sur un texte, une image ou un tracé : un cadre bleu
-apparaît ; glissez-le pour le déplacer, tirez une poignée d'angle pour le redimensionner, appuyez sur **Suppr**
-pour le supprimer, sur **F2** (ou double-clic) pour modifier un texte (contenu, taille, couleur). Cliquez sur la
-page avec l'outil texte pour saisir un nouveau texte (police Helvetica / Times / Courier, gras, italique, taille,
-couleur), avec l'outil image pour choisir un fichier (PNG, JPEG, BMP, GIF, TIFF, WebP ; le point cliqué devient
-le coin haut-gauche), tracez un rectangle pour une forme. La petite barre en haut à gauche de la page règle la couleur et
-l'épaisseur du trait et le remplissage des nouvelles formes ; **Appliquer à l'objet** recolore l'objet
-sélectionné. Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
+ellipse (O), ligne (L). Tout fonctionne aussi sur les pages pivotées ou recadrées : les objets tombent là où
+vous cliquez et un texte ajouté est toujours droit à l'écran.
 
-Quand un objet est sélectionné, la barre de l'outil active aussi : modifier le texte (F2), pivoter à gauche / à droite (90°), dupliquer
-(Ctrl+Maj+D), mettre au premier plan (Ctrl+]) ou à l'arrière-plan (Ctrl+[), supprimer. Les flèches du
-clavier décalent l'objet d'un point (Maj : dix points), Échap le désélectionne. Les images gardent leurs
-proportions au redimensionnement (Maj pour les libérer) ; les autres objets sont libres (Maj pour
-verrouiller).
+**Sélectionner.** Avec l'outil de sélection, cliquez sur un texte, une image ou un tracé (ou appuyez dessus et
+glissez directement pour le déplacer). **Maj+clic** ou **Ctrl+clic** ajoute ou retire un objet de la sélection ;
+glisser sur une zone vide trace un **rectangle de sélection** (objets entièrement inclus ; **Alt** : objets
+simplement touchés) ; **Ctrl+A** sélectionne tous les objets de la page. Un groupe sélectionné se déplace d'un
+bloc (souris ou flèches), se supprime, se duplique, passe au premier plan ou à l'arrière-plan et reçoit les
+mêmes couleurs et la même opacité.
 
-Limites : pas de rotation à angle libre ; polices limitées aux 14 polices standard ; le texte modifié
-conserve sa police d'origine, qui peut ne pas contenir tous les caractères saisis.
+**Transformer.** Glissez la sélection pour la déplacer, tirez une poignée d'angle pour redimensionner (images :
+proportions conservées, Maj pour les libérer ; autres objets : Maj pour les verrouiller), tirez la **poignée
+ronde** au-dessus du cadre pour pivoter librement (Maj : pas de 15°, l'angle s'affiche dans la barre d'état) ou
+saisissez un **angle** dans la barre d'objet. Les flèches décalent d'un point (Maj : dix points), **Suppr**
+supprime, Échap désélectionne. La barre de l'outil propose aussi pivoter de 90°, dupliquer (Ctrl+Maj+D),
+premier plan (Ctrl+]) et arrière-plan (Ctrl+[).
+
+**Barre d'objet.** Sous la sélection, une barre flottante règle le trait (couleur, épaisseur), le remplissage,
+l'**opacité** (0 à 100 %) et l'angle ; **Appliquer à l'objet** applique couleurs et opacité. Sans sélection, avec
+un outil de forme ou d'image, elle règle les prochaines formes et images. Elle porte aussi Copier, Couper,
+Coller et, pour une image, **Remplacer l'image** (même cadre, nouvelle image ajustée et centrée).
+
+**Copier, couper, coller.** Ctrl+C / Ctrl+X / Ctrl+V (ou le menu Édition) copient des objets d'une page à une
+autre, et d'un onglet à un autre. Les objets collés forment un **groupe** : il se déplace, se redimensionne,
+pivote et se supprime, mais son texte n'est plus modifiable comme texte. Coller au même endroit décale chaque
+copie de 12 points.
+
+**Texte.** Cliquez sur la page avec l'outil texte : un champ s'ouvre **sur la page**, à la taille du zoom, avec
+une mini-barre (taille, couleur, police, gras, italique). **Entrée** valide, **Maj+Entrée** passe à la ligne,
+**Échap** annule, un clic ailleurs valide. La liste des polices propose Helvetica, Times et Courier, puis les
+**polices TrueType du système** (recherche par nom, par exemple « Segoe UI » ou « Arial Bold ») : elles
+permettent le cyrillique, le grec ou le latin étendu ; la police est **incorporée en entier** dans le PDF
+(la mini-barre indique sa taille). Si la police choisie ne contient pas un caractère saisi (par exemple du
+cyrillique avec Helvetica), SuniPDF le signale et rouvre le champ au lieu de perdre le caractère. Pour un
+texte existant droit à l'écran, **F2** ou double-clic ouvre le même champ sur la page (contenu, taille,
+couleur ; sa police d'origine est conservée) ; un texte pivoté s'édite dans une boîte de dialogue.
+
+**Panneau Objets** (F5 ou l'icône calques du rail droit, ou le bouton de la barre de l'outil) : liste des objets
+de la page, du plus en avant au plus en arrière. Clic : sélectionner (Ctrl : ajouter ou retirer, Maj : ajouter) ;
+survol : repère orange sur la page ; boutons avancer / reculer d'un plan et supprimer.
+
+Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
+
+Limites : un groupe collé ou dupliqué n'est plus éditable comme texte ; rotation et redimensionnement d'un
+groupe de plusieurs objets ne sont pas encore proposés (déplacement seulement) ; les polices `.otf` et `.ttc`
+ne sont pas proposées ; la police est incorporée entière (pas de sous-ensemble) ; le champ de saisie sur la
+page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
+police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
 ## Tampons, filigranes et numéros de page
 
@@ -112,6 +143,15 @@ supprime et s'annule comme les autres.
 - **Diviser le document** : choisissez le nombre de pages par fichier et un dossier de destination.
 - **Extraire les pages sélectionnées** : crée un nouveau PDF avec la sélection.
 - **Combiner des fichiers PDF** : choisissez les fichiers dans l'ordre, puis le fichier de sortie ; il s'ouvre ensuite.
+- **Insérer une page vierge…** : taille de la page courante, A3, A4, A5, Letter, Legal ou personnalisée
+  (portrait ou paysage), nombre de pages, avant ou après la page courante ou à la fin.
+- **Recadrer les pages…** : marges gauche, droite, haute et basse en millimètres, avec un aperçu sur le rendu
+  de la page ; page courante (ou sélection de la grille) ou toutes les pages ; **Rétablir le cadre d'origine**
+  annule un recadrage. Le recadrage **masque** les bords : le contenu hors cadre reste dans le fichier (ce
+  n'est pas un caviardage).
+- **Redimensionner les pages…** : format (A3 à Legal ou personnalisé, paysage) ; le contenu est soit conservé
+  tel quel (ancré en haut à gauche), soit mis à l'échelle et centré. Les annotations et liens existants ne
+  suivent pas la mise à l'échelle.
 
 ## Convertir
 
@@ -148,10 +188,16 @@ commande porte la couleur de son outil ; les entrées « Modifier un PDF », « 
 
 `sunipdf-cli.exe --help` liste les commandes : `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
-`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`.
+`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, et pour
+l'édition du contenu : `objects` (objets d'une page, index à partir de 0), `add-text` (`--font-name "Arial"` ou
+`--font-file` pour une police système incorporée ; `\n` pour passer à la ligne), `set-opacity`, `rotate-object`
+(angle libre), `copy-objects` (vers une autre page, `--into` pour un autre document), `replace-image`, `crop`
+(`--unit mm`, `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
 Les sorties sont en JSON ; les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
 fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
-sans l'option `--overwrite`. `render` écrit toujours du PNG ; `rotate` accepte 90, 180, 270 ou -90.
+sans l'option `--overwrite`. `render` écrit toujours du PNG ; `rotate` accepte 90, 180, 270 ou -90. Les
+coordonnées (`search`, `objects`, `add-text`…) sont en points, origine en bas à gauche de la page **telle
+qu'affichée** (après rotation et recadrage).
 
 ## Limites actuelles
 

@@ -5,6 +5,46 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Ajouté (édition avancée, SUNI-031c)
+- **Rotation libre** des objets : poignée ronde au-dessus du cadre (Maj : pas de 15°, angle dans la barre
+  d'état), champ « Angle » de la barre d'objet ; cadre orienté pour les textes et images.
+- **Opacité** des textes, formes et images (barre d'objet, nouvelles formes et images) ; changer la couleur
+  d'un objet conserve désormais son opacité.
+- **Sélection multiple** : Maj/Ctrl+clic, rectangle de sélection (Alt : objets touchés), Ctrl+A ; déplacement,
+  suppression, duplication, ordre, couleurs et opacité appliqués au groupe ; prise directe d'un objet non
+  sélectionné au glisser.
+- **Copier / couper / coller des objets** (Ctrl+C / X / V, menu Édition, barre d'objet) entre pages et entre
+  onglets ; les objets collés forment un groupe.
+- **Panneau Objets** (F5) : liste de la page du plus en avant au plus en arrière, sélection, avancer / reculer
+  d'un plan, suppression, repère au survol.
+- **Texte sur la page** : saisie directe à l'emplacement cliqué (Entrée, Maj+Entrée, Échap), mini-barre taille /
+  couleur / police / gras / italique ; plusieurs lignes ; modification sur place d'un texte existant droit.
+- **Polices TrueType du système** incorporées (liste avec recherche, licence d'incorporation vérifiée) ; un
+  caractère absent de la police choisie est refusé avec un message au lieu d'être perdu.
+- **Remplacer l'image** (même cadre, nouvelle image ajustée), **Insérer une page vierge**, **Recadrer les
+  pages** (marges en mm, aperçu, rétablissement), **Redimensionner les pages** (contenu conservé ou mis à
+  l'échelle).
+- CLI : `objects`, `add-text`, `set-opacity`, `rotate-object`, `copy-objects`, `replace-image`, `crop`,
+  `resize-pages`, `insert-blank`, `fonts` ; `info` donne la rotation de chaque page.
+- 9 commandes au registre (78 au total) ; 11 tests d'intégration du moteur (pixels rendus, relecture,
+  réouverture, erreurs) sur une nouvelle fixture `boxes.pdf` (pages pivotées et rognées).
+
+### Corrigé (édition avancée)
+- **Pages pivotées ou recadrées** : sélection, poignées, formes, texte, images, surlignage, notes et résultats de
+  recherche tombaient au mauvais endroit (le moteur parlait en coordonnées PDF non pivotées). Toute l'API du
+  moteur est désormais en coordonnées de la page affichée ; **`sunipdf-cli search` rend aussi ses rectangles
+  dans cet espace** (changement visible uniquement sur les pages pivotées ou rognées).
+- **Ctrl+C ne copiait pas** le texte sélectionné (egui transforme Ctrl+C en événement Copier, sans touche) :
+  Ctrl+C / X / V passent maintenant par ces événements.
+- **Dupliquer** faisait passer l'objet d'origine au premier plan : la copie est désormais seule à changer.
+- **Taille d'un texte pivoté** : annoncée 0 (90°) ou réduite (45°), elle était multipliée à la modification
+  (un tampon à 90° passait de 48 à 12 pt, un texte vertical de 12 à 144 pt) ; elle tient compte de la rotation.
+- **Tampons sur une page pivotée** : centrés et à l'angle demandé à l'écran.
+- **Texte saisi en police standard** : un retour à la ligne ou un caractère hors latin (cyrillique, emoji)
+  produisait des « ÿ » sans erreur ; chaque ligne devient un objet et un caractère absent est refusé.
+- **Changer la couleur** d'un objet transparent (tampon à 30 %) le rendait opaque.
+- La CLI débordait de sa pile en compilation de débogage ; elle tourne sur un fil de 16 Mio.
+
 ### Ajouté
 - **Hub « Tous les outils »** façon PDFCraft : le panneau de gauche (F9) liste les outils par tâche avec une
   pastille colorée par outil (Exporter, Modifier, Créer, Combiner, Organiser, Commenter, Protéger,

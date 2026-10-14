@@ -144,9 +144,11 @@ impl SuniApp {
             return;
         };
         let size_px = (prompt.size * k).max(6.0);
-        // Point haut-gauche du texte : limites de l'objet existant, ou ligne de base cliquée.
+        // Haut de la rangée de texte de l'éditeur (points) : au-dessus du haut des glyphes d'un
+        // texte existant (marge de la police de l'interface), ou au-dessus de la ligne de base
+        // cliquée pour un nouveau texte. Calibré sur capture (Segoe UI).
         let top_pt = match prompt.index {
-            Some(_) => prompt.y + prompt.size * 1.0,
+            Some(_) => prompt.y + prompt.size * 0.3,
             None => prompt.y + prompt.size * 0.92,
         };
         let margin = egui::vec2(4.0, 2.0);
@@ -174,10 +176,13 @@ impl SuniApp {
             .fixed_pos(anchor)
             .show(ctx, |ui| {
                 egui::Frame::new()
-                    .fill(egui::Color32::from_white_alpha(235))
+                    .fill(egui::Color32::from_white_alpha(250))
                     .stroke(Stroke::new(1.5, theme::BLUE))
                     .corner_radius(3)
                     .show(ui, |ui| {
+                        // Largeur imposée : sans elle, la zone se limite à sa taille précédente et
+                        // le texte passe à la ligne en cours de saisie.
+                        ui.set_min_width(width);
                         let edit = ui.add(
                             egui::TextEdit::multiline(&mut prompt.text)
                                 .font(font_id.clone())
@@ -287,15 +292,13 @@ impl SuniApp {
                     });
             });
         let bar_rect = bar.response.rect;
-        let (enter, escape, pressed_outside) = ctx.input(|i| {
-            let outside = i.pointer.any_pressed()
-                && i.pointer
-                    .interact_pos()
-                    .is_some_and(|pos| !edit_rect.contains(pos) && !bar_rect.contains(pos));
+        let (enter, escape, pressed_outside, on_page) = ctx.input(|i| {
+            let pos = i.pointer.interact_pos().filter(|_| i.pointer.any_pressed());
             (
                 i.key_pressed(Key::Enter) && !i.modifiers.shift,
                 i.key_pressed(Key::Escape),
-                outside,
+                pos.is_some_and(|p| !edit_rect.contains(p) && !bar_rect.contains(p)),
+                pos.is_some_and(|p| page_rect.contains(p)),
             )
         });
         let commit_click = prompt.armed && pressed_outside && !egui::Popup::is_any_open(ctx);
@@ -308,8 +311,9 @@ impl SuniApp {
             self.edit.text_prompt = None;
         } else if enter || commit_click {
             let prompt: TextPrompt = self.edit.text_prompt.take().expect("prompt");
-            // Le clic qui valide ne doit pas ouvrir un autre éditeur (outil Texte).
-            self.edit.swallow_click = commit_click;
+            // Le clic sur la page qui valide ne doit pas ouvrir un autre éditeur (outil Texte).
+            self.edit.swallow_click =
+                commit_click && on_page && self.annotate.tool == crate::annotate::Tool::AddText;
             self.commit_text_prompt(prompt);
         }
     }

@@ -79,9 +79,13 @@ L'état d'interface lié au document (page, zoom, sélection, outils) est échan
 onglet à l'autre.
 
 ### Coordonnées
-Les pages sont en points PDF, origine en bas à gauche ; l'écran a l'origine en haut à gauche.
-Conversions : `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` et, dans l'autre sens,
+L'API du moteur parle en **espace d'affichage** : points, origine en bas à gauche de la page telle
+qu'affichée (après `/Rotate`, boîte MediaBox ∩ CropBox) ; l'écran a l'origine en haut à gauche.
+Conversions UI : `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` et, dans l'autre sens,
 `page_rect.min + vec2(x * k, (page_h_pt - y) * k)` avec `k = effective_zoom * SCREEN_PER_PDF_POINT`.
+Dans le moteur, toute nouvelle fonction qui touche des objets, du texte ou des annotations convertit avec
+`geometry::geometry_of(&page)` (`to_user`, `rect_to_user`, `vec_to_user`, `upright_matrix`, et l'inverse en
+sortie) ; tester sur `tests/fixtures/boxes.pdf` (pages pivotées 90/180/270 et rognées).
 
 ## 4. Pièges des bibliothèques
 
@@ -128,11 +132,18 @@ Conversions : `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` et, dans l'aut
   sur une pastille voisine, régler `interact_size.y` à leur hauteur.
 - Test sans fenêtre : `Context::run_ui` + `enable_accesskit()` ; vider `out.textures_delta` avant de
   jeter la sortie (assertion de débogage d'epaint).
+- Ctrl+C / X / V n'arrivent **jamais** comme `Event::Key` : egui-winit les change en `Event::Copy`, `Cut`,
+  `Paste(texte)` (Paste seulement si le presse-papiers système contient du texte). Les lire dans `i.events`.
+- Une fenêtre surgissante (`ComboBox`, `Area`) garde la taille de l'image précédente : un contenu qui grandit
+  après coup (liste chargée en différé) est tronqué. Donner une hauteur fixe à la partie variable
+  (`ScrollArea::max_height(..).auto_shrink([false, false])`).
+- Un `ui.horizontal` imbriqué dans `horizontal_wrapped` ne passe pas à la ligne : il déborde. Préférer des
+  widgets simples, ou une rangée par `horizontal_wrapped`.
 
 ## 5. Vérification visuelle
 
 `scripts/dev-screenshot.ps1 -Out capture.png [-Pdf "a.pdf;b.pdf"] [-Commands "id1,id2"]
-[-Drag "x1,y1,x2,y2;x1,y1,x2,y2"] [-Keys "^k"] [-KeysAfter "{F2}"] [-Delay 5]` lance `target\debug\sunipdf.exe`,
+[-Drag "x1,y1,x2,y2;x1,y1,x2,y2"] [-Keys "^k"] [-KeysAfter "{F2}|^c|^v"] [-Delay 5]` lance `target\debug\sunipdf.exe`,
 exécute les commandes au démarrage (`SUNIPDF_STARTUP_COMMANDS`), simule des glissements (coordonnées
 relatives à la fenêtre, page affichée à partir de x≈440, y≈140 avec le panneau d'outils ouvert, y≈190 quand
 la barre d'un outil est affichée ; un glissement de hauteur nulle ne sélectionne pas de texte), `-Width`/`-Height`

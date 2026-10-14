@@ -29,12 +29,23 @@ Vue continue avec virtualisation (seules les pages visibles sont rendues) ; ongl
 Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.*`.
 
 ## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
-Sélection à la souris sur la page (`PdfPageText::chars_inside_rect`), copie presse-papiers, i18n `edit.copy`.
+Fait : sélection rectangulaire, copie (Ctrl+C réparé en SUNI-031c via l'événement Copier d'egui).
+Reste : sélection en ordre de lecture (glisser au fil du texte), double-clic sur un mot.
 
-## SUNI-031c — Édition du contenu, suite (owner : PDF-EDITOR)
-Fait en SUNI-031/031b/032 : sélection, déplacement (souris, flèches), redimensionnement (proportions), rotation ±90°, duplication, ordre Z, suppression, texte (ajout/modification, taille, couleur, 3 familles standard), image, rectangle/ellipse/ligne, couleurs et épaisseur.
-Reste : rotation libre (angle), polices système incorporées (TrueType), opacité, sélection multiple, copier/coller entre pages, panneau « Objets » listant `page_objects`, édition de texte en place (sans dialogue).
-Acceptation : chaque opération couverte par un test moteur avec rendu vérifié ; clés i18n `dialog.object.*`.
+## SUNI-031d — Édition du contenu, suite (owner : PDF-EDITOR)
+Fait en SUNI-031/031b/032/031c : sélection simple et multiple (rectangle, Maj/Ctrl+clic, Ctrl+A), déplacement
+groupé, redimensionnement, rotation libre, duplication, ordre Z (un cran ou extrême), suppression, couleurs,
+épaisseur, opacité, copier/couper/coller entre pages et onglets (groupe), panneau Objets, texte sur la page
+(polices standard et TrueType du système), remplacement d'image, pages vierges, recadrage, redimensionnement
+des pages, pages pivotées et rognées.
+Reste (voir `KNOWN_ISSUES.md` A7, A8, A18–A22) :
+- sous-ensemble des polices incorporées (crate `subsetter` MIT/Apache + post-traitement lopdf, ADR à écrire) ;
+  polices `.otf` (contours CFF) et collections `.ttc` ;
+- collage « natif » éditable (objets recréés un par un au lieu d'un XObject) ; opacité et couleur des groupes ;
+- rotation et redimensionnement d'un groupe de plusieurs objets ; pivot mémorisé pour les tracés asymétriques ;
+- recadrage à la souris ; glisser-déposer dans le panneau Objets ;
+- lecture de l'opacité d'une image existante (contournement PDFium : lire l'ExtGState du flux avec lopdf).
+Acceptation : chaque opération couverte par un test moteur avec rendu vérifié.
 
 ## SUNI-021b — Annotations avancées (owner : PDF-EDITOR)
 Dessin libre (ink), zone de texte libre (FreeText), déplacement/redimensionnement des annotations existantes, fils de réponses.

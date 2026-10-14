@@ -1597,6 +1597,32 @@ fn edits_land_where_displayed_on_rotated_pages() {
         let img = again.render_page(p, 1.0).unwrap();
         assert_eq!(px(&img, 330.0, 230.0), [255, 0, 255], "page {p} rouverte");
     }
+    // Tampon sur des pages pivotées : centré et à 45° à l'écran, comme sur une page droite.
+    let stamp = sunipdf_core::Stamp {
+        text: "TAMPON".into(),
+        ..Default::default()
+    };
+    doc.stamp_pages(Some(&[0, 2]), &stamp).unwrap();
+    for p in [0, 2] {
+        let s = doc.page_objects(p).unwrap().last().unwrap().clone();
+        let size = doc.page_size(p).unwrap();
+        let (cx, cy) = center(s.bounds);
+        assert!(
+            (cx - size.width_pt / 2.0).abs() < 3.0 && (cy - size.height_pt / 2.0).abs() < 3.0,
+            "page {p} : {:?}",
+            s.bounds
+        );
+        assert!(
+            (s.angle_deg + 45.0).abs() < 1.0,
+            "page {p} : {}",
+            s.angle_deg
+        );
+        assert!(
+            (s.font_size - 48.0).abs() < 0.5,
+            "page {p} : {}",
+            s.font_size
+        );
+    }
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -1661,6 +1687,18 @@ fn free_rotation_reports_angle_and_oriented_quad() {
     .unwrap();
     let t = doc.page_objects(0).unwrap().len() - 1;
     doc.rotate_object(0, t, 20.0).unwrap();
+    let info = doc.object_info(0, t).unwrap();
+    assert!((info.angle_deg - 20.0).abs() < 1.0, "{}", info.angle_deg);
+    // Taille d'un texte pivoté : la rotation ne la change pas, et la modifier donne la valeur voulue.
+    assert!((info.font_size - 20.0).abs() < 0.1, "{}", info.font_size);
+    doc.rotate_object(0, t, 70.0).unwrap();
+    assert!(
+        (doc.object_info(0, t).unwrap().font_size - 20.0).abs() < 0.1,
+        "à 90°"
+    );
+    doc.set_text_size(0, t, 30.0).unwrap();
+    assert!((doc.object_info(0, t).unwrap().font_size - 30.0).abs() < 0.1);
+    doc.rotate_object(0, t, -70.0).unwrap();
     let info = doc.object_info(0, t).unwrap();
     assert!((info.angle_deg - 20.0).abs() < 1.0, "{}", info.angle_deg);
     // Arête la plus longue du cadre orienté : pente de -20° (sens horaire).

@@ -36,8 +36,11 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 |---|---|---|
 | Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | Notes, surlignage, souligné, barré **Faits** ; formes, encre, zones de texte planifiés (P3) |
 | Fils de réponses, statut des commentaires | Déclaré | Panneau Commentaires **Fait** (liste, suppression) ; fils et statuts planifiés (P3) |
-| Ajout de texte / d'images | Déclaré | **Fait** (texte Helvetica/Times/Courier, gras/italique, taille, couleur ; image PNG/JPEG/BMP/GIF/TIFF/WebP ; formes rectangle/ellipse/ligne avec couleurs et épaisseur) |
-| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (F2 / double-clic : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) ; déplacement, redimensionnement, rotation ±90°, duplication, ordre Z, recoloration et suppression de tout objet ; rotation libre planifiée (P3) |
+| Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
+| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
+| Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
+| Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement de groupe planifiés |
+| Panneau des objets de la page | Déclaré | **Fait** (F5 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
 | Liens | Déclaré | Planifié (P3) |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | Planifié (P3) |
@@ -46,7 +49,9 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI) sauf pages vierges |
+| Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI `insert-blank` pour les pages vierges) |
+| Recadrer les pages (CropBox) | Déclaré | **Fait** (dialogue en mm avec aperçu, rétablissement, CLI `crop`) ; masque seulement, pas de caviardage ; recadrage à la souris planifié |
+| Redimensionner les pages | Déclaré | **Fait** (A3–Legal ou personnalisé, contenu conservé ou mis à l'échelle ; CLI `resize-pages`) ; annotations non mises à l'échelle |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
 | Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; préservation à vérifier avec qpdf |
@@ -94,7 +99,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| CLI JSON | Déclaré | **Fait** (`info`, `render`) ; extension P5 |
+| CLI JSON | Déclaré | **Fait** (lecture, pages, sécurité, conversion, tampons et édition du contenu : `objects`, `add-text`, `set-opacity`, `rotate-object`, `copy-objects`, `replace-image`, `crop`, `resize-pages`, `insert-blank`, `fonts`) ; extension P5 |
 | Registre de commandes commun UI/CLI | Déclaré (tool table) | **Fait** (`sunipdf-cli commands`) |
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |

@@ -664,8 +664,9 @@ impl SuniApp {
         };
         self.edit.text_prompt = Some(TextPrompt {
             page: sel.page,
+            // Texte existant : (x, y) = coin haut-gauche de ses limites (ancre de l'éditeur).
             x: info.bounds.left,
-            y: info.bounds.bottom,
+            y: info.bounds.top,
             index: Some(info.index),
             text: info.text.clone().unwrap_or_default(),
             size: if info.font_size > 0.0 {

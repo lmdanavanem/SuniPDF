@@ -210,6 +210,17 @@ pub(crate) fn norm180(deg: f32) -> f32 {
     }
 }
 
+/// Échelle verticale de la matrice d'un texte, rotation comprise : longueur du vecteur (c, d).
+/// (`scaled_font_size` de pdfium-render ne lit que `d`, nul pour un texte à 90° : taille 0, puis
+/// multipliée à la modification.)
+fn text_scale(t: &PdfPageTextObject<'_>) -> f32 {
+    t.matrix()
+        .map(|m| (m.c() * m.c() + m.d() * m.d()).sqrt())
+        .ok()
+        .filter(|s| *s > 0.0)
+        .unwrap_or(1.0)
+}
+
 fn kind_of(object: &PdfPageObject<'_>) -> ObjectKind {
     match object.object_type() {
         PdfPageObjectType::Text => ObjectKind::Text,
@@ -239,7 +250,7 @@ fn describe(
                     .to_string(),
                 None => t.text(),
             }),
-            t.scaled_font_size().value,
+            t.unscaled_font_size().value * text_scale(t),
             Some(t.font().family()).filter(|n| !n.is_empty()),
         ),
         None => (None, 0.0, None),
@@ -658,15 +669,7 @@ impl Document<'_> {
         let Some(text_object) = object.as_text_object() else {
             return Err(EngineError::Other("not a text object".into()));
         };
-        let (scaled, unscaled) = (
-            text_object.scaled_font_size().value,
-            text_object.unscaled_font_size().value,
-        );
-        let ratio = if unscaled > 0.0 && scaled > 0.0 {
-            scaled / unscaled
-        } else {
-            1.0
-        };
+        let ratio = text_scale(text_object);
         text_object.set_unscaled_font_size(PdfPoints::new(size_pt / ratio))?;
         drop(object);
         page.regenerate_content()?;

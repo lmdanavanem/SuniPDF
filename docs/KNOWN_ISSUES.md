@@ -47,12 +47,40 @@ A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle U
 A6. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
     (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
     Contournement : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
-A7. **Édition du contenu : rotation par pas de 90° seulement, pas de police système** (14 polices standard) ;
-    les images sont insérées à 200 pt de large puis redimensionnables par les poignées
-    (`docs/plans/edit-advanced.md`).
-A8. **« Mettre à l'arrière-plan » fusionne les flux de contenu de la page** (lopdf) avant de réordonner :
-    PDFium dessine flux par flux. Le PDF reste valide ; les objets dupliqués sont des XObjects (non
-    éditables comme texte).
+A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
+    du système. Restent : **rotation et redimensionnement d'un groupe** de plusieurs objets non proposés
+    (déplacement seulement) ; un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
+    (le redimensionner le déformerait) ; pivot = centre de la boîte englobante, donc un tracé asymétrique peut
+    dériver légèrement à chaque rotation successive.
+A8. **Réordonner (arrière-plan, reculer, avancer) fusionne les flux de contenu de la page** (lopdf) avant de
+    réordonner : PDFium dessine flux par flux. Le PDF reste valide. Les objets **dupliqués ou collés sont des
+    groupes** (XObjects formulaires) : non éditables comme texte, couleur et opacité non modifiables (champ
+    Opacité grisé), bornés à la boîte de la page d'origine (un objet qui dépassait de sa page est rogné).
+A18. **Polices système incorporées en entier** (pas de sous-ensemble) : chaque police ajoute sa taille au PDF
+     (0,2 à 1,6 Mo pour les polices Windows courantes), une seule fois par document ; après Annuler / Rétablir,
+     la première insertion suivante l'incorpore à nouveau et l'ancienne copie reste orpheline jusqu'à
+     « Optimiser ». Seules les polices `.ttf` à contours TrueType sont proposées (`.otf` PostScript, `.ttc` et
+     polices dont la licence interdit l'incorporation : refus typé `font_not_embeddable`). Liste lue par
+     `reg.exe` (repli : dossier des polices) ; un nom non ASCII peut s'afficher mal (page de code OEM). Rendu
+     vérifié par PDFium seulement (aucun autre lecteur ni qpdf sur ce poste).
+A19. **Recadrer masque, n'efface pas** : le contenu hors cadre reste dans le fichier (ce n'est pas un
+     caviardage ; dit dans le dialogue). Recadrage à la souris non proposé (marges numériques avec aperçu).
+A20. **Texte sur la page** : le champ de saisie affiche le texte avec la police de l'interface (Segoe UI ou
+     monospace pour Courier), pas avec la police du PDF : largeur et retours à la ligne approximatifs pendant la
+     saisie. Un texte existant pivoté s'édite dans une boîte de dialogue. Pas d'édition de paragraphes (une ligne
+     = un objet).
+A21. **Redimensionner en mode « Adapter »** : le contenu est mis à l'échelle (`FPDFPage_TransFormWithClip`),
+     pas les annotations ni les liens existants (note permanente dans le dialogue).
+A22. **Opacité d'une image existante non lisible** : PDFium 7881 ne renvoie pas la couleur (donc l'alpha) d'un
+     objet image ; une image transparente garde dans la barre d'objet la valeur précédente du champ Opacité.
+     L'application d'une opacité fonctionne (vérifiée au rendu).
+A23. **Angle affiché des objets d'une page pivotée** : l'angle d'un objet est celui de son contenu à l'écran ;
+     un rectangle dessiné dans le PDF sur une page `/Rotate 90` est donc annoncé à 90° (CLI `objects`, champ
+     Angle). Les poignées d'angle restent disponibles (multiple de 90°).
+A24. **Presse-papiers d'objets et presse-papiers système** : Ctrl+V ne colle les objets que si le repère écrit
+     par la copie (texte des objets, ou « [SuniPDF : n objet(s) copié(s)] ») est encore dans le presse-papiers
+     Windows ; le menu Édition, la palette et la barre d'objet collent sans cette condition. Le presse-papiers
+     d'objets vit en mémoire le temps de la session (perdu à la fermeture de l'application).
 A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
     `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).
 A10. **Résultat de la CI GitHub non vérifié par l'agent** : dépôt privé, ni `gh` ni jeton sur ce poste. Les

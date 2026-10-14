@@ -287,6 +287,17 @@ impl SuniApp {
             if clamped != doc.page {
                 doc.page = clamped;
                 self.error = None;
+                // Une sélection ou un texte en cours sur une page qui n'est plus affichée : Suppr ou
+                // les flèches agiraient à l'aveugle, et l'éditeur invisible garderait le clavier.
+                self.edit.selection = None;
+                if self
+                    .edit
+                    .text_prompt
+                    .as_ref()
+                    .is_some_and(|p| p.page != clamped)
+                {
+                    self.edit.text_prompt = None;
+                }
             }
             self.page_input = (clamped + 1).to_string();
         }
@@ -1119,6 +1130,8 @@ impl SuniApp {
             Command::OrganizePages => {
                 self.organize.active = !self.organize.active;
                 if self.organize.active {
+                    // La grille masque la page : pas de sélection d'objet invisible (Suppr, flèches).
+                    self.edit.selection = None;
                     if let Some(doc) = &self.document {
                         self.organize.selected = std::iter::once(doc.page).collect();
                         self.organize.anchor = Some(doc.page);

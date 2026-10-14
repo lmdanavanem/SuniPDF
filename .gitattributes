@@ -1,0 +1,2 @@
+# Les fixtures PDF contiennent des décalages d'octets (xref, /Length) : jamais de conversion de fins de ligne.
+*.pdf binary
