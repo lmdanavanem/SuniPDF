@@ -60,6 +60,8 @@ impl SuniApp {
         // La sélection d'objet désigne un index du document actif : elle ne doit jamais
         // survivre à un changement de document (Suppr agirait sur l'autre onglet).
         self.edit.reset_for_tab();
+        // Le placement d'une signature vise une page du document actif : il ne survit pas.
+        self.cancel_placing();
         let mut state = TabState {
             document: self.document.take(),
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),

@@ -174,6 +174,14 @@ pub enum EditOp {
         width_pt: f32,
         opacity: f32,
     },
+    /// Image déjà décodée (signature visuelle) ; `Arc` : l'interface garde l'image pour la reposer.
+    AddImageData {
+        page: usize,
+        image: Arc<image::DynamicImage>,
+        x: f32,
+        y: f32,
+        width_pt: f32,
+    },
     AddShape {
         page: usize,
         kind: ShapeKind,
@@ -354,6 +362,12 @@ pub enum Request {
         cut: bool,
     },
     SystemFonts,
+    /// Décode une image choisie par l'utilisateur (signature importée) hors du thread d'interface ;
+    /// aucun document requis.
+    LoadImage {
+        path: PathBuf,
+        max_side: u32,
+    },
     Batch(BatchOp),
     /// Suspend le document actif (renvoie `Suspended`).
     Suspend,
@@ -438,6 +452,10 @@ pub enum Response {
         text: String,
     },
     SystemFonts(Arc<Vec<SystemFont>>),
+    ImageLoaded {
+        path: PathBuf,
+        result: Result<image::RgbaImage, EngineError>,
+    },
     Suspended(SuspendedDoc),
     Resumed(DocState),
     /// La reprise d'un onglet suspendu a échoué (le document de cet onglet est perdu).
@@ -827,6 +845,13 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             width_pt,
             opacity,
         } => doc.add_image_with(page, &path, x, y, width_pt, opacity),
+        EditOp::AddImageData {
+            page,
+            image,
+            x,
+            y,
+            width_pt,
+        } => doc.add_image_data(page, &image, x, y, width_pt),
         EditOp::AddShape {
             page,
             kind,
@@ -1192,6 +1217,10 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     }
                     Err(e) => Response::OperationFailed(e),
                 }
+            }
+            Request::LoadImage { path, max_side } => {
+                let result = sunipdf_core::signature_image::load(&path, max_side);
+                Response::ImageLoaded { path, result }
             }
             Request::SystemFonts => Response::SystemFonts(
                 state

@@ -13,7 +13,7 @@ pub struct Optimized {
     pub after: u64,
 }
 
-fn image_err(path: &Path, e: image::ImageError) -> EngineError {
+pub(crate) fn image_err(path: &Path, e: image::ImageError) -> EngineError {
     match e {
         image::ImageError::IoError(io) => EngineError::Io(io),
         other => EngineError::Other(format!("{}: {other}", path.display())),

@@ -3209,3 +3209,169 @@ fn review_resizing_a_tilted_object_scales_uniformly_and_rotated_pages_keep_their
             .contains(&format!("BOXES {name}")));
     }
 }
+
+// ----- Signature visuelle (tranche sign-image) ------------------------------------------------
+
+/// Image d'essai 60 × 20 : tiers rouge opaque, tiers rouge à demi transparent, tiers noir
+/// totalement transparent (noir pour qu'une perte de l'alpha se voie au rendu).
+fn alpha_test_image() -> image::RgbaImage {
+    image::RgbaImage::from_fn(60, 20, |x, _| match x / 20 {
+        0 => image::Rgba([220, 20, 20, 255]),
+        1 => image::Rgba([220, 20, 20, 128]),
+        _ => image::Rgba([0, 0, 0, 0]),
+    })
+}
+
+/// L'image couvre x 100..250, y 540..590, entièrement sur le rectangle bleu de la page 1.
+fn assert_alpha_pixels(doc: &sunipdf_core::Document<'_>) {
+    let r = doc.render_page(0, 1.0).unwrap();
+    let y = 565.0;
+    assert!(is_red(px(&r, 125.0, y)), "{:?}", px(&r, 125.0, y));
+    let m = px(&r, 175.0, y);
+    assert!(
+        80 < m[0] && m[0] < 140 && 100 < m[2] && m[2] < 170,
+        "mélange à 50 % attendu (masque 8 bits), obtenu {m:?}"
+    );
+    assert_eq!(
+        px(&r, 225.0, y),
+        [0, 0, 255],
+        "zone transparente : bleu du dessous"
+    );
+    assert_eq!(px(&r, 90.0, y), [0, 0, 255], "hors image");
+}
+
+#[test]
+fn image_alpha_is_preserved_as_soft_mask() {
+    use sunipdf_core::ObjectKind;
+    let engine = engine();
+    let dir = temp_dir("sig-alpha");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let initial = doc.page_objects(0).unwrap().len();
+    let dyn_img = image::DynamicImage::ImageRgba8(alpha_test_image());
+    let snap = doc.snapshot().unwrap();
+    doc.add_image_data(0, &dyn_img, 100.0, 540.0, 150.0)
+        .unwrap();
+    assert_alpha_pixels(&doc);
+    let objects = doc.page_objects(0).unwrap();
+    assert_eq!(objects.len(), initial + 1);
+    let last = objects.last().unwrap();
+    assert_eq!(last.kind, ObjectKind::Image);
+    assert!(
+        near(last.bounds, rect(100.0, 540.0, 250.0, 590.0), 1.0),
+        "{:?}",
+        last.bounds
+    );
+
+    // Annulation par instantané.
+    doc.restore(snap).unwrap();
+    assert_eq!(doc.page_objects(0).unwrap().len(), initial);
+    assert!(is_blue(px(&doc.render_page(0, 1.0).unwrap(), 125.0, 565.0)));
+
+    // Persistance : rechargement des octets, puis fichier enregistré et rouvert.
+    doc.add_image_data(0, &dyn_img, 100.0, 540.0, 150.0)
+        .unwrap();
+    doc.restore(doc.snapshot().unwrap()).unwrap();
+    assert_alpha_pixels(&doc);
+    let out = dir.join("signed.pdf");
+    doc.save_as(&out).unwrap();
+    let reopened = engine.open(&out, None).unwrap();
+    assert_alpha_pixels(&reopened);
+
+    // Édition après pose : le masque suit l'objet.
+    let i = doc.page_objects(0).unwrap().len() - 1;
+    doc.move_object(0, i, 0.0, -30.0).unwrap();
+    let r = doc.render_page(0, 1.0).unwrap();
+    assert_eq!(
+        px(&r, 225.0, 535.0),
+        [0, 0, 255],
+        "transparent après déplacement"
+    );
+    assert!(is_red(px(&r, 125.0, 535.0)));
+    doc.resize_object(0, i, rect(100.0, 500.0, 400.0, 600.0))
+        .unwrap();
+    let r = doc.render_page(0, 1.0).unwrap();
+    assert_eq!(
+        px(&r, 350.0, 550.0),
+        [255, 255, 255],
+        "tiers transparent étiré sur le fond blanc"
+    );
+
+    // Même image par fichier PNG (chemin « importer un PNG transparent »).
+    let png = dir.join("alpha.png");
+    image::save_buffer(
+        &png,
+        alpha_test_image().as_raw(),
+        60,
+        20,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let mut by_file = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    by_file.add_image(0, &png, 100.0, 540.0, 150.0).unwrap();
+    assert_alpha_pixels(&by_file);
+
+    // Erreurs : document inchangé.
+    let count = doc.page_objects(0).unwrap().len();
+    assert!(doc.add_image_data(0, &dyn_img, 100.0, 540.0, 0.0).is_err());
+    assert!(doc
+        .add_image_data(0, &dyn_img, 100.0, 540.0, f32::NAN)
+        .is_err());
+    assert!(doc
+        .add_image_data(0, &dyn_img, f32::INFINITY, 540.0, 150.0)
+        .is_err());
+    assert!(matches!(
+        doc.add_image_data(9, &dyn_img, 100.0, 540.0, 150.0),
+        Err(EngineError::PageOutOfRange(9))
+    ));
+    let empty = image::DynamicImage::ImageRgba8(image::RgbaImage::new(0, 0));
+    assert!(doc.add_image_data(0, &empty, 100.0, 540.0, 150.0).is_err());
+    assert_eq!(doc.page_objects(0).unwrap().len(), count);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn signature_strokes_to_page_pipeline() {
+    use sunipdf_core::signature_image::{rasterize_strokes, trim};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.snapshot().unwrap().len();
+    let strokes = vec![
+        vec![(100.0, 300.0), (600.0, 60.0), (1000.0, 280.0)],
+        vec![(1050.0, 40.0)],
+    ];
+    let img = trim(
+        &rasterize_strokes(&strokes, 1112, 340, 10.0, (0x1E, 0x3A, 0x8A)),
+        6,
+    )
+    .unwrap();
+    let (w, h) = img.dimensions();
+    assert!(w < 1112 && h < 340, "rognée : {w} × {h}");
+    let h_pt = 140.0 * h as f32 / w as f32;
+    doc.add_image_data(
+        0,
+        &image::DynamicImage::ImageRgba8(img),
+        300.0,
+        100.0,
+        140.0,
+    )
+    .unwrap();
+    // Garde-fou de taille : PDFium compresse les flux d'image à l'enregistrement.
+    let after = doc.snapshot().unwrap().len();
+    assert!(after - before < 300_000, "+{} octets", after - before);
+    let r = doc.render_page(0, 1.0).unwrap();
+    let mut dark = 0;
+    for y in 100..(100.0 + h_pt) as u32 {
+        for x in 300..440u32 {
+            let p = px(&r, x as f32 + 0.5, y as f32 + 0.5);
+            // Trait d'environ 1,5 pt anti-crénelé : encre bleue nettement plus bleue que rouge.
+            if p[0] < 170 && p[2] > p[0] + 40 {
+                dark += 1;
+            }
+        }
+    }
+    assert!(dark > 150, "{dark} pixels d'encre bleue");
+    // Coin haut-gauche de l'image, loin des traits : le fond de la page reste blanc.
+    let k = 140.0 / w as f32;
+    let p = px(&r, 300.0 + 16.0 * k, 100.0 + h_pt - 16.0 * k);
+    assert_eq!(p, [255, 255, 255]);
+}

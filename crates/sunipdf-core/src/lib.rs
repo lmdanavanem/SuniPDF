@@ -19,6 +19,7 @@ pub mod fonts;
 pub mod geometry;
 pub mod pages;
 pub mod security;
+pub mod signature_image;
 pub mod stamp;
 pub mod text;
 pub mod tiles;

@@ -78,10 +78,11 @@ pub static TABLE: [WsInfo; 14] = [
         ws: Workspace::FillSign,
         name_key: "hub.fill_sign.name",
         desc_key: "hub.fill_sign.desc",
-        icon: (glyph::EDIT_DOC, "✎"),
+        icon: (glyph::SIGN, "✍"),
         color: Color32::from_rgb(0x63, 0x66, 0xF1),
-        entry: None,
-        groups: &[],
+        // Moitié « signer » : signature visuelle, paraphe, date (texte : outil Modifier, touche T).
+        entry: Some(Entry::Mode(C::HubFillSign)),
+        groups: &[&[C::SignDocument, C::SignInitials, C::InsertDate]],
     },
     WsInfo {
         ws: Workspace::Edit,
@@ -796,6 +797,7 @@ mod tests {
     ];
 
     const HUB_COMMANDS: &[Command] = &[
+        C::HubFillSign,
         C::HubEdit,
         C::HubOrganize,
         C::HubComment,

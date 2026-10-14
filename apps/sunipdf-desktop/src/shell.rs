@@ -205,13 +205,17 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::SendToBack => (glyph::BACK, "⤓"),
         Command::Watermark => (glyph::STAMP, "◈"),
         Command::PageNumbers => (glyph::NUMBERS, "#"),
-        Command::HubEdit
+        Command::HubFillSign
+        | Command::HubEdit
         | Command::HubOrganize
         | Command::HubComment
         | Command::HubProtect
         | Command::HubStamp => {
             Workspace::from_command(command).map_or((glyph::ALL_APPS, "▤"), |w| w.info().icon)
         }
+        Command::SignDocument => (glyph::SIGN, "✍"),
+        Command::SignInitials => (glyph::EDIT_DOC, "✎"),
+        Command::InsertDate => (glyph::CALENDAR, "📅"),
         Command::HubLeave => (glyph::CLOSE, "✕"),
         Command::About => (glyph::INFO, "i"),
         Command::ToggleObjects => (glyph::LAYERS, "☰"),

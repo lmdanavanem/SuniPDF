@@ -29,6 +29,8 @@ thiserror = "2"
 log = "0.4"
 env_logger = "0.11"
 clap = { version = "4", features = ["derive"] }
+# Date locale du jour (« Insérer la date ») ; déjà dans l'arbre via lopdf et pdfium-render.
+chrono = "0.4"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp", "gif", "tiff", "webp"] }
 
 [profile.release]

@@ -120,6 +120,8 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
         Command::SaveAs,
     ),
     (Modifiers::COMMAND, Key::S, Command::Save),
+    // Après Ctrl+S et Ctrl+Maj+S : `consume_key` exige la même touche Ctrl.
+    (Modifiers::NONE, Key::S, Command::SignDocument),
     (
         Modifiers::COMMAND.plus(Modifiers::SHIFT),
         Key::R,
@@ -216,6 +218,8 @@ pub struct SuniApp {
     pub tabs: crate::tabs::TabsState,
     pub edit: crate::editor::EditState,
     pub pagesetup: crate::pagesetup::PageSetupState,
+    /// Signature visuelle : boîte, bibliothèque locale (globale, hors onglet) et placement.
+    pub sign: crate::sign::SignState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -252,6 +256,7 @@ impl SuniApp {
             tabs: Default::default(),
             edit: Default::default(),
             pagesetup: Default::default(),
+            sign: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -348,6 +353,9 @@ impl SuniApp {
         // Le presse-papiers d'objets survit à la fermeture (coller dans un autre onglet).
         self.edit.reset_for_tab();
         self.pagesetup = Default::default();
+        // Le cache des signatures enregistrées est global : seuls la boîte et le placement partent.
+        self.cancel_placing();
+        self.sign.open = None;
         let bookmarks_open = self.docinfo.bookmarks_open;
         self.docinfo = Default::default();
         self.docinfo.bookmarks_open = bookmarks_open;
@@ -628,6 +636,7 @@ impl SuniApp {
                     log::debug!("{} polices système incorporables", list.len());
                     self.edit.system_fonts = Some(list);
                 }
+                Response::ImageLoaded { path, result } => self.on_image_loaded(ctx, path, result),
                 Response::Suspended(s) => self.on_suspended(s),
                 Response::Resumed(state) => self.on_resumed(state, ctx),
                 Response::ResumeFailed(error) => {
@@ -803,6 +812,12 @@ impl SuniApp {
         }
         (self.edit.shift, self.edit.alt, self.edit.ctrl) =
             ctx.input(|i| (i.modifiers.shift, i.modifiers.alt, i.modifiers.command));
+        // Placement d'une signature ou d'une date en cours : Échap l'annule, rien d'autre.
+        if self.sign.placing.is_some()
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.cancel_placing();
+        }
         // Un Échap = un effet, le plus proche d'abord (`workspace::EscState::action`).
         let esc = crate::workspace::take_escape(ctx, self.esc_state(ctx));
         if esc == Some(Esc::Deselect) {
@@ -906,6 +921,7 @@ impl SuniApp {
             || self.pagesetup.dialog.is_some()
             || self.annotate.note_prompt.is_some()
             || self.edit.text_prompt.is_some()
+            || self.sign.open.is_some()
     }
 
     /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
@@ -1078,6 +1094,7 @@ impl SuniApp {
             | Command::ToolRectangle
             | Command::ToolEllipse
             | Command::ToolLine => {
+                self.cancel_placing();
                 self.annotate.tool =
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
                 self.annotate.drag = None;
@@ -1092,7 +1109,8 @@ impl SuniApp {
                     command,
                 );
             }
-            Command::HubEdit
+            Command::HubFillSign
+            | Command::HubEdit
             | Command::HubOrganize
             | Command::HubComment
             | Command::HubProtect
@@ -1101,7 +1119,13 @@ impl SuniApp {
                     self.enter_workspace(ctx, ws);
                 }
             }
-            Command::HubLeave => self.leave_workspace(),
+            Command::HubLeave => {
+                self.cancel_placing();
+                self.leave_workspace();
+            }
+            Command::SignDocument => self.open_sign_dialog(ctx, crate::sign::SignKind::Signature),
+            Command::SignInitials => self.open_sign_dialog(ctx, crate::sign::SignKind::Initials),
+            Command::InsertDate => self.start_placing_date(),
             Command::CombineFiles => self.tool_combine(),
             Command::SplitDocument => {
                 self.tools.split_every = self.tools.split_every.max(1);
@@ -1963,6 +1987,7 @@ impl eframe::App for SuniApp {
         self.unsaved_dialog(&ctx);
         self.split_dialog(&ctx);
         self.stamp_dialog(&ctx);
+        self.sign_dialog(&ctx);
         self.properties_dialog(&ctx);
         self.protect_dialog(&ctx);
         self.unprotect_dialog(&ctx);
@@ -2068,7 +2093,8 @@ mod tests {
             include_str!("editor.rs"),
             include_str!("objects.rs"),
             include_str!("inline_text.rs"),
-            include_str!("pagesetup.rs")
+            include_str!("pagesetup.rs"),
+            include_str!("sign.rs")
         );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {

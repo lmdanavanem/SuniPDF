@@ -84,6 +84,9 @@ pub mod glyph {
     pub const PHOTO: &str = "\u{E91B}";
     /// Défilement vertical (vue continue).
     pub const SCROLL: &str = "\u{ECE7}";
+    /// « Handwriting » : signature visuelle.
+    pub const SIGN: &str = "\u{E929}";
+    pub const CALENDAR: &str = "\u{E787}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

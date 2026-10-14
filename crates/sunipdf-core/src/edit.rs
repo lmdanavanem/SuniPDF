@@ -873,7 +873,36 @@ impl Document<'_> {
         opacity: f32,
     ) -> Result<(), EngineError> {
         let img = crate::convert::load_image(image_path)?;
-        if !(width_pt.is_finite() && width_pt > 0.0) || img.width() == 0 || img.height() == 0 {
+        self.insert_image(page_index, &img, x, y, width_pt, opacity)
+    }
+
+    /// Insère une image déjà décodée de `width_pt` points de large, coin bas-gauche en (x, y).
+    /// Le canal alpha est conservé (PDFium écrit un masque `/SMask`) : une signature visuelle
+    /// laisse voir le contenu situé dessous. Aucune valeur cryptographique : c'est une image.
+    pub fn add_image_data(
+        &mut self,
+        page_index: usize,
+        image: &image::DynamicImage,
+        x: f32,
+        y: f32,
+        width_pt: f32,
+    ) -> Result<(), EngineError> {
+        self.insert_image(page_index, image, x, y, width_pt, 1.0)
+    }
+
+    fn insert_image(
+        &mut self,
+        page_index: usize,
+        img: &image::DynamicImage,
+        x: f32,
+        y: f32,
+        width_pt: f32,
+        opacity: f32,
+    ) -> Result<(), EngineError> {
+        if !(width_pt.is_finite() && width_pt > 0.0 && x.is_finite() && y.is_finite())
+            || img.width() == 0
+            || img.height() == 0
+        {
             return Err(EngineError::Other("invalid image size".into()));
         }
         let height_pt = width_pt * img.height() as f32 / img.width() as f32;
@@ -881,7 +910,7 @@ impl Document<'_> {
         let mut page = self.page_handle(page_index)?;
         let mut object = PdfPageImageObject::new_with_size(
             &self.inner,
-            &img,
+            img,
             PdfPoints::new(width_pt),
             PdfPoints::new(height_pt),
         )?;

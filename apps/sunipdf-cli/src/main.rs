@@ -358,6 +358,32 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Place an image on a page, e.g. a scanned handwritten signature. Visual mark only: this is
+    /// NOT a digital signature (no certificate, no integrity protection, removable by anyone).
+    AddImage {
+        file: PathBuf,
+        /// Image file; a PNG with transparency is used as is.
+        #[arg(long)]
+        image: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// Bottom-left corner, in points from the bottom-left of the page as displayed.
+        #[arg(long, allow_negative_numbers = true)]
+        x: f32,
+        #[arg(long, allow_negative_numbers = true)]
+        y: f32,
+        /// Width in points; the height follows the image proportions.
+        #[arg(long, default_value_t = 150.0)]
+        width: f32,
+        /// Make the light background transparent: luminance threshold 1-255 (200 suits a photo
+        /// of a signature on white paper); the result is trimmed to the ink.
+        #[arg(long, value_name = "THRESHOLD")]
+        remove_background: Option<u8>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Crop pages (hides the margins; content stays in the file) or restore them with --reset.
     Crop {
         file: PathBuf,
@@ -960,6 +986,41 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "bounds": [b.left, b.bottom, b.right, b.top] }))
         }
+        Command::AddImage {
+            file,
+            image,
+            page,
+            x,
+            y,
+            width,
+            remove_background,
+            out,
+            password,
+        } => {
+            use sunipdf_core::signature_image as sig;
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let mut img = sig::load(&image, 4096)?;
+            if let Some(t) = remove_background {
+                img = sig::trim(&sig::remove_background(&img, t), 4).ok_or_else(|| {
+                    EngineError::Other("image is empty after background removal".into())
+                })?;
+            }
+            let (w, h) = img.dimensions();
+            doc.add_image_data(p, &image::DynamicImage::ImageRgba8(img), x, y, width)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({
+                "out": out,
+                "page": page,
+                "x": x,
+                "y": y,
+                "width_pt": width,
+                "height_pt": width * h as f32 / w as f32,
+                "background_removed": remove_background.is_some(),
+                // Constant: a visual mark never makes the document digitally signed.
+                "digital_signature": false,
+            }))
+        }
         Command::Crop {
             file,
             pages,
@@ -1110,6 +1171,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::RotateObject { out, .. }
         | Command::CopyObjects { out, .. }
         | Command::ReplaceImage { out, .. }
+        | Command::AddImage { out, .. }
         | Command::Crop { out, .. }
         | Command::ResizePages { out, .. }
         | Command::InsertBlank { out, .. }
@@ -1404,5 +1466,36 @@ mod tests {
             "o.pdf",
         ])
         .is_ok());
+    }
+
+    #[test]
+    fn add_image_parses_and_writes_one_file() {
+        let cli = Cli::try_parse_from([
+            "sunipdf-cli",
+            "add-image",
+            "a.pdf",
+            "--image",
+            "s.png",
+            "--x",
+            "100",
+            "--y",
+            "520",
+            "--remove-background",
+            "200",
+            "--out",
+            "o.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(
+            cli.command,
+            Command::AddImage { width, remove_background: Some(200), page: 1, .. } if width == 150.0
+        ));
+        assert_eq!(
+            output_path(&cli.command).map(|p| p.to_path_buf()),
+            Some(PathBuf::from("o.pdf"))
+        );
+        assert!(
+            Cli::try_parse_from(["sunipdf-cli", "add-image", "a.pdf", "--out", "o.pdf"]).is_err()
+        );
     }
 }

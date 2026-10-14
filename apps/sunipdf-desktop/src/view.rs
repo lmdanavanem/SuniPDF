@@ -837,7 +837,10 @@ impl SuniApp {
         );
         self.view.pool.evict(POOL_BUDGET_BYTES);
         if let Some((page, ev)) = event {
-            self.handle_page_event(page, ev);
+            // Maj lue au moment du clic (`self.edit.shift` n'est pas mis à jour si `handle_input`
+            // est sorti plus tôt).
+            let shift = ctx.input(|i| i.modifiers.shift);
+            self.handle_page_event(page, ev, shift);
         }
         self.object_bar(ctx, doc_rect);
     }
@@ -919,6 +922,10 @@ impl SuniApp {
             self.view.hover_page = Some(s.page);
         }
         let hover = interact.hover_pos().map(to_pdf);
+        if let Some(pt) = hover {
+            // Fantôme de la signature ou de la date à placer, sous le pointeur.
+            self.paint_placing(&painter, s.rect, s.page, h, pt);
+        }
         interact.on_hover_cursor(self.page_cursor(s.page, hover));
         event.map(|e| (s.page, e))
     }
@@ -1208,7 +1215,16 @@ impl SuniApp {
     }
 
     /// Un événement de souris sur une page ; un seul glissement à la fois.
-    fn handle_page_event(&mut self, page: usize, ev: DragEvent) {
+    fn handle_page_event(&mut self, page: usize, ev: DragEvent, shift: bool) {
+        if self.sign.placing.is_some() {
+            // Mode de placement d'une signature : le premier appui pose ; les Move / Stop qui
+            // suivent ne trouvent aucun glissement en cours et ne font rien.
+            if let DragEvent::Start(pt) | DragEvent::Click(pt) = ev {
+                self.make_current(page);
+                self.place_at(page, pt, shift);
+            }
+            return;
+        }
         if matches!(
             ev,
             DragEvent::Start(_) | DragEvent::Click(_) | DragEvent::DoubleClick(_)

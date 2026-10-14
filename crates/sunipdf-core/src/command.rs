@@ -83,6 +83,11 @@ pub enum Command {
     CropPages,
     ResizePages,
     InsertBlankPage,
+    /// Signature visuelle (image), paraphe, date : aucune valeur cryptographique.
+    SignDocument,
+    SignInitials,
+    InsertDate,
+    HubFillSign,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -561,6 +566,30 @@ pub const REGISTRY: &[CommandInfo] = &[
         Edit
     ),
     cmd!(
+        SignDocument,
+        "sign.signature",
+        "menu.edit.sign",
+        Some("shortcut.sign"),
+        true,
+        Edit
+    ),
+    cmd!(
+        SignInitials,
+        "sign.initials",
+        "menu.edit.sign_initials",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        InsertDate,
+        "sign.date",
+        "menu.edit.insert_date",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
         DeleteObject,
         "edit.delete_object",
         "menu.edit.delete_object",
@@ -712,6 +741,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         true,
         Edit
     ),
+    cmd!(
+        HubFillSign,
+        "hub.fill_sign",
+        "hub.fill_sign.name",
+        None,
+        true,
+        Tools
+    ),
     cmd!(HubEdit, "hub.edit", "hub.edit.name", None, true, Tools),
     cmd!(
         HubOrganize,
@@ -797,7 +834,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 7);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 6);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 7);
     }
 
     #[test]

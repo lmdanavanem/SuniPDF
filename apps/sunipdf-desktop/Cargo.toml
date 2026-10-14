@@ -20,6 +20,7 @@ serde_json = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
 image = { workspace = true }
+chrono = { workspace = true }
 
 [build-dependencies]
 winresource = "0.1"

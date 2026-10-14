@@ -12,6 +12,7 @@ mod organize;
 mod pagesetup;
 mod settings;
 mod shell;
+mod sign;
 mod tabs;
 mod theme;
 mod tools;
