@@ -18,7 +18,11 @@ $url = "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%
 $archive = Join-Path $dir "pdfium-win-$Arch.tgz"
 Write-Host "Téléchargement $url"
 Invoke-WebRequest -Uri $url -OutFile $archive -UseBasicParsing
-tar -xzf $archive -C $dir
+# tar de Windows (bsdtar) explicitement : le tar GNU de Git Bash prend « C: » pour un hôte distant.
+$tar = Join-Path $env:SystemRoot "System32\tar.exe"
+if (-not (Test-Path $tar)) { $tar = "tar" }
+& $tar -xzf $archive -C $dir
+if ($LASTEXITCODE -ne 0) { throw "Extraction de $archive impossible (tar a renvoyé $LASTEXITCODE)." }
 Remove-Item $archive
 $hash = (Get-FileHash $dll -Algorithm SHA256).Hash
 Write-Host "OK : $dll"

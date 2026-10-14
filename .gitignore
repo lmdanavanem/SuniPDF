@@ -5,3 +5,4 @@
 *.pdb
 *.msi
 .claude/settings.local.json
+__pycache__/
