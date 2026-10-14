@@ -41,7 +41,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] Icône / ressources de version Windows (vérifié : `(Get-Item sunipdf.exe).VersionInfo` → SuniPDF, SuniWorks, 0.1.0).
 - [ ] CI GitHub Actions (`ci.yml`, `release.yml`) : déclenchées le 2026-10-14 par les push de `main` et des tags `v0.1.0` puis `v0.2.0` sur https://github.com/lmdanavanem/SuniPDF (dépôt privé : résultat à lire dans l'onglet Actions).
 - [x] MSI x64 construit localement avec les binaires WiX 3.14 autonomes : `dist\SuniPDF-0.2.0-win-x64.msi` (11,0 Mo) + SHA256 (0.1.0 validé par `smoke.exe` et une extraction administrative ; 0.2.0 reconstruit le 14/10, même procédé).
-- [ ] ARM64 : script et workflow prêts, **jamais compilé** (pas de cible `aarch64-pc-windows-msvc` installée ici).
+- [ ] ARM64 : tenté le 2026-10-14 (cible Rust ajoutée, PDFium ARM64 téléchargé), **édition de liens impossible** tant que le composant Visual Studio « outils de build ARM64 » manque (voir `KNOWN_ISSUES.md` n° 12) ; construit en CI par `release.yml`.
 
 ## Dernière exécution (2026-10-14, cible **MSVC**, `-j 2`)
 | Commande | Résultat |

@@ -23,8 +23,14 @@
 11. ~~MSI non construit~~ **Résolu le 2026-10-14** : binaires WiX 3.14 autonomes (`third_party/wix314`, zip officiel, sans
     installation ni droits admin) ; `scripts/package-msi.ps1` les détecte via `WIX_BIN` ; MSI x64 produit et validé
     (ICE `smoke.exe`, extraction administrative).
-12. **Build ARM64 non vérifié** : `package-portable.ps1 -Arch arm64` compile pour `aarch64-pc-windows-msvc`
-    (binaires PDFium ARM64 disponibles) mais n'a jamais été exécuté ici (voir `docs/plans/qa-hardening.md`).
+12. **Build ARM64 local bloqué par un composant Visual Studio manquant** (tenté le 2026-10-14) : la cible Rust
+    `aarch64-pc-windows-msvc` est installée et le PDFium ARM64 se télécharge, mais l'édition de liens échoue car
+    les Build Tools n'ont que les outils x64 et x86 (`VC\Tools\MSVC\<version>in\Hostx64rm64` absent, CRT ARM64
+    absente). Installation (droits administrateur requis, refusée pendant la session autonome) :
+    `& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe" modify --installPath
+    "C:\Program Files (x86)\Microsoft Visual Studio8\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64
+    --passive --norestart`, puis `scripts\package-portable.ps1 -Arch arm64` (depuis Git Bash).
+    Les runners GitHub `windows-latest` ont ce composant : `release.yml` construit l'ARM64 en CI.
 
 ## Application
 
