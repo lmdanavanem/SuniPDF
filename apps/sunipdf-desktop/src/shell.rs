@@ -916,92 +916,106 @@ impl SuniApp {
             .map(|d| (d.page, d.info.page_count()))
             .unwrap_or((0, 0));
         ui.vertical_centered(|ui| {
-            ui.add_space(6.0);
-            let thumbs = ui
-                .add(Button::selectable(
-                    self.settings.show_thumbnails,
-                    self.icon(glyph::GRID, "▦", 16.0),
-                ))
-                .on_hover_text(tr(lang, "menu.view.thumbnails"));
-            if thumbs.clicked() {
-                self.execute(ctx, Command::ToggleThumbnails);
-            }
-            let organize = ui
-                .add(Button::selectable(
-                    self.organize.active,
-                    self.icon(glyph::PAGES, "▦", 16.0),
-                ))
-                .on_hover_text(tr(lang, "menu.view.organize"));
-            if organize.clicked() {
-                self.execute(ctx, Command::OrganizePages);
-            }
-            // Bascule de la vue : allumé = défilement continu (F5).
-            let continuous = self.view.mode == crate::view::ViewMode::Continuous;
-            let view_toggle = ui
-                .add(Button::selectable(
-                    continuous,
-                    self.icon(glyph::SCROLL, "⇕", 16.0),
-                ))
-                .on_hover_text(format!(
-                    "{}  ({})",
-                    tr(lang, "menu.view.continuous"),
-                    tr(lang, "shortcut.view_toggle")
-                ));
-            if view_toggle.clicked() {
-                self.execute(
-                    ctx,
-                    if continuous {
-                        Command::ViewSinglePage
-                    } else {
-                        Command::ViewContinuous
-                    },
-                );
-            }
-            let bookmarks = ui
-                .add(Button::selectable(
-                    self.docinfo.bookmarks_open,
-                    self.icon(glyph::BOOKMARK, "🔖", 16.0),
-                ))
-                .on_hover_text(tr(lang, "menu.view.bookmarks"));
-            if bookmarks.clicked() {
-                self.execute(ctx, Command::ToggleBookmarks);
-            }
-            let comments = ui
-                .add(Button::selectable(
-                    self.annotate.comments_open,
-                    self.icon(glyph::COMMENT, "💬", 16.0),
-                ))
-                .on_hover_text(tr(lang, "menu.view.comments"));
-            if comments.clicked() {
-                self.execute(ctx, Command::ToggleComments);
-            }
-            let objects = ui
-                .add(Button::selectable(
-                    self.edit.objects_open,
-                    self.icon(glyph::LAYERS, "☰", 16.0),
-                ))
-                .on_hover_text(format!(
-                    "{}  ({})",
-                    tr(lang, "menu.view.objects"),
-                    tr(lang, "shortcut.objects")
-                ));
-            if objects.clicked() {
-                self.execute(ctx, Command::ToggleObjects);
-            }
-            let find = ui
-                .add(Button::selectable(
-                    self.find.open,
-                    self.icon(glyph::FIND, "🔍", 16.0),
-                ))
-                .on_hover_text(tr(lang, "menu.edit.find"));
-            if find.clicked() {
-                if self.find.open {
-                    self.close_find();
-                } else {
-                    self.execute(ctx, Command::Find);
-                }
-            }
-            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+            // Fenêtre basse : le groupe du haut défile au lieu de chevaucher celui du bas (hauteur
+            // de ce dernier mesurée à l'image précédente).
+            let bottom_id = ui.id().with("rail-bottom");
+            let bottom_h = ui
+                .ctx()
+                .data(|d| d.get_temp::<f32>(bottom_id))
+                .unwrap_or(340.0);
+            egui::ScrollArea::vertical()
+                .id_salt("rail-top")
+                .max_height((ui.available_height() - bottom_h - 12.0).max(34.0))
+                .show(ui, |ui| {
+                    ui.vertical_centered(|ui| {
+                        ui.add_space(6.0);
+                        let thumbs = ui
+                            .add(Button::selectable(
+                                self.settings.show_thumbnails,
+                                self.icon(glyph::GRID, "▦", 16.0),
+                            ))
+                            .on_hover_text(tr(lang, "menu.view.thumbnails"));
+                        if thumbs.clicked() {
+                            self.execute(ctx, Command::ToggleThumbnails);
+                        }
+                        let organize = ui
+                            .add(Button::selectable(
+                                self.organize.active,
+                                self.icon(glyph::PAGES, "▦", 16.0),
+                            ))
+                            .on_hover_text(tr(lang, "menu.view.organize"));
+                        if organize.clicked() {
+                            self.execute(ctx, Command::OrganizePages);
+                        }
+                        // Bascule de la vue : allumé = défilement continu (F5).
+                        let continuous = self.view.mode == crate::view::ViewMode::Continuous;
+                        let view_toggle = ui
+                            .add(Button::selectable(
+                                continuous,
+                                self.icon(glyph::SCROLL, "⇕", 16.0),
+                            ))
+                            .on_hover_text(format!(
+                                "{}  ({})",
+                                tr(lang, "menu.view.continuous"),
+                                tr(lang, "shortcut.view_toggle")
+                            ));
+                        if view_toggle.clicked() {
+                            self.execute(
+                                ctx,
+                                if continuous {
+                                    Command::ViewSinglePage
+                                } else {
+                                    Command::ViewContinuous
+                                },
+                            );
+                        }
+                        let bookmarks = ui
+                            .add(Button::selectable(
+                                self.docinfo.bookmarks_open,
+                                self.icon(glyph::BOOKMARK, "🔖", 16.0),
+                            ))
+                            .on_hover_text(tr(lang, "menu.view.bookmarks"));
+                        if bookmarks.clicked() {
+                            self.execute(ctx, Command::ToggleBookmarks);
+                        }
+                        let comments = ui
+                            .add(Button::selectable(
+                                self.annotate.comments_open,
+                                self.icon(glyph::COMMENT, "💬", 16.0),
+                            ))
+                            .on_hover_text(tr(lang, "menu.view.comments"));
+                        if comments.clicked() {
+                            self.execute(ctx, Command::ToggleComments);
+                        }
+                        let objects = ui
+                            .add(Button::selectable(
+                                self.edit.objects_open,
+                                self.icon(glyph::LAYERS, "☰", 16.0),
+                            ))
+                            .on_hover_text(format!(
+                                "{}  ({})",
+                                tr(lang, "menu.view.objects"),
+                                tr(lang, "shortcut.objects")
+                            ));
+                        if objects.clicked() {
+                            self.execute(ctx, Command::ToggleObjects);
+                        }
+                        let find = ui
+                            .add(Button::selectable(
+                                self.find.open,
+                                self.icon(glyph::FIND, "🔍", 16.0),
+                            ))
+                            .on_hover_text(tr(lang, "menu.edit.find"));
+                        if find.clicked() {
+                            if self.find.open {
+                                self.close_find();
+                            } else {
+                                self.execute(ctx, Command::Find);
+                            }
+                        }
+                    });
+                });
+            let bottom = ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 ui.add_space(8.0);
                 if self.icon_button(ui, glyph::ZOOM_OUT, "−", tr(lang, "menu.view.zoom_out")) {
                     self.execute(ctx, Command::ZoomOut);
@@ -1079,6 +1093,8 @@ impl SuniApp {
                     }
                 }
             });
+            let used = bottom.response.rect.height();
+            ui.ctx().data_mut(|d| d.insert_temp(bottom_id, used));
         });
     }
 
