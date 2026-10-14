@@ -239,30 +239,42 @@ impl SuniApp {
         };
         let mut submit = false;
         let mut cancel = false;
-        egui::Modal::new(egui::Id::new("note")).show(ctx, |ui| {
-            ui.set_width(380.0);
-            ui.heading(tr(lang, "dialog.note.title"));
-            let field = ui.add(
-                egui::TextEdit::multiline(text)
-                    .hint_text(tr(lang, "dialog.note.placeholder"))
-                    .desired_rows(4)
-                    .desired_width(f32::INFINITY),
-            );
-            field.request_focus();
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "dialog.note.ok")).clicked()
+        let spec = crate::dialog::Spec::new(
+            "note",
+            tr(lang, "dialog.note.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "dialog.note.subtitle"))
+        .icon(glyph::NOTE, "✎")
+        .width(440.0);
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                let field = ui.add(
+                    egui::TextEdit::multiline(text)
+                        .hint_text(tr(lang, "dialog.note.placeholder"))
+                        .desired_rows(4)
+                        .desired_width(f32::INFINITY),
+                );
+                if ui.memory(|m| m.focused().is_none()) {
+                    field.request_focus();
+                }
+            },
+            |ui| {
+                if crate::dialog::primary(ui, tr(lang, "dialog.note.ok"))
                     || ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter))
                 {
                     submit = true;
                 }
-                if ui.button(tr(lang, "dialog.password.cancel")).clicked()
+                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
                     || ui.input(|i| i.key_pressed(Key::Escape))
                 {
                     cancel = true;
                 }
-            });
-        });
+            },
+        );
         if submit {
             let (page, x, y, text) = (*page, *x, *y, text.trim().to_string());
             self.annotate.note_prompt = None;

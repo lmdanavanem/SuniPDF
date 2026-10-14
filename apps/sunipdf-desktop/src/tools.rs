@@ -169,39 +169,53 @@ impl SuniApp {
         let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
         let mut submit = false;
         let mut cancel = false;
-        egui::Modal::new(egui::Id::new("split")).show(ctx, |ui| {
-            ui.set_width(380.0);
-            ui.heading(tr(lang, "tools.split.title"));
-            ui.label(tr_args(
-                lang,
-                "tools.split.text",
-                &[("total", &count.to_string())],
-            ));
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                ui.label(tr(lang, "tools.split.every"));
-                ui.add(egui::DragValue::new(&mut self.tools.split_every).range(1..=count.max(1)));
-            });
-            let parts = count.div_ceil(self.tools.split_every.max(1));
-            ui.label(tr_args(
-                lang,
-                "tools.split.parts",
-                &[("count", &parts.to_string())],
-            ));
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "tools.split.ok")).clicked()
+        let spec = crate::dialog::Spec::new(
+            "split",
+            tr(lang, "tools.split.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "tools.split.subtitle"))
+        .icon(crate::icons::glyph::SPLIT, "⫽")
+        .width(440.0);
+        let every = &mut self.tools.split_every;
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                ui.label(tr_args(
+                    lang,
+                    "tools.split.text",
+                    &[("total", &count.to_string())],
+                ));
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.label(tr(lang, "tools.split.every"));
+                    ui.add(egui::DragValue::new(every).range(1..=count.max(1)));
+                });
+                let parts = count.div_ceil((*every).max(1));
+                ui.label(
+                    egui::RichText::new(tr_args(
+                        lang,
+                        "tools.split.parts",
+                        &[("count", &parts.to_string())],
+                    ))
+                    .color(crate::theme::palette(ui.visuals().dark_mode).text_muted),
+                );
+            },
+            |ui| {
+                if crate::dialog::primary(ui, tr(lang, "tools.split.ok"))
                     || ui.input(|i| i.key_pressed(Key::Enter))
                 {
                     submit = true;
                 }
-                if ui.button(tr(lang, "dialog.password.cancel")).clicked()
+                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
                     || ui.input(|i| i.key_pressed(Key::Escape))
                 {
                     cancel = true;
                 }
-            });
-        });
+            },
+        );
         if submit {
             self.tool_split_submit();
         } else if cancel {

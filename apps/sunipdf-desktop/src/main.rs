@@ -2,6 +2,7 @@
 
 mod annotate;
 mod app;
+mod dialog;
 mod docinfo;
 mod editor;
 mod icons;

@@ -1,5 +1,7 @@
 //! État et interface de l'application. Aucune logique PDF ici : tout passe par `worker`.
 
+use crate::dialog;
+use crate::icons::glyph;
 use crate::settings::Settings;
 use crate::theme;
 use crate::worker::{BytesOp, DocState, EditOp, Request, Response, Worker};
@@ -106,6 +108,9 @@ pub struct SuniApp {
     after_save: Option<PendingAction>,
     pub status_msg: Option<String>,
     pub has_icons: bool,
+    pub logo: Option<egui::TextureHandle>,
+    /// Commande demandée sans document : exécutée dès qu'un fichier est ouvert.
+    pub after_open: Option<Command>,
     pub show_tools: bool,
     pub tool_tab: crate::shell::ToolTab,
     pub palette: PaletteState,
@@ -128,6 +133,8 @@ impl SuniApp {
         theme::apply(&cc.egui_ctx, settings.dark_theme);
         Self {
             has_icons,
+            logo: None,
+            after_open: None,
             show_tools: settings.show_tools,
             tool_tab: crate::shell::ToolTab::All,
             palette: PaletteState {
@@ -208,6 +215,8 @@ impl SuniApp {
         let dialog = rfd::FileDialog::new().add_filter(self.t("dialog.open.filter_pdf"), &["pdf"]);
         if let Some(path) = dialog.pick_file() {
             self.open_path(path, None);
+        } else {
+            self.after_open = None;
         }
     }
 
@@ -341,6 +350,9 @@ impl SuniApp {
                     self.register_opened_tab(opened_path);
                     self.dirty = false;
                     self.status_msg = None;
+                    if let Some(cmd) = self.after_open.take() {
+                        self.execute(ctx, cmd);
+                    }
                     self.update_title(ctx);
                     self.worker.send(Request::Bookmarks);
                     if self.pending_files.is_empty() {
@@ -655,6 +667,34 @@ impl SuniApp {
                 }
             });
         }
+        self.edit.shift = ctx.input(|i| i.modifiers.shift);
+        if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject)
+            && self.edit.selected.is_some()
+        {
+            // Objet sélectionné : flèches = décalage (Maj : ×10), Échap = désélection.
+            let step = if self.edit.shift { 10.0 } else { 1.0 };
+            let mut nudge = (0.0f32, 0.0f32);
+            let mut escape = false;
+            ctx.input_mut(|i| {
+                for (k, d) in [
+                    (Key::ArrowLeft, (-1.0, 0.0)),
+                    (Key::ArrowRight, (1.0, 0.0)),
+                    (Key::ArrowUp, (0.0, 1.0)),
+                    (Key::ArrowDown, (0.0, -1.0)),
+                ] {
+                    if i.consume_key(Modifiers::NONE, k) || i.consume_key(Modifiers::SHIFT, k) {
+                        nudge = d;
+                    }
+                }
+                escape = i.consume_key(Modifiers::NONE, Key::Escape);
+            });
+            if nudge != (0.0, 0.0) {
+                self.nudge_selected(nudge.0 * step, nudge.1 * step);
+            }
+            if escape {
+                self.edit.selected = None;
+            }
+        }
         let mut commands = Vec::new();
         ctx.input_mut(|i| {
             let mut key = |m: Modifiers, k: Key, c: Command| {
@@ -708,6 +748,13 @@ impl SuniApp {
             key(Modifiers::NONE, Key::L, Command::ToolLine);
             key(Modifiers::NONE, Key::Delete, Command::DeleteObject);
             key(Modifiers::NONE, Key::F2, Command::EditObjectText);
+            key(
+                Modifiers::COMMAND | Modifiers::SHIFT,
+                Key::D,
+                Command::DuplicateObject,
+            );
+            key(Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront);
+            key(Modifiers::COMMAND, Key::OpenBracket, Command::SendToBack);
             key(Modifiers::COMMAND, Key::Z, Command::Undo);
             key(Modifiers::COMMAND, Key::Y, Command::Redo);
             key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z, Command::Redo);
@@ -745,6 +792,9 @@ impl SuniApp {
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
         if command.info().needs_document && self.document.is_none() {
+            // Façon PDFCraft : l'outil reste utilisable, il commence par ouvrir un fichier.
+            self.after_open = Some(command);
+            self.open_file_dialog();
             return;
         }
         match command {
@@ -754,6 +804,7 @@ impl SuniApp {
                     self.unsaved_prompt = Some(PendingAction::Close);
                 } else {
                     self.close_document(true);
+                    self.update_title(ctx);
                 }
             }
             Command::Quit => {
@@ -862,6 +913,11 @@ impl SuniApp {
             }
             Command::CopyText => self.copy_selection(ctx),
             Command::DeleteObject => self.delete_selected_object(),
+            Command::DuplicateObject => self.duplicate_selected(),
+            Command::RotateObjectLeft => self.rotate_selected(-90.0),
+            Command::RotateObjectRight => self.rotate_selected(90.0),
+            Command::BringToFront => self.reorder_selected(true),
+            Command::SendToBack => self.reorder_selected(false),
             Command::EditObjectText => self.open_text_prompt_for_selection(),
             Command::ToolSelect
             | Command::ToolHighlight
@@ -1431,23 +1487,36 @@ impl SuniApp {
             .map(|d| file_name(&d.info.path))
             .unwrap_or_default();
         let mut choice = None;
-        egui::Modal::new(egui::Id::new("unsaved")).show(ctx, |ui| {
-            ui.set_width(420.0);
-            ui.heading(tr(lang, "dialog.unsaved.title"));
-            ui.label(tr_args(lang, "dialog.unsaved.text", &[("name", &name)]));
-            ui.add_space(8.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "dialog.unsaved.save")).clicked() {
+        let spec = dialog::Spec::new(
+            "unsaved",
+            tr(lang, "dialog.unsaved.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "dialog.unsaved.subtitle"))
+        .icon(glyph::WARNING, "!")
+        .warning()
+        .width(460.0);
+        dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                ui.label(tr_args(lang, "dialog.unsaved.text", &[("name", &name)]));
+            },
+            |ui| {
+                if dialog::primary(ui, tr(lang, "dialog.unsaved.save")) {
                     choice = Some(UnsavedChoice::Save);
                 }
-                if ui.button(tr(lang, "dialog.unsaved.discard")).clicked() {
+                if dialog::danger(ui, tr(lang, "dialog.unsaved.discard")) {
                     choice = Some(UnsavedChoice::Discard);
                 }
-                if ui.button(tr(lang, "dialog.unsaved.cancel")).clicked() {
+                if dialog::secondary(ui, tr(lang, "dialog.unsaved.cancel"))
+                    || ui.input(|i| i.key_pressed(Key::Escape))
+                {
                     choice = Some(UnsavedChoice::Cancel);
                 }
-            });
-        });
+            },
+        );
         match choice {
             Some(UnsavedChoice::Save) => {
                 self.unsaved_prompt = None;
@@ -1466,7 +1535,10 @@ impl SuniApp {
 
     fn run_pending(&mut self, ctx: &egui::Context, action: PendingAction) {
         match action {
-            PendingAction::Close => self.close_document(true),
+            PendingAction::Close => {
+                self.close_document(true);
+                self.update_title(ctx);
+            }
             PendingAction::Quit => {
                 if let Some(i) = self.any_background_dirty() {
                     self.tabs.quit_pending = true;
@@ -1514,41 +1586,59 @@ impl SuniApp {
         };
         let mut submit = None;
         let mut cancel = false;
-        egui::Modal::new(egui::Id::new("password")).show(ctx, |ui| {
-            ui.set_width(360.0);
-            ui.heading(tr(lang, "dialog.password.title"));
-            ui.label(file_name(&prompt.path));
-            ui.label(tr(
-                lang,
-                if prompt.wrong {
-                    "error.password_wrong"
-                } else {
-                    "error.password_required"
-                },
-            ));
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                ui.label(tr(lang, "dialog.password.label"));
+        let spec = dialog::Spec::new(
+            "password",
+            tr(lang, "dialog.password.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(file_name(&prompt.path))
+        .icon(glyph::LOCK, "🔒")
+        .width(420.0);
+        let (path, wrong) = (prompt.path.clone(), prompt.wrong);
+        let input = &mut prompt.input;
+        let mut ok = false;
+        let mut enter = false;
+        dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                dialog::field_label(ui, tr(lang, "dialog.password.label"));
                 let field = ui.add(
-                    egui::TextEdit::singleline(&mut prompt.input)
+                    egui::TextEdit::singleline(input)
                         .password(true)
-                        .desired_width(220.0),
+                        .desired_width(f32::INFINITY),
                 );
-                field.request_focus();
+                if ui.memory(|m| m.focused().is_none()) {
+                    field.request_focus();
+                }
                 if field.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                    submit = Some((prompt.path.clone(), prompt.input.clone()));
+                    enter = true;
                 }
-            });
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "dialog.password.ok")).clicked() {
-                    submit = Some((prompt.path.clone(), prompt.input.clone()));
+                if wrong {
+                    ui.colored_label(theme::ERROR, tr(lang, "error.password_wrong"));
+                } else {
+                    ui.label(
+                        egui::RichText::new(tr(lang, "dialog.password.subtitle"))
+                            .size(12.5)
+                            .color(theme::palette(ui.visuals().dark_mode).text_muted),
+                    );
                 }
-                if ui.button(tr(lang, "dialog.password.cancel")).clicked() {
+            },
+            |ui| {
+                if dialog::primary(ui, tr(lang, "dialog.password.ok")) {
+                    ok = true;
+                }
+                if dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|i| i.key_pressed(Key::Escape))
+                {
                     cancel = true;
                 }
-            });
-        });
+            },
+        );
+        if ok || enter {
+            submit = Some((path, input.clone()));
+        }
         if let Some((path, password)) = submit {
             self.opening = Some(path.clone());
             self.worker.send(Request::Open {
@@ -1565,21 +1655,101 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        egui::Modal::new(egui::Id::new("about")).show(ctx, |ui| {
-            ui.set_width(420.0);
-            ui.heading(tr(lang, "about.title"));
-            ui.label(tr_args(
-                lang,
-                "about.version",
-                &[("version", env!("CARGO_PKG_VERSION"))],
-            ));
-            ui.label(tr(lang, "about.description"));
-            ui.label(tr(lang, "about.engine"));
-            ui.add_space(8.0);
-            if ui.button(tr(lang, "about.close")).clicked() {
-                self.show_about = false;
+        let p = theme::palette(self.settings.dark_theme);
+        if self.logo.is_none() {
+            let png = include_bytes!("../../../assets/icon/sunipdf-128.png");
+            if let Ok(img) = image::load_from_memory(png) {
+                let rgba = img.to_rgba8();
+                let size = [rgba.width() as usize, rgba.height() as usize];
+                self.logo = Some(ctx.load_texture(
+                    "logo",
+                    egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw()),
+                    egui::TextureOptions::LINEAR,
+                ));
             }
-        });
+        }
+        let logo = self.logo.clone();
+        let mut close = false;
+        let spec = dialog::Spec::new(
+            "about",
+            tr(lang, "about.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "about.subtitle"))
+        .icon(glyph::APP, "S")
+        .width(500.0);
+        dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                ui.horizontal(|ui| {
+                    if let Some(tex) = &logo {
+                        ui.add(
+                            egui::Image::new(tex)
+                                .fit_to_exact_size(egui::vec2(72.0, 72.0))
+                                .corner_radius(14),
+                        );
+                    }
+                    ui.add_space(10.0);
+                    ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing.y = 3.0;
+                        ui.label(crate::icons::semibold("SuniPDF", 26.0).color(p.text));
+                        ui.label(
+                            egui::RichText::new(tr_args(
+                                lang,
+                                "about.version",
+                                &[("version", env!("CARGO_PKG_VERSION"))],
+                            ))
+                            .size(13.0)
+                            .color(p.text_muted),
+                        );
+                        ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
+                    });
+                });
+                ui.add_space(10.0);
+                egui::Frame::new()
+                    .fill(p.chrome)
+                    .stroke(egui::Stroke::new(1.0, p.border))
+                    .corner_radius(10)
+                    .inner_margin(12)
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        ui.spacing_mut().item_spacing.y = 4.0;
+                        ui.label(egui::RichText::new(tr(lang, "about.privacy")).size(13.0));
+                        ui.label(
+                            egui::RichText::new(tr(lang, "about.engine"))
+                                .size(12.5)
+                                .color(p.text_muted),
+                        );
+                        ui.label(
+                            egui::RichText::new(tr(lang, "about.license"))
+                                .size(12.5)
+                                .color(p.text_muted),
+                        );
+                    });
+                ui.add_space(10.0);
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    ui.label(crate::icons::semibold(tr(lang, "about.credit"), 13.5).color(p.text));
+                    ui.label(egui::RichText::new("-").size(13.5));
+                    ui.hyperlink_to(
+                        egui::RichText::new(tr(lang, "about.website")).size(13.5),
+                        "https://www.navanem.com",
+                    );
+                });
+            },
+            |ui| {
+                if dialog::primary(ui, tr(lang, "about.close"))
+                    || ui.input(|i| i.key_pressed(Key::Escape))
+                {
+                    close = true;
+                }
+            },
+        );
+        if close {
+            self.show_about = false;
+        }
     }
 }
 

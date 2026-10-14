@@ -37,7 +37,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | Notes, surlignage, souligné, barré **Faits** ; formes, encre, zones de texte planifiés (P3) |
 | Fils de réponses, statut des commentaires | Déclaré | Panneau Commentaires **Fait** (liste, suppression) ; fils et statuts planifiés (P3) |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte Helvetica/Times/Courier, gras/italique, taille, couleur ; image PNG/JPEG/BMP/GIF/TIFF/WebP ; formes rectangle/ellipse/ligne avec couleurs et épaisseur) |
-| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (F2 / double-clic : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) ; déplacement, redimensionnement, recoloration et suppression de tout objet ; rotation planifiée (P3) |
+| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (F2 / double-clic : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) ; déplacement, redimensionnement, rotation ±90°, duplication, ordre Z, recoloration et suppression de tout objet ; rotation libre planifiée (P3) |
 | Liens | Déclaré | Planifié (P3) |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | Planifié (P3) |
 | Tampons personnalisés | Non documenté | Planifié (P3) |

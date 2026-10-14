@@ -114,6 +114,11 @@ impl ToolTab {
                 Command::ToolEllipse,
                 Command::ToolLine,
                 Command::EditObjectText,
+                Command::DuplicateObject,
+                Command::RotateObjectLeft,
+                Command::RotateObjectRight,
+                Command::BringToFront,
+                Command::SendToBack,
                 Command::DeleteObject,
                 Command::Undo,
                 Command::Redo,
@@ -137,6 +142,100 @@ impl ToolTab {
 }
 
 /// Icône associée à une commande (glyphe Fluent + repli texte).
+/// Couleur de catégorie d'une commande (icônes du panneau d'outils, cartes d'accueil).
+pub fn command_color(command: Command) -> egui::Color32 {
+    use sunipdf_core::Menu;
+    match command {
+        Command::ToolSelect
+        | Command::ToolHighlight
+        | Command::ToolUnderline
+        | Command::ToolStrikeOut
+        | Command::ToolNote
+        | Command::ToggleComments
+        | Command::CopyText => theme::CAT_ANNOTATE,
+        Command::ToolSelectObject
+        | Command::ToolAddText
+        | Command::ToolAddImage
+        | Command::ToolRectangle
+        | Command::ToolEllipse
+        | Command::ToolLine
+        | Command::EditObjectText
+        | Command::DeleteObject
+        | Command::DuplicateObject
+        | Command::RotateObjectLeft
+        | Command::RotateObjectRight
+        | Command::BringToFront
+        | Command::SendToBack => theme::CAT_EDIT,
+        Command::Find | Command::ToggleBookmarks => theme::CAT_VIEW,
+        _ => match command.info().menu {
+            Menu::File => theme::CAT_FILE,
+            Menu::Pages => theme::CAT_PAGES,
+            Menu::Security => theme::CAT_SECURITY,
+            Menu::Convert => theme::CAT_CONVERT,
+            Menu::View => theme::CAT_VIEW,
+            Menu::Edit | Menu::Help => theme::CAT_VIEW,
+        },
+    }
+}
+
+/// Rangée d'outil : pastille colorée + libellé, surlignage au survol.
+pub fn tool_row(
+    ui: &mut egui::Ui,
+    has_icons: bool,
+    glyph_fallback: (&str, &str),
+    color: egui::Color32,
+    label: &str,
+    enabled: bool,
+) -> egui::Response {
+    let p = theme::palette(ui.visuals().dark_mode);
+    let desired = egui::vec2(ui.available_width(), 36.0);
+    let (rect, resp) = ui.allocate_exact_size(
+        desired,
+        if enabled {
+            egui::Sense::click()
+        } else {
+            egui::Sense::hover()
+        },
+    );
+    if !ui.is_rect_visible(rect) {
+        return resp;
+    }
+    let painter = ui.painter();
+    if enabled && (resp.hovered() || resp.has_focus()) {
+        painter.rect_filled(rect, 8.0, p.hover);
+    }
+    let alpha = if enabled { 1.0 } else { 0.45 };
+    let badge = egui::Rect::from_min_size(
+        rect.min + egui::vec2(8.0, (rect.height() - 26.0) / 2.0),
+        egui::vec2(26.0, 26.0),
+    );
+    painter.rect_filled(
+        badge,
+        7.0,
+        color.gamma_multiply(if ui.visuals().dark_mode { 0.32 } else { 0.13 } * alpha),
+    );
+    let (g, f) = glyph_fallback;
+    painter.text(
+        badge.center(),
+        egui::Align2::CENTER_CENTER,
+        if has_icons { g } else { f },
+        if has_icons {
+            egui::FontId::new(14.0, egui::FontFamily::Name(icons::ICONS.into()))
+        } else {
+            egui::FontId::proportional(14.0)
+        },
+        color.gamma_multiply(alpha),
+    );
+    painter.text(
+        egui::pos2(badge.right() + 10.0, rect.center().y),
+        egui::Align2::LEFT_CENTER,
+        label,
+        egui::FontId::proportional(14.0),
+        p.text.gamma_multiply(alpha),
+    );
+    resp
+}
+
 pub fn command_icon(command: Command) -> (&'static str, &'static str) {
     match command {
         Command::OpenDocument => (glyph::OPEN, "📂"),
@@ -191,6 +290,11 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ToolLine => (glyph::LINE, "╱"),
         Command::DeleteObject => (glyph::DELETE, "🗑"),
         Command::EditObjectText => (glyph::FONT, "T"),
+        Command::DuplicateObject => (glyph::DUPLICATE, "⧉"),
+        Command::RotateObjectLeft => (glyph::ROTATE_LEFT, "↺"),
+        Command::RotateObjectRight => (glyph::ROTATE, "↻"),
+        Command::BringToFront => (glyph::FRONT, "⤒"),
+        Command::SendToBack => (glyph::BACK, "⤓"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -483,21 +587,20 @@ impl SuniApp {
         let mut run = None;
         for &command in self.tool_tab.commands() {
             let info = command.info();
-            let enabled = (!info.needs_document || has_doc)
-                && match command {
-                    Command::Undo => self.can_undo,
-                    Command::Redo => self.can_redo,
-                    _ => true,
-                };
-            let (g, f) = command_icon(command);
-            let resp = ui.add_enabled(
+            // Sans document, les outils restent actifs : ils ouvrent d'abord un fichier.
+            let _ = has_doc;
+            let enabled = match command {
+                Command::Undo => self.can_undo,
+                Command::Redo => self.can_redo,
+                _ => true,
+            };
+            let resp = tool_row(
+                ui,
+                self.has_icons,
+                command_icon(command),
+                command_color(command),
+                tr(lang, info.label_key),
                 enabled,
-                Button::new((
-                    self.icon(g, f, 16.0).color(p.accent),
-                    RichText::new(format!("  {}", tr(lang, info.label_key))).size(14.0),
-                ))
-                .frame(false)
-                .min_size(egui::vec2(ui.available_width(), 34.0)),
             );
             let resp = match info.shortcut_key {
                 Some(k) => resp.on_hover_text(tr(lang, k)),
@@ -554,66 +657,112 @@ impl SuniApp {
 
                         ui.label(icons::semibold(tr(lang, "home.recommended"), 16.0));
                         ui.add_space(8.0);
-                        let cards: [(&str, &str, &str, &str); 7] = [
+                        let cards: [(&str, &str, &str, &str, egui::Color32); 7] = [
                             (
                                 glyph::READ,
                                 "📖",
                                 "home.card.read.title",
                                 "home.card.read.desc",
+                                theme::CAT_FILE,
                             ),
                             (
                                 glyph::FIND,
                                 "🔍",
                                 "home.card.find.title",
                                 "home.card.find.desc",
+                                theme::CAT_VIEW,
                             ),
                             (
                                 glyph::PAGES,
                                 "▦",
                                 "home.card.pages.title",
                                 "home.card.pages.desc",
+                                theme::CAT_PAGES,
                             ),
                             (
                                 glyph::HIGHLIGHT,
                                 "▬",
                                 "home.card.annot.title",
                                 "home.card.annot.desc",
+                                theme::CAT_ANNOTATE,
                             ),
                             (
                                 glyph::LOCK,
                                 "🔒",
                                 "home.card.security.title",
                                 "home.card.security.desc",
+                                theme::CAT_SECURITY,
                             ),
                             (
                                 glyph::PICTURE,
                                 "🖼",
                                 "home.card.convert.title",
                                 "home.card.convert.desc",
+                                theme::CAT_CONVERT,
                             ),
                             (
                                 glyph::FONT,
                                 "T",
                                 "home.card.edit.title",
                                 "home.card.edit.desc",
+                                theme::CAT_EDIT,
                             ),
                         ];
                         let mut open_clicked = false;
                         ui.horizontal_wrapped(|ui| {
-                            for (g, f, title, desc) in cards {
+                            for (g, f, title, desc, color) in cards {
                                 Frame::new()
                                     .fill(p.surface)
                                     .stroke(Stroke::new(1.0, p.border))
-                                    .corner_radius(10)
+                                    .corner_radius(12)
                                     .inner_margin(16)
+                                    .shadow(egui::epaint::Shadow {
+                                        offset: [0, 2],
+                                        blur: 10,
+                                        spread: 0,
+                                        color: egui::Color32::from_black_alpha(
+                                            if self.settings.dark_theme { 60 } else { 14 },
+                                        ),
+                                    })
                                     .show(ui, |ui| {
                                         ui.set_width(220.0);
                                         ui.vertical(|ui| {
                                             ui.horizontal(|ui| {
-                                                ui.label(self.icon(g, f, 18.0).color(p.accent));
+                                                let (badge, _) = ui.allocate_exact_size(
+                                                    egui::vec2(36.0, 36.0),
+                                                    egui::Sense::hover(),
+                                                );
+                                                ui.painter().rect_filled(
+                                                    badge,
+                                                    9.0,
+                                                    color.gamma_multiply(
+                                                        if self.settings.dark_theme {
+                                                            0.32
+                                                        } else {
+                                                            0.13
+                                                        },
+                                                    ),
+                                                );
+                                                ui.painter().text(
+                                                    badge.center(),
+                                                    egui::Align2::CENTER_CENTER,
+                                                    if self.has_icons { g } else { f },
+                                                    if self.has_icons {
+                                                        egui::FontId::new(
+                                                            17.0,
+                                                            egui::FontFamily::Name(
+                                                                icons::ICONS.into(),
+                                                            ),
+                                                        )
+                                                    } else {
+                                                        egui::FontId::proportional(17.0)
+                                                    },
+                                                    color,
+                                                );
+                                                ui.add_space(2.0);
                                                 ui.label(icons::semibold(tr(lang, title), 15.0));
                                             });
-                                            ui.add_space(4.0);
+                                            ui.add_space(6.0);
                                             ui.label(
                                                 RichText::new(tr(lang, desc))
                                                     .color(p.text_muted)

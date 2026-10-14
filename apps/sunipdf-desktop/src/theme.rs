@@ -5,6 +5,15 @@ use egui::{Color32, CornerRadius, Stroke, Visuals};
 pub const BLUE: Color32 = Color32::from_rgb(0x25, 0x63, 0xEB);
 pub const ERROR: Color32 = Color32::from_rgb(0xDC, 0x26, 0x26);
 pub const SUCCESS: Color32 = Color32::from_rgb(0x16, 0xA3, 0x4A);
+/// Couleurs de catégories d'outils (façon PDFCraft) : fichier, pages, annotation, édition,
+/// conversion, sécurité, navigation.
+pub const CAT_FILE: Color32 = Color32::from_rgb(0x25, 0x63, 0xEB);
+pub const CAT_PAGES: Color32 = Color32::from_rgb(0xF5, 0x9E, 0x0B);
+pub const CAT_ANNOTATE: Color32 = Color32::from_rgb(0x8B, 0x5C, 0xF6);
+pub const CAT_EDIT: Color32 = Color32::from_rgb(0xE1, 0x1D, 0x48);
+pub const CAT_CONVERT: Color32 = Color32::from_rgb(0x16, 0xA3, 0x4A);
+pub const CAT_SECURITY: Color32 = Color32::from_rgb(0x0D, 0x94, 0x88);
+pub const CAT_VIEW: Color32 = Color32::from_rgb(0x0E, 0xA5, 0xE9);
 
 #[derive(Clone, Copy)]
 pub struct Palette {
@@ -23,9 +32,9 @@ pub struct Palette {
 pub fn palette(dark: bool) -> Palette {
     if dark {
         Palette {
-            chrome: Color32::from_rgb(0x17, 0x1D, 0x2B),
-            surface: Color32::from_rgb(0x1F, 0x29, 0x37),
-            border: Color32::from_rgb(0x33, 0x41, 0x55),
+            chrome: Color32::from_rgb(0x19, 0x1E, 0x2E),
+            surface: Color32::from_rgb(0x22, 0x28, 0x3A),
+            border: Color32::from_rgb(0x34, 0x3C, 0x52),
             text: Color32::from_rgb(0xF1, 0xF5, 0xF9),
             text_muted: Color32::from_rgb(0x94, 0xA3, 0xB8),
             canvas: Color32::from_rgb(0x0B, 0x10, 0x1A),

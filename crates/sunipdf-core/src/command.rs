@@ -58,6 +58,11 @@ pub enum Command {
     ToolLine,
     DeleteObject,
     EditObjectText,
+    DuplicateObject,
+    RotateObjectLeft,
+    RotateObjectRight,
+    BringToFront,
+    SendToBack,
     About,
 }
 
@@ -505,6 +510,46 @@ pub const REGISTRY: &[CommandInfo] = &[
         "edit.edit_text",
         "menu.edit.edit_text",
         Some("shortcut.edit_text"),
+        true,
+        Edit
+    ),
+    cmd!(
+        DuplicateObject,
+        "edit.duplicate_object",
+        "menu.edit.duplicate_object",
+        Some("shortcut.duplicate_object"),
+        true,
+        Edit
+    ),
+    cmd!(
+        RotateObjectLeft,
+        "edit.rotate_object_left",
+        "menu.edit.rotate_object_left",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        RotateObjectRight,
+        "edit.rotate_object_right",
+        "menu.edit.rotate_object_right",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        BringToFront,
+        "edit.bring_to_front",
+        "menu.edit.bring_to_front",
+        Some("shortcut.bring_to_front"),
+        true,
+        Edit
+    ),
+    cmd!(
+        SendToBack,
+        "edit.send_to_back",
+        "menu.edit.send_to_back",
+        Some("shortcut.send_to_back"),
         true,
         Edit
     ),

@@ -3,6 +3,31 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.3.0] — 2026-10-14
+
+### Ajouté
+- **Boîtes de dialogue repensées** (cadre commun `dialog.rs`) : en-tête avec pastille d'icône, titre et
+  sous-titre, pied à boutons (action principale bleue, action destructrice rouge), ombre et coins
+  arrondis ; appliqué à À propos, Modifications non enregistrées, Mot de passe, Note, Texte, Diviser,
+  Propriétés, Protéger.
+- **À propos** : logo, version, confidentialité, licences, crédit « Créé par Emanuel DE ALMEIDA -
+  Navanem - www.navanem.com » (lien).
+- **Panneau d'outils et accueil façon PDFCraft** : icônes colorées par catégorie (fichier, pages,
+  annotation, édition, conversion, sécurité), rangées avec surlignage, cartes à pastilles colorées et
+  ombre. Les outils restent actifs sans document : ils ouvrent d'abord un fichier puis s'exécutent.
+- **Édition** : rotation d'objet (±90°), duplication (Ctrl+Maj+D), premier plan (Ctrl+]) et
+  arrière-plan (Ctrl+[), déplacement au clavier (flèches, Maj ×10), Échap pour désélectionner,
+  proportions conservées pour les images (Maj pour libérer) et libres pour les autres objets
+  (Maj pour verrouiller), boutons d'action dans la barre d'objet.
+- Moteur : `rotate_object`, `duplicate_object`, `reorder_object` (fusion des flux de contenu via
+  lopdf pour que l'ordre de la liste d'objets soit l'ordre de dessin) ; 1 test de rendu supplémentaire.
+- Tests moteur sérialisés sur un moteur PDFium unique (PDFium ne se réinitialise pas dans un même
+  processus).
+
+### Corrigé
+- Titre de fenêtre non rafraîchi après fermeture d'un document.
+- Thème sombre : surfaces et bordures légèrement plus contrastées.
+
 ## [0.2.0] — 2026-10-14
 
 ### Ajouté

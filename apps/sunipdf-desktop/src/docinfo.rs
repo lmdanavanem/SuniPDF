@@ -98,117 +98,120 @@ impl SuniApp {
         let p = theme::palette(self.settings.dark_theme);
         let mut apply = false;
         let mut close = false;
-        egui::Modal::new(egui::Id::new("properties")).show(ctx, |ui| {
-            ui.set_width(520.0);
-            ui.heading(tr(lang, "properties.title"));
-            ui.add_space(6.0);
-            let Some(props) = self.docinfo.properties.clone() else {
-                ui.spinner();
-                return;
-            };
-            egui::Grid::new("props-edit")
-                .num_columns(2)
-                .spacing([12.0, 8.0])
-                .show(ui, |ui| {
-                    for (key, field) in [
-                        (
-                            "properties.doc_title",
-                            &mut self.docinfo.metadata_edit.title,
-                        ),
-                        ("properties.author", &mut self.docinfo.metadata_edit.author),
-                        (
-                            "properties.subject",
-                            &mut self.docinfo.metadata_edit.subject,
-                        ),
-                        (
-                            "properties.keywords",
-                            &mut self.docinfo.metadata_edit.keywords,
-                        ),
-                    ] {
-                        ui.label(tr(lang, key));
-                        let mut text = field.clone().unwrap_or_default();
-                        if ui
-                            .add(egui::TextEdit::singleline(&mut text).desired_width(360.0))
-                            .changed()
-                        {
-                            *field = if text.trim().is_empty() {
-                                None
-                            } else {
-                                Some(text)
-                            };
+        let spec = crate::dialog::Spec::new(
+            "properties",
+            tr(lang, "properties.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "properties.subtitle"))
+        .icon(icons::glyph::INFO, "i")
+        .width(560.0);
+        let props_opt = self.docinfo.properties.clone();
+        let edit = &mut self.docinfo.metadata_edit;
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                let Some(props) = props_opt else {
+                    ui.spinner();
+                    return;
+                };
+                egui::Grid::new("props-edit")
+                    .num_columns(2)
+                    .spacing([12.0, 8.0])
+                    .show(ui, |ui| {
+                        for (key, field) in [
+                            ("properties.doc_title", &mut edit.title),
+                            ("properties.author", &mut edit.author),
+                            ("properties.subject", &mut edit.subject),
+                            ("properties.keywords", &mut edit.keywords),
+                        ] {
+                            ui.label(tr(lang, key));
+                            let mut text = field.clone().unwrap_or_default();
+                            if ui
+                                .add(egui::TextEdit::singleline(&mut text).desired_width(360.0))
+                                .changed()
+                            {
+                                *field = if text.trim().is_empty() {
+                                    None
+                                } else {
+                                    Some(text)
+                                };
+                            }
+                            ui.end_row();
                         }
-                        ui.end_row();
-                    }
-                });
-            ui.add_space(8.0);
-            Frame::new()
-                .fill(p.chrome)
-                .stroke(Stroke::new(1.0, p.border))
-                .corner_radius(8)
-                .inner_margin(10)
-                .show(ui, |ui| {
-                    egui::Grid::new("props-info")
-                        .num_columns(2)
-                        .spacing([12.0, 4.0])
-                        .show(ui, |ui| {
-                            let muted = |t: String| RichText::new(t).color(p.text_muted).size(13.0);
-                            let row = |ui: &mut egui::Ui, key: &str, value: String| {
-                                ui.label(RichText::new(tr(lang, key)).size(13.0));
-                                ui.label(muted(value));
-                                ui.end_row();
-                            };
-                            row(ui, "properties.pages", props.page_count.to_string());
-                            row(ui, "properties.version", format!("PDF {}", props.version));
-                            row(
-                                ui,
-                                "properties.size",
-                                props
-                                    .file_size
-                                    .map(human_size)
-                                    .unwrap_or_else(|| "—".into()),
-                            );
-                            row(
-                                ui,
-                                "properties.creator",
-                                props.creator.clone().unwrap_or_else(|| "—".into()),
-                            );
-                            row(
-                                ui,
-                                "properties.producer",
-                                props.producer.clone().unwrap_or_else(|| "—".into()),
-                            );
-                            row(
-                                ui,
-                                "properties.created",
-                                props.created.clone().unwrap_or_else(|| "—".into()),
-                            );
-                            row(
-                                ui,
-                                "properties.modified",
-                                props.modified.clone().unwrap_or_else(|| "—".into()),
-                            );
-                            let yes = tr(lang, "properties.yes");
-                            let no = tr(lang, "properties.no");
-                            let yn = |b: bool| if b { yes } else { no }.to_string();
-                            row(ui, "properties.encrypted", yn(props.encrypted));
-                            row(ui, "properties.perm_print", yn(props.can_print));
-                            row(ui, "properties.perm_copy", yn(props.can_copy));
-                            row(ui, "properties.perm_modify", yn(props.can_modify));
-                            row(ui, "properties.perm_annotate", yn(props.can_annotate));
-                        });
-                });
-            ui.add_space(10.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "properties.apply")).clicked() {
+                    });
+                ui.add_space(8.0);
+                Frame::new()
+                    .fill(p.chrome)
+                    .stroke(Stroke::new(1.0, p.border))
+                    .corner_radius(8)
+                    .inner_margin(10)
+                    .show(ui, |ui| {
+                        egui::Grid::new("props-info")
+                            .num_columns(2)
+                            .spacing([12.0, 4.0])
+                            .show(ui, |ui| {
+                                let muted =
+                                    |t: String| RichText::new(t).color(p.text_muted).size(13.0);
+                                let row = |ui: &mut egui::Ui, key: &str, value: String| {
+                                    ui.label(RichText::new(tr(lang, key)).size(13.0));
+                                    ui.label(muted(value));
+                                    ui.end_row();
+                                };
+                                row(ui, "properties.pages", props.page_count.to_string());
+                                row(ui, "properties.version", format!("PDF {}", props.version));
+                                row(
+                                    ui,
+                                    "properties.size",
+                                    props
+                                        .file_size
+                                        .map(human_size)
+                                        .unwrap_or_else(|| "—".into()),
+                                );
+                                row(
+                                    ui,
+                                    "properties.creator",
+                                    props.creator.clone().unwrap_or_else(|| "—".into()),
+                                );
+                                row(
+                                    ui,
+                                    "properties.producer",
+                                    props.producer.clone().unwrap_or_else(|| "—".into()),
+                                );
+                                row(
+                                    ui,
+                                    "properties.created",
+                                    props.created.clone().unwrap_or_else(|| "—".into()),
+                                );
+                                row(
+                                    ui,
+                                    "properties.modified",
+                                    props.modified.clone().unwrap_or_else(|| "—".into()),
+                                );
+                                let yes = tr(lang, "properties.yes");
+                                let no = tr(lang, "properties.no");
+                                let yn = |b: bool| if b { yes } else { no }.to_string();
+                                row(ui, "properties.encrypted", yn(props.encrypted));
+                                row(ui, "properties.perm_print", yn(props.can_print));
+                                row(ui, "properties.perm_copy", yn(props.can_copy));
+                                row(ui, "properties.perm_modify", yn(props.can_modify));
+                                row(ui, "properties.perm_annotate", yn(props.can_annotate));
+                            });
+                    });
+            },
+            |ui| {
+                if crate::dialog::primary(ui, tr(lang, "properties.apply")) {
                     apply = true;
                 }
-                if ui.button(tr(lang, "about.close")).clicked()
+                if crate::dialog::secondary(ui, tr(lang, "about.close"))
                     || ui.input(|i| i.key_pressed(egui::Key::Escape))
                 {
                     close = true;
                 }
-            });
-        });
+            },
+        );
         if apply {
             let meta = self.docinfo.metadata_edit.clone();
             self.worker
@@ -227,72 +230,69 @@ impl SuniApp {
         let p = theme::palette(self.settings.dark_theme);
         let mut submit = false;
         let mut close = false;
-        egui::Modal::new(egui::Id::new("protect")).show(ctx, |ui| {
-            ui.set_width(460.0);
-            ui.heading(tr(lang, "protect.title"));
-            ui.label(
-                RichText::new(tr(lang, "protect.intro"))
-                    .color(p.text_muted)
-                    .size(13.0),
-            );
-            ui.add_space(8.0);
-            egui::Grid::new("protect-grid")
-                .num_columns(2)
-                .spacing([12.0, 8.0])
-                .show(ui, |ui| {
-                    ui.label(tr(lang, "protect.user_password"));
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.docinfo.protection.user_password)
-                            .password(true)
-                            .desired_width(260.0),
-                    );
-                    ui.end_row();
-                    ui.label(tr(lang, "protect.owner_password"));
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.docinfo.protection.owner_password)
-                            .password(true)
-                            .desired_width(260.0),
-                    );
-                    ui.end_row();
-                });
-            ui.add_space(6.0);
-            ui.label(icons::semibold(tr(lang, "protect.permissions"), 13.0));
-            ui.checkbox(
-                &mut self.docinfo.protection.allow_print,
-                tr(lang, "protect.allow_print"),
-            );
-            ui.checkbox(
-                &mut self.docinfo.protection.allow_copy,
-                tr(lang, "protect.allow_copy"),
-            );
-            ui.checkbox(
-                &mut self.docinfo.protection.allow_modify,
-                tr(lang, "protect.allow_modify"),
-            );
-            ui.checkbox(
-                &mut self.docinfo.protection.allow_annotate,
-                tr(lang, "protect.allow_annotate"),
-            );
-            ui.add_space(4.0);
-            ui.checkbox(
-                &mut self.docinfo.protection.aes256,
-                tr(lang, "protect.aes256"),
-            );
-            if let Some(err) = self.docinfo.protect_error {
-                ui.colored_label(theme::ERROR, tr(lang, err));
-            }
-            ui.add_space(10.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "protect.apply")).clicked() {
+        let spec = crate::dialog::Spec::new(
+            "protect",
+            tr(lang, "protect.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "protect.subtitle"))
+        .icon(icons::glyph::SHIELD, "🔒")
+        .width(500.0);
+        let protect_error = self.docinfo.protect_error;
+        let pr = &mut self.docinfo.protection;
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                ui.label(
+                    RichText::new(tr(lang, "protect.intro"))
+                        .color(p.text_muted)
+                        .size(13.0),
+                );
+                ui.add_space(8.0);
+                egui::Grid::new("protect-grid")
+                    .num_columns(2)
+                    .spacing([12.0, 8.0])
+                    .show(ui, |ui| {
+                        ui.label(tr(lang, "protect.user_password"));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut pr.user_password)
+                                .password(true)
+                                .desired_width(300.0),
+                        );
+                        ui.end_row();
+                        ui.label(tr(lang, "protect.owner_password"));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut pr.owner_password)
+                                .password(true)
+                                .desired_width(300.0),
+                        );
+                        ui.end_row();
+                    });
+                ui.add_space(6.0);
+                ui.label(icons::semibold(tr(lang, "protect.permissions"), 13.0));
+                ui.checkbox(&mut pr.allow_print, tr(lang, "protect.allow_print"));
+                ui.checkbox(&mut pr.allow_copy, tr(lang, "protect.allow_copy"));
+                ui.checkbox(&mut pr.allow_modify, tr(lang, "protect.allow_modify"));
+                ui.checkbox(&mut pr.allow_annotate, tr(lang, "protect.allow_annotate"));
+                ui.add_space(4.0);
+                ui.checkbox(&mut pr.aes256, tr(lang, "protect.aes256"));
+                if let Some(err) = protect_error {
+                    ui.colored_label(theme::ERROR, tr(lang, err));
+                }
+            },
+            |ui| {
+                if crate::dialog::primary(ui, tr(lang, "protect.apply")) {
                     submit = true;
                 }
-                if ui.button(tr(lang, "dialog.password.cancel")).clicked()
+                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
                     || ui.input(|i| i.key_pressed(egui::Key::Escape))
                 {
                     close = true;
                 }
-            });
-        });
+            },
+        );
         if submit {
             let pr = &self.docinfo.protection;
             if pr.user_password.is_empty() && pr.owner_password.is_empty() {

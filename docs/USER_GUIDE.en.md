@@ -56,8 +56,13 @@ clicked point becomes the top-left corner), and drag a rectangle to draw a shape
 palette sets stroke colour, stroke width and fill for new shapes; **Apply to object** recolours the
 selected object. Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
 
-Limits: no rotation; fonts limited to the 14 standard fonts; edited text keeps its original font, which
-may not contain every character you type.
+With an object selected, the bar also offers: rotate left / right (90°), duplicate (Ctrl+Shift+D),
+bring to front (Ctrl+]) or send to back (Ctrl+[), delete. Arrow keys nudge the object by one point
+(Shift: ten points), Escape deselects it. Images keep their proportions when resized (Shift to free
+them); other objects resize freely (Shift to lock).
+
+Limits: no free-angle rotation; fonts limited to the 14 standard fonts; edited text keeps its original
+font, which may not contain every character you type.
 
 ## Organizing pages
 

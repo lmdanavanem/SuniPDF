@@ -58,8 +58,14 @@ le coin haut-gauche), tracez un rectangle pour une forme. La barre à droite de 
 l'épaisseur du trait et le remplissage des nouvelles formes ; **Appliquer à l'objet** recolore l'objet
 sélectionné. Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
 
-Limites : pas de rotation ; polices limitées aux 14 polices standard ; le texte modifié conserve sa police
-d'origine, qui peut ne pas contenir tous les caractères saisis.
+Quand un objet est sélectionné, la barre propose aussi : pivoter à gauche / à droite (90°), dupliquer
+(Ctrl+Maj+D), mettre au premier plan (Ctrl+]) ou à l'arrière-plan (Ctrl+[), supprimer. Les flèches du
+clavier décalent l'objet d'un point (Maj : dix points), Échap le désélectionne. Les images gardent leurs
+proportions au redimensionnement (Maj pour les libérer) ; les autres objets sont libres (Maj pour
+verrouiller).
+
+Limites : pas de rotation à angle libre ; polices limitées aux 14 polices standard ; le texte modifié
+conserve sa police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
 ## Organiser les pages
 

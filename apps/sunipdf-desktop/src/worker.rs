@@ -155,6 +155,20 @@ pub enum EditOp {
         rect: PointRect,
         style: ShapeStyle,
     },
+    RotateObject {
+        page: usize,
+        index: usize,
+        degrees: f32,
+    },
+    DuplicateObject {
+        page: usize,
+        index: usize,
+    },
+    ReorderObject {
+        page: usize,
+        index: usize,
+        front: bool,
+    },
 }
 
 pub enum Request {
@@ -495,6 +509,15 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             rect,
             style,
         } => doc.add_shape(page, kind, rect, &style),
+        EditOp::RotateObject {
+            page,
+            index,
+            degrees,
+        } => doc.rotate_object(page, index, degrees),
+        EditOp::DuplicateObject { page, index } => doc.duplicate_object(page, index).map(|_| ()),
+        EditOp::ReorderObject { page, index, front } => {
+            doc.reorder_object(page, index, front).map(|_| ())
+        }
         EditOp::Bytes(op) => {
             let current = doc.snapshot()?;
             let password = doc.password().map(str::to_owned);
@@ -746,6 +769,13 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::ObjectInfo { page, index } => {
                 let Some(doc) = &state.document else { continue };
+                // `usize::MAX` = dernier objet (après duplication ou passage au premier plan).
+                let count = doc.page_objects(page).map(|v| v.len()).unwrap_or(0);
+                let index = if count > 0 {
+                    index.min(count - 1)
+                } else {
+                    index
+                };
                 let info = doc.object_info(page, index).ok();
                 Response::ObjectSelected { page, info }
             }

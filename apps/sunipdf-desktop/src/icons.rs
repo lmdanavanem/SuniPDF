@@ -58,6 +58,13 @@ pub mod glyph {
     pub const RECT: &str = "\u{E739}";
     pub const ELLIPSE: &str = "\u{EA3A}";
     pub const LINE: &str = "\u{E738}";
+    pub const DUPLICATE: &str = "\u{E8C8}";
+    pub const ROTATE_LEFT: &str = "\u{E7A7}";
+    pub const FRONT: &str = "\u{E74A}";
+    pub const BACK: &str = "\u{E74B}";
+    pub const WARNING: &str = "\u{E7BA}";
+    pub const SHIELD: &str = "\u{EA18}";
+    pub const APP: &str = "\u{E8A5}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

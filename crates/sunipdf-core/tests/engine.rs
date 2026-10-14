@@ -9,8 +9,41 @@ fn fixture(name: &str) -> PathBuf {
         .join(name)
 }
 
-fn engine() -> Engine {
-    Engine::new().expect("pdfium.dll introuvable : exécuter scripts/fetch-pdfium.ps1")
+/// PDFium n'est pas thread-safe et ne se réinitialise pas dans un même processus après
+/// `FPDF_DestroyLibrary` : un seul moteur, jamais détruit, utilisé par un test à la fois.
+static SERIAL: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static ENGINE: std::sync::OnceLock<EnginePtr> = std::sync::OnceLock::new();
+
+struct EnginePtr(*const Engine);
+// Sûreté : tout accès au moteur est sérialisé par `SERIAL`.
+unsafe impl Send for EnginePtr {}
+unsafe impl Sync for EnginePtr {}
+
+struct TestEngine {
+    inner: &'static Engine,
+    _guard: std::sync::MutexGuard<'static, ()>,
+}
+
+impl std::ops::Deref for TestEngine {
+    type Target = Engine;
+    fn deref(&self) -> &Engine {
+        self.inner
+    }
+}
+
+fn engine() -> TestEngine {
+    let guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let ptr = ENGINE.get_or_init(|| {
+        EnginePtr(Box::leak(Box::new(Engine::new().expect(
+            "pdfium.dll introuvable : exécuter scripts/fetch-pdfium.ps1",
+        ))))
+    });
+    // Sûreté : pointeur vers une valeur fuitée, donc valide pour toute la durée du processus.
+    let inner = unsafe { &*ptr.0 };
+    TestEngine {
+        inner,
+        _guard: guard,
+    }
 }
 
 #[test]
@@ -868,4 +901,92 @@ fn edit_resize_style_text_size_and_fonts() {
     assert!((h2 / h1 - 2.0).abs() < 0.2, "{h1} → {h2}");
     assert!(doc.set_text_size(0, index, 20.0).is_err(), "pas un texte");
     assert!(doc.page_text(0).unwrap().contains("Times italique"));
+}
+
+#[test]
+fn edit_rotate_duplicate_reorder() {
+    use sunipdf_core::{PointRect, ShapeKind, ShapeStyle};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let filled = |rgb| ShapeStyle {
+        stroke_rgb: rgb,
+        stroke_width: 0.5,
+        fill_rgb: Some(rgb),
+    };
+    // Rectangle 100 × 50 pivoté de 90° : limites 50 × 100 autour du même centre.
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        PointRect {
+            left: 300.0,
+            bottom: 300.0,
+            right: 400.0,
+            top: 350.0,
+        },
+        &filled((255, 0, 0)),
+    )
+    .unwrap();
+    let red = doc.page_objects(0).unwrap().len() - 1;
+    doc.rotate_object(0, red, 90.0).unwrap();
+    let b = doc.object_info(0, red).unwrap().bounds;
+    assert!(
+        (b.right - b.left - 50.0).abs() < 1.5 && (b.top - b.bottom - 100.0).abs() < 1.5,
+        "{b:?}"
+    );
+    assert!(
+        ((b.left + b.right) / 2.0 - 350.0).abs() < 1.0
+            && ((b.bottom + b.top) / 2.0 - 325.0).abs() < 1.0,
+        "{b:?}"
+    );
+    assert!(doc.rotate_object(0, red, f32::NAN).is_err());
+
+    // Duplication : un objet de plus, décalé de (+12, −12).
+    let before = doc.page_objects(0).unwrap().len();
+    let copy = doc.duplicate_object(0, red).unwrap();
+    assert_eq!(doc.page_objects(0).unwrap().len(), before + 1);
+    let cb = doc.object_info(0, copy).unwrap().bounds;
+    assert!(
+        (cb.left - b.left - 12.0).abs() < 1.0 && (cb.bottom - b.bottom + 12.0).abs() < 1.0,
+        "{cb:?}"
+    );
+
+    // Ordre Z : vert dessiné après rouge au même endroit → vert visible ; envoyé à l'arrière → rouge.
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        PointRect {
+            left: 100.0,
+            bottom: 100.0,
+            right: 200.0,
+            top: 200.0,
+        },
+        &filled((200, 0, 0)),
+    )
+    .unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        PointRect {
+            left: 100.0,
+            bottom: 100.0,
+            right: 200.0,
+            top: 200.0,
+        },
+        &filled((0, 160, 0)),
+    )
+    .unwrap();
+    let green = doc.page_objects(0).unwrap().len() - 1;
+    let px = |doc: &sunipdf_core::Document| {
+        let img = doc.render_page(0, 1.0).unwrap();
+        let i = ((792 - 150) * 612 + 150) * 4;
+        (img.rgba[i], img.rgba[i + 1], img.rgba[i + 2])
+    };
+    assert_eq!(px(&doc), (0, 160, 0));
+    let back = doc.reorder_object(0, green, false).unwrap();
+    assert_eq!(back, 0);
+    assert_eq!(px(&doc), (200, 0, 0), "vert passé derrière le rouge");
+    let front = doc.reorder_object(0, back, true).unwrap();
+    assert_eq!(front, doc.page_objects(0).unwrap().len() - 1);
+    assert_eq!(px(&doc), (0, 160, 0), "vert revenu devant");
+    assert!(doc.reorder_object(0, 999, true).is_err());
 }

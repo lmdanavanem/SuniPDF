@@ -43,5 +43,10 @@
 11. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
     (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
     Contournement : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
-12. **Édition du contenu : pas de rotation d'objet ni de police système** (14 polices standard seulement) ;
+12. **Édition du contenu : rotation par pas de 90° seulement, pas de police système** (14 polices standard) ;
     les images sont insérées à 200 pt de large puis redimensionnables par les poignées (SUNI-031c).
+13. **« Mettre à l'arrière-plan » fusionne les flux de contenu de la page** (lopdf) avant de réordonner :
+    PDFium dessine flux par flux. Le PDF reste valide ; les objets dupliqués sont des XObjects (non
+    éditables comme texte).
+14. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
+    `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).

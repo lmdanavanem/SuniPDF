@@ -75,7 +75,7 @@ fn lopdf_err(e: lopdf::Error) -> EngineError {
     EngineError::Other(format!("lopdf: {e}"))
 }
 
-fn load(input: &[u8], password: Option<&str>) -> Result<lopdf::Document, EngineError> {
+pub(crate) fn load(input: &[u8], password: Option<&str>) -> Result<lopdf::Document, EngineError> {
     let mut doc = lopdf::Document::load_mem(input).map_err(lopdf_err)?;
     if doc.is_encrypted() {
         // Le lecteur déchiffre pendant l'analyse quand le mot de passe est fourni d'emblée.
@@ -93,7 +93,7 @@ fn load(input: &[u8], password: Option<&str>) -> Result<lopdf::Document, EngineE
     Ok(doc)
 }
 
-fn save(mut doc: lopdf::Document) -> Result<Vec<u8>, EngineError> {
+pub(crate) fn save(mut doc: lopdf::Document) -> Result<Vec<u8>, EngineError> {
     let mut out = Vec::new();
     doc.save_to(&mut out)
         .map_err(|e| EngineError::Other(format!("lopdf save: {e}")))?;

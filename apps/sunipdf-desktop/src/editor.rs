@@ -7,7 +7,8 @@ use crate::theme;
 use crate::worker::{EditOp, Request};
 use egui::{CursorIcon, Key, Stroke};
 use sunipdf_core::{
-    FontFamily, ObjectInfo, ObjectKind, ObjectStyle, PointRect, ShapeKind, ShapeStyle, TextStyle,
+    Command, FontFamily, ObjectInfo, ObjectKind, ObjectStyle, PointRect, ShapeKind, ShapeStyle,
+    TextStyle,
 };
 use sunipdf_i18n::{tr, tr_args};
 
@@ -78,6 +79,8 @@ pub struct EditState {
     pub text_prompt: Option<TextPrompt>,
     pub image_width_pt: f32,
     pub drag_mode: Option<DragMode>,
+    /// Touche Maj enfoncée (proportions libres pour les images, verrouillées pour le reste).
+    pub shift: bool,
     pub stroke_rgb: [u8; 3],
     pub fill_rgb: [u8; 3],
     pub fill: bool,
@@ -93,6 +96,7 @@ impl Default for EditState {
             text_prompt: None,
             image_width_pt: 200.0,
             drag_mode: None,
+            shift: false,
             stroke_rgb: rgb_arr(shape.stroke_rgb),
             fill_rgb: [255, 255, 255],
             fill: false,
@@ -254,6 +258,19 @@ impl SuniApp {
                     Corner::TopRight => {
                         b.right += dx;
                         b.top += dy;
+                    }
+                }
+                // Images : proportions conservées par défaut (Maj pour les libérer) ; inverse sinon.
+                let (w, h) = (
+                    info.bounds.right - info.bounds.left,
+                    info.bounds.top - info.bounds.bottom,
+                );
+                let lock = (info.kind == ObjectKind::Image) != self.edit.shift;
+                if lock && w > 0.0 && h > 0.0 {
+                    let nh = (b.right - b.left).abs() * h / w;
+                    match c {
+                        Corner::BottomLeft | Corner::BottomRight => b.bottom = b.top - nh,
+                        Corner::TopLeft | Corner::TopRight => b.top = b.bottom + nh,
                     }
                 }
                 Some(normalized(b))
@@ -459,6 +476,49 @@ impl SuniApp {
         }
     }
 
+    fn selected_ref(&self) -> Option<(usize, usize)> {
+        self.edit.selected.as_ref().map(|(p, i)| (*p, i.index))
+    }
+
+    pub fn nudge_selected(&mut self, dx: f32, dy: f32) {
+        if let Some((page, index)) = self.selected_ref() {
+            self.edit.reselect = Some((page, index));
+            self.worker.send(Request::Edit(EditOp::MoveObject {
+                page,
+                index,
+                dx,
+                dy,
+            }));
+        }
+    }
+
+    pub fn rotate_selected(&mut self, degrees: f32) {
+        if let Some((page, index)) = self.selected_ref() {
+            self.edit.reselect = Some((page, index));
+            self.worker.send(Request::Edit(EditOp::RotateObject {
+                page,
+                index,
+                degrees,
+            }));
+        }
+    }
+
+    pub fn duplicate_selected(&mut self) {
+        if let Some((page, index)) = self.selected_ref() {
+            self.edit.reselect = Some((page, usize::MAX));
+            self.worker
+                .send(Request::Edit(EditOp::DuplicateObject { page, index }));
+        }
+    }
+
+    pub fn reorder_selected(&mut self, front: bool) {
+        if let Some((page, index)) = self.selected_ref() {
+            self.edit.reselect = Some((page, if front { usize::MAX } else { 0 }));
+            self.worker
+                .send(Request::Edit(EditOp::ReorderObject { page, index, front }));
+        }
+    }
+
     pub fn delete_selected_object(&mut self) {
         if let Some((page, info)) = self.edit.selected.take() {
             self.worker.send(Request::Edit(EditOp::DeleteObject {
@@ -553,6 +613,8 @@ impl SuniApp {
         let lang = self.lang();
         let p = theme::palette(self.settings.dark_theme);
         let mut apply = false;
+        let mut action: Option<Command> = None;
+        let has_icons = self.has_icons;
         egui::Area::new(egui::Id::new("object-bar"))
             .fixed_pos(origin)
             .order(egui::Order::Middle)
@@ -580,6 +642,30 @@ impl SuniApp {
                             });
                             if let Some((_, info)) = &self.edit.selected {
                                 ui.separator();
+                                for cmd in [
+                                    Command::RotateObjectLeft,
+                                    Command::RotateObjectRight,
+                                    Command::DuplicateObject,
+                                    Command::BringToFront,
+                                    Command::SendToBack,
+                                    Command::DeleteObject,
+                                ] {
+                                    let (g, f) = crate::shell::command_icon(cmd);
+                                    if ui
+                                        .add(
+                                            egui::Button::new(crate::icons::icon(
+                                                has_icons, g, f, 15.0,
+                                            ))
+                                            .frame(false)
+                                            .min_size(egui::vec2(26.0, 26.0)),
+                                        )
+                                        .on_hover_text(tr(lang, cmd.info().label_key))
+                                        .clicked()
+                                    {
+                                        action = Some(cmd);
+                                    }
+                                }
+                                ui.separator();
                                 if ui
                                     .button(tr(lang, "bar.apply"))
                                     .on_hover_text(tr_args(
@@ -595,6 +681,9 @@ impl SuniApp {
                         });
                     });
             });
+        if let Some(cmd) = action {
+            self.execute(ctx, cmd);
+        }
         if apply {
             if let Some((page, info)) = &self.edit.selected {
                 let style = if info.kind == ObjectKind::Text {
@@ -628,76 +717,97 @@ impl SuniApp {
         let mut submit = false;
         let mut cancel = false;
         let editing = prompt.index.is_some();
-        egui::Modal::new(egui::Id::new("text-object")).show(ctx, |ui| {
-            ui.set_width(460.0);
-            ui.heading(tr(
+        let spec = crate::dialog::Spec::new(
+            "text-object",
+            tr(
                 lang,
                 if editing {
                     "dialog.text.title_edit"
                 } else {
                     "dialog.text.title_new"
                 },
-            ));
-            let field = ui.add(
-                egui::TextEdit::multiline(&mut prompt.text)
-                    .hint_text(tr(lang, "dialog.text.placeholder"))
-                    .desired_rows(3)
-                    .desired_width(f32::INFINITY),
-            );
-            if prompt.focus {
-                field.request_focus();
-                prompt.focus = false;
-            }
-            ui.horizontal(|ui| {
-                ui.label(tr(lang, "dialog.text.size"));
-                ui.add(
-                    egui::DragValue::new(&mut prompt.size)
-                        .range(4.0..=200.0)
-                        .speed(0.5),
-                );
-                ui.label(tr(lang, "dialog.text.color"));
-                ui.color_edit_button_srgb(&mut prompt.rgb);
-                if !editing {
-                    ui.label(tr(lang, "dialog.text.font"));
-                    egui::ComboBox::from_id_salt("text-font")
-                        .selected_text(tr(lang, family_key(prompt.family)))
-                        .show_ui(ui, |ui| {
-                            for f in [
-                                FontFamily::Helvetica,
-                                FontFamily::Times,
-                                FontFamily::Courier,
-                            ] {
-                                ui.selectable_value(&mut prompt.family, f, tr(lang, family_key(f)));
-                            }
-                        });
-                }
-            });
-            if !editing {
-                ui.horizontal(|ui| {
-                    ui.checkbox(&mut prompt.bold, tr(lang, "dialog.text.bold"));
-                    ui.checkbox(&mut prompt.italic, tr(lang, "dialog.text.italic"));
-                });
+            ),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(
+            lang,
+            if editing {
+                "dialog.text.subtitle_edit"
             } else {
-                ui.label(
-                    egui::RichText::new(tr(lang, "dialog.text.font_note"))
-                        .size(12.0)
-                        .color(muted),
+                "dialog.text.subtitle_new"
+            },
+        ))
+        .icon(crate::icons::glyph::FONT, "T")
+        .width(500.0);
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                let field = ui.add(
+                    egui::TextEdit::multiline(&mut prompt.text)
+                        .hint_text(tr(lang, "dialog.text.placeholder"))
+                        .desired_rows(3)
+                        .desired_width(f32::INFINITY),
                 );
-            }
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                if ui.button(tr(lang, "dialog.text.ok")).clicked()
+                if prompt.focus {
+                    field.request_focus();
+                    prompt.focus = false;
+                }
+                ui.horizontal(|ui| {
+                    ui.label(tr(lang, "dialog.text.size"));
+                    ui.add(
+                        egui::DragValue::new(&mut prompt.size)
+                            .range(4.0..=200.0)
+                            .speed(0.5),
+                    );
+                    ui.label(tr(lang, "dialog.text.color"));
+                    ui.color_edit_button_srgb(&mut prompt.rgb);
+                    if !editing {
+                        ui.label(tr(lang, "dialog.text.font"));
+                        egui::ComboBox::from_id_salt("text-font")
+                            .selected_text(tr(lang, family_key(prompt.family)))
+                            .show_ui(ui, |ui| {
+                                for f in [
+                                    FontFamily::Helvetica,
+                                    FontFamily::Times,
+                                    FontFamily::Courier,
+                                ] {
+                                    ui.selectable_value(
+                                        &mut prompt.family,
+                                        f,
+                                        tr(lang, family_key(f)),
+                                    );
+                                }
+                            });
+                    }
+                });
+                if !editing {
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut prompt.bold, tr(lang, "dialog.text.bold"));
+                        ui.checkbox(&mut prompt.italic, tr(lang, "dialog.text.italic"));
+                    });
+                } else {
+                    ui.label(
+                        egui::RichText::new(tr(lang, "dialog.text.font_note"))
+                            .size(12.0)
+                            .color(muted),
+                    );
+                }
+            },
+            |ui| {
+                if crate::dialog::primary(ui, tr(lang, "dialog.text.ok"))
                     || ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter))
                 {
                     submit = true;
                 }
-                if ui.button(tr(lang, "dialog.password.cancel")).clicked()
+                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
                     || ui.input(|i| i.key_pressed(Key::Escape))
                 {
                     cancel = true;
                 }
-            });
-        });
+            },
+        );
         if submit {
             let prompt = self.edit.text_prompt.take().expect("prompt");
             let text = prompt.text.trim().to_string();

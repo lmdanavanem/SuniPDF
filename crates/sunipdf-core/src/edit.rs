@@ -347,6 +347,106 @@ impl Document<'_> {
         Ok(())
     }
 
+    /// Fait pivoter un objet autour du centre de ses limites (degrés, sens horaire).
+    pub fn rotate_object(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        degrees: f32,
+    ) -> Result<(), EngineError> {
+        if !degrees.is_finite() {
+            return Err(EngineError::Other("invalid angle".into()));
+        }
+        let b = self.object_info(page_index, index)?.bounds;
+        let (cx, cy) = ((b.left + b.right) / 2.0, (b.bottom + b.top) / 2.0);
+        let mut page = self.page_handle(page_index)?;
+        let mut object = page
+            .objects()
+            .get(index as PdfPageObjectIndex)
+            .map_err(|_| EngineError::Other(format!("object {index} not found")))?;
+        object.translate(PdfPoints::new(-cx), PdfPoints::new(-cy))?;
+        object.rotate_clockwise_degrees(degrees)?;
+        object.translate(PdfPoints::new(cx), PdfPoints::new(cy))?;
+        drop(object);
+        page.regenerate_content()?;
+        Ok(())
+    }
+
+    /// Duplique un objet (copie sous forme de XObject, décalée de 12 pt) ; renvoie l'index de la copie.
+    pub fn duplicate_object(
+        &mut self,
+        page_index: usize,
+        index: usize,
+    ) -> Result<usize, EngineError> {
+        let mut page = self.page_handle(page_index)?;
+        // `objects_mut()` rend un objet de durée de vie du document, sans emprunter la page.
+        let mut object = page
+            .objects_mut()
+            .get(index as PdfPageObjectIndex)
+            .map_err(|_| EngineError::Other(format!("object {index} not found")))?;
+        let mut copy = object.copy_to_page(&mut page)?;
+        copy.translate(PdfPoints::new(12.0), PdfPoints::new(-12.0))?;
+        drop(copy);
+        drop(object);
+        page.regenerate_content()?;
+        Ok(page.objects().len() - 1)
+    }
+
+    /// Fusionne les flux de contenu d'une page en un seul (lopdf), si elle en a plusieurs.
+    /// PDFium ordonne le dessin flux par flux : un seul flux rend l'ordre des objets fidèle
+    /// à l'ordre de la liste.
+    fn merge_content_streams(&mut self, page_index: usize) -> Result<bool, EngineError> {
+        let bytes = self.snapshot()?;
+        let mut doc = crate::security::load(&bytes, self.password())?;
+        let page_id = *doc
+            .get_pages()
+            .get(&(page_index as u32 + 1))
+            .ok_or(EngineError::PageOutOfRange(page_index))?;
+        if doc.get_page_contents(page_id).len() <= 1 {
+            return Ok(false);
+        }
+        let content = doc.get_page_content(page_id);
+        let stream_id = doc.add_object(lopdf::Stream::new(lopdf::Dictionary::new(), content));
+        doc.get_object_mut(page_id)
+            .and_then(|o| o.as_dict_mut())
+            .map_err(|e| EngineError::Other(e.to_string()))?
+            .set("Contents", lopdf::Object::Reference(stream_id));
+        let out = crate::security::save(doc)?;
+        self.restore(out)?;
+        Ok(true)
+    }
+
+    /// Place un objet au premier plan (`front = true`) ou à l'arrière-plan ; renvoie son nouvel index.
+    pub fn reorder_object(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        front: bool,
+    ) -> Result<usize, EngineError> {
+        if !front {
+            // Un objet retiré puis réinséré garde son flux d'origine : l'ordre n'est respecté
+            // qu'au sein d'un flux unique.
+            self.merge_content_streams(page_index)?;
+        }
+        let mut page = self.page_handle(page_index)?;
+        let count = page.objects().len();
+        if index >= count {
+            return Err(EngineError::Other(format!("object {index} not found")));
+        }
+        let object = page
+            .objects_mut()
+            .remove_object_at_index(index as PdfPageObjectIndex)?;
+        let new_index = if front {
+            page.objects_mut().add_object(object)?;
+            count - 1
+        } else {
+            page.objects_mut().insert_object_at_index(0, object)?;
+            0
+        };
+        page.regenerate_content()?;
+        Ok(new_index)
+    }
+
     pub fn delete_object(&mut self, page_index: usize, index: usize) -> Result<(), EngineError> {
         let mut page = self.page_handle(page_index)?;
         page.objects_mut()
