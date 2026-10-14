@@ -5,6 +5,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+(rien pour l'instant)
+
+## [0.4.0] — 2026-10-14
+
+Vague 1 du backlog, livrée par tranches avec revue indépendante : hub « Tous les outils » façon PDFCraft,
+édition avancée du contenu, vue continue, puis correctifs de la revue adverse et distribution durcie.
+
+
 ### Ajouté (vue continue, SUNI-012b)
 - **Défilement continu** : toutes les pages empilées dans une seule zone de défilement (mode par défaut) ;
   **Page unique** reste disponible (F5, bouton du rail droit, menu Affichage, palette), choix mémorisé.
