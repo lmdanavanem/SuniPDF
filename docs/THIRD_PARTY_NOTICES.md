@@ -9,6 +9,7 @@ n'est utilisée. Aucun code de PDFCraft n'a été copié à ce jour.
 | Bibliothèques incluses dans pdfium.dll (abseil, agg23, fast_float, freetype, icu, lcms, libjpeg-turbo, openjpeg, libpng, libtiff, llvm-libc, simdutf, zlib) | diverses (BSD, MIT, Apache-2.0, FreeType, IJG, zlib) | `third_party/pdfium/win-*/licenses/*` à copier dans le dossier `licenses/` de la distribution |
 | pdfium-binaries (packaging, Benoit Blanchon) | MIT | `third_party/pdfium/win-*/LICENSE` → `LICENSE-pdfium-binaries.txt` |
 | pdfium-render | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
+| chrono (date locale du jour, dépendance directe de `sunipdf-desktop` ; déjà dans l'arbre via lopdf et pdfium-render) | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
 | egui / eframe et polices par défaut (Ubuntu Light : Ubuntu Font Licence 1.0 ; Hack : MIT/Bitstream Vera ; Noto Emoji : OFL-1.1 ; emoji-icon-font : MIT) | voir colonne | généré par `cargo about` (P6) |
 | Autres crates Rust | MIT / Apache-2.0 | `cargo about generate` (P6) |
 

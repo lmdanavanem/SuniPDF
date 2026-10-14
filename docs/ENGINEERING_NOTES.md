@@ -173,6 +173,10 @@ la fenêtre puis ferme l'application. Depuis la vue continue, les pages sont emp
 centrée horizontalement : repérer le texte sur une capture sans `-Drag` avant de rejouer un glissement. Un seul lancement à la fois : le script prend le premier plan et
 déplace la souris. Journal : `$env:SUNIPDF_LOG = "fichier.log"` et `$env:RUST_LOG = "debug"`.
 Les préférences sont dans `%APPDATA%\SuniPDF\settings.json` : restaurer le fichier si un test le modifie.
+Signature visuelle : `SUNIPDF_SIGNATURES_DIR` remplace `%APPDATA%\SuniPDF\signatures` (ne pas polluer le vrai
+profil pendant une capture) et `SUNIPDF_PICK_FILE` donne le chemin que « Choisir une image… » renvoie à la place
+du sélecteur natif, qui ne se pilote pas. Une boîte dont la hauteur dépend de son contenu (cartes de la
+bibliothèque) décale ses contrôles : relever les coordonnées sur une capture A avant de rejouer un glissement.
 
 ## 6. Définition de « terminé » pour une tranche
 

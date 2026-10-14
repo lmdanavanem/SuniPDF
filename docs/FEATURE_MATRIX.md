@@ -81,7 +81,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; vérification qpdf à ajouter |
 | Caviardage irréversible | Déclaré (crate redact) | Planifié (P5) avec test d'absence des données |
 | Nettoyage des métadonnées | Déclaré | **Fait** (Info, XMP du catalogue, des pages et des images, `/PieceInfo` ; les propriétés modifiées régénèrent le XMP) |
-| Signature manuscrite (image) | Déclaré | Planifié (P3), jamais présentée comme signature certifiée |
+| Signature manuscrite (image) | Déclaré | **Fait** (sign-image) : dessinée au pavé, importée (PNG transparent ou photo à fond clair retiré par seuil) ou reprise de la bibliothèque locale (`%APPDATA%\SuniPDF\signatures`, PNG en clair, enregistrement facultatif), paraphe, date du jour ; objet image à masque alpha, modifiable et annulable ; CLI `add-image` ; **visuelle, jamais présentée comme certifiée** (encadré permanent, `digital_signature: false`) |
 | Signature numérique CMS/PKCS#12, horodatage | Déclaré | Planifié (P5) |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
 
@@ -104,7 +104,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
-| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour 9 outils sur 14 (Exporter, Modifier, Créer, Combiner, Organiser, Commenter, Protéger, Compresser, Tampon) : panneau F9, cartes d'accueil, menu Outils, palette, barre d'outil avec Échap ; Remplir et signer, OCR, Caviarder, Formulaire, Certificat planifiés (absents tant que leur fonction n'existe pas) |
+| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour 10 outils sur 14 (Exporter, Remplir et signer — moitié « signer » —, Modifier, Créer, Combiner, Organiser, Commenter, Protéger, Compresser, Tampon) : panneau F9, cartes d'accueil, menu Outils, palette, barre d'outil avec Échap ; OCR, Caviarder, Formulaire, Certificat planifiés (absents tant que leur fonction n'existe pas) |
 | Workflows locaux, profils de conversion | Absent | Planifié (P5) |
 
 ## H. Distribution

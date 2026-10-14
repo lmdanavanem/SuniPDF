@@ -568,13 +568,19 @@ impl SuniApp {
                 self.sign.confirm_delete = None;
             }
             Some(Act::PickImage) => {
-                let dialog = rfd::FileDialog::new()
-                    .set_title(tr(lang, "signature.import.pick_title"))
-                    .add_filter(
-                        tr(lang, "tools.images.filter"),
-                        crate::editor::IMAGE_EXTENSIONS,
-                    );
-                if let Some(path) = dialog.pick_file() {
+                // `SUNIPDF_PICK_FILE` remplace le sélecteur (captures et automatisation, comme
+                // `SUNIPDF_STARTUP_COMMANDS`) : le sélecteur natif ne se pilote pas.
+                let picked = match std::env::var_os("SUNIPDF_PICK_FILE") {
+                    Some(p) => Some(PathBuf::from(p)),
+                    None => rfd::FileDialog::new()
+                        .set_title(tr(lang, "signature.import.pick_title"))
+                        .add_filter(
+                            tr(lang, "tools.images.filter"),
+                            crate::editor::IMAGE_EXTENSIONS,
+                        )
+                        .pick_file(),
+                };
+                if let Some(path) = picked {
                     self.sign.import = None;
                     self.sign.error = None;
                     self.sign.import_pending = Some(path.clone());
@@ -882,7 +888,10 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
         base_y,
         Stroke::new(1.0, Color32::from_gray(205)),
     );
-    if resp.is_pointer_button_down_on() {
+    let down = resp.is_pointer_button_down_on();
+    // L'image du relâchement compte aussi : un trait appuyé et relâché dans la même image (stylet
+    // rapide, automatisation) garderait sinon son seul point d'appui.
+    if down || (st.drawing && resp.drag_stopped()) {
         let first = !st.drawing;
         if first {
             st.strokes.push(Vec::new());
@@ -912,6 +921,7 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
                 }
             }
         }
+        st.drawing = down;
     } else {
         st.drawing = false;
     }

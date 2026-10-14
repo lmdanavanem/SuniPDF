@@ -24,7 +24,8 @@ SuniPDF/
 │   ├── sunipdf-desktop/      binaire `sunipdf` (egui/eframe) — main.rs, app.rs (état + document), shell.rs (chrome : onglets,
 │   │                         barre d'outils, panneau « Tous les outils », accueil, rail, palette), workspace.rs (hub : table des
 │   │                         outils → commandes du registre, outil actif, barre contextuelle), worker.rs, settings.rs, theme.rs, icons.rs,
-│   │                         editor.rs (sélection, poignées, rotation, presse-papiers d'objets, barre d'objet), inline_text.rs
+│   │                         editor.rs (sélection, poignées, rotation, presse-papiers d'objets, barre d'objet), sign.rs
+│   │                         (signature visuelle : pavé, import, bibliothèque locale, placement, date), inline_text.rs
 │   │                         (texte sur la page, sélecteur de polices), objects.rs (panneau Objets), pagesetup.rs (recadrer,
 │   │                         redimensionner, page vierge), view.rs (vue continue / page unique : mise en page virtualisée,
 │   │                         tuiles voulues, pool de textures, zoom ancré)
@@ -32,7 +33,8 @@ SuniPDF/
 ├── crates/
 │   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; tiles.rs (géométrie des tuiles), cache.rs (LRU
 │   │                         pages + tuiles) ; edit.rs (objets), geometry.rs (espace d'affichage),
-│   │                         clipboard.rs (copier/coller d'objets), fonts.rs (polices système), boxes.rs (cadres de page) ;
+│   │                         clipboard.rs (copier/coller d'objets), fonts.rs (polices système), boxes.rs (cadres de page),
+│   │                         signature_image.rs (signature visuelle : traits tramés, fond retiré, rognage, PNG ; sans PDFium) ;
 │   │                         tests/fixtures/*.pdf (dont boxes.pdf : pages pivotées et rognées)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), catalogues embarqués
 ├── assets/i18n/              fr-FR.json, en-US.json (source de vérité des textes)

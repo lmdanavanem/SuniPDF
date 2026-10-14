@@ -19,12 +19,12 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 ## All tools
 
 The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
-task, like PDFCraft: Export a PDF, Edit a PDF, Create a PDF, Combine files, Organize pages, Add comments,
-Protect a PDF, Compress a PDF, Add a stamp. The **Tools** menu and the Ctrl+K palette give the same access.
+task, like PDFCraft: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Add
+comments, Protect a PDF, Compress a PDF, Add a stamp. The **Tools** menu and the Ctrl+K palette give the same access.
 Without an open document, a tool that needs one first asks for a file, then starts.
 
 - **Export, Create, Combine, Compress** open their dialog directly.
-- **Edit, Organize, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
+- **Fill & Sign, Edit, Organize, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
   the toolbar: the tool's buttons, grouped, with their labels when the width allows (otherwise the icon only,
   the label staying in the tooltip). Actions that need a selection (object, text, grid pages) stay greyed
   out without one.
@@ -32,12 +32,13 @@ Without an open document, a tool that needs one first asks for a file, then star
   back arrow (which also reopens the panel). Esc first closes what is closer: an open menu or drop-down
   list, then the search bar, then the selected object, then the tool (one Esc, one effect).
 - Single-letter shortcuts open the matching tool: H, U, X, N open **Add comments**; E, T, I, R, O, L open
-  **Edit a PDF**; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
+  **Edit a PDF**; S opens the **Sign** dialog; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo and Redo.
 
-PDFCraft tools that have no real feature in SuniPDF yet (fill & sign, OCR, redaction, form preparation,
-certificate) are not shown: they will come with their feature.
+PDFCraft tools that have no real feature in SuniPDF yet (OCR, redaction, form preparation, certificate) are
+not shown: they will come with their feature. Fill & Sign ships its "sign" half (visual signature); forms will
+follow.
 
 ## Tabs
 
@@ -124,6 +125,33 @@ objects is not offered yet (moving only); `.otf` and `.ttc` fonts are not offere
 (no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
 keeps its original font, which may not contain every character you type.
 
+## Signing and initialing
+
+The **Fill & Sign** tool (bar: **Sign (handwritten signature)…** — key **S** —, **Add Initials…**, **Insert
+Today's Date**; also in the Edit menu and the palette) places a **visual signature** on the page. **What this
+signature does not guarantee**: it is an image, it proves neither your identity nor the document's integrity, and
+anyone who edits the file can copy or remove it. It is **not** a certified digital signature (that comes with
+the Use a certificate tool). The dialog says so permanently.
+
+**Draw.** In the dialog, sign in the white pad with the mouse, touchpad or pen (black or blue ink, adjustable
+thickness, **Undo last stroke**, **Clear**). **Import an image** takes a transparent PNG as is, or a photo of
+your signature on light paper: tick **Remove the light background** and adjust the **threshold** while watching
+the preview (lower it if the background remains visible, raise it if strokes disappear). **Place on Page**
+closes the dialog; a ghost follows the pointer, a **click** places the signature (centred under the click, kept
+inside the page), **Shift+click** places it several times, **Esc** cancels.
+
+**Reuse.** With **Save on this computer for reuse** (ticked by default), the trimmed signature is written as a
+PNG in `%APPDATA%\SuniPDF\signatures` and then appears in the dialog, on a white card: one click places it, the
+trash icon (two clicks) deletes it. Nothing is encrypted or sent over the Internet: anyone with access to your
+Windows session can reuse these files; untick the box to save nothing. **Initials** have their own list and a
+smaller default size on the page.
+
+**After placing**, the signature is an ordinary **image object** of the page, selected right away: drag it,
+resize it with the handles (proportions kept), rotate it, duplicate it, delete it, Ctrl+Z undoes it; the page
+content stays visible between the strokes (transparent background). **Insert Today's Date** places a text
+object (`10/15/2026` in English, `15/10/2026` in French), editable with F2. To fill a field with free text, use
+the text tool (**T**) of Edit a PDF.
+
 ## Stamps, watermarks and page numbers
 
 **Stamp / Watermark…** (**Add a stamp** tool) places a text on every page or on the current page:
@@ -194,7 +222,10 @@ the colour of its tool; entries such as "Edit a PDF" or "Add comments" open the 
 content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--font-name "Arial"` or
 `--font-file` for an embedded system font; `\n` for a new line), `set-opacity`, `rotate-object` (free angle),
 `copy-objects` (to another page, `--into` for another document), `replace-image`, `crop` (`--unit mm`,
-`--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
+`--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`, and `add-image`
+(`--image signature.png --x 100 --y 520 --width 150`, `--remove-background 200` for a photo on a light
+background: an image placed on the page, e.g. a scanned signature; the reply carries
+`"digital_signature": false`, it is never a digital signature).
 Output is JSON (`extract` and `split` report `encryption_removed` when the source was protected); exit codes
 distinguish password required (3), invalid file (4), unreadable file (5) and
 existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
@@ -206,4 +237,5 @@ points, origin at the bottom-left of the page **as displayed** (after rotation a
 
 No two-page view or view rotation; a text selection stays on its page (no selection across two pages, no
 auto-scroll when dragging at the edge); in continuous scrolling, "Width" and "Page" fit the largest page of the
-document. No OCR, no Office conversion, no digital signatures, no direct printing. See `docs/ROADMAP.md`.
+document. No OCR, no Office conversion, no digital signatures (the handwritten signature is an image with no
+cryptographic value), no forms, no direct printing. See `docs/ROADMAP.md`.

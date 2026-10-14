@@ -168,3 +168,20 @@ A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (
      300 « Page suiv. » puis Fin puis 300 « Page préc. » : mémoire privée stable vers 810-830 Mo (WorkingSet
      438 Mo) après 175 Mo à l'ouverture ; pas de croissance au-delà (pilote OpenGL NVIDIA, copies système des
      textures comprises). Plafonds en constantes (`view.rs`, `worker.rs`), pas de réglage utilisateur.
+A35. **Signature manuscrite = signature visuelle, sans valeur cryptographique** (tranche sign-image). C'est une image
+     posée sur la page : elle ne prouve ni l'identité du signataire ni l'intégrité du document, et quiconque modifie
+     le fichier peut la copier ou la retirer. Pas de certificat, de CMS/PAdES, d'horodatage ni de vérification
+     (crate `sunipdf-signatures`, P5). La boîte le dit en permanence ; la CLI `add-image` renvoie
+     `"digital_signature": false`. Aucun avertissement non plus si le document porte déjà une signature numérique,
+     que toute modification invalide (D056).
+A36. **Signatures enregistrées en clair** : PNG dans `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
+     `initials-<ms>.png`), protégés par les seules ACL du profil Windows : toute personne ayant accès à la session peut
+     les réutiliser. Parade : décocher « Enregistrer sur cet ordinateur » (rien n'est écrit) ou supprimer la vignette
+     (corbeille, en deux clics). Seules les 12 plus récentes par type sont listées ; le tri suppose des horodatages de
+     même longueur (13 chiffres, jusqu'en 2286).
+A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la pression du stylet), polyligne brute
+     sans lissage ; suppression du fond par **seuil de luminance global** à rampe douce (une photo très inégalement
+     éclairée demanderait un seuil adaptatif : juger sur l'aperçu, baisser ou monter le seuil, ou préférer un PNG
+     transparent) ; images importées réduites à 1600 px de côté ; pas de signature **tapée** (police manuscrite :
+     dépend de l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic
+     page par page).

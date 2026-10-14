@@ -42,12 +42,12 @@ Cible MSVC active (Build Tools installés). Repli GNU + WinLibs documenté dans 
 
 ## Modules existants
 `crates/sunipdf-core` (Engine, Document, render, text, pages, annot, edit, geometry, stamp, clipboard, fonts, boxes, tiles, security,
-convert, cache, command), `crates/sunipdf-i18n`,
+signature_image, convert, cache, command), `crates/sunipdf-i18n`,
 `apps/sunipdf-desktop` (sunipdf.exe : app.rs état/document, shell.rs chrome, workspace.rs hub d'outils et barre contextuelle,
 view.rs vue continue/tuiles, tabs.rs onglets, organize.rs grille, annotate.rs outils, editor.rs édition d'objets, inline_text.rs
 texte en place, objects.rs panneau Objets, pagesetup.rs cadres de page, dialog.rs cadre des boîtes, docinfo.rs
-signets/propriétés/protection, tools.rs tâches de fichiers, worker.rs thread moteur + undo, icons.rs polices système),
-`apps/sunipdf-cli` (20 commandes JSON), `packaging/wix`, `scripts/` (dev-env, fetch-pdfium, package-portable, package-msi, dev-screenshot, make_icon, make_fixtures). Vérification visuelle : `.\scripts\dev-screenshot.ps1 -Out capture.png [-Pdf x.pdf] [-Keys "^k"]`. Crates futurs : voir `docs/ARCHITECTURE.md`.
+signets/propriétés/protection, tools.rs tâches de fichiers, sign.rs signature visuelle (pavé, import, bibliothèque, placement ; `SUNIPDF_SIGNATURES_DIR`, `SUNIPDF_PICK_FILE`), worker.rs thread moteur + undo, icons.rs polices système),
+`apps/sunipdf-cli` (21 commandes JSON), `packaging/wix`, `scripts/` (dev-env, fetch-pdfium, package-portable, package-msi, dev-screenshot, make_icon, make_fixtures). Vérification visuelle : `.\scripts\dev-screenshot.ps1 -Out capture.png [-Pdf x.pdf] [-Keys "^k"]`. Crates futurs : voir `docs/ARCHITECTURE.md`.
 
 ## Orchestration
 12 agents dans `.claude/agents/` (stratégie : `docs/AGENT_STRATEGY.md`). Déléguer selon expertise, dépendances

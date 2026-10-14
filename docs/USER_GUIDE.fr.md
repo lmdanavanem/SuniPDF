@@ -20,13 +20,13 @@ sur **+ Ouvrir** dans la barre d'onglets.
 ## Tous les outils
 
 Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
-outils par tâche, comme PDFCraft : Exporter un PDF, Modifier un PDF, Créer un PDF, Combiner des fichiers,
-Organiser les pages, Commenter, Protéger un PDF, Compresser un PDF, Ajouter un tampon. Le menu **Outils** et
+outils par tâche, comme PDFCraft : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
+des fichiers, Organiser les pages, Commenter, Protéger un PDF, Compresser un PDF, Ajouter un tampon. Le menu **Outils** et
 la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
 fichier puis démarre.
 
 - **Exporter, Créer, Combiner, Compresser** ouvrent directement leur boîte de dialogue.
-- **Modifier, Organiser, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
+- **Remplir et signer, Modifier, Organiser, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
   **barre d'outil** sous la barre d'outils : boutons de l'outil, groupés, avec leur libellé si la largeur le
   permet (sinon l'icône seule, le libellé restant en info-bulle). Les actions qui demandent une sélection
   (objet, texte, pages de la grille) restent grisées sans elle.
@@ -35,12 +35,13 @@ fichier puis démarre.
   ou une liste déroulante ouverts, puis la recherche, puis l'objet sélectionné, puis l'outil (un Échap, un
   seul effet).
 - Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N ouvrent **Commenter** ; E, T, I, R, O, L
-  ouvrent **Modifier** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
+  ouvrent **Modifier** ; S ouvre la boîte **Signer** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
 - Chaque onglet garde son outil actif.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
 
-Les outils PDFCraft qui n'ont pas encore de fonction réelle dans SuniPDF (remplir et signer, OCR, caviardage,
-préparation de formulaire, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité.
+Les outils PDFCraft qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, caviardage, préparation de
+formulaire, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité. Remplir et signer est livré
+pour sa moitié « signer » (signature visuelle) ; les formulaires suivront.
 
 ## Onglets
 
@@ -133,6 +134,35 @@ ne sont pas proposées ; la police est incorporée entière (pas de sous-ensembl
 page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
 police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
+## Signer et parapher
+
+L'outil **Remplir et signer** (barre : **Signer (signature manuscrite)…** — touche **S** —, **Parapher
+(initiales)…**, **Insérer la date du jour** ; aussi dans le menu Édition et la palette) pose une **signature
+visuelle** sur la page. **Ce que cette signature ne garantit pas** : c'est une image, elle ne prouve ni votre
+identité ni l'intégrité du document, et toute personne qui modifie le fichier peut la copier ou la retirer. Ce
+n'est **pas** une signature numérique certifiée (à venir avec l'outil Utiliser un certificat). La boîte le
+rappelle en permanence.
+
+**Dessiner.** Dans la boîte, signez dans le pavé blanc à la souris, au pavé tactile ou au stylet (encre noire ou
+bleue, épaisseur réglable, **Annuler le dernier trait**, **Effacer**). **Importer une image** accepte un PNG
+transparent tel quel, ou une photo de votre signature sur papier clair : cochez **Supprimer le fond clair** et
+ajustez le **seuil** en regardant l'aperçu (baissez-le si le fond reste visible, montez-le si des traits
+disparaissent). **Placer sur la page** ferme la boîte ; un fantôme suit le pointeur, un **clic** pose la
+signature (centrée sous le clic, maintenue dans la page), **Maj+clic** la pose plusieurs fois, **Échap**
+annule.
+
+**Réutiliser.** Avec **Enregistrer sur cet ordinateur pour la réutiliser** (coché par défaut), la signature
+rognée est écrite en PNG dans `%APPDATA%\SuniPDF\signatures` et apparaît ensuite dans la boîte, sur fond
+blanc : un clic la place, la corbeille (deux clics) la supprime. Rien n'est chiffré ni envoyé sur Internet :
+toute personne ayant accès à votre session Windows peut réutiliser ces fichiers ; décochez la case pour ne
+rien enregistrer. Le **Paraphe** a sa propre liste, plus petite sur la page.
+
+**Après la pose**, la signature est un **objet image** ordinaire de la page, aussitôt sélectionné : glissez-la,
+redimensionnez-la par les poignées (proportions conservées), pivotez-la, dupliquez-la, supprimez-la, Ctrl+Z
+l'annule ; le contenu de la page reste visible entre les traits (fond transparent). **Insérer la date du jour**
+pose un objet texte (`15/10/2026` en français, `10/15/2026` en anglais), modifiable par F2. Pour remplir un
+champ en texte libre, utilisez l'outil texte (**T**) de Modifier un PDF.
+
 ## Tampons, filigranes et numéros de page
 
 **Tampon / filigrane…** (outil **Ajouter un tampon**) appose un texte sur toutes les pages ou sur la page
@@ -210,7 +240,10 @@ commande porte la couleur de son outil ; les entrées « Modifier un PDF », « 
 l'édition du contenu : `objects` (objets d'une page, index à partir de 0), `add-text` (`--font-name "Arial"` ou
 `--font-file` pour une police système incorporée ; `\n` pour passer à la ligne), `set-opacity`, `rotate-object`
 (angle libre), `copy-objects` (vers une autre page, `--into` pour un autre document), `replace-image`, `crop`
-(`--unit mm`, `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
+(`--unit mm`, `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`, et `add-image`
+(`--image signature.png --x 100 --y 520 --width 150`, `--remove-background 200` pour une photo sur fond clair :
+une image posée sur la page, par exemple une signature scannée ; la réponse porte `"digital_signature": false`,
+ce n'est jamais une signature numérique).
 Les sorties sont en JSON (`extract` et `split` signalent `encryption_removed` quand la source était protégée) ;
 les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
 fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
@@ -224,4 +257,5 @@ qu'affichée** (après rotation et recadrage).
 Pas de double page ni de rotation de la vue ; une sélection de texte reste sur sa page (pas de sélection à
 cheval sur deux pages, pas de défilement automatique en glissant au bord) ; en défilement continu, « Largeur »
 et « Page » ajustent la plus grande page du document. Pas d'OCR, pas de conversion Office, pas de signature
-numérique, pas d'impression directe. Voir `docs/ROADMAP.md`.
+numérique (la signature manuscrite est une image sans valeur cryptographique), pas de formulaires, pas
+d'impression directe. Voir `docs/ROADMAP.md`.

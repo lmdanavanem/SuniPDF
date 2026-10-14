@@ -5,6 +5,26 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Ajouté (signature visuelle, tranche sign-image)
+- **Remplir et signer** (moitié « signer ») devient un outil réel du hub, avec sa barre : **Signer (signature
+  manuscrite)…** (S), **Parapher (initiales)…**, **Insérer la date du jour** ; aussi dans le menu Édition et la
+  palette. **Signature visuelle uniquement**, dit partout (libellé, sous-titre, encadré permanent) : elle ne
+  prouve ni l'identité ni l'intégrité, ce n'est pas une signature numérique certifiée.
+- Boîte « Signature manuscrite / Paraphe » : pavé de dessin (souris, pavé tactile, stylet ; encre noire ou
+  bleue, épaisseur, annuler le dernier trait, effacer), **import d'une image** (PNG transparent tel quel, ou
+  photo sur fond clair dont le fond est retiré par un seuil réglable avec aperçu, décodage hors thread
+  d'interface), **bibliothèque locale** (`%APPDATA%\SuniPDF\signatures`, PNG en clair, enregistrement
+  facultatif, suppression en deux clics, vignettes sur papier blanc dans les deux thèmes).
+- Placement : fantôme sous le pointeur, clic pour poser (centré, maintenu dans la page), Maj+clic pour poser
+  plusieurs fois, Échap pour annuler ; l'élément posé est un **objet image à masque alpha** (le contenu reste
+  visible entre les traits) ou un objet texte (date), aussitôt sélectionné : poignées, déplacement, rotation,
+  dupliquer, supprimer, Ctrl+Z, modifiable par F2 pour la date.
+- Moteur : `Document::add_image_data` (image décodée, alpha conservé par `/SMask`), module
+  `signature_image` (traits tramés anti-crénelés, fond retiré, rognage, lecture bornée, PNG atomique).
+- CLI : `add-image <FILE> --image <IMG> --x --y [--width] [--remove-background <seuil>] --out` (réponse avec
+  `"digital_signature": false`), 21 commandes.
+- Automatisation : `SUNIPDF_SIGNATURES_DIR`, `SUNIPDF_PICK_FILE`.
+
 ### Corrigé (tranche review-fixes : constats des revues adverses)
 - **Sécurité** : AES-128 refuse un mot de passe contenant des caractères hors Latin-1 imprimable
   (erreur `password_not_latin1`, message dans la boîte Protéger) au lieu de les abandonner sans bruit, ce qui
