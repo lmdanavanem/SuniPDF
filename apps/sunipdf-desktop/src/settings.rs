@@ -11,6 +11,8 @@ pub struct Settings {
     pub dark_theme: bool,
     pub show_thumbnails: bool,
     pub show_tools: bool,
+    /// Défilement continu (toutes les pages empilées) plutôt que page unique.
+    pub continuous_view: bool,
     /// Fichiers récents, le plus récent en premier.
     pub recent: Vec<String>,
 }
@@ -22,6 +24,7 @@ impl Default for Settings {
             dark_theme: false,
             show_thumbnails: true,
             show_tools: true,
+            continuous_view: true,
             recent: Vec::new(),
         }
     }
@@ -85,6 +88,9 @@ mod tests {
         let bad: Settings = serde_json::from_str(r#"{"language":"xx-XX"}"#).unwrap();
         assert_eq!(bad.language(), Language::French);
         assert!(bad.show_tools && bad.recent.is_empty());
+        // Préférences antérieures à la vue continue : continu par défaut.
+        assert!(bad.continuous_view);
+        assert!(Settings::default().continuous_view);
         let with_bom = "\u{feff}{\"dark_theme\":true}";
         let parsed: Settings =
             serde_json::from_str(with_bom.trim_start_matches('\u{feff}')).unwrap();

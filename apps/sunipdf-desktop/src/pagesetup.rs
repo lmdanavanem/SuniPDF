@@ -218,11 +218,13 @@ impl SuniApp {
             .map_or((612.0, 792.0), |s| (s.width_pt, s.height_pt));
         let page_count = doc.info.page_count();
         let current = doc.page;
+        // Aperçu : texture de la page entière dans la vue, sinon sa miniature.
         let texture = self
-            .texture
-            .as_ref()
-            .filter(|t| t.page == current)
-            .map(|t| t.handle.id());
+            .view
+            .pool
+            .whole(current)
+            .or_else(|| self.thumbnails.get(&current))
+            .map(|t| t.id());
         let lang = self.lang();
         let (dark, icons) = (self.settings.dark_theme, self.has_icons);
         let muted = theme::palette(dark).text_muted;

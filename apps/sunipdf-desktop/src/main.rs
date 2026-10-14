@@ -15,6 +15,7 @@ mod shell;
 mod tabs;
 mod theme;
 mod tools;
+mod view;
 mod worker;
 mod workspace;
 

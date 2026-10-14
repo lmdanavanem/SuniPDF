@@ -4,6 +4,7 @@ use crate::dialog;
 use crate::icons::glyph;
 use crate::settings::Settings;
 use crate::theme;
+use crate::view::ViewMode;
 use crate::worker::{BytesOp, DocState, EditOp, Request, Response, Worker};
 use crate::workspace::Esc;
 use egui::{Key, Modifiers};
@@ -14,8 +15,8 @@ use sunipdf_i18n::{tr, tr_args, Language};
 
 /// Points CSS par point PDF : à 100 %, une page de 612 pt occupe 816 px logiques (96 dpi).
 pub const SCREEN_PER_PDF_POINT: f32 = 96.0 / 72.0;
-pub const ZOOM_STEPS: [f32; 12] = [
-    0.25, 0.33, 0.5, 0.67, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0,
+pub const ZOOM_STEPS: [f32; 15] = [
+    0.25, 0.33, 0.5, 0.67, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0,
 ];
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -33,11 +34,6 @@ pub enum EngineState {
 
 pub struct OpenDocument {
     pub info: DocumentInfo,
-    pub page: usize,
-}
-
-pub struct PageTexture {
-    pub handle: egui::TextureHandle,
     pub page: usize,
 }
 
@@ -96,10 +92,8 @@ pub struct SuniApp {
     pub opening: Option<PathBuf>,
     pub zoom: Zoom,
     pub effective_zoom: f32,
-    pub texture: Option<PageTexture>,
-    pub generation: u64,
-    pub in_flight: Option<(usize, f32)>,
-    pub last_rendered: Option<(usize, f32)>,
+    /// Vue du document : mode, défilement, tuiles et textures (`view.rs`).
+    pub view: crate::view::ViewState,
     pub page_input: String,
     pub error: Option<&'static str>,
     password_prompt: Option<PasswordPrompt>,
@@ -176,16 +170,13 @@ impl SuniApp {
                 })
                 .unwrap_or_default(),
             worker: Worker::spawn(cc.egui_ctx.clone()),
+            view: crate::view::ViewState::new(settings.continuous_view),
             settings,
             engine: EngineState::Starting,
             document: None,
             opening: None,
             zoom: Zoom::FitWidth,
             effective_zoom: 1.0,
-            texture: None,
-            generation: 0,
-            in_flight: None,
-            last_rendered: None,
             page_input: String::new(),
             error: None,
             password_prompt: None,
@@ -254,10 +245,7 @@ impl SuniApp {
         if self.document.take().is_some() {
             self.worker.send(Request::Close);
         }
-        self.texture = None;
-        self.in_flight = None;
-        self.last_rendered = None;
-        self.generation += 1;
+        self.view.reset();
         self.page_input.clear();
         self.thumbnails.clear();
         self.thumbs_pending.clear();
@@ -300,7 +288,25 @@ impl SuniApp {
                 }
             }
             self.page_input = (clamped + 1).to_string();
+            // Toujours défiler, même vers la page courante (on peut être au milieu de la page).
+            self.lock_on_page(clamped);
         }
+    }
+
+    /// Amène le résultat de recherche `i` à l'écran.
+    fn go_to_match(&mut self, i: usize) {
+        let Some(m) = self.find.matches.get(i) else {
+            return;
+        };
+        let page = m.page;
+        let top = m.rects.iter().map(|r| r.top).fold(f32::MIN, f32::max);
+        let left = m.rects.iter().map(|r| r.left).fold(f32::MAX, f32::min);
+        let h = self
+            .document
+            .as_ref()
+            .and_then(|d| d.info.page_sizes.get(page))
+            .map_or(0.0, |s| s.height_pt);
+        self.go_to_page_point(page, left.max(0.0), (h - top).max(0.0));
     }
 
     fn step_page(&mut self, delta: isize) {
@@ -313,7 +319,11 @@ impl SuniApp {
     }
 
     fn zoom_step(&mut self, direction: isize) {
-        let current = self.effective_zoom;
+        // Zoom fixe : part de la valeur demandée (des pas enchaînés dans une même image s'ajoutent).
+        let current = match self.zoom {
+            Zoom::Fixed(z) => z,
+            _ => self.effective_zoom,
+        };
         let next = if direction > 0 {
             ZOOM_STEPS.iter().copied().find(|z| *z > current + 0.01)
         } else {
@@ -377,6 +387,9 @@ impl SuniApp {
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
                     self.edit.reset_for_tab();
+                    self.view.reset();
+                    // Première page en haut, centrée si le document mêle des tailles de page.
+                    self.view.request(crate::view::ScrollRequest::Page(0));
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
                     self.dirty = false;
@@ -416,24 +429,9 @@ impl SuniApp {
                         self.error = Some(error_key(&error));
                     }
                 }
-                Response::Rendered { generation, image } => {
-                    if let Some(inflight) = self.in_flight.take() {
-                        if generation == self.generation {
-                            let color = egui::ColorImage::from_rgba_unmultiplied(
-                                [image.width as usize, image.height as usize],
-                                &image.rgba,
-                            );
-                            self.texture = Some(PageTexture {
-                                handle: ctx.load_texture(
-                                    "sunipdf-page",
-                                    color,
-                                    egui::TextureOptions::LINEAR,
-                                ),
-                                page: image.page_index,
-                            });
-                            self.last_rendered = Some(inflight);
-                        }
-                    }
+                Response::Tile { epoch, job, image } => self.on_tile(ctx, epoch, job, image),
+                Response::TileFailed { epoch, job, error } => {
+                    self.on_tile_failed(epoch, job, error)
                 }
                 Response::Thumbnail { page, image } => {
                     self.thumbs_pending.remove(&page);
@@ -454,6 +452,7 @@ impl SuniApp {
                     info,
                     can_undo,
                     can_redo,
+                    pages_unchanged,
                     ..
                 }) => {
                     self.can_undo = can_undo;
@@ -461,14 +460,14 @@ impl SuniApp {
                     let count = info.page_count();
                     self.organize.selected.retain(|p| *p < count);
                     if let Some(doc) = &mut self.document {
+                        let same_sizes = doc.info.page_sizes == info.page_sizes;
                         doc.info = info;
                         doc.page = doc.page.min(doc.info.page_count().saturating_sub(1));
                         self.page_input = (doc.page + 1).to_string();
+                        // Retouche : l'image reste affichée jusqu'aux nouvelles tuiles.
+                        self.view
+                            .on_document_changed(pages_unchanged, same_sizes, doc.page);
                     }
-                    self.texture = None;
-                    self.last_rendered = None;
-                    self.in_flight = None;
-                    self.generation += 1;
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
                     self.find.searched = None;
@@ -593,18 +592,7 @@ impl SuniApp {
                         self.find.in_flight = false;
                         self.find.matches = matches;
                         self.find.current = 0;
-                        if let Some(first) = self.find.matches.first() {
-                            let page = first.page;
-                            self.go_to_page(page);
-                        }
-                    }
-                }
-                Response::RenderFailed { generation, error } => {
-                    self.in_flight = None;
-                    if generation == self.generation {
-                        log::warn!("rendu impossible : {error}");
-                        self.error = Some(error_key(&error));
-                        self.last_rendered = None;
+                        self.go_to_match(0);
                     }
                 }
             }
@@ -625,23 +613,6 @@ impl SuniApp {
             None => self.t("app.title").to_string(),
         };
         ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
-    }
-
-    /// Demande un rendu si la page ou l'échelle souhaitée a changé et qu'aucun rendu n'est en cours.
-    fn request_render_if_needed(&mut self, ctx: &egui::Context) {
-        let Some(doc) = &self.document else { return };
-        let scale = self.effective_zoom * SCREEN_PER_PDF_POINT * ctx.pixels_per_point();
-        let wanted = (doc.page, quantize(scale));
-        if self.in_flight.is_some() || self.last_rendered == Some(wanted) {
-            return;
-        }
-        self.generation += 1;
-        self.in_flight = Some(wanted);
-        self.worker.send(Request::Render {
-            page: wanted.0,
-            scale: wanted.1,
-            generation: self.generation,
-        });
     }
 
     // ----- Entrées ---------------------------------------------------------
@@ -774,6 +745,31 @@ impl SuniApp {
                 self.nudge_selected(nudge.0 * step, nudge.1 * step);
             }
         }
+        let continuous = self.view.mode == ViewMode::Continuous;
+        if self.document.is_some() && !self.organize.active {
+            // Défilement : flèches haut/bas d'une ligne ; en continu, Page suiv./préc. et Espace
+            // d'un écran (en page unique, Page suiv./préc. changent de page plus bas).
+            let screen = crate::view::SCREEN_SCROLL * self.view.screen_height();
+            let mut dy = 0.0;
+            ctx.input_mut(|i| {
+                let mut each = |m: Modifiers, k: Key, d: f32| {
+                    while i.consume_key(m, k) {
+                        dy += d;
+                    }
+                };
+                each(Modifiers::NONE, Key::ArrowDown, crate::view::LINE_SCROLL_PX);
+                each(Modifiers::NONE, Key::ArrowUp, -crate::view::LINE_SCROLL_PX);
+                if continuous {
+                    each(Modifiers::NONE, Key::PageDown, screen);
+                    each(Modifiers::NONE, Key::Space, screen);
+                    each(Modifiers::NONE, Key::PageUp, -screen);
+                    each(Modifiers::SHIFT, Key::Space, -screen);
+                }
+            });
+            if dy != 0.0 {
+                self.view.scroll_by(dy);
+            }
+        }
         let mut commands = Vec::new();
         if esc == Some(Esc::Leave) {
             commands.push(Command::HubLeave);
@@ -848,7 +844,16 @@ impl SuniApp {
             if object_tool {
                 key(Modifiers::COMMAND, Key::A, Command::SelectAllObjects);
             }
-            key(Modifiers::NONE, Key::F5, Command::ToggleObjects);
+            key(Modifiers::NONE, Key::F3, Command::ToggleObjects);
+            key(
+                Modifiers::NONE,
+                Key::F5,
+                if continuous {
+                    Command::ViewSinglePage
+                } else {
+                    Command::ViewContinuous
+                },
+            );
             key(Modifiers::NONE, Key::V, Command::ToolSelect);
             key(Modifiers::NONE, Key::H, Command::ToolHighlight);
             key(Modifiers::NONE, Key::U, Command::ToolUnderline);
@@ -945,6 +950,8 @@ impl SuniApp {
             Command::ActualSize => self.zoom = Zoom::Fixed(1.0),
             Command::FitWidth => self.zoom = Zoom::FitWidth,
             Command::FitPage => self.zoom = Zoom::FitPage,
+            Command::ViewContinuous => self.set_view_mode(ViewMode::Continuous),
+            Command::ViewSinglePage => self.set_view_mode(ViewMode::Single),
             Command::ToggleThumbnails => {
                 self.settings.show_thumbnails = !self.settings.show_thumbnails;
                 self.persist_settings();
@@ -1209,7 +1216,7 @@ impl SuniApp {
 
     fn document_area(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let Some(doc) = &self.document else {
+        if self.document.is_none() {
             if matches!(self.engine, EngineState::Failed) {
                 ui.centered_and_justified(|ui| {
                     ui.colored_label(theme::ERROR, tr(lang, "error.engine_missing"))
@@ -1226,165 +1233,8 @@ impl SuniApp {
                 }
             });
             return;
-        };
-        let Ok(size) = doc.info.page_sizes.get(doc.page).copied().ok_or(()) else {
-            return;
-        };
-        let page_w = size.width_pt * SCREEN_PER_PDF_POINT;
-        let page_h = size.height_pt * SCREEN_PER_PDF_POINT;
-        let margin = 16.0;
-        let avail = ui.available_size() - egui::vec2(2.0 * margin, 2.0 * margin);
-        self.effective_zoom = match self.zoom {
-            Zoom::FitWidth => (avail.x / page_w).max(0.05),
-            Zoom::FitPage => (avail.x / page_w).min(avail.y / page_h).max(0.05),
-            Zoom::Fixed(z) => z,
-        };
-        let display = egui::vec2(page_w, page_h) * self.effective_zoom;
-        let page_index = doc.page;
-        let total = doc.info.page_count();
-        let name = file_name(&doc.info.path);
-        self.request_render_if_needed(ctx);
-        self.refresh_annotations_if_needed();
-        self.refresh_objects_if_needed();
-        let mut drag_event: Option<DragEvent> = None;
-        let doc_rect = ui.max_rect();
-
-        egui::ScrollArea::both()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                let outer = egui::vec2(display.x + 2.0 * margin, display.y + 2.0 * margin)
-                    .max(ui.available_size());
-                let (rect, _) = ui.allocate_exact_size(outer, egui::Sense::hover());
-                let page_rect = egui::Rect::from_center_size(
-                    rect.center()
-                        .max(rect.min + display / 2.0 + egui::vec2(margin, margin)),
-                    display,
-                );
-                let painter = ui.painter();
-                painter.rect_filled(
-                    page_rect.translate(egui::vec2(3.0, 3.0)),
-                    2.0,
-                    egui::Color32::from_black_alpha(60),
-                );
-                painter.rect_filled(page_rect, 0.0, egui::Color32::WHITE);
-                let painter = painter.clone();
-                match &self.texture {
-                    Some(tex) if tex.page == page_index => {
-                        let alt = tr_args(
-                            lang,
-                            "a11y.page_image",
-                            &[
-                                ("current", &(page_index + 1).to_string()),
-                                ("total", &total.to_string()),
-                                ("name", &name),
-                            ],
-                        );
-                        ui.put(
-                            page_rect,
-                            egui::Image::new(egui::load::SizedTexture::new(
-                                tex.handle.id(),
-                                display,
-                            ))
-                            .alt_text(alt),
-                        );
-                    }
-                    _ => {
-                        ui.put(page_rect, egui::Spinner::new().size(32.0));
-                    }
-                }
-                self.paint_matches(&painter, page_rect, page_index, size.height_pt);
-                self.paint_selection(&painter, page_rect, page_index, size.height_pt);
-                self.paint_object_selection(&painter, page_rect, page_index, size.height_pt);
-                self.edit.page_view = Some((page_index, page_rect, size.height_pt));
-                self.inline_text_editor(ctx, page_rect, page_index, size.height_pt);
-                let interact = ui.interact(
-                    page_rect,
-                    egui::Id::new("page-interact"),
-                    egui::Sense::click_and_drag(),
-                );
-                let zoom = self.effective_zoom;
-                let page_h = size.height_pt;
-                if interact.drag_started() {
-                    // Origine réelle de la pression : le glissement n'est détecté qu'après le seuil.
-                    let origin = ui
-                        .input(|i| i.pointer.press_origin())
-                        .or_else(|| interact.interact_pointer_pos());
-                    if let Some(pos) = origin {
-                        let pt = crate::annotate::to_pdf(pos, page_rect, zoom, page_h);
-                        drag_event = Some(DragEvent::Start(pt));
-                    }
-                } else if interact.dragged() {
-                    if let Some(pos) = interact.interact_pointer_pos() {
-                        drag_event = Some(DragEvent::Move(crate::annotate::to_pdf(
-                            pos, page_rect, zoom, page_h,
-                        )));
-                    }
-                } else if interact.drag_stopped() {
-                    drag_event = Some(DragEvent::Stop);
-                } else if interact.double_clicked() {
-                    if let Some(pos) = interact.interact_pointer_pos() {
-                        drag_event = Some(DragEvent::DoubleClick(crate::annotate::to_pdf(
-                            pos, page_rect, zoom, page_h,
-                        )));
-                    }
-                } else if interact.clicked() {
-                    if let Some(pos) = interact.interact_pointer_pos() {
-                        drag_event = Some(DragEvent::Click(crate::annotate::to_pdf(
-                            pos, page_rect, zoom, page_h,
-                        )));
-                    }
-                }
-                let hover = interact
-                    .hover_pos()
-                    .map(|pos| crate::annotate::to_pdf(pos, page_rect, zoom, page_h));
-                interact.on_hover_cursor(self.page_cursor(page_index, hover));
-            });
-        match drag_event {
-            Some(DragEvent::Start(pt)) => {
-                self.edit_drag_start(page_index, pt);
-                self.annotate.drag = Some(crate::annotate::Drag {
-                    page: page_index,
-                    start: pt,
-                    current: pt,
-                });
-                self.annotate.selection = None;
-            }
-            Some(DragEvent::Move(pt)) => {
-                if let Some(d) = &mut self.annotate.drag {
-                    d.current = pt;
-                    let d = *d;
-                    self.edit_drag_moved(&d);
-                }
-            }
-            Some(DragEvent::Stop) => {
-                if let Some(d) = self.annotate.drag.take() {
-                    self.finish_drag(d);
-                }
-            }
-            Some(DragEvent::Click(pt)) => {
-                self.annotate.selection = None;
-                match self.annotate.tool {
-                    crate::annotate::Tool::Note
-                    | crate::annotate::Tool::AddText
-                    | crate::annotate::Tool::AddImage => {
-                        self.finish_drag(crate::annotate::Drag {
-                            page: page_index,
-                            start: pt,
-                            current: pt,
-                        });
-                    }
-                    crate::annotate::Tool::SelectObject => self.edit_click(page_index, pt),
-                    _ => {}
-                }
-            }
-            Some(DragEvent::DoubleClick(pt)) => {
-                if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
-                    self.edit_double_click(page_index, pt);
-                }
-            }
-            None => {}
         }
-        self.object_bar(ctx, doc_rect);
+        self.document_view(ctx, ui);
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
@@ -1404,6 +1254,10 @@ impl SuniApp {
             self.thumbnails.clear();
             self.thumbs_pending.clear();
         }
+        if self.thumbnails.len() > crate::view::THUMB_KEEP {
+            // Long document parcouru : seules les miniatures proches de la page courante restent.
+            self.thumbnails.retain(|p, _| p.abs_diff(current) <= 100);
+        }
         let max_ratio = doc
             .info
             .page_sizes
@@ -1415,75 +1269,87 @@ impl SuniApp {
         let sizes = doc.info.page_sizes.clone();
         let mut clicked = None;
         let mut moved: Option<(usize, usize)> = None;
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .show_rows(ui, row_h, count, |ui, rows| {
-                for page in rows {
-                    let ratio = sizes[page].height_pt / sizes[page].width_pt;
-                    let size = egui::vec2(thumb_w, thumb_w * ratio);
-                    if !self.thumbnails.contains_key(&page) && self.thumbs_pending.insert(page) {
-                        self.worker.send(Request::Thumbnail { page, width_px: px });
-                    }
-                    ui.vertical_centered(|ui| {
-                        let (rect, resp) =
-                            ui.allocate_exact_size(size, egui::Sense::click_and_drag());
-                        resp.dnd_set_drag_payload(page);
-                        if let Some(payload) = resp.dnd_hover_payload::<usize>() {
-                            if *payload != page {
-                                let above = ui
-                                    .input(|i| i.pointer.hover_pos())
-                                    .is_some_and(|pos| pos.y < rect.center().y);
-                                let y = if above {
-                                    rect.top() - 6.0
-                                } else {
-                                    rect.bottom() + 6.0
-                                };
-                                ui.painter().hline(
-                                    rect.x_range(),
-                                    y,
-                                    egui::Stroke::new(3.0, theme::BLUE),
-                                );
-                            }
-                        }
-                        if let Some(payload) = resp.dnd_release_payload::<usize>() {
-                            let from = *payload;
-                            if from != page {
-                                let above = ui
-                                    .input(|i| i.pointer.latest_pos())
-                                    .is_some_and(|pos| pos.y < rect.center().y);
-                                let mut to = if above { page } else { page + 1 };
-                                if from < to {
-                                    to -= 1;
-                                }
-                                moved = Some((from, to));
-                            }
-                        }
-                        let stroke = if page == current {
-                            egui::Stroke::new(2.0, theme::BLUE)
-                        } else {
-                            egui::Stroke::new(1.0, egui::Color32::from_gray(160))
-                        };
-                        ui.painter().rect_filled(rect, 0.0, egui::Color32::WHITE);
-                        if let Some(tex) = self.thumbnails.get(&page) {
-                            ui.put(
-                                rect,
-                                egui::Image::new(egui::load::SizedTexture::new(tex.id(), size))
-                                    .alt_text(tr_args(
-                                        lang,
-                                        "a11y.thumbnail",
-                                        &[("page", &(page + 1).to_string())],
-                                    )),
+        let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
+        if std::mem::take(&mut self.view.follow_thumb) {
+            // Page courante changée ailleurs (défilement, « aller à ») : sa miniature est ramenée
+            // au centre du panneau si elle n'y est pas entièrement visible.
+            let top = current as f32 * (row_h + ui.spacing().item_spacing.y);
+            let seen = self
+                .view
+                .thumb_view
+                .is_some_and(|(off, h)| top >= off && top + row_h <= off + h);
+            if !seen {
+                area = area
+                    .vertical_scroll_offset((top - (ui.available_height() - row_h) / 2.0).max(0.0));
+            }
+        }
+        let out = area.show_rows(ui, row_h, count, |ui, rows| {
+            for page in rows {
+                let ratio = sizes[page].height_pt / sizes[page].width_pt;
+                let size = egui::vec2(thumb_w, thumb_w * ratio);
+                if !self.thumbnails.contains_key(&page) && self.thumbs_pending.insert(page) {
+                    self.worker.send(Request::Thumbnail { page, width_px: px });
+                }
+                ui.vertical_centered(|ui| {
+                    let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
+                    resp.dnd_set_drag_payload(page);
+                    if let Some(payload) = resp.dnd_hover_payload::<usize>() {
+                        if *payload != page {
+                            let above = ui
+                                .input(|i| i.pointer.hover_pos())
+                                .is_some_and(|pos| pos.y < rect.center().y);
+                            let y = if above {
+                                rect.top() - 6.0
+                            } else {
+                                rect.bottom() + 6.0
+                            };
+                            ui.painter().hline(
+                                rect.x_range(),
+                                y,
+                                egui::Stroke::new(3.0, theme::BLUE),
                             );
                         }
-                        ui.painter()
-                            .rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Outside);
-                        if resp.clicked() {
-                            clicked = Some(page);
+                    }
+                    if let Some(payload) = resp.dnd_release_payload::<usize>() {
+                        let from = *payload;
+                        if from != page {
+                            let above = ui
+                                .input(|i| i.pointer.latest_pos())
+                                .is_some_and(|pos| pos.y < rect.center().y);
+                            let mut to = if above { page } else { page + 1 };
+                            if from < to {
+                                to -= 1;
+                            }
+                            moved = Some((from, to));
                         }
-                        ui.label((page + 1).to_string());
-                    });
-                }
-            });
+                    }
+                    let stroke = if page == current {
+                        egui::Stroke::new(2.0, theme::BLUE)
+                    } else {
+                        egui::Stroke::new(1.0, egui::Color32::from_gray(160))
+                    };
+                    ui.painter().rect_filled(rect, 0.0, egui::Color32::WHITE);
+                    if let Some(tex) = self.thumbnails.get(&page) {
+                        ui.put(
+                            rect,
+                            egui::Image::new(egui::load::SizedTexture::new(tex.id(), size))
+                                .alt_text(tr_args(
+                                    lang,
+                                    "a11y.thumbnail",
+                                    &[("page", &(page + 1).to_string())],
+                                )),
+                        );
+                    }
+                    ui.painter()
+                        .rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Outside);
+                    if resp.clicked() {
+                        clicked = Some(page);
+                    }
+                    ui.label((page + 1).to_string());
+                });
+            }
+        });
+        self.view.thumb_view = Some((out.state.offset.y, out.inner_rect.height()));
         if let Some(page) = clicked {
             self.go_to_page(page);
         }
@@ -1495,6 +1361,7 @@ impl SuniApp {
 
     fn find_bar(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
+        let has_icons = self.has_icons;
         let mut step: isize = 0;
         let mut close = false;
         ui.horizontal(|ui| {
@@ -1550,8 +1417,10 @@ impl SuniApp {
                 }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                // Glyphe de la police d'icônes : « ✕ » manque dans Segoe UI (carré vide).
+                let close_icon = crate::icons::icon(has_icons, glyph::CLOSE, "x", 13.0);
                 if ui
-                    .button("✕")
+                    .add(egui::Button::new(close_icon).frame(false))
                     .on_hover_text(tr(lang, "find.close"))
                     .clicked()
                 {
@@ -1571,8 +1440,7 @@ impl SuniApp {
         if step != 0 && !self.find.matches.is_empty() {
             let n = self.find.matches.len() as isize;
             self.find.current = ((self.find.current as isize + step).rem_euclid(n)) as usize;
-            let page = self.find.matches[self.find.current].page;
-            self.go_to_page(page);
+            self.go_to_match(self.find.current);
         }
     }
 
@@ -1607,7 +1475,7 @@ impl SuniApp {
     }
 
     /// Surbrillance des occurrences de la page affichée (coordonnées PDF → écran).
-    fn paint_matches(
+    pub fn paint_matches(
         &self,
         painter: &egui::Painter,
         page_rect: egui::Rect,
@@ -1618,11 +1486,13 @@ impl SuniApp {
             return;
         }
         let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
-        for (i, m) in self.find.matches.iter().enumerate() {
-            if m.page != page_index {
-                continue;
-            }
-            let color = if i == self.find.current {
+        // Résultats triés par page : seuls ceux de cette page sont parcourus.
+        let start = self.find.matches.partition_point(|m| m.page < page_index);
+        let on_page = self.find.matches[start..]
+            .iter()
+            .take_while(|m| m.page == page_index);
+        for (i, m) in on_page.enumerate() {
+            let color = if start + i == self.find.current {
                 egui::Color32::from_rgba_unmultiplied(0xF5, 0x9E, 0x0B, 150)
             } else {
                 egui::Color32::from_rgba_unmultiplied(0xFD, 0xE0, 0x47, 110)
@@ -2069,14 +1939,6 @@ impl eframe::App for SuniApp {
     }
 }
 
-enum DragEvent {
-    Start((f32, f32)),
-    Move((f32, f32)),
-    Stop,
-    Click((f32, f32)),
-    DoubleClick((f32, f32)),
-}
-
 // ----- Utilitaires -----------------------------------------------------------
 
 pub(crate) fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str, enabled: bool) -> bool {
@@ -2089,7 +1951,7 @@ pub(crate) fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str, enabled:
     clicked
 }
 
-fn file_name(path: &Path) -> String {
+pub(crate) fn file_name(path: &Path) -> String {
     path.file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_else(|| path.display().to_string())
@@ -2098,11 +1960,6 @@ fn file_name(path: &Path) -> String {
 fn is_pdf(path: &Path) -> bool {
     path.extension()
         .is_some_and(|e| e.eq_ignore_ascii_case("pdf"))
-}
-
-/// Évite de relancer un rendu pour des variations d'échelle imperceptibles (redimensionnements).
-fn quantize(scale: f32) -> f32 {
-    (scale * 200.0).round() / 200.0
 }
 
 pub fn error_key(e: &EngineError) -> &'static str {
@@ -2154,6 +2011,7 @@ mod tests {
     fn ui_keys_used_by_app_exist() {
         let src = concat!(
             include_str!("app.rs"),
+            include_str!("view.rs"),
             include_str!("main.rs"),
             include_str!("shell.rs"),
             include_str!("workspace.rs"),
@@ -2192,7 +2050,9 @@ mod tests {
 
     #[test]
     fn zoom_quantization_and_pdf_detection() {
-        assert_eq!(quantize(1.3333), 1.335);
+        assert_eq!(sunipdf_core::tiles::quantize_milli(1.3333), 1335);
+        assert_eq!(ZOOM_STEPS.last(), Some(&16.0));
+        assert!(ZOOM_STEPS.windows(2).all(|w| w[0] < w[1]));
         assert!(is_pdf(Path::new("a/b.PDF")));
         assert!(!is_pdf(Path::new("a/b.txt")));
     }

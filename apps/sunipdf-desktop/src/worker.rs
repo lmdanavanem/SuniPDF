@@ -1,6 +1,7 @@
 //! Thread de travail propriétaire du moteur PDF. L'UI n'appelle jamais PDFium directement.
-//! Cache LRU partagé (pages, miniatures), pré-rendu des pages voisines quand la file est vide,
-//! journal d'annulation par instantanés (octets PDF) pour toutes les modifications de pages.
+//! Cache LRU partagé (tuiles, miniatures), file de tuiles voulues remplacée en bloc par l'UI
+//! (`SetWanted`) et rendue une tuile à la fois entre deux requêtes, journal d'annulation par
+//! instantanés (octets PDF) pour toutes les modifications de pages.
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -10,7 +11,7 @@ use sunipdf_core::{
     security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
     Metadata, ObjectClip, ObjectInfo, ObjectStyle, PageMargins, PointRect, Properties, Protection,
     RectMode, RenderCache, RenderedPage, ResizeMode, ShapeKind, ShapeStyle, Stamp, SystemFont,
-    TextMatch, TextSelection, TextStyle, ZOrder,
+    TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -224,6 +225,48 @@ pub enum EditOp {
     },
 }
 
+impl EditOp {
+    /// Vrai si l'opération ne change ni le nombre, ni l'ordre, ni la taille des pages (objets,
+    /// annotations, tampon) : l'UI garde alors l'image affichée jusqu'à l'arrivée des tuiles neuves.
+    pub fn keeps_pages(&self) -> bool {
+        !matches!(
+            self,
+            EditOp::Rotate { .. }
+                | EditOp::Delete { .. }
+                | EditOp::Insert { .. }
+                | EditOp::Move { .. }
+                | EditOp::Bytes(_)
+                | EditOp::CropPages { .. }
+                | EditOp::ResetCrop { .. }
+                | EditOp::ResizePages { .. }
+                | EditOp::InsertBlankPages { .. }
+        )
+    }
+}
+
+/// Tuiles à rendre, remplacée en bloc à chaque `SetWanted` : c'est l'« annulation » des rendus
+/// des pages sorties de l'écran (une tuile déjà commencée va jusqu'au bout).
+#[derive(Default)]
+struct WantedQueue {
+    epoch: u64,
+    jobs: VecDeque<TileJob>,
+}
+
+impl WantedQueue {
+    fn replace(&mut self, epoch: u64, jobs: Vec<TileJob>) {
+        self.epoch = epoch;
+        self.jobs = jobs.into();
+    }
+
+    fn pop(&mut self) -> Option<(u64, TileJob)> {
+        self.jobs.pop_front().map(|j| (self.epoch, j))
+    }
+
+    fn clear(&mut self) {
+        self.jobs.clear();
+    }
+}
+
 /// Objets à décrire (sélection).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Pick {
@@ -254,10 +297,10 @@ pub enum Request {
         path: PathBuf,
         password: Option<String>,
     },
-    Render {
-        page: usize,
-        scale: f32,
-        generation: u64,
+    /// Remplace la liste des tuiles voulues (priorité décroissante) ; `epoch` revient dans `Tile`.
+    SetWanted {
+        epoch: u64,
+        jobs: Vec<TileJob>,
     },
     /// Miniature de `width_px` pixels de large (hauteur proportionnelle).
     Thumbnail {
@@ -323,6 +366,9 @@ pub struct DocState {
     pub can_undo: bool,
     pub can_redo: bool,
     pub modified: bool,
+    /// Modification de contenu seulement (`EditOp::keeps_pages`) : pages identiques en nombre,
+    /// ordre et taille.
+    pub pages_unchanged: bool,
 }
 
 pub enum Response {
@@ -333,12 +379,14 @@ pub enum Response {
         path: PathBuf,
         error: EngineError,
     },
-    Rendered {
-        generation: u64,
+    Tile {
+        epoch: u64,
+        job: TileJob,
         image: Arc<RenderedPage>,
     },
-    RenderFailed {
-        generation: u64,
+    TileFailed {
+        epoch: u64,
+        job: TileJob,
         error: EngineError,
     },
     Thumbnail {
@@ -421,8 +469,8 @@ impl Worker {
 struct State<'a> {
     document: Option<Document<'a>>,
     cache: RenderCache,
-    /// Pages voisines à pré-rendre (échelle courante) quand aucune requête n'attend.
-    prefetch: VecDeque<(usize, f32)>,
+    /// Tuiles voulues par l'UI, rendues une à une quand aucune requête n'attend.
+    wanted: WantedQueue,
     undo: Vec<Snapshot>,
     redo: Vec<Snapshot>,
     /// Modifié depuis l'ouverture, la reprise ou le dernier enregistrement.
@@ -448,19 +496,22 @@ impl State<'_> {
         Ok(self.cache.insert(scale, image))
     }
 
-    fn schedule_prefetch(&mut self, page: usize, scale: f32) {
-        self.prefetch.clear();
-        let count = self.document.as_ref().map_or(0, Document::page_count);
-        for neighbour in [page + 1, page.wrapping_sub(1)] {
-            if neighbour < count && !self.cache.contains(neighbour, scale) {
-                self.prefetch.push_back((neighbour, scale));
-            }
+    fn render_tile(&mut self, job: &TileJob) -> Result<Arc<RenderedPage>, EngineError> {
+        if let Some(hit) = self.cache.get_tile(job) {
+            return Ok(hit);
         }
+        let doc = self
+            .document
+            .as_ref()
+            .ok_or(EngineError::PageOutOfRange(job.page))?;
+        let image = doc.render_region(job.page, job.scale(), job.region)?;
+        log::trace!("tuile {job:?} ; cache {} octets", self.cache.bytes());
+        Ok(self.cache.insert_tile(*job, image))
     }
 
     fn invalidate(&mut self) {
         self.cache.clear();
-        self.prefetch.clear();
+        self.wanted.clear();
     }
 
     fn doc_state(&self) -> Option<DocState> {
@@ -469,6 +520,7 @@ impl State<'_> {
             can_undo: !self.undo.is_empty(),
             can_redo: !self.redo.is_empty(),
             modified: self.modified,
+            pages_unchanged: false,
         })
     }
 
@@ -492,6 +544,7 @@ impl State<'_> {
         };
         // Décalages clavier consécutifs du même objet : l'instantané pris avant le premier suffit.
         let coalesce = nudge.is_some() && nudge == self.last_nudge && !self.undo.is_empty();
+        let keeps_pages = op.keeps_pages();
         let Some(doc) = &mut self.document else {
             return Response::OperationFailed(EngineError::Other("no document".into()));
         };
@@ -515,7 +568,10 @@ impl State<'_> {
                 self.last_nudge = nudge;
                 self.modified = true;
                 self.invalidate();
-                Response::DocumentChanged(self.doc_state().expect("document ouvert"))
+                Response::DocumentChanged(DocState {
+                    pages_unchanged: keeps_pages,
+                    ..self.doc_state().expect("document ouvert")
+                })
             }
             Err(e) => {
                 if let Some(s) = snapshot {
@@ -826,7 +882,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     let mut state = State {
         document: None,
         cache: RenderCache::new(CACHE_BYTES),
-        prefetch: VecDeque::new(),
+        wanted: WantedQueue::default(),
         undo: Vec::new(),
         redo: Vec::new(),
         modified: false,
@@ -836,17 +892,24 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     loop {
-        // 1. Requête suivante : file locale, sinon pré-rendu si rien n'attend, sinon blocage.
+        // 1. Travail suivant : file locale, sinon requête reçue, sinon une tuile voulue, sinon
+        //    blocage. Entre deux tuiles le canal est relu : un nouveau `SetWanted` ou une édition
+        //    passe avant la tuile suivante.
         let request = match queue.pop_front() {
             Some(r) => r,
             None => match rx.try_recv() {
                 Ok(r) => r,
                 Err(TryRecvError::Disconnected) => return,
-                Err(TryRecvError::Empty) => match state.prefetch.pop_front() {
-                    Some((page, scale)) => {
-                        if let Err(e) = state.render_cached(page, scale) {
-                            log::debug!("pré-rendu page {page} ignoré : {e}");
+                Err(TryRecvError::Empty) => match state.wanted.pop() {
+                    Some((epoch, job)) => {
+                        let response = match state.render_tile(&job) {
+                            Ok(image) => Response::Tile { epoch, job, image },
+                            Err(error) => Response::TileFailed { epoch, job, error },
+                        };
+                        if tx.send(response).is_err() {
+                            return;
                         }
+                        ctx.request_repaint();
                         continue;
                     }
                     None => match rx.recv() {
@@ -870,21 +933,11 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
                 Err(error) => Response::OpenFailed { path, error },
             },
-            Request::Render {
-                page,
-                scale,
-                generation,
-            } => {
-                if state.document.is_none() {
-                    continue;
+            Request::SetWanted { epoch, jobs } => {
+                if state.document.is_some() {
+                    state.wanted.replace(epoch, jobs);
                 }
-                match state.render_cached(page, scale) {
-                    Ok(image) => {
-                        state.schedule_prefetch(page, scale);
-                        Response::Rendered { generation, image }
-                    }
-                    Err(error) => Response::RenderFailed { generation, error },
-                }
+                continue;
             }
             Request::Thumbnail { page, width_px } => {
                 let Some(doc) = &state.document else { continue };
@@ -1096,5 +1149,80 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 Err(TryRecvError::Disconnected) => return,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sunipdf_core::PixelRect;
+
+    fn job(page: usize) -> TileJob {
+        TileJob {
+            page,
+            scale_milli: 1000,
+            region: PixelRect::new(0, 0, 10, 10),
+        }
+    }
+
+    #[test]
+    fn wanted_queue_is_replaced_not_appended() {
+        let mut q = WantedQueue::default();
+        q.replace(1, vec![job(0), job(1), job(2)]);
+        assert_eq!(q.pop(), Some((1, job(0))));
+        // Défilement : la nouvelle liste remplace le reste de l'ancienne (pages 1 et 2 annulées).
+        q.replace(2, vec![job(7), job(8)]);
+        assert_eq!(q.pop(), Some((2, job(7))));
+        assert_eq!(q.pop(), Some((2, job(8))));
+        assert_eq!(q.pop(), None);
+        q.replace(3, vec![job(4)]);
+        q.clear();
+        assert_eq!(q.pop(), None);
+    }
+
+    #[test]
+    fn content_edits_keep_pages_structural_edits_do_not() {
+        let rect = PointRect {
+            left: 0.0,
+            bottom: 0.0,
+            right: 1.0,
+            top: 1.0,
+        };
+        let keeps = [
+            EditOp::MoveObjects {
+                page: 0,
+                indices: vec![0],
+                dx: 1.0,
+                dy: 0.0,
+            },
+            EditOp::Markup {
+                page: 0,
+                kind: MarkupKind::Highlight,
+                rects: vec![rect],
+                rgb: (255, 255, 0),
+            },
+            EditOp::Stamp {
+                pages: None,
+                stamp: Stamp::default(),
+            },
+        ];
+        assert!(keeps.iter().all(EditOp::keeps_pages));
+        let changes = [
+            EditOp::Rotate {
+                pages: vec![0],
+                delta_degrees: 90,
+            },
+            EditOp::Delete { pages: vec![0] },
+            EditOp::Insert {
+                source: PathBuf::new(),
+                password: None,
+                pages: vec![],
+                at: 0,
+            },
+            EditOp::Move { from: 0, to: 1 },
+            EditOp::Bytes(BytesOp::StripMetadata),
+            EditOp::ResetCrop { pages: vec![0] },
+        ];
+        assert!(!changes.iter().any(EditOp::keeps_pages));
     }
 }

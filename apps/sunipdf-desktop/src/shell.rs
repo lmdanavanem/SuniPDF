@@ -169,6 +169,8 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ActualSize => (glyph::DOCUMENT, "1:1"),
         Command::FitWidth => (glyph::FIT_WIDTH, "↔"),
         Command::FitPage => (glyph::FIT_PAGE, "▭"),
+        Command::ViewContinuous => (glyph::SCROLL, "⇕"),
+        Command::ViewSinglePage => (glyph::DOCUMENT, "▯"),
         Command::CopyText => (glyph::DOCUMENT, "⎘"),
         Command::ToolSelect => (glyph::SELECT, "I"),
         Command::ToolHighlight => (glyph::HIGHLIGHT, "▬"),
@@ -915,51 +917,68 @@ impl SuniApp {
         ui.vertical_centered(|ui| {
             ui.add_space(6.0);
             let thumbs = ui
-                .add(
-                    Button::new(self.icon(glyph::GRID, "▦", 16.0))
-                        .frame(false)
-                        .selected(self.settings.show_thumbnails),
-                )
+                .add(Button::selectable(
+                    self.settings.show_thumbnails,
+                    self.icon(glyph::GRID, "▦", 16.0),
+                ))
                 .on_hover_text(tr(lang, "menu.view.thumbnails"));
             if thumbs.clicked() {
                 self.execute(ctx, Command::ToggleThumbnails);
             }
             let organize = ui
-                .add(
-                    Button::new(self.icon(glyph::PAGES, "▦", 16.0))
-                        .frame(false)
-                        .selected(self.organize.active),
-                )
+                .add(Button::selectable(
+                    self.organize.active,
+                    self.icon(glyph::PAGES, "▦", 16.0),
+                ))
                 .on_hover_text(tr(lang, "menu.view.organize"));
             if organize.clicked() {
                 self.execute(ctx, Command::OrganizePages);
             }
+            // Bascule de la vue : allumé = défilement continu (F5).
+            let continuous = self.view.mode == crate::view::ViewMode::Continuous;
+            let view_toggle = ui
+                .add(Button::selectable(
+                    continuous,
+                    self.icon(glyph::SCROLL, "⇕", 16.0),
+                ))
+                .on_hover_text(format!(
+                    "{}  ({})",
+                    tr(lang, "menu.view.continuous"),
+                    tr(lang, "shortcut.view_toggle")
+                ));
+            if view_toggle.clicked() {
+                self.execute(
+                    ctx,
+                    if continuous {
+                        Command::ViewSinglePage
+                    } else {
+                        Command::ViewContinuous
+                    },
+                );
+            }
             let bookmarks = ui
-                .add(
-                    Button::new(self.icon(glyph::BOOKMARK, "🔖", 16.0))
-                        .frame(false)
-                        .selected(self.docinfo.bookmarks_open),
-                )
+                .add(Button::selectable(
+                    self.docinfo.bookmarks_open,
+                    self.icon(glyph::BOOKMARK, "🔖", 16.0),
+                ))
                 .on_hover_text(tr(lang, "menu.view.bookmarks"));
             if bookmarks.clicked() {
                 self.execute(ctx, Command::ToggleBookmarks);
             }
             let comments = ui
-                .add(
-                    Button::new(self.icon(glyph::COMMENT, "💬", 16.0))
-                        .frame(false)
-                        .selected(self.annotate.comments_open),
-                )
+                .add(Button::selectable(
+                    self.annotate.comments_open,
+                    self.icon(glyph::COMMENT, "💬", 16.0),
+                ))
                 .on_hover_text(tr(lang, "menu.view.comments"));
             if comments.clicked() {
                 self.execute(ctx, Command::ToggleComments);
             }
             let objects = ui
-                .add(
-                    Button::new(self.icon(glyph::LAYERS, "☰", 16.0))
-                        .frame(false)
-                        .selected(self.edit.objects_open),
-                )
+                .add(Button::selectable(
+                    self.edit.objects_open,
+                    self.icon(glyph::LAYERS, "☰", 16.0),
+                ))
                 .on_hover_text(format!(
                     "{}  ({})",
                     tr(lang, "menu.view.objects"),
@@ -969,11 +988,10 @@ impl SuniApp {
                 self.execute(ctx, Command::ToggleObjects);
             }
             let find = ui
-                .add(
-                    Button::new(self.icon(glyph::FIND, "🔍", 16.0))
-                        .frame(false)
-                        .selected(self.find.open),
-                )
+                .add(Button::selectable(
+                    self.find.open,
+                    self.icon(glyph::FIND, "🔍", 16.0),
+                ))
                 .on_hover_text(tr(lang, "menu.edit.find"));
             if find.clicked() {
                 if self.find.open {
@@ -999,21 +1017,19 @@ impl SuniApp {
                     self.execute(ctx, Command::RotateClockwise);
                 }
                 let fit_w = ui
-                    .add(
-                        Button::new(self.icon(glyph::FIT_WIDTH, "↔", 16.0))
-                            .frame(false)
-                            .selected(self.zoom == Zoom::FitWidth),
-                    )
+                    .add(Button::selectable(
+                        self.zoom == Zoom::FitWidth,
+                        self.icon(glyph::FIT_WIDTH, "↔", 16.0),
+                    ))
                     .on_hover_text(tr(lang, "menu.view.fit_width"));
                 if fit_w.clicked() {
                     self.execute(ctx, Command::FitWidth);
                 }
                 let fit_p = ui
-                    .add(
-                        Button::new(self.icon(glyph::FIT_PAGE, "▭", 16.0))
-                            .frame(false)
-                            .selected(self.zoom == Zoom::FitPage),
-                    )
+                    .add(Button::selectable(
+                        self.zoom == Zoom::FitPage,
+                        self.icon(glyph::FIT_PAGE, "▭", 16.0),
+                    ))
                     .on_hover_text(tr(lang, "menu.view.fit_page"));
                 if fit_p.clicked() {
                     self.execute(ctx, Command::FitPage);
@@ -1218,7 +1234,7 @@ impl SuniApp {
                             &format!("{}", (self.effective_zoom * 100.0).round()),
                         )],
                     )));
-                    if self.in_flight.is_some() {
+                    if self.view.is_rendering() {
                         ui.separator();
                         ui.spinner();
                         ui.label(muted(tr(lang, "status.rendering").into()));

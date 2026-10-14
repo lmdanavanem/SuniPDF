@@ -1061,17 +1061,19 @@ impl SuniApp {
         }
     }
 
-    /// Liste des objets de la page courante, tenue à jour pour le panneau et la prise directe.
-    pub fn refresh_objects_if_needed(&mut self) {
-        if !(self.edit.objects_open || self.annotate.tool == Tool::SelectObject) {
+    /// Liste des objets de `page` (page courante, ou page survolée en défilement continu), tenue à
+    /// jour pour le panneau et la prise directe.
+    pub fn refresh_objects_if_needed(&mut self, page: usize) {
+        if !(self.edit.objects_open || self.annotate.tool == Tool::SelectObject)
+            || self.document.is_none()
+        {
             return;
         }
-        let Some(doc) = &self.document else { return };
-        if self.edit.objects_page != Some(doc.page) {
-            self.edit.objects_page = Some(doc.page);
+        if self.edit.objects_page != Some(page) {
+            self.edit.objects_page = Some(page);
             self.edit.objects.clear();
             self.edit.hover_index = None;
-            self.worker.send(Request::Objects { page: doc.page });
+            self.worker.send(Request::Objects { page });
         }
     }
 

@@ -82,6 +82,8 @@ pub mod glyph {
     pub const LAYERS: &str = "\u{E81E}";
     /// Photo : distincte de l'image à insérer (E8B9).
     pub const PHOTO: &str = "\u{E91B}";
+    /// Défilement vertical (vue continue).
+    pub const SCROLL: &str = "\u{ECE7}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

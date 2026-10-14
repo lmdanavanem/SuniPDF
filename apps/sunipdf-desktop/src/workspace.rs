@@ -771,6 +771,8 @@ mod tests {
         C::ActualSize,
         C::FitWidth,
         C::FitPage,
+        C::ViewContinuous,
+        C::ViewSinglePage,
         C::ToggleThumbnails,
         C::ToggleBookmarks,
         C::ToggleTools,

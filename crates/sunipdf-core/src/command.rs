@@ -15,6 +15,8 @@ pub enum Command {
     ActualSize,
     FitWidth,
     FitPage,
+    ViewContinuous,
+    ViewSinglePage,
     ToggleThumbnails,
     Find,
     Save,
@@ -217,6 +219,24 @@ pub const REGISTRY: &[CommandInfo] = &[
         "view.fit_page",
         "menu.view.fit_page",
         None,
+        true,
+        View
+    ),
+    // F5 bascule entre les deux (handle_input) : deux commandes idempotentes pour la palette et
+    // l'automatisation, même raccourci affiché.
+    cmd!(
+        ViewContinuous,
+        "view.continuous",
+        "menu.view.continuous",
+        Some("shortcut.view_toggle"),
+        true,
+        View
+    ),
+    cmd!(
+        ViewSinglePage,
+        "view.single_page",
+        "menu.view.single_page",
+        Some("shortcut.view_toggle"),
         true,
         View
     ),
@@ -760,6 +780,14 @@ mod tests {
             assert_eq!(info.command.info().id, info.id);
         }
         assert_eq!(Command::from_id("nope"), None);
+        assert_eq!(
+            Command::from_id("view.continuous"),
+            Some(Command::ViewContinuous)
+        );
+        assert_eq!(
+            Command::from_id("view.single_page"),
+            Some(Command::ViewSinglePage)
+        );
     }
 
     #[test]

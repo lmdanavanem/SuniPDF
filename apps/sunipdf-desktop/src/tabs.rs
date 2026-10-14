@@ -11,6 +11,8 @@ pub struct TabState {
     pub document: Option<OpenDocument>,
     pub zoom: Zoom,
     pub effective_zoom: f32,
+    /// Décalage de la zone de défilement du document (l'état egui est partagé entre onglets).
+    pub scroll: egui::Vec2,
     pub page_input: String,
     pub thumbnails: HashMap<usize, egui::TextureHandle>,
     pub thumb_px: u32,
@@ -51,9 +53,9 @@ impl SuniApp {
     pub fn take_tab(&mut self) -> TabState {
         let bookmarks_open = self.docinfo.bookmarks_open;
         let comments_open = self.annotate.comments_open;
-        self.texture = None;
-        self.in_flight = None;
-        self.last_rendered = None;
+        let scroll = self.view.offset;
+        // Textures libérées (GPU des onglets inactifs), époque suivante : tuiles en vol ignorées.
+        self.view.reset();
         self.thumbs_pending.clear();
         // La sélection d'objet désigne un index du document actif : elle ne doit jamais
         // survivre à un changement de document (Suppr agirait sur l'autre onglet).
@@ -62,6 +64,7 @@ impl SuniApp {
             document: self.document.take(),
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),
             effective_zoom: std::mem::replace(&mut self.effective_zoom, 1.0),
+            scroll,
             page_input: std::mem::take(&mut self.page_input),
             thumbnails: std::mem::take(&mut self.thumbnails),
             thumb_px: std::mem::replace(&mut self.thumb_px, 0),
@@ -76,7 +79,6 @@ impl SuniApp {
         };
         // Une recherche en vol sera relancée au retour sur l'onglet (sa réponse est ignorée).
         state.find.reset_in_flight();
-        self.generation += 1;
         self.docinfo.bookmarks_open = bookmarks_open;
         self.annotate.comments_open = comments_open;
         state
@@ -88,9 +90,9 @@ impl SuniApp {
         self.document = t.document;
         self.zoom = t.zoom;
         self.effective_zoom = t.effective_zoom;
-        self.texture = None; // les textures GPU restent valides, mais un nouveau rendu est demandé par sûreté
-        self.in_flight = None;
-        self.last_rendered = None;
+        self.view.reset();
+        self.view
+            .request(crate::view::ScrollRequest::Offset(t.scroll));
         self.page_input = t.page_input;
         self.thumbnails = t.thumbnails;
         self.thumbs_pending.clear();
@@ -105,7 +107,6 @@ impl SuniApp {
         self.annotate.comments_open = comments_open;
         self.can_undo = t.can_undo;
         self.can_redo = t.can_redo;
-        self.generation += 1;
         let _ = std::mem::take(&mut self.thumbnails); // miniatures : recalculées (le cache moteur a été vidé)
     }
 
