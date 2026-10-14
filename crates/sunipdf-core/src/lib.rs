@@ -15,6 +15,7 @@ pub mod edit;
 mod error;
 pub mod pages;
 pub mod security;
+pub mod stamp;
 pub mod text;
 
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
@@ -25,6 +26,7 @@ pub use edit::{FontFamily, ObjectInfo, ObjectKind, ObjectStyle, ShapeKind, Shape
 pub use error::EngineError;
 pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection};
+pub use stamp::{Stamp, StampPosition};
 pub use text::{PointRect, TextMatch};
 
 use pdfium_render::prelude::*;

@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use sunipdf_core::{Engine, EngineError};
+use sunipdf_core::{Engine, EngineError, Stamp, StampPosition, TextStyle};
 
 #[derive(Parser)]
 #[command(
@@ -65,6 +65,48 @@ enum Command {
         pages: String,
         #[arg(long)]
         degrees: i32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Stamp text on pages (watermark): {n} = page number, {total} = page count.
+    Stamp {
+        file: PathBuf,
+        #[arg(long)]
+        text: String,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value_t = 48.0)]
+        size: f32,
+        /// Hex colour, e.g. 808080 or ff0000.
+        #[arg(long, default_value = "808080")]
+        color: String,
+        #[arg(long, default_value_t = 0.3)]
+        opacity: f32,
+        #[arg(long, default_value_t = 45.0)]
+        angle: f32,
+        /// center, top-left, top-center, top-right, bottom-left, bottom-center, bottom-right
+        #[arg(long, default_value = "center")]
+        position: String,
+        #[arg(long)]
+        bold: bool,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Add page numbers: --template uses {n} and {total} (default "{n} / {total}").
+    PageNumbers {
+        file: PathBuf,
+        #[arg(long, default_value = "{n} / {total}")]
+        template: String,
+        #[arg(long, default_value = "bottom-center")]
+        position: String,
+        #[arg(long, default_value_t = 10.0)]
+        size: f32,
+        #[arg(long, default_value = "all")]
+        pages: String,
         #[arg(long)]
         out: PathBuf,
         #[arg(long)]
@@ -296,6 +338,64 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "rotated": selection.len() }))
         }
+        Command::Stamp {
+            file,
+            text,
+            pages,
+            size,
+            color,
+            opacity,
+            angle,
+            position,
+            bold,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = parse_pages(&pages, doc.page_count())?;
+            let position = StampPosition::from_id(&position)
+                .ok_or_else(|| EngineError::Other(format!("unknown position: {position}")))?;
+            let stamp = Stamp {
+                text,
+                style: TextStyle {
+                    size_pt: size,
+                    bold,
+                    rgb: parse_hex_color(&color)?,
+                    opacity,
+                    ..Default::default()
+                },
+                angle,
+                position,
+                margin_pt: 28.0,
+            };
+            let count = doc.stamp_pages(Some(&selection), &stamp)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "stamped": count }))
+        }
+        Command::PageNumbers {
+            file,
+            template,
+            position,
+            size,
+            pages,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = parse_pages(&pages, doc.page_count())?;
+            let position = StampPosition::from_id(&position)
+                .ok_or_else(|| EngineError::Other(format!("unknown position: {position}")))?;
+            let stamp = Stamp {
+                style: TextStyle {
+                    size_pt: size,
+                    ..Default::default()
+                },
+                ..Stamp::page_numbers(&template, position)
+            };
+            let count = doc.stamp_pages(Some(&selection), &stamp)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "numbered": count }))
+        }
         Command::Insert {
             file,
             from,
@@ -510,6 +610,18 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 }
 
 /// "all", "1,3-5" (1-based) → indices 0-based validés.
+fn parse_hex_color(hex: &str) -> Result<(u8, u8, u8), EngineError> {
+    let h = hex.trim_start_matches('#');
+    if h.len() != 6 {
+        return Err(EngineError::Other(format!("invalid colour: {hex}")));
+    }
+    let byte = |i: usize| {
+        u8::from_str_radix(&h[i..i + 2], 16)
+            .map_err(|_| EngineError::Other(format!("invalid colour: {hex}")))
+    };
+    Ok((byte(0)?, byte(2)?, byte(4)?))
+}
+
 fn parse_pages(spec: &str, count: usize) -> Result<Vec<usize>, EngineError> {
     if spec.trim().eq_ignore_ascii_case("all") {
         return Ok((0..count).collect());

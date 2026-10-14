@@ -2,9 +2,11 @@
 //! optimiser. Les tâches tournent sur le thread moteur ; l'UI reçoit un `BatchDone`.
 
 use crate::app::SuniApp;
-use crate::worker::{BatchOp, BatchResult, Request};
+use crate::worker::{BatchOp, BatchResult, EditOp, Request};
 use egui::Key;
 use std::path::{Path, PathBuf};
+use sunipdf_core::{Stamp, StampPosition, TextStyle};
+use sunipdf_i18n::Language;
 use sunipdf_i18n::{tr, tr_args};
 
 #[derive(Default)]
@@ -13,6 +15,57 @@ pub struct ToolsState {
     pub split_open: bool,
     pub split_every: usize,
     pub running: Option<&'static str>,
+    pub stamp_open: Option<StampKind>,
+    pub stamp: StampForm,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StampKind {
+    Watermark,
+    PageNumbers,
+}
+
+/// Valeurs saisies pour le tampon et les numéros de page (conservées entre deux ouvertures).
+pub struct StampForm {
+    pub text: String,
+    pub size: f32,
+    pub rgb: [u8; 3],
+    pub opacity: f32,
+    pub angle: f32,
+    pub bold: bool,
+    pub position: StampPosition,
+    pub all_pages: bool,
+    pub numbers_template: String,
+    pub numbers_position: StampPosition,
+    pub numbers_size: f32,
+}
+
+impl Default for StampForm {
+    fn default() -> Self {
+        Self {
+            text: String::new(),
+            size: 48.0,
+            rgb: [0x80, 0x80, 0x80],
+            opacity: 0.3,
+            angle: 45.0,
+            bold: true,
+            position: StampPosition::Center,
+            all_pages: true,
+            numbers_template: "{n} / {total}".into(),
+            numbers_position: StampPosition::BottomCenter,
+            numbers_size: 10.0,
+        }
+    }
+}
+
+fn position_combo(ui: &mut egui::Ui, lang: Language, id: &str, value: &mut StampPosition) {
+    egui::ComboBox::from_id_salt(id)
+        .selected_text(tr(lang, &format!("position.{}", value.id())))
+        .show_ui(ui, |ui| {
+            for p in StampPosition::ALL {
+                ui.selectable_value(value, p, tr(lang, &format!("position.{}", p.id())));
+            }
+        });
 }
 
 fn file_name(path: &Path) -> String {
@@ -83,6 +136,190 @@ impl SuniApp {
             return;
         };
         self.run_batch(BatchOp::Combine { inputs, out }, "tools.running.combine");
+    }
+
+    pub fn stamp_dialog(&mut self, ctx: &egui::Context) {
+        let Some(kind) = self.tools.stamp_open else {
+            return;
+        };
+        let lang = self.lang();
+        let muted = crate::theme::palette(self.settings.dark_theme).text_muted;
+        let current_page = self.document.as_ref().map(|d| d.page);
+        let mut submit = false;
+        let mut cancel = false;
+        let numbers = kind == StampKind::PageNumbers;
+        let spec = crate::dialog::Spec::new(
+            "stamp",
+            tr(
+                lang,
+                if numbers {
+                    "numbers.title"
+                } else {
+                    "stamp.title"
+                },
+            ),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(
+            lang,
+            if numbers {
+                "numbers.subtitle"
+            } else {
+                "stamp.subtitle"
+            },
+        ))
+        .icon(
+            if numbers {
+                crate::icons::glyph::NUMBERS
+            } else {
+                crate::icons::glyph::STAMP
+            },
+            "#",
+        )
+        .width(520.0);
+        let form = &mut self.tools.stamp;
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                if numbers {
+                    crate::dialog::field_label(ui, tr(lang, "numbers.template"));
+                    ui.horizontal(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut form.numbers_template)
+                                .desired_width(200.0),
+                        );
+                        for (key, template) in [
+                            ("numbers.preset.simple", "{n}"),
+                            ("numbers.preset.total", "{n} / {total}"),
+                            ("numbers.preset.page", "Page {n}"),
+                        ] {
+                            if ui.small_button(tr(lang, key)).clicked() {
+                                form.numbers_template = template.into();
+                            }
+                        }
+                    });
+                    ui.label(
+                        egui::RichText::new(tr(lang, "stamp.placeholders"))
+                            .size(12.0)
+                            .color(muted),
+                    );
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        ui.label(tr(lang, "stamp.position"));
+                        position_combo(ui, lang, "numbers-pos", &mut form.numbers_position);
+                        ui.label(tr(lang, "stamp.size"));
+                        ui.add(
+                            egui::DragValue::new(&mut form.numbers_size)
+                                .range(4.0..=72.0)
+                                .speed(0.5),
+                        );
+                    });
+                } else {
+                    crate::dialog::field_label(ui, tr(lang, "stamp.text"));
+                    let field = ui.add(
+                        egui::TextEdit::singleline(&mut form.text)
+                            .hint_text(tr(lang, "stamp.text_placeholder"))
+                            .desired_width(f32::INFINITY),
+                    );
+                    if ui.memory(|m| m.focused().is_none()) {
+                        field.request_focus();
+                    }
+                    ui.label(
+                        egui::RichText::new(tr(lang, "stamp.placeholders"))
+                            .size(12.0)
+                            .color(muted),
+                    );
+                    ui.add_space(6.0);
+                    ui.horizontal(|ui| {
+                        ui.label(tr(lang, "stamp.size"));
+                        ui.add(
+                            egui::DragValue::new(&mut form.size)
+                                .range(6.0..=300.0)
+                                .speed(1.0),
+                        );
+                        ui.label(tr(lang, "stamp.color"));
+                        ui.color_edit_button_srgb(&mut form.rgb);
+                        ui.checkbox(&mut form.bold, tr(lang, "stamp.bold"));
+                        ui.label(tr(lang, "stamp.angle"));
+                        ui.add(
+                            egui::DragValue::new(&mut form.angle)
+                                .range(-90.0..=90.0)
+                                .speed(1.0),
+                        );
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label(tr(lang, "stamp.opacity"));
+                        ui.add(
+                            egui::Slider::new(&mut form.opacity, 0.05..=1.0)
+                                .show_value(true)
+                                .fixed_decimals(2),
+                        );
+                        ui.label(tr(lang, "stamp.position"));
+                        position_combo(ui, lang, "stamp-pos", &mut form.position);
+                    });
+                }
+                ui.add_space(6.0);
+                ui.horizontal(|ui| {
+                    ui.radio_value(&mut form.all_pages, true, tr(lang, "stamp.scope.all"));
+                    ui.radio_value(&mut form.all_pages, false, tr(lang, "stamp.scope.current"));
+                });
+            },
+            |ui| {
+                if crate::dialog::primary(
+                    ui,
+                    tr(lang, if numbers { "numbers.ok" } else { "stamp.ok" }),
+                ) || ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter))
+                {
+                    submit = true;
+                }
+                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|i| i.key_pressed(Key::Escape))
+                {
+                    cancel = true;
+                }
+            },
+        );
+        if submit {
+            let form = &self.tools.stamp;
+            let stamp = if numbers {
+                Stamp {
+                    style: TextStyle {
+                        size_pt: form.numbers_size,
+                        ..Default::default()
+                    },
+                    ..Stamp::page_numbers(&form.numbers_template, form.numbers_position)
+                }
+            } else {
+                Stamp {
+                    text: form.text.clone(),
+                    style: TextStyle {
+                        size_pt: form.size,
+                        bold: form.bold,
+                        rgb: (form.rgb[0], form.rgb[1], form.rgb[2]),
+                        opacity: form.opacity,
+                        ..Default::default()
+                    },
+                    angle: form.angle,
+                    position: form.position,
+                    margin_pt: 28.0,
+                }
+            };
+            if stamp.text.trim().is_empty() {
+                return;
+            }
+            let pages = if form.all_pages {
+                None
+            } else {
+                current_page.map(|p| vec![p])
+            };
+            self.tools.stamp_open = None;
+            self.worker
+                .send(Request::Edit(EditOp::Stamp { pages, stamp }));
+        } else if cancel {
+            self.tools.stamp_open = None;
+        }
     }
 
     pub fn tool_split_submit(&mut self) {

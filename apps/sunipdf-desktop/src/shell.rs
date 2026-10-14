@@ -120,6 +120,8 @@ impl ToolTab {
                 Command::BringToFront,
                 Command::SendToBack,
                 Command::DeleteObject,
+                Command::Watermark,
+                Command::PageNumbers,
                 Command::Undo,
                 Command::Redo,
             ],
@@ -133,6 +135,8 @@ impl ToolTab {
                 Command::InsertPages,
                 Command::MovePageLeft,
                 Command::MovePageRight,
+                Command::Watermark,
+                Command::PageNumbers,
                 Command::Undo,
                 Command::Redo,
                 Command::SaveAs,
@@ -169,6 +173,9 @@ pub fn command_color(command: Command) -> egui::Color32 {
         Command::Find | Command::ToggleBookmarks => theme::CAT_VIEW,
         _ => match command.info().menu {
             Menu::File => theme::CAT_FILE,
+            Menu::Pages if matches!(command, Command::Watermark | Command::PageNumbers) => {
+                theme::CAT_EDIT
+            }
             Menu::Pages => theme::CAT_PAGES,
             Menu::Security => theme::CAT_SECURITY,
             Menu::Convert => theme::CAT_CONVERT,
@@ -295,6 +302,8 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::RotateObjectRight => (glyph::ROTATE, "↻"),
         Command::BringToFront => (glyph::FRONT, "⤒"),
         Command::SendToBack => (glyph::BACK, "⤓"),
+        Command::Watermark => (glyph::STAMP, "◈"),
+        Command::PageNumbers => (glyph::NUMBERS, "#"),
         Command::About => (glyph::INFO, "i"),
     }
 }

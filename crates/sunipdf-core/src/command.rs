@@ -63,6 +63,8 @@ pub enum Command {
     RotateObjectRight,
     BringToFront,
     SendToBack,
+    Watermark,
+    PageNumbers,
     About,
 }
 
@@ -552,6 +554,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         Some("shortcut.send_to_back"),
         true,
         Edit
+    ),
+    cmd!(
+        Watermark,
+        "pages.watermark",
+        "menu.pages.watermark",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        PageNumbers,
+        "pages.numbers",
+        "menu.pages.numbers",
+        None,
+        true,
+        Pages
     ),
     cmd!(
         ToggleComments,

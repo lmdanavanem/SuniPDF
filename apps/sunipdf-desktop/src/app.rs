@@ -592,6 +592,7 @@ impl SuniApp {
             || self.show_about
             || self.unsaved_prompt.is_some()
             || self.tools.split_open
+            || self.tools.stamp_open.is_some()
         {
             return;
         }
@@ -943,6 +944,10 @@ impl SuniApp {
             Command::SplitDocument => {
                 self.tools.split_every = self.tools.split_every.max(1);
                 self.tools.split_open = true;
+            }
+            Command::Watermark => self.tools.stamp_open = Some(crate::tools::StampKind::Watermark),
+            Command::PageNumbers => {
+                self.tools.stamp_open = Some(crate::tools::StampKind::PageNumbers)
             }
             Command::ExtractPages => self.tool_extract(),
             Command::CreateFromImages => self.tool_create_from_images(),
@@ -1869,6 +1874,7 @@ impl eframe::App for SuniApp {
         }
         self.unsaved_dialog(&ctx);
         self.split_dialog(&ctx);
+        self.stamp_dialog(&ctx);
         self.properties_dialog(&ctx);
         self.protect_dialog(&ctx);
         self.text_prompt_dialog(&ctx);

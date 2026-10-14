@@ -9,7 +9,7 @@ use std::sync::Arc;
 use sunipdf_core::{
     security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
     Metadata, ObjectInfo, ObjectStyle, PointRect, Properties, Protection, RenderCache,
-    RenderedPage, ShapeKind, ShapeStyle, TextMatch, TextSelection, TextStyle,
+    RenderedPage, ShapeKind, ShapeStyle, Stamp, TextMatch, TextSelection, TextStyle,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -168,6 +168,10 @@ pub enum EditOp {
         page: usize,
         index: usize,
         front: bool,
+    },
+    Stamp {
+        pages: Option<Vec<usize>>,
+        stamp: Stamp,
     },
 }
 
@@ -518,6 +522,7 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
         EditOp::ReorderObject { page, index, front } => {
             doc.reorder_object(page, index, front).map(|_| ())
         }
+        EditOp::Stamp { pages, stamp } => doc.stamp_pages(pages.as_deref(), &stamp).map(|_| ()),
         EditOp::Bytes(op) => {
             let current = doc.snapshot()?;
             let password = doc.password().map(str::to_owned);

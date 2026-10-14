@@ -847,6 +847,7 @@ impl SuniApp {
                         italic: prompt.italic,
                         family: prompt.family,
                         rgb: rgb_tuple(prompt.rgb),
+                        opacity: 1.0,
                     },
                 })),
             }

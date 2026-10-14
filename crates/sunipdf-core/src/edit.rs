@@ -42,6 +42,8 @@ pub struct TextStyle {
     pub italic: bool,
     pub family: FontFamily,
     pub rgb: (u8, u8, u8),
+    /// 0 (invisible) à 1 (opaque).
+    pub opacity: f32,
 }
 
 impl Default for TextStyle {
@@ -52,6 +54,7 @@ impl Default for TextStyle {
             italic: false,
             family: FontFamily::Helvetica,
             rgb: (0, 0, 0),
+            opacity: 1.0,
         }
     }
 }
@@ -208,7 +211,8 @@ impl Document<'_> {
         let mut page = self.page_handle(page_index)?;
         let mut object =
             PdfPageTextObject::new(&self.inner, text, font, PdfPoints::new(style.size_pt))?;
-        object.set_fill_color(color(style.rgb))?;
+        let alpha = (style.opacity.clamp(0.0, 1.0) * 255.0).round() as u8;
+        object.set_fill_color(PdfColor::new(style.rgb.0, style.rgb.1, style.rgb.2, alpha))?;
         object.translate(PdfPoints::new(x), PdfPoints::new(y))?;
         page.objects_mut().add_text_object(object)?;
         Ok(())

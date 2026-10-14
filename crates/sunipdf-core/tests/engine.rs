@@ -874,6 +874,7 @@ fn edit_resize_style_text_size_and_fonts() {
             italic: true,
             family: FontFamily::Times,
             rgb: (200, 0, 0),
+            opacity: 1.0,
         },
     )
     .unwrap();
@@ -989,4 +990,91 @@ fn edit_rotate_duplicate_reorder() {
     assert_eq!(front, doc.page_objects(0).unwrap().len() - 1);
     assert_eq!(px(&doc), (0, 160, 0), "vert revenu devant");
     assert!(doc.reorder_object(0, 999, true).is_err());
+}
+
+#[test]
+fn stamp_watermark_and_page_numbers() {
+    use sunipdf_core::{Stamp, StampPosition, TextStyle};
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-stamp-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before: Vec<usize> = (0..2).map(|p| doc.page_objects(p).unwrap().len()).collect();
+    let stamp = Stamp {
+        text: "CONFIDENTIEL {n}".into(),
+        ..Default::default()
+    };
+    assert_eq!(doc.stamp_pages(None, &stamp).unwrap(), 2);
+    for (p, &count_before) in before.iter().enumerate() {
+        let objs = doc.page_objects(p).unwrap();
+        assert_eq!(objs.len(), count_before + 1);
+        let last = objs.last().unwrap();
+        assert_eq!(
+            last.text.as_deref(),
+            Some(format!("CONFIDENTIEL {}", p + 1).as_str())
+        );
+        let (cx, cy) = (
+            (last.bounds.left + last.bounds.right) / 2.0,
+            (last.bounds.bottom + last.bounds.top) / 2.0,
+        );
+        let size = doc.page_size(p).unwrap();
+        assert!(
+            (cx - size.width_pt / 2.0).abs() < 3.0 && (cy - size.height_pt / 2.0).abs() < 3.0,
+            "centre page {p} : {cx} {cy}"
+        );
+        assert!(
+            last.bounds.top - last.bounds.bottom > 100.0,
+            "pivoté à 45° : {:?}",
+            last.bounds
+        );
+    }
+    // Opacité 0,3 : gris atténué au rendu, jamais le gris plein (128).
+    let img = doc.render_page(0, 1.0).unwrap();
+    let faint = (0..img.rgba.len() / 4)
+        .filter(|i| {
+            let p = &img.rgba[i * 4..i * 4 + 3];
+            p[0] == p[1] && p[1] == p[2] && p[0] > 150 && p[0] < 240
+        })
+        .count();
+    assert!(faint > 500, "pixels gris atténués : {faint}");
+    assert!(
+        doc.stamp_pages(None, &Stamp::default()).is_err(),
+        "texte vide"
+    );
+    assert!(
+        doc.stamp_pages(Some(&[5]), &stamp).is_err(),
+        "page hors limites"
+    );
+
+    // Numéros de page en bas à droite, page 2 seulement.
+    let numbers = Stamp::page_numbers("Page {n} / {total}", StampPosition::BottomRight);
+    assert_eq!(doc.stamp_pages(Some(&[1]), &numbers).unwrap(), 1);
+    let objs = doc.page_objects(1).unwrap();
+    let num = objs.last().unwrap();
+    assert_eq!(num.text.as_deref(), Some("Page 2 / 2"));
+    let size = doc.page_size(1).unwrap();
+    assert!(
+        (num.bounds.right - (size.width_pt - 28.0)).abs() < 1.5
+            && (num.bounds.bottom - 28.0).abs() < 1.5,
+        "{:?}",
+        num.bounds
+    );
+    assert!(!doc.page_text(0).unwrap().contains("Page 1 / 2"));
+    // Persistance.
+    let out = dir.join("stamped.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert!(again.page_text(0).unwrap().contains("CONFIDENTIEL 1"));
+    assert!(again.page_text(1).unwrap().contains("Page 2 / 2"));
+    let style = TextStyle {
+        opacity: 2.0,
+        ..Default::default()
+    };
+    let mut doc2 = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    assert!(
+        doc2.add_text(0, 10.0, 10.0, "x", &style).is_ok(),
+        "opacité bornée"
+    );
+    let _ = std::fs::remove_dir_all(dir);
 }
