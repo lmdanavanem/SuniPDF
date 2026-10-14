@@ -12,7 +12,6 @@ pub const SEMIBOLD: &str = "semibold";
 pub mod glyph {
     pub const MENU: &str = "\u{E700}";
     pub const HOME: &str = "\u{E80F}";
-    pub const OPEN: &str = "\u{E8E5}";
     pub const SAVE: &str = "\u{E74E}";
     pub const SAVE_AS: &str = "\u{E792}";
     pub const FIND: &str = "\u{E721}";
@@ -20,6 +19,7 @@ pub mod glyph {
     pub const ZOOM_OUT: &str = "\u{E71F}";
     pub const ROTATE: &str = "\u{E7AD}";
     pub const UNDO: &str = "\u{E7A7}";
+    pub const REDO: &str = "\u{E7A6}";
     pub const DELETE: &str = "\u{E74D}";
     pub const CLOSE: &str = "\u{E711}";
     pub const CHEVRON_UP: &str = "\u{E70E}";
@@ -35,7 +35,6 @@ pub mod glyph {
     pub const ALL_APPS: &str = "\u{E71D}";
     pub const FOLDER_OPEN: &str = "\u{E838}";
     pub const GLOBE: &str = "\u{E774}";
-    pub const READ: &str = "\u{E736}";
     pub const PAGES: &str = "\u{E7C3}";
     pub const SEARCH_BOX: &str = "\u{E721}";
     pub const SELECT: &str = "\u{E8E6}";
@@ -48,11 +47,11 @@ pub mod glyph {
     pub const LOCK: &str = "\u{E72E}";
     pub const UNLOCK: &str = "\u{E785}";
     pub const ERASE: &str = "\u{E75C}";
-    pub const COMBINE: &str = "\u{E8F9}";
-    pub const SPLIT: &str = "\u{E8E4}";
-    pub const EXTRACT: &str = "\u{E8AB}";
+    pub const COMBINE: &str = "\u{EA3C}";
+    pub const SPLIT: &str = "\u{E8C6}";
+    pub const EXTRACT: &str = "\u{E8D1}";
     pub const PICTURE: &str = "\u{E8B9}";
-    pub const OPTIMIZE: &str = "\u{E8BA}";
+    pub const OPTIMIZE: &str = "\u{E92C}";
     pub const CURSOR: &str = "\u{E8B0}";
     pub const FONT: &str = "\u{E8D2}";
     pub const RECT: &str = "\u{E739}";
@@ -67,6 +66,12 @@ pub mod glyph {
     pub const APP: &str = "\u{E8A5}";
     pub const STAMP: &str = "\u{E8EC}";
     pub const NUMBERS: &str = "\u{E8EF}";
+    pub const EXPORT: &str = "\u{EDE1}";
+    pub const EDIT_DOC: &str = "\u{E70F}";
+    pub const ADD: &str = "\u{E710}";
+    pub const CHEVRON_RIGHT: &str = "\u{E76C}";
+    pub const ARROW_LEFT: &str = "\u{E72B}";
+    pub const IMPORT: &str = "\u{E8B5}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

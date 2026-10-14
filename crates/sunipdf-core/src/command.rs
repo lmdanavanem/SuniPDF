@@ -65,6 +65,12 @@ pub enum Command {
     SendToBack,
     Watermark,
     PageNumbers,
+    HubEdit,
+    HubOrganize,
+    HubComment,
+    HubProtect,
+    HubStamp,
+    HubLeave,
     About,
 }
 
@@ -76,6 +82,8 @@ pub enum Menu {
     Pages,
     Security,
     Convert,
+    /// Outils du hub « Tous les outils » (entrer dans un outil, le quitter).
+    Tools,
     Help,
 }
 
@@ -603,6 +611,40 @@ pub const REGISTRY: &[CommandInfo] = &[
         true,
         Edit
     ),
+    cmd!(HubEdit, "hub.edit", "hub.edit.name", None, true, Tools),
+    cmd!(
+        HubOrganize,
+        "hub.organize",
+        "hub.organize.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        HubComment,
+        "hub.comment",
+        "hub.comment.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        HubProtect,
+        "hub.protect",
+        "hub.protect.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(HubStamp, "hub.stamp", "hub.stamp.name", None, true, Tools),
+    cmd!(
+        HubLeave,
+        "hub.leave",
+        "hub.leave",
+        Some("shortcut.hub_leave"),
+        false,
+        Tools
+    ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),
 ];
 
@@ -646,5 +688,13 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 7);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 6);
+    }
+
+    #[test]
+    fn hub_ids_use_hub_prefix() {
+        for info in Command::in_menu(Menu::Tools) {
+            assert!(info.id.starts_with("hub."), "{}", info.id);
+        }
     }
 }

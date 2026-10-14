@@ -120,7 +120,9 @@ pub struct SuniApp {
     /// Commande demandée sans document : exécutée dès qu'un fichier est ouvert.
     pub after_open: Option<Command>,
     pub show_tools: bool,
-    pub tool_tab: crate::shell::ToolTab,
+    /// Un widget avait le focus clavier à l'image précédente (egui le retire sur Échap avant que
+    /// `handle_input` ne lise la touche) : Échap ne quitte alors pas l'outil actif.
+    pub focus_last_frame: bool,
     pub palette: PaletteState,
     pub organize: crate::organize::OrganizeState,
     pub annotate: crate::annotate::AnnotateState,
@@ -144,7 +146,7 @@ impl SuniApp {
             logo: None,
             after_open: None,
             show_tools: settings.show_tools,
-            tool_tab: crate::shell::ToolTab::All,
+            focus_last_frame: false,
             palette: PaletteState {
                 open: false,
                 query: String::new(),
@@ -615,7 +617,10 @@ impl SuniApp {
             || self.tools.split_open
             || self.tools.stamp_open.is_some()
             || self.docinfo.unprotect_open
+            || self.docinfo.properties_open
+            || self.docinfo.protect_open
         {
+            // Les boîtes de dialogue lisent elles-mêmes Entrée et Échap.
             return;
         }
         if self.annotate.note_prompt.is_some()
@@ -718,6 +723,8 @@ impl SuniApp {
                 self.edit.selected = None;
             }
         }
+        // Un Échap = un effet : la désélection d'objet (ci-dessus) passe avant la sortie de l'outil.
+        let leave_on_esc = self.esc_leaves_workspace();
         let mut commands = Vec::new();
         ctx.input_mut(|i| {
             let mut key = |m: Modifiers, k: Key, c: Command| {
@@ -725,6 +732,9 @@ impl SuniApp {
                     commands.push(c);
                 }
             };
+            if leave_on_esc {
+                key(Modifiers::NONE, Key::Escape, Command::HubLeave);
+            }
             key(Modifiers::COMMAND, Key::O, Command::OpenDocument);
             key(Modifiers::COMMAND, Key::W, Command::CloseDocument);
             key(Modifiers::COMMAND, Key::Plus, Command::ZoomIn);
@@ -957,15 +967,30 @@ impl SuniApp {
             | Command::ToolRectangle
             | Command::ToolEllipse
             | Command::ToolLine => {
-                self.annotate.tool = crate::annotate::Tool::ALL
-                    .into_iter()
-                    .find(|t| t.command() == command)
-                    .unwrap_or_default();
+                self.annotate.tool =
+                    crate::annotate::Tool::from_command(command).unwrap_or_default();
                 self.annotate.drag = None;
                 if !matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit.selected = None;
                 }
+                // Raccourci, palette ou menu : la barre de l'outil propriétaire suit.
+                crate::workspace::follow(
+                    &mut self.annotate,
+                    &mut self.organize,
+                    &mut self.edit,
+                    command,
+                );
             }
+            Command::HubEdit
+            | Command::HubOrganize
+            | Command::HubComment
+            | Command::HubProtect
+            | Command::HubStamp => {
+                if let Some(ws) = crate::workspace::Workspace::from_command(command) {
+                    self.enter_workspace(ctx, ws);
+                }
+            }
+            Command::HubLeave => self.leave_workspace(),
             Command::CombineFiles => self.tool_combine(),
             Command::SplitDocument => {
                 self.tools.split_every = self.tools.split_every.max(1);
@@ -1018,6 +1043,12 @@ impl SuniApp {
                     }
                     self.close_find();
                 }
+                crate::workspace::follow(
+                    &mut self.annotate,
+                    &mut self.organize,
+                    &mut self.edit,
+                    command,
+                );
             }
             Command::NextTab => self.next_tab(1),
             Command::PrevTab => self.next_tab(-1),
@@ -1120,7 +1151,7 @@ impl SuniApp {
         self.request_render_if_needed(ctx);
         self.refresh_annotations_if_needed();
         let mut drag_event: Option<DragEvent> = None;
-        let palette_origin = ui.max_rect().min + egui::vec2(14.0, 14.0);
+        let bar_origin = ui.max_rect().min + egui::vec2(14.0, 14.0);
 
         egui::ScrollArea::both()
             .auto_shrink([false, false])
@@ -1253,8 +1284,7 @@ impl SuniApp {
             }
             None => {}
         }
-        self.tool_palette(ctx, ui, palette_origin);
-        self.object_bar(ctx, palette_origin + egui::vec2(46.0, 0.0));
+        self.object_bar(ctx, bar_origin);
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
@@ -1807,6 +1837,17 @@ impl eframe::App for SuniApp {
                     .inner_margin(egui::Margin::symmetric(6, 6)),
             )
             .show(ui, |ui| self.toolbar(&ctx, ui));
+        if self.document.is_some() && self.annotate.workspace.is_some_and(|w| w.is_mode()) {
+            // Hauteur fixe : pas de saut quand les libellés apparaissent ou disparaissent.
+            egui::Panel::top("workspace")
+                .exact_size(48.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.surface)
+                        .stroke(egui::Stroke::new(1.0, p.border)),
+                )
+                .show(ui, |ui| self.workspace_bar(&ctx, ui));
+        }
         if self.find.open && self.document.is_some() {
             egui::Panel::top("find")
                 .frame(chrome(p.chrome))
@@ -1868,13 +1909,12 @@ impl eframe::App for SuniApp {
                 self.error_banner(ui);
                 egui::Frame::new()
                     .fill(p.surface)
+                    .stroke(egui::Stroke::new(1.0, p.border))
                     .inner_margin(egui::Margin::symmetric(8, 6))
-                    .show(ui, |ui| self.organize_toolbar(&ctx, ui));
-                ui.label(
-                    egui::RichText::new(sunipdf_i18n::tr(self.lang(), "organize.hint"))
-                        .size(12.0)
-                        .color(p.text_muted),
-                );
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        self.organize_toolbar(ui)
+                    });
                 self.organize_grid(&ctx, ui);
             });
         } else if self.document.is_some() {
@@ -1913,6 +1953,7 @@ impl eframe::App for SuniApp {
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
         self.command_palette(&ctx);
+        self.focus_last_frame = ctx.memory(|m| m.focused().is_some());
     }
 }
 
@@ -1926,7 +1967,7 @@ enum DragEvent {
 
 // ----- Utilitaires -----------------------------------------------------------
 
-fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str, enabled: bool) -> bool {
+pub(crate) fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str, enabled: bool) -> bool {
     let clicked = ui
         .add_enabled(enabled, egui::Button::new(label).shortcut_text(shortcut))
         .clicked();
@@ -1995,7 +2036,12 @@ mod tests {
 
     #[test]
     fn ui_keys_used_by_app_exist() {
-        let src = concat!(include_str!("app.rs"), include_str!("main.rs"));
+        let src = concat!(
+            include_str!("app.rs"),
+            include_str!("main.rs"),
+            include_str!("shell.rs"),
+            include_str!("workspace.rs")
+        );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {
             s.contains('.')

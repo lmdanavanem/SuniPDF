@@ -1,10 +1,11 @@
-//! Outils d'annotation : palette flottante, sélection de texte, note, panneau des commentaires.
+//! Outils d'annotation : sélection de texte, note, panneau des commentaires (les boutons d'outils
+//! sont dans la barre contextuelle de `workspace.rs`).
 
 use crate::app::{SuniApp, SCREEN_PER_PDF_POINT};
 use crate::icons::{self, glyph};
 use crate::theme;
 use crate::worker::{EditOp, Request};
-use egui::{Align, Button, Frame, Key, Layout, Margin, RichText, Stroke};
+use egui::{Align, Button, Frame, Key, Layout, RichText, Stroke};
 use sunipdf_core::{AnnotationInfo, Command, MarkupKind, PointRect, TextSelection};
 use sunipdf_i18n::{tr, tr_args};
 
@@ -93,6 +94,9 @@ pub struct AnnotateState {
     pub comments_open: bool,
     pub annotations: Vec<AnnotationInfo>,
     pub annotations_page: Option<usize>,
+    /// Outil actif du hub. Ici pour suivre l'onglet (`take_tab` / `put_tab` échangent `annotate`)
+    /// et se vider à la fermeture du document.
+    pub workspace: Option<crate::workspace::Workspace>,
 }
 
 /// Point écran → point PDF.
@@ -104,54 +108,6 @@ pub fn to_pdf(pos: egui::Pos2, page_rect: egui::Rect, zoom: f32, page_h_pt: f32)
 }
 
 impl SuniApp {
-    /// Palette d'outils flottante, en haut à gauche de la zone document.
-    pub fn tool_palette(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, origin: egui::Pos2) {
-        let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
-        let mut chosen = None;
-        egui::Area::new(egui::Id::new("tool-palette"))
-            .fixed_pos(origin)
-            .order(egui::Order::Middle)
-            .show(ctx, |ui| {
-                Frame::new()
-                    .fill(p.surface)
-                    .stroke(Stroke::new(1.0, p.border))
-                    .corner_radius(8)
-                    .inner_margin(Margin::same(4))
-                    .shadow(egui::epaint::Shadow {
-                        offset: [0, 2],
-                        blur: 8,
-                        spread: 0,
-                        color: egui::Color32::from_black_alpha(40),
-                    })
-                    .show(ui, |ui| {
-                        ui.vertical(|ui| {
-                            for tool in Tool::ALL {
-                                if tool == Tool::SelectObject {
-                                    ui.separator();
-                                }
-                                let (g, f) = crate::shell::command_icon(tool.command());
-                                let resp = ui
-                                    .add(
-                                        Button::new(icons::icon(self.has_icons, g, f, 16.0))
-                                            .frame(false)
-                                            .selected(self.annotate.tool == tool)
-                                            .min_size(egui::vec2(30.0, 30.0)),
-                                    )
-                                    .on_hover_text(tr(lang, tool.command().info().label_key));
-                                if resp.clicked() {
-                                    chosen = Some(tool);
-                                }
-                            }
-                        });
-                    });
-            });
-        let _ = ui;
-        if let Some(tool) = chosen {
-            self.execute(ctx, tool.command());
-        }
-    }
-
     /// Dessine la sélection de texte et le rectangle de glissement en cours.
     pub fn paint_selection(
         &self,

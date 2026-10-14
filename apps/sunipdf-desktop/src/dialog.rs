@@ -173,7 +173,7 @@ pub fn primary(ui: &mut egui::Ui, text: &str) -> bool {
     let p = theme::palette(ui.visuals().dark_mode);
     ui.add(
         Button::new(RichText::new(text).color(Color32::WHITE).size(14.0))
-            .fill(p.accent)
+            .fill(p.accent_fill)
             .stroke(Stroke::NONE)
             .corner_radius(8)
             .min_size(egui::vec2(96.0, 32.0)),

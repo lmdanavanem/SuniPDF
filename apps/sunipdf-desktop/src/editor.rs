@@ -7,8 +7,7 @@ use crate::theme;
 use crate::worker::{EditOp, Request};
 use egui::{CursorIcon, Key, Stroke};
 use sunipdf_core::{
-    Command, FontFamily, ObjectInfo, ObjectKind, ObjectStyle, PointRect, ShapeKind, ShapeStyle,
-    TextStyle,
+    FontFamily, ObjectInfo, ObjectKind, ObjectStyle, PointRect, ShapeKind, ShapeStyle, TextStyle,
 };
 use sunipdf_i18n::{tr, tr_args};
 
@@ -605,7 +604,8 @@ impl SuniApp {
         }
     }
 
-    /// Barre flottante des propriétés d'objet (couleurs, épaisseur), à droite de la palette.
+    /// Barre flottante des propriétés d'objet (couleurs, épaisseur), en haut à gauche de la page.
+    /// Les actions (pivoter, dupliquer, ordre, supprimer) sont dans la barre de l'outil Modifier.
     pub fn object_bar(&mut self, ctx: &egui::Context, origin: egui::Pos2) {
         if !self.annotate.tool.is_edit() {
             return;
@@ -613,8 +613,6 @@ impl SuniApp {
         let lang = self.lang();
         let p = theme::palette(self.settings.dark_theme);
         let mut apply = false;
-        let mut action: Option<Command> = None;
-        let has_icons = self.has_icons;
         egui::Area::new(egui::Id::new("object-bar"))
             .fixed_pos(origin)
             .order(egui::Order::Middle)
@@ -642,30 +640,6 @@ impl SuniApp {
                             });
                             if let Some((_, info)) = &self.edit.selected {
                                 ui.separator();
-                                for cmd in [
-                                    Command::RotateObjectLeft,
-                                    Command::RotateObjectRight,
-                                    Command::DuplicateObject,
-                                    Command::BringToFront,
-                                    Command::SendToBack,
-                                    Command::DeleteObject,
-                                ] {
-                                    let (g, f) = crate::shell::command_icon(cmd);
-                                    if ui
-                                        .add(
-                                            egui::Button::new(crate::icons::icon(
-                                                has_icons, g, f, 15.0,
-                                            ))
-                                            .frame(false)
-                                            .min_size(egui::vec2(26.0, 26.0)),
-                                        )
-                                        .on_hover_text(tr(lang, cmd.info().label_key))
-                                        .clicked()
-                                    {
-                                        action = Some(cmd);
-                                    }
-                                }
-                                ui.separator();
                                 if ui
                                     .button(tr(lang, "bar.apply"))
                                     .on_hover_text(tr_args(
@@ -681,9 +655,6 @@ impl SuniApp {
                         });
                     });
             });
-        if let Some(cmd) = action {
-            self.execute(ctx, cmd);
-        }
         if apply {
             if let Some((page, info)) = &self.edit.selected {
                 let style = if info.kind == ObjectKind::Text {

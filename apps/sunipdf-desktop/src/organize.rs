@@ -1,13 +1,11 @@
 //! Vue « Organiser les pages » : grille de miniatures, sélection multiple, glisser-déposer,
-//! barre d'actions (pivoter, supprimer, insérer, déplacer).
+//! compteur de sélection (les actions de page sont dans la barre de l'outil Organiser).
 
 use crate::app::SuniApp;
-use crate::icons::{self, glyph};
 use crate::theme;
 use crate::worker::{EditOp, Request};
-use egui::{Align, Button, Frame, Layout, Margin, RichText, Sense, Stroke};
+use egui::{Button, RichText, Sense, Stroke};
 use std::collections::BTreeSet;
-use sunipdf_core::Command;
 use sunipdf_i18n::{tr, tr_args};
 
 #[derive(Default)]
@@ -33,7 +31,9 @@ impl SuniApp {
         }
     }
 
-    pub fn organize_toolbar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    /// Barre interne de la grille : compteur de sélection et « Tout sélectionner ». Les actions de
+    /// page sont dans la barre de l'outil Organiser (`workspace.rs`).
+    pub fn organize_toolbar(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
         let p = theme::palette(self.settings.dark_theme);
         let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
@@ -52,51 +52,23 @@ impl SuniApp {
                 .color(p.text_muted),
             );
             ui.separator();
-            let mut run = None;
-            for (command, g, f) in [
-                (Command::RotateCounterClockwise, glyph::UNDO, "↺"),
-                (Command::RotateClockwise, glyph::ROTATE, "↻"),
-                (Command::DeletePage, glyph::DELETE, "🗑"),
-                (Command::InsertPages, glyph::OPEN, "⤵"),
-                (Command::MovePageLeft, glyph::CHEVRON_UP, "◀"),
-                (Command::MovePageRight, glyph::CHEVRON_DOWN, "▶"),
-            ] {
-                let info = command.info();
-                let enabled = selected > 0 || matches!(command, Command::InsertPages);
-                let resp = ui
-                    .add_enabled(
-                        enabled,
-                        Button::new(icons::icon(self.has_icons, g, f, 16.0)).frame(false),
-                    )
-                    .on_hover_text(tr(lang, info.label_key));
-                if resp.clicked() {
-                    run = Some(command);
-                }
-            }
-            ui.separator();
             if ui
                 .add(Button::new(tr(lang, "organize.select_all")).frame(false))
                 .clicked()
             {
                 self.organize.selected = (0..count).collect();
             }
-            if let Some(command) = run {
-                self.execute(ctx, command);
-            }
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.add_space(6.0);
-                if ui
-                    .add(
-                        Button::new((
-                            icons::icon(self.has_icons, glyph::CLOSE, "✕", 14.0),
-                            RichText::new(format!("  {}", tr(lang, "organize.close"))),
-                        ))
-                        .frame(false),
+                // Aide tronquée (« … ») quand la place manque ; texte complet en info-bulle.
+                ui.add(
+                    egui::Label::new(
+                        RichText::new(tr(lang, "organize.hint"))
+                            .size(12.0)
+                            .color(p.text_muted),
                     )
-                    .clicked()
-                {
-                    self.execute(ctx, Command::OrganizePages);
-                }
+                    .truncate(),
+                );
             });
         });
     }
@@ -284,6 +256,5 @@ impl SuniApp {
             self.go_to_page(page);
             self.organize.active = false;
         }
-        let _ = Frame::new().inner_margin(Margin::ZERO);
     }
 }

@@ -1,251 +1,150 @@
-//! Coquille de l'application : barre d'onglets, barre d'outils, panneau des outils,
+//! Coquille de l'application : barre d'onglets, barre d'outils, panneau « Tous les outils »,
 //! page d'accueil, rail droit, palette de commandes, barre d'état.
 
 use crate::app::{EngineState, SuniApp, Zoom, ZOOM_STEPS};
 use crate::icons::{self, glyph};
 use crate::theme::{self, Palette};
-use egui::{Align, Button, Frame, Key, Layout, Margin, RichText, Stroke};
+use crate::workspace::{bar_button, BarButton, Entry, Workspace, WsInfo};
+use egui::{Align, Button, Color32, Frame, Key, Layout, Margin, RichText, Stroke};
 use std::path::{Path, PathBuf};
 use sunipdf_core::{Command, Menu};
 use sunipdf_i18n::{tr, tr_args};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ToolTab {
-    All,
-    Read,
-    Annotate,
-    EditTab,
-    Pages,
-    Convert,
-    Security,
-}
-
-impl ToolTab {
-    pub const ALL: [ToolTab; 7] = [
-        ToolTab::All,
-        ToolTab::Read,
-        ToolTab::Annotate,
-        ToolTab::EditTab,
-        ToolTab::Pages,
-        ToolTab::Convert,
-        ToolTab::Security,
-    ];
-
-    fn label_key(self) -> &'static str {
-        match self {
-            Self::All => "toolbar.all_tools",
-            Self::Read => "toolbar.read",
-            Self::Annotate => "toolbar.annotate",
-            Self::EditTab => "toolbar.edit",
-            Self::Pages => "toolbar.pages",
-            Self::Security => "toolbar.security",
-            Self::Convert => "toolbar.convert",
-        }
-    }
-
-    fn commands(self) -> &'static [Command] {
-        match self {
-            Self::All => &[
-                Command::OpenDocument,
-                Command::Find,
-                Command::OrganizePages,
-                Command::ToggleThumbnails,
-                Command::RotateClockwise,
-                Command::RotateCounterClockwise,
-                Command::DeletePage,
-                Command::InsertPages,
-                Command::ToolHighlight,
-                Command::ToolNote,
-                Command::ToolSelectObject,
-                Command::ToolAddText,
-                Command::ToolAddImage,
-                Command::ToggleComments,
-                Command::ToggleBookmarks,
-                Command::Properties,
-                Command::Protect,
-                Command::CombineFiles,
-                Command::SplitDocument,
-                Command::ExtractPages,
-                Command::CreateFromImages,
-                Command::ExportImages,
-                Command::Optimize,
-                Command::Undo,
-                Command::Redo,
-                Command::SaveAs,
-                Command::CommandPalette,
-            ],
-            Self::Read => &[
-                Command::Find,
-                Command::ToggleBookmarks,
-                Command::Properties,
-                Command::ToolSelect,
-                Command::CopyText,
-                Command::ToggleThumbnails,
-                Command::FitWidth,
-                Command::FitPage,
-                Command::ActualSize,
-            ],
-            Self::Annotate => &[
-                Command::ToolSelect,
-                Command::ToolHighlight,
-                Command::ToolUnderline,
-                Command::ToolStrikeOut,
-                Command::ToolNote,
-                Command::ToggleComments,
-                Command::CopyText,
-            ],
-            Self::Convert => &[
-                Command::CombineFiles,
-                Command::CreateFromImages,
-                Command::ExportImages,
-                Command::Optimize,
-            ],
-            Self::Security => &[
-                Command::Protect,
-                Command::Unprotect,
-                Command::StripMetadata,
-                Command::Properties,
-            ],
-            Self::EditTab => &[
-                Command::ToolSelectObject,
-                Command::ToolAddText,
-                Command::ToolAddImage,
-                Command::ToolRectangle,
-                Command::ToolEllipse,
-                Command::ToolLine,
-                Command::EditObjectText,
-                Command::DuplicateObject,
-                Command::RotateObjectLeft,
-                Command::RotateObjectRight,
-                Command::BringToFront,
-                Command::SendToBack,
-                Command::DeleteObject,
-                Command::Watermark,
-                Command::PageNumbers,
-                Command::Undo,
-                Command::Redo,
-            ],
-            Self::Pages => &[
-                Command::OrganizePages,
-                Command::SplitDocument,
-                Command::ExtractPages,
-                Command::RotateClockwise,
-                Command::RotateCounterClockwise,
-                Command::DeletePage,
-                Command::InsertPages,
-                Command::MovePageLeft,
-                Command::MovePageRight,
-                Command::Watermark,
-                Command::PageNumbers,
-                Command::Undo,
-                Command::Redo,
-                Command::SaveAs,
-            ],
-        }
+/// Couleur d'une commande : celle de son outil dans le hub (panneau, barre, palette Ctrl+K) ;
+/// commandes système en bleu (fichier) ou bleu ciel (vue, navigation).
+pub fn command_color(command: Command) -> Color32 {
+    match Workspace::owner_of(command).or_else(|| Workspace::from_command(command)) {
+        Some(ws) => ws.info().color,
+        None if command.info().menu == Menu::File => theme::CAT_FILE,
+        None => theme::CAT_VIEW,
     }
 }
 
-/// Icône associée à une commande (glyphe Fluent + repli texte).
-/// Couleur de catégorie d'une commande (icônes du panneau d'outils, cartes d'accueil).
-pub fn command_color(command: Command) -> egui::Color32 {
-    use sunipdf_core::Menu;
-    match command {
-        Command::ToolSelect
-        | Command::ToolHighlight
-        | Command::ToolUnderline
-        | Command::ToolStrikeOut
-        | Command::ToolNote
-        | Command::ToggleComments
-        | Command::CopyText => theme::CAT_ANNOTATE,
-        Command::ToolSelectObject
-        | Command::ToolAddText
-        | Command::ToolAddImage
-        | Command::ToolRectangle
-        | Command::ToolEllipse
-        | Command::ToolLine
-        | Command::EditObjectText
-        | Command::DeleteObject
-        | Command::DuplicateObject
-        | Command::RotateObjectLeft
-        | Command::RotateObjectRight
-        | Command::BringToFront
-        | Command::SendToBack => theme::CAT_EDIT,
-        Command::Find | Command::ToggleBookmarks => theme::CAT_VIEW,
-        _ => match command.info().menu {
-            Menu::File => theme::CAT_FILE,
-            Menu::Pages if matches!(command, Command::Watermark | Command::PageNumbers) => {
-                theme::CAT_EDIT
-            }
-            Menu::Pages => theme::CAT_PAGES,
-            Menu::Security => theme::CAT_SECURITY,
-            Menu::Convert => theme::CAT_CONVERT,
-            Menu::View => theme::CAT_VIEW,
-            Menu::Edit | Menu::Help => theme::CAT_VIEW,
+/// Pastille d'outil peinte dans `rect` : fond teinté, glyphe contrasté (`theme::glyph_color`).
+pub fn paint_badge(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    has_icons: bool,
+    icon: (&str, &str),
+    color: Color32,
+    dark: bool,
+) {
+    let size = rect.height();
+    painter.rect_filled(rect, (size * 0.27) as u8, theme::badge_fill(color, dark));
+    let font = (size * 0.52).round();
+    painter.text(
+        rect.center(),
+        egui::Align2::CENTER_CENTER,
+        if has_icons { icon.0 } else { icon.1 },
+        if has_icons {
+            egui::FontId::new(font, egui::FontFamily::Name(icons::ICONS.into()))
+        } else {
+            egui::FontId::proportional(font)
         },
+        theme::glyph_color(color, dark),
+    );
+}
+
+/// Pastille d'outil de `size` px, allouée dans le flux.
+pub fn badge(
+    ui: &mut egui::Ui,
+    has_icons: bool,
+    icon: (&str, &str),
+    color: Color32,
+    size: f32,
+    dark: bool,
+) {
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+    if ui.is_rect_visible(rect) {
+        paint_badge(ui.painter(), rect, has_icons, icon, color, dark);
     }
 }
 
-/// Rangée d'outil : pastille colorée + libellé, surlignage au survol.
+/// Ligne d'outil du panneau « Tous les outils » : pastille colorée, nom, chevron pour les outils
+/// à barre ; outil actif = fond sélectionné, trait de sa couleur à gauche, nom en semi-gras.
 pub fn tool_row(
     ui: &mut egui::Ui,
     has_icons: bool,
-    glyph_fallback: (&str, &str),
-    color: egui::Color32,
+    info: &WsInfo,
     label: &str,
-    enabled: bool,
+    desc: &str,
+    active: bool,
 ) -> egui::Response {
-    let p = theme::palette(ui.visuals().dark_mode);
-    let desired = egui::vec2(ui.available_width(), 36.0);
-    let (rect, resp) = ui.allocate_exact_size(
-        desired,
-        if enabled {
-            egui::Sense::click()
-        } else {
-            egui::Sense::hover()
-        },
-    );
-    if !ui.is_rect_visible(rect) {
-        return resp;
+    let dark = ui.visuals().dark_mode;
+    let p = theme::palette(dark);
+    let (rect, resp) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 40.0), egui::Sense::click());
+    resp.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, active, label)
+    });
+    let resp = resp
+        .on_hover_cursor(egui::CursorIcon::PointingHand)
+        .on_hover_text(desc.to_string());
+    if ui.is_rect_visible(rect) {
+        let fade = theme::hover_fade(
+            ui,
+            resp.id.with("hover"),
+            resp.hovered() && !active,
+            p.hover,
+        );
+        let painter = ui.painter();
+        painter.rect_filled(
+            rect,
+            theme::radius::ROW,
+            if active { p.accent_soft } else { fade },
+        );
+        if active {
+            painter.rect_filled(
+                egui::Rect::from_min_size(
+                    rect.min + egui::vec2(0.0, 9.0),
+                    egui::vec2(3.0, rect.height() - 18.0),
+                ),
+                2.0,
+                info.color,
+            );
+        }
+        let badge =
+            egui::Rect::from_min_size(rect.min + egui::vec2(10.0, 6.0), egui::vec2(28.0, 28.0));
+        paint_badge(painter, badge, has_icons, info.icon, info.color, dark);
+        painter.text(
+            egui::pos2(badge.right() + 12.0, rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            label,
+            egui::FontId::new(
+                14.0,
+                if active {
+                    egui::FontFamily::Name(icons::SEMIBOLD.into())
+                } else {
+                    egui::FontFamily::Proportional
+                },
+            ),
+            p.text,
+        );
+        if matches!(info.entry, Some(Entry::Mode(_))) {
+            let (g, f) = (glyph::CHEVRON_RIGHT, "›");
+            painter.text(
+                egui::pos2(rect.right() - 16.0, rect.center().y),
+                egui::Align2::CENTER_CENTER,
+                if has_icons { g } else { f },
+                if has_icons {
+                    egui::FontId::new(11.0, egui::FontFamily::Name(icons::ICONS.into()))
+                } else {
+                    egui::FontId::proportional(14.0)
+                },
+                p.text_muted,
+            );
+        }
+        if resp.has_focus() {
+            theme::focus_ring(painter, rect, &p, theme::radius::ROW);
+        }
     }
-    let painter = ui.painter();
-    if enabled && (resp.hovered() || resp.has_focus()) {
-        painter.rect_filled(rect, 8.0, p.hover);
-    }
-    let alpha = if enabled { 1.0 } else { 0.45 };
-    let badge = egui::Rect::from_min_size(
-        rect.min + egui::vec2(8.0, (rect.height() - 26.0) / 2.0),
-        egui::vec2(26.0, 26.0),
-    );
-    painter.rect_filled(
-        badge,
-        7.0,
-        color.gamma_multiply(if ui.visuals().dark_mode { 0.32 } else { 0.13 } * alpha),
-    );
-    let (g, f) = glyph_fallback;
-    painter.text(
-        badge.center(),
-        egui::Align2::CENTER_CENTER,
-        if has_icons { g } else { f },
-        if has_icons {
-            egui::FontId::new(14.0, egui::FontFamily::Name(icons::ICONS.into()))
-        } else {
-            egui::FontId::proportional(14.0)
-        },
-        color.gamma_multiply(alpha),
-    );
-    painter.text(
-        egui::pos2(badge.right() + 10.0, rect.center().y),
-        egui::Align2::LEFT_CENTER,
-        label,
-        egui::FontId::proportional(14.0),
-        p.text.gamma_multiply(alpha),
-    );
     resp
 }
 
+/// Icône associée à une commande (glyphe Fluent + repli texte).
 pub fn command_icon(command: Command) -> (&'static str, &'static str) {
     match command {
-        Command::OpenDocument => (glyph::OPEN, "📂"),
+        Command::OpenDocument => (glyph::FOLDER_OPEN, "📂"),
         Command::CloseDocument => (glyph::CLOSE, "✕"),
         Command::Quit => (glyph::CLOSE, "✕"),
         Command::Save => (glyph::SAVE, "💾"),
@@ -257,11 +156,11 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::RotateClockwise => (glyph::ROTATE, "↻"),
         Command::RotateCounterClockwise => (glyph::UNDO, "↺"),
         Command::DeletePage => (glyph::DELETE, "🗑"),
-        Command::InsertPages => (glyph::OPEN, "⤵"),
+        Command::InsertPages => (glyph::IMPORT, "⤵"),
         Command::MovePageLeft => (glyph::CHEVRON_UP, "◀"),
         Command::MovePageRight => (glyph::CHEVRON_DOWN, "▶"),
         Command::Undo => (glyph::UNDO, "↶"),
-        Command::Redo => (glyph::ROTATE, "↷"),
+        Command::Redo => (glyph::REDO, "↷"),
         Command::OrganizePages => (glyph::GRID, "▦"),
         Command::FirstPage | Command::PreviousPage => (glyph::CHEVRON_UP, "▲"),
         Command::NextPage | Command::LastPage => (glyph::CHEVRON_DOWN, "▼"),
@@ -304,6 +203,14 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::SendToBack => (glyph::BACK, "⤓"),
         Command::Watermark => (glyph::STAMP, "◈"),
         Command::PageNumbers => (glyph::NUMBERS, "#"),
+        Command::HubEdit
+        | Command::HubOrganize
+        | Command::HubComment
+        | Command::HubProtect
+        | Command::HubStamp => {
+            Workspace::from_command(command).map_or((glyph::ALL_APPS, "▤"), |w| w.info().icon)
+        }
+        Command::HubLeave => (glyph::CLOSE, "✕"),
         Command::About => (glyph::INFO, "i"),
     }
 }
@@ -327,6 +234,59 @@ impl SuniApp {
 
     fn pal(&self) -> Palette {
         theme::palette(self.settings.dark_theme)
+    }
+
+    /// Bouton d'accès rapide de la barre d'outils (icône seule, info-bulle « libellé (raccourci) »).
+    fn quick_button(&self, ui: &mut egui::Ui, command: Command, enabled: bool) -> egui::Response {
+        let lang = self.lang();
+        let info = command.info();
+        let label = tr(lang, info.label_key);
+        let tooltip = match info.shortcut_key {
+            Some(k) => format!("{label}  ({})", tr(lang, k)),
+            None => label.to_string(),
+        };
+        bar_button(
+            ui,
+            self.has_icons,
+            BarButton {
+                icon: command_icon(command),
+                tint: None,
+                label,
+                show_label: false,
+                tooltip: &tooltip,
+                selected: false,
+                enabled,
+            },
+        )
+    }
+
+    /// Menu « Outils » : un élément par outil disponible (coché si actif), puis « Quitter l'outil ».
+    fn tools_menu(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let mut run = None;
+        ui.menu_button(tr(lang, "menu.tools"), |ui| {
+            for ws in Workspace::available() {
+                let on = self.annotate.workspace == Some(ws);
+                let item = Button::new(tr(lang, ws.info().name_key)).selected(on);
+                if ui.add(item).clicked() {
+                    run = ws.activate();
+                    ui.close();
+                }
+            }
+            ui.separator();
+            let leave = Command::HubLeave.info();
+            if crate::app::menu_item(
+                ui,
+                tr(lang, leave.label_key),
+                tr(lang, "shortcut.hub_leave"),
+                self.annotate.workspace.is_some(),
+            ) {
+                run = Some(Command::HubLeave);
+            }
+        });
+        if let Some(c) = run {
+            self.execute(ctx, c);
+        }
     }
 
     // ----- Rangée 1 : onglets de documents ----------------------------------
@@ -391,6 +351,15 @@ impl SuniApp {
                     })
                     .response
                     .interact(egui::Sense::click());
+                if is_active {
+                    // Trait d'accent en haut de l'onglet actif.
+                    let r = resp.rect.shrink2(egui::vec2(6.0, 0.0));
+                    ui.painter().rect_filled(
+                        egui::Rect::from_min_size(r.min, egui::vec2(r.width(), 2.0)),
+                        1.0,
+                        p.accent,
+                    );
+                }
                 if resp.clicked() && !is_active {
                     switch = Some(i);
                 }
@@ -463,6 +432,7 @@ impl SuniApp {
                         Menu::File,
                         &[Command::Save, Command::Quit],
                     );
+                    self.tools_menu(ctx, ui);
                     self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
                     self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
                     self.command_menu(ctx, ui, "menu.pages", Menu::Pages, &[]);
@@ -502,39 +472,47 @@ impl SuniApp {
             menu.response.on_hover_text(tr(lang, "toolbar.menu_hint"));
             ui.add_space(6.0);
             ui.separator();
-            for tab in ToolTab::ALL {
-                let active = self.show_tools && self.tool_tab == tab;
-                let text = if active {
-                    icons::semibold(tr(lang, tab.label_key()), 14.0).color(p.text)
-                } else {
-                    RichText::new(tr(lang, tab.label_key()))
-                        .size(14.0)
-                        .color(p.text_muted)
-                };
-                let resp = ui.add(Button::new(text).frame(false));
-                if active {
-                    let r = resp.rect;
-                    ui.painter()
-                        .hline(r.x_range(), r.bottom() + 4.0, Stroke::new(2.0, p.accent));
+            // Accès rapide.
+            let has_doc = self.document.is_some();
+            let mut run = None;
+            for (command, enabled) in [
+                (Command::OpenDocument, true),
+                (Command::Save, has_doc && self.dirty && !self.saving),
+                (Command::Undo, has_doc && self.can_undo),
+                (Command::Redo, has_doc && self.can_redo),
+            ] {
+                if self.quick_button(ui, command, enabled).clicked() {
+                    run = Some(command);
                 }
-                if resp.clicked() {
-                    self.tool_tab = tab;
-                    self.show_tools = true;
-                    self.settings.show_tools = true;
-                    self.persist_settings();
-                }
+            }
+            ui.separator();
+            let tools_tip = format!(
+                "{}  ({})",
+                tr(lang, "menu.view.tools"),
+                tr(lang, "shortcut.tools")
+            );
+            let all_tools = bar_button(
+                ui,
+                self.has_icons,
+                BarButton {
+                    icon: (glyph::ALL_APPS, "▤"),
+                    tint: None,
+                    label: tr(lang, "toolbar.all_tools"),
+                    show_label: true,
+                    tooltip: &tools_tip,
+                    selected: self.show_tools,
+                    enabled: true,
+                },
+            );
+            if all_tools.clicked() {
+                all_tools.surrender_focus();
+                run = Some(Command::ToggleTools);
+            }
+            if let Some(c) = run {
+                self.execute(ctx, c);
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(6.0);
-                if self.document.is_some() {
-                    let save = ui.add_enabled(
-                        self.dirty && !self.saving,
-                        Button::new(self.icon(glyph::SAVE, "💾", 16.0)).frame(false),
-                    );
-                    if save.on_hover_text(tr(lang, "menu.file.save")).clicked() {
-                        self.execute(ctx, Command::Save);
-                    }
-                }
                 if self.icon_button(ui, glyph::INFO, "i", tr(lang, "menu.help.about")) {
                     self.execute(ctx, Command::About);
                 }
@@ -578,10 +556,10 @@ impl SuniApp {
     pub fn tools_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         let p = self.pal();
-        ui.add_space(6.0);
+        ui.add_space(8.0);
         ui.horizontal(|ui| {
-            ui.add_space(4.0);
-            ui.label(icons::semibold(tr(lang, self.tool_tab.label_key()), 15.0));
+            ui.add_space(6.0);
+            ui.label(icons::semibold(tr(lang, "toolbar.all_tools"), 16.0));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if self.icon_button(ui, glyph::CLOSE, "✕", tr(lang, "tools.close")) {
                     self.show_tools = false;
@@ -590,44 +568,49 @@ impl SuniApp {
                 }
             });
         });
-        ui.separator();
-        ui.add_space(4.0);
-        let has_doc = self.document.is_some();
+        ui.add_space(6.0);
+        let active = self.annotate.workspace;
         let mut run = None;
-        for &command in self.tool_tab.commands() {
-            let info = command.info();
-            // Sans document, les outils restent actifs : ils ouvrent d'abord un fichier.
-            let _ = has_doc;
-            let enabled = match command {
-                Command::Undo => self.can_undo,
-                Command::Redo => self.can_redo,
-                _ => true,
-            };
-            let resp = tool_row(
-                ui,
-                self.has_icons,
-                command_icon(command),
-                command_color(command),
-                tr(lang, info.label_key),
-                enabled,
-            );
-            let resp = match info.shortcut_key {
-                Some(k) => resp.on_hover_text(tr(lang, k)),
-                None => resp,
-            };
-            if resp.clicked() {
-                run = Some(command);
-            }
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 2.0;
+                for ws in Workspace::available() {
+                    let info = ws.info();
+                    let resp = tool_row(
+                        ui,
+                        self.has_icons,
+                        info,
+                        tr(lang, info.name_key),
+                        tr(lang, info.desc_key),
+                        active == Some(ws),
+                    );
+                    if resp.clicked() {
+                        // Sinon le focus clavier reste sur la ligne et bloque les raccourcis à une touche.
+                        resp.surrender_focus();
+                        run = if active == Some(ws) {
+                            Some(Command::HubLeave)
+                        } else {
+                            ws.activate()
+                        };
+                    }
+                }
+                ui.add_space(14.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(6.0);
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(tr(lang, "tools.hint"))
+                                .size(12.0)
+                                .color(p.text_muted),
+                        )
+                        .wrap(),
+                    );
+                });
+            });
+        if let Some(c) = run {
+            self.execute(ctx, c);
         }
-        if let Some(command) = run {
-            self.execute(ctx, command);
-        }
-        ui.add_space(8.0);
-        ui.label(
-            RichText::new(tr(lang, "tools.hint"))
-                .size(12.0)
-                .color(p.text_muted),
-        );
     }
 
     // ----- Accueil ---------------------------------------------------------
@@ -635,13 +618,15 @@ impl SuniApp {
     pub fn home(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         let p = self.pal();
+        let mut run: Option<Command> = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 Frame::new()
                     .inner_margin(Margin::symmetric(40, 28))
                     .show(ui, |ui| {
-                        ui.set_max_width(1100.0);
+                        // `set_max_width` peut élargir : borner à la largeur réellement disponible.
+                        ui.set_max_width(ui.available_width().min(1100.0));
                         ui.label(icons::semibold(tr(lang, "home.welcome"), 28.0));
                         ui.add_space(2.0);
                         ui.label(
@@ -649,7 +634,7 @@ impl SuniApp {
                                 .color(p.text_muted)
                                 .size(15.0),
                         );
-                        ui.add_space(18.0);
+                        ui.add_space(20.0);
                         if matches!(self.engine, EngineState::Failed) {
                             Frame::new()
                                 .fill(theme::ERROR.gamma_multiply(0.12))
@@ -663,173 +648,18 @@ impl SuniApp {
                                 });
                             ui.add_space(12.0);
                         }
-
-                        ui.label(icons::semibold(tr(lang, "home.recommended"), 16.0));
-                        ui.add_space(8.0);
-                        let cards: [(&str, &str, &str, &str, egui::Color32); 7] = [
-                            (
-                                glyph::READ,
-                                "📖",
-                                "home.card.read.title",
-                                "home.card.read.desc",
-                                theme::CAT_FILE,
-                            ),
-                            (
-                                glyph::FIND,
-                                "🔍",
-                                "home.card.find.title",
-                                "home.card.find.desc",
-                                theme::CAT_VIEW,
-                            ),
-                            (
-                                glyph::PAGES,
-                                "▦",
-                                "home.card.pages.title",
-                                "home.card.pages.desc",
-                                theme::CAT_PAGES,
-                            ),
-                            (
-                                glyph::HIGHLIGHT,
-                                "▬",
-                                "home.card.annot.title",
-                                "home.card.annot.desc",
-                                theme::CAT_ANNOTATE,
-                            ),
-                            (
-                                glyph::LOCK,
-                                "🔒",
-                                "home.card.security.title",
-                                "home.card.security.desc",
-                                theme::CAT_SECURITY,
-                            ),
-                            (
-                                glyph::PICTURE,
-                                "🖼",
-                                "home.card.convert.title",
-                                "home.card.convert.desc",
-                                theme::CAT_CONVERT,
-                            ),
-                            (
-                                glyph::FONT,
-                                "T",
-                                "home.card.edit.title",
-                                "home.card.edit.desc",
-                                theme::CAT_EDIT,
-                            ),
-                        ];
-                        let mut open_clicked = false;
-                        ui.horizontal_wrapped(|ui| {
-                            for (g, f, title, desc, color) in cards {
-                                Frame::new()
-                                    .fill(p.surface)
-                                    .stroke(Stroke::new(1.0, p.border))
-                                    .corner_radius(12)
-                                    .inner_margin(16)
-                                    .shadow(egui::epaint::Shadow {
-                                        offset: [0, 2],
-                                        blur: 10,
-                                        spread: 0,
-                                        color: egui::Color32::from_black_alpha(
-                                            if self.settings.dark_theme { 60 } else { 14 },
-                                        ),
-                                    })
-                                    .show(ui, |ui| {
-                                        ui.set_width(220.0);
-                                        ui.vertical(|ui| {
-                                            ui.horizontal(|ui| {
-                                                let (badge, _) = ui.allocate_exact_size(
-                                                    egui::vec2(36.0, 36.0),
-                                                    egui::Sense::hover(),
-                                                );
-                                                ui.painter().rect_filled(
-                                                    badge,
-                                                    9.0,
-                                                    color.gamma_multiply(
-                                                        if self.settings.dark_theme {
-                                                            0.32
-                                                        } else {
-                                                            0.13
-                                                        },
-                                                    ),
-                                                );
-                                                ui.painter().text(
-                                                    badge.center(),
-                                                    egui::Align2::CENTER_CENTER,
-                                                    if self.has_icons { g } else { f },
-                                                    if self.has_icons {
-                                                        egui::FontId::new(
-                                                            17.0,
-                                                            egui::FontFamily::Name(
-                                                                icons::ICONS.into(),
-                                                            ),
-                                                        )
-                                                    } else {
-                                                        egui::FontId::proportional(17.0)
-                                                    },
-                                                    color,
-                                                );
-                                                ui.add_space(2.0);
-                                                ui.label(icons::semibold(tr(lang, title), 15.0));
-                                            });
-                                            ui.add_space(6.0);
-                                            ui.label(
-                                                RichText::new(tr(lang, desc))
-                                                    .color(p.text_muted)
-                                                    .size(13.0),
-                                            );
-                                            ui.add_space(8.0);
-                                            if ui
-                                                .add(
-                                                    Button::new(
-                                                        RichText::new(tr(lang, "home.card.use"))
-                                                            .color(p.accent),
-                                                    )
-                                                    .frame(false),
-                                                )
-                                                .clicked()
-                                            {
-                                                open_clicked = true;
-                                            }
-                                        });
-                                    });
-                            }
-                            Frame::new()
-                                .fill(p.hover)
-                                .corner_radius(10)
-                                .inner_margin(16)
-                                .show(ui, |ui| {
-                                    ui.set_width(150.0);
-                                    ui.vertical(|ui| {
-                                        ui.vertical_centered(|ui| {
-                                            ui.add_space(6.0);
-                                            ui.label(
-                                                self.icon(glyph::FOLDER_OPEN, "📂", 26.0)
-                                                    .color(p.accent),
-                                            );
-                                            ui.add_space(6.0);
-                                            if ui
-                                                .add(
-                                                    Button::new(icons::semibold(
-                                                        tr(lang, "home.open_file"),
-                                                        14.0,
-                                                    ))
-                                                    .frame(false),
-                                                )
-                                                .clicked()
-                                            {
-                                                open_clicked = true;
-                                            }
-                                            ui.add_space(6.0);
-                                        });
-                                    });
-                                });
-                        });
-                        if open_clicked {
-                            self.execute(ctx, Command::OpenDocument);
+                        if self.open_card(ui).clicked() {
+                            run = Some(Command::OpenDocument);
+                        }
+                        ui.add_space(28.0);
+                        ui.label(icons::semibold(tr(lang, "home.recommended"), 17.0));
+                        ui.add_space(10.0);
+                        if let Some(c) = self.tool_cards(ui) {
+                            run = Some(c);
                         }
 
-                        ui.add_space(26.0);
-                        ui.label(icons::semibold(tr(lang, "home.recent"), 18.0));
+                        ui.add_space(28.0);
+                        ui.label(icons::semibold(tr(lang, "home.recent"), 17.0));
                         ui.add_space(6.0);
                         let recent: Vec<PathBuf> =
                             self.settings.recent.iter().map(PathBuf::from).collect();
@@ -867,6 +697,194 @@ impl SuniApp {
                         ui.add_space(20.0);
                     });
             });
+        if let Some(c) = run {
+            // Outil à barre ou outil direct : même chemin (ouverture d'un fichier d'abord si besoin).
+            self.execute(ctx, c);
+        }
+    }
+
+    /// Grande carte « Ouvrir un fichier » (fond accent, entièrement cliquable).
+    fn open_card(&self, ui: &mut egui::Ui) -> egui::Response {
+        let lang = self.lang();
+        let p = self.pal();
+        let w = ui.available_width().min(1100.0);
+        let (rect, resp) = ui.allocate_exact_size(egui::vec2(w, 84.0), egui::Sense::click());
+        let label = tr(lang, "home.open_file");
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
+        let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
+        if !ui.is_rect_visible(rect) {
+            return resp;
+        }
+        let t = ui.ctx().animate_bool_with_time(
+            resp.id.with("hover"),
+            resp.hovered() || resp.has_focus(),
+            0.12,
+        );
+        let painter = ui.painter();
+        if !self.settings.dark_theme {
+            let shadow = egui::epaint::Shadow {
+                offset: [0, 3],
+                blur: 14,
+                spread: 0,
+                color: Color32::from_rgba_unmultiplied(0x25, 0x63, 0xEB, 40 + (t * 30.0) as u8),
+            };
+            painter.add(shadow.as_shape(rect, theme::radius::CARD));
+        }
+        let fill = p.accent_fill.lerp_to_gamma(Color32::BLACK, 0.12 * t);
+        painter.rect_filled(rect, theme::radius::CARD, fill);
+        let circle = egui::pos2(rect.left() + 46.0, rect.center().y);
+        painter.circle_filled(circle, 24.0, Color32::from_white_alpha(38));
+        let (g, f) = (glyph::FOLDER_OPEN, "📂");
+        painter.text(
+            circle,
+            egui::Align2::CENTER_CENTER,
+            if self.has_icons { g } else { f },
+            if self.has_icons {
+                egui::FontId::new(20.0, egui::FontFamily::Name(icons::ICONS.into()))
+            } else {
+                egui::FontId::proportional(20.0)
+            },
+            Color32::WHITE,
+        );
+        let x = rect.left() + 86.0;
+        painter.text(
+            egui::pos2(x, rect.center().y - 2.0),
+            egui::Align2::LEFT_BOTTOM,
+            label,
+            egui::FontId::new(18.0, egui::FontFamily::Name(icons::SEMIBOLD.into())),
+            Color32::WHITE,
+        );
+        painter.text(
+            egui::pos2(x, rect.center().y + 3.0),
+            egui::Align2::LEFT_TOP,
+            tr(lang, "home.open_file.desc"),
+            egui::FontId::proportional(13.5),
+            Color32::from_white_alpha(225),
+        );
+        painter.text(
+            egui::pos2(rect.right() - 24.0, rect.center().y),
+            egui::Align2::RIGHT_CENTER,
+            tr(lang, "shortcut.open"),
+            egui::FontId::proportional(13.0),
+            Color32::from_white_alpha(200),
+        );
+        if resp.has_focus() {
+            painter.rect_stroke(
+                rect.shrink(2.0),
+                theme::radius::CARD,
+                Stroke::new(2.0, Color32::WHITE),
+                egui::StrokeKind::Inside,
+            );
+        }
+        resp
+    }
+
+    /// Grille des outils disponibles (3 colonnes si la largeur le permet), cartes entièrement
+    /// cliquables : bordure de la couleur de l'outil au survol. Renvoie la commande choisie.
+    fn tool_cards(&self, ui: &mut egui::Ui) -> Option<Command> {
+        const GAP: f32 = 14.0;
+        const CARD_H: f32 = 96.0;
+        let lang = self.lang();
+        let dark = self.settings.dark_theme;
+        let p = self.pal();
+        let tools: Vec<Workspace> = Workspace::available().collect();
+        let w = ui.available_width().min(1100.0);
+        let cols = if w >= 3.0 * 240.0 + 2.0 * GAP {
+            3
+        } else if w >= 2.0 * 240.0 + GAP {
+            2
+        } else {
+            1
+        };
+        let card_w = (w - GAP * (cols as f32 - 1.0)) / cols as f32;
+        let rows = tools.len().div_ceil(cols);
+        let (area, _) = ui.allocate_exact_size(
+            egui::vec2(w, rows as f32 * (CARD_H + GAP) - GAP),
+            egui::Sense::hover(),
+        );
+        let mut run = None;
+        for (i, ws) in tools.into_iter().enumerate() {
+            let info = ws.info();
+            let rect = egui::Rect::from_min_size(
+                area.min
+                    + egui::vec2(
+                        (i % cols) as f32 * (card_w + GAP),
+                        (i / cols) as f32 * (CARD_H + GAP),
+                    ),
+                egui::vec2(card_w, CARD_H),
+            );
+            let name = tr(lang, info.name_key);
+            let resp = ui.interact(rect, egui::Id::new(("home-tool", i)), egui::Sense::click());
+            resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+            let resp = resp
+                .on_hover_cursor(egui::CursorIcon::PointingHand)
+                .on_hover_text(tr(lang, info.desc_key));
+            if resp.clicked() {
+                resp.surrender_focus();
+                run = ws.activate();
+            }
+            if !ui.is_rect_visible(rect) {
+                continue;
+            }
+            let t = ui.ctx().animate_bool_with_time(
+                resp.id.with("hover"),
+                resp.hovered() || resp.has_focus(),
+                0.12,
+            );
+            let painter = ui.painter();
+            if !dark {
+                // En thème sombre, l'ombre noire est invisible : la bordure colorée porte l'effet.
+                let shadow = egui::epaint::Shadow {
+                    offset: [0, 1 + (t * 3.0) as i8],
+                    blur: 8 + (t * 10.0) as u8,
+                    spread: 0,
+                    color: Color32::from_black_alpha(12 + (t * 16.0) as u8),
+                };
+                painter.add(shadow.as_shape(rect, theme::radius::CARD));
+            }
+            painter.rect(
+                rect,
+                theme::radius::CARD,
+                p.surface,
+                Stroke::new(1.0, p.border.lerp_to_gamma(info.color, t)),
+                egui::StrokeKind::Inside,
+            );
+            let badge_rect = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + 18.0, rect.center().y - 22.0),
+                egui::vec2(44.0, 44.0),
+            );
+            paint_badge(
+                painter,
+                badge_rect,
+                self.has_icons,
+                info.icon,
+                info.color,
+                dark,
+            );
+            let x = badge_rect.right() + 16.0;
+            let wrap = (rect.right() - 16.0 - x).max(40.0);
+            let title = painter.layout(
+                name.to_string(),
+                egui::FontId::new(15.5, egui::FontFamily::Name(icons::SEMIBOLD.into())),
+                p.text,
+                wrap,
+            );
+            let desc = painter.layout(
+                tr(lang, info.desc_key).to_string(),
+                egui::FontId::proportional(13.0),
+                p.text_muted,
+                wrap,
+            );
+            let block = title.size().y + 4.0 + desc.size().y;
+            let y = rect.center().y - block / 2.0;
+            let title_h = title.size().y;
+            painter.galley(egui::pos2(x, y), title, p.text);
+            painter.galley(egui::pos2(x, y + title_h + 4.0), desc, p.text_muted);
+            if resp.has_focus() {
+                theme::focus_ring(painter, rect, &p, theme::radius::CARD);
+            }
+        }
+        run
     }
 
     // ----- Rail droit : panneaux, navigation, zoom --------------------------
@@ -1083,7 +1101,12 @@ impl SuniApp {
                             .show(ui, |ui| {
                                 ui.set_width(ui.available_width());
                                 ui.horizontal(|ui| {
-                                    ui.label(self.icon(g, f, 15.0).color(p.accent));
+                                    // Couleur de l'outil propriétaire (même code couleur que le hub).
+                                    let tint = theme::glyph_color(
+                                        command_color(*command),
+                                        self.settings.dark_theme,
+                                    );
+                                    ui.label(self.icon(g, f, 15.0).color(tint));
                                     ui.label(tr(lang, info.label_key));
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                         if let Some(k) = info.shortcut_key {
@@ -1188,5 +1211,113 @@ impl SuniApp {
                 }
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use egui::accesskit::Toggled;
+    use sunipdf_i18n::Language;
+
+    fn private_use(s: &str) -> bool {
+        s.chars().any(|c| ('\u{E000}'..='\u{F8FF}').contains(&c))
+    }
+
+    /// Mise en page et arbre AccessKit sans fenêtre : lignes du hub de 40 px sur toute la largeur,
+    /// libellés lisibles (jamais un glyphe d'icône), état sélectionné exposé, dans les deux thèmes.
+    #[test]
+    fn hub_rows_and_bar_buttons_expose_readable_labels() {
+        let lang = Language::French;
+        let ctx = egui::Context::default();
+        let has_icons = icons::install(&ctx);
+        ctx.enable_accesskit();
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 780.0),
+            )),
+            ..Default::default()
+        };
+        let comment = Workspace::Comment.info();
+        for dark in [false, true] {
+            theme::apply(&ctx, dark);
+            let mut rows = Vec::new();
+            let mut output = None;
+            // Deux passes : les polices installées ne servent qu'à partir de la passe suivante.
+            for _ in 0..2 {
+                rows.clear();
+                let mut out = ctx.run_ui(input.clone(), |ui| {
+                    ui.vertical(|ui| {
+                        ui.set_width(250.0);
+                        for ws in Workspace::available() {
+                            let info = ws.info();
+                            let r = tool_row(
+                                ui,
+                                has_icons,
+                                info,
+                                tr(lang, info.name_key),
+                                tr(lang, info.desc_key),
+                                ws == Workspace::Comment,
+                            );
+                            rows.push(r.rect);
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        for c in comment.commands() {
+                            bar_button(
+                                ui,
+                                has_icons,
+                                BarButton {
+                                    icon: command_icon(c),
+                                    tint: Some(comment.color),
+                                    label: tr(lang, c.info().label_key),
+                                    show_label: true,
+                                    tooltip: "",
+                                    selected: c == Command::ToolSelect,
+                                    enabled: c != Command::CopyText,
+                                },
+                            );
+                        }
+                    });
+                });
+                // Pas de rendu GPU ici : les textures produites sont abandonnées volontairement.
+                out.textures_delta.clear();
+                output = Some(out);
+            }
+            assert_eq!(rows.len(), Workspace::available().count());
+            for r in &rows {
+                assert_eq!(r.height(), 40.0);
+                assert_eq!(r.width(), 250.0);
+            }
+            let output = output.unwrap();
+            assert!(!output.shapes.is_empty());
+            let tree = output
+                .platform_output
+                .accesskit_update
+                .expect("arbre AccessKit");
+            let node = |label: &str| {
+                tree.nodes
+                    .iter()
+                    .map(|(_, n)| n)
+                    .find(|n| n.label() == Some(label))
+                    .unwrap_or_else(|| panic!("nœud « {label} » absent"))
+            };
+            assert_eq!(
+                node(tr(lang, comment.name_key)).toggled(),
+                Some(Toggled::True)
+            );
+            assert_eq!(
+                node(tr(lang, Workspace::Edit.info().name_key)).toggled(),
+                Some(Toggled::False)
+            );
+            for c in comment.commands() {
+                let n = node(tr(lang, c.info().label_key));
+                assert_eq!(n.is_disabled(), c == Command::CopyText, "{c:?}");
+            }
+            for (_, n) in &tree.nodes {
+                assert!(!n.label().is_some_and(private_use), "{:?}", n.label());
+            }
+        }
     }
 }
