@@ -61,6 +61,8 @@ impl Default for StampForm {
 fn position_combo(ui: &mut egui::Ui, lang: Language, id: &str, value: &mut StampPosition) {
     egui::ComboBox::from_id_salt(id)
         .selected_text(tr(lang, &format!("position.{}", value.id())))
+        // Sept positions de 28 px : la hauteur par défaut (200 px) en cachait une sans ascenseur.
+        .height(320.0)
         .show_ui(ui, |ui| {
             for p in StampPosition::ALL {
                 ui.selectable_value(value, p, tr(lang, &format!("position.{}", p.id())));

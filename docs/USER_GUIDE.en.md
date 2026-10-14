@@ -163,8 +163,9 @@ number from a template: `{n}` is the page number, `{total}` the page count (for 
 
 - **Protect with password**: open password, owner password, permissions (print, copy, edit, annotate),
   AES-256 by default (AES-128 for older readers). Encryption is applied to the file when you save. AES-128
-  only accepts Latin-1 passwords (accented letters included); keep AES-256 for Cyrillic, Greek, CJK or emoji
-  passwords. Text extraction for accessibility (screen readers) is always allowed.
+  only accepts Latin-1 passwords (accented letters included, but not €, œ, typographic dashes or quotes);
+  keep AES-256 for Cyrillic, Greek, CJK or emoji passwords and for those symbols. Text extraction for
+  accessibility (screen readers) is always allowed.
 - **Remove protection**: asks for the owner password (or the open password when no distinct owner
   password was set). Restrictions (printing, copying…) require an owner password different from the open
   password.

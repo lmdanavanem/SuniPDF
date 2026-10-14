@@ -6,9 +6,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 ## [Non publié]
 
 ### Corrigé (tranche review-fixes : constats des revues adverses)
-- **Sécurité** : AES-128 refuse un mot de passe contenant des caractères hors Latin-1 / PDFDocEncoding
+- **Sécurité** : AES-128 refuse un mot de passe contenant des caractères hors Latin-1 imprimable
   (erreur `password_not_latin1`, message dans la boîte Protéger) au lieu de les abandonner sans bruit, ce qui
-  donnait un fichier ouvrable sans mot de passe ; le bit d'extraction pour l'accessibilité reste toujours
+  donnait un fichier ouvrable sans mot de passe ; les symboles € œ — “ ” (PDFDocEncoding hors Latin-1) sont
+  refusés aussi, car PDFium ne rouvrait pas le fichier avec le mot de passe saisi (aller-retour testé) ; la
+  boîte Protéger donne le focus au premier champ ; le bit d'extraction pour l'accessibilité reste toujours
   accordé ; modifier les propriétés met aussi à jour le paquet XMP (l'ancien auteur n'y survit plus) ;
   « Supprimer les métadonnées » retire aussi les XMP des pages et des images et les données `/PieceInfo`.
 - **Fichiers** : l'enregistrement atomique synchronise les données sur le disque avant de remplacer
@@ -32,7 +34,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   texte d'erreur lisible en thème sombre ; « Retirer la protection » n'affiche plus « non protégé » juste après
   Protéger.
 - **Document** : annuler jusqu'à l'état enregistré rend le document « intact » (point d'enregistrement dans
-  l'historique) ; « Couper » ne supprime plus les objets si la copie a échoué ; l'annotation d'un glissement
+  l'historique ; l'indicateur des onglets suit cet état au lieu d'un OU logique) ; « Couper » copie puis
+  supprime dans le thread moteur, d'un seul tenant (rien n'est supprimé si la copie échoue, aucune édition ne
+  peut décaler les index entre les deux) ; l'erreur de police liste chaque caractère absent une seule fois ;
+  la liste des positions de tampon affiche ses sept entrées ; l'annotation d'un glissement
   est celle de l'outil au moment du geste (changer d'outil avant la réponse du moteur ne la change plus) ;
   après une suppression de pages dans la grille la sélection est vidée (un second clic ne supprimait pas les
   pages choisies) ; déposer une page à sa propre place ne marque plus le document modifié ; « Déplacer à

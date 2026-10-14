@@ -176,8 +176,9 @@ supprime et s'annule comme les autres.
 - **Protéger par mot de passe** : mot de passe d'ouverture, mot de passe propriétaire, permissions
   (impression, copie, modification, annotation), AES-256 par défaut (AES-128 pour les lecteurs anciens).
   La protection s'applique au fichier lors de l'enregistrement. AES-128 n'accepte que des mots de passe en
-  caractères Latin-1 (lettres accentuées comprises) ; pour un mot de passe cyrillique, grec, CJK ou avec
-  emoji, gardez AES-256. L'extraction de texte pour l'accessibilité (lecteurs d'écran) reste toujours permise.
+  caractères Latin-1 (lettres accentuées comprises, mais ni €, ni œ, ni les tirets et guillemets
+  typographiques) ; pour un mot de passe cyrillique, grec, CJK, avec emoji ou avec ces symboles, gardez
+  AES-256. L'extraction de texte pour l'accessibilité (lecteurs d'écran) reste toujours permise.
 - **Retirer la protection** : demande le mot de passe propriétaire (ou le mot de passe d'ouverture quand
   aucun mot de passe propriétaire distinct n'a été défini). Des restrictions (impression, copie…) exigent
   un mot de passe propriétaire différent du mot de passe d'ouverture.

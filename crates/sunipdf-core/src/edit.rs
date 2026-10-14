@@ -492,13 +492,14 @@ impl Document<'_> {
                     page.objects_mut().remove_object_at_index(n - 1)?;
                 }
                 page.regenerate_content()?;
-                // Caractères perdus ou remplacés : ceux de la ligne absents de la relecture.
-                let mut missing: Vec<char> = line
+                // Caractères perdus ou remplacés : ceux de la ligne absents de la relecture,
+                // chacun une seule fois, dans l'ordre du texte.
+                let mut seen = std::collections::HashSet::new();
+                let missing: String = line
                     .chars()
-                    .filter(|c| !c.is_whitespace() && !back.contains(*c))
+                    .filter(|c| !c.is_whitespace() && !back.contains(*c) && seen.insert(*c))
                     .collect();
-                missing.dedup();
-                return Err(EngineError::MissingGlyphs(missing.into_iter().collect()));
+                return Err(EngineError::MissingGlyphs(missing));
             }
         }
         page.regenerate_content()?;

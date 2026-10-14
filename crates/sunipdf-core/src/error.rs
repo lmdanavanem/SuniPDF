@@ -25,7 +25,7 @@ pub enum EngineError {
     /// Caractères absents de la police (liste dédoublonnée, sans espaces).
     #[error("font does not contain every requested character: {0:?}")]
     MissingGlyphs(String),
-    /// AES-128 (R4) n'encode les mots de passe qu'en PDFDocEncoding (Latin-1 imprimable).
+    /// AES-128 (R4) : seul un mot de passe Latin-1 imprimable fait l'aller-retour lopdf → PDFium.
     #[error("AES-128 passwords accept Latin-1 characters only; use AES-256")]
     PasswordNotLatin1,
     #[error("font cannot be embedded (licence, format or size)")]

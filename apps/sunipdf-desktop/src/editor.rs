@@ -165,8 +165,9 @@ pub struct ClipInfo {
     pub pastes: u32,
 }
 
-/// Copie d'objets en vol : objets à supprimer ensuite (« couper »), (chemin, page) d'origine.
-pub type PendingCopy = (Option<(usize, Vec<usize>)>, Option<(PathBuf, usize)>);
+/// Copie d'objets en vol : « couper » (le thread moteur supprime lui-même après la copie),
+/// (chemin, page) d'origine.
+pub type PendingCopy = (bool, Option<(PathBuf, usize)>);
 
 pub struct EditState {
     pub selection: Option<Selection>,
@@ -965,17 +966,23 @@ impl SuniApp {
             return;
         };
         let source = self.document.as_ref().map(|d| (d.info.path.clone(), page));
-        // Couper : la suppression n'est envoyée qu'à la réponse `Copied` (une copie échouée ne
-        // supprime rien) ; Annuler ne défait que la suppression.
-        self.edit.pending_copy = Some((cut.then(|| (page, indices.clone())), source));
-        self.worker.send(Request::CopyObjects { page, indices });
+        // Couper : le thread moteur supprime les objets juste après la copie (atomique : aucune
+        // édition ne peut s'intercaler et décaler les index ; une copie échouée ne supprime
+        // rien) ; Annuler ne défait que la suppression. La sélection part tout de suite pour que
+        // Suppr ou les flèches ne visent pas les mêmes index entre-temps.
+        if cut {
+            self.edit.selection = None;
+        }
+        self.edit.pending_copy = Some((cut, source));
+        self.worker
+            .send(Request::CopyObjects { page, indices, cut });
     }
 
-    /// Réponse `Copied` : repère texte dans le presse-papiers système (Ctrl+V le reconnaît), puis
-    /// suppression des objets s'il s'agissait d'un « couper ».
+    /// Réponse `Copied` : repère texte dans le presse-papiers système (Ctrl+V le reconnaît) ;
+    /// pour un « couper », le `DocumentChanged` de la suppression suit.
     pub fn on_copied(&mut self, ctx: &egui::Context, count: usize, text: String) {
         let lang = self.lang();
-        let (cut, source) = self.edit.pending_copy.take().unwrap_or((None, None));
+        let (cut, source) = self.edit.pending_copy.take().unwrap_or((false, None));
         let marker = if text.trim().is_empty() {
             tr_args(lang, "clipboard.marker", &[("count", &count.to_string())])
         } else {
@@ -987,24 +994,19 @@ impl SuniApp {
             source,
             pastes: 0,
         });
-        match cut {
-            Some((page, indices)) => {
-                self.edit.selection = None;
-                self.edit.pending_status = Some(tr_args(
-                    lang,
-                    "status.objects_cut",
-                    &[("count", &indices.len().to_string())],
-                ));
-                self.worker
-                    .send(Request::Edit(EditOp::DeleteObjects { page, indices }));
-            }
-            None => {
-                self.status_msg = Some(tr_args(
-                    lang,
-                    "status.objects_copied",
-                    &[("count", &count.to_string())],
-                ));
-            }
+        let msg = tr_args(
+            lang,
+            if cut {
+                "status.objects_cut"
+            } else {
+                "status.objects_copied"
+            },
+            &[("count", &count.to_string())],
+        );
+        if cut {
+            self.edit.pending_status = Some(msg);
+        } else {
+            self.status_msg = Some(msg);
         }
     }
 

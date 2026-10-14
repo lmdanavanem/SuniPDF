@@ -1910,10 +1910,11 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
         let engine = engine();
         let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
         let count = doc.page_objects(0).unwrap().len();
-        // L'erreur liste les caractères absents (dédoublonnés) ; tabulation = quatre espaces.
-        match doc.add_text(0, 60.0, 300.0, "Привет", &TextStyle::default()) {
+        // L'erreur liste les caractères absents (dédoublonnés, même non consécutifs) ;
+        // tabulation = quatre espaces.
+        match doc.add_text(0, 60.0, 300.0, "Привет мир", &TextStyle::default()) {
             Err(EngineError::MissingGlyphs(chars)) => {
-                assert_eq!(chars, "Привет", "{chars:?}")
+                assert_eq!(chars, "Приветм", "{chars:?}")
             }
             other => panic!("attendu MissingGlyphs, obtenu {other:?}"),
         }
@@ -2863,6 +2864,68 @@ fn review_aes128_refuses_non_latin1_passwords_and_keeps_accessibility_bit() {
     let bits = doc.encryption_state.as_ref().unwrap().permissions().bits();
     assert_eq!(bits & (1 << 9), 1 << 9, "bit 10 accessibilité : {bits:#x}");
     assert_eq!(bits & (1 << 4), 0, "bit 5 copie refusé : {bits:#x}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// AES-128 : tout mot de passe accepté par `Protection::validate` doit rouvrir le fichier dans
+/// PDFium (qui reçoit le mot de passe en UTF-8 et ne réessaie qu'en Latin-1) ; les symboles de
+/// PDFDocEncoding hors Latin-1 (€, œ, tirets, guillemets typographiques) sont refusés d'emblée.
+#[test]
+fn review_aes128_latin1_passwords_round_trip_through_pdfium() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = temp_dir("review-aes128");
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    // Bornes de la plage acceptée : 0x20, 0x7E, 0xA1, 0xAC, 0xAE, 0xFF, et des accents courants.
+    for (i, user) in [" ~", "¡¬", "®ÿ", "Été¿", "Noël 2026"].iter().enumerate() {
+        let owner = format!("{user}¡");
+        let bytes = security::protect(
+            &input,
+            None,
+            &Protection {
+                user_password: user.to_string(),
+                owner_password: owner.clone(),
+                allow_print: false,
+                aes256: false,
+                ..Default::default()
+            },
+        )
+        .unwrap_or_else(|e| panic!("{user:?} : {e}"));
+        let path = dir.join(format!("latin1-{i}.pdf"));
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(
+            matches!(engine.open(&path, None), Err(EngineError::PasswordRequired)),
+            "{user:?} : ouverture libre"
+        );
+        let doc = engine
+            .open(&path, Some(user))
+            .unwrap_or_else(|e| panic!("{user:?} : {e}"));
+        assert!(
+            doc.is_encrypted() && !doc.properties().can_print,
+            "{user:?}"
+        );
+        assert!(engine.open(&path, Some(&owner)).is_ok(), "{owner:?}");
+    }
+    for pw in ["prix5€", "œuvre", "a—b", "“x”"] {
+        for (user, owner) in [(pw, "own3r"), ("us3r", pw)] {
+            assert!(
+                matches!(
+                    security::protect(
+                        &input,
+                        None,
+                        &Protection {
+                            user_password: user.into(),
+                            owner_password: owner.into(),
+                            aes256: false,
+                            ..Default::default()
+                        },
+                    ),
+                    Err(EngineError::PasswordNotLatin1)
+                ),
+                "{user:?} / {owner:?}"
+            );
+        }
+    }
     let _ = std::fs::remove_dir_all(dir);
 }
 

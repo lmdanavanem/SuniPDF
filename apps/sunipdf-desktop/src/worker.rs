@@ -346,9 +346,12 @@ pub enum Request {
         page: usize,
     },
     /// Copie dans le presse-papiers d'objets du moteur (document inchangé, pas d'annulation).
+    /// `cut` : les objets sont supprimés aussitôt après une copie réussie, sans qu'une autre
+    /// requête puisse décaler leurs index entre les deux (`Copied` puis `DocumentChanged`).
     CopyObjects {
         page: usize,
         indices: Vec<usize>,
+        cut: bool,
     },
     SystemFonts,
     Batch(BatchOp),
@@ -1173,13 +1176,19 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     list: doc.page_objects(page).unwrap_or_default(),
                 }
             }
-            Request::CopyObjects { page, indices } => {
+            Request::CopyObjects { page, indices, cut } => {
                 let Some(doc) = &state.document else { continue };
                 match doc.copy_objects(page, &indices) {
                     Ok(clip) => {
                         let (count, text) = (clip.count, clip.text.clone());
                         state.clip = Some(clip);
-                        Response::Copied { count, text }
+                        if !cut {
+                            Response::Copied { count, text }
+                        } else if tx.send(Response::Copied { count, text }).is_err() {
+                            break;
+                        } else {
+                            state.edit(EditOp::DeleteObjects { page, indices })
+                        }
                     }
                     Err(e) => Response::OperationFailed(e),
                 }

@@ -47,13 +47,14 @@ impl From<ProtectionProblem> for EngineError {
     }
 }
 
-/// Caractère encodable en PDFDocEncoding (mots de passe R4) : Latin-1 imprimable (sans les
-/// contrôles C1, l'espace insécable ni le trait d'union conditionnel) plus les symboles propres à
-/// cet encodage (euro, tirets, guillemets typographiques, ligatures…). lopdf abandonne les autres
-/// sans erreur, ce qui donnerait un mot de passe vide ou tronqué.
+/// Caractère d'un mot de passe AES-128 (R4) que SuniPDF sait rouvrir : Latin-1 imprimable, sans
+/// les contrôles C1, l'espace insécable (0xA0 est l'euro en PDFDocEncoding) ni le trait d'union
+/// conditionnel (0xAD, non défini). lopdf écrit le mot de passe en PDFDocEncoding et abandonne sans
+/// erreur les caractères qu'il ne code pas ; PDFium, lui, reçoit le mot de passe en UTF-8 et ne
+/// réessaie qu'en Latin-1 : les symboles propres à PDFDocEncoding hors Latin-1 (€, œ, tirets et
+/// guillemets typographiques, ligatures…) donneraient un fichier conforme que SuniPDF ne rouvre pas.
 fn pdf_doc_encodable(c: char) -> bool {
     matches!(c as u32, 0x20..=0x7E | 0xA1..=0xAC | 0xAE..=0xFF)
-        || "€•†‡…—–ƒ⁄‹›−‰„“”‘’‚™ﬁﬂŁŒŠŸŽıłœšžˆˇ˘˙˝˛˚˜".contains(c)
 }
 
 impl Protection {
@@ -526,18 +527,30 @@ mod tests {
     }
 
     #[test]
-    fn aes128_refuses_passwords_outside_pdf_doc_encoding() {
+    fn aes128_refuses_passwords_outside_latin1() {
         let p = |user: &str, aes256: bool| Protection {
             user_password: user.into(),
             aes256,
             ..Default::default()
         };
         assert_eq!(
-            p("Été 5 € ¿ — “œ”", false).validate(),
+            p(" ~¡¬®ÿ Été 5 ¿", false).validate(),
             Ok(()),
-            "PDFDocEncoding accepté"
+            "Latin-1 accepté"
         );
-        for pw in ["пароль", "Пароль2026", "日本", "a\u{00AD}b", "x\u{A0}"] {
+        // Symboles de PDFDocEncoding hors Latin-1 : lopdf les code, PDFium ne les rouvre pas.
+        for pw in [
+            "пароль",
+            "Пароль2026",
+            "日本",
+            "a\u{00AD}b",
+            "x\u{A0}",
+            "prix5€",
+            "œuvre",
+            "a—b",
+            "“x”",
+            "ﬁn",
+        ] {
             assert_eq!(
                 p(pw, false).validate(),
                 Err(ProtectionProblem::NotLatin1),

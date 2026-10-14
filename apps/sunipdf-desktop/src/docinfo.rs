@@ -276,11 +276,14 @@ impl SuniApp {
                     .spacing([12.0, 8.0])
                     .show(ui, |ui| {
                         ui.label(tr(lang, "protect.user_password"));
-                        ui.add(
+                        let field = ui.add(
                             egui::TextEdit::singleline(&mut pr.user_password)
                                 .password(true)
                                 .desired_width(300.0),
                         );
+                        if ui.memory(|m| m.focused().is_none()) {
+                            field.request_focus();
+                        }
                         ui.end_row();
                         ui.label(tr(lang, "protect.owner_password"));
                         ui.add(

@@ -30,7 +30,8 @@ Reste, non bloquant :
 - rechiffrer automatiquement les extraits et les parties d'une division d'un document protégé (D046, A29) ;
 - vérifier avec qpdf les fichiers AES produits (fixture tierce, A4) et les XMP régénérés (lecture par un
   indexeur XMP) ;
-- lister précisément PDFDocEncoding depuis lopdf s'il expose sa table (A30) ;
+- reprendre `pdfaid:*` et les autres espaces de noms du XMP d'origine dans le paquet régénéré par
+  `set_metadata` (A34) ;
 - incorporer les JPEG d'orientation EXIF 5 et 7 sans décodage (A31) ; limiter la mémoire des lots de PNG ;
 - aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
 

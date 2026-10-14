@@ -169,8 +169,9 @@ impl SuniApp {
     pub fn on_suspended(&mut self, suspended: SuspendedDoc) {
         if let Some(i) = self.tabs.suspending.take() {
             if let Some(tab) = self.tabs.tabs.get_mut(i) {
-                // Une modification encore en vol au moment de la suspension compte aussi.
-                tab.dirty |= suspended.modified;
+                // Le point d'enregistrement du thread moteur fait foi (D052) : il compte une
+                // modification encore en vol et efface un « modifié » périmé côté interface.
+                tab.dirty = suspended.modified;
                 tab.doc = Some(suspended);
             }
         }
@@ -211,7 +212,7 @@ impl SuniApp {
         }
         self.can_undo = state.can_undo;
         self.can_redo = state.can_redo;
-        self.dirty |= state.modified;
+        self.dirty = state.modified;
         self.update_title(ctx);
         self.worker.send(Request::Bookmarks);
         if self.tabs.quit_pending {
