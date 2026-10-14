@@ -378,5 +378,12 @@
   "position.bottom-left": "Bottom left",
   "position.bottom-center": "Bottom center",
   "position.bottom-right": "Bottom right",
-  "status.stamped": "{count} page(s) stamped"
+  "status.stamped": "{count} page(s) stamped",
+  "error.already_exists": "A destination file already exists. Choose another folder or delete it first.",
+  "protect.error_owner_needed": "To restrict printing, copying or editing, set an owner password different from the open password.",
+  "unprotect.title": "Remove Protection",
+  "unprotect.subtitle": "The document will no longer be encrypted when saved.",
+  "unprotect.label": "Owner password",
+  "unprotect.hint": "Without a distinct owner password, enter the open password.",
+  "unprotect.ok": "Remove protection"
 }

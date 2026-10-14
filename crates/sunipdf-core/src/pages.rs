@@ -110,27 +110,61 @@ impl Engine {
         password: Option<&str>,
         chunk: usize,
         output_dir: &Path,
+        overwrite: bool,
     ) -> Result<Vec<PathBuf>, EngineError> {
-        if chunk == 0 {
-            return Err(EngineError::Other("chunk size must be at least 1".into()));
-        }
         let doc = self.open(input, password)?;
         let stem = input
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "document".into());
-        let mut outputs = Vec::new();
-        for (n, start) in (0..doc.page_count()).step_by(chunk).enumerate() {
-            let pages: Vec<usize> = (start..(start + chunk).min(doc.page_count())).collect();
-            let out = output_dir.join(format!("{stem}-{}.pdf", n + 1));
-            doc.extract_to(&pages, &out)?;
-            outputs.push(out);
-        }
-        Ok(outputs)
+        doc.split_to(chunk, output_dir, &stem, overwrite)
+    }
+}
+
+/// Erreur [`EngineError::AlreadyExists`] si l'un des chemins existe (aucun écrasement silencieux).
+pub fn ensure_absent(paths: &[PathBuf]) -> Result<(), EngineError> {
+    match paths.iter().find(|p| p.exists()) {
+        Some(p) => Err(EngineError::AlreadyExists(p.clone())),
+        None => Ok(()),
     }
 }
 
 impl Document<'_> {
+    /// Divise le document (état courant, y compris non enregistré) en fichiers de `chunk` pages
+    /// nommés `<stem>-<n>.pdf`. Sans `overwrite`, échoue avant toute écriture si l'un existe.
+    pub fn split_to(
+        &self,
+        chunk: usize,
+        output_dir: &Path,
+        stem: &str,
+        overwrite: bool,
+    ) -> Result<Vec<PathBuf>, EngineError> {
+        if chunk == 0 {
+            return Err(EngineError::Other("chunk size must be at least 1".into()));
+        }
+        std::fs::create_dir_all(output_dir)?;
+        let count = self.page_count();
+        let parts: Vec<(Vec<usize>, PathBuf)> = (0..count)
+            .step_by(chunk)
+            .enumerate()
+            .map(|(n, start)| {
+                (
+                    (start..(start + chunk).min(count)).collect(),
+                    output_dir.join(format!("{stem}-{}.pdf", n + 1)),
+                )
+            })
+            .collect();
+        if !overwrite {
+            ensure_absent(&parts.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>())?;
+        }
+        let mut outputs = Vec::new();
+        for (pages, out) in parts {
+            self.extract_to(&pages, &out)?;
+            outputs.push(out);
+        }
+        Ok(outputs)
+    }
+
     /// Extrait les pages (indices base 0, ordre conservé, doublons permis) vers `output`.
     pub fn extract_to(&self, pages: &[usize], output: &Path) -> Result<usize, EngineError> {
         if pages.is_empty() {

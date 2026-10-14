@@ -378,5 +378,12 @@
   "position.bottom-left": "Bas gauche",
   "position.bottom-center": "Bas centre",
   "position.bottom-right": "Bas droite",
-  "status.stamped": "{count} page(s) tamponnée(s)"
+  "status.stamped": "{count} page(s) tamponnée(s)",
+  "error.already_exists": "Un fichier de destination existe déjà. Choisissez un autre dossier ou supprimez-le d'abord.",
+  "protect.error_owner_needed": "Pour restreindre l'impression, la copie ou la modification, définissez un mot de passe propriétaire différent du mot de passe d'ouverture.",
+  "unprotect.title": "Retirer la protection",
+  "unprotect.subtitle": "Le document ne sera plus chiffré à l'enregistrement.",
+  "unprotect.label": "Mot de passe propriétaire",
+  "unprotect.hint": "Sans mot de passe propriétaire distinct, saisissez le mot de passe d'ouverture.",
+  "unprotect.ok": "Retirer la protection"
 }

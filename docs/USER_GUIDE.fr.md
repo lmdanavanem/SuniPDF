@@ -97,7 +97,11 @@ supprime et s'annule comme les autres.
 - **Protéger par mot de passe** : mot de passe d'ouverture, mot de passe propriétaire, permissions
   (impression, copie, modification, annotation), AES-256 par défaut (AES-128 pour les lecteurs anciens).
   La protection s'applique au fichier lors de l'enregistrement.
-- **Retirer la protection** : disponible quand le document a été ouvert avec son mot de passe.
+- **Retirer la protection** : demande le mot de passe propriétaire (ou le mot de passe d'ouverture quand
+  aucun mot de passe propriétaire distinct n'a été défini). Des restrictions (impression, copie…) exigent
+  un mot de passe propriétaire différent du mot de passe d'ouverture.
+- Les opérations sur un document protégé (métadonnées, optimisation, ordre des objets) **conservent** sa
+  protection.
 - **Supprimer les métadonnées** : retire le dictionnaire d'informations et les métadonnées XMP.
 - **Propriétés du document** (Ctrl+D) : titre, auteur, sujet, mots-clés modifiables ; version, taille,
   chiffrement et permissions en lecture.
@@ -116,8 +120,10 @@ Ctrl+K ouvre la palette : tapez quelques lettres, choisissez avec ↑ ↓, valid
 
 `sunipdf-cli.exe --help` liste les commandes : `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
-`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `commands`. Les sorties sont en JSON ;
-les codes de retour distinguent mot de passe requis (3), fichier invalide (4) et fichier illisible (5).
+`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`.
+Les sorties sont en JSON ; les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
+fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
+sans l'option `--overwrite`. `render` écrit toujours du PNG ; `rotate` accepte 90, 180, 270 ou -90.
 
 ## Limites actuelles
 

@@ -14,6 +14,10 @@ use sunipdf_core::{Engine, EngineError, Stamp, StampPosition, TextStyle};
     about = "SuniPDF command-line interface"
 )]
 struct Cli {
+    /// Allow replacing existing output files. Without it, every command refuses to overwrite
+    /// anything (exit code 6, error "already_exists").
+    #[arg(long, global = true)]
+    overwrite: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -63,7 +67,7 @@ enum Command {
         file: PathBuf,
         #[arg(long, default_value = "all")]
         pages: String,
-        #[arg(long)]
+        #[arg(long, allow_negative_numbers = true)]
         degrees: i32,
         #[arg(long)]
         out: PathBuf,
@@ -84,7 +88,7 @@ enum Command {
         color: String,
         #[arg(long, default_value_t = 0.3)]
         opacity: f32,
-        #[arg(long, default_value_t = 45.0)]
+        #[arg(long, default_value_t = 45.0, allow_negative_numbers = true)]
         angle: f32,
         /// center, top-left, top-center, top-right, bottom-left, bottom-center, bottom-right
         #[arg(long, default_value = "center")]
@@ -275,6 +279,17 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             }))
             .collect::<Vec<_>>()));
     }
+    let overwrite = cli.overwrite;
+    if !overwrite {
+        if let Some(out) = output_path(&cli.command) {
+            if out.exists() {
+                return Err(EngineError::AlreadyExists(out.to_path_buf()));
+            }
+        }
+    }
+    if let Command::Rotate { degrees, .. } = &cli.command {
+        quarter_turn(*degrees)?;
+    }
     let engine = Engine::new()?;
     match cli.command {
         Command::Commands => unreachable!(),
@@ -285,7 +300,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let doc = engine.open(&file, password.as_deref())?;
             let pages: Vec<usize> = match page {
-                Some(n) => vec![n.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?],
+                Some(n) => vec![n.checked_sub(1).ok_or_else(page_zero)?],
                 None => (0..doc.page_count()).collect(),
             };
             let mut out = std::io::stdout().lock();
@@ -319,7 +334,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             out_dir,
             password,
         } => {
-            let files = engine.split(&file, password.as_deref(), every, &out_dir)?;
+            let files = engine.split(&file, password.as_deref(), every, &out_dir, overwrite)?;
             Ok(serde_json::json!({ "files": files, "count": files.len() }))
         }
         Command::Rotate {
@@ -330,10 +345,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
-            let selection = parse_pages(&pages, doc.page_count())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
+            let delta = quarter_turn(degrees)?;
             for p in &selection {
                 let current = doc.page_rotation(*p)?;
-                doc.set_page_rotation(*p, current.turned(degrees))?;
+                doc.set_page_rotation(*p, current.turned(delta))?;
             }
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "rotated": selection.len() }))
@@ -352,7 +368,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
-            let selection = parse_pages(&pages, doc.page_count())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
             let position = StampPosition::from_id(&position)
                 .ok_or_else(|| EngineError::Other(format!("unknown position: {position}")))?;
             let stamp = Stamp {
@@ -382,7 +398,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
-            let selection = parse_pages(&pages, doc.page_count())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
             let position = StampPosition::from_id(&position)
                 .ok_or_else(|| EngineError::Other(format!("unknown position: {position}")))?;
             let stamp = Stamp {
@@ -421,8 +437,8 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
             let (from, to) = (
-                from.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?,
-                to.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?,
+                from.checked_sub(1).ok_or_else(page_zero)?,
+                to.checked_sub(1).ok_or_else(page_zero)?,
             );
             doc.move_page(from, to)?;
             doc.save_as(&out)?;
@@ -541,7 +557,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let doc = engine.open(&file, password.as_deref())?;
-            let files = doc.export_images(&out_dir, dpi)?;
+            let files = doc.export_images(&out_dir, dpi, overwrite)?;
             Ok(serde_json::json!({ "files": files, "count": files.len() }))
         }
         Command::Optimize {
@@ -592,16 +608,20 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let doc = engine.open(&file, password.as_deref())?;
-            let index = page.checked_sub(1).ok_or(EngineError::PageOutOfRange(0))?;
+            let index = page.checked_sub(1).ok_or_else(page_zero)?;
             let img = doc.render_page(index, scale)?;
-            image::save_buffer(
-                &out,
+            // Toujours du PNG (quelle que soit l'extension), écrit de façon atomique.
+            let mut png = Vec::new();
+            image::write_buffer_with_format(
+                &mut std::io::Cursor::new(&mut png),
                 &img.rgba,
                 img.width,
                 img.height,
                 image::ColorType::Rgba8,
+                image::ImageFormat::Png,
             )
             .map_err(|e| EngineError::Other(e.to_string()))?;
+            sunipdf_core::write_atomic(&out, &png)?;
             Ok(
                 serde_json::json!({ "out": out, "width": img.width, "height": img.height, "page": page }),
             )
@@ -610,9 +630,51 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 }
 
 /// "all", "1,3-5" (1-based) → indices 0-based validés.
+/// Chemin de sortie d'une commande qui écrit un seul fichier.
+fn output_path(command: &Command) -> Option<&std::path::Path> {
+    match command {
+        Command::Merge { out, .. }
+        | Command::Extract { out, .. }
+        | Command::Rotate { out, .. }
+        | Command::Stamp { out, .. }
+        | Command::PageNumbers { out, .. }
+        | Command::Insert { out, .. }
+        | Command::Move { out, .. }
+        | Command::Protect { out, .. }
+        | Command::Unprotect { out, .. }
+        | Command::SetMetadata { out, .. }
+        | Command::StripMetadata { out, .. }
+        | Command::Images2pdf { out, .. }
+        | Command::Optimize { out, .. }
+        | Command::Render { out, .. } => Some(out.as_path()),
+        _ => None,
+    }
+}
+
+/// 90, 180, 270 (ou leurs équivalents négatifs) → quart de tour horaire ; le reste est refusé.
+fn quarter_turn(degrees: i32) -> Result<i32, EngineError> {
+    match degrees.rem_euclid(360) {
+        d @ (90 | 180 | 270) => Ok(d),
+        _ => Err(EngineError::Other(format!(
+            "degrees must be 90, 180 or 270 (or -90), got {degrees}"
+        ))),
+    }
+}
+
+/// Pages triées sans doublon (opérations qui ne doivent toucher chaque page qu'une fois).
+fn unique(mut pages: Vec<usize>) -> Vec<usize> {
+    pages.sort_unstable();
+    pages.dedup();
+    pages
+}
+
+fn page_zero() -> EngineError {
+    EngineError::Other("page numbers start at 1".into())
+}
+
 fn parse_hex_color(hex: &str) -> Result<(u8, u8, u8), EngineError> {
     let h = hex.trim_start_matches('#');
-    if h.len() != 6 {
+    if h.len() != 6 || !h.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(EngineError::Other(format!("invalid colour: {hex}")));
     }
     let byte = |i: usize| {
@@ -656,14 +718,22 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(e) => {
+            // Numéros de page affichés en base 1, comme à la saisie.
+            let message = match &e {
+                EngineError::PageOutOfRange(i) if *i != usize::MAX => {
+                    format!("page {} out of range", i + 1)
+                }
+                _ => e.to_string(),
+            };
             eprintln!(
                 "{}",
-                serde_json::json!({ "error": e.code(), "message": e.to_string() })
+                serde_json::json!({ "error": e.code(), "message": message })
             );
             ExitCode::from(match e {
                 EngineError::PasswordRequired => 3,
                 EngineError::InvalidFormat => 4,
                 EngineError::Io(_) => 5,
+                EngineError::AlreadyExists(_) => 6,
                 _ => 1,
             })
         }
@@ -686,5 +756,49 @@ mod tests {
         assert!(parse_pages("3-1", 5).is_err());
         assert!(parse_pages("x", 5).is_err());
         assert!(parse_pages("", 5).is_err());
+    }
+
+    #[test]
+    fn validates_colours_angles_and_selections() {
+        assert_eq!(parse_hex_color("#FF8000").unwrap(), (255, 128, 0));
+        for bad in ["1€23", "aé123", "+f+f+f", "12345", "GGGGGG"] {
+            assert!(parse_hex_color(bad).is_err(), "{bad}");
+        }
+        assert_eq!(quarter_turn(90).unwrap(), 90);
+        assert_eq!(quarter_turn(-90).unwrap(), 270);
+        assert_eq!(quarter_turn(540).unwrap(), 180);
+        for bad in [0, 45, 360, -45] {
+            assert!(quarter_turn(bad).is_err(), "{bad}");
+        }
+        assert_eq!(unique(vec![2, 0, 1, 2, 1]), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn negative_angles_parse_and_overwrite_is_global() {
+        let cli = Cli::try_parse_from([
+            "sunipdf-cli",
+            "stamp",
+            "a.pdf",
+            "--text",
+            "X",
+            "--angle",
+            "-45",
+            "--out",
+            "o.pdf",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(cli.overwrite);
+        assert!(matches!(cli.command, Command::Stamp { angle, .. } if angle == -45.0));
+        assert!(Cli::try_parse_from([
+            "sunipdf-cli",
+            "rotate",
+            "a.pdf",
+            "--degrees",
+            "-90",
+            "--out",
+            "o.pdf",
+        ])
+        .is_ok());
     }
 }

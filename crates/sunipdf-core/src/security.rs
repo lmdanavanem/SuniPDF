@@ -25,6 +25,13 @@ pub struct Protection {
     pub aes256: bool,
 }
 
+impl Protection {
+    /// Au moins une permission retirée.
+    pub fn restricts(&self) -> bool {
+        !(self.allow_print && self.allow_copy && self.allow_modify && self.allow_annotate)
+    }
+}
+
 impl Default for Protection {
     fn default() -> Self {
         Self {
@@ -75,25 +82,34 @@ fn lopdf_err(e: lopdf::Error) -> EngineError {
     EngineError::Other(format!("lopdf: {e}"))
 }
 
+/// Charge un PDF avec lopdf et le déchiffre si nécessaire. Le chiffrement d'origine reste
+/// mémorisé dans `doc.encryption_state` : [`save`] le réapplique, si bien qu'un aller-retour
+/// lopdf (métadonnées, optimisation, fusion des flux) conserve la protection du document.
 pub(crate) fn load(input: &[u8], password: Option<&str>) -> Result<lopdf::Document, EngineError> {
-    let mut doc = lopdf::Document::load_mem(input).map_err(lopdf_err)?;
+    let doc = lopdf::Document::load_mem(input).map_err(|_| EngineError::InvalidFormat)?;
+    if !doc.is_encrypted() {
+        return Ok(doc);
+    }
+    // Le lecteur déchiffre pendant l'analyse quand le mot de passe est fourni d'emblée.
+    let options = lopdf::LoadOptions::with_password(password.unwrap_or(""));
+    let doc = lopdf::Document::load_mem_with_options(input, options).map_err(|e| match e {
+        lopdf::Error::InvalidPassword | lopdf::Error::Decryption(_) => {
+            EngineError::PasswordRequired
+        }
+        _ => EngineError::InvalidFormat,
+    })?;
     if doc.is_encrypted() {
-        // Le lecteur déchiffre pendant l'analyse quand le mot de passe est fourni d'emblée.
-        let options = lopdf::LoadOptions::with_password(password.unwrap_or(""));
-        doc = lopdf::Document::load_mem_with_options(input, options)
-            .map_err(|_| EngineError::PasswordRequired)?;
-        if doc.is_encrypted() {
-            return Err(EngineError::PasswordRequired);
-        }
-        if let Ok(id) = doc.trailer.get(b"Encrypt").and_then(Object::as_reference) {
-            doc.delete_object(id);
-        }
-        doc.trailer.remove(b"Encrypt");
+        return Err(EngineError::PasswordRequired);
     }
     Ok(doc)
 }
 
+/// Enregistre ; un document déchiffré par [`load`] est rechiffré avec la même clé, les mêmes
+/// mots de passe et les mêmes permissions (dictionnaire /Encrypt d'origine).
 pub(crate) fn save(mut doc: lopdf::Document) -> Result<Vec<u8>, EngineError> {
+    if let Some(state) = doc.encryption_state.take() {
+        doc.encrypt(&state).map_err(lopdf_err)?;
+    }
     let mut out = Vec::new();
     doc.save_to(&mut out)
         .map_err(|e| EngineError::Other(format!("lopdf save: {e}")))?;
@@ -126,7 +142,16 @@ pub fn protect(
     if p.user_password.is_empty() && p.owner_password.is_empty() {
         return Err(EngineError::Other("a password is required".into()));
     }
+    if p.restricts() && (p.owner_password.is_empty() || p.owner_password == p.user_password) {
+        // Sans mot de passe propriétaire distinct, quiconque ouvre le fichier a tous les droits :
+        // des restrictions seraient trompeuses.
+        return Err(EngineError::Other(
+            "permissions require a distinct owner password".into(),
+        ));
+    }
     let mut doc = load(input, current_password)?;
+    // Remplacer la protection existante, pas la superposer.
+    doc.encryption_state = None;
     // Les algorithmes R4 dérivent la clé de l'identifiant de fichier : en créer un s'il manque.
     if doc.trailer.get(b"ID").is_err() {
         let mut id = [0u8; 16];
@@ -174,10 +199,38 @@ pub fn protect(
     save(doc)
 }
 
-/// Retire le chiffrement (le mot de passe propriétaire ou utilisateur doit être connu).
+/// Retire le chiffrement. Le mot de passe fourni doit être le mot de passe propriétaire (qui est
+/// aussi le mot de passe d'ouverture quand aucun mot de passe propriétaire distinct n'existe) :
+/// un document protégé par mot de passe propriétaire seul s'ouvre sans mot de passe, mais ses
+/// restrictions ne se lèvent pas sans lui.
 pub fn unprotect(input: &[u8], password: &str) -> Result<Vec<u8>, EngineError> {
-    let doc = load(input, Some(password))?;
+    let mut doc = load(input, Some(password))?;
+    let Some(state) = doc.encryption_state.take() else {
+        return Err(EngineError::Other("document is not encrypted".into()));
+    };
+    if !owner_password_matches(&doc, &state, password)? {
+        return Err(EngineError::PasswordRequired);
+    }
     save(doc)
+}
+
+/// Vérifie un mot de passe propriétaire avec les algorithmes de lopdf, sur un document minimal
+/// qui porte le dictionnaire /Encrypt d'origine (reconstruit depuis l'état décodé) et l'/ID.
+fn owner_password_matches(
+    doc: &lopdf::Document,
+    state: &EncryptionState,
+    password: &str,
+) -> Result<bool, EngineError> {
+    let mut probe = lopdf::Document::new();
+    if let Ok(id) = doc.trailer.get(b"ID") {
+        probe.trailer.set("ID", id.clone());
+    }
+    let dict = state
+        .encode()
+        .map_err(|e| EngineError::Other(format!("lopdf: {e}")))?;
+    let id = probe.add_object(Object::Dictionary(dict));
+    probe.trailer.set("Encrypt", Object::Reference(id));
+    Ok(probe.authenticate_owner_password(password).is_ok())
 }
 
 fn info_dict(doc: &mut lopdf::Document) -> Result<&mut Dictionary, EngineError> {
@@ -262,6 +315,15 @@ impl Document<'_> {
             .ok()
             .and_then(|bytes| lopdf::Document::load_mem(&bytes).ok())
             .map(|d| match d.trailer.get(b"Encrypt") {
+                // Mot de passe d'ouverture vide : lopdf déchiffre au chargement et retire /Encrypt ;
+                // l'état d'origine (permissions comprises) reste dans `encryption_state`.
+                _ if d.encryption_state.is_some() => (
+                    true,
+                    d.encryption_state
+                        .as_ref()
+                        .map(|s| s.permissions().bits() as i64)
+                        .unwrap_or(-1),
+                ),
                 Ok(obj) => {
                     let p = obj
                         .as_reference()

@@ -256,7 +256,7 @@ pub const REGISTRY: &[CommandInfo] = &[
         "view.next_tab",
         "menu.view.next_tab",
         Some("shortcut.next_tab"),
-        true,
+        false,
         View
     ),
     cmd!(
@@ -264,7 +264,7 @@ pub const REGISTRY: &[CommandInfo] = &[
         "view.prev_tab",
         "menu.view.prev_tab",
         Some("shortcut.prev_tab"),
-        true,
+        false,
         View
     ),
     cmd!(

@@ -91,21 +91,26 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
     {
         dirs.push(dir);
     }
-    if let Ok(cwd) = std::env::current_dir() {
-        dirs.push(cwd);
+    // Confort de développement seulement : en version publiée, pdfium.dll est cherché à côté de
+    // l'exécutable (ou dans SUNIPDF_PDFIUM_DIR), jamais dans le répertoire courant ni dans un
+    // chemin de la machine de build.
+    #[cfg(debug_assertions)]
+    {
+        if let Ok(cwd) = std::env::current_dir() {
+            dirs.push(cwd);
+        }
+        let arch = if cfg!(target_arch = "aarch64") {
+            "arm64"
+        } else {
+            "x64"
+        };
+        dirs.push(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../third_party/pdfium")
+                .join(format!("win-{arch}"))
+                .join("bin"),
+        );
     }
-    // Confort de développement : binaires récupérés par scripts/fetch-pdfium.ps1.
-    let arch = if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else {
-        "x64"
-    };
-    dirs.push(
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../third_party/pdfium")
-            .join(format!("win-{arch}"))
-            .join("bin"),
-    );
     dirs
 }
 
@@ -206,6 +211,11 @@ impl std::fmt::Debug for Document<'_> {
 impl Document<'_> {
     pub fn info(&self) -> &DocumentInfo {
         &self.info
+    }
+
+    /// Chemin associé au document après « Enregistrer sous » (les enregistrements suivants y vont).
+    pub fn set_path(&mut self, path: PathBuf) {
+        self.info.path = path;
     }
 
     pub fn page_count(&self) -> usize {

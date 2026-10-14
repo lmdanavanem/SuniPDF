@@ -92,7 +92,10 @@ number from a template: `{n}` is the page number, `{total}` the page count (for 
 
 - **Protect with password**: open password, owner password, permissions (print, copy, edit, annotate),
   AES-256 by default (AES-128 for older readers). Encryption is applied to the file when you save.
-- **Remove protection**: available when the document was opened with its password.
+- **Remove protection**: asks for the owner password (or the open password when no distinct owner
+  password was set). Restrictions (printing, copying…) require an owner password different from the open
+  password.
+- Operations on a protected document (metadata, optimisation, object order) **keep** its protection.
 - **Remove metadata**: strips the information dictionary and XMP metadata.
 - **Document properties** (Ctrl+D): editable title, author, subject, keywords; version, size, encryption
   and permissions read-only.
@@ -110,8 +113,10 @@ Ctrl+K opens the palette: type a few letters, pick with ↑ ↓, confirm with En
 
 `sunipdf-cli.exe --help` lists the commands: `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
-`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `commands`. Output is JSON; exit codes
-distinguish password required (3), invalid file (4) and unreadable file (5).
+`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`.
+Output is JSON; exit codes distinguish password required (3), invalid file (4), unreadable file (5) and
+existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
+writes PNG; `rotate` accepts 90, 180, 270 or -90.
 
 ## Current limits
 

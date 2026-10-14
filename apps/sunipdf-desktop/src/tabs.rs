@@ -55,7 +55,13 @@ impl SuniApp {
         self.in_flight = None;
         self.last_rendered = None;
         self.thumbs_pending.clear();
-        let state = TabState {
+        // La sélection d'objet désigne un index du document actif : elle ne doit jamais
+        // survivre à un changement de document (Suppr agirait sur l'autre onglet).
+        self.edit.selected = None;
+        self.edit.reselect = None;
+        self.edit.drag_mode = None;
+        self.edit.text_prompt = None;
+        let mut state = TabState {
             document: self.document.take(),
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),
             effective_zoom: std::mem::replace(&mut self.effective_zoom, 1.0),
@@ -71,6 +77,8 @@ impl SuniApp {
             can_undo: std::mem::replace(&mut self.can_undo, false),
             can_redo: std::mem::replace(&mut self.can_redo, false),
         };
+        // Une recherche en vol sera relancée au retour sur l'onglet (sa réponse est ignorée).
+        state.find.reset_in_flight();
         self.generation += 1;
         self.docinfo.bookmarks_open = bookmarks_open;
         self.annotate.comments_open = comments_open;
@@ -141,18 +149,28 @@ impl SuniApp {
         {
             return;
         }
-        if self.tabs.resuming.is_some() {
+        if self.tabs.resuming.is_some() || self.opening.is_some() {
             return;
         }
+        let had_active = self.document.is_some();
         self.suspend_active();
         self.tabs.resuming = Some(index);
         self.worker.send(Request::Resume(index));
+        if !had_active && self.tabs.suspending.is_none() {
+            // Depuis l'accueil, rien n'est en cours de suspension : reprendre tout de suite.
+            match self.tabs.tabs[index].doc.take() {
+                Some(doc) => self.worker.send(Request::ResumeDoc(doc)),
+                None => self.tabs.resuming = None,
+            }
+        }
     }
 
     /// Fin de suspension : le moteur renvoie le document ; on le range dans son onglet.
     pub fn on_suspended(&mut self, suspended: SuspendedDoc) {
         if let Some(i) = self.tabs.suspending.take() {
             if let Some(tab) = self.tabs.tabs.get_mut(i) {
+                // Une modification encore en vol au moment de la suspension compte aussi.
+                tab.dirty |= suspended.modified;
                 tab.doc = Some(suspended);
             }
         }
@@ -191,6 +209,7 @@ impl SuniApp {
         }
         self.can_undo = state.can_undo;
         self.can_redo = state.can_redo;
+        self.dirty |= state.modified;
         self.update_title(ctx);
         self.worker.send(Request::Bookmarks);
         if self.tabs.quit_pending {
@@ -199,6 +218,15 @@ impl SuniApp {
                 self.request_quit_prompt();
             } else {
                 self.execute(ctx, sunipdf_core::Command::Quit);
+            }
+        }
+    }
+
+    /// La reprise a échoué : l'onglet visé est retiré (son document n'est plus disponible).
+    pub fn on_resume_failed(&mut self) {
+        if let Some(i) = self.tabs.resuming.take() {
+            if i < self.tabs.tabs.len() {
+                self.tabs.tabs.remove(i);
             }
         }
     }

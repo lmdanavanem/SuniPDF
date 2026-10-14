@@ -18,6 +18,8 @@ pub struct DocInfoState {
     pub protect_open: bool,
     pub protection: Protection,
     pub protect_error: Option<&'static str>,
+    pub unprotect_open: bool,
+    pub unprotect_password: String,
 }
 
 fn human_size(bytes: u64) -> String {
@@ -297,6 +299,10 @@ impl SuniApp {
             let pr = &self.docinfo.protection;
             if pr.user_password.is_empty() && pr.owner_password.is_empty() {
                 self.docinfo.protect_error = Some("protect.error_empty");
+            } else if pr.restricts()
+                && (pr.owner_password.is_empty() || pr.owner_password == pr.user_password)
+            {
+                self.docinfo.protect_error = Some("protect.error_owner_needed");
             } else {
                 let protection = pr.clone();
                 self.docinfo.protect_open = false;
@@ -308,6 +314,69 @@ impl SuniApp {
         } else if close {
             self.docinfo.protect_open = false;
             self.docinfo.protect_error = None;
+        }
+    }
+
+    pub fn unprotect_dialog(&mut self, ctx: &egui::Context) {
+        if !self.docinfo.unprotect_open {
+            return;
+        }
+        let lang = self.lang();
+        let muted = theme::palette(self.settings.dark_theme).text_muted;
+        let mut submit = false;
+        let mut close = false;
+        let spec = crate::dialog::Spec::new(
+            "unprotect",
+            tr(lang, "unprotect.title"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "unprotect.subtitle"))
+        .icon(icons::glyph::UNLOCK, "🔓")
+        .width(440.0);
+        let password = &mut self.docinfo.unprotect_password;
+        let mut enter = false;
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                crate::dialog::field_label(ui, tr(lang, "unprotect.label"));
+                let field = ui.add(
+                    egui::TextEdit::singleline(password)
+                        .password(true)
+                        .desired_width(f32::INFINITY),
+                );
+                if ui.memory(|m| m.focused().is_none()) {
+                    field.request_focus();
+                }
+                if field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    enter = true;
+                }
+                ui.label(
+                    RichText::new(tr(lang, "unprotect.hint"))
+                        .size(12.5)
+                        .color(muted),
+                );
+            },
+            |ui| {
+                if crate::dialog::primary(ui, tr(lang, "unprotect.ok")) {
+                    submit = true;
+                }
+                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|i| i.key_pressed(egui::Key::Escape))
+                {
+                    close = true;
+                }
+            },
+        );
+        if submit || enter {
+            let owner = std::mem::take(&mut self.docinfo.unprotect_password);
+            self.docinfo.unprotect_open = false;
+            self.worker
+                .send(Request::Edit(EditOp::Bytes(BytesOp::Unprotect(owner))));
+        } else if close {
+            self.docinfo.unprotect_open = false;
+            self.docinfo.unprotect_password.clear();
         }
     }
 }

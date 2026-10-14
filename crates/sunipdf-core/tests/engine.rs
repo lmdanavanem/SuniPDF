@@ -240,12 +240,26 @@ fn merge_extract_split_round_trip() {
     ));
     assert!(doc.extract_to(&[], &extracted).is_err());
 
-    let parts = engine.split(&merged, None, 3, &dir.join("parts")).unwrap();
+    let parts = engine
+        .split(&merged, None, 3, &dir.join("parts"), false)
+        .unwrap();
     assert_eq!(parts.len(), 2);
     assert_eq!(engine.open(&parts[0], None).unwrap().page_count(), 3);
     assert_eq!(engine.open(&parts[1], None).unwrap().page_count(), 1);
     assert!(parts[1].ends_with("merged-2.pdf"));
-    assert!(engine.split(&merged, None, 0, &dir).is_err());
+    // Aucun écrasement silencieux : les morceaux existent déjà.
+    assert!(matches!(
+        engine.split(&merged, None, 3, &dir.join("parts"), false),
+        Err(EngineError::AlreadyExists(_))
+    ));
+    assert_eq!(
+        engine
+            .split(&merged, None, 3, &dir.join("parts"), true)
+            .unwrap()
+            .len(),
+        2
+    );
+    assert!(engine.split(&merged, None, 0, &dir, false).is_err());
     assert!(engine.merge(&[], &dir.join("x.pdf")).is_err());
     assert!(std::fs::read_dir(&dir).unwrap().all(|e| !e
         .unwrap()
@@ -592,8 +606,15 @@ fn images_to_pdf_export_images_and_optimize() {
     let exported = engine
         .open(&fixture("two-pages.pdf"), None)
         .unwrap()
-        .export_images(&dir.join("png"), 72.0)
+        .export_images(&dir.join("png"), 72.0, false)
         .unwrap();
+    assert!(matches!(
+        engine
+            .open(&fixture("two-pages.pdf"), None)
+            .unwrap()
+            .export_images(&dir.join("png"), 72.0, false),
+        Err(EngineError::AlreadyExists(_))
+    ));
     assert_eq!(exported.len(), 2);
     let back = image::open(&exported[1]).unwrap();
     assert_eq!((back.width(), back.height()), (792, 612));
@@ -1076,5 +1097,166 @@ fn stamp_watermark_and_page_numbers() {
         doc2.add_text(0, 10.0, 10.0, "x", &style).is_ok(),
         "opacité bornée"
     );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn lopdf_round_trips_keep_encryption_and_unprotect_needs_owner_password() {
+    use sunipdf_core::{convert, security, Metadata, Protection};
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-keepenc-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+
+    // Protection par mot de passe propriétaire seul : le document s'ouvre sans mot de passe,
+    // mais lever la protection exige le mot de passe propriétaire.
+    let owner_only = security::protect(
+        &input,
+        None,
+        &Protection {
+            owner_password: "own".into(),
+            allow_copy: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let owner_only_path = dir.join("owner-only.pdf");
+    std::fs::write(&owner_only_path, &owner_only).unwrap();
+    let props = engine.open(&owner_only_path, None).unwrap().properties();
+    assert!(
+        props.encrypted && !props.can_copy && props.can_print,
+        "protection propriétaire seule visible : {props:?}"
+    );
+    for wrong in ["", "nimportequoi", "OWN"] {
+        assert!(
+            matches!(
+                security::unprotect(&owner_only, wrong),
+                Err(EngineError::PasswordRequired)
+            ),
+            "mot de passe {wrong:?} refusé"
+        );
+    }
+    let clear = security::unprotect(&owner_only, "own").unwrap();
+    let clear_path = dir.join("clear.pdf");
+    std::fs::write(&clear_path, &clear).unwrap();
+    assert!(
+        !engine
+            .open(&clear_path, None)
+            .unwrap()
+            .properties()
+            .encrypted
+    );
+    assert!(
+        security::unprotect(&clear, "own").is_err(),
+        "plus rien à retirer"
+    );
+
+    // Des restrictions sans mot de passe propriétaire distinct seraient trompeuses : refusées.
+    for owner in ["", "u"] {
+        let p = Protection {
+            user_password: "u".into(),
+            owner_password: owner.into(),
+            allow_print: false,
+            ..Default::default()
+        };
+        assert!(
+            security::protect(&input, None, &p).is_err(),
+            "owner={owner:?}"
+        );
+    }
+
+    // Métadonnées, nettoyage et optimisation conservent le chiffrement, les mots de passe et les
+    // permissions d'origine.
+    for aes256 in [false, true] {
+        let protected = security::protect(
+            &input,
+            None,
+            &Protection {
+                user_password: "user".into(),
+                owner_password: "owner".into(),
+                allow_copy: false,
+                aes256,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let meta = Metadata {
+            title: Some("Titre protégé".into()),
+            ..Default::default()
+        };
+        let outputs = [
+            (
+                "meta",
+                security::set_metadata(&protected, Some("user"), &meta).unwrap(),
+            ),
+            (
+                "strip",
+                security::strip_metadata(&protected, Some("user")).unwrap(),
+            ),
+            (
+                "optimize",
+                convert::optimize(&protected, Some("user")).unwrap(),
+            ),
+        ];
+        for (name, bytes) in outputs {
+            let path = dir.join(format!("{name}-{aes256}.pdf"));
+            std::fs::write(&path, &bytes).unwrap();
+            assert!(
+                matches!(engine.open(&path, None), Err(EngineError::PasswordRequired)),
+                "{name} aes256={aes256} : toujours protégé"
+            );
+            let doc = engine.open(&path, Some("user")).unwrap();
+            let props = doc.properties();
+            assert!(props.encrypted && !props.can_copy, "{name} aes256={aes256}");
+            assert!(doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+            if name == "meta" {
+                assert_eq!(props.metadata.title.as_deref(), Some("Titre protégé"));
+            }
+            assert!(engine.open(&path, Some("owner")).is_ok());
+        }
+    }
+
+    // Chiffrement RC4 (fixture tierce) conservé lui aussi.
+    let rc4 = std::fs::read(fixture("encrypted-rc4.pdf")).unwrap();
+    let rc4_meta = security::set_metadata(
+        &rc4,
+        Some("secret"),
+        &Metadata {
+            title: Some("RC4".into()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let rc4_path = dir.join("rc4-meta.pdf");
+    std::fs::write(&rc4_path, &rc4_meta).unwrap();
+    assert!(matches!(
+        engine.open(&rc4_path, None),
+        Err(EngineError::PasswordRequired)
+    ));
+    let doc = engine.open(&rc4_path, Some("secret")).unwrap();
+    assert_eq!(doc.properties().metadata.title.as_deref(), Some("RC4"));
+
+    // Entrée qui n'est pas un PDF : erreur de format typée, pas « other ».
+    assert!(matches!(
+        convert::optimize(b"not a pdf at all", None),
+        Err(EngineError::InvalidFormat)
+    ));
+    assert!(matches!(
+        security::protect(
+            b"not a pdf",
+            None,
+            &Protection {
+                user_password: "x".into(),
+                ..Default::default()
+            }
+        ),
+        Err(EngineError::InvalidFormat)
+    ));
+    // Optimisation sans gain : jamais de fichier plus gros que l'entrée.
+    let src = dir.join("src.pdf");
+    std::fs::write(&src, &input).unwrap();
+    let opt = convert::optimize_file(&src, &dir.join("opt.pdf"), None).unwrap();
+    assert!(opt.after <= opt.before);
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -28,8 +28,10 @@ impl Engine {
         }
         let mut doc = self.pdfium.create_new_pdf()?;
         for path in images {
-            let img = image::open(path)
-                .map_err(|e| EngineError::Other(format!("{}: {e}", path.display())))?;
+            let img = image::open(path).map_err(|e| match e {
+                image::ImageError::IoError(io) => EngineError::Io(io),
+                other => EngineError::Other(format!("{}: {other}", path.display())),
+            })?;
             let (w, h) = (
                 img.width() as f32 * 72.0 / dpi,
                 img.height() as f32 * 72.0 / dpi,
@@ -56,7 +58,13 @@ impl Engine {
 
 impl Document<'_> {
     /// Exporte toutes les pages en PNG (`<stem>-<n>.png`) dans `output_dir` à `dpi`.
-    pub fn export_images(&self, output_dir: &Path, dpi: f32) -> Result<Vec<PathBuf>, EngineError> {
+    /// Sans `overwrite`, échoue avant toute écriture si l'un des fichiers existe déjà.
+    pub fn export_images(
+        &self,
+        output_dir: &Path,
+        dpi: f32,
+        overwrite: bool,
+    ) -> Result<Vec<PathBuf>, EngineError> {
         if !(dpi.is_finite() && dpi > 0.0) {
             return Err(EngineError::Other("dpi must be positive".into()));
         }
@@ -67,10 +75,15 @@ impl Document<'_> {
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "page".into());
+        let targets: Vec<PathBuf> = (0..self.page_count())
+            .map(|page| output_dir.join(format!("{stem}-{}.png", page + 1)))
+            .collect();
+        if !overwrite {
+            crate::pages::ensure_absent(&targets)?;
+        }
         let mut out = Vec::new();
-        for page in 0..self.page_count() {
+        for (page, path) in targets.into_iter().enumerate() {
             let img = self.render_page(page, dpi / 72.0)?;
-            let path = output_dir.join(format!("{stem}-{}.png", page + 1));
             let mut png = Vec::new();
             image::write_buffer_with_format(
                 &mut std::io::Cursor::new(&mut png),
@@ -91,31 +104,13 @@ impl Document<'_> {
 /// Recompresse les flux et supprime les objets inutilisés (lopdf). Sans perte : le contenu
 /// est inchangé ; le gain dépend du fichier (souvent faible sur des PDF déjà compressés).
 pub fn optimize(input: &[u8], password: Option<&str>) -> Result<Vec<u8>, EngineError> {
-    let mut doc =
-        lopdf::Document::load_mem(input).map_err(|e| EngineError::Other(format!("lopdf: {e}")))?;
-    if doc.is_encrypted() {
-        let options = lopdf::LoadOptions::with_password(password.unwrap_or(""));
-        doc = lopdf::Document::load_mem_with_options(input, options)
-            .map_err(|_| EngineError::PasswordRequired)?;
-        if doc.is_encrypted() {
-            return Err(EngineError::PasswordRequired);
-        }
-        if let Ok(id) = doc
-            .trailer
-            .get(b"Encrypt")
-            .and_then(lopdf::Object::as_reference)
-        {
-            doc.delete_object(id);
-        }
-        doc.trailer.remove(b"Encrypt");
-    }
+    // `security::load` / `save` : un document protégé le reste après optimisation.
+    let mut doc = crate::security::load(input, password)?;
     doc.compress();
     doc.delete_zero_length_streams();
     doc.prune_objects();
     doc.renumber_objects();
-    let mut out = Vec::new();
-    doc.save_to(&mut out)
-        .map_err(|e| EngineError::Other(format!("lopdf save: {e}")))?;
+    let out = crate::security::save(doc)?;
     Ok(out)
 }
 
@@ -126,7 +121,11 @@ pub fn optimize_file(
     password: Option<&str>,
 ) -> Result<Optimized, EngineError> {
     let bytes = std::fs::read(input)?;
-    let out = optimize(&bytes, password)?;
+    let mut out = optimize(&bytes, password)?;
+    if out.len() >= bytes.len() {
+        // Jamais de fichier plus gros : sans gain, la sortie est une copie de l'entrée.
+        out = bytes.clone();
+    }
     write_atomic(output, &out)?;
     Ok(Optimized {
         before: bytes.len() as u64,

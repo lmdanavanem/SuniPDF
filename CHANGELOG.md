@@ -11,6 +11,31 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   variables `{n}` et `{total}` ; chaque tampon reste un objet modifiable et annulable.
   Moteur `sunipdf-core::stamp`, CLI `stamp` et `page-numbers`, 1 test moteur.
 
+### Corrigé (revue de code adverse, 2026-10-14)
+- **Sécurité** : modifier les métadonnées, les supprimer, optimiser ou mettre un objet à l'arrière-plan
+  retirait silencieusement le chiffrement d'un PDF protégé ; la protection d'origine (clé, mots de passe,
+  permissions) est désormais réappliquée. « Retirer la protection » exige le mot de passe propriétaire
+  (n'importe quel mot de passe passait sur un document protégé par mot de passe propriétaire seul) et
+  l'application le demande dans une boîte dédiée. Des restrictions sans mot de passe propriétaire distinct
+  sont refusées. Les propriétés signalent correctement une protection par mot de passe propriétaire seul.
+- **Perte de données** : après « Enregistrer sous », une modification puis Ctrl+S écrasait le fichier
+  d'origine ; « Diviser » et « Exporter en images » remplaçaient des fichiers existants ; la sélection
+  d'objet survivait à un changement d'onglet (Suppr agissait sur l'autre document) ; fermer la fenêtre avec
+  un onglet modifié en arrière-plan réenregistrait le document actif intact ; une modification en vol
+  pendant un changement d'onglet perdait l'indicateur « modifié ».
+- **Onglets** : cliquer un onglet depuis l'accueil bloquait l'application ; ouvrir un fichier pendant une
+  autre ouverture créait un onglet fantôme ; une recherche en cours restait bloquée au retour sur l'onglet ;
+  des miniatures d'un document fermé pouvaient apparaître dans le suivant.
+- **Annulation** : annuler un « Retirer la protection » échouait et vidait l'historique (les instantanés
+  gardent maintenant leur mot de passe) ; maintenir une flèche sur un objet ne crée plus qu'une entrée.
+- Les raccourcis clavier qui exigent un document sont ignorés sur l'accueil (ils ouvraient un sélecteur
+  de fichier).
+- **CLI** : aucune sortie existante n'est écrasée sans `--overwrite` (code 6) ; `render` écrit toujours du
+  PNG de façon atomique (une extension `.jpg` tronquait le fichier) ; `rotate` refuse les angles non
+  multiples de 90 ; couleur non ASCII refusée au lieu d'un plantage ; angles négatifs acceptés ; pages
+  en double traitées une fois ; erreurs lopdf typées (format invalide, E/S) ; numéros de page des
+  messages en base 1 ; `optimize` ne produit jamais un fichier plus gros que l'entrée.
+
 ## [0.3.0] — 2026-10-14
 
 ### Ajouté

@@ -58,6 +58,14 @@ enum UnsavedChoice {
     Cancel,
 }
 
+impl FindState {
+    /// Oublie une recherche en vol : elle sera relancée au prochain affichage de la barre.
+    pub fn reset_in_flight(&mut self) {
+        self.in_flight = false;
+        self.searched = None;
+    }
+}
+
 #[derive(Default)]
 pub struct FindState {
     pub open: bool,
@@ -225,7 +233,8 @@ impl SuniApp {
             self.pending_files.push(path);
             return;
         }
-        if self.tabs.resuming.is_some() {
+        if self.tabs.resuming.is_some() || self.opening.is_some() {
+            // Une ouverture ou un changement d'onglet est déjà en cours.
             return;
         }
         self.error = None;
@@ -346,6 +355,12 @@ impl SuniApp {
                     self.can_undo = false;
                     self.can_redo = false;
                     let opened_path = info.path.clone();
+                    // Rien du document précédent ne doit apparaître dans le nouveau.
+                    self.thumbnails.clear();
+                    self.thumbs_pending.clear();
+                    self.edit.selected = None;
+                    self.edit.reselect = None;
+                    self.edit.drag_mode = None;
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
                     self.dirty = false;
@@ -423,6 +438,7 @@ impl SuniApp {
                     info,
                     can_undo,
                     can_redo,
+                    ..
                 }) => {
                     self.can_undo = can_undo;
                     self.can_redo = can_redo;
@@ -479,6 +495,11 @@ impl SuniApp {
                 Response::ObjectSelected { page, info } => self.on_object_selected(page, info),
                 Response::Suspended(s) => self.on_suspended(s),
                 Response::Resumed(state) => self.on_resumed(state, ctx),
+                Response::ResumeFailed(error) => {
+                    log::error!("reprise d'onglet impossible : {error}");
+                    self.on_resume_failed();
+                    self.error = Some(error_key(&error));
+                }
                 Response::Properties(props) => {
                     self.docinfo.metadata_edit = props.metadata.clone();
                     self.docinfo.properties = Some(props);
@@ -593,6 +614,7 @@ impl SuniApp {
             || self.unsaved_prompt.is_some()
             || self.tools.split_open
             || self.tools.stamp_open.is_some()
+            || self.docinfo.unprotect_open
         {
             return;
         }
@@ -773,6 +795,10 @@ impl SuniApp {
             key(Modifiers::COMMAND, Key::Tab, Command::NextTab);
         });
         for command in commands {
+            // Raccourci sans document : ignoré (seuls les clics d'outils ouvrent d'abord un fichier).
+            if command.info().needs_document && self.document.is_none() {
+                continue;
+            }
             self.execute(ctx, command);
         }
     }
@@ -971,8 +997,8 @@ impl SuniApp {
                 if encrypted == Some(false) {
                     self.error = Some("error.not_encrypted");
                 } else {
-                    self.worker
-                        .send(Request::Edit(EditOp::Bytes(BytesOp::Unprotect)));
+                    self.docinfo.unprotect_password.clear();
+                    self.docinfo.unprotect_open = true;
                 }
             }
             Command::StripMetadata => {
@@ -1870,13 +1896,18 @@ impl eframe::App for SuniApp {
             && !self.allow_close
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-            self.unsaved_prompt = Some(PendingAction::Quit);
+            // Même logique que Quitter : invite pour le document actif s'il est modifié, sinon
+            // reprise de l'onglet modifié en arrière-plan (jamais d'écriture d'un document intact).
+            if self.unsaved_prompt.is_none() && self.tabs.resuming.is_none() {
+                self.execute(&ctx, Command::Quit);
+            }
         }
         self.unsaved_dialog(&ctx);
         self.split_dialog(&ctx);
         self.stamp_dialog(&ctx);
         self.properties_dialog(&ctx);
         self.protect_dialog(&ctx);
+        self.unprotect_dialog(&ctx);
         self.text_prompt_dialog(&ctx);
         self.note_dialog(&ctx);
         self.password_dialog(&ctx);
@@ -1931,6 +1962,7 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::SecurityRestricted => "error.security",
         EngineError::PageOutOfRange(_) => "error.page_range",
         EngineError::RenderTooLarge => "error.render_too_large",
+        EngineError::AlreadyExists(_) => "error.already_exists",
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -1950,6 +1982,7 @@ mod tests {
             EngineError::SecurityRestricted,
             EngineError::PageOutOfRange(0),
             EngineError::RenderTooLarge,
+            EngineError::AlreadyExists(PathBuf::new()),
             EngineError::Other(String::new()),
         ];
         for e in errors {

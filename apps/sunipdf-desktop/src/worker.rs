@@ -23,8 +23,17 @@ pub struct SuspendedDoc {
     pub bytes: Vec<u8>,
     pub password: Option<String>,
     pub path: PathBuf,
-    pub undo: Vec<Vec<u8>>,
-    pub redo: Vec<Vec<u8>>,
+    pub undo: Vec<Snapshot>,
+    pub redo: Vec<Snapshot>,
+    /// Modifié depuis l'ouverture ou le dernier enregistrement.
+    pub modified: bool,
+}
+
+/// Instantané d'annulation : octets du document et mot de passe nécessaire pour les recharger
+/// (il change avec Protéger / Retirer la protection).
+pub struct Snapshot {
+    bytes: Vec<u8>,
+    password: Option<String>,
 }
 
 /// Tâche de fichiers (non annulable : produit de nouveaux fichiers, le document ouvert est intact).
@@ -67,7 +76,8 @@ pub enum BatchResult {
 /// Transformation d'octets (lopdf) : chiffrement, métadonnées.
 pub enum BytesOp {
     Protect(Protection),
-    Unprotect,
+    /// Mot de passe propriétaire saisi par l'utilisateur.
+    Unprotect(String),
     SetMetadata(Metadata),
     StripMetadata,
 }
@@ -133,6 +143,13 @@ pub enum EditOp {
         style: ObjectStyle,
     },
     MoveObject {
+        page: usize,
+        index: usize,
+        dx: f32,
+        dy: f32,
+    },
+    /// Décalage au clavier : les décalages consécutifs du même objet partagent une annulation.
+    NudgeObject {
         page: usize,
         index: usize,
         dx: f32,
@@ -233,6 +250,7 @@ pub struct DocState {
     pub info: DocumentInfo,
     pub can_undo: bool,
     pub can_redo: bool,
+    pub modified: bool,
 }
 
 pub enum Response {
@@ -279,6 +297,8 @@ pub enum Response {
     },
     Suspended(SuspendedDoc),
     Resumed(DocState),
+    /// La reprise d'un onglet suspendu a échoué (le document de cet onglet est perdu).
+    ResumeFailed(EngineError),
     Saved {
         path: PathBuf,
     },
@@ -316,8 +336,12 @@ struct State<'a> {
     cache: RenderCache,
     /// Pages voisines à pré-rendre (échelle courante) quand aucune requête n'attend.
     prefetch: VecDeque<(usize, f32)>,
-    undo: Vec<Vec<u8>>,
-    redo: Vec<Vec<u8>>,
+    undo: Vec<Snapshot>,
+    redo: Vec<Snapshot>,
+    /// Modifié depuis l'ouverture, la reprise ou le dernier enregistrement.
+    modified: bool,
+    /// Dernier objet décalé au clavier (page, index).
+    last_nudge: Option<(usize, usize)>,
 }
 
 impl State<'_> {
@@ -353,15 +377,16 @@ impl State<'_> {
             info: d.info().clone(),
             can_undo: !self.undo.is_empty(),
             can_redo: !self.redo.is_empty(),
+            modified: self.modified,
         })
     }
 
-    fn push_undo(&mut self, snapshot: Vec<u8>) {
+    fn push_undo(&mut self, snapshot: Snapshot) {
         self.undo.push(snapshot);
         self.redo.clear();
         while self.undo.len() > UNDO_MAX_ENTRIES
             || (self.undo.len() > 1
-                && self.undo.iter().map(Vec::len).sum::<usize>() > UNDO_MAX_BYTES)
+                && self.undo.iter().map(|s| s.bytes.len()).sum::<usize>() > UNDO_MAX_BYTES)
         {
             self.undo.remove(0);
         }
@@ -370,23 +395,44 @@ impl State<'_> {
     /// Applique une modification sous instantané. Toute erreur laisse le document intact
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
+        let nudge = match &op {
+            EditOp::NudgeObject { page, index, .. } => Some((*page, *index)),
+            _ => None,
+        };
+        // Décalages clavier consécutifs du même objet : l'instantané pris avant le premier suffit.
+        let coalesce = nudge.is_some() && nudge == self.last_nudge && !self.undo.is_empty();
         let Some(doc) = &mut self.document else {
             return Response::OperationFailed(EngineError::Other("no document".into()));
         };
-        let snapshot = match doc.snapshot() {
-            Ok(s) => s,
-            Err(e) => return Response::OperationFailed(e),
+        let snapshot = if coalesce {
+            None
+        } else {
+            match doc.snapshot() {
+                Ok(bytes) => Some(Snapshot {
+                    bytes,
+                    password: doc.password().map(str::to_owned),
+                }),
+                Err(e) => return Response::OperationFailed(e),
+            }
         };
         match apply(doc, op) {
             Ok(()) => {
-                self.push_undo(snapshot);
+                match snapshot {
+                    Some(s) => self.push_undo(s),
+                    None => self.redo.clear(),
+                }
+                self.last_nudge = nudge;
+                self.modified = true;
                 self.invalidate();
                 Response::DocumentChanged(self.doc_state().expect("document ouvert"))
             }
             Err(e) => {
-                if let Err(restore) = doc.restore(snapshot) {
-                    log::error!("restauration impossible après échec : {restore}");
+                if let Some(s) = snapshot {
+                    if let Err(restore) = doc.restore_with_password(s.bytes, s.password) {
+                        log::error!("restauration impossible après échec : {restore}");
+                    }
                 }
+                self.last_nudge = None;
                 Response::OperationFailed(e)
             }
         }
@@ -400,13 +446,24 @@ impl State<'_> {
             (&mut self.redo, &mut self.undo)
         };
         let target = from.pop()?;
-        match doc.snapshot() {
-            Ok(current) => to.push(current),
-            Err(e) => return Some(Response::OperationFailed(e)),
-        }
-        if let Err(e) = doc.restore(target) {
+        let current = match doc.snapshot() {
+            Ok(bytes) => Snapshot {
+                bytes,
+                password: doc.password().map(str::to_owned),
+            },
+            Err(e) => {
+                from.push(target);
+                return Some(Response::OperationFailed(e));
+            }
+        };
+        // L'instantané garde son mot de passe : annuler un « Retirer la protection » fonctionne.
+        if let Err(e) = doc.restore_with_password(target.bytes.clone(), target.password.clone()) {
+            from.push(target);
             return Some(Response::OperationFailed(e));
         }
+        to.push(current);
+        self.last_nudge = None;
+        self.modified = true;
         self.invalidate();
         Some(Response::DocumentChanged(self.doc_state()?))
     }
@@ -499,6 +556,12 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             dx,
             dy,
         } => doc.move_object(page, index, dx, dy),
+        EditOp::NudgeObject {
+            page,
+            index,
+            dx,
+            dy,
+        } => doc.move_object(page, index, dx, dy),
         EditOp::DeleteObject { page, index } => doc.delete_object(page, index),
         EditOp::AddImage {
             page,
@@ -536,11 +599,8 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
                     };
                     doc.restore_with_password(bytes, Some(new_password))
                 }
-                BytesOp::Unprotect => {
-                    let Some(pw) = password else {
-                        return Err(EngineError::Other("not encrypted".into()));
-                    };
-                    let bytes = security::unprotect(&current, &pw)?;
+                BytesOp::Unprotect(owner) => {
+                    let bytes = security::unprotect(&current, &owner)?;
                     doc.restore_with_password(bytes, None)
                 }
                 BytesOp::SetMetadata(m) => {
@@ -564,26 +624,16 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
         }
         BatchOp::Split { every, out_dir } => {
             let doc = doc.ok_or(EngineError::Other("no document".into()))?;
-            // L'état courant (éventuellement non enregistré) est divisé via un instantané temporaire.
-            let tmp = out_dir.join(format!(".sunipdf-split-{}.pdf", std::process::id()));
-            std::fs::create_dir_all(&out_dir)?;
-            sunipdf_core::write_atomic(&tmp, &doc.snapshot()?)?;
-            let stem_src = doc.info().path.clone();
-            let result = engine.split(&tmp, doc.password(), every, &out_dir);
-            let _ = std::fs::remove_file(&tmp);
-            let files = result?;
-            // Renommer d'après le nom du document d'origine.
-            let stem = stem_src
+            // L'état courant (éventuellement non enregistré) est divisé ; aucun fichier existant
+            // n'est remplacé (erreur AlreadyExists avant toute écriture).
+            let stem = doc
+                .info()
+                .path
                 .file_stem()
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "document".into());
-            let mut renamed = Vec::new();
-            for (i, f) in files.iter().enumerate() {
-                let target = out_dir.join(format!("{stem}-{}.pdf", i + 1));
-                std::fs::rename(f, &target)?;
-                renamed.push(target);
-            }
-            Ok(BatchResult::Split { files: renamed })
+            let files = doc.split_to(every, &out_dir, &stem, false)?;
+            Ok(BatchResult::Split { files })
         }
         BatchOp::Extract { pages, out } => {
             let doc = doc.ok_or(EngineError::Other("no document".into()))?;
@@ -597,7 +647,7 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
         BatchOp::ExportImages { out_dir, dpi } => {
             let doc = doc.ok_or(EngineError::Other("no document".into()))?;
             Ok(BatchResult::Exported {
-                files: doc.export_images(&out_dir, dpi)?,
+                files: doc.export_images(&out_dir, dpi, false)?,
             })
         }
         BatchOp::Optimize { out } => {
@@ -634,6 +684,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         prefetch: VecDeque::new(),
         undo: Vec::new(),
         redo: Vec::new(),
+        modified: false,
+        last_nudge: None,
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     loop {
@@ -665,6 +717,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     state.invalidate();
                     state.undo.clear();
                     state.redo.clear();
+                    state.modified = false;
+                    state.last_nudge = None;
                     Response::Opened(state.doc_state().expect("document ouvert"))
                 }
                 Err(error) => Response::OpenFailed { path, error },
@@ -745,6 +799,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     path: doc.info().path.clone(),
                     undo: std::mem::take(&mut state.undo),
                     redo: std::mem::take(&mut state.redo),
+                    modified: std::mem::replace(&mut state.modified, false),
                 };
                 Response::Suspended(suspended)
             }
@@ -759,12 +814,11 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         state.invalidate();
                         state.undo = s.undo;
                         state.redo = s.redo;
+                        state.modified = s.modified;
+                        state.last_nudge = None;
                         Response::Resumed(state.doc_state().expect("document repris"))
                     }
-                    Err(error) => Response::OpenFailed {
-                        path: s.path,
-                        error,
-                    },
+                    Err(error) => Response::ResumeFailed(error),
                 }
             }
             Request::ObjectAt { page, x, y } => {
@@ -806,9 +860,17 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 None => continue,
             },
             Request::Save { path } => {
-                let Some(doc) = &state.document else { continue };
+                let Some(doc) = &mut state.document else {
+                    continue;
+                };
                 match doc.save_as(&path) {
-                    Ok(()) => Response::Saved { path },
+                    Ok(()) => {
+                        // « Enregistrer sous » : le document suit son nouveau chemin (Ctrl+S, onglets).
+                        doc.set_path(path.clone());
+                        state.modified = false;
+                        state.last_nudge = None;
+                        Response::Saved { path }
+                    }
                     Err(e) => Response::SaveFailed(e),
                 }
             }
@@ -817,6 +879,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 state.invalidate();
                 state.undo.clear();
                 state.redo.clear();
+                state.modified = false;
+                state.last_nudge = None;
                 continue;
             }
         };

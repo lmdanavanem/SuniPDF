@@ -20,6 +20,8 @@ pub enum EngineError {
     PageOutOfRange(usize),
     #[error("requested render size exceeds limits")]
     RenderTooLarge,
+    #[error("output already exists: {0}")]
+    AlreadyExists(PathBuf),
     #[error("engine error: {0}")]
     Other(String),
 }
@@ -36,6 +38,7 @@ impl EngineError {
             Self::SecurityRestricted => "security_restricted",
             Self::PageOutOfRange(_) => "page_out_of_range",
             Self::RenderTooLarge => "render_too_large",
+            Self::AlreadyExists(_) => "already_exists",
             Self::Other(_) => "other",
         }
     }

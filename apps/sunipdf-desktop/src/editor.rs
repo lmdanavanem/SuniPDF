@@ -483,7 +483,7 @@ impl SuniApp {
     pub fn nudge_selected(&mut self, dx: f32, dy: f32) {
         if let Some((page, index)) = self.selected_ref() {
             self.edit.reselect = Some((page, index));
-            self.worker.send(Request::Edit(EditOp::MoveObject {
+            self.worker.send(Request::Edit(EditOp::NudgeObject {
                 page,
                 index,
                 dx,
