@@ -8,7 +8,7 @@ Livrables : `PDFCRAFT_AUDIT.md`, `FEATURE_MATRIX.md`, `ARCHITECTURE.md`, `TECH_S
 `AGENT_STRATEGY.md`, `I18N.md`, `DECISIONS.md`, 12 agents.
 
 ## Phase 1 — Fondations — **terminée (2026-10-14)**
-- [x] Workspace Rust compilable, application Windows démarrable (cible GNU sur ce poste).
+- [x] Workspace Rust compilable, application Windows démarrable (cible MSVC ; repli GNU documenté).
 - [x] Moteur PDFium intégré, chargé dynamiquement, erreurs typées.
 - [x] Ouvrir → afficher → naviguer → zoomer → fermer ; mot de passe ; glisser-déposer ; argument ligne de commande.
 - [x] i18n fr-FR/en-US, changement à chaud, préférence persistée (écriture atomique), thème clair/sombre.
@@ -20,7 +20,7 @@ Critère de sortie : `cargo test --workspace` vert + un PDF réel ouvert et affi
 ## Phase 2 — Fonctions essentielles — **largement livrée (2026-10-14)**
 Fait : registre de commandes, onglets, cache de rendu + miniatures, recherche, sélection/copie de texte, signets,
 fusion/division/extraction/rotation/réorganisation, enregistrement atomique, undo/redo, annotations principales.
-Reste : affichage continu, vérification qpdf en CI, tuiles pour le zoom profond.
+Reste : affichage continu, vérification qpdf en CI, tuiles pour le zoom profond (plans : `docs/plans/continuous-view.md`, `compress-lossy.md`).
 
 ### Détail initial
 Registre de commandes ; onglets ; affichage continu ; cache de rendu plafonné + miniatures ; recherche ;
@@ -30,8 +30,8 @@ Critère : opérations de bout en bout testées (fichier produit vérifié par q
 
 ## Phase 3 — Édition professionnelle — **partiellement livrée**
 Fait : notes, surlignage/soulignement/barré, commentaires (panneau), métadonnées, propriétés, palette de commandes.
-Fait (SUNI-031) : ajout de texte/images, formes, modification/déplacement/suppression d'objets existants.
-Reste : redimensionnement/rotation/couleur/police des objets, formulaires, filigranes, liens, autosave/récupération, signature image.
+Fait (SUNI-031 à 033) : ajout de texte/images, formes, modification/déplacement/redimensionnement/rotation 90°/duplication/ordre Z/suppression d'objets existants, couleurs, polices standard, tampons, filigranes, numéros de page, dialogues unifiés.
+Reste : rotation libre, polices système, formulaires, liens, annotations avancées (encre, texte libre), autosave/récupération, signature image (plans dans `docs/plans/`).
 
 ### Détail initial
 Ajout de texte/images ; modification de texte selon capacités PDFium ; formulaires AcroForm + FDF/XFDF ;
@@ -57,9 +57,9 @@ d'absence ; nettoyage des métadonnées ; signatures CMS/PKCS#12 + vérification
 CLI complète ; MCP opt-in confiné ; intégration Explorateur ; profils de conversion ; raccourcis configurables.
 
 ## Phase 6 — Qualité et distribution — **partiellement livrée**
-Fait : ZIP portable x64 + SHA256, MSI WiX authoré + workflow `release.yml` (x64, ARM64, signature optionnelle),
-ressources Windows, guides utilisateur FR/EN, notices tierces.
-Reste : exécution réelle de la CI, MSI construit, ARM64 compilé, corpus et fuzzing, benchmarks publiés.
+Fait : ZIP portable x64 + SHA256, MSI x64 construit localement (WiX 3.14 autonome) + workflow `release.yml` (x64, ARM64,
+signature optionnelle) déclenché par les tags `v*`, ressources Windows, guides utilisateur FR/EN, notices tierces.
+Reste : résultat de la CI à confirmer, ARM64 compilé, corpus et fuzzing, benchmarks publiés.
 
 ### Détail initial
 Corpus de non-régression + fuzzing ; benchmarks publiés avec matériel ; audit sécurité et licences ;
