@@ -25,10 +25,10 @@
     (ICE `smoke.exe`, extraction administrative).
 12. **Build ARM64 local bloqué par un composant Visual Studio manquant** (tenté le 2026-10-14) : la cible Rust
     `aarch64-pc-windows-msvc` est installée et le PDFium ARM64 se télécharge, mais l'édition de liens échoue car
-    les Build Tools n'ont que les outils x64 et x86 (`VC\Tools\MSVC\<version>in\Hostx64rm64` absent, CRT ARM64
+    les Build Tools n'ont que les outils x64 et x86 (`VC\Tools\MSVC\<version>\bin\Hostx64\arm64` absent, CRT ARM64
     absente). Installation (droits administrateur requis, refusée pendant la session autonome) :
     `& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe" modify --installPath
-    "C:\Program Files (x86)\Microsoft Visual Studio8\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64
+    "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64
     --passive --norestart`, puis `scripts\package-portable.ps1 -Arch arm64` (depuis Git Bash).
     Les runners GitHub `windows-latest` ont ce composant : `release.yml` construit l'ARM64 en CI.
 
@@ -58,3 +58,23 @@ A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans
 A10. **Résultat de la CI GitHub non vérifié par l'agent** : dépôt privé, ni `gh` ni jeton sur ce poste. Les
      workflows `ci.yml` et `release.yml` sont déclenchés par les push et les tags ; leur état se lit dans l'onglet
      Actions.
+A11. **Hub « Tous les outils » : 9 outils sur les 14 de PDFCraft.** Remplir et signer, Numériser et OCR,
+     Caviarder, Préparer un formulaire et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
+     (entrée `None` dans `workspace::TABLE`), pas grisés. Exporter, Créer, Combiner et Compresser n'ont pas de
+     barre (une seule commande chacun, boîte de dialogue directe).
+A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
+     dans les dépendances. Les tests couvrent les données (table, registre, contraste des glyphes), la bascule
+     d'outil, la géométrie des lignes, l'arbre AccessKit et l'anneau de focus (passe egui sans fenêtre) ; le
+     rendu réel est contrôlé par captures (`scripts/dev-screenshot.ps1`). Les glyphes de repli (sans Segoe
+     Fluent Icons) des nouvelles icônes ne sont pas vérifiés visuellement (voir A1).
+A13. **Barre d'outil en fenêtre étroite** : la largeur des libellés est estimée avant le dessin ; sous la
+     largeur nécessaire, icônes seules, puis mode compact (nom et « Quitter l'outil » sans libellé) et
+     défilement horizontal des boutons (barre de défilement flottante, au survol ; la molette verticale ne fait
+     pas défiler, Maj+molette oui).
+A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'un bouton du hub, le focus est
+     relâché pour que les raccourcis à une lettre restent actifs ; Tab repart donc du début. Les boutons egui
+     standard (barre d'onglets, menu) n'affichent qu'un indice de focus discret ; les lignes, cartes et
+     boutons du hub ont un anneau de 2 px. Échap agit dans l'ordre : champ ou recherche, objet sélectionné,
+     outil actif.
+A15. **Rail droit en fenêtre basse** (moins de ~650 px de haut) : les groupes du haut et du bas du rail
+     peuvent se chevaucher (antérieur au hub, non traité).

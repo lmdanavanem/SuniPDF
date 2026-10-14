@@ -22,7 +22,8 @@
 SuniPDF/
 ├── apps/
 │   ├── sunipdf-desktop/      binaire `sunipdf` (egui/eframe) — main.rs, app.rs (état + document), shell.rs (chrome : onglets,
-│   │                         barre d'outils, panneau outils, accueil, rail, palette), worker.rs, settings.rs, theme.rs, icons.rs
+│   │                         barre d'outils, panneau « Tous les outils », accueil, rail, palette), workspace.rs (hub : table des
+│   │                         outils → commandes du registre, outil actif, barre contextuelle), worker.rs, settings.rs, theme.rs, icons.rs
 │   └── sunipdf-cli/          binaire `sunipdf-cli` (clap) — sortie JSON, codes d'erreur stables
 ├── crates/
 │   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; tests/fixtures/*.pdf

@@ -7,6 +7,22 @@
 4. En session administrateur : `winget install WiXToolset.WiXToolset` pour construire le MSI localement (`scripts\package-msi.ps1`).
 5. `rustup target add aarch64-pc-windows-msvc` puis `scripts\package-portable.ps1 -Arch arm64` pour vérifier la compilation ARM64.
 
+## Hub d'outils : contrat pour les tranches suivantes (tool-hub livré, D021)
+Les onglets `ToolTab` et les cartes `home.card.*` n'existent plus : les plans de `docs/plans/` qui les citent
+(OCR, caviardage, export, compression, formulaires, signatures…) passent par `apps/sunipdf-desktop/src/workspace.rs`.
+Pour rendre un outil visible, une tranche fait exactement :
+1. ajouter ses `Command` (moteur + `REGISTRY`, id stable, `needs_document` correct) ;
+2. dans `workspace::TABLE`, passer `entry` à `Some(Entry::Direct(cmd))` ou `Some(Entry::Mode(Command::HubXxx))`,
+   renseigner `groups` (chaque commande dans **un seul** outil), choisir l'icône ;
+3. si l'outil a une barre : ajouter `HubXxx` au registre (menu `Tools`), au bras `Hub*` d'`execute` et à
+   `shell::command_icon` ;
+4. les noms, descriptions et couleurs des 14 outils existent déjà (`hub.*.name`, `hub.*.desc`).
+Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système.
+Outils encore absents : Remplir et signer, Numériser et OCR, Caviarder, Préparer un formulaire, Utiliser un certificat.
+
+Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit
+qui se chevauche sous ~650 px de haut (`KNOWN_ISSUES.md` A15) ; validation visuelle finale par l'utilisateur.
+
 ## SUNI-012 — Affichage continu + onglets (owner : UI-UX)
 Vue continue avec virtualisation (seules les pages visibles sont rendues) ; onglets multi-documents ; raccourcis.
 Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.*`.

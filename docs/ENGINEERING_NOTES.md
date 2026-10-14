@@ -53,8 +53,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-i18n.ps1
 ### Ajouter une commande
 1. `crates/sunipdf-core/src/command.rs` : variante dans `enum Command`, entrée `cmd!(Variante, "menu.id",
    "cle.libelle", Some("cle.raccourci") | None, a_besoin_d_un_document, Menu)`.
-2. `apps/sunipdf-desktop/src/shell.rs` : bras dans `command_icon` (glyphe de `icons.rs` + repli texte),
-   éventuellement `command_color`, et ajout dans les listes `ToolTab::commands`.
+2. `apps/sunipdf-desktop/src/shell.rs` : bras dans `command_icon` (glyphe de `icons.rs` + repli texte).
+   `apps/sunipdf-desktop/src/workspace.rs` : placer la commande dans le groupe de **son outil** (`TABLE`,
+   un seul outil par commande, couleur et barre en découlent) ou, pour une commande système, dans
+   `SYSTEM_COMMANDS` du test `every_registry_command_has_a_home`. Contrat complet : `docs/NEXT_TASKS.md`.
 3. `apps/sunipdf-desktop/src/app.rs` : bras dans `execute`, raccourci dans `handle_input`
    (`key(Modifiers::…, Key::…, Command::…)`). Les raccourcis à une lettre sont ignorés quand un champ de
    saisie ou une boîte de dialogue a le clavier.
@@ -109,13 +111,27 @@ Conversions : `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` et, dans l'aut
   deux fois dans la même image.
 - Origine d'un glissement : `ui.input(|i| i.pointer.press_origin())`, pas la position au moment où le
   seuil de glissement est franchi.
+- Widget dessiné à la main : `allocate_exact_size(.., Sense::click())` (focalisable), puis
+  `resp.widget_info(..)` pour un libellé AccessKit lisible (jamais le glyphe d'icône), peinture après
+  l'allocation (le survol n'est connu qu'ensuite). Après une activation, `resp.surrender_focus()` : un widget
+  focalisé fait taire les raccourcis à une lettre de `handle_input`.
+- egui retire le focus sur Échap **avant** que l'application lise la touche : `SuniApp::focus_last_frame`
+  garde l'état de l'image précédente (Échap dans un champ ne quitte pas l'outil actif).
+- `Visuals::interact_cursor` ne s'applique qu'aux `egui::Button` ; les widgets maison posent
+  `on_hover_cursor(PointingHand)`. `ui.set_max_width(w)` peut **élargir** : borner par `available_width()`.
+- Une rangée `ui.horizontal` démarre à `interact_size.y` de haut ; pour centrer des boutons plus hauts
+  sur une pastille voisine, régler `interact_size.y` à leur hauteur.
+- Test sans fenêtre : `Context::run_ui` + `enable_accesskit()` ; vider `out.textures_delta` avant de
+  jeter la sortie (assertion de débogage d'epaint).
 
 ## 5. Vérification visuelle
 
 `scripts/dev-screenshot.ps1 -Out capture.png [-Pdf "a.pdf;b.pdf"] [-Commands "id1,id2"]
 [-Drag "x1,y1,x2,y2;x1,y1,x2,y2"] [-Keys "^k"] [-KeysAfter "{F2}"] [-Delay 5]` lance `target\debug\sunipdf.exe`,
 exécute les commandes au démarrage (`SUNIPDF_STARTUP_COMMANDS`), simule des glissements (coordonnées
-relatives à la fenêtre, page affichée à partir de x≈440, y≈140 avec le panneau d'outils ouvert), capture
+relatives à la fenêtre, page affichée à partir de x≈440, y≈140 avec le panneau d'outils ouvert, y≈190 quand
+la barre d'un outil est affichée ; un glissement de hauteur nulle ne sélectionne pas de texte), `-Width`/`-Height`
+imposent la taille de la fenêtre, capture
 la fenêtre puis ferme l'application. Un seul lancement à la fois : le script prend le premier plan et
 déplace la souris. Journal : `$env:SUNIPDF_LOG = "fichier.log"` et `$env:RUST_LOG = "debug"`.
 Les préférences sont dans `%APPDATA%\SuniPDF\settings.json` : restaurer le fichier si un test le modifie.

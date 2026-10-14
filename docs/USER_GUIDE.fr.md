@@ -13,8 +13,33 @@ compte, aucune télémétrie, aucun document envoyé sur Internet.
 
 ## Écran d'accueil
 
-L'accueil présente les outils disponibles, les fichiers récents et un bouton **Ouvrir un fichier**. Vous
-pouvez aussi glisser un PDF n'importe où dans la fenêtre, ou cliquer sur **+ Ouvrir** dans la barre d'onglets.
+L'accueil présente une grande carte **Ouvrir un fichier**, une carte par outil disponible (toute la carte est
+cliquable) et les fichiers récents. Vous pouvez aussi glisser un PDF n'importe où dans la fenêtre, ou cliquer
+sur **+ Ouvrir** dans la barre d'onglets.
+
+## Tous les outils
+
+Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
+outils par tâche, comme PDFCraft : Exporter un PDF, Modifier un PDF, Créer un PDF, Combiner des fichiers,
+Organiser les pages, Commenter, Protéger un PDF, Compresser un PDF, Ajouter un tampon. Le menu **Outils** et
+la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
+fichier puis démarre.
+
+- **Exporter, Créer, Combiner, Compresser** ouvrent directement leur boîte de dialogue.
+- **Modifier, Organiser, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
+  **barre d'outil** sous la barre d'outils : boutons de l'outil, groupés, avec leur libellé si la largeur le
+  permet (sinon l'icône seule, le libellé restant en info-bulle). Les actions qui demandent une sélection
+  (objet, texte, pages de la grille) restent grisées sans elle.
+- **Quitter l'outil** : bouton à droite de la barre, **Échap**, nouveau clic sur l'outil actif dans le panneau,
+  ou la flèche de retour (qui rouvre aussi le panneau). Échap ferme d'abord ce qui est plus proche : la
+  recherche, puis l'objet sélectionné, puis l'outil.
+- Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N ouvrent **Commenter** ; E, T, I, R, O, L
+  ouvrent **Modifier** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
+- Chaque onglet garde son outil actif.
+- La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
+
+Les outils PDFCraft qui n'ont pas encore de fonction réelle dans SuniPDF (remplir et signer, OCR, caviardage,
+préparation de formulaire, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité.
 
 ## Onglets
 
@@ -34,31 +59,31 @@ confirmées une à une à la fermeture de l'application.
 | Miniatures | Panneau **Pages** à gauche (bouton grille du rail droit) ; glisser une miniature pour réordonner |
 | Signets | F6 ou bouton liste du rail droit |
 | Rechercher | Ctrl+F : saisie, respecter la casse, ▲ ▼, surbrillance des occurrences |
-| Sélectionner du texte | Outil flèche de la palette flottante, tracer un rectangle, puis Ctrl+C |
+| Sélectionner du texte | Tracer un rectangle sur le texte (curseur de lecture, V), puis Ctrl+C |
 | Thème clair / sombre | Icône lune / soleil en haut à droite |
 | Langue | Icône globe en haut à droite (français, anglais) |
 
 ## Annoter
 
-La palette flottante en haut à gauche de la page propose : sélection (V), surligner (H), souligner (U),
-barrer (X), note (N). Tracez un rectangle sur le texte pour appliquer un marquage ; cliquez sur la page avec
+L'outil **Commenter** propose : sélectionner du texte (V), surligner (H), souligner (U), barrer (X),
+note (N), le panneau Commentaires et la copie du texte sélectionné. Tracez un rectangle sur le texte pour appliquer un marquage ; cliquez sur la page avec
 l'outil note pour saisir un commentaire. Le panneau **Commentaires** (F7) liste les annotations de la page
 et permet de les supprimer. Toute annotation est annulable (Ctrl+Z).
 
 ## Éditer le contenu
 
-La catégorie **Éditer** (et la seconde moitié de la palette flottante) modifie le contenu même des pages,
+L'outil **Modifier un PDF** modifie le contenu même des pages,
 pas des annotations : sélectionner un objet (E), ajouter du texte (T), insérer une image (I), rectangle (R),
 ellipse (O), ligne (L). Avec l'outil de sélection, cliquez sur un texte, une image ou un tracé : un cadre bleu
 apparaît ; glissez-le pour le déplacer, tirez une poignée d'angle pour le redimensionner, appuyez sur **Suppr**
 pour le supprimer, sur **F2** (ou double-clic) pour modifier un texte (contenu, taille, couleur). Cliquez sur la
 page avec l'outil texte pour saisir un nouveau texte (police Helvetica / Times / Courier, gras, italique, taille,
 couleur), avec l'outil image pour choisir un fichier (PNG, JPEG, BMP, GIF, TIFF, WebP ; le point cliqué devient
-le coin haut-gauche), tracez un rectangle pour une forme. La barre à droite de la palette règle la couleur et
+le coin haut-gauche), tracez un rectangle pour une forme. La petite barre en haut à gauche de la page règle la couleur et
 l'épaisseur du trait et le remplissage des nouvelles formes ; **Appliquer à l'objet** recolore l'objet
 sélectionné. Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
 
-Quand un objet est sélectionné, la barre propose aussi : pivoter à gauche / à droite (90°), dupliquer
+Quand un objet est sélectionné, la barre de l'outil active aussi : modifier le texte (F2), pivoter à gauche / à droite (90°), dupliquer
 (Ctrl+Maj+D), mettre au premier plan (Ctrl+]) ou à l'arrière-plan (Ctrl+[), supprimer. Les flèches du
 clavier décalent l'objet d'un point (Maj : dix points), Échap le désélectionne. Les images gardent leurs
 proportions au redimensionnement (Maj pour les libérer) ; les autres objets sont libres (Maj pour
@@ -69,7 +94,7 @@ conserve sa police d'origine, qui peut ne pas contenir tous les caractères sais
 
 ## Tampons, filigranes et numéros de page
 
-**Tampon / filigrane…** (catégories Pages et Éditer) appose un texte sur toutes les pages ou sur la page
+**Tampon / filigrane…** (outil **Ajouter un tampon**) appose un texte sur toutes les pages ou sur la page
 courante : taille, couleur, gras, angle, opacité et position (centre ou l'un des six bords). **Numéroter les
 pages…** ajoute un numéro selon un modèle : `{n}` est le numéro de la page, `{total}` le nombre de pages
 (par exemple `Page {n} / {total}`). Chaque tampon est un objet de la page : il se sélectionne, se déplace, se
@@ -77,8 +102,9 @@ supprime et s'annule comme les autres.
 
 ## Organiser les pages
 
-- **Organiser les pages** (F8) : grille des pages avec sélection multiple (clic, Ctrl+clic, Maj+clic),
-  rotation, suppression, insertion depuis un autre PDF, déplacement avant/arrière, glisser-déposer.
+- **Organiser les pages** (F8 ou l'outil du même nom) : grille des pages avec sélection multiple (clic,
+  Ctrl+clic, Maj+clic) ; la barre de l'outil pivote, supprime, insère depuis un autre PDF, déplace
+  avant/arrière, divise et extrait ; glisser-déposer pour réordonner.
 - Depuis la vue normale : Ctrl+R / Ctrl+Maj+R pour pivoter, Ctrl+Suppr pour supprimer la page courante,
   Ctrl+Maj+I pour insérer des pages d'un autre fichier.
 - **Annuler / Rétablir** : Ctrl+Z / Ctrl+Y (jusqu'à 50 étapes).
@@ -114,7 +140,8 @@ des modifications non enregistrées ; SuniPDF demande confirmation avant de ferm
 
 ## Palette de commandes
 
-Ctrl+K ouvre la palette : tapez quelques lettres, choisissez avec ↑ ↓, validez avec Entrée.
+Ctrl+K ouvre la palette : tapez quelques lettres, choisissez avec ↑ ↓, validez avec Entrée. Chaque
+commande porte la couleur de son outil ; les entrées « Modifier un PDF », « Commenter »… ouvrent l'outil.
 
 ## Ligne de commande
 

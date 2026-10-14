@@ -98,7 +98,8 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Registre de commandes commun UI/CLI | Déclaré (tool table) | **Fait** (`sunipdf-cli commands`) |
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
-| Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier) |
+| Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
+| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour 9 outils sur 14 (Exporter, Modifier, Créer, Combiner, Organiser, Commenter, Protéger, Compresser, Tampon) : panneau F9, cartes d'accueil, menu Outils, palette, barre d'outil avec Échap ; Remplir et signer, OCR, Caviarder, Formulaire, Certificat planifiés (absents tant que leur fonction n'existe pas) |
 | Workflows locaux, profils de conversion | Absent | Planifié (P5) |
 
 ## H. Distribution

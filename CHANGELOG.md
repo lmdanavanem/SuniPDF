@@ -6,6 +6,27 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 ## [Non publié]
 
 ### Ajouté
+- **Hub « Tous les outils »** façon PDFCraft : le panneau de gauche (F9) liste les outils par tâche avec une
+  pastille colorée par outil (Exporter, Modifier, Créer, Combiner, Organiser, Commenter, Protéger,
+  Compresser, Ajouter un tampon) ; les cinq outils PDFCraft sans fonction réelle dans SuniPDF ne sont pas
+  affichés. Les outils Modifier, Organiser, Commenter, Protéger et Tampon ouvrent une **barre d'outil**
+  contextuelle (boutons groupés, libellés selon la largeur, actions grisées sans sélection, « Quitter
+  l'outil » ou Échap) ; les autres ouvrent directement leur boîte de dialogue. Menu **Outils**, entrées
+  `hub.*` dans la palette Ctrl+K (6 commandes au registre, 69 au total), raccourcis à une lettre qui ouvrent
+  l'outil correspondant, outil actif conservé par onglet.
+- **Accueil** : grande carte « Ouvrir un fichier » et une carte entièrement cliquable par outil (bordure de la
+  couleur de l'outil au survol) ; **barre d'outils** : accès rapide Ouvrir / Enregistrer / Annuler / Rétablir et
+  bouton « Tous les outils ».
+
+### Modifié
+- La palette d'outils flottante sur la page est remplacée par la barre d'outil ; la barre d'objet ne garde que
+  les propriétés (trait, remplissage, Appliquer) ; la barre de la grille Organiser garde le compteur, « Tout
+  sélectionner » et l'aide. Les onglets texte Lire / Annoter / Éditer / Pages / Convertir / Sécurité de la barre
+  d'outils disparaissent (le hub les remplace).
+- Finition du chrome : bouton principal des dialogues lisible en thème sombre (contraste 5,2:1 au lieu de
+  2,5:1), glyphes d'outils contrastés sur leur pastille (≥ 3,5:1, testé), fondu au survol, anneau de focus
+  clavier, ombres plus douces, infobulles plus rapides, barres de défilement flottantes, onglet actif souligné,
+  icônes plus parlantes (combiner, compresser, diviser, extraire, insérer, rétablir, ouvrir).
 - **Tampon / filigrane** et **numérotation des pages** (catégories Pages et Éditer) : texte apposé sur
   toutes les pages ou la page courante, taille, couleur, gras, angle, opacité, 7 positions,
   variables `{n}` et `{total}` ; chaque tampon reste un objet modifiable et annulable.
