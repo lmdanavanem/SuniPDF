@@ -51,12 +51,21 @@ confirmées une à une à la fermeture de l'application.
 
 ## Lire un document
 
+Par défaut les pages sont **empilées** : la molette, la barre de défilement ou le clavier font défiler tout le
+document, et la page qui occupe l'écran devient la page courante (numéro du rail, barre d'état, miniature,
+panneau des commentaires ; Pivoter, Supprimer et Extraire la visent ; un clic sur une page la rend courante).
+**F5**, le bouton à flèches du rail droit ou le menu Affichage basculent entre **Défilement continu** et **Page
+unique** ; le choix est mémorisé. Seules les pages visibles sont rendues : un document de plusieurs centaines de
+pages s'ouvre et défile sans tout charger.
+
 | Action | Comment |
 |---|---|
-| Page suivante / précédente | Page suiv. / Page préc., flèches ← →, boutons du rail droit |
+| Défiler | Molette ; flèches ↑ ↓ (une ligne) ; Espace / Maj+Espace et Page suiv. / Page préc. (un écran ; en page unique, Page suiv. / préc. changent de page) |
+| Page suivante / précédente | Flèches → ←, boutons du rail droit |
 | Première / dernière page | Origine / Fin |
-| Aller à une page | Saisir le numéro dans la case du rail droit puis Entrée |
-| Zoom | Ctrl + / Ctrl −, Ctrl 0 (taille réelle), liste de zoom, « Largeur », « Page » |
+| Aller à une page | Saisir le numéro dans la case du rail droit puis Entrée, ou cliquer une miniature : la page vient en haut de l'écran |
+| Zoom | Ctrl + molette (zoom **autour du pointeur**, pincement du pavé tactile aussi), Ctrl + / Ctrl − (autour du centre), Ctrl 0 (taille réelle), liste de zoom (25 à 1600 %), « Largeur », « Page » ; jusqu'à 3200 % à la molette, la netteté est conservée (rendu en tuiles) |
+| Défilement continu / page unique | F5, bouton du rail droit, menu Affichage |
 | Miniatures | Panneau **Pages** à gauche (bouton grille du rail droit) ; glisser une miniature pour réordonner |
 | Signets | F6 ou bouton liste du rail droit |
 | Rechercher | Ctrl+F : saisie, respecter la casse, ▲ ▼, surbrillance des occurrences |
@@ -112,8 +121,8 @@ cyrillique avec Helvetica), SuniPDF le signale et rouvre le champ au lieu de per
 texte existant droit à l'écran, **F2** ou double-clic ouvre le même champ sur la page (contenu, taille,
 couleur ; sa police d'origine est conservée) ; un texte pivoté s'édite dans une boîte de dialogue.
 
-**Panneau Objets** (F5 ou l'icône calques du rail droit, ou le bouton de la barre de l'outil) : liste des objets
-de la page, du plus en avant au plus en arrière. Clic : sélectionner (Ctrl : ajouter ou retirer, Maj : ajouter) ;
+**Panneau Objets** (F3 ou l'icône calques du rail droit, ou le bouton de la barre de l'outil) : liste des objets
+de la page courante, du plus en avant au plus en arrière. Clic : sélectionner (Ctrl : ajouter ou retirer, Maj : ajouter) ;
 survol : repère orange sur la page ; boutons avancer / reculer d'un plan et supprimer.
 
 Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
@@ -195,11 +204,14 @@ l'édition du contenu : `objects` (objets d'une page, index à partir de 0), `ad
 (`--unit mm`, `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
 Les sorties sont en JSON ; les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
 fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
-sans l'option `--overwrite`. `render` écrit toujours du PNG ; `rotate` accepte 90, 180, 270 ou -90. Les
+sans l'option `--overwrite`. `render` écrit toujours du PNG (`--region x,y,l,h` : une zone en pixels de la page
+rendue à `--scale`, pour les échelles où la page entière dépasserait 16 384 px) ; `rotate` accepte 90, 180, 270 ou -90. Les
 coordonnées (`search`, `objects`, `add-text`…) sont en points, origine en bas à gauche de la page **telle
 qu'affichée** (après rotation et recadrage).
 
 ## Limites actuelles
 
-Affichage page par page ; pas d'OCR, pas de conversion Office, pas de
-signature numérique, pas d'impression directe. Voir `docs/ROADMAP.md`.
+Pas de double page ni de rotation de la vue ; une sélection de texte reste sur sa page (pas de sélection à
+cheval sur deux pages, pas de défilement automatique en glissant au bord) ; en défilement continu, « Largeur »
+et « Page » ajustent la plus grande page du document. Pas d'OCR, pas de conversion Office, pas de signature
+numérique, pas d'impression directe. Voir `docs/ROADMAP.md`.

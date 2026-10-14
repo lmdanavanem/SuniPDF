@@ -36,10 +36,12 @@
 
 A1. **Icônes Fluent** : lues dans `C:\Windows\Fonts\SegoeIcons.ttf` (ou `segmdl2.ttf`). Sur un Windows sans ces
     polices (cas rare : LTSC allégé), les icônes sont remplacées par des symboles texte, moins élégants mais lisibles.
-A2. **Affichage page par page** : la vue continue (défilement de toutes les pages) est planifiée
-    (`docs/plans/continuous-view.md`). Onglets, cache de rendu LRU et miniatures existent.
-A3. **Rendu à fort zoom** limité à 16 384 px de côté (`MAX_RENDER_SIDE_PX`) ; au-delà, message d'erreur.
-    Le rendu en tuiles lèvera cette limite.
+A2. ~~Affichage page par page~~ **Résolu (SUNI-012b)** : défilement continu par défaut, page unique en option (F5).
+A3. ~~Rendu à fort zoom limité à 16 384 px~~ **Résolu pour l'écran (SUNI-012b)** : rendu en tuiles jusqu'à
+    3200 % (côté de page rendue <= 131 072 px). Corrige aussi un plantage latent : une page rendue d'un seul
+    tenant pouvait dépasser la taille de texture maximale du GPU (panique d'`egui_glow` si le pilote limite à
+    8192 px) ; aucune texture ne dépasse plus `max_texture_side`. La limite de 16 384 px reste vraie pour
+    `Document::render_page`, l'export d'images et `sunipdf-cli render` sans `--region`.
 A4. **Chiffrement** : AES-128/256 écrit par lopdf et relu par PDFium dans les tests (aller-retour) ; RC4 40 bits
     par fixture. Aucune fixture AES produite par un outil tiers (qpdf) : à ajouter avec la vérification qpdf.
 A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle UI** le temps du choix :
@@ -109,8 +111,9 @@ A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'u
      Échap agit dans l'ordre (un Échap, un effet ; `workspace::EscState::action`, testé) : menu ou liste
      déroulante ouverts, champ ou recherche, objet sélectionné, outil actif. Deux Échap reçus dans la même
      image (impossible au clavier, possible par injection) peuvent encore produire deux effets.
-A15. **Rail droit en fenêtre basse** (moins de ~650 px de haut) : les groupes du haut et du bas du rail
-     peuvent se chevaucher (antérieur au hub, non traité).
+A15. ~~Rail droit en fenêtre basse : chevauchement~~ **Corrigé (SUNI-012b)** : sous ~700 px de haut, le groupe du
+     haut (panneaux, bascule de vue, recherche) défile (molette au survol) au lieu de chevaucher la navigation ;
+     ses dernières icônes sont alors masquées tant qu'on ne fait pas défiler.
 A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute séquence `{n}` d'un texte d'aide
      par un saut de ligne (`clap_builder` 4.6, sans échappement possible) ; l'aide affiche donc « : ⏎ = page
      number » au lieu de `{n}`. Les variables `{n}` et `{total}` fonctionnent ; seul le texte d'aide est
@@ -118,3 +121,25 @@ A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute sé
 A17. **Indicateur « modifié » après annulation** : annuler jusqu'à l'état d'origine laisse le document marqué
      « modifié » (l'historique ne mémorise pas le point d'enregistrement ; relevé par la revue du hub, non
      traité).
+A25. **Vue continue : limites (SUNI-012b)**.
+     - Une **sélection de texte reste sur sa page** (le glissement est borné à la page d'origine) : pas de
+       sélection à cheval sur deux pages, pas de défilement automatique quand on glisse près du bord.
+     - Défilement **sans animation ni inertie** pour les « aller à » et le clavier (saut direct).
+     - **Pincement tactile** : même chemin que Ctrl + molette (`zoom_delta`), non testé faute d'écran tactile.
+       Ctrl + molette vérifié par capture (`dev-screenshot.ps1 -Wheel`).
+     - Un **rendu de tuile déjà commencé ne s'interrompt pas** : en défilant vite, la latence d'annulation est
+       la durée d'une tuile (mesurée : 1,2 ms par tuile 1024² sur `many-pages.pdf`, plus pour une page lourde).
+     - Recollage des tuiles : les glyphes qui traversent un bord de tuile peuvent différer d'un pixel
+       d'anticrénelage du rendu d'un seul tenant (121 pixels sur 1,9 million mesurés, D044).
+     - Double page, mode livre et rotation de la vue : non proposés (feuille de route).
+A26. **« Ajuster » en défilement continu sur un document de tailles mixtes** : le zoom est commun à toutes les
+     pages et ajuste la **plus grande** page (D041) ; une page portrait parmi des pages paysage est donc plus
+     étroite que l'écran. En page unique, l'ajustement suit la page courante.
+A27. **Très longs documents** : positions en `f32` ; le zoom est plafonné pour que la hauteur totale reste
+     <= 8 000 000 px logiques (message « Zoom maximal atteint pour ce document »). Un document de 5000 pages
+     Lettre est ainsi limité à environ 150 %.
+A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (hors textures de l'écran), cache du
+     moteur 256 Mio (tuiles et miniatures), 256 miniatures au plus. Mesuré en build de débogage, 500 pages,
+     300 « Page suiv. » puis Fin puis 300 « Page préc. » : mémoire privée stable vers 810-830 Mo (WorkingSet
+     438 Mo) après 175 Mo à l'ouverture ; pas de croissance au-delà (pilote OpenGL NVIDIA, copies système des
+     textures comprises). Plafonds en constantes (`view.rs`, `worker.rs`), pas de réglage utilisateur.

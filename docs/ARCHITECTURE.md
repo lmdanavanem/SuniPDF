@@ -26,10 +26,12 @@ SuniPDF/
 │   │                         outils → commandes du registre, outil actif, barre contextuelle), worker.rs, settings.rs, theme.rs, icons.rs,
 │   │                         editor.rs (sélection, poignées, rotation, presse-papiers d'objets, barre d'objet), inline_text.rs
 │   │                         (texte sur la page, sélecteur de polices), objects.rs (panneau Objets), pagesetup.rs (recadrer,
-│   │                         redimensionner, page vierge)
+│   │                         redimensionner, page vierge), view.rs (vue continue / page unique : mise en page virtualisée,
+│   │                         tuiles voulues, pool de textures, zoom ancré)
 │   └── sunipdf-cli/          binaire `sunipdf-cli` (clap) — sortie JSON, codes d'erreur stables
 ├── crates/
-│   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; edit.rs (objets), geometry.rs (espace d'affichage),
+│   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError ; tiles.rs (géométrie des tuiles), cache.rs (LRU
+│   │                         pages + tuiles) ; edit.rs (objets), geometry.rs (espace d'affichage),
 │   │                         clipboard.rs (copier/coller d'objets), fonts.rs (polices système), boxes.rs (cadres de page) ;
 │   │                         tests/fixtures/*.pdf (dont boxes.pdf : pages pivotées et rognées)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), catalogues embarqués
@@ -47,22 +49,39 @@ UI (thread principal)                     Worker (thread "sunipdf-engine")
 ---------------------                     --------------------------------
 Request::Open{path,pw}  ───────────────▶  Engine::open → Response::Opened(DocumentInfo)
                                           (ou OpenFailed{PasswordRequired…} → boîte de mot de passe)
-calcule zoom effectif, échelle px/pt
-Request::Render{page,scale,gen} ───────▶  Document::render_page → Response::Rendered{gen, RGBA}
-(un seul rendu en vol ; gen obsolète ignorée)
-texture egui ← RGBA ; affichage à la taille logique (net à tout DPI)
+calcule zoom, mise en page, zone visible
+Request::SetWanted{epoch, [TileJob]} ──▶  remplace la file des tuiles voulues (rien n'est rendu tout de suite)
+                                          entre deux requêtes, UNE tuile : cache LRU ou
+                                          Document::render_region → Response::Tile{epoch, job, RGBA}
+texture egui ← RGBA (une tuile par réponse) ; époque différente → ignorée
 Request::Close ────────────────────────▶  drop(Document)
 ```
 
-Le zoom « ajuster à la largeur/page » est recalculé à chaque frame ; l'échelle demandée est quantifiée
-(`quantize`) pour éviter un rendu par pixel de redimensionnement. Le rendu est plafonné à
-`MAX_RENDER_SIDE_PX` (16 384 px de côté) pour borner la mémoire.
+## Vue continue et tuiles (SUNI-012b, D038)
+
+- **Fenêtre de pages** : en défilement continu tout le document, en page unique la page courante ; une seule
+  machinerie (`view.rs` : `Layout`, `paint_slot`, `handle_page_event`) sert les deux modes. `Layout` place les
+  pages (marge 16, intervalle 12) ; seules celles qui coupent la zone visible créent widgets, demandes et
+  textures (recherche dichotomique), plus la page d'un glissement ou de l'éditeur de texte en cours.
+- **Tuiles** (`sunipdf-core::tiles`) : page entière jusqu'à 4096 px et 8 Mpx, sinon grille de 1024 px ancrée en
+  (0, 0), bornée par `max_texture_side` du GPU ; `Document::render_region` rend une zone sans allouer la page
+  (origine négative de PDFium), jusqu'à 131 072 px de côté de page. Échelle quantifiée au 1/200 (`quantize_milli`).
+- **Annulation par remplacement** : l'UI envoie la liste des tuiles voulues (visibles du centre vers les bords,
+  puis le bord des pages voisines, 24 au plus) seulement quand elle change ; une tuile commencée va au bout.
+  L'époque change à chaque ouverture, onglet, édition : les réponses d'une autre époque sont jetées.
+- **Pool de textures** (`TexturePool`, 192 Mio, LRU, jamais une texture de l'image courante) ; pendant un zoom
+  ou après une retouche (`DocState.pages_unchanged`), les textures d'une autre échelle ou périmées restent
+  affichées, étirées, jusqu'aux nouvelles tuiles ; le cache moteur (256 Mio) sert tuiles et miniatures.
+- **Défilement** : requêtes (`ScrollRequest` : page, point d'une page, décalage, relatif) résolues à l'image
+  suivante ; la page courante suit la page dominante, sauf verrou après un « aller à » ; le zoom garde le point
+  ancré (page, fraction) sous le pointeur ou au centre.
+`render_page` (export d'images, CLI sans `--region`) reste plafonné à `MAX_RENDER_SIDE_PX` (16 384 px).
 
 ## Crates planifiés (créés seulement quand une fonctionnalité réelle les justifie)
 
 | Crate | Rôle | Phase |
 |---|---|---|
-| `sunipdf-render` | tuiles pour le zoom profond (le cache LRU, le pré-rendu et les miniatures sont déjà dans `sunipdf-core::cache` + `worker.rs`) | P2 |
+| `sunipdf-render` | non créé (D038) : tuiles et cache vivent dans `sunipdf-core::{tiles, cache}` ; à extraire si un second consommateur apparaît | — |
 | `sunipdf-pages` | fusion, division, extraction, rotation, réorganisation (PDFium `FPDF_ImportPages`, `FPDFPage_*`) | P2 |
 | `sunipdf-editor` | annotations, texte, images, filigranes | P2–P3 |
 | `sunipdf-forms` | AcroForm (FPDF_FORMFILL), FDF/XFDF | P3 |

@@ -47,12 +47,21 @@ Unsaved changes are flagged with a dot per tab and confirmed one by one when you
 
 ## Reading
 
+By default pages are **stacked**: the mouse wheel, the scroll bar or the keyboard scroll through the whole
+document, and the page that fills the screen becomes the current page (right-rail number, status bar,
+thumbnail, comments panel; Rotate, Delete and Extract act on it; clicking a page makes it current). **F5**, the
+arrows button of the right rail or the View menu switch between **Continuous Scrolling** and **Single Page**;
+the choice is remembered. Only visible pages are rendered: a document of several hundred pages opens and
+scrolls without loading everything.
+
 | Action | How |
 |---|---|
-| Next / previous page | Page Down / Page Up, ← →, right-rail buttons |
+| Scroll | Mouse wheel; ↑ ↓ arrows (one line); Space / Shift+Space and Page Down / Page Up (one screen; in single-page view, Page Down / Up change page) |
+| Next / previous page | → ← arrows, right-rail buttons |
 | First / last page | Home / End |
-| Go to page | Type the number in the right-rail box, then Enter |
-| Zoom | Ctrl + / Ctrl −, Ctrl 0 (actual size), zoom list, "Width", "Page" |
+| Go to page | Type the number in the right-rail box, then Enter, or click a thumbnail: the page comes to the top of the screen |
+| Zoom | Ctrl + mouse wheel (zooms **around the pointer**, touchpad pinch too), Ctrl + / Ctrl − (around the centre), Ctrl 0 (actual size), zoom list (25 to 1600%), "Width", "Page"; up to 3200% with the wheel, staying sharp (tiled rendering) |
+| Continuous / single page | F5, right-rail button, View menu |
 | Thumbnails | **Pages** panel on the left (grid button on the right rail); drag a thumbnail to reorder |
 | Bookmarks | F6 or the list button on the right rail |
 | Find | Ctrl+F: type, match case, ▲ ▼, matches highlighted |
@@ -104,7 +113,7 @@ character (for example Cyrillic with Helvetica), SuniPDF says so and reopens the
 character. For existing text that is upright on screen, **F2** or double-click opens the same on-page field
 (content, size, colour; its original font is kept); rotated text is edited in a dialog.
 
-**Objects panel** (F5, the layers icon of the right rail, or the tool bar button): the page's objects, front
+**Objects panel** (F3, the layers icon of the right rail, or the tool bar button): the current page's objects, front
 to back. Click: select (Ctrl: add or remove, Shift: add); hover: orange marker on the page; buttons bring
 forward / send backward and delete.
 
@@ -180,10 +189,12 @@ content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--f
 `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
 Output is JSON; exit codes distinguish password required (3), invalid file (4), unreadable file (5) and
 existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
-writes PNG; `rotate` accepts 90, 180, 270 or -90. Coordinates (`search`, `objects`, `add-text`…) are in
+writes PNG (`--region x,y,w,h`: an area in pixels of the page rendered at `--scale`, for scales where the
+whole page would exceed 16,384 px); `rotate` accepts 90, 180, 270 or -90. Coordinates (`search`, `objects`, `add-text`…) are in
 points, origin at the bottom-left of the page **as displayed** (after rotation and cropping).
 
 ## Current limits
 
-Single-page view; no OCR, no Office conversion, no digital signatures, no
-direct printing. See `docs/ROADMAP.md`.
+No two-page view or view rotation; a text selection stays on its page (no selection across two pages, no
+auto-scroll when dragging at the edge); in continuous scrolling, "Width" and "Page" fit the largest page of the
+document. No OCR, no Office conversion, no digital signatures, no direct printing. See `docs/ROADMAP.md`.

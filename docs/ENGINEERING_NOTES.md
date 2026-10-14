@@ -78,6 +78,16 @@ L'état d'interface lié au document (page, zoom, sélection, outils) est échan
 (`take_tab` / `put_tab`). Tout nouvel état lié au document doit y être ajouté, sinon il fuit d'un
 onglet à l'autre.
 
+### Vue du document (`view.rs`)
+Une page à l'écran = `paint_slot` (rectangle écran `page_rect`, zoom uniforme `effective_zoom`) : toute
+surcouche par page (surbrillance, sélection, poignées, éditeur) prend `(painter, page_rect, page, page_h_pt)` et
+filtre sur sa page, elle sert alors en continu comme en page unique. Ne jamais supposer « page affichée =
+`doc.page` » : en continu plusieurs pages sont visibles ; `doc.page` est la page courante (dominante ou touchée).
+Défiler = `self.view.request(ScrollRequest::…)` ou `go_to_page` (jamais `scroll_offset` en dehors de
+`document_view`, egui le réappliquerait à chaque image). Après une édition, `DocState.pages_unchanged` décide si
+les textures restent affichées (périmées) : une nouvelle `EditOp` qui change nombre, ordre ou taille des pages
+doit figurer dans `EditOp::keeps_pages`.
+
 ### Coordonnées
 L'API du moteur parle en **espace d'affichage** : points, origine en bas à gauche de la page telle
 qu'affichée (après `/Rotate`, boîte MediaBox ∩ CropBox) ; l'écran a l'origine en haut à gauche.
@@ -147,8 +157,10 @@ sortie) ; tester sur `tests/fixtures/boxes.pdf` (pages pivotées 90/180/270 et r
 exécute les commandes au démarrage (`SUNIPDF_STARTUP_COMMANDS`), simule des glissements (coordonnées
 relatives à la fenêtre, page affichée à partir de x≈440, y≈140 avec le panneau d'outils ouvert, y≈190 quand
 la barre d'un outil est affichée ; un glissement de hauteur nulle ne sélectionne pas de texte), `-Width`/`-Height`
-imposent la taille de la fenêtre, capture
-la fenêtre puis ferme l'application. Un seul lancement à la fois : le script prend le premier plan et
+imposent la taille de la fenêtre, `-Wheel "x,y,crans[,ctrl]"` fait tourner la molette (Ctrl + molette = zoom
+ancré sous le pointeur), capture
+la fenêtre puis ferme l'application. Depuis la vue continue, les pages sont empilées et la première page est
+centrée horizontalement : repérer le texte sur une capture sans `-Drag` avant de rejouer un glissement. Un seul lancement à la fois : le script prend le premier plan et
 déplace la souris. Journal : `$env:SUNIPDF_LOG = "fichier.log"` et `$env:RUST_LOG = "debug"`.
 Les préférences sont dans `%APPDATA%\SuniPDF\settings.json` : restaurer le fichier si un test le modifie.
 

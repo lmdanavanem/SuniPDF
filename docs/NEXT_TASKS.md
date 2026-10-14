@@ -24,9 +24,15 @@ Outils encore absents : Remplir et signer, Numériser et OCR, Caviarder, Prépar
 Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit
 qui se chevauche sous ~650 px de haut (`KNOWN_ISSUES.md` A15) ; validation visuelle finale par l'utilisateur.
 
-## SUNI-012 — Affichage continu + onglets (owner : UI-UX)
-Vue continue avec virtualisation (seules les pages visibles sont rendues) ; onglets multi-documents ; raccourcis.
-Acceptation : 500 pages sans chargement simultané ; clés i18n `tabs.*`, `view.*`.
+## SUNI-012c — Affichage, suite (owner : UI-UX)
+Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
+`docs/plans/continuous-view.md`, D038–D045).
+Reste (voir `KNOWN_ISSUES.md` A25–A28) :
+- sélection de texte à cheval sur plusieurs pages et défilement automatique en glissant au bord ;
+- double page / mode livre, rotation de la vue ;
+- défilement animé des « aller à » ; pincement tactile à vérifier sur un écran tactile ;
+- si une page lourde fige le défilement : `Document::render_regions` (une page chargée pour 3 à 4 tuiles
+  voisines), à n'ajouter qu'après mesure ; plafonds mémoire réglables si un besoin apparaît.
 
 ## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
 Fait : sélection rectangulaire, copie (Ctrl+C réparé en SUNI-031c via l'événement Copier d'egui).

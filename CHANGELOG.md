@@ -5,6 +5,44 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Ajouté (vue continue, SUNI-012b)
+- **Défilement continu** : toutes les pages empilées dans une seule zone de défilement (mode par défaut) ;
+  **Page unique** reste disponible (F5, bouton du rail droit, menu Affichage, palette), choix mémorisé.
+  Seules les pages visibles sont rendues et gardées en mémoire graphique : un document de 500 pages défile sans
+  chargement d'ensemble.
+- La **page courante suit le défilement** (champ du rail, barre d'état, miniature ramenée dans le panneau,
+  panneau des commentaires) ; un clic sur une page la rend courante ; « aller à » (champ, miniature, signet,
+  Origine / Fin, page suivante / précédente, résultat de recherche) amène la page en haut de l'écran.
+- **Zoom ancré** : Ctrl + molette (et pincement du pavé tactile) zoome autour du pointeur, boutons et liste
+  autour du centre ; liste étendue à 800, 1200 et 1600 %, molette jusqu'à 3200 % ; pendant le zoom l'image
+  précédente reste affichée, étirée, jusqu'au nouveau rendu.
+- **Rendu en tuiles** (1024 px) au-delà de 4096 px de côté : le zoom profond reste net sans plafond de
+  16 384 px ; une retouche (objet, surlignage, tampon) garde l'image affichée jusqu'au nouveau rendu au lieu
+  d'une page blanche.
+- Clavier : Espace / Maj+Espace et Page suiv. / Page préc. défilent d'un écran en continu, flèches ↑ ↓ d'une
+  ligne (dans les deux modes).
+- Moteur : `Document::render_region`, module `sunipdf_core::tiles`, clés de tuiles dans le cache LRU ;
+  CLI `render --region x,y,w,h` (sortie `region`, `page_pixels`).
+- Fixture `many-pages.pdf` (120 pages de tailles mixtes, `make_fixtures.py --many N` pour plus) ; 7 tests
+  d'intégration (régions = découpe du rendu complet, page pivotée, zoom ×40 au-delà de 16 384 px, page image,
+  erreurs, recollage des tuiles), 13 tests de la vue (mise en page, virtualisation de 600 pages, ancre de zoom,
+  plafonds, pool de textures borné, tuiles voulues) ; `dev-screenshot.ps1 -Wheel` pour Ctrl + molette.
+
+### Modifié (vue continue)
+- Le **panneau Objets passe de F5 à F3** (F5 bascule désormais la vue).
+- En défilement continu, **Page suiv. / Page préc. défilent d'un écran** au lieu de changer de page ; les
+  flèches → ← changent toujours de page (raccourcis affichés « → » / « ← »).
+- « Ajuster à la largeur / à la page » en défilement continu ajuste la plus grande page du document (zoom
+  identique pour toutes les pages).
+- Rail droit : les bascules actives (miniatures, Organiser, défilement continu, panneaux, recherche, ajustements)
+  sont surlignées ; en fenêtre basse le groupe du haut défile au lieu de chevaucher la navigation. Le mode de vue
+  actif est surligné dans le menu Affichage.
+
+### Corrigé (vue continue)
+- Plantage possible à fort zoom sur un GPU limitant la taille des textures à 8192 px (page rendue d'un seul
+  tenant plus grande que la texture maximale) : aucune texture ne dépasse plus la limite du GPU.
+- Bouton de fermeture de la barre de recherche affiché comme un carré vide (glyphe absent de Segoe UI).
+
 ### Ajouté (édition avancée, SUNI-031c)
 - **Rotation libre** des objets : poignée ronde au-dessus du cadre (Maj : pas de 15°, angle dans la barre
   d'état), champ « Angle » de la barre d'objet ; cadre orienté pour les textes et images.
@@ -15,7 +53,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   sélectionné au glisser.
 - **Copier / couper / coller des objets** (Ctrl+C / X / V, menu Édition, barre d'objet) entre pages et entre
   onglets ; les objets collés forment un groupe.
-- **Panneau Objets** (F5) : liste de la page du plus en avant au plus en arrière, sélection, avancer / reculer
+- **Panneau Objets** (F3 depuis la vue continue) : liste de la page du plus en avant au plus en arrière, sélection, avancer / reculer
   d'un plan, suppression, repère au survol.
 - **Texte sur la page** : saisie directe à l'emplacement cliqué (Entrée, Maj+Entrée, Échap), mini-barre taille /
   couleur / police / gras / italique ; plusieurs lignes ; modification sur place d'un texte existant droit.

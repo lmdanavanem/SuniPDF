@@ -19,8 +19,10 @@ Critère de sortie : `cargo test --workspace` vert + un PDF réel ouvert et affi
 
 ## Phase 2 — Fonctions essentielles — **largement livrée (2026-10-14)**
 Fait : registre de commandes, onglets, cache de rendu + miniatures, recherche, sélection/copie de texte, signets,
-fusion/division/extraction/rotation/réorganisation, enregistrement atomique, undo/redo, annotations principales.
-Reste : affichage continu, vérification qpdf en CI, tuiles pour le zoom profond (plans : `docs/plans/continuous-view.md`, `compress-lossy.md`).
+fusion/division/extraction/rotation/réorganisation, enregistrement atomique, undo/redo, annotations principales,
+affichage continu virtualisé et rendu en tuiles pour le zoom profond (SUNI-012b).
+Reste : vérification qpdf en CI (plan `docs/plans/compress-lossy.md`) ; double page, rotation de vue, sélection de
+texte sur plusieurs pages.
 
 ### Détail initial
 Registre de commandes ; onglets ; affichage continu ; cache de rendu plafonné + miniatures ; recherche ;

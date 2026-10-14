@@ -13,11 +13,11 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Ouvrir un PDF, afficher une page | Déclaré | **Fait** | PDFium ; tests `crates/sunipdf-core/tests/engine.rs` |
 | Documents protégés par mot de passe | Déclaré (toutes révisions) | **Fait** | RC4 40 bits testé ; AES par PDFium, à couvrir par fixture (P2) |
 | Navigation page/précédente/suivante/aller à | Déclaré | **Fait** (UI) | Clavier + barre d'outils |
-| Zoom, ajuster largeur/page, taille réelle | Déclaré | **Fait** (UI) | Rendu à la résolution physique (DPI) |
-| Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, générations anti-obsolescence |
+| Zoom, ajuster largeur/page, taille réelle | Déclaré | **Fait** (UI) | Rendu à la résolution physique (DPI) ; Ctrl + molette ancré sous le pointeur, 10 à 3200 % |
+| Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, liste de tuiles voulues remplacée en bloc, époques anti-obsolescence |
 | Onglets multi-documents | Déclaré | **Fait** (suspension des documents inactifs, état d'interface conservé) | |
-| Affichage continu, double page, rotation de vue | Déclaré | Planifié (P2) | |
-| Rendu en tuiles, cache plafonné | Déclaré | Cache **Fait** (LRU 256 Mo, pré-rendu) ; tuiles planifiées (P2) | |
+| Affichage continu, double page, rotation de vue | Déclaré | Affichage continu **Fait** (virtualisé, page courante suivie, page unique en option F5) ; double page et rotation de vue planifiées | Tests `view.rs` (mise en page, virtualisation, ancre de zoom), captures |
+| Rendu en tuiles, cache plafonné | Déclaré | **Fait** (tuiles de 1024 px au-delà de 4096 px / 8 Mpx, cache LRU 256 Mo, textures 192 Mo) | `Document::render_region`, tests de pixels (régions, recollage, zoom ×40) ; CLI `render --region` |
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** (sélection rectangulaire, lignes fusionnées) | ordre de lecture complexe planifié |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
