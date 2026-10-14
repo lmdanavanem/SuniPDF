@@ -237,7 +237,8 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
-    /// Search text; prints matches (page, rectangles in PDF points) as JSON.
+    /// Search text; prints matches (page, rectangles in points, origin bottom-left of the page as
+    /// displayed, i.e. after /Rotate and CropBox) as JSON.
     Search {
         file: PathBuf,
         query: String,
@@ -249,6 +250,174 @@ enum Command {
     /// Print document information (page count, page sizes, title) as JSON.
     Info {
         file: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// List the content objects of a page (0-based indices, display-space coordinates in points).
+    Objects {
+        file: PathBuf,
+        /// 1-based page number.
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Add text (one object per line, "\n" separated) with its first baseline at (x, y) points.
+    AddText {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long, allow_negative_numbers = true)]
+        x: f32,
+        #[arg(long, allow_negative_numbers = true)]
+        y: f32,
+        #[arg(long)]
+        text: String,
+        #[arg(long, default_value_t = 12.0)]
+        size: f32,
+        #[arg(long, default_value = "000000")]
+        color: String,
+        #[arg(long, default_value_t = 1.0)]
+        opacity: f32,
+        /// TrueType font file to embed (whole file).
+        #[arg(long, conflicts_with = "font_name")]
+        font_file: Option<PathBuf>,
+        /// Name of an installed system font, as listed by `fonts` (e.g. "Arial Bold").
+        #[arg(long)]
+        font_name: Option<String>,
+        #[arg(long)]
+        bold: bool,
+        #[arg(long)]
+        italic: bool,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Set the opacity (0 to 1) of objects (0-based indices, e.g. "0,3").
+    SetOpacity {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        objects: String,
+        #[arg(long)]
+        opacity: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Rotate one object by any angle (degrees, clockwise) around its centre.
+    RotateObject {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        object: usize,
+        #[arg(long, allow_negative_numbers = true)]
+        degrees: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Copy objects (pasted as one group) to another page, optionally of another file (--into).
+    CopyObjects {
+        file: PathBuf,
+        #[arg(long)]
+        from_page: usize,
+        /// 0-based object indices, e.g. "0,2".
+        #[arg(long)]
+        objects: String,
+        #[arg(long)]
+        to_page: usize,
+        /// Destination document (default: the source document itself).
+        #[arg(long)]
+        into: Option<PathBuf>,
+        #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
+        dx: f32,
+        #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
+        dy: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Replace the content of an image object with another image file (same frame).
+    ReplaceImage {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        object: usize,
+        #[arg(long)]
+        image: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Crop pages (hides the margins; content stays in the file) or restore them with --reset.
+    Crop {
+        file: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value_t = 0.0)]
+        left: f32,
+        #[arg(long, default_value_t = 0.0)]
+        top: f32,
+        #[arg(long, default_value_t = 0.0)]
+        right: f32,
+        #[arg(long, default_value_t = 0.0)]
+        bottom: f32,
+        /// Unit of the margins: pt or mm.
+        #[arg(long, default_value = "pt")]
+        unit: String,
+        #[arg(long)]
+        reset: bool,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Resize pages: keep the content (anchored top-left) or scale it to fit (centred).
+    ResizePages {
+        file: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long)]
+        width: f32,
+        #[arg(long)]
+        height: f32,
+        #[arg(long, default_value = "pt")]
+        unit: String,
+        /// keep or scale
+        #[arg(long, default_value = "keep")]
+        mode: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Insert blank pages before page --at (1-based; 0 = append), sized explicitly or like a page.
+    InsertBlank {
+        file: PathBuf,
+        #[arg(long, default_value_t = 0)]
+        at: usize,
+        #[arg(long, default_value_t = 1)]
+        count: usize,
+        #[arg(long, requires = "height")]
+        width: Option<f32>,
+        #[arg(long, requires = "width")]
+        height: Option<f32>,
+        #[arg(long, default_value = "pt")]
+        unit: String,
+        /// Use the size of this 1-based page (default: page 1).
+        #[arg(long, conflicts_with = "width")]
+        like: Option<usize>,
+        #[arg(long)]
+        out: PathBuf,
         #[arg(long)]
         password: Option<String>,
     },
@@ -612,9 +781,246 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "title": info.title,
                 "page_count": info.page_count(),
                 "pages": info.page_sizes.iter().enumerate().map(|(i, s)| serde_json::json!({
-                    "index": i + 1, "width_pt": s.width_pt, "height_pt": s.height_pt
+                    "index": i + 1, "width_pt": s.width_pt, "height_pt": s.height_pt,
+                    "rotation": doc.page_rotation(i).map(|r| r.degrees()).unwrap_or(0),
                 })).collect::<Vec<_>>(),
             }))
+        }
+        Command::Objects {
+            file,
+            page,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let size = doc.page_size(p)?;
+            let hex =
+                |c: Option<(u8, u8, u8)>| c.map(|(r, g, b)| format!("#{r:02x}{g:02x}{b:02x}"));
+            Ok(serde_json::json!({
+                "page": page,
+                "rotation": doc.page_rotation(p)?.degrees(),
+                "size": { "width_pt": size.width_pt, "height_pt": size.height_pt },
+                "objects": doc.page_objects(p)?.iter().map(|o| serde_json::json!({
+                    "index": o.index,
+                    "kind": format!("{:?}", o.kind).to_lowercase(),
+                    "bounds": [o.bounds.left, o.bounds.bottom, o.bounds.right, o.bounds.top],
+                    "angle": o.angle_deg,
+                    "opacity": o.opacity,
+                    "text": o.text,
+                    "font": o.font_name,
+                    "font_size": (o.kind == sunipdf_core::ObjectKind::Text).then_some(o.font_size),
+                    "fill": hex(o.fill_rgb),
+                    "stroke": hex(o.stroke_rgb),
+                })).collect::<Vec<_>>(),
+            }))
+        }
+        Command::AddText {
+            file,
+            page,
+            x,
+            y,
+            text,
+            size,
+            color,
+            opacity,
+            font_file,
+            font_name,
+            bold,
+            italic,
+            out,
+            password,
+        } => {
+            let font_file = match (font_file, font_name) {
+                (Some(path), _) => Some(path),
+                (None, Some(name)) => Some(
+                    sunipdf_core::fonts::system_fonts()
+                        .into_iter()
+                        .find(|f| f.name.eq_ignore_ascii_case(&name))
+                        .ok_or_else(|| EngineError::Other(format!("unknown system font: {name}")))?
+                        .path,
+                ),
+                (None, None) => None,
+            };
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let style = TextStyle {
+                size_pt: size,
+                bold,
+                italic,
+                rgb: parse_hex_color(&color)?,
+                opacity,
+                font_file: font_file.clone(),
+                ..Default::default()
+            };
+            let added = doc.add_text(p, x, y, &text.replace("\\n", "\n"), &style)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "added": added, "embedded_font": font_file }))
+        }
+        Command::SetOpacity {
+            file,
+            page,
+            objects,
+            opacity,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            doc.set_objects_style(
+                p,
+                &indices,
+                &sunipdf_core::ObjectStyle {
+                    opacity: Some(opacity),
+                    ..Default::default()
+                },
+            )?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "objects": indices.len(),
+                    "opacity": (opacity.clamp(0.0, 1.0) as f64 * 1000.0).round() / 1000.0 }))
+        }
+        Command::RotateObject {
+            file,
+            page,
+            object,
+            degrees,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            doc.rotate_object(p, object, degrees)?;
+            let angle = doc.object_info(p, object)?.angle_deg;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "angle": angle }))
+        }
+        Command::CopyObjects {
+            file,
+            from_page,
+            objects,
+            to_page,
+            into,
+            dx,
+            dy,
+            out,
+            password,
+        } => {
+            let src = engine.open(&file, password.as_deref())?;
+            let from = page_index(from_page, src.page_count())?;
+            let indices = parse_indices(&objects)?;
+            let clip = src.copy_objects(from, &indices)?;
+            let mut dest = match &into {
+                Some(path) => engine.open(path, None)?,
+                None => src,
+            };
+            let to = page_index(to_page, dest.page_count())?;
+            let pasted = dest.paste_objects(to, &clip, dx, dy)?;
+            dest.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "copied": clip.count, "pasted_index": pasted }))
+        }
+        Command::ReplaceImage {
+            file,
+            page,
+            object,
+            image,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            doc.replace_image(p, object, &image)?;
+            let b = doc.object_info(p, object)?.bounds;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "bounds": [b.left, b.bottom, b.right, b.top] }))
+        }
+        Command::Crop {
+            file,
+            pages,
+            left,
+            top,
+            right,
+            bottom,
+            unit,
+            reset,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
+            let k = unit_factor(&unit)?;
+            let margins = sunipdf_core::PageMargins {
+                left: left * k,
+                top: top * k,
+                right: right * k,
+                bottom: bottom * k,
+            };
+            for &p in &selection {
+                if reset {
+                    doc.reset_crop(p)?;
+                } else {
+                    doc.crop_page(p, margins)?;
+                }
+            }
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({
+                "out": out,
+                "cropped": selection.len(),
+                "sizes": selection.iter().map(|&p| {
+                    let s = doc.page_size(p).unwrap_or(sunipdf_core::PageSize { width_pt: 0.0, height_pt: 0.0 });
+                    serde_json::json!({ "page": p + 1, "width_pt": s.width_pt, "height_pt": s.height_pt })
+                }).collect::<Vec<_>>(),
+            }))
+        }
+        Command::ResizePages {
+            file,
+            pages,
+            width,
+            height,
+            unit,
+            mode,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
+            let k = unit_factor(&unit)?;
+            let mode = match mode.as_str() {
+                "keep" => sunipdf_core::ResizeMode::KeepContent,
+                "scale" => sunipdf_core::ResizeMode::ScaleContent,
+                other => return Err(EngineError::Other(format!("unknown mode: {other}"))),
+            };
+            for &p in &selection {
+                doc.resize_page(p, width * k, height * k, mode)?;
+            }
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "resized": selection.len() }))
+        }
+        Command::InsertBlank {
+            file,
+            at,
+            count,
+            width,
+            height,
+            unit,
+            like,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let (w, h) = match (width, height) {
+                (Some(w), Some(h)) => {
+                    let k = unit_factor(&unit)?;
+                    (w * k, h * k)
+                }
+                _ => {
+                    let s = doc.page_size(page_index(like.unwrap_or(1), doc.page_count())?)?;
+                    (s.width_pt, s.height_pt)
+                }
+            };
+            let at = if at == 0 { doc.page_count() } else { at - 1 };
+            doc.insert_blank_pages(at, count, w, h)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "inserted": count, "page_count": doc.page_count() }))
         }
         Command::Render {
             file,
@@ -662,6 +1068,14 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::StripMetadata { out, .. }
         | Command::Images2pdf { out, .. }
         | Command::Optimize { out, .. }
+        | Command::AddText { out, .. }
+        | Command::SetOpacity { out, .. }
+        | Command::RotateObject { out, .. }
+        | Command::CopyObjects { out, .. }
+        | Command::ReplaceImage { out, .. }
+        | Command::Crop { out, .. }
+        | Command::ResizePages { out, .. }
+        | Command::InsertBlank { out, .. }
         | Command::Render { out, .. } => Some(out.as_path()),
         _ => None,
     }
@@ -686,6 +1100,40 @@ fn unique(mut pages: Vec<usize>) -> Vec<usize> {
 
 fn page_zero() -> EngineError {
     EngineError::Other("page numbers start at 1".into())
+}
+
+/// Numéro de page saisi (base 1) → index validé (base 0).
+fn page_index(page: usize, count: usize) -> Result<usize, EngineError> {
+    let p = page.checked_sub(1).ok_or_else(page_zero)?;
+    if p >= count {
+        return Err(EngineError::PageOutOfRange(p));
+    }
+    Ok(p)
+}
+
+/// "0,3,5" → index d'objets (base 0).
+fn parse_indices(spec: &str) -> Result<Vec<usize>, EngineError> {
+    let v: Result<Vec<usize>, _> = spec
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::parse)
+        .collect();
+    match v {
+        Ok(v) if !v.is_empty() => Ok(v),
+        _ => Err(EngineError::Other(format!("invalid object list: {spec}"))),
+    }
+}
+
+/// Points par unité : "pt" → 1, "mm" → 72 / 25,4.
+fn unit_factor(unit: &str) -> Result<f32, EngineError> {
+    match unit {
+        "pt" => Ok(1.0),
+        "mm" => Ok(72.0 / 25.4),
+        other => Err(EngineError::Other(format!(
+            "unknown unit: {other} (pt or mm)"
+        ))),
+    }
 }
 
 fn parse_hex_color(hex: &str) -> Result<(u8, u8, u8), EngineError> {
@@ -727,6 +1175,19 @@ fn parse_pages(spec: &str, count: usize) -> Result<Vec<usize>, EngineError> {
 }
 
 fn main() -> ExitCode {
+    // Pile de 1 Mio du fil principal sous Windows : l'analyse clap et `run` (un `match` de 30
+    // sous-commandes riches en `json!`) la dépassent en compilation de débogage. Un fil dédié de
+    // 16 Mio, seul utilisateur du moteur (PDFium reste sur un seul fil).
+    std::thread::Builder::new()
+        .name("sunipdf-cli".into())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(cli_main)
+        .expect("fil de la CLI")
+        .join()
+        .unwrap_or(ExitCode::FAILURE)
+}
+
+fn cli_main() -> ExitCode {
     match run(Cli::parse()) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
@@ -787,6 +1248,59 @@ mod tests {
             assert!(quarter_turn(bad).is_err(), "{bad}");
         }
         assert_eq!(unique(vec![2, 0, 1, 2, 1]), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn object_lists_units_and_pages() {
+        assert_eq!(parse_indices("0, 3,5").unwrap(), vec![0, 3, 5]);
+        assert!(parse_indices("").is_err());
+        assert!(parse_indices("a,1").is_err());
+        assert_eq!(unit_factor("pt").unwrap(), 1.0);
+        assert!((unit_factor("mm").unwrap() * 25.4 - 72.0).abs() < 1e-4);
+        assert!(unit_factor("cm").is_err());
+        assert_eq!(page_index(2, 3).unwrap(), 1);
+        assert!(page_index(0, 3).is_err());
+        assert!(matches!(
+            page_index(4, 3),
+            Err(EngineError::PageOutOfRange(3))
+        ));
+        let cli = Cli::try_parse_from([
+            "sunipdf-cli",
+            "crop",
+            "a.pdf",
+            "--left",
+            "10",
+            "--unit",
+            "mm",
+            "--out",
+            "o.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("o.pdf"))
+        );
+        assert!(
+            Cli::try_parse_from([
+                "sunipdf-cli",
+                "add-text",
+                "a.pdf",
+                "--x",
+                "1",
+                "--y",
+                "2",
+                "--text",
+                "t",
+                "--font-file",
+                "f.ttf",
+                "--font-name",
+                "Arial",
+                "--out",
+                "o.pdf",
+            ])
+            .is_err(),
+            "police : fichier ou nom, pas les deux"
+        );
     }
 
     #[test]
