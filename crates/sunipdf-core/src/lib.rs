@@ -21,10 +21,11 @@ pub mod pages;
 pub mod security;
 pub mod stamp;
 pub mod text;
+pub mod tiles;
 
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
 pub use boxes::{PageMargins, ResizeMode};
-pub use cache::{cache_key, RenderCache};
+pub use cache::{cache_key, tile_key, RenderCache};
 pub use clipboard::ObjectClip;
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use convert::Optimized;
@@ -39,6 +40,7 @@ pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection};
 pub use stamp::{Stamp, StampPosition};
 pub use text::{PointRect, TextMatch};
+pub use tiles::{PixelRect, TileJob, TileLimits};
 
 use pdfium_render::prelude::*;
 use std::path::{Path, PathBuf};
@@ -263,6 +265,51 @@ impl Document<'_> {
             .render_form_data(true)
             .render_annotations(true);
         let bitmap = page.render_with_config(&config)?;
+        Ok(RenderedPage {
+            page_index,
+            width: bitmap.width() as u32,
+            height: bitmap.height() as u32,
+            rgba: bitmap.as_rgba_bytes(),
+        })
+    }
+
+    /// Rend la zone `region` (pixels, origine en haut à gauche de la page rendue à `scale`) sans
+    /// allouer la page entière : la vue continue et le fort zoom passent tous par ici.
+    pub fn render_region(
+        &self,
+        page_index: usize,
+        scale: f32,
+        region: PixelRect,
+    ) -> Result<RenderedPage, EngineError> {
+        let size = self.page_size(page_index)?;
+        let (page_w, page_h) =
+            tiles::page_pixels(size, scale).ok_or(EngineError::RenderTooLarge)?;
+        if region.is_empty() || region.right() > page_w || region.bottom() > page_h {
+            return Err(EngineError::Other(
+                "render region is empty or outside the page".into(),
+            ));
+        }
+        if region.width > MAX_RENDER_SIDE_PX
+            || region.height > MAX_RENDER_SIDE_PX
+            || u64::from(region.width) * u64::from(region.height) > tiles::MAX_REGION_PIXELS
+        {
+            return Err(EngineError::RenderTooLarge);
+        }
+        let index = PdfPageIndex::try_from(page_index)
+            .map_err(|_| EngineError::PageOutOfRange(page_index))?;
+        let page = self.inner.pages().get(index)?;
+        // Taille cible = page entière ; l'origine négative place la région en (0, 0) du bitmap.
+        let config = PdfRenderConfig::new()
+            .set_target_size(page_w as Pixels, page_h as Pixels)
+            .set_origin(-(region.x as Pixels), -(region.y as Pixels))
+            .render_form_data(true)
+            .render_annotations(true);
+        let mut bitmap = PdfBitmap::empty(
+            region.width as Pixels,
+            region.height as Pixels,
+            PdfBitmapFormat::default(),
+        )?;
+        page.render_into_bitmap_with_config(&mut bitmap, &config)?;
         Ok(RenderedPage {
             page_index,
             width: bitmap.width() as u32,

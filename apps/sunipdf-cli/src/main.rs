@@ -436,11 +436,28 @@ enum Command {
         /// Pixels per PDF point (1.0 = 72 dpi, 2.0 = 144 dpi).
         #[arg(long, default_value_t = 2.0)]
         scale: f32,
+        /// Only render this region "x,y,w,h", in pixels of the page rendered at --scale (origin at
+        /// the top left); allows scales whose full page would exceed 16384 px.
+        #[arg(long, value_parser = parse_region)]
+        region: Option<sunipdf_core::PixelRect>,
         #[arg(long)]
         out: PathBuf,
         #[arg(long)]
         password: Option<String>,
     },
+}
+
+/// "x,y,w,h" → région en pixels.
+fn parse_region(spec: &str) -> Result<sunipdf_core::PixelRect, String> {
+    let v: Vec<u32> = spec
+        .split(',')
+        .map(|p| p.trim().parse::<u32>())
+        .collect::<Result<_, _>>()
+        .map_err(|e| format!("expected x,y,w,h (non-negative integers): {e}"))?;
+    match v[..] {
+        [x, y, w, h] => Ok(sunipdf_core::PixelRect::new(x, y, w, h)),
+        _ => Err(format!("expected 4 values x,y,w,h, got {}", v.len())),
+    }
 }
 
 fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
@@ -1026,12 +1043,17 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             file,
             page,
             scale,
+            region,
             out,
             password,
         } => {
             let doc = engine.open(&file, password.as_deref())?;
             let index = page.checked_sub(1).ok_or_else(page_zero)?;
-            let img = doc.render_page(index, scale)?;
+            let img = match region {
+                Some(r) => doc.render_region(index, scale, r)?,
+                None => doc.render_page(index, scale)?,
+            };
+            let page_pixels = sunipdf_core::tiles::page_pixels(doc.page_size(index)?, scale);
             // Toujours du PNG (quelle que soit l'extension), écrit de façon atomique.
             let mut png = Vec::new();
             image::write_buffer_with_format(
@@ -1044,9 +1066,14 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             )
             .map_err(|e| EngineError::Other(e.to_string()))?;
             sunipdf_core::write_atomic(&out, &png)?;
-            Ok(
-                serde_json::json!({ "out": out, "width": img.width, "height": img.height, "page": page }),
-            )
+            Ok(serde_json::json!({
+                "out": out,
+                "width": img.width,
+                "height": img.height,
+                "page": page,
+                "region": region.map(|r| [r.x, r.y, r.width, r.height]),
+                "page_pixels": page_pixels.map(|(w, h)| [w, h]),
+            }))
         }
     }
 }
@@ -1248,6 +1275,43 @@ mod tests {
             assert!(quarter_turn(bad).is_err(), "{bad}");
         }
         assert_eq!(unique(vec![2, 0, 1, 2, 1]), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn render_region_parses() {
+        assert_eq!(
+            parse_region("4000, 7000,256,256").unwrap(),
+            sunipdf_core::PixelRect::new(4000, 7000, 256, 256)
+        );
+        for bad in ["1,2,3", "1,2,3,4,5", "-1,0,1,1", "a,b,c,d", ""] {
+            assert!(parse_region(bad).is_err(), "{bad}");
+        }
+        let cli = Cli::try_parse_from([
+            "sunipdf-cli",
+            "render",
+            "a.pdf",
+            "--scale",
+            "40",
+            "--region",
+            "4000,7000,256,256",
+            "--out",
+            "tile.png",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("tile.png"))
+        );
+        assert!(Cli::try_parse_from([
+            "sunipdf-cli",
+            "render",
+            "a.pdf",
+            "--region",
+            "1,2",
+            "--out",
+            "t.png"
+        ])
+        .is_err());
     }
 
     #[test]

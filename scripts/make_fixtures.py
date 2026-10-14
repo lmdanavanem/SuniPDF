@@ -105,9 +105,33 @@ def boxes(path):
         objs.append(stream(content))
     open(path, "wb").write(build(objs))
 
+def many_pages(path, n=120):
+    """Document long pour la vue continue : Lettre, paysage (i % 10 == 9), A5 (i % 25 == 24),
+    carré de couleur ((i*37)%256, (i*91)%256, (i*53)%256) en x 36..156, y 36..116 pt, texte « Page N »."""
+    objs = [b"<< /Type /Catalog /Pages 2 0 R >>", None,
+            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    kids = []
+    for i in range(n):
+        w, h = (792, 612) if i % 10 == 9 else ((420, 595) if i % 25 == 24 else (612, 792))
+        r, g, b = (i * 37) % 256, (i * 91) % 256, (i * 53) % 256
+        c = (f"{r/255:.4f} {g/255:.4f} {b/255:.4f} rg 36 36 120 80 re f\n0 g\n"
+             f"BT /F1 24 Tf 36 {h-60} Td (Page {i+1}) Tj ET\n")
+        kids.append(f"{4+2*i} 0 R")
+        objs.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {w} {h}] /Contents {5+2*i} 0 R "
+                    f"/Resources << /Font << /F1 3 0 R >> >> >>".encode())
+        objs.append(stream(c.encode()))
+    objs[1] = f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {n} >>".encode()
+    open(path, "wb").write(build(objs))
+
 if __name__ == "__main__":
+    if len(sys.argv) == 4 and sys.argv[1] == "--many":
+        # Fichier long à la demande (non versionné) : --many 500 %TEMP%\many-500.pdf
+        many_pages(sys.argv[3], int(sys.argv[2]))
+        print("ok")
+        sys.exit(0)
     out = sys.argv[1]
     two_pages(os.path.join(out, "two-pages.pdf"))
     encrypted(os.path.join(out, "encrypted-rc4.pdf"))
     boxes(os.path.join(out, "boxes.pdf"))
+    many_pages(os.path.join(out, "many-pages.pdf"), 120)
     print("ok")

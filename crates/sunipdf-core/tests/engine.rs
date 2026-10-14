@@ -2477,3 +2477,277 @@ fn page_objects_listing_is_linear() {
     }
     assert!(start.elapsed().as_secs_f32() < 5.0, "{:?}", start.elapsed());
 }
+
+// ----- Vue continue (SUNI-012b) : rendu de régions et tuiles -----
+
+use sunipdf_core::tiles::{self, PixelRect, TileLimits};
+
+/// Octets RGBA de la zone `r` d'un rendu.
+fn crop(img: &RenderedPage, r: PixelRect) -> Vec<u8> {
+    let mut out = Vec::with_capacity((r.width * r.height * 4) as usize);
+    for y in r.y..r.bottom() {
+        let start = ((y * img.width + r.x) * 4) as usize;
+        out.extend_from_slice(&img.rgba[start..start + (r.width * 4) as usize]);
+    }
+    out
+}
+
+/// Pixel RGBA (x, y depuis le haut) d'un rendu.
+fn pixel_at(img: &RenderedPage, x: u32, y: u32) -> [u8; 4] {
+    let i = ((y * img.width + x) * 4) as usize;
+    [
+        img.rgba[i],
+        img.rgba[i + 1],
+        img.rgba[i + 2],
+        img.rgba[i + 3],
+    ]
+}
+
+#[test]
+fn render_region_equals_crop_of_full_render() {
+    let engine = engine();
+    let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let full = doc.render_page(0, 2.0).unwrap();
+    assert_eq!((full.width, full.height), (1224, 1584));
+    for r in [
+        PixelRect::new(0, 0, 512, 512),
+        PixelRect::new(512, 1024, 712, 560),
+        PixelRect::new(1000, 1300, 224, 284),
+    ] {
+        let part = doc.render_region(0, 2.0, r).unwrap();
+        assert_eq!((part.width, part.height), (r.width, r.height));
+        assert!(
+            part.rgba == crop(&full, r),
+            "région {r:?} différente du rendu complet"
+        );
+    }
+}
+
+#[test]
+fn render_region_on_rotated_page_matches_crop() {
+    use sunipdf_core::Rotation;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.set_page_rotation(0, Rotation::R90).unwrap();
+    let full = doc.render_page(0, 1.0).unwrap();
+    assert_eq!((full.width, full.height), (792, 612));
+    let r = PixelRect::new(100, 50, 400, 300);
+    let part = doc.render_region(0, 1.0, r).unwrap();
+    assert!(part.rgba == crop(&full, r));
+}
+
+#[test]
+fn render_region_deep_zoom_beyond_full_page_limit() {
+    let engine = engine();
+    let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    // Page entière à 40 px/pt : 24 480 x 31 680 px, refusée d'un seul tenant.
+    assert!(matches!(
+        doc.render_page(0, 40.0),
+        Err(EngineError::RenderTooLarge)
+    ));
+    assert_eq!(
+        tiles::page_pixels(doc.page_size(0).unwrap(), 40.0),
+        Some((24_480, 31_680))
+    );
+    // Intérieur du rectangle bleu (x 2880..10880, y 5680..11680 depuis le haut).
+    let inside = doc
+        .render_region(0, 40.0, PixelRect::new(4000, 7000, 256, 256))
+        .unwrap();
+    assert_eq!(inside.rgba.len(), 256 * 256 * 4);
+    assert!(inside.rgba.chunks(4).all(|p| p == [0, 0, 255, 255]));
+    // À cheval sur le bord droit du rectangle (x = 10880 → colonne 80 de la région).
+    let edge = doc
+        .render_region(0, 40.0, PixelRect::new(10_800, 7000, 256, 256))
+        .unwrap();
+    assert_eq!(pixel_at(&edge, 40, 128), [0, 0, 255, 255]);
+    assert_eq!(pixel_at(&edge, 120, 128), [255, 255, 255, 255]);
+    // Autour du texte bleu « SuniPDF » (24 pt à y = 700) : des lettres, et un fond opaque.
+    let text = doc
+        .render_region(0, 40.0, PixelRect::new(2880, 3000, 1024, 1024))
+        .unwrap();
+    let colored = text.rgba.chunks(4).filter(|p| p[0] < 128).count();
+    let share = colored as f64 / (1024.0 * 1024.0);
+    // Mesuré : 0,20 ; seuil fixé nettement en dessous.
+    assert!(share > 0.05, "part de pixels du texte : {share}");
+    assert!(text.rgba.chunks(4).all(|p| p[3] == 255), "fond transparent");
+}
+
+#[test]
+fn render_region_rejects_invalid_requests() {
+    let engine = engine();
+    let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let other = |r: Result<RenderedPage, EngineError>| matches!(r, Err(EngineError::Other(_)));
+    let too_large =
+        |r: Result<RenderedPage, EngineError>| matches!(r, Err(EngineError::RenderTooLarge));
+    assert!(other(doc.render_region(
+        0,
+        1.0,
+        PixelRect::new(0, 0, 0, 10)
+    )));
+    assert!(other(doc.render_region(
+        0,
+        1.0,
+        PixelRect::new(600, 0, 13, 10)
+    )));
+    assert!(other(doc.render_region(
+        0,
+        1.0,
+        PixelRect::new(0, 790, 10, 3)
+    )));
+    assert!(too_large(doc.render_region(
+        0,
+        40.0,
+        PixelRect::new(0, 0, 16_385, 10)
+    )));
+    for scale in [f32::NAN, 0.0, -1.0, 300.0] {
+        assert!(too_large(doc.render_region(
+            0,
+            scale,
+            PixelRect::new(0, 0, 1, 1)
+        )));
+    }
+    assert!(matches!(
+        doc.render_region(9, 1.0, PixelRect::new(0, 0, 1, 1)),
+        Err(EngineError::PageOutOfRange(9))
+    ));
+}
+
+#[test]
+fn render_region_deep_zoom_on_image_page() {
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-tiles-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let png = dir.join("gradient.png");
+    let rgb: Vec<u8> = (0..64u32 * 64)
+        .flat_map(|i| [(i % 64 * 4) as u8, (i / 64 * 4) as u8, 128])
+        .collect();
+    image::save_buffer(&png, &rgb, 64, 64, image::ColorType::Rgb8).unwrap();
+    let out = dir.join("image.pdf");
+    engine.images_to_pdf(&[png], &out, 72.0).unwrap();
+    let doc = engine.open(&out, None).unwrap();
+    let (w, h) = tiles::page_pixels(doc.page_size(0).unwrap(), 50.0).unwrap();
+    assert!(w > 3000 && h > 3000, "{w} x {h}");
+    let tile = doc
+        .render_region(0, 50.0, PixelRect::new(w / 2 - 128, h / 2 - 128, 256, 256))
+        .unwrap();
+    assert!(tile.rgba.chunks(4).all(|p| p[3] == 255));
+    let first = &tile.rgba[..4];
+    assert!(tile.rgba.chunks(4).any(|p| p != first), "tuile uniforme");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn many_pages_fixture_pages_have_expected_sizes_and_colors() {
+    let engine = engine();
+    let doc = engine.open(&fixture("many-pages.pdf"), None).unwrap();
+    assert_eq!(doc.page_count(), 120);
+    for i in [0usize, 9, 24, 49, 119] {
+        let size = doc.page_size(i).unwrap();
+        let expected = if i % 10 == 9 {
+            (792.0, 612.0)
+        } else if i % 25 == 24 {
+            (420.0, 595.0)
+        } else {
+            (612.0, 792.0)
+        };
+        assert_eq!((size.width_pt, size.height_pt), expected, "page {i}");
+        // Centre du carré coloré (x 96, y 76 depuis le bas) : région 8 x 8 à l'échelle 1.
+        let top = size.height_pt as u32 - 76 - 4;
+        let tile = doc
+            .render_region(i, 1.0, PixelRect::new(92, top, 8, 8))
+            .unwrap();
+        let want = [(i * 37) % 256, (i * 91) % 256, (i * 53) % 256];
+        for p in tile.rgba.chunks(4) {
+            for c in 0..3 {
+                assert!(
+                    (p[c] as i32 - want[c] as i32).abs() <= 1,
+                    "page {i} : {p:?} au lieu de {want:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn tiles_reassemble_into_full_render() {
+    let engine = engine();
+    let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let full = doc.render_page(0, 2.0).unwrap();
+    let limits = TileLimits {
+        tile_side: 256,
+        whole_max_side: 512,
+        whole_max_pixels: 262_144,
+    };
+    let page_px = (full.width, full.height);
+    let plan = tiles::plan_tiles(page_px, PixelRect::new(0, 0, page_px.0, page_px.1), &limits);
+    assert_eq!(plan.len(), 5 * 7);
+    let mut canvas = vec![0u8; full.rgba.len()];
+    for r in plan {
+        let tile = doc.render_region(0, 2.0, r).unwrap();
+        for row in 0..r.height {
+            let src = (row * r.width * 4) as usize;
+            let dst = (((r.y + row) * full.width + r.x) * 4) as usize;
+            canvas[dst..dst + (r.width * 4) as usize]
+                .copy_from_slice(&tile.rgba[src..src + (r.width * 4) as usize]);
+        }
+    }
+    // Égalité exacte observée pour les régions isolées (test ci-dessus) mais pas pour le recollage
+    // complet : PDFium place différemment quelques pixels d'anticrénelage des glyphes qui
+    // traversent un bord de tuile (mesuré : 121 pixels sur 1 938 816, écart max 134, tous sur le
+    // texte, aucun sur les aplats). Tolérance : 99,9 % des pixels à <= 2 près (KNOWN_ISSUES).
+    let off = canvas
+        .chunks(4)
+        .zip(full.rgba.chunks(4))
+        .filter(|(a, b)| a.iter().zip(b.iter()).any(|(x, y)| x.abs_diff(*y) > 2))
+        .count();
+    let total = (full.width * full.height) as usize;
+    assert!(
+        off * 1000 <= total,
+        "{off} pixels sur {total} diffèrent du rendu complet"
+    );
+    // Les aplats (rectangle bleu, fond) sont identiques au pixel près.
+    let blue = PixelRect::new(144, 284, 400, 300);
+    assert!(crop_buf(&canvas, full.width, blue) == crop(&full, blue));
+}
+
+fn crop_buf(rgba: &[u8], width: u32, r: PixelRect) -> Vec<u8> {
+    crop(
+        &RenderedPage {
+            page_index: 0,
+            width,
+            height: (rgba.len() / 4) as u32 / width,
+            rgba: rgba.to_vec(),
+        },
+        r,
+    )
+}
+
+/// Mesure seulement (aucune assertion de durée) :
+/// `cargo test -p sunipdf-core --release -j 2 -- --ignored --nocapture render_scroll_100_pages_timing`
+#[test]
+#[ignore]
+fn render_scroll_100_pages_timing() {
+    let engine = engine();
+    let doc = engine.open(&fixture("many-pages.pdf"), None).unwrap();
+    let limits = TileLimits::default();
+    let scale = 1.5;
+    let start = std::time::Instant::now();
+    let mut first = None;
+    let mut count = 0u32;
+    for i in 0..100 {
+        let page = i % doc.page_count();
+        let page_px = tiles::page_pixels(doc.page_size(page).unwrap(), scale).unwrap();
+        for r in tiles::plan_tiles(page_px, PixelRect::new(0, 0, page_px.0, page_px.1), &limits) {
+            doc.render_region(page, scale, r).unwrap();
+            count += 1;
+        }
+        first.get_or_insert(start.elapsed());
+    }
+    let total = start.elapsed();
+    println!(
+        "100 pages à {scale} px/pt : {count} rendus, total {total:?}, moyenne {:?}, première page {:?}",
+        total / count,
+        first.unwrap()
+    );
+}
