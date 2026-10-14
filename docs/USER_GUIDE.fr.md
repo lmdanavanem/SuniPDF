@@ -150,7 +150,9 @@ supprime et s'annule comme les autres.
   Ctrl+Maj+I pour insérer des pages d'un autre fichier.
 - **Annuler / Rétablir** : Ctrl+Z / Ctrl+Y (jusqu'à 50 étapes).
 - **Diviser le document** : choisissez le nombre de pages par fichier et un dossier de destination.
-- **Extraire les pages sélectionnées** : crée un nouveau PDF avec la sélection.
+- **Extraire les pages sélectionnées** : crée un nouveau PDF avec la sélection. Depuis un document
+  protégé, le fichier créé (comme les parties d'une division) **n'est pas chiffré** : la barre d'état le
+  signale ; ouvrez-le et appliquez **Protéger** si besoin.
 - **Combiner des fichiers PDF** : choisissez les fichiers dans l'ordre, puis le fichier de sortie ; il s'ouvre ensuite.
 - **Insérer une page vierge…** : taille de la page courante, A3, A4, A5, Letter, Legal ou personnalisée
   (portrait ou paysage), nombre de pages, avant ou après la page courante ou à la fin.
@@ -164,7 +166,8 @@ supprime et s'annule comme les autres.
 
 ## Convertir
 
-- **Créer un PDF à partir d'images** (PNG, JPEG, BMP, GIF, TIFF, WebP) : une page par image, 150 ppp.
+- **Créer un PDF à partir d'images** (PNG, JPEG, BMP, GIF, TIFF, WebP) : une page par image, 150 ppp ;
+  l'orientation EXIF des photos est respectée et les JPEG sont incorporés sans recompression.
 - **Exporter les pages en images** : un PNG par page (150 ppp) dans le dossier choisi.
 - **Optimiser la taille du fichier** : recompression sans perte ; le gain dépend du fichier et peut être faible.
 
@@ -172,21 +175,26 @@ supprime et s'annule comme les autres.
 
 - **Protéger par mot de passe** : mot de passe d'ouverture, mot de passe propriétaire, permissions
   (impression, copie, modification, annotation), AES-256 par défaut (AES-128 pour les lecteurs anciens).
-  La protection s'applique au fichier lors de l'enregistrement.
+  La protection s'applique au fichier lors de l'enregistrement. AES-128 n'accepte que des mots de passe en
+  caractères Latin-1 (lettres accentuées comprises) ; pour un mot de passe cyrillique, grec, CJK ou avec
+  emoji, gardez AES-256. L'extraction de texte pour l'accessibilité (lecteurs d'écran) reste toujours permise.
 - **Retirer la protection** : demande le mot de passe propriétaire (ou le mot de passe d'ouverture quand
   aucun mot de passe propriétaire distinct n'a été défini). Des restrictions (impression, copie…) exigent
   un mot de passe propriétaire différent du mot de passe d'ouverture.
 - Les opérations sur un document protégé (métadonnées, optimisation, ordre des objets) **conservent** sa
   protection.
-- **Supprimer les métadonnées** : retire le dictionnaire d'informations et les métadonnées XMP.
+- **Supprimer les métadonnées** : retire le dictionnaire d'informations, les métadonnées XMP (document,
+  pages, images) et les données privées des applications (`PieceInfo`). Modifier les propriétés met aussi à
+  jour le XMP.
 - **Propriétés du document** (Ctrl+D) : titre, auteur, sujet, mots-clés modifiables ; version, taille,
   chiffrement et permissions en lecture.
 
 ## Enregistrer
 
 Ctrl+S enregistre dans le fichier ouvert, Ctrl+Maj+S dans un nouveau fichier. L'écriture est atomique :
-le fichier d'origine n'est jamais laissé dans un état partiel. Un point après le nom de l'onglet signale
-des modifications non enregistrées ; SuniPDF demande confirmation avant de fermer ou de quitter.
+le fichier d'origine n'est jamais laissé dans un état partiel (données écrites sur le disque avant le
+remplacement). Un point après le nom de l'onglet signale des modifications non enregistrées ; annuler jusqu'à
+l'état enregistré l'efface ; SuniPDF demande confirmation avant de fermer ou de quitter.
 
 ## Palette de commandes
 
@@ -202,7 +210,8 @@ l'édition du contenu : `objects` (objets d'une page, index à partir de 0), `ad
 `--font-file` pour une police système incorporée ; `\n` pour passer à la ligne), `set-opacity`, `rotate-object`
 (angle libre), `copy-objects` (vers une autre page, `--into` pour un autre document), `replace-image`, `crop`
 (`--unit mm`, `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
-Les sorties sont en JSON ; les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
+Les sorties sont en JSON (`extract` et `split` signalent `encryption_removed` quand la source était protégée) ;
+les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
 fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
 sans l'option `--overwrite`. `render` écrit toujours du PNG (`--region x,y,l,h` : une zone en pixels de la page
 rendue à `--scale`, pour les échelles où la page entière dépasserait 16 384 px) ; `rotate` accepte 90, 180, 270 ou -90. Les

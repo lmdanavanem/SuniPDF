@@ -144,7 +144,11 @@ pub fn show<R>(
                 })
                 .show(ui, |ui| {
                     ui.set_width(spec.width - 44.0);
+                    // Hauteur fixée aussi par `min_scrolled_height` : la zone ne dépend pas de la
+                    // taille mémorisée de la fenêtre surgissante (sinon elle ne grandit que de
+                    // quelques pixels par image et s'arrête avec le dernier rafraîchissement).
                     egui::ScrollArea::vertical()
+                        .min_scrolled_height(body_max_h)
                         .max_height(body_max_h)
                         .show(ui, |ui| {
                             ui.set_width(spec.width - 44.0);
@@ -179,7 +183,14 @@ pub fn show<R>(
                         line.top() - 12.0,
                         Stroke::new(1.0, p.border),
                     );
-                    ui.with_layout(Layout::right_to_left(Align::Center), footer);
+                    // Hauteur fixe : centrer les boutons dans l'espace « disponible » les
+                    // pousserait vers le bas de la taille mémorisée de la fenêtre surgissante,
+                    // qui grandirait alors à chaque image (pied à 150 px de haut, en-tête hors écran).
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(spec.width - 44.0, 32.0),
+                        Layout::right_to_left(Align::Center),
+                        footer,
+                    );
                 });
             inner
         })

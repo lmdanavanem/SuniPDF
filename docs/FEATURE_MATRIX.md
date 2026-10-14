@@ -54,7 +54,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Redimensionner les pages | Déclaré | **Fait** (A3–Legal ou personnalisé, contenu conservé ou mis à l'échelle ; CLI `resize-pages`) ; annotations non mises à l'échelle |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
-| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; préservation à vérifier avec qpdf |
+| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; d'un document protégé : résultat non chiffré, annoncé (D046) ; préservation à vérifier avec qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
@@ -66,7 +66,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 |---|---|---|
 | PDF → images | Déclaré (CLI render) | **Fait** (UI export PNG 150 ppp, CLI `render`, `export-images`) |
 | PDF → texte | Déclaré | **Fait** (CLI `text`) |
-| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP) |
+| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP ; orientation EXIF appliquée, JPEG incorporés tels quels) |
 | PDF → Word | Partiel (perd la mise en page) | Planifié (P4), fidélité à annoncer honnêtement |
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
 | Office → PDF | Absent | Planifié (P4) via LibreOffice/Word installé si présent ; sinon hors périmètre |
@@ -78,9 +78,9 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
 | Ouvrir chiffré, honorer les permissions | Déclaré | **Fait** (ouverture ; permissions affichées dans les propriétés) |
-| Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions) via `lopdf`, relu par PDFium ; vérification qpdf à ajouter |
+| Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; vérification qpdf à ajouter |
 | Caviardage irréversible | Déclaré (crate redact) | Planifié (P5) avec test d'absence des données |
-| Nettoyage des métadonnées | Déclaré | **Fait** (Info + XMP) |
+| Nettoyage des métadonnées | Déclaré | **Fait** (Info, XMP du catalogue, des pages et des images, `/PieceInfo` ; les propriétés modifiées régénèrent le XMP) |
 | Signature manuscrite (image) | Déclaré | Planifié (P3), jamais présentée comme signature certifiée |
 | Signature numérique CMS/PKCS#12, horodatage | Déclaré | Planifié (P5) |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |

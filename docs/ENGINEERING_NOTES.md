@@ -152,6 +152,13 @@ sortie) ; tester sur `tests/fixtures/boxes.pdf` (pages pivotées 90/180/270 et r
   (`ScrollArea::max_height(..).auto_shrink([false, false])`).
 - Un `ui.horizontal` imbriqué dans `horizontal_wrapped` ne passe pas à la ligne : il déborde. Préférer des
   widgets simples, ou une rangée par `horizontal_wrapped`.
+- Dans une `Area` / `Modal`, l'espace « disponible » est la taille mémorisée de l'image précédente : un
+  `with_layout(right_to_left(Align::Center))` qui centre ses boutons dans cet espace fait grandir la boîte à
+  chaque image (pied de 150 px, en-tête hors écran). Donner une hauteur fixe (`allocate_ui_with_layout`) et,
+  pour une `ScrollArea` bornée, fixer aussi `min_scrolled_height` (sinon elle ne grandit que de quelques
+  pixels par image et s'arrête avec le dernier rafraîchissement). `dialog::show` applique les deux.
+- `consume_key(COMMAND, k)` accepte aussi Ctrl+Maj+k : les tables `FIELD_SHORTCUTS` / `SHORTCUTS` d'`app.rs`
+  lisent la variante avec Maj d'abord (invariant testé) ; tout nouveau raccourci va dans ces tables.
 
 ## 5. Vérification visuelle
 

@@ -119,9 +119,24 @@ A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute sé
      par un saut de ligne (`clap_builder` 4.6, sans échappement possible) ; l'aide affiche donc « : ⏎ = page
      number » au lieu de `{n}`. Les variables `{n}` et `{total}` fonctionnent ; seul le texte d'aide est
      tronqué (relevé par la revue du hub, non traité).
-A17. **Indicateur « modifié » après annulation** : annuler jusqu'à l'état d'origine laisse le document marqué
-     « modifié » (l'historique ne mémorise pas le point d'enregistrement ; relevé par la revue du hub, non
-     traité).
+A17. ~~Indicateur « modifié » après annulation~~ **Corrigé (review-fixes, D052)** : point d'enregistrement dans
+     l'historique ; perdu seulement si l'on modifie après une annulation ou si l'instantané enregistré sort des 50
+     niveaux (le document reste alors « modifié » jusqu'au prochain enregistrement).
+A29. **Extraire / diviser un document protégé** : les fichiers produits ne sont pas chiffrés (PDFium copie les
+     pages dans un document neuf) ; l'interface et la CLI (`encryption_removed`) le disent, et Protéger
+     s'applique ensuite au fichier créé (D046). Rechiffrement automatique en feuille de route.
+A30. **AES-128 et mots de passe** : seuls les caractères de PDFDocEncoding sont acceptés (Latin-1 imprimable,
+     euro, tirets et guillemets typographiques, ligatures fi/fl…) ; la liste est approximée côté SuniPDF
+     (lopdf n'expose pas sa table), un symbole rare peut être refusé à tort : choisir AES-256.
+A31. **Images → PDF** : les JPEG sont incorporés tels quels sauf pour les orientations EXIF 5 et 7 (rotation +
+     miroir), décodées ; PNG, TIFF, BMP, GIF et WebP sont décodés en mémoire et stockés en pixels compressés
+     (Flate), donc plus lourds que l'original. Un très grand lot de PNG reste limité par la mémoire du poste.
+A32. **Texte ajouté** : une tabulation vaut quatre espaces (aucune police PDF n'a de glyphe de tabulation).
+     Le panneau Commentaires nomme 17 sous-types d'annotation ; les autres (son, vidéo, 3D, filigrane,
+     caviardage…) s'affichent « Autre annotation ».
+A33. **Point d'enregistrement** : « modifié » s'efface en annulant jusqu'à l'état enregistré, sauf si une
+     modification a suivi une annulation (l'état enregistré est alors inatteignable) ou si l'instantané
+     enregistré est sorti des 50 niveaux d'historique (D052).
 A25. **Vue continue : limites (SUNI-012b)**.
      - Une **sélection de texte reste sur sa page** (le glissement est borné à la page d'origine) : pas de
        sélection à cheval sur deux pages, pas de défilement automatique quand on glisse près du bord.

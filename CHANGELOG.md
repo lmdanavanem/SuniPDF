@@ -5,7 +5,41 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-(rien pour l'instant)
+### Corrigé (tranche review-fixes : constats des revues adverses)
+- **Sécurité** : AES-128 refuse un mot de passe contenant des caractères hors Latin-1 / PDFDocEncoding
+  (erreur `password_not_latin1`, message dans la boîte Protéger) au lieu de les abandonner sans bruit, ce qui
+  donnait un fichier ouvrable sans mot de passe ; le bit d'extraction pour l'accessibilité reste toujours
+  accordé ; modifier les propriétés met aussi à jour le paquet XMP (l'ancien auteur n'y survit plus) ;
+  « Supprimer les métadonnées » retire aussi les XMP des pages et des images et les données `/PieceInfo`.
+- **Fichiers** : l'enregistrement atomique synchronise les données sur le disque avant de remplacer
+  l'original (plus de fichier de zéros après une coupure de courant) ; **extraire ou diviser un document
+  protégé** produit des fichiers non chiffrés, désormais annoncé (barre d'état, `encryption_removed` en CLI).
+- **Images** : l'orientation EXIF des photos est appliquée (Images → PDF, insérer et remplacer une image) ;
+  les JPEG sont incorporés tels quels dans Images → PDF (mémoire constante, fichier de la taille des JPEG).
+- **Édition** : « Premier plan » tient après rechargement, annulation et enregistrement (les flux de contenu
+  sont fusionnés dans les deux sens) ; un tampon à 45° placé dans un coin reste dans la page ; redimensionner
+  un objet pivoté d'un angle quelconque le met à l'échelle uniformément au lieu de le cisailler ; le texte
+  ajouté accepte les tabulations (quatre espaces) et l'erreur de police liste les caractères absents ;
+  `sunipdf-cli text` renvoie tout le texte des pages pivotées.
+- **Clavier** : Ctrl+Maj+S ne déclenche plus « Enregistrer » (écrasement de l'original) quand un champ a le
+  focus ; Ctrl+Maj+D duplique (au lieu d'ouvrir Propriétés) et Ctrl+Maj+Z rétablit (au lieu d'annuler) ;
+  Ctrl+Plus / Moins / 0 ne changent plus l'échelle de toute l'interface ; les boîtes de dialogue et les
+  éditeurs de texte suspendent tous les raccourcis.
+- **Boîtes de dialogue** : Échap sur une liste déroulante ou un sélecteur de couleur ne ferme que la liste (le
+  texte saisi n'est plus perdu) et ne ferme plus la barre de recherche derrière la boîte ; les boutons restent
+  visibles dans une fenêtre basse (corps défilant) ; « Appliquer les métadonnées » est grisé tant que les
+  propriétés chargent (il effaçait titre, auteur, sujet et mots-clés) ; « Apposer » est grisé sans texte ;
+  texte d'erreur lisible en thème sombre ; « Retirer la protection » n'affiche plus « non protégé » juste après
+  Protéger.
+- **Document** : annuler jusqu'à l'état enregistré rend le document « intact » (point d'enregistrement dans
+  l'historique) ; « Couper » ne supprime plus les objets si la copie a échoué ; l'annotation d'un glissement
+  est celle de l'outil au moment du geste (changer d'outil avant la réponse du moteur ne la change plus) ;
+  après une suppression de pages dans la grille la sélection est vidée (un second clic ne supprimait pas les
+  pages choisies) ; déposer une page à sa propre place ne marque plus le document modifié ; « Déplacer à
+  gauche / droite » grisés quand plusieurs pages sont sélectionnées ou en bout de document.
+- **Textes** : le panneau Commentaires nomme tous les sous-types (« Barré » au lieu de « Strikeout », zones
+  de texte, formes, encre, tampons, pièces jointes…) ; tailles de fichier et suffixes des noms proposés
+  traduits (« 2.3 MB », `-extract`, `-optimized`).
 
 ## [0.4.0] — 2026-10-14
 

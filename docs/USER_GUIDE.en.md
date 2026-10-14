@@ -140,7 +140,9 @@ number from a template: `{n}` is the page number, `{total}` the page count (for 
   inserts pages from another file.
 - **Undo / Redo**: Ctrl+Z / Ctrl+Y (up to 50 steps).
 - **Split document**: choose pages per file and a destination folder.
-- **Extract selected pages**: creates a new PDF with the selection.
+- **Extract selected pages**: creates a new PDF with the selection. From a protected document, the new
+  file (like the parts of a split) **is not encrypted**: the status bar says so; open it and run **Protect**
+  if needed.
 - **Combine PDF files**: pick files in order, then the output file; it opens afterwards.
 - **Insert Blank Page…**: size of the current page, A3, A4, A5, Letter, Legal or custom (portrait or
   landscape), number of pages, before or after the current page or at the end.
@@ -152,26 +154,31 @@ number from a template: `{n}` is the page number, `{total}` the page count (for 
 
 ## Converting
 
-- **Create PDF from images** (PNG, JPEG, BMP, GIF, TIFF, WebP): one page per image, 150 dpi.
+- **Create PDF from images** (PNG, JPEG, BMP, GIF, TIFF, WebP): one page per image, 150 dpi; the EXIF
+  orientation of photos is honoured and JPEG files are embedded without recompression.
 - **Export pages as images**: one PNG per page (150 dpi) in the chosen folder.
 - **Optimize file size**: lossless recompression; the gain depends on the file and may be small.
 
 ## Security
 
 - **Protect with password**: open password, owner password, permissions (print, copy, edit, annotate),
-  AES-256 by default (AES-128 for older readers). Encryption is applied to the file when you save.
+  AES-256 by default (AES-128 for older readers). Encryption is applied to the file when you save. AES-128
+  only accepts Latin-1 passwords (accented letters included); keep AES-256 for Cyrillic, Greek, CJK or emoji
+  passwords. Text extraction for accessibility (screen readers) is always allowed.
 - **Remove protection**: asks for the owner password (or the open password when no distinct owner
   password was set). Restrictions (printing, copying…) require an owner password different from the open
   password.
 - Operations on a protected document (metadata, optimisation, object order) **keep** its protection.
-- **Remove metadata**: strips the information dictionary and XMP metadata.
+- **Remove metadata**: strips the information dictionary, XMP metadata (document, pages, images) and
+  application private data (`PieceInfo`). Editing the properties also updates the XMP.
 - **Document properties** (Ctrl+D): editable title, author, subject, keywords; version, size, encryption
   and permissions read-only.
 
 ## Saving
 
 Ctrl+S saves to the open file, Ctrl+Shift+S to a new file. Writes are atomic: the original file is never
-left half-written. A dot after the tab name signals unsaved changes; SuniPDF asks before closing or quitting.
+left half-written (data is flushed to disk before the replacement). A dot after the tab name signals unsaved
+changes; undoing back to the saved state clears it; SuniPDF asks before closing or quitting.
 
 ## Command palette
 
@@ -187,7 +194,8 @@ content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--f
 `--font-file` for an embedded system font; `\n` for a new line), `set-opacity`, `rotate-object` (free angle),
 `copy-objects` (to another page, `--into` for another document), `replace-image`, `crop` (`--unit mm`,
 `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`.
-Output is JSON; exit codes distinguish password required (3), invalid file (4), unreadable file (5) and
+Output is JSON (`extract` and `split` report `encryption_removed` when the source was protected); exit codes
+distinguish password required (3), invalid file (4), unreadable file (5) and
 existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
 writes PNG (`--region x,y,w,h`: an area in pixels of the page rendered at `--scale`, for scales where the
 whole page would exceed 16,384 px); `rotate` accepts 90, 180, 270 or -90. Coordinates (`search`, `objects`, `add-text`…) are in

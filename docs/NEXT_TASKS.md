@@ -24,6 +24,16 @@ Outils encore absents : Remplir et signer, Numériser et OCR, Caviarder, Prépar
 Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit
 qui se chevauche sous ~650 px de haut (`KNOWN_ISSUES.md` A15) ; validation visuelle finale par l'utilisateur.
 
+## Après review-fixes (constats des revues adverses du 14/10, tranche livrée)
+Les 39 constats de `docs/plans/review-fixes.md` sont corrigés ou déjà couverts (tests moteur et application).
+Reste, non bloquant :
+- rechiffrer automatiquement les extraits et les parties d'une division d'un document protégé (D046, A29) ;
+- vérifier avec qpdf les fichiers AES produits (fixture tierce, A4) et les XMP régénérés (lecture par un
+  indexeur XMP) ;
+- lister précisément PDFDocEncoding depuis lopdf s'il expose sa table (A30) ;
+- incorporer les JPEG d'orientation EXIF 5 et 7 sans décodage (A31) ; limiter la mémoire des lots de PNG ;
+- aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
+
 ## SUNI-012c — Affichage, suite (owner : UI-UX)
 Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
 `docs/plans/continuous-view.md`, D038–D045).
