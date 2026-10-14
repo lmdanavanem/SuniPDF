@@ -72,6 +72,15 @@ pub enum Command {
     HubStamp,
     HubLeave,
     About,
+    ToggleObjects,
+    CopyObjects,
+    CutObjects,
+    PasteObjects,
+    SelectAllObjects,
+    ReplaceImage,
+    CropPages,
+    ResizePages,
+    InsertBlankPage,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -356,6 +365,30 @@ pub const REGISTRY: &[CommandInfo] = &[
         Pages
     ),
     cmd!(
+        InsertBlankPage,
+        "pages.insert_blank",
+        "menu.pages.insert_blank",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        CropPages,
+        "pages.crop",
+        "menu.pages.crop",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        ResizePages,
+        "pages.resize",
+        "menu.pages.resize",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
         CopyText,
         "edit.copy",
         "menu.edit.copy",
@@ -564,6 +597,46 @@ pub const REGISTRY: &[CommandInfo] = &[
         Edit
     ),
     cmd!(
+        CopyObjects,
+        "edit.copy_objects",
+        "menu.edit.copy_objects",
+        Some("shortcut.copy_objects"),
+        true,
+        Edit
+    ),
+    cmd!(
+        CutObjects,
+        "edit.cut_objects",
+        "menu.edit.cut_objects",
+        Some("shortcut.cut_objects"),
+        true,
+        Edit
+    ),
+    cmd!(
+        PasteObjects,
+        "edit.paste_objects",
+        "menu.edit.paste_objects",
+        Some("shortcut.paste_objects"),
+        true,
+        Edit
+    ),
+    cmd!(
+        SelectAllObjects,
+        "edit.select_all_objects",
+        "menu.edit.select_all_objects",
+        Some("shortcut.select_all_objects"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ReplaceImage,
+        "edit.replace_image",
+        "menu.edit.replace_image",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
         Watermark,
         "pages.watermark",
         "menu.pages.watermark",
@@ -584,6 +657,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "view.comments",
         "menu.view.comments",
         Some("shortcut.comments"),
+        true,
+        View
+    ),
+    cmd!(
+        ToggleObjects,
+        "view.objects",
+        "menu.view.objects",
+        Some("shortcut.objects"),
         true,
         View
     ),

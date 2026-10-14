@@ -8,8 +8,9 @@ use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
     security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
-    Metadata, ObjectInfo, ObjectStyle, PointRect, Properties, Protection, RenderCache,
-    RenderedPage, ShapeKind, ShapeStyle, Stamp, TextMatch, TextSelection, TextStyle,
+    Metadata, ObjectClip, ObjectInfo, ObjectStyle, PageMargins, PointRect, Properties, Protection,
+    RectMode, RenderCache, RenderedPage, ResizeMode, ShapeKind, ShapeStyle, Stamp, SystemFont,
+    TextMatch, TextSelection, TextStyle, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -139,25 +140,25 @@ pub enum EditOp {
     },
     SetObjectStyle {
         page: usize,
-        index: usize,
+        indices: Vec<usize>,
         style: ObjectStyle,
     },
-    MoveObject {
+    MoveObjects {
         page: usize,
-        index: usize,
+        indices: Vec<usize>,
         dx: f32,
         dy: f32,
     },
-    /// Décalage au clavier : les décalages consécutifs du même objet partagent une annulation.
-    NudgeObject {
+    /// Décalage au clavier : les décalages consécutifs des mêmes objets partagent une annulation.
+    NudgeObjects {
         page: usize,
-        index: usize,
+        indices: Vec<usize>,
         dx: f32,
         dy: f32,
     },
-    DeleteObject {
+    DeleteObjects {
         page: usize,
-        index: usize,
+        indices: Vec<usize>,
     },
     AddImage {
         page: usize,
@@ -165,6 +166,7 @@ pub enum EditOp {
         x: f32,
         y: f32,
         width_pt: f32,
+        opacity: f32,
     },
     AddShape {
         page: usize,
@@ -177,19 +179,74 @@ pub enum EditOp {
         index: usize,
         degrees: f32,
     },
-    DuplicateObject {
+    DuplicateObjects {
         page: usize,
-        index: usize,
+        indices: Vec<usize>,
     },
-    ReorderObject {
+    ReorderObjects {
+        page: usize,
+        indices: Vec<usize>,
+        op: ZOrder,
+    },
+    /// Colle le presse-papiers d'objets du moteur (décalage en points d'affichage).
+    PasteObjects {
+        page: usize,
+        dx: f32,
+        dy: f32,
+    },
+    ReplaceImage {
         page: usize,
         index: usize,
-        front: bool,
+        path: PathBuf,
+    },
+    CropPages {
+        pages: Vec<usize>,
+        margins: PageMargins,
+    },
+    ResetCrop {
+        pages: Vec<usize>,
+    },
+    ResizePages {
+        pages: Vec<usize>,
+        width_pt: f32,
+        height_pt: f32,
+        mode: ResizeMode,
+    },
+    InsertBlankPages {
+        at: usize,
+        count: usize,
+        width_pt: f32,
+        height_pt: f32,
     },
     Stamp {
         pages: Option<Vec<usize>>,
         stamp: Stamp,
     },
+}
+
+/// Objets à décrire (sélection).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Pick {
+    At {
+        x: f32,
+        y: f32,
+    },
+    InRect {
+        rect: PointRect,
+        touching: bool,
+    },
+    Indices(Vec<usize>),
+    /// Les `n` derniers objets de la page (ajoutés ou passés au premier plan).
+    Last(usize),
+    All,
+}
+
+/// Fusion de la réponse avec la sélection courante (faite par l'interface).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PickMode {
+    Replace,
+    Toggle,
+    Add,
 }
 
 pub enum Request {
@@ -231,6 +288,21 @@ pub enum Request {
         page: usize,
         index: usize,
     },
+    Pick {
+        page: usize,
+        pick: Pick,
+        mode: PickMode,
+    },
+    /// Liste des objets d'une page (panneau Objets, prise directe au glisser).
+    Objects {
+        page: usize,
+    },
+    /// Copie dans le presse-papiers d'objets du moteur (document inchangé, pas d'annulation).
+    CopyObjects {
+        page: usize,
+        indices: Vec<usize>,
+    },
+    SystemFonts,
     Batch(BatchOp),
     /// Suspend le document actif (renvoie `Suspended`).
     Suspend,
@@ -295,6 +367,21 @@ pub enum Response {
         page: usize,
         info: Option<ObjectInfo>,
     },
+    ObjectsSelected {
+        page: usize,
+        infos: Vec<ObjectInfo>,
+        mode: PickMode,
+    },
+    Objects {
+        page: usize,
+        list: Vec<ObjectInfo>,
+    },
+    /// Objets copiés : `text` = texte des objets texte (repère du presse-papiers système).
+    Copied {
+        count: usize,
+        text: String,
+    },
+    SystemFonts(Arc<Vec<SystemFont>>),
     Suspended(SuspendedDoc),
     Resumed(DocState),
     /// La reprise d'un onglet suspendu a échoué (le document de cet onglet est perdu).
@@ -340,8 +427,12 @@ struct State<'a> {
     redo: Vec<Snapshot>,
     /// Modifié depuis l'ouverture, la reprise ou le dernier enregistrement.
     modified: bool,
-    /// Dernier objet décalé au clavier (page, index).
-    last_nudge: Option<(usize, usize)>,
+    /// Derniers objets décalés au clavier (page, index).
+    last_nudge: Option<(usize, Vec<usize>)>,
+    /// Presse-papiers d'objets : survit aux changements d'onglet (copier d'un document, coller
+    /// dans un autre).
+    clip: Option<ObjectClip>,
+    fonts: Option<Arc<Vec<SystemFont>>>,
 }
 
 impl State<'_> {
@@ -396,7 +487,7 @@ impl State<'_> {
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
         let nudge = match &op {
-            EditOp::NudgeObject { page, index, .. } => Some((*page, *index)),
+            EditOp::NudgeObjects { page, indices, .. } => Some((*page, indices.clone())),
             _ => None,
         };
         // Décalages clavier consécutifs du même objet : l'instantané pris avant le premier suffit.
@@ -415,7 +506,7 @@ impl State<'_> {
                 Err(e) => return Response::OperationFailed(e),
             }
         };
-        match apply(doc, op) {
+        match apply(doc, op, &self.clip) {
             Ok(()) => {
                 match snapshot {
                     Some(s) => self.push_undo(s),
@@ -469,7 +560,18 @@ impl State<'_> {
     }
 }
 
-fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
+/// Pages triées, sans doublon, toutes valides.
+fn checked_pages(mut pages: Vec<usize>, count: usize) -> Result<Vec<usize>, EngineError> {
+    pages.sort_unstable();
+    pages.dedup();
+    match pages.iter().find(|&&p| p >= count) {
+        Some(&bad) => Err(EngineError::PageOutOfRange(bad)),
+        None if pages.is_empty() => Err(EngineError::Other("no pages selected".into())),
+        None => Ok(pages),
+    }
+}
+
+fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Result<(), EngineError> {
     match op {
         EditOp::Rotate {
             pages,
@@ -518,7 +620,7 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             y,
             text,
             style,
-        } => doc.add_text(page, x, y, &text, &style),
+        } => doc.add_text(page, x, y, &text, &style).map(|_| ()),
         EditOp::SetText {
             page,
             index,
@@ -549,27 +651,32 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             index,
             bounds,
         } => doc.resize_object(page, index, bounds),
-        EditOp::SetObjectStyle { page, index, style } => doc.set_object_style(page, index, &style),
-        EditOp::MoveObject {
+        EditOp::SetObjectStyle {
             page,
-            index,
+            indices,
+            style,
+        } => doc.set_objects_style(page, &indices, &style),
+        EditOp::MoveObjects {
+            page,
+            indices,
             dx,
             dy,
-        } => doc.move_object(page, index, dx, dy),
-        EditOp::NudgeObject {
+        }
+        | EditOp::NudgeObjects {
             page,
-            index,
+            indices,
             dx,
             dy,
-        } => doc.move_object(page, index, dx, dy),
-        EditOp::DeleteObject { page, index } => doc.delete_object(page, index),
+        } => doc.move_objects(page, &indices, dx, dy),
+        EditOp::DeleteObjects { page, indices } => doc.delete_objects(page, &indices),
         EditOp::AddImage {
             page,
             path,
             x,
             y,
             width_pt,
-        } => doc.add_image(page, &path, x, y, width_pt),
+            opacity,
+        } => doc.add_image_with(page, &path, x, y, width_pt, opacity),
         EditOp::AddShape {
             page,
             kind,
@@ -581,10 +688,48 @@ fn apply(doc: &mut Document<'_>, op: EditOp) -> Result<(), EngineError> {
             index,
             degrees,
         } => doc.rotate_object(page, index, degrees),
-        EditOp::DuplicateObject { page, index } => doc.duplicate_object(page, index).map(|_| ()),
-        EditOp::ReorderObject { page, index, front } => {
-            doc.reorder_object(page, index, front).map(|_| ())
+        EditOp::DuplicateObjects { page, indices } => doc
+            .duplicate_objects(page, &indices, 12.0, -12.0)
+            .map(|_| ()),
+        EditOp::ReorderObjects { page, indices, op } => {
+            doc.reorder_objects(page, &indices, op).map(|_| ())
         }
+        EditOp::PasteObjects { page, dx, dy } => {
+            let clip = clip
+                .as_ref()
+                .ok_or_else(|| EngineError::Other("empty object clipboard".into()))?;
+            doc.paste_objects(page, clip, dx, dy).map(|_| ())
+        }
+        EditOp::ReplaceImage { page, index, path } => doc.replace_image(page, index, &path),
+        EditOp::CropPages { pages, margins } => {
+            for p in checked_pages(pages, doc.page_count())? {
+                doc.crop_page(p, margins)?;
+            }
+            Ok(())
+        }
+        EditOp::ResetCrop { pages } => {
+            for p in checked_pages(pages, doc.page_count())? {
+                doc.reset_crop(p)?;
+            }
+            Ok(())
+        }
+        EditOp::ResizePages {
+            pages,
+            width_pt,
+            height_pt,
+            mode,
+        } => {
+            for p in checked_pages(pages, doc.page_count())? {
+                doc.resize_page(p, width_pt, height_pt, mode)?;
+            }
+            Ok(())
+        }
+        EditOp::InsertBlankPages {
+            at,
+            count,
+            width_pt,
+            height_pt,
+        } => doc.insert_blank_pages(at, count, width_pt, height_pt),
         EditOp::Stamp { pages, stamp } => doc.stamp_pages(pages.as_deref(), &stamp).map(|_| ()),
         EditOp::Bytes(op) => {
             let current = doc.snapshot()?;
@@ -686,6 +831,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         redo: Vec::new(),
         modified: false,
         last_nudge: None,
+        clip: None,
+        fonts: None,
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     loop {
@@ -838,6 +985,59 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let info = doc.object_info(page, index).ok();
                 Response::ObjectSelected { page, info }
             }
+            Request::Pick { page, pick, mode } => {
+                let Some(doc) = &state.document else { continue };
+                let infos = match pick {
+                    Pick::At { x, y } => doc.object_at(page, x, y).map(|o| o.into_iter().collect()),
+                    Pick::InRect { rect, touching } => doc.objects_in_rect(
+                        page,
+                        rect,
+                        if touching {
+                            RectMode::Touching
+                        } else {
+                            RectMode::Contained
+                        },
+                    ),
+                    Pick::Indices(v) => Ok(v
+                        .into_iter()
+                        .filter_map(|i| doc.object_info(page, i).ok())
+                        .collect()),
+                    Pick::Last(n) => doc.page_objects(page).map(|all| {
+                        let skip = all.len().saturating_sub(n);
+                        all.into_iter().skip(skip).collect()
+                    }),
+                    Pick::All => doc.page_objects(page),
+                };
+                Response::ObjectsSelected {
+                    page,
+                    infos: infos.unwrap_or_default(),
+                    mode,
+                }
+            }
+            Request::Objects { page } => {
+                let Some(doc) = &state.document else { continue };
+                Response::Objects {
+                    page,
+                    list: doc.page_objects(page).unwrap_or_default(),
+                }
+            }
+            Request::CopyObjects { page, indices } => {
+                let Some(doc) = &state.document else { continue };
+                match doc.copy_objects(page, &indices) {
+                    Ok(clip) => {
+                        let (count, text) = (clip.count, clip.text.clone());
+                        state.clip = Some(clip);
+                        Response::Copied { count, text }
+                    }
+                    Err(e) => Response::OperationFailed(e),
+                }
+            }
+            Request::SystemFonts => Response::SystemFonts(
+                state
+                    .fonts
+                    .get_or_insert_with(|| Arc::new(sunipdf_core::fonts::system_fonts()))
+                    .clone(),
+            ),
             Request::Properties => {
                 let Some(doc) = &state.document else { continue };
                 Response::Properties(doc.properties())

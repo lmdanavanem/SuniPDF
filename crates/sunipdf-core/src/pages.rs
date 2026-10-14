@@ -40,7 +40,7 @@ impl Rotation {
         Self::from_degrees(self.degrees() as i32 + delta_degrees)
     }
 
-    fn to_pdfium(self) -> PdfPageRenderRotation {
+    pub(crate) fn to_pdfium(self) -> PdfPageRenderRotation {
         match self {
             Self::R0 => PdfPageRenderRotation::None,
             Self::R90 => PdfPageRenderRotation::Degrees90,
@@ -49,7 +49,7 @@ impl Rotation {
         }
     }
 
-    fn from_pdfium(r: PdfPageRenderRotation) -> Self {
+    pub(crate) fn from_pdfium(r: PdfPageRenderRotation) -> Self {
         match r {
             PdfPageRenderRotation::None => Self::R0,
             PdfPageRenderRotation::Degrees90 => Self::R90,
@@ -302,6 +302,8 @@ impl Document<'_> {
             .pdfium
             .load_pdf_from_byte_vec(bytes, self.password.as_deref())?;
         self.inner = inner;
+        // Les jetons de police appartenaient à l'ancien document.
+        self.font_cache.clear();
         self.refresh_page_sizes()?;
         Ok(())
     }
@@ -322,7 +324,7 @@ impl Document<'_> {
         Ok(self.inner.pages().get(index)?)
     }
 
-    fn refresh_page_sizes(&mut self) -> Result<(), EngineError> {
+    pub(crate) fn refresh_page_sizes(&mut self) -> Result<(), EngineError> {
         self.info.page_sizes = self
             .inner
             .pages()

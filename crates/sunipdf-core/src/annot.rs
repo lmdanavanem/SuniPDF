@@ -1,6 +1,7 @@
 //! Sélection de texte et annotations (surlignage, soulignement, barré, note).
 //! PDFium génère lui-même l'apparence de ces annotations au rendu.
 
+use crate::geometry::geometry_of;
 use crate::{Document, EngineError, PointRect};
 use pdfium_render::prelude::*;
 
@@ -66,23 +67,27 @@ fn merge_lines(chars: &[PointRect]) -> Vec<PointRect> {
 }
 
 impl Document<'_> {
-    /// Texte contenu dans un rectangle (points PDF), avec ses rectangles de ligne.
+    /// Texte contenu dans un rectangle d'affichage, avec ses rectangles de ligne (affichage).
     pub fn text_in_rect(
         &self,
         page_index: usize,
         rect: PointRect,
     ) -> Result<TextSelection, EngineError> {
         let page = self.page_handle(page_index)?;
+        // Les boîtes de caractères de PDFium sont en espace utilisateur.
+        let geo = geometry_of(&page)?;
         let text = page.text()?;
         // ponytail: parcours de tous les caractères de la page (précis, O(n)) plutôt que
         // `chars_inside_rect`, imprécis sur les bords.
         let (l, r) = (rect.left.min(rect.right), rect.left.max(rect.right));
         let (b, t) = (rect.bottom.min(rect.top), rect.bottom.max(rect.top));
         let all = text.chars();
+        let display = |bb: PdfRect| geo.rect_to_display(from_pdf_rect(bb));
         let chars = all.iter().filter(|ch| {
             ch.loose_bounds().is_ok_and(|bb| {
-                let cx = (bb.left().value + bb.right().value) / 2.0;
-                let cy = (bb.bottom().value + bb.top().value) / 2.0;
+                let bb = display(bb);
+                let cx = (bb.left + bb.right) / 2.0;
+                let cy = (bb.bottom + bb.top) / 2.0;
                 cx >= l && cx <= r && cy >= b && cy <= t
             })
         });
@@ -91,6 +96,7 @@ impl Document<'_> {
         let mut last_bottom: Option<f32> = None;
         for ch in chars {
             let Ok(b) = ch.loose_bounds() else { continue };
+            // Lignes reconstituées en espace utilisateur (sens d'écriture du texte), puis converties.
             let b = from_pdf_rect(b);
             if let Some(lb) = last_bottom {
                 // Changement de ligne : saut de ligne dans le texte copié.
@@ -108,7 +114,10 @@ impl Document<'_> {
         }
         Ok(TextSelection {
             text: out.trim().to_string(),
-            rects: merge_lines(&boxes),
+            rects: merge_lines(&boxes)
+                .into_iter()
+                .map(|r| geo.rect_to_display(r))
+                .collect(),
         })
     }
 
@@ -124,6 +133,8 @@ impl Document<'_> {
             return Err(EngineError::Other("empty selection".into()));
         }
         let mut page = self.page_handle(page_index)?;
+        let geo = geometry_of(&page)?;
+        let rects: Vec<PointRect> = rects.iter().map(|r| geo.rect_to_user(*r)).collect();
         let union = rects.iter().fold(rects[0], |u, r| PointRect {
             left: u.left.min(r.left),
             bottom: u.bottom.min(r.bottom),
@@ -137,7 +148,7 @@ impl Document<'_> {
                 let mut a = $annotation;
                 a.set_bounds(to_pdf_rect(union))?;
                 a.set_stroke_color(color)?;
-                for r in rects {
+                for r in &rects {
                     a.attachment_points_mut().create_attachment_point_at_end(
                         PdfQuadPoints::new_from_values(
                             r.left, r.top, r.right, r.top, r.left, r.bottom, r.right, r.bottom,
@@ -155,7 +166,7 @@ impl Document<'_> {
         Ok(())
     }
 
-    /// Ajoute une note (annotation `Text`) dont le coin haut-gauche est en `(x, y)` points PDF.
+    /// Ajoute une note (annotation `Text`) dont le coin haut-gauche est en `(x, y)` (affichage).
     pub fn add_note(
         &mut self,
         page_index: usize,
@@ -164,27 +175,32 @@ impl Document<'_> {
         text: &str,
     ) -> Result<(), EngineError> {
         let mut page = self.page_handle(page_index)?;
+        let geo = geometry_of(&page)?;
         let mut note = page.annotations_mut().create_text_annotation(text)?;
-        note.set_bounds(to_pdf_rect(PointRect {
+        note.set_bounds(to_pdf_rect(geo.rect_to_user(PointRect {
             left: x,
             bottom: y - 20.0,
             right: x + 20.0,
             top: y,
-        }))?;
+        })))?;
         note.set_stroke_color(PdfColor::new(0xF5, 0x9E, 0x0B, 255))?;
         Ok(())
     }
 
     pub fn annotations(&self, page_index: usize) -> Result<Vec<AnnotationInfo>, EngineError> {
         let page = self.page_handle(page_index)?;
+        let geo = geometry_of(&page)?;
         let mut out = Vec::new();
         for (index, a) in page.annotations().iter().enumerate() {
-            let rect = a.bounds().map(from_pdf_rect).unwrap_or(PointRect {
-                left: 0.0,
-                bottom: 0.0,
-                right: 0.0,
-                top: 0.0,
-            });
+            let rect = a
+                .bounds()
+                .map(|r| geo.rect_to_display(from_pdf_rect(r)))
+                .unwrap_or(PointRect {
+                    left: 0.0,
+                    bottom: 0.0,
+                    right: 0.0,
+                    top: 0.0,
+                });
             out.push(AnnotationInfo {
                 index,
                 kind: format!("{:?}", a.annotation_type()),

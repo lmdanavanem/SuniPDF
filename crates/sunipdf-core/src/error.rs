@@ -22,6 +22,10 @@ pub enum EngineError {
     RenderTooLarge,
     #[error("output already exists: {0}")]
     AlreadyExists(PathBuf),
+    #[error("font does not contain every requested character")]
+    MissingGlyphs,
+    #[error("font cannot be embedded (licence, format or size)")]
+    FontNotEmbeddable,
     #[error("engine error: {0}")]
     Other(String),
 }
@@ -39,6 +43,8 @@ impl EngineError {
             Self::PageOutOfRange(_) => "page_out_of_range",
             Self::RenderTooLarge => "render_too_large",
             Self::AlreadyExists(_) => "already_exists",
+            Self::MissingGlyphs => "missing_glyphs",
+            Self::FontNotEmbeddable => "font_not_embeddable",
             Self::Other(_) => "other",
         }
     }

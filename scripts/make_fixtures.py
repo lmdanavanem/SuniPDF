@@ -81,8 +81,33 @@ def encrypted(path, user_pw=b"secret"):
     data = build(objs, trailer_extra=b"/Encrypt 6 0 R /ID [" + hexs(doc_id) + b" " + hexs(doc_id) + b"]")
     open(path, "wb").write(data)
 
+def boxes(path):
+    """Pages tournées et rognées : carrés rouge et bleu, texte, à des positions utilisateur connues."""
+    def c(rx, ry, bx, by, tx, ty, name):
+        return (f"1 0 0 rg {rx} {ry} 100 100 re f\n0 0 1 rg {bx} {by} 100 100 re f\n"
+                f"0 0 0 rg BT /F1 24 Tf {tx} {ty} Td (BOXES {name}) Tj ET\n").encode()
+    pages = [
+        (b"/MediaBox [0 0 612 792] /Rotate 90", c(50, 50, 460, 640, 200, 400, "A")),
+        (b"/MediaBox [0 0 612 792] /Rotate 180", c(50, 50, 460, 640, 200, 400, "B")),
+        (b"/MediaBox [100 50 712 842] /CropBox [150 100 650 700] /Rotate 270",
+         c(160, 110, 540, 590, 300, 400, "C")),
+        (b"/MediaBox [0 0 612 792] /CropBox [100 100 500 600]", c(110, 110, 390, 490, 200, 300, "D")),
+    ]
+    kids = " ".join(f"{4 + 2 * i} 0 R" for i in range(len(pages))).encode()
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [" + kids + b"] /Count " + str(len(pages)).encode() + b" >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    for i, (attrs, content) in enumerate(pages):
+        objs.append(b"<< /Type /Page /Parent 2 0 R " + attrs + b" /Contents " + str(5 + 2 * i).encode()
+                    + b" 0 R /Resources << /Font << /F1 3 0 R >> >> >>")
+        objs.append(stream(content))
+    open(path, "wb").write(build(objs))
+
 if __name__ == "__main__":
     out = sys.argv[1]
     two_pages(os.path.join(out, "two-pages.pdf"))
     encrypted(os.path.join(out, "encrypted-rc4.pdf"))
+    boxes(os.path.join(out, "boxes.pdf"))
     print("ok")

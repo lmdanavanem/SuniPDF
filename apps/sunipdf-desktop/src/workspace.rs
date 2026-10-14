@@ -108,6 +108,7 @@ pub static TABLE: [WsInfo; 14] = [
                 C::SendToBack,
                 C::DeleteObject,
             ],
+            &[C::ReplaceImage, C::ToggleObjects],
         ],
     },
     WsInfo {
@@ -142,9 +143,11 @@ pub static TABLE: [WsInfo; 14] = [
                 C::RotateClockwise,
                 C::DeletePage,
                 C::InsertPages,
+                C::InsertBlankPage,
                 C::MovePageLeft,
                 C::MovePageRight,
             ],
+            &[C::CropPages, C::ResizePages],
             &[C::SplitDocument, C::ExtractPages],
         ],
     },
@@ -291,7 +294,7 @@ pub fn switch(
     if !keep {
         a.tool = Tool::Select;
         a.drag = None;
-        e.selected = None;
+        e.selection = None;
     }
 }
 
@@ -495,7 +498,7 @@ impl SuniApp {
             popup_open: egui::Popup::is_any_open(ctx),
             focus_last_frame: self.focus_last_frame,
             find_open: self.find.open,
-            object_selected: self.edit.selected.is_some(),
+            object_selected: self.edit.selection.is_some(),
             in_workspace: self.annotate.workspace.is_some(),
         }
     }
@@ -504,24 +507,33 @@ impl SuniApp {
         match c {
             Command::OrganizePages => self.organize.active,
             Command::ToggleComments => self.annotate.comments_open,
+            Command::ToggleObjects => self.edit.objects_open,
             _ => Tool::from_command(c).is_some_and(|t| t == self.annotate.tool),
         }
     }
 
     pub fn command_enabled(&self, c: Command) -> bool {
         let grid_selection = !self.organize.selected.is_empty();
+        let single = self
+            .edit
+            .selection
+            .as_ref()
+            .and_then(crate::editor::Selection::single);
         match c {
             Command::DuplicateObject
-            | Command::RotateObjectLeft
-            | Command::RotateObjectRight
             | Command::BringToFront
             | Command::SendToBack
-            | Command::DeleteObject => self.edit.selected.is_some(),
-            Command::EditObjectText => self
-                .edit
-                .selected
-                .as_ref()
-                .is_some_and(|(_, i)| i.kind == sunipdf_core::ObjectKind::Text),
+            | Command::DeleteObject
+            | Command::CopyObjects
+            | Command::CutObjects => self.edit.selection.is_some(),
+            Command::RotateObjectLeft | Command::RotateObjectRight => single.is_some(),
+            Command::PasteObjects => self.edit.clip.is_some(),
+            Command::EditObjectText => {
+                single.is_some_and(|i| i.kind == sunipdf_core::ObjectKind::Text)
+            }
+            Command::ReplaceImage => {
+                single.is_some_and(|i| i.kind == sunipdf_core::ObjectKind::Image)
+            }
             Command::CopyText => self
                 .annotate
                 .selection
@@ -766,6 +778,12 @@ mod tests {
         C::NextTab,
         C::PrevTab,
         C::About,
+        // Presse-papiers d'objets : clavier, menu Édition, palette et barre d'objet (comme
+        // Annuler / Rétablir), pas dans la barre d'outil (DECISIONS.md).
+        C::CopyObjects,
+        C::CutObjects,
+        C::PasteObjects,
+        C::SelectAllObjects,
     ];
 
     const HUB_COMMANDS: &[Command] = &[

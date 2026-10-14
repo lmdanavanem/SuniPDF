@@ -734,6 +734,7 @@ fn edit_page_content_text_image_shapes() {
             stroke_rgb: (0, 0, 0),
             stroke_width: 1.0,
             fill_rgb: Some((255, 0, 255)),
+            ..Default::default()
         },
     )
     .unwrap();
@@ -819,6 +820,7 @@ fn edit_resize_style_text_size_and_fonts() {
             stroke_rgb: (0, 0, 0),
             stroke_width: 1.0,
             fill_rgb: Some((255, 0, 255)),
+            ..Default::default()
         },
     )
     .unwrap();
@@ -852,6 +854,7 @@ fn edit_resize_style_text_size_and_fonts() {
             fill_rgb: Some((0, 160, 0)),
             stroke_rgb: None,
             stroke_width: Some(0.5),
+            opacity: None,
         },
     )
     .unwrap();
@@ -896,6 +899,7 @@ fn edit_resize_style_text_size_and_fonts() {
             family: FontFamily::Times,
             rgb: (200, 0, 0),
             opacity: 1.0,
+            font_file: None,
         },
     )
     .unwrap();
@@ -934,6 +938,7 @@ fn edit_rotate_duplicate_reorder() {
         stroke_rgb: rgb,
         stroke_width: 0.5,
         fill_rgb: Some(rgb),
+        ..Default::default()
     };
     // Rectangle 100 × 50 pivoté de 90° : limites 50 × 100 autour du même centre.
     doc.add_shape(
@@ -1259,4 +1264,1178 @@ fn lopdf_round_trips_keep_encryption_and_unprotect_needs_owner_password() {
     let opt = convert::optimize_file(&src, &dir.join("opt.pdf"), None).unwrap();
     assert!(opt.after <= opt.before);
     let _ = std::fs::remove_dir_all(dir);
+}
+
+// ----- Édition avancée (SUNI-031c) : pages pivotées, opacité, rotation libre, presse-papiers… -----
+
+use sunipdf_core::{PointRect, RenderedPage};
+
+fn rect(left: f32, bottom: f32, right: f32, top: f32) -> PointRect {
+    PointRect {
+        left,
+        bottom,
+        right,
+        top,
+    }
+}
+
+fn near(a: PointRect, b: PointRect, tol: f32) -> bool {
+    (a.left - b.left).abs() <= tol
+        && (a.bottom - b.bottom).abs() <= tol
+        && (a.right - b.right).abs() <= tol
+        && (a.top - b.top).abs() <= tol
+}
+
+/// Pixel au point d'affichage (x, y) d'un rendu à l'échelle 1 (y compté depuis le bas).
+fn px(img: &RenderedPage, x: f32, y: f32) -> [u8; 3] {
+    let col = (x.floor() as u32).min(img.width - 1);
+    let row = ((img.height as f32 - y).floor() as u32).min(img.height - 1);
+    let i = ((row * img.width + col) * 4) as usize;
+    [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]
+}
+
+/// Boîte (espace d'affichage, rendu à l'échelle 1) des pixels qui vérifient `pred`.
+fn pixel_box(img: &RenderedPage, pred: impl Fn([u8; 3]) -> bool) -> Option<PointRect> {
+    pixel_box_below(img, f32::MAX, pred)
+}
+
+/// Comme [`pixel_box`], limité aux pixels sous l'ordonnée d'affichage `max_y`.
+fn pixel_box_below(
+    img: &RenderedPage,
+    max_y: f32,
+    pred: impl Fn([u8; 3]) -> bool,
+) -> Option<PointRect> {
+    let (w, h) = (img.width as usize, img.height as usize);
+    let mut out: Option<PointRect> = None;
+    for y in 0..h {
+        if (h - y) as f32 > max_y {
+            continue;
+        }
+        for x in 0..w {
+            let i = (y * w + x) * 4;
+            if pred([img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]) {
+                let r = rect(x as f32, (h - y - 1) as f32, x as f32 + 1.0, (h - y) as f32);
+                out = Some(match out {
+                    None => r,
+                    Some(u) => rect(
+                        u.left.min(r.left),
+                        u.bottom.min(r.bottom),
+                        u.right.max(r.right),
+                        u.top.max(r.top),
+                    ),
+                });
+            }
+        }
+    }
+    out
+}
+
+fn is_red(p: [u8; 3]) -> bool {
+    p[0] > 200 && p[1] < 60 && p[2] < 60
+}
+
+fn is_blue(p: [u8; 3]) -> bool {
+    p[2] > 200 && p[0] < 60 && p[1] < 60
+}
+
+fn is_dark(p: [u8; 3]) -> bool {
+    p[0] < 90 && p[1] < 90 && p[2] < 90
+}
+
+fn close3(p: [u8; 3], q: [u8; 3], tol: i32) -> bool {
+    (0..3).all(|i| (p[i] as i32 - q[i] as i32).abs() <= tol)
+}
+
+fn center(r: PointRect) -> (f32, f32) {
+    ((r.left + r.right) / 2.0, (r.bottom + r.top) / 2.0)
+}
+
+fn temp_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("sunipdf-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn png(dir: &Path, name: &str, w: u32, h: u32, rgb: [u8; 3]) -> PathBuf {
+    let path = dir.join(name);
+    let data: Vec<u8> = (0..w * h).flat_map(|_| rgb).collect();
+    image::save_buffer(&path, &data, w, h, image::ColorType::Rgb8).unwrap();
+    path
+}
+
+/// (rectangle rouge, rectangle bleu) de chaque page de `boxes.pdf`, espace utilisateur.
+const BOXES: [((f32, f32), (f32, f32)); 4] = [
+    ((50.0, 50.0), (460.0, 640.0)),
+    ((50.0, 50.0), (460.0, 640.0)),
+    ((160.0, 110.0), (540.0, 590.0)),
+    ((110.0, 110.0), (390.0, 490.0)),
+];
+
+#[test]
+fn geometry_matches_rendered_pixels_on_rotated_and_cropped_pages() {
+    use sunipdf_core::ObjectKind;
+    let engine = engine();
+    let doc = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    let sizes = [
+        (792.0, 612.0),
+        (612.0, 792.0),
+        (600.0, 500.0),
+        (400.0, 500.0),
+    ];
+    for (p, (&(w, h), &(red, blue))) in sizes.iter().zip(BOXES.iter()).enumerate() {
+        let size = doc.page_size(p).unwrap();
+        assert_eq!((size.width_pt, size.height_pt), (w, h), "page {p}");
+        let geo = doc.page_geometry(p).unwrap();
+        assert_eq!(geo.display_size(), (w, h));
+        let img = doc.render_page(p, 1.0).unwrap();
+        for (user, pred, rgb) in [
+            (red, is_red as fn([u8; 3]) -> bool, (255, 0, 0)),
+            (blue, is_blue as fn([u8; 3]) -> bool, (0, 0, 255)),
+        ] {
+            let expected =
+                geo.rect_to_display(rect(user.0, user.1, user.0 + 100.0, user.1 + 100.0));
+            let seen = pixel_box(&img, pred).expect("pixels du carré");
+            assert!(
+                near(seen, expected, 1.5),
+                "page {p} : rendu {seen:?} ≠ {expected:?}"
+            );
+            let obj = doc
+                .page_objects(p)
+                .unwrap()
+                .into_iter()
+                .find(|o| o.kind == ObjectKind::Path && o.fill_rgb == Some(rgb))
+                .unwrap();
+            assert!(
+                near(obj.bounds, expected, 1.0),
+                "page {p} : {:?}",
+                obj.bounds
+            );
+            let (cx, cy) = center(expected);
+            assert_eq!(
+                doc.object_at(p, cx, cy).unwrap().map(|o| o.index),
+                Some(obj.index)
+            );
+        }
+        assert!(doc.object_at(p, 5.0, 5.0).unwrap().is_none(), "page {p}");
+    }
+    // Valeurs attendues écrites en dur (pas seulement via les formules) : page A, R90.
+    let a = doc.page_geometry(0).unwrap();
+    assert_eq!(
+        a.rect_to_display(rect(50.0, 50.0, 150.0, 150.0)),
+        rect(50.0, 462.0, 150.0, 562.0)
+    );
+    // Page C : boîte rognée [150 100 650 700], R270.
+    let c = doc.page_geometry(2).unwrap();
+    assert_eq!(
+        c.rect_to_display(rect(160.0, 110.0, 260.0, 210.0)),
+        rect(490.0, 10.0, 590.0, 110.0)
+    );
+}
+
+#[test]
+fn text_and_markup_rects_follow_display_space_on_rotated_pages() {
+    use sunipdf_core::MarkupKind;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    for (p, name) in [(0usize, "BOXES A"), (2, "BOXES C")] {
+        let img = doc.render_page(p, 1.0).unwrap();
+        let dark = pixel_box(&img, is_dark).expect("texte noir");
+        // Texte horizontal en espace utilisateur, vertical à l'écran sur ces pages.
+        assert!(
+            dark.top - dark.bottom > dark.right - dark.left,
+            "page {p} : {dark:?}"
+        );
+        let found = doc.search_page(p, "BOXES", false).unwrap();
+        let r = found[0].rects[0];
+        let (c1, c2) = (center(r), center(dark));
+        assert!(
+            (c1.0 - c2.0).abs() < 6.0 && r.top - r.bottom > r.right - r.left,
+            "page {p} : recherche {r:?} / pixels {dark:?}"
+        );
+        let grown = rect(
+            dark.left - 4.0,
+            dark.bottom - 4.0,
+            dark.right + 4.0,
+            dark.top + 4.0,
+        );
+        let sel = doc.text_in_rect(p, grown).unwrap();
+        assert_eq!(sel.text, name, "page {p}");
+        assert!(!sel.rects.is_empty());
+        doc.add_markup(p, MarkupKind::Highlight, &sel.rects, (255, 230, 0))
+            .unwrap();
+        let ann = doc.annotations(p).unwrap();
+        let hl = ann.last().unwrap();
+        assert!(
+            hl.rect.left <= dark.left + 2.0 && hl.rect.right >= dark.right - 2.0,
+            "page {p} : surlignage {:?} / texte {dark:?}",
+            hl.rect
+        );
+        let img = doc.render_page(p, 1.0).unwrap();
+        let (hx, hy) = center(hl.rect);
+        let yellow = (-6..=6)
+            .flat_map(|dx| (-20..=20).map(move |dy| (dx, dy)))
+            .filter(|(dx, dy)| {
+                let q = px(&img, hx + *dx as f32, hy + *dy as f32);
+                q[0] > 200 && q[1] > 170 && q[2] < 140
+            })
+            .count();
+        assert!(yellow > 20, "page {p} : pixels jaunes {yellow}");
+        doc.add_note(p, 300.0, 300.0, "n").unwrap();
+        let note = doc.annotations(p).unwrap().last().unwrap().rect;
+        assert!(
+            (note.left - 300.0).abs() < 1.0 && (note.top - 300.0).abs() < 1.0,
+            "page {p} : {note:?}"
+        );
+    }
+}
+
+#[test]
+fn edits_land_where_displayed_on_rotated_pages() {
+    use sunipdf_core::{ShapeKind, ShapeStyle, TextStyle};
+    let engine = engine();
+    let dir = temp_dir("rotated-edits");
+    let green = png(&dir, "green.png", 40, 20, [0, 160, 0]);
+    let mut doc = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    for p in 0..3 {
+        let style = ShapeStyle {
+            stroke_rgb: (255, 0, 255),
+            stroke_width: 1.0,
+            fill_rgb: Some((255, 0, 255)),
+            ..Default::default()
+        };
+        doc.add_shape(
+            p,
+            ShapeKind::Rectangle,
+            rect(300.0, 200.0, 340.0, 240.0),
+            &style,
+        )
+        .unwrap();
+        let shape = doc.page_objects(p).unwrap().len() - 1;
+        assert!(near(
+            doc.object_info(p, shape).unwrap().bounds,
+            rect(300.0, 200.0, 340.0, 240.0),
+            1.0
+        ));
+        let img = doc.render_page(p, 1.0).unwrap();
+        assert_eq!(px(&img, 320.0, 220.0), [255, 0, 255], "page {p}");
+
+        assert_eq!(
+            doc.add_text(
+                p,
+                60.0,
+                300.0,
+                "Droit",
+                &TextStyle {
+                    size_pt: 20.0,
+                    ..Default::default()
+                }
+            )
+            .unwrap(),
+            1
+        );
+        let text = doc.page_objects(p).unwrap().len() - 1;
+        let t = doc.object_info(p, text).unwrap();
+        assert!(
+            t.angle_deg.abs() < 0.5,
+            "page {p} : texte droit, angle {}",
+            t.angle_deg
+        );
+        assert!(
+            (t.bounds.left - 60.0).abs() < 3.0 && t.bounds.bottom <= 301.0,
+            "{:?}",
+            t.bounds
+        );
+        assert!(t.bounds.right - t.bounds.left > t.bounds.top - t.bounds.bottom);
+        let (cx, cy) = center(t.bounds);
+        assert_eq!(
+            doc.object_at(p, cx, cy).unwrap().map(|o| o.index),
+            Some(text)
+        );
+
+        doc.add_image(p, &green, 150.0, 300.0, 120.0).unwrap();
+        let image = doc.page_objects(p).unwrap().len() - 1;
+        let ib = doc.object_info(p, image).unwrap();
+        assert!(
+            near(ib.bounds, rect(150.0, 300.0, 270.0, 360.0), 1.0),
+            "page {p} : {:?}",
+            ib.bounds
+        );
+        assert!(ib.angle_deg.abs() < 0.5);
+        let img = doc.render_page(p, 1.0).unwrap();
+        assert_eq!(px(&img, 210.0, 330.0), [0, 160, 0], "page {p}");
+        let dark = (0..40)
+            .flat_map(|dx| (0..20).map(move |dy| (dx, dy)))
+            .filter(|(dx, dy)| is_dark(px(&img, 62.0 + *dx as f32, 300.0 + *dy as f32)))
+            .count();
+        assert!(dark > 20, "page {p} : texte rendu ({dark})");
+
+        doc.move_object(p, text, 40.0, 0.0).unwrap();
+        let moved = doc.object_info(p, text).unwrap().bounds;
+        assert!(
+            (moved.left - t.bounds.left - 40.0).abs() < 0.5
+                && (moved.bottom - t.bounds.bottom).abs() < 0.5
+        );
+        doc.resize_object(p, shape, rect(300.0, 200.0, 360.0, 260.0))
+            .unwrap();
+        assert!(near(
+            doc.object_info(p, shape).unwrap().bounds,
+            rect(300.0, 200.0, 360.0, 260.0),
+            1.5
+        ));
+        doc.rotate_object(p, image, 90.0).unwrap();
+        let rb = doc.object_info(p, image).unwrap().bounds;
+        assert!(
+            (rb.right - rb.left - 60.0).abs() < 1.5 && (rb.top - rb.bottom - 120.0).abs() < 1.5,
+            "{rb:?}"
+        );
+    }
+    let out = dir.join("rotated.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    for p in 0..3 {
+        let img = again.render_page(p, 1.0).unwrap();
+        assert_eq!(px(&img, 330.0, 230.0), [255, 0, 255], "page {p} rouverte");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn free_rotation_reports_angle_and_oriented_quad() {
+    use sunipdf_core::{ShapeKind, ShapeStyle, TextStyle};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let red = ShapeStyle {
+        stroke_rgb: (255, 0, 0),
+        stroke_width: 0.5,
+        fill_rgb: Some((255, 0, 0)),
+        ..Default::default()
+    };
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(300.0, 300.0, 400.0, 350.0),
+        &red,
+    )
+    .unwrap();
+    let i = doc.page_objects(0).unwrap().len() - 1;
+    doc.rotate_object(0, i, 30.0).unwrap();
+    let o = doc.object_info(0, i).unwrap();
+    assert!((o.angle_deg - 30.0).abs() < 0.5, "{}", o.angle_deg);
+    let (w, h) = (
+        o.bounds.right - o.bounds.left,
+        o.bounds.top - o.bounds.bottom,
+    );
+    assert!(
+        (w - 111.6).abs() < 2.0 && (h - 93.3).abs() < 2.0,
+        "{w} × {h}"
+    );
+    let c = center(o.bounds);
+    assert!(
+        (c.0 - 350.0).abs() < 1.0 && (c.1 - 325.0).abs() < 1.0,
+        "{c:?}"
+    );
+    doc.rotate_object(0, i, 15.0).unwrap();
+    assert!((doc.object_info(0, i).unwrap().angle_deg - 45.0).abs() < 0.5);
+    for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        assert!(doc.rotate_object(0, i, bad).is_err());
+    }
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(is_red(px(&img, 350.0, 325.0)), "centre du rectangle pivoté");
+    assert_eq!(
+        px(&img, 398.0, 373.0),
+        [255, 255, 255],
+        "coin de la boîte, hors du rectangle"
+    );
+
+    doc.add_text(
+        0,
+        300.0,
+        120.0,
+        "Rotated text",
+        &TextStyle {
+            size_pt: 20.0,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let t = doc.page_objects(0).unwrap().len() - 1;
+    doc.rotate_object(0, t, 20.0).unwrap();
+    let info = doc.object_info(0, t).unwrap();
+    assert!((info.angle_deg - 20.0).abs() < 1.0, "{}", info.angle_deg);
+    // Arête la plus longue du cadre orienté : pente de -20° (sens horaire).
+    let mut q = info.quad;
+    let c = center(info.bounds);
+    q.sort_by(|a, b| {
+        (a.1 - c.1)
+            .atan2(a.0 - c.0)
+            .total_cmp(&(b.1 - c.1).atan2(b.0 - c.0))
+    });
+    let mut best = (0.0f32, 0.0f32);
+    for k in 0..4 {
+        let (a, b) = (q[k], q[(k + 1) % 4]);
+        let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+        let len = (dx * dx + dy * dy).sqrt();
+        if len > best.0 {
+            let mut ang = dy.atan2(dx).to_degrees();
+            if ang > 90.0 {
+                ang -= 180.0;
+            } else if ang <= -90.0 {
+                ang += 180.0;
+            }
+            best = (len, ang);
+        }
+    }
+    assert!((best.1 + 20.0).abs() < 1.0, "pente {}", best.1);
+    let b = info.bounds;
+    assert!(
+        doc.object_at(0, b.left + 1.0, b.top - 1.0)
+            .unwrap()
+            .is_none(),
+        "coin hors du cadre orienté"
+    );
+    let (cx, cy) = center(b);
+    assert_eq!(doc.object_at(0, cx, cy).unwrap().map(|o| o.index), Some(t));
+}
+
+#[test]
+fn opacity_text_shapes_images_and_style_preservation() {
+    use sunipdf_core::{ObjectStyle, ShapeKind, ShapeStyle, TextStyle};
+    let engine = engine();
+    let dir = temp_dir("opacity");
+    let green = png(&dir, "green.png", 40, 20, [0, 160, 0]);
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let style = ShapeStyle {
+        stroke_rgb: (255, 0, 255),
+        stroke_width: 1.0,
+        fill_rgb: Some((255, 0, 255)),
+        opacity: 0.5,
+    };
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(300.0, 100.0, 400.0, 200.0),
+        &style,
+    )
+    .unwrap();
+    let r = doc.page_objects(0).unwrap().len() - 1;
+    assert!((doc.object_info(0, r).unwrap().opacity.unwrap() - 0.5).abs() < 0.01);
+    let at =
+        |doc: &sunipdf_core::Document, x: f32, y: f32| px(&doc.render_page(0, 1.0).unwrap(), x, y);
+    assert!(
+        close3(at(&doc, 350.0, 150.0), [255, 128, 255], 4),
+        "{:?}",
+        at(&doc, 350.0, 150.0)
+    );
+    // Nouvelle couleur sans opacité : l'alpha courant est conservé (défaut corrigé).
+    doc.set_object_style(
+        0,
+        r,
+        &ObjectStyle {
+            fill_rgb: Some((0, 160, 0)),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(
+        close3(at(&doc, 350.0, 150.0), [128, 207, 128], 4),
+        "{:?}",
+        at(&doc, 350.0, 150.0)
+    );
+    doc.set_object_style(
+        0,
+        r,
+        &ObjectStyle {
+            opacity: Some(1.0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(at(&doc, 350.0, 150.0), [0, 160, 0]);
+
+    doc.add_image_with(0, &green, 300.0, 250.0, 100.0, 0.5)
+        .unwrap();
+    let im = doc.page_objects(0).unwrap().len() - 1;
+    // PDFium ne donne pas l'alpha d'une image : « transparente, valeur inconnue ».
+    assert_eq!(doc.object_info(0, im).unwrap().opacity, None);
+    assert!(
+        close3(at(&doc, 350.0, 275.0), [128, 207, 128], 4),
+        "image : {:?}",
+        at(&doc, 350.0, 275.0)
+    );
+    doc.set_objects_style(
+        0,
+        &[im],
+        &ObjectStyle {
+            opacity: Some(1.0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(at(&doc, 350.0, 275.0), [0, 160, 0]);
+    assert_eq!(doc.object_info(0, im).unwrap().opacity, Some(1.0));
+
+    let line = ShapeStyle {
+        stroke_rgb: (0, 0, 0),
+        stroke_width: 6.0,
+        fill_rgb: None,
+        opacity: 0.5,
+    };
+    doc.add_shape(0, ShapeKind::Line, rect(450.0, 100.0, 450.0, 300.0), &line)
+        .unwrap();
+    assert!(
+        close3(at(&doc, 450.0, 200.0), [128, 128, 128], 12),
+        "{:?}",
+        at(&doc, 450.0, 200.0)
+    );
+
+    doc.add_text(
+        0,
+        100.0,
+        420.0,
+        "Half",
+        &TextStyle {
+            opacity: 0.5,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let t = doc.page_objects(0).unwrap().len() - 1;
+    assert!((doc.object_info(0, t).unwrap().opacity.unwrap() - 0.5).abs() < 0.01);
+    // Bornes : 2 → 1, -1 → 0 ; NaN refusé.
+    doc.set_object_style(
+        0,
+        t,
+        &ObjectStyle {
+            opacity: Some(2.0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(doc.object_info(0, t).unwrap().opacity, Some(1.0));
+    doc.set_object_style(
+        0,
+        t,
+        &ObjectStyle {
+            opacity: Some(-1.0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(doc.object_info(0, t).unwrap().opacity, Some(0.0));
+    assert!(doc
+        .set_object_style(
+            0,
+            t,
+            &ObjectStyle {
+                opacity: Some(f32::NAN),
+                ..Default::default()
+            }
+        )
+        .is_err());
+    doc.set_object_style(
+        0,
+        t,
+        &ObjectStyle {
+            opacity: Some(0.5),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let out = dir.join("opacity.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    let half = again
+        .page_objects(0)
+        .unwrap()
+        .into_iter()
+        .find(|o| o.text.as_deref() == Some("Half"))
+        .unwrap();
+    assert!(
+        (half.opacity.unwrap() - 0.5).abs() < 0.01,
+        "opacité relue : {:?}",
+        half.opacity
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
+    use sunipdf_core::TextStyle;
+    {
+        // Police standard (WinAnsi) : le cyrillique est refusé au lieu d'être perdu en silence.
+        let engine = engine();
+        let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+        let count = doc.page_objects(0).unwrap().len();
+        assert!(matches!(
+            doc.add_text(0, 60.0, 300.0, "Привет", &TextStyle::default()),
+            Err(EngineError::MissingGlyphs)
+        ));
+        assert_eq!(doc.page_objects(0).unwrap().len(), count);
+        assert_eq!(
+            doc.add_text(0, 60.0, 300.0, "Été « 5 € »", &TextStyle::default())
+                .unwrap(),
+            1
+        );
+    }
+    let fonts = sunipdf_core::fonts::system_fonts();
+    let Some(font) = ["Arial", "Segoe UI"]
+        .iter()
+        .find_map(|n| fonts.iter().find(|f| f.name == *n))
+        .or(fonts.first())
+    else {
+        eprintln!("aucune police TrueType système : test ignoré");
+        return;
+    };
+    let engine = engine();
+    let dir = temp_dir("fonts");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let base = doc.snapshot().unwrap().len();
+    let style = TextStyle {
+        size_pt: 18.0,
+        font_file: Some(font.path.clone()),
+        ..Default::default()
+    };
+    assert_eq!(
+        doc.add_text(0, 60.0, 300.0, "Привет Ωmega ł é", &style)
+            .unwrap(),
+        1
+    );
+    assert!(
+        doc.page_text(0).unwrap().contains("Привет"),
+        "{}",
+        doc.page_text(0).unwrap()
+    );
+    let first = doc.snapshot().unwrap().len();
+    assert!(
+        (first - base) as u64 >= font.size_bytes / 3,
+        "police incorporée : +{} octets pour {} ({} octets)",
+        first - base,
+        font.name,
+        font.size_bytes
+    );
+    doc.add_text(0, 60.0, 260.0, "Deuxième ligne", &style)
+        .unwrap();
+    let second = doc.snapshot().unwrap().len();
+    assert!(
+        second - first < 20_000,
+        "même police réutilisée : +{}",
+        second - first
+    );
+    let count = doc.page_objects(0).unwrap().len();
+    assert!(matches!(
+        doc.add_text(0, 60.0, 220.0, "日本", &style),
+        Err(EngineError::MissingGlyphs)
+    ));
+    assert_eq!(doc.page_objects(0).unwrap().len(), count, "document intact");
+    let not_a_font = png(&dir, "x.png", 2, 2, [0, 0, 0]);
+    let bad = TextStyle {
+        font_file: Some(not_a_font),
+        ..Default::default()
+    };
+    assert!(matches!(
+        doc.add_text(0, 60.0, 220.0, "x", &bad),
+        Err(EngineError::FontNotEmbeddable)
+    ));
+    let out = dir.join("fonts.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert!(again.page_text(0).unwrap().contains("Привет"));
+    let img = again.render_page(0, 1.0).unwrap();
+    let dark = (60..200)
+        .flat_map(|x| (300..318).map(move |y| (x, y)))
+        .filter(|(x, y)| is_dark(px(&img, *x as f32, *y as f32)))
+        .count();
+    assert!(dark > 50, "texte Unicode rendu ({dark} px)");
+
+    // Plusieurs lignes : un objet par ligne, interligne 1,2 × taille.
+    let plain = TextStyle {
+        size_pt: 20.0,
+        ..Default::default()
+    };
+    assert_eq!(doc.add_text(0, 400.0, 400.0, "a\nb", &plain).unwrap(), 2);
+    let objs = doc.page_objects(0).unwrap();
+    let (a, b) = (&objs[objs.len() - 2], &objs[objs.len() - 1]);
+    assert_eq!(
+        (a.text.as_deref(), b.text.as_deref()),
+        (Some("a"), Some("b"))
+    );
+    assert!(
+        (a.bounds.bottom - b.bounds.bottom - 24.0).abs() < 1.5,
+        "{:?} {:?}",
+        a.bounds,
+        b.bounds
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn multi_object_ops_keep_order_and_are_atomic() {
+    use sunipdf_core::{RectMode, ShapeKind, ShapeStyle, ZOrder};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let filled = |rgb| ShapeStyle {
+        stroke_rgb: rgb,
+        stroke_width: 0.5,
+        fill_rgb: Some(rgb),
+        ..Default::default()
+    };
+    let n = doc.page_objects(0).unwrap().len();
+    let (red, green, yellow) = ((220, 0, 0), (0, 160, 0), (200, 200, 0));
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(100.0, 100.0, 200.0, 200.0),
+        &filled(red),
+    )
+    .unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(150.0, 150.0, 250.0, 250.0),
+        &filled(green),
+    )
+    .unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(400.0, 100.0, 450.0, 150.0),
+        &filled(yellow),
+    )
+    .unwrap();
+    let ids = |v: Vec<sunipdf_core::ObjectInfo>| v.into_iter().map(|o| o.index).collect::<Vec<_>>();
+    assert_eq!(
+        ids(doc
+            .objects_in_rect(0, rect(90.0, 90.0, 260.0, 260.0), RectMode::Contained)
+            .unwrap()),
+        vec![n, n + 1]
+    );
+    assert_eq!(
+        ids(doc
+            .objects_in_rect(0, rect(120.0, 120.0, 180.0, 180.0), RectMode::Contained)
+            .unwrap()),
+        Vec::<usize>::new()
+    );
+    assert_eq!(
+        ids(doc
+            .objects_in_rect(0, rect(190.0, 190.0, 195.0, 195.0), RectMode::Touching)
+            .unwrap()),
+        vec![n, n + 1]
+    );
+    let before: Vec<_> = doc
+        .page_objects(0)
+        .unwrap()
+        .iter()
+        .map(|o| o.bounds)
+        .collect();
+    doc.move_objects(0, &[n, n + 2], 30.0, -20.0).unwrap();
+    let after: Vec<_> = doc
+        .page_objects(0)
+        .unwrap()
+        .iter()
+        .map(|o| o.bounds)
+        .collect();
+    for i in [n, n + 2] {
+        assert!(
+            (after[i].left - before[i].left - 30.0).abs() < 0.5
+                && (after[i].bottom - before[i].bottom + 20.0).abs() < 0.5
+        );
+    }
+    assert_eq!(after[n + 1], before[n + 1]);
+    // Recouvrement rouge/vert en (190, 165) : l'objet dessiné le plus tard est visible.
+    let top = |doc: &sunipdf_core::Document| px(&doc.render_page(0, 1.0).unwrap(), 190.0, 165.0);
+    let rgb3 = |c: (u8, u8, u8)| [c.0, c.1, c.2];
+    assert_eq!(top(&doc), rgb3(green));
+    assert_eq!(
+        doc.reorder_objects(0, &[n + 1], ZOrder::Back).unwrap(),
+        vec![0]
+    );
+    assert_eq!(top(&doc), rgb3(red));
+    assert_eq!(
+        doc.reorder_objects(0, &[0], ZOrder::Front).unwrap(),
+        vec![n + 2]
+    );
+    assert_eq!(top(&doc), rgb3(green));
+    // Ordre : …, rouge (n), jaune (n+1), vert (n+2). Reculer d'un cran : vert passe sous le jaune.
+    assert_eq!(
+        doc.reorder_objects(0, &[n + 2], ZOrder::Backward).unwrap(),
+        vec![n + 1]
+    );
+    assert_eq!(top(&doc), rgb3(green));
+    assert_eq!(
+        doc.reorder_objects(0, &[n + 1], ZOrder::Backward).unwrap(),
+        vec![n]
+    );
+    assert_eq!(top(&doc), rgb3(red));
+    assert_eq!(
+        doc.reorder_objects(0, &[n], ZOrder::Forward).unwrap(),
+        vec![n + 1]
+    );
+    assert_eq!(top(&doc), rgb3(green));
+    // Groupe : rouge et vert ensemble au premier plan, ordre relatif conservé.
+    let objs = doc.page_objects(0).unwrap();
+    let find = |c| objs.iter().find(|o| o.fill_rgb == Some(c)).unwrap().index;
+    let (r, g) = (find(red), find(green));
+    let new = doc.reorder_objects(0, &[g, r], ZOrder::Front).unwrap();
+    assert_eq!(new.len(), 2);
+    let objs = doc.page_objects(0).unwrap();
+    assert_eq!(objs.last().unwrap().fill_rgb, Some(green));
+    // Suppression groupée (désordre + doublon), atomique en cas d'index invalide.
+    let count = objs.len();
+    assert!(doc.delete_objects(0, &[0, 999]).is_err());
+    assert_eq!(doc.page_objects(0).unwrap().len(), count);
+    let y = doc
+        .page_objects(0)
+        .unwrap()
+        .iter()
+        .find(|o| o.fill_rgb == Some(yellow))
+        .unwrap()
+        .index;
+    let r = doc
+        .page_objects(0)
+        .unwrap()
+        .iter()
+        .find(|o| o.fill_rgb == Some(red))
+        .unwrap()
+        .index;
+    doc.delete_objects(0, &[y, r, r]).unwrap();
+    let left = doc.page_objects(0).unwrap();
+    assert_eq!(left.len(), count - 2);
+    assert!(left.iter().any(|o| o.fill_rgb == Some(green)));
+    assert!(!left
+        .iter()
+        .any(|o| o.fill_rgb == Some(red) || o.fill_rgb == Some(yellow)));
+    assert!(doc.move_objects(0, &[], 1.0, 1.0).is_err());
+}
+
+#[test]
+fn object_clipboard_copy_cut_paste_across_pages_documents_and_rotation() {
+    use sunipdf_core::{ObjectKind, ShapeKind, ShapeStyle, TextStyle};
+    let engine = engine();
+    let dir = temp_dir("clipboard");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let magenta = ShapeStyle {
+        stroke_rgb: (255, 0, 255),
+        stroke_width: 1.0,
+        fill_rgb: Some((255, 0, 255)),
+        ..Default::default()
+    };
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(300.0, 100.0, 400.0, 160.0),
+        &magenta,
+    )
+    .unwrap();
+    doc.add_text(
+        0,
+        300.0,
+        200.0,
+        "Clip me",
+        &TextStyle {
+            size_pt: 16.0,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let objs = doc.page_objects(0).unwrap();
+    let (a, b) = (objs.len() - 2, objs.len() - 1);
+    let snapshot = |doc: &sunipdf_core::Document| {
+        doc.page_objects(0)
+            .unwrap()
+            .into_iter()
+            .map(|o| (o.kind, o.bounds, o.fill_rgb))
+            .collect::<Vec<_>>()
+    };
+    let before = snapshot(&doc);
+    let clip = doc.copy_objects(0, &[b, a]).unwrap();
+    assert_eq!(clip.count, 2);
+    assert_eq!(clip.text, "Clip me");
+    assert_eq!(
+        snapshot(&doc),
+        before,
+        "copier ne modifie rien, ordre compris"
+    );
+
+    let pasted = doc.paste_objects(1, &clip, 0.0, 0.0).unwrap();
+    let info = doc.object_info(1, pasted).unwrap();
+    assert_eq!(info.kind, ObjectKind::Form);
+    assert!(
+        near(info.bounds, clip.bounds, 1.5),
+        "{:?} / {:?}",
+        info.bounds,
+        clip.bounds
+    );
+    let img = doc.render_page(1, 1.0).unwrap();
+    assert_eq!(px(&img, 350.0, 130.0), [255, 0, 255]);
+    let offset = doc.paste_objects(1, &clip, 50.0, -30.0).unwrap();
+    let ob = doc.object_info(1, offset).unwrap().bounds;
+    assert!(
+        (ob.left - clip.bounds.left - 50.0).abs() < 1.5
+            && (ob.bottom - clip.bounds.bottom + 30.0).abs() < 1.5
+    );
+
+    // Dans un autre document, sur une page pivotée (R90) : même aspect, même place.
+    let mut other = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    let p = other.paste_objects(0, &clip, 0.0, 0.0).unwrap();
+    let pi = other.object_info(0, p).unwrap();
+    assert!(pi.angle_deg.abs() < 0.5, "{}", pi.angle_deg);
+    assert!(near(pi.bounds, clip.bounds, 1.5), "{:?}", pi.bounds);
+    assert_eq!(
+        px(&other.render_page(0, 1.0).unwrap(), 350.0, 130.0),
+        [255, 0, 255]
+    );
+
+    // Depuis une page pivotée : le texte vertical à l'écran le reste après collage.
+    let a_text = other
+        .page_objects(0)
+        .unwrap()
+        .into_iter()
+        .find(|o| o.text.as_deref() == Some("BOXES A"))
+        .unwrap();
+    let tall = other.copy_objects(0, &[a_text.index]).unwrap();
+    assert!(tall.bounds.top - tall.bounds.bottom > tall.bounds.right - tall.bounds.left);
+    let q = doc.paste_objects(0, &tall, 0.0, 0.0).unwrap();
+    let qb = doc.object_info(0, q).unwrap().bounds;
+    assert!(near(qb, tall.bounds, 2.0), "{qb:?} / {:?}", tall.bounds);
+
+    // Couper = copier puis supprimer.
+    let count = doc.page_objects(0).unwrap().len();
+    let cut = doc.copy_objects(0, &[a]).unwrap();
+    doc.delete_objects(0, &[a]).unwrap();
+    assert_eq!(doc.page_objects(0).unwrap().len(), count - 1);
+    assert_eq!(cut.count, 1);
+    assert!(doc.copy_objects(0, &[]).is_err());
+    assert!(doc.copy_objects(0, &[999]).is_err());
+
+    // Dupliquer : l'original garde son plan (le collé passe devant).
+    let objs = doc.page_objects(0).unwrap();
+    let first_path = objs
+        .iter()
+        .find(|o| o.kind == ObjectKind::Path)
+        .unwrap()
+        .clone();
+    let dup = doc.duplicate_object(0, first_path.index).unwrap();
+    let objs = doc.page_objects(0).unwrap();
+    assert_eq!(
+        objs[first_path.index].bounds, first_path.bounds,
+        "original inchangé, même index"
+    );
+    assert_eq!(dup, objs.len() - 1);
+
+    let out = dir.join("pasted.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert!(again
+        .page_objects(1)
+        .unwrap()
+        .iter()
+        .any(|o| o.kind == ObjectKind::Form));
+    assert_eq!(
+        px(&again.render_page(1, 1.0).unwrap(), 350.0, 130.0),
+        [255, 0, 255]
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn replace_image_keeps_frame_and_updates_pixels() {
+    use sunipdf_core::ObjectKind;
+    let engine = engine();
+    let dir = temp_dir("replace-image");
+    let green = png(&dir, "green.png", 40, 20, [0, 160, 0]);
+    let red = png(&dir, "red.png", 20, 40, [230, 0, 0]);
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.add_image(0, &green, 300.0, 100.0, 200.0).unwrap();
+    let i = doc.page_objects(0).unwrap().len() - 1;
+    doc.replace_image(0, i, &red).unwrap();
+    let info = doc.object_info(0, i).unwrap();
+    assert_eq!(info.kind, ObjectKind::Image);
+    assert!(
+        near(info.bounds, rect(375.0, 100.0, 425.0, 200.0), 1.0),
+        "{:?}",
+        info.bounds
+    );
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert_eq!(px(&img, 400.0, 150.0), [230, 0, 0]);
+    assert_eq!(
+        px(&img, 310.0, 110.0),
+        [255, 255, 255],
+        "ancien cadre libéré"
+    );
+    assert!(
+        pixel_box(&img, |p| p == [0, 160, 0]).is_none(),
+        "plus de vert"
+    );
+
+    // Image pivotée de 90° : cadre conservé (étirée).
+    doc.add_image(0, &green, 100.0, 300.0, 100.0).unwrap();
+    let j = doc.page_objects(0).unwrap().len() - 1;
+    doc.rotate_object(0, j, 90.0).unwrap();
+    let frame = doc.object_info(0, j).unwrap().bounds;
+    doc.replace_image(0, j, &red).unwrap();
+    assert!(near(doc.object_info(0, j).unwrap().bounds, frame, 1.0));
+
+    let count = doc.page_objects(0).unwrap().len();
+    let text = doc
+        .page_objects(0)
+        .unwrap()
+        .into_iter()
+        .find(|o| o.kind == ObjectKind::Text)
+        .unwrap();
+    assert!(
+        doc.replace_image(0, text.index, &red).is_err(),
+        "pas une image"
+    );
+    assert!(doc.replace_image(0, i, &dir.join("missing.png")).is_err());
+    assert_eq!(doc.page_objects(0).unwrap().len(), count);
+    assert_eq!(
+        doc.object_info(0, i).unwrap().bounds,
+        info.bounds,
+        "document intact"
+    );
+    let out = dir.join("replaced.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert_eq!(
+        px(&again.render_page(0, 1.0).unwrap(), 400.0, 150.0),
+        [230, 0, 0]
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn crop_resize_and_blank_pages() {
+    use sunipdf_core::{PageMargins, ResizeMode, Rotation};
+    let engine = engine();
+    let dir = temp_dir("boxes");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let count = doc.page_objects(0).unwrap().len();
+    let all = |v: f32| PageMargins {
+        left: v,
+        top: v,
+        right: v,
+        bottom: v,
+    };
+    assert_eq!(doc.crop_page(0, all(36.0)).unwrap(), (540.0, 720.0));
+    let size = doc.page_size(0).unwrap();
+    assert_eq!((size.width_pt, size.height_pt), (540.0, 720.0));
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert_eq!((img.width, img.height), (540, 720));
+    // Le titre de la page est bleu lui aussi : on ne regarde que sous lui.
+    let blue = pixel_box_below(&img, 640.0, is_blue).unwrap();
+    assert!(near(blue, rect(36.0, 464.0, 236.0, 614.0), 1.5), "{blue:?}");
+    assert_eq!(
+        doc.page_objects(0).unwrap().len(),
+        count,
+        "recadrer ne supprime rien"
+    );
+    doc.reset_crop(0).unwrap();
+    assert_eq!(doc.page_size(0).unwrap().width_pt, 612.0);
+    assert!(doc
+        .crop_page(
+            0,
+            PageMargins {
+                left: -1.0,
+                ..all(0.0)
+            }
+        )
+        .is_err());
+    assert!(doc.crop_page(0, all(300.0)).is_err(), "zone trop petite");
+    doc.crop_page(0, all(36.0)).unwrap();
+    let out = dir.join("cropped.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert_eq!(again.page_size(0).unwrap().width_pt, 540.0);
+
+    // Page pivotée : la marge gauche est celle de l'écran.
+    let mut boxes = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    assert_eq!(
+        boxes
+            .crop_page(
+                0,
+                PageMargins {
+                    left: 10.0,
+                    ..all(0.0)
+                }
+            )
+            .unwrap(),
+        (782.0, 612.0)
+    );
+    let red = pixel_box(&boxes.render_page(0, 1.0).unwrap(), is_red).unwrap();
+    assert!(near(red, rect(40.0, 462.0, 140.0, 562.0), 1.5), "{red:?}");
+
+    // Redimensionner en conservant le contenu : ancrage en haut à gauche.
+    let mut keep = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    keep.resize_page(0, 400.0, 500.0, ResizeMode::KeepContent)
+        .unwrap();
+    let s = keep.page_size(0).unwrap();
+    assert_eq!((s.width_pt, s.height_pt), (400.0, 500.0));
+    let blue = pixel_box_below(&keep.render_page(0, 1.0).unwrap(), 380.0, is_blue).unwrap();
+    assert!(near(blue, rect(72.0, 208.0, 272.0, 358.0), 1.5), "{blue:?}");
+    // Mise à l'échelle : contenu réduit de moitié.
+    let mut scale = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    scale
+        .resize_page(0, 306.0, 396.0, ResizeMode::ScaleContent)
+        .unwrap();
+    let blue = pixel_box_below(&scale.render_page(0, 1.0).unwrap(), 340.0, is_blue).unwrap();
+    assert!(near(blue, rect(36.0, 250.0, 136.0, 325.0), 2.0), "{blue:?}");
+    assert!(scale
+        .resize_page(0, 0.0, 100.0, ResizeMode::KeepContent)
+        .is_err());
+    assert!(scale
+        .resize_page(0, 20_000.0, 100.0, ResizeMode::KeepContent)
+        .is_err());
+
+    // Pages vierges.
+    scale.insert_blank_pages(1, 2, 300.0, 400.0).unwrap();
+    assert_eq!(scale.page_count(), 4);
+    for p in [1, 2] {
+        let s = scale.page_size(p).unwrap();
+        assert_eq!((s.width_pt, s.height_pt), (300.0, 400.0));
+        assert_eq!(scale.page_rotation(p).unwrap(), Rotation::R0);
+        let img = scale.render_page(p, 1.0).unwrap();
+        assert!(
+            img.rgba.chunks(4).all(|q| q[..3] == [255, 255, 255]),
+            "page vierge"
+        );
+    }
+    assert!(scale.insert_blank_pages(9, 1, 300.0, 400.0).is_err());
+    assert!(scale.insert_blank_pages(0, 1, 0.0, 400.0).is_err());
+    assert!(scale.insert_blank_pages(0, 1, 300.0, 20_000.0).is_err());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn page_objects_listing_is_linear() {
+    use sunipdf_core::TextStyle;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    for k in 0..300 {
+        let (x, y) = (20.0 + (k % 10) as f32 * 55.0, 40.0 + (k / 10) as f32 * 14.0);
+        doc.add_text(
+            0,
+            x,
+            y,
+            "item",
+            &TextStyle {
+                size_pt: 8.0,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+    let start = std::time::Instant::now();
+    let objs = doc.page_objects(0).unwrap();
+    assert!(objs.len() > 300);
+    assert!(
+        objs.iter()
+            .filter(|o| o.text.as_deref() == Some("item"))
+            .count()
+            == 300
+    );
+    for k in 0..20 {
+        doc.object_at(0, 25.0 + k as f32, 42.0).unwrap();
+    }
+    assert!(start.elapsed().as_secs_f32() < 5.0, "{:?}", start.elapsed());
 }

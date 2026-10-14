@@ -57,10 +57,7 @@ impl SuniApp {
         self.thumbs_pending.clear();
         // La sélection d'objet désigne un index du document actif : elle ne doit jamais
         // survivre à un changement de document (Suppr agirait sur l'autre onglet).
-        self.edit.selected = None;
-        self.edit.reselect = None;
-        self.edit.drag_mode = None;
-        self.edit.text_prompt = None;
+        self.edit.reset_for_tab();
         let mut state = TabState {
             document: self.document.take(),
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),

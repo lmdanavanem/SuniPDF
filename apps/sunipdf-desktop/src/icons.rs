@@ -75,6 +75,13 @@ pub mod glyph {
     pub const CHEVRON_RIGHT: &str = "\u{E76C}";
     pub const ARROW_LEFT: &str = "\u{E72B}";
     pub const IMPORT: &str = "\u{E8B5}";
+    pub const CROP: &str = "\u{E7A8}";
+    pub const CUT: &str = "\u{E8C6}";
+    pub const PASTE: &str = "\u{E77F}";
+    pub const SELECT_ALL: &str = "\u{E8B3}";
+    pub const LAYERS: &str = "\u{E81E}";
+    /// Photo : distincte de l'image à insérer (E8B9).
+    pub const PHOTO: &str = "\u{E91B}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

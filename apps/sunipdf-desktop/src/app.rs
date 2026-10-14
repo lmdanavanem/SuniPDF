@@ -131,6 +131,7 @@ pub struct SuniApp {
     pub tools: crate::tools::ToolsState,
     pub tabs: crate::tabs::TabsState,
     pub edit: crate::editor::EditState,
+    pub pagesetup: crate::pagesetup::PageSetupState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -163,6 +164,7 @@ impl SuniApp {
             },
             tabs: Default::default(),
             edit: Default::default(),
+            pagesetup: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -262,7 +264,9 @@ impl SuniApp {
         self.close_find();
         self.organize = Default::default();
         self.annotate = Default::default();
-        self.edit = Default::default();
+        // Le presse-papiers d'objets survit à la fermeture (coller dans un autre onglet).
+        self.edit.reset_for_tab();
+        self.pagesetup = Default::default();
         let bookmarks_open = self.docinfo.bookmarks_open;
         self.docinfo = Default::default();
         self.docinfo.bookmarks_open = bookmarks_open;
@@ -361,9 +365,7 @@ impl SuniApp {
                     // Rien du document précédent ne doit apparaître dans le nouveau.
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
-                    self.edit.selected = None;
-                    self.edit.reselect = None;
-                    self.edit.drag_mode = None;
+                    self.edit.reset_for_tab();
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
                     self.dirty = false;
@@ -462,18 +464,25 @@ impl SuniApp {
                     self.find.matches.clear();
                     self.annotate.selection = None;
                     self.annotate.annotations_page = None;
-                    match self.edit.reselect.take() {
-                        Some((page, index)) => {
+                    // La liste d'objets en cache (panneau, prise directe) est périmée.
+                    self.edit.objects_page = None;
+                    match (self.edit.reselect_many.take(), self.edit.reselect.take()) {
+                        (Some((page, pick)), _) => self.worker.send(Request::Pick {
+                            page,
+                            pick,
+                            mode: crate::worker::PickMode::Replace,
+                        }),
+                        (None, Some((page, index))) => {
                             self.worker.send(Request::ObjectInfo { page, index })
                         }
-                        None => self.edit.selected = None,
+                        (None, None) => self.edit.selection = None,
                     }
                     self.worker.send(Request::Bookmarks);
                     if self.docinfo.properties_open {
                         self.worker.send(Request::Properties);
                     }
                     self.dirty = true;
-                    self.status_msg = None;
+                    self.status_msg = self.edit.pending_status.take();
                     self.update_title(ctx);
                 }
                 Response::TextSelected { page, selection } => match self.annotate.tool.markup() {
@@ -496,6 +505,16 @@ impl SuniApp {
                 }
                 Response::BatchDone(result) => self.on_batch_done(result),
                 Response::ObjectSelected { page, info } => self.on_object_selected(page, info),
+                Response::ObjectsSelected { page, infos, mode } => {
+                    self.on_objects_selected(page, infos, mode)
+                }
+                Response::Objects { page, list } => {
+                    if self.edit.objects_page == Some(page) {
+                        self.edit.objects = list;
+                    }
+                }
+                Response::Copied { count, text } => self.on_copied(ctx, count, text),
+                Response::SystemFonts(list) => self.edit.system_fonts = Some(list),
                 Response::Suspended(s) => self.on_suspended(s),
                 Response::Resumed(state) => self.on_resumed(state, ctx),
                 Response::ResumeFailed(error) => {
@@ -513,6 +532,20 @@ impl SuniApp {
                 Response::OperationFailed(e) => {
                     log::warn!("opération impossible : {e}");
                     self.error = Some(error_key(&e));
+                    self.edit.pending_status = None;
+                    self.edit.reselect = None;
+                    self.edit.reselect_many = None;
+                    if matches!(
+                        e,
+                        EngineError::MissingGlyphs | EngineError::FontNotEmbeddable
+                    ) {
+                        // Le texte saisi n'est pas perdu : l'éditeur rouvre pour changer de police.
+                        if let Some(mut p) = self.edit.last_prompt.take() {
+                            p.focus = true;
+                            p.armed = false;
+                            self.edit.text_prompt = Some(p);
+                        }
+                    }
                 }
                 Response::Saved { path } => {
                     self.saving = false;
@@ -620,6 +653,7 @@ impl SuniApp {
             || self.docinfo.unprotect_open
             || self.docinfo.properties_open
             || self.docinfo.protect_open
+            || self.pagesetup.dialog.is_some()
         {
             // Les boîtes de dialogue lisent elles-mêmes Entrée et Échap.
             return;
@@ -696,15 +730,15 @@ impl SuniApp {
                 }
             });
         }
-        self.edit.shift = ctx.input(|i| i.modifiers.shift);
+        (self.edit.shift, self.edit.alt, self.edit.ctrl) =
+            ctx.input(|i| (i.modifiers.shift, i.modifiers.alt, i.modifiers.command));
         // Un Échap = un effet, le plus proche d'abord (`workspace::EscState::action`).
         let esc = crate::workspace::take_escape(ctx, self.esc_state(ctx));
         if esc == Some(Esc::Deselect) {
-            self.edit.selected = None;
+            self.edit.selection = None;
         }
-        if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject)
-            && self.edit.selected.is_some()
-        {
+        let object_tool = self.annotate.tool == crate::annotate::Tool::SelectObject;
+        if object_tool && self.edit.selection.is_some() {
             // Objet sélectionné : flèches = décalage (Maj : ×10).
             let step = if self.edit.shift { 10.0 } else { 1.0 };
             let mut nudge = (0.0f32, 0.0f32);
@@ -727,6 +761,35 @@ impl SuniApp {
         let mut commands = Vec::new();
         if esc == Some(Esc::Leave) {
             commands.push(Command::HubLeave);
+        }
+        // Ctrl+C / X / V : egui-winit les transforme en événements Copy / Cut / Paste (aucun
+        // événement Key). Paste n'existe que si le presse-papiers système contient du texte : la
+        // copie d'objets y place un repère, comparé ici.
+        let (copy, cut, paste) = ctx.input(|i| {
+            (
+                i.events.iter().any(|e| matches!(e, egui::Event::Copy)),
+                i.events.iter().any(|e| matches!(e, egui::Event::Cut)),
+                i.events.iter().find_map(|e| match e {
+                    egui::Event::Paste(s) => Some(s.clone()),
+                    _ => None,
+                }),
+            )
+        });
+        let objects = object_tool && self.edit.selection.is_some();
+        if copy {
+            commands.push(if objects {
+                Command::CopyObjects
+            } else {
+                Command::CopyText
+            });
+        }
+        if cut && objects {
+            commands.push(Command::CutObjects);
+        }
+        if let (Some(s), Some(clip)) = (paste, &self.edit.clip) {
+            if s.trim() == clip.marker.trim() {
+                commands.push(Command::PasteObjects);
+            }
         }
         ctx.input_mut(|i| {
             let mut key = |m: Modifiers, k: Key, c: Command| {
@@ -766,7 +829,10 @@ impl SuniApp {
             key(Modifiers::NONE, Key::F7, Command::ToggleComments);
             key(Modifiers::NONE, Key::F6, Command::ToggleBookmarks);
             key(Modifiers::COMMAND, Key::D, Command::Properties);
-            key(Modifiers::COMMAND, Key::C, Command::CopyText);
+            if object_tool {
+                key(Modifiers::COMMAND, Key::A, Command::SelectAllObjects);
+            }
+            key(Modifiers::NONE, Key::F5, Command::ToggleObjects);
             key(Modifiers::NONE, Key::V, Command::ToolSelect);
             key(Modifiers::NONE, Key::H, Command::ToolHighlight);
             key(Modifiers::NONE, Key::U, Command::ToolUnderline);
@@ -952,9 +1018,21 @@ impl SuniApp {
             Command::DuplicateObject => self.duplicate_selected(),
             Command::RotateObjectLeft => self.rotate_selected(-90.0),
             Command::RotateObjectRight => self.rotate_selected(90.0),
-            Command::BringToFront => self.reorder_selected(true),
-            Command::SendToBack => self.reorder_selected(false),
+            Command::BringToFront => self.reorder_selected(sunipdf_core::ZOrder::Front),
+            Command::SendToBack => self.reorder_selected(sunipdf_core::ZOrder::Back),
             Command::EditObjectText => self.open_text_prompt_for_selection(),
+            Command::CopyObjects => self.copy_objects(false),
+            Command::CutObjects => self.copy_objects(true),
+            Command::PasteObjects => self.paste_objects(ctx),
+            Command::SelectAllObjects => self.select_all_objects(ctx),
+            Command::ReplaceImage => self.replace_selected_image(),
+            Command::ToggleObjects => {
+                self.edit.objects_open = !self.edit.objects_open;
+                self.edit.objects_page = None;
+            }
+            Command::CropPages | Command::ResizePages | Command::InsertBlankPage => {
+                self.open_page_dialog(command)
+            }
             Command::ToolSelect
             | Command::ToolHighlight
             | Command::ToolUnderline
@@ -970,7 +1048,7 @@ impl SuniApp {
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
                 self.annotate.drag = None;
                 if !matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
-                    self.edit.selected = None;
+                    self.edit.selection = None;
                 }
                 // Raccourci, palette ou menu : la barre de l'outil propriétaire suit.
                 crate::workspace::follow(
@@ -1149,6 +1227,7 @@ impl SuniApp {
         let name = file_name(&doc.info.path);
         self.request_render_if_needed(ctx);
         self.refresh_annotations_if_needed();
+        self.refresh_objects_if_needed();
         let mut drag_event: Option<DragEvent> = None;
         let doc_rect = ui.max_rect();
 
@@ -1198,6 +1277,7 @@ impl SuniApp {
                 self.paint_matches(&painter, page_rect, page_index, size.height_pt);
                 self.paint_selection(&painter, page_rect, page_index, size.height_pt);
                 self.paint_object_selection(&painter, page_rect, page_index, size.height_pt);
+                self.inline_text_editor(ctx, page_rect, page_index, size.height_pt);
                 let interact = ui.interact(
                     page_rect,
                     egui::Id::new("page-interact"),
@@ -1253,6 +1333,8 @@ impl SuniApp {
             Some(DragEvent::Move(pt)) => {
                 if let Some(d) = &mut self.annotate.drag {
                     d.current = pt;
+                    let d = *d;
+                    self.edit_drag_moved(&d);
                 }
             }
             Some(DragEvent::Stop) => {
@@ -1888,6 +1970,17 @@ impl eframe::App for SuniApp {
                 )
                 .show(ui, |ui| self.comments_panel(&ctx, ui));
         }
+        if self.document.is_some() && self.edit.objects_open && !self.organize.active {
+            egui::Panel::right("objects")
+                .resizable(true)
+                .default_size(260.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.chrome)
+                        .inner_margin(egui::Margin::symmetric(8, 4)),
+                )
+                .show(ui, |ui| self.objects_panel(&ctx, ui));
+        }
         if self.document.is_some() {
             egui::Panel::right("rail")
                 .resizable(false)
@@ -1948,6 +2041,7 @@ impl eframe::App for SuniApp {
         self.protect_dialog(&ctx);
         self.unprotect_dialog(&ctx);
         self.text_prompt_dialog(&ctx);
+        self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
@@ -2003,6 +2097,8 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::PageOutOfRange(_) => "error.page_range",
         EngineError::RenderTooLarge => "error.render_too_large",
         EngineError::AlreadyExists(_) => "error.already_exists",
+        EngineError::MissingGlyphs => "error.missing_glyphs",
+        EngineError::FontNotEmbeddable => "error.font_not_embeddable",
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -2023,6 +2119,8 @@ mod tests {
             EngineError::PageOutOfRange(0),
             EngineError::RenderTooLarge,
             EngineError::AlreadyExists(PathBuf::new()),
+            EngineError::MissingGlyphs,
+            EngineError::FontNotEmbeddable,
             EngineError::Other(String::new()),
         ];
         for e in errors {
@@ -2039,7 +2137,11 @@ mod tests {
             include_str!("app.rs"),
             include_str!("main.rs"),
             include_str!("shell.rs"),
-            include_str!("workspace.rs")
+            include_str!("workspace.rs"),
+            include_str!("editor.rs"),
+            include_str!("objects.rs"),
+            include_str!("inline_text.rs"),
+            include_str!("pagesetup.rs")
         );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {

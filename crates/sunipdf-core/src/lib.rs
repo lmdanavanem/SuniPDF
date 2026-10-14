@@ -8,22 +8,33 @@
 //! de parallélisme). L'application de bureau les confine dans un thread de travail.
 
 pub mod annot;
+pub mod boxes;
 pub mod cache;
+pub mod clipboard;
 pub mod command;
 pub mod convert;
 pub mod edit;
 mod error;
+pub mod fonts;
+pub mod geometry;
 pub mod pages;
 pub mod security;
 pub mod stamp;
 pub mod text;
 
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
+pub use boxes::{PageMargins, ResizeMode};
 pub use cache::{cache_key, RenderCache};
+pub use clipboard::ObjectClip;
 pub use command::{Command, CommandInfo, Menu, REGISTRY};
 pub use convert::Optimized;
-pub use edit::{FontFamily, ObjectInfo, ObjectKind, ObjectStyle, ShapeKind, ShapeStyle, TextStyle};
+pub use edit::{
+    FontFamily, ObjectInfo, ObjectKind, ObjectStyle, RectMode, ShapeKind, ShapeStyle, TextStyle,
+    ZOrder,
+};
 pub use error::EngineError;
+pub use fonts::SystemFont;
+pub use geometry::PageGeometry;
 pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection};
 pub use stamp::{Stamp, StampPosition};
@@ -77,6 +88,8 @@ pub struct Document<'a> {
     info: DocumentInfo,
     /// Mot de passe d'ouverture, réutilisé pour recharger un instantané (undo/redo).
     password: Option<String>,
+    /// Polices système déjà incorporées dans ce document (vidé à chaque rechargement).
+    font_cache: std::collections::HashMap<PathBuf, PdfFontToken>,
 }
 
 /// Répertoires explorés pour trouver `pdfium.dll`, dans l'ordre.
@@ -185,6 +198,7 @@ impl Engine {
             inner,
             pdfium: &self.pdfium,
             password: password.map(str::to_owned),
+            font_cache: Default::default(),
             info: DocumentInfo {
                 path: path.to_path_buf(),
                 title,

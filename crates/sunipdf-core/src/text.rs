@@ -3,7 +3,8 @@
 use crate::{Document, EngineError};
 use pdfium_render::prelude::*;
 
-/// Rectangle en points PDF, origine en bas à gauche de la page.
+/// Rectangle en points, origine en bas à gauche de la page affichée (espace d'affichage,
+/// voir `geometry.rs`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointRect {
     pub left: f32,
@@ -38,21 +39,23 @@ impl Document<'_> {
             return Ok(Vec::new());
         }
         let page = self.page(page_index)?;
+        let geo = crate::geometry::geometry_of(&page)?;
         let text = page.text()?;
         let options = PdfSearchOptions::new().match_case(match_case);
         let search = text.search(query, &options)?;
         let mut matches = Vec::new();
         while let Some(segments) = search.find_next() {
+            // PDFium donne les segments en espace utilisateur ; l'API parle en espace d'affichage.
             let rects = segments
                 .iter()
                 .map(|s| {
                     let b = s.bounds();
-                    PointRect {
+                    geo.rect_to_display(PointRect {
                         left: b.left().value,
                         bottom: b.bottom().value,
                         right: b.right().value,
                         top: b.top().value,
-                    }
+                    })
                 })
                 .collect();
             matches.push(TextMatch {

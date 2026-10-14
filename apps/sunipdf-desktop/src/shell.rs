@@ -212,6 +212,15 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         }
         Command::HubLeave => (glyph::CLOSE, "✕"),
         Command::About => (glyph::INFO, "i"),
+        Command::ToggleObjects => (glyph::LAYERS, "☰"),
+        Command::CopyObjects => (glyph::DUPLICATE, "⎘"),
+        Command::CutObjects => (glyph::CUT, "✂"),
+        Command::PasteObjects => (glyph::PASTE, "📋"),
+        Command::SelectAllObjects => (glyph::SELECT_ALL, "▣"),
+        Command::ReplaceImage => (glyph::PHOTO, "🖼"),
+        Command::CropPages => (glyph::CROP, "⌗"),
+        Command::ResizePages => (glyph::FIT_PAGE, "▭"),
+        Command::InsertBlankPage => (glyph::ADD, "+"),
     }
 }
 
@@ -944,6 +953,20 @@ impl SuniApp {
                 .on_hover_text(tr(lang, "menu.view.comments"));
             if comments.clicked() {
                 self.execute(ctx, Command::ToggleComments);
+            }
+            let objects = ui
+                .add(
+                    Button::new(self.icon(glyph::LAYERS, "☰", 16.0))
+                        .frame(false)
+                        .selected(self.edit.objects_open),
+                )
+                .on_hover_text(format!(
+                    "{}  ({})",
+                    tr(lang, "menu.view.objects"),
+                    tr(lang, "shortcut.objects")
+                ));
+            if objects.clicked() {
+                self.execute(ctx, Command::ToggleObjects);
             }
             let find = ui
                 .add(
