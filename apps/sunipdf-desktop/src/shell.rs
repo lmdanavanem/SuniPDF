@@ -153,12 +153,12 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ToggleThumbnails => (glyph::GRID, "▦"),
         Command::ToggleTools => (glyph::ALL_APPS, "▤"),
         Command::CommandPalette => (glyph::SEARCH_BOX, "⌘"),
-        Command::RotateClockwise => (glyph::ROTATE, "↻"),
-        Command::RotateCounterClockwise => (glyph::UNDO, "↺"),
+        Command::RotateClockwise => (glyph::ROTATE_RIGHT, "↻"),
+        Command::RotateCounterClockwise => (glyph::ROTATE_LEFT, "↺"),
         Command::DeletePage => (glyph::DELETE, "🗑"),
         Command::InsertPages => (glyph::IMPORT, "⤵"),
-        Command::MovePageLeft => (glyph::CHEVRON_UP, "◀"),
-        Command::MovePageRight => (glyph::CHEVRON_DOWN, "▶"),
+        Command::MovePageLeft => (glyph::CHEVRON_LEFT, "◀"),
+        Command::MovePageRight => (glyph::CHEVRON_RIGHT, "▶"),
         Command::Undo => (glyph::UNDO, "↶"),
         Command::Redo => (glyph::REDO, "↷"),
         Command::OrganizePages => (glyph::GRID, "▦"),
@@ -195,10 +195,10 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ToolEllipse => (glyph::ELLIPSE, "◯"),
         Command::ToolLine => (glyph::LINE, "╱"),
         Command::DeleteObject => (glyph::DELETE, "🗑"),
-        Command::EditObjectText => (glyph::FONT, "T"),
+        Command::EditObjectText => (glyph::RENAME, "T"),
         Command::DuplicateObject => (glyph::DUPLICATE, "⧉"),
         Command::RotateObjectLeft => (glyph::ROTATE_LEFT, "↺"),
-        Command::RotateObjectRight => (glyph::ROTATE, "↻"),
+        Command::RotateObjectRight => (glyph::ROTATE_RIGHT, "↻"),
         Command::BringToFront => (glyph::FRONT, "⤒"),
         Command::SendToBack => (glyph::BACK, "⤓"),
         Command::Watermark => (glyph::STAMP, "◈"),
@@ -245,7 +245,7 @@ impl SuniApp {
             Some(k) => format!("{label}  ({})", tr(lang, k)),
             None => label.to_string(),
         };
-        bar_button(
+        let r = bar_button(
             ui,
             self.has_icons,
             BarButton {
@@ -257,7 +257,12 @@ impl SuniApp {
                 selected: false,
                 enabled,
             },
-        )
+        );
+        if r.clicked() {
+            // Comme les boutons du hub : les raccourcis à une lettre restent actifs (A14).
+            r.surrender_focus();
+        }
+        r
     }
 
     /// Menu « Outils » : un élément par outil disponible (coché si actif), puis « Quitter l'outil ».
@@ -962,7 +967,12 @@ impl SuniApp {
                 if self.icon_button(ui, glyph::ZOOM_IN, "+", tr(lang, "menu.view.zoom_in")) {
                     self.execute(ctx, Command::ZoomIn);
                 }
-                if self.icon_button(ui, glyph::ROTATE, "↻", tr(lang, "menu.pages.rotate_cw")) {
+                if self.icon_button(
+                    ui,
+                    glyph::ROTATE_RIGHT,
+                    "↻",
+                    tr(lang, "menu.pages.rotate_cw"),
+                ) {
                     self.execute(ctx, Command::RotateClockwise);
                 }
                 let fit_w = ui
@@ -1045,6 +1055,8 @@ impl SuniApp {
         let matches: Vec<Command> = sunipdf_core::REGISTRY
             .iter()
             .filter(|c| !c.needs_document || has_doc)
+            // « Quitter l'outil » sans outil actif serait une entrée sans effet.
+            .filter(|c| c.command != Command::HubLeave || self.annotate.workspace.is_some())
             .filter(|c| query.is_empty() || tr(lang, c.label_key).to_lowercase().contains(&query))
             .map(|c| c.command)
             .collect();

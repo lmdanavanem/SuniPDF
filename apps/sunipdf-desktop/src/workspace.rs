@@ -311,6 +311,61 @@ pub fn follow(a: &mut AnnotateState, o: &mut OrganizeState, e: &mut EditState, c
     }
 }
 
+/// Effet d'un Échap hors boîtes de dialogue et palette.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Esc {
+    /// Ferme le menu ou la liste déroulante ouverts.
+    ClosePopup,
+    /// Laissé à egui (il vient de retirer le focus du champ) ou à la barre de recherche (elle se
+    /// ferme elle-même), ou sans effet.
+    Pass,
+    Deselect,
+    Leave,
+}
+
+#[derive(Clone, Copy, Default, Debug)]
+pub struct EscState {
+    pub popup_open: bool,
+    pub focus_last_frame: bool,
+    pub find_open: bool,
+    pub object_selected: bool,
+    pub in_workspace: bool,
+}
+
+impl EscState {
+    /// Un Échap = un effet, le plus proche d'abord : menu ou liste, champ ou recherche, objet
+    /// sélectionné, outil actif (ordre décrit dans les guides utilisateur).
+    pub fn action(self) -> Esc {
+        if self.popup_open {
+            Esc::ClosePopup
+        } else if self.focus_last_frame || self.find_open {
+            Esc::Pass
+        } else if self.object_selected {
+            Esc::Deselect
+        } else if self.in_workspace {
+            Esc::Leave
+        } else {
+            Esc::Pass
+        }
+    }
+}
+
+/// Consomme Échap selon `s` (à appeler en début d'image, avant tout dessin). Un menu est fermé ici
+/// plutôt que par egui : la touche consommée, rien d'autre ne la voit dans la même image.
+/// `None` : touche absente, ou laissée à egui ou à la barre de recherche.
+pub fn take_escape(ctx: &egui::Context, s: EscState) -> Option<Esc> {
+    let action = s.action();
+    if action == Esc::Pass
+        || !ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+    {
+        return None;
+    }
+    if action == Esc::ClosePopup {
+        egui::Popup::close_all(ctx);
+    }
+    Some(action)
+}
+
 /// Bouton de barre dessiné à la main : fondu au survol, état sélectionné, anneau de focus et
 /// libellé AccessKit lisible (un glyphe de la zone privée n'a rien à faire dans un lecteur d'écran).
 pub struct BarButton<'a> {
@@ -433,14 +488,16 @@ impl SuniApp {
         switch(&mut self.annotate, &mut self.organize, &mut self.edit, None);
     }
 
-    /// Échap quitte l'outil seulement si rien de plus proche ne l'utilise : recherche ouverte,
-    /// objet sélectionné, ou widget focalisé à l'image précédente (egui retire le focus sur Échap
-    /// avant que l'application ne lise la touche).
-    pub fn esc_leaves_workspace(&self) -> bool {
-        self.annotate.workspace.is_some()
-            && !self.find.open
-            && self.edit.selected.is_none()
-            && !self.focus_last_frame
+    /// État lu par Échap en début d'image, avant tout dessin : les menus ouverts sont ceux de
+    /// l'image précédente, comme `focus_last_frame`.
+    pub fn esc_state(&self, ctx: &egui::Context) -> EscState {
+        EscState {
+            popup_open: egui::Popup::is_any_open(ctx),
+            focus_last_frame: self.focus_last_frame,
+            find_open: self.find.open,
+            object_selected: self.edit.selected.is_some(),
+            in_workspace: self.annotate.workspace.is_some(),
+        }
     }
 
     fn command_selected(&self, c: Command) -> bool {
@@ -837,6 +894,24 @@ mod tests {
         }
     }
 
+    /// Dans une barre, aucune icône n'en répète une autre ni celle d'un bouton d'accès rapide
+    /// visible en même temps (Pivoter à gauche reprenait le glyphe d'Annuler).
+    #[test]
+    fn bar_icons_are_distinct() {
+        let quick = [C::OpenDocument, C::Save, C::Undo, C::Redo];
+        for info in TABLE.iter().filter(|i| i.ws.is_mode()) {
+            let mut seen: Vec<&str> = quick
+                .iter()
+                .map(|c| crate::shell::command_icon(*c).0)
+                .collect();
+            for c in info.commands() {
+                let g = crate::shell::command_icon(c).0;
+                assert!(!seen.contains(&g), "{:?} : icône de {c:?} répétée", info.ws);
+                seen.push(g);
+            }
+        }
+    }
+
     #[test]
     fn switch_resets_drawing_tool() {
         let (mut a, mut o, mut e) = Default::default();
@@ -886,6 +961,92 @@ mod tests {
         a.tool = Tool::Select;
         follow(&mut a, &mut o, &mut e, C::ToolSelect);
         assert_eq!(a.workspace, None);
+    }
+
+    #[test]
+    fn escape_closes_the_nearest_thing_first() {
+        let tool = EscState {
+            in_workspace: true,
+            ..Default::default()
+        };
+        assert_eq!(EscState::default().action(), Esc::Pass);
+        assert_eq!(tool.action(), Esc::Leave);
+        let selected = EscState {
+            object_selected: true,
+            ..tool
+        };
+        assert_eq!(selected.action(), Esc::Deselect);
+        let field = EscState {
+            focus_last_frame: true,
+            ..selected
+        };
+        let find = EscState {
+            find_open: true,
+            ..selected
+        };
+        assert_eq!(field.action(), Esc::Pass);
+        assert_eq!(find.action(), Esc::Pass);
+        for s in [tool, selected, field, find] {
+            let menu = EscState {
+                popup_open: true,
+                ..s
+            };
+            assert_eq!(menu.action(), Esc::ClosePopup, "{s:?}");
+        }
+    }
+
+    /// Scénario de la revue : outil actif, menu ouvert, Échap. Lu avant le dessin comme dans
+    /// `handle_input`, l'état des menus est celui de l'image précédente : Échap ferme le menu et
+    /// est consommé (ni la recherche ni l'outil ne le voient) ; l'Échap suivant quitte l'outil.
+    #[test]
+    fn escape_with_an_open_menu_closes_only_the_menu() {
+        let ctx = egui::Context::default();
+        let tool = EscState {
+            in_workspace: true,
+            ..Default::default()
+        };
+        let esc = egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        };
+        // Une image : (effet d'Échap, menu affiché, Échap encore visible après `take_escape`).
+        let frame = |events: Vec<egui::Event>, open_menu: bool| {
+            let mut seen = (None, false, false);
+            let input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(800.0, 600.0),
+                )),
+                events,
+                ..Default::default()
+            };
+            let mut out = ctx.run_ui(input, |ui| {
+                let s = EscState {
+                    popup_open: egui::Popup::is_any_open(ui.ctx()),
+                    ..tool
+                };
+                seen.0 = take_escape(ui.ctx(), s);
+                seen.2 = ui.input(|i| i.key_pressed(egui::Key::Escape));
+                let menu = ui.menu_button("Menu", |ui| ui.label("…"));
+                seen.1 = menu.inner.is_some();
+                if open_menu {
+                    let id = egui::Popup::default_response_id(&menu.response);
+                    egui::Popup::open_id(ui.ctx(), id);
+                }
+            });
+            out.textures_delta.clear();
+            seen
+        };
+        let _ = frame(vec![], true);
+        assert_eq!(frame(vec![], false), (None, true, false));
+        assert_eq!(
+            frame(vec![esc.clone()], false),
+            (Some(Esc::ClosePopup), false, false)
+        );
+        assert_eq!(frame(vec![esc], false), (Some(Esc::Leave), false, false));
     }
 
     #[test]

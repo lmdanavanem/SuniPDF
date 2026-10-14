@@ -17,7 +17,6 @@ pub mod glyph {
     pub const FIND: &str = "\u{E721}";
     pub const ZOOM_IN: &str = "\u{E8A3}";
     pub const ZOOM_OUT: &str = "\u{E71F}";
-    pub const ROTATE: &str = "\u{E7AD}";
     pub const UNDO: &str = "\u{E7A7}";
     pub const REDO: &str = "\u{E7A6}";
     pub const DELETE: &str = "\u{E74D}";
@@ -54,11 +53,14 @@ pub mod glyph {
     pub const OPTIMIZE: &str = "\u{E92C}";
     pub const CURSOR: &str = "\u{E8B0}";
     pub const FONT: &str = "\u{E8D2}";
+    pub const RENAME: &str = "\u{E8AC}";
     pub const RECT: &str = "\u{E739}";
     pub const ELLIPSE: &str = "\u{EA3A}";
     pub const LINE: &str = "\u{E738}";
     pub const DUPLICATE: &str = "\u{E8C8}";
-    pub const ROTATE_LEFT: &str = "\u{E7A7}";
+    /// RotateMapLeft / RotateMapRight : distincts d'Annuler / Rétablir (E7A7 / E7A6).
+    pub const ROTATE_LEFT: &str = "\u{E80C}";
+    pub const ROTATE_RIGHT: &str = "\u{E80D}";
     pub const FRONT: &str = "\u{E74A}";
     pub const BACK: &str = "\u{E74B}";
     pub const WARNING: &str = "\u{E7BA}";
@@ -69,6 +71,7 @@ pub mod glyph {
     pub const EXPORT: &str = "\u{EDE1}";
     pub const EDIT_DOC: &str = "\u{E70F}";
     pub const ADD: &str = "\u{E710}";
+    pub const CHEVRON_LEFT: &str = "\u{E76B}";
     pub const CHEVRON_RIGHT: &str = "\u{E76C}";
     pub const ARROW_LEFT: &str = "\u{E72B}";
     pub const IMPORT: &str = "\u{E8B5}";

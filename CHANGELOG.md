@@ -32,6 +32,21 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   variables `{n}` et `{total}` ; chaque tampon reste un objet modifiable et annulable.
   Moteur `sunipdf-core::stamp`, CLI `stamp` et `page-numbers`, 1 test moteur.
 
+### Corrigé (revue du hub d'outils, 2026-10-14)
+- **Échap avec un menu ouvert** : avec un outil actif, Échap quittait l'outil et laissait le menu ouvert ; il
+  ferme désormais le menu (ou la liste déroulante, le sélecteur de couleur) et rien d'autre. Ordre complet,
+  un effet par Échap : menu, champ ou recherche, objet sélectionné, outil. La recherche passe aussi avant
+  l'objet sélectionné, comme l'annonçait le guide.
+- Icônes : « Pivoter à gauche » (pages et objets) ne reprend plus le glyphe d'« Annuler » ; « Déplacer la
+  page à gauche / à droite » utilisent des chevrons horizontaux ; « Modifier le texte » ne reprend plus celui
+  d'« Ajouter du texte » (testé : aucune icône répétée dans une barre ni avec l'accès rapide).
+- La barre de propriétés d'objet reste dans la zone du document et passe à la ligne en fenêtre étroite au
+  lieu de recouvrir le rail droit.
+- « Quitter l'outil » n'apparaît plus dans la palette Ctrl+K quand aucun outil n'est actif.
+- Les boutons d'accès rapide relâchent le focus après une activation au clavier (les raccourcis à une lettre
+  restaient muets).
+- Un fichier passé en argument relatif est enregistré dans les fichiers récents avec son chemin absolu.
+
 ### Corrigé (revue de code adverse, 2026-10-14)
 - **Sécurité** : modifier les métadonnées, les supprimer, optimiser ou mettre un objet à l'arrière-plan
   retirait silencieusement le chiffrement d'un PDF protégé ; la protection d'origine (clé, mots de passe,

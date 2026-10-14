@@ -29,8 +29,8 @@ Without an open document, a tool that needs one first asks for a file, then star
   the label staying in the tooltip). Actions that need a selection (object, text, grid pages) stay greyed
   out without one.
 - **Leave tool**: button on the right of the bar, **Esc**, clicking the active tool again in the panel, or the
-  back arrow (which also reopens the panel). Esc first closes what is closer: the search bar, then the
-  selected object, then the tool.
+  back arrow (which also reopens the panel). Esc first closes what is closer: an open menu or drop-down
+  list, then the search bar, then the selected object, then the tool (one Esc, one effect).
 - Single-letter shortcuts open the matching tool: H, U, X, N open **Add comments**; E, T, I, R, O, L open
   **Edit a PDF**; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
 - Each tab keeps its own active tool.

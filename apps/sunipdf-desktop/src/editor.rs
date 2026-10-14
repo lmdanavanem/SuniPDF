@@ -604,17 +604,23 @@ impl SuniApp {
         }
     }
 
-    /// Barre flottante des propriétés d'objet (couleurs, épaisseur), en haut à gauche de la page.
-    /// Les actions (pivoter, dupliquer, ordre, supprimer) sont dans la barre de l'outil Modifier.
-    pub fn object_bar(&mut self, ctx: &egui::Context, origin: egui::Pos2) {
+    /// Barre flottante des propriétés d'objet (couleurs, épaisseur), en haut à gauche de la zone
+    /// document `bounds`, qu'elle ne déborde pas : en fenêtre étroite elle passe à la ligne au lieu
+    /// de recouvrir le rail. Les actions (pivoter, dupliquer, ordre, supprimer) sont dans la barre
+    /// de l'outil Modifier.
+    pub fn object_bar(&mut self, ctx: &egui::Context, bounds: egui::Rect) {
         if !self.annotate.tool.is_edit() {
             return;
         }
         let lang = self.lang();
         let p = theme::palette(self.settings.dark_theme);
         let mut apply = false;
+        const GAP: f32 = 14.0;
+        // Écarts de part et d'autre, marges intérieures (8 + 8) et trait du cadre (1 + 1).
+        let max_w = (bounds.width() - 2.0 * GAP - 18.0).max(80.0);
         egui::Area::new(egui::Id::new("object-bar"))
-            .fixed_pos(origin)
+            .fixed_pos(bounds.min + egui::vec2(GAP, GAP))
+            .constrain_to(bounds)
             .order(egui::Order::Middle)
             .show(ctx, |ui| {
                 egui::Frame::new()
@@ -623,7 +629,9 @@ impl SuniApp {
                     .corner_radius(8)
                     .inner_margin(egui::Margin::symmetric(8, 4))
                     .show(ui, |ui| {
-                        ui.horizontal(|ui| {
+                        // Fixe la largeur de coupure (l'Area ne connaît que sa taille précédente).
+                        ui.set_max_width(max_w);
+                        ui.horizontal_wrapped(|ui| {
                             ui.label(tr(lang, "bar.stroke"));
                             ui.color_edit_button_srgb(&mut self.edit.stroke_rgb);
                             ui.add(

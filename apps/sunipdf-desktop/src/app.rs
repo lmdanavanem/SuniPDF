@@ -5,6 +5,7 @@ use crate::icons::glyph;
 use crate::settings::Settings;
 use crate::theme;
 use crate::worker::{BytesOp, DocState, EditOp, Request, Response, Worker};
+use crate::workspace::Esc;
 use egui::{Key, Modifiers};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -696,13 +697,17 @@ impl SuniApp {
             });
         }
         self.edit.shift = ctx.input(|i| i.modifiers.shift);
+        // Un Échap = un effet, le plus proche d'abord (`workspace::EscState::action`).
+        let esc = crate::workspace::take_escape(ctx, self.esc_state(ctx));
+        if esc == Some(Esc::Deselect) {
+            self.edit.selected = None;
+        }
         if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject)
             && self.edit.selected.is_some()
         {
-            // Objet sélectionné : flèches = décalage (Maj : ×10), Échap = désélection.
+            // Objet sélectionné : flèches = décalage (Maj : ×10).
             let step = if self.edit.shift { 10.0 } else { 1.0 };
             let mut nudge = (0.0f32, 0.0f32);
-            let mut escape = false;
             ctx.input_mut(|i| {
                 for (k, d) in [
                     (Key::ArrowLeft, (-1.0, 0.0)),
@@ -714,27 +719,21 @@ impl SuniApp {
                         nudge = d;
                     }
                 }
-                escape = i.consume_key(Modifiers::NONE, Key::Escape);
             });
             if nudge != (0.0, 0.0) {
                 self.nudge_selected(nudge.0 * step, nudge.1 * step);
             }
-            if escape {
-                self.edit.selected = None;
-            }
         }
-        // Un Échap = un effet : la désélection d'objet (ci-dessus) passe avant la sortie de l'outil.
-        let leave_on_esc = self.esc_leaves_workspace();
         let mut commands = Vec::new();
+        if esc == Some(Esc::Leave) {
+            commands.push(Command::HubLeave);
+        }
         ctx.input_mut(|i| {
             let mut key = |m: Modifiers, k: Key, c: Command| {
                 if i.consume_key(m, k) {
                     commands.push(c);
                 }
             };
-            if leave_on_esc {
-                key(Modifiers::NONE, Key::Escape, Command::HubLeave);
-            }
             key(Modifiers::COMMAND, Key::O, Command::OpenDocument);
             key(Modifiers::COMMAND, Key::W, Command::CloseDocument);
             key(Modifiers::COMMAND, Key::Plus, Command::ZoomIn);
@@ -1151,7 +1150,7 @@ impl SuniApp {
         self.request_render_if_needed(ctx);
         self.refresh_annotations_if_needed();
         let mut drag_event: Option<DragEvent> = None;
-        let bar_origin = ui.max_rect().min + egui::vec2(14.0, 14.0);
+        let doc_rect = ui.max_rect();
 
         egui::ScrollArea::both()
             .auto_shrink([false, false])
@@ -1284,7 +1283,7 @@ impl SuniApp {
             }
             None => {}
         }
-        self.object_bar(ctx, bar_origin);
+        self.object_bar(ctx, doc_rect);
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).

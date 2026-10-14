@@ -17,7 +17,8 @@ Pour rendre un outil visible, une tranche fait exactement :
 3. si l'outil a une barre : ajouter `HubXxx` au registre (menu `Tools`), au bras `Hub*` d'`execute` et à
    `shell::command_icon` ;
 4. les noms, descriptions et couleurs des 14 outils existent déjà (`hub.*.name`, `hub.*.desc`).
-Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système.
+Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système ;
+`bar_icons_are_distinct` échoue si une icône se répète dans une barre ou reprend celle d'un bouton d'accès rapide.
 Outils encore absents : Remplir et signer, Numériser et OCR, Caviarder, Préparer un formulaire, Utiliser un certificat.
 
 Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit

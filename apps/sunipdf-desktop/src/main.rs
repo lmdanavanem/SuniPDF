@@ -17,9 +17,10 @@ mod workspace;
 
 fn main() -> eframe::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    // Chemins absolus dès l'entrée : fichiers récents et titres ne dépendent pas du dossier courant.
     let initial_files: Vec<std::path::PathBuf> = std::env::args_os()
         .skip(1)
-        .map(std::path::PathBuf::from)
+        .map(|a| std::path::absolute(&a).unwrap_or_else(|_| a.into()))
         .collect();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

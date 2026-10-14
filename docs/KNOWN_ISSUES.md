@@ -70,11 +70,23 @@ A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de re
 A13. **Barre d'outil en fenêtre étroite** : la largeur des libellés est estimée avant le dessin ; sous la
      largeur nécessaire, icônes seules, puis mode compact (nom et « Quitter l'outil » sans libellé) et
      défilement horizontal des boutons (barre de défilement flottante, au survol ; la molette verticale ne fait
-     pas défiler, Maj+molette oui).
-A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'un bouton du hub, le focus est
-     relâché pour que les raccourcis à une lettre restent actifs ; Tab repart donc du début. Les boutons egui
-     standard (barre d'onglets, menu) n'affichent qu'un indice de focus discret ; les lignes, cartes et
-     boutons du hub ont un anneau de 2 px. Échap agit dans l'ordre : champ ou recherche, objet sélectionné,
-     outil actif.
+     pas défiler, Maj+molette oui). **Défilement non démontré** : à 100 % d'échelle et à la largeur minimale
+     de la fenêtre (720 px), la barre la plus longue (Modifier) tient en mode compact ; le défilement n'est
+     atteint qu'avec une échelle d'affichage Windows plus grande et n'a été vérifié ni par un test ni par une
+     capture.
+A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'un bouton du hub ou de l'accès
+     rapide (Ouvrir, Enregistrer, Annuler, Rétablir), le focus est relâché pour que les raccourcis à une
+     lettre restent actifs ; Tab repart donc du début. Les boutons egui standard (barre d'onglets, menu)
+     n'affichent qu'un indice de focus discret ; les lignes, cartes et boutons du hub ont un anneau de 2 px.
+     Échap agit dans l'ordre (un Échap, un effet ; `workspace::EscState::action`, testé) : menu ou liste
+     déroulante ouverts, champ ou recherche, objet sélectionné, outil actif. Deux Échap reçus dans la même
+     image (impossible au clavier, possible par injection) peuvent encore produire deux effets.
 A15. **Rail droit en fenêtre basse** (moins de ~650 px de haut) : les groupes du haut et du bas du rail
      peuvent se chevaucher (antérieur au hub, non traité).
+A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute séquence `{n}` d'un texte d'aide
+     par un saut de ligne (`clap_builder` 4.6, sans échappement possible) ; l'aide affiche donc « : ⏎ = page
+     number » au lieu de `{n}`. Les variables `{n}` et `{total}` fonctionnent ; seul le texte d'aide est
+     tronqué (relevé par la revue du hub, non traité).
+A17. **Indicateur « modifié » après annulation** : annuler jusqu'à l'état d'origine laisse le document marqué
+     « modifié » (l'historique ne mémorise pas le point d'enregistrement ; relevé par la revue du hub, non
+     traité).

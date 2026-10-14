@@ -117,6 +117,11 @@ Conversions : `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` et, dans l'aut
   focalisé fait taire les raccourcis à une lettre de `handle_input`.
 - egui retire le focus sur Échap **avant** que l'application lise la touche : `SuniApp::focus_last_frame`
   garde l'état de l'image précédente (Échap dans un champ ne quitte pas l'outil actif).
+- Échap passe par un seul point : `workspace::take_escape` (ordre dans `EscState::action`, testé). Les menus
+  et listes egui (`menu_button`, `ComboBox`, sélecteur de couleur) ne lisent Échap qu'au moment de leur
+  dessin : `handle_input`, qui tourne avant, consommerait la touche. `egui::Popup::is_any_open(ctx)` lu en
+  début d'image donne l'état de l'image précédente ; `take_escape` ferme alors le menu lui-même
+  (`Popup::close_all`) et consomme la touche. Toute nouvelle action sur Échap s'ajoute à `EscState`.
 - `Visuals::interact_cursor` ne s'applique qu'aux `egui::Button` ; les widgets maison posent
   `on_hover_cursor(PointingHand)`. `ui.set_max_width(w)` peut **élargir** : borner par `available_width()`.
 - Une rangée `ui.horizontal` démarre à `interact_size.y` de haut ; pour centrer des boutons plus hauts

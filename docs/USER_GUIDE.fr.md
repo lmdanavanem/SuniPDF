@@ -31,8 +31,9 @@ fichier puis démarre.
   permet (sinon l'icône seule, le libellé restant en info-bulle). Les actions qui demandent une sélection
   (objet, texte, pages de la grille) restent grisées sans elle.
 - **Quitter l'outil** : bouton à droite de la barre, **Échap**, nouveau clic sur l'outil actif dans le panneau,
-  ou la flèche de retour (qui rouvre aussi le panneau). Échap ferme d'abord ce qui est plus proche : la
-  recherche, puis l'objet sélectionné, puis l'outil.
+  ou la flèche de retour (qui rouvre aussi le panneau). Échap ferme d'abord ce qui est plus proche : un menu
+  ou une liste déroulante ouverts, puis la recherche, puis l'objet sélectionné, puis l'outil (un Échap, un
+  seul effet).
 - Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N ouvrent **Commenter** ; E, T, I, R, O, L
   ouvrent **Modifier** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
 - Chaque onglet garde son outil actif.

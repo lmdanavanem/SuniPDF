@@ -1,4 +1,4 @@
-﻿# Lance l'application, capture sa fenÃªtre en PNG, puis la ferme. Outil de dÃ©veloppement/QA visuelle.
+﻿# Lance l'application, capture sa fenêtre en PNG, puis la ferme. Outil de développement/QA visuelle.
 # Usage : .\scripts\dev-screenshot.ps1 -Out capture.png [-Pdf fichier.pdf] [-Delay 4] [-Exe target\debug\sunipdf.exe]
 param(
     [string]$Out = "capture.png",
@@ -6,9 +6,9 @@ param(
     [double]$Delay = 4,
     [string]$Exe = "",
     [string]$Keys = "",
-    # Identifiants de commandes exÃ©cutÃ©s aprÃ¨s l'ouverture (ex. "view.organize,edit.find").
+    # Identifiants de commandes exécutés après l'ouverture (ex. "view.organize,edit.find").
     [string]$Commands = "",
-    # Glissement souris relatif Ã  la fenÃªtre : "x1,y1,x2,y2" (points logiques).
+    # Glissement souris relatif à la fenêtre : "x1,y1,x2,y2" (points logiques).
     [string]$Drag = "",
     [string]$KeysAfter = "",
     # Taille de fenetre imposee (pixels), ex. -Width 720 -Height 600 ; 0 = taille par defaut.
@@ -45,7 +45,7 @@ try {
     Start-Sleep -Seconds $Delay
     $proc.Refresh()
     $h = $proc.MainWindowHandle
-    if ($h -eq [IntPtr]::Zero) { throw "FenÃªtre introuvable (processus $($proc.Id))." }
+    if ($h -eq [IntPtr]::Zero) { throw "Fenêtre introuvable (processus $($proc.Id))." }
     # Premier plan + position (0,0) sans redimensionner (SWP_NOSIZE=1, SWP_SHOWWINDOW=0x40), HWND_TOPMOST=-1.
     [Win]::ShowWindow($h, 5) | Out-Null
     if ($Width -gt 0 -and $Height -gt 0) {
