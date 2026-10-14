@@ -93,6 +93,8 @@ impl SuniApp {
         self.view.reset();
         self.view
             .request(crate::view::ScrollRequest::Offset(t.scroll));
+        // Le panneau des miniatures est partagé entre onglets : ramener la page de cet onglet.
+        self.view.follow_thumb = true;
         self.page_input = t.page_input;
         self.thumbnails = t.thumbnails;
         self.thumbs_pending.clear();

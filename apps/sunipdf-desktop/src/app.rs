@@ -1189,7 +1189,14 @@ impl SuniApp {
                 }
                 let shortcut = info.shortcut_key.map(|k| tr(lang, k)).unwrap_or("");
                 let enabled = !info.needs_document || has_doc;
-                if menu_item(ui, tr(lang, info.label_key), shortcut, enabled) {
+                // Mode de vue actif surligné (les deux entrées partagent F5).
+                let active = has_doc
+                    && match info.command {
+                        Command::ViewContinuous => self.view.mode == ViewMode::Continuous,
+                        Command::ViewSinglePage => self.view.mode == ViewMode::Single,
+                        _ => false,
+                    };
+                if menu_item(ui, tr(lang, info.label_key), shortcut, enabled, active) {
                     self.execute(ctx, info.command);
                 }
             }
@@ -1941,9 +1948,20 @@ impl eframe::App for SuniApp {
 
 // ----- Utilitaires -----------------------------------------------------------
 
-pub(crate) fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str, enabled: bool) -> bool {
+pub(crate) fn menu_item(
+    ui: &mut egui::Ui,
+    label: &str,
+    shortcut: &str,
+    enabled: bool,
+    selected: bool,
+) -> bool {
     let clicked = ui
-        .add_enabled(enabled, egui::Button::new(label).shortcut_text(shortcut))
+        .add_enabled(
+            enabled,
+            egui::Button::new(label)
+                .shortcut_text(shortcut)
+                .selected(selected),
+        )
         .clicked();
     if clicked {
         ui.close();

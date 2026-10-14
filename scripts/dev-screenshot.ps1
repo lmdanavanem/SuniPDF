@@ -14,7 +14,10 @@ param(
     [string]$KeysAfter = "",
     # Taille de fenetre imposee (pixels), ex. -Width 720 -Height 600 ; 0 = taille par defaut.
     [int]$Width = 0,
-    [int]$Height = 0
+    [int]$Height = 0,
+    # Molette apres les glissements : "x,y,crans[,ctrl]" (crans > 0 : vers le haut / zoom avant),
+    # plusieurs separees par ";", ex. "700,400,3,ctrl" = Ctrl + 3 crans sous le point (700, 400).
+    [string]$Wheel = ""
 )
 # Exemple (hub d'outils) : -Pdf x.pdf -Commands "hub.comment,tool.highlight" -Drag "515,272,755,318"
 $ErrorActionPreference = "Stop"
@@ -31,6 +34,7 @@ public static class Win {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
+    [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr h, int attr, out RECT r, int size);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 }
@@ -78,6 +82,22 @@ try {
             Start-Sleep -Milliseconds 30
         }
         [Win]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)   # LEFTUP
+        Start-Sleep -Seconds 1.5
+    }
+    foreach ($one in ($Wheel -split ";" | Where-Object { $_ })) {
+        $p = $one.Split(",")
+        [System.Windows.Forms.Cursor]::Position = New-Object System.Drawing.Point(($r.Left + [int]$p[0]), ($r.Top + [int]$p[1]))
+        Start-Sleep -Milliseconds 200
+        $ctrl = $p.Count -gt 3 -and $p[3] -eq "ctrl"
+        if ($ctrl) { [Win]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 100 }   # VK_CONTROL
+        $n = [int]$p[2]
+        for ($i = 0; $i -lt [Math]::Abs($n); $i++) {
+            # MOUSEEVENTF_WHEEL = 0x0800 ; un cran = 120 (négatif : complément à deux sur 32 bits).
+            $delta = if ($n -gt 0) { [uint32]120 } else { [uint32]([int64]4294967296 - 120) }
+            [Win]::mouse_event(0x0800, 0, 0, $delta, [UIntPtr]::Zero)
+            Start-Sleep -Milliseconds 120
+        }
+        if ($ctrl) { Start-Sleep -Milliseconds 100; [Win]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero) }   # KEYEVENTF_KEYUP
         Start-Sleep -Seconds 1.5
     }
     # Plusieurs saisies séparées par "|" (1,5 s entre elles) : "^c|^v".

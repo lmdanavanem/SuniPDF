@@ -2723,31 +2723,35 @@ fn crop_buf(rgba: &[u8], width: u32, r: PixelRect) -> Vec<u8> {
     )
 }
 
-/// Mesure seulement (aucune assertion de durée) :
-/// `cargo test -p sunipdf-core --release -j 2 -- --ignored --nocapture render_scroll_100_pages_timing`
+/// Mesure seulement (aucune assertion de durée), en release : PDFium est cherché dans
+/// `SUNIPDF_PDFIUM_DIR` (third_party/pdfium/win-x64/bin) :
+/// `cargo test -p sunipdf-core --release -j 2 --test engine -- --ignored --nocapture render_scroll_100_pages_timing`
 #[test]
 #[ignore]
 fn render_scroll_100_pages_timing() {
     let engine = engine();
     let doc = engine.open(&fixture("many-pages.pdf"), None).unwrap();
     let limits = TileLimits::default();
-    let scale = 1.5;
-    let start = std::time::Instant::now();
-    let mut first = None;
-    let mut count = 0u32;
-    for i in 0..100 {
-        let page = i % doc.page_count();
-        let page_px = tiles::page_pixels(doc.page_size(page).unwrap(), scale).unwrap();
-        for r in tiles::plan_tiles(page_px, PixelRect::new(0, 0, page_px.0, page_px.1), &limits) {
-            doc.render_region(page, scale, r).unwrap();
-            count += 1;
+    // 1,5 px/pt : pages entières (100 % sur un écran à 150 %) ; 6 px/pt : tuiles de 1024 px.
+    for (scale, pages) in [(1.5f32, 100usize), (6.0, 10)] {
+        let start = std::time::Instant::now();
+        let mut first = None;
+        let mut count = 0u32;
+        for i in 0..pages {
+            let page = i % doc.page_count();
+            let page_px = tiles::page_pixels(doc.page_size(page).unwrap(), scale).unwrap();
+            let all = PixelRect::new(0, 0, page_px.0, page_px.1);
+            for r in tiles::plan_tiles(page_px, all, &limits) {
+                doc.render_region(page, scale, r).unwrap();
+                count += 1;
+            }
+            first.get_or_insert(start.elapsed());
         }
-        first.get_or_insert(start.elapsed());
+        let total = start.elapsed();
+        println!(
+            "{pages} pages à {scale} px/pt : {count} rendus, total {total:?}, moyenne {:?}, première page {:?}",
+            total / count,
+            first.unwrap()
+        );
     }
-    let total = start.elapsed();
-    println!(
-        "100 pages à {scale} px/pt : {count} rendus, total {total:?}, moyenne {:?}, première page {:?}",
-        total / count,
-        first.unwrap()
-    );
 }

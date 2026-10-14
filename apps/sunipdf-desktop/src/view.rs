@@ -1536,4 +1536,22 @@ mod tests {
             "liste vide : annule le reste"
         );
     }
+
+    /// Mesure seulement : `cargo test -p sunipdf-desktop -j 2 -- --ignored --nocapture layout_cost`
+    #[test]
+    #[ignore]
+    fn layout_cost_for_long_documents() {
+        for n in [500, 5000] {
+            let pages = vec![letter(); n];
+            let start = std::time::Instant::now();
+            for _ in 0..100 {
+                let l = Layout::new(&pages, 0, 1.0, vec2(1000.0, 800.0));
+                std::hint::black_box(l.visible(400_000.0, 400_800.0));
+            }
+            println!(
+                "Layout::new + visible, {n} pages : {:?} par image",
+                start.elapsed() / 100
+            );
+        }
+    }
 }

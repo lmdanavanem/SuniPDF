@@ -296,6 +296,7 @@ impl SuniApp {
                 tr(lang, leave.label_key),
                 tr(lang, "shortcut.hub_leave"),
                 self.annotate.workspace.is_some(),
+                false,
             ) {
                 run = Some(Command::HubLeave);
             }
