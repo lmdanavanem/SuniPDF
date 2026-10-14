@@ -481,9 +481,10 @@ impl SuniApp {
         }
     }
 
-    /// Libellés affichés selon la largeur : (outils de dessin, actions). Les libellés des outils
-    /// de dessin passent en premier ; sous la largeur nécessaire, icônes seules (info-bulles).
-    fn bar_labels(&self, ui: &egui::Ui, info: &WsInfo) -> (bool, bool) {
+    /// Disposition selon la largeur. Les libellés des outils de dessin passent avant ceux des
+    /// actions ; si même les icônes seules ne tiennent pas, la barre devient compacte (nom de l'outil
+    /// et libellé « Quitter l'outil » masqués) et les boutons défilent horizontalement.
+    fn bar_layout(&self, ui: &egui::Ui, info: &WsInfo) -> BarLayout {
         let lang = self.lang();
         let width = |s: &str, size: f32| {
             ui.painter()
@@ -497,16 +498,18 @@ impl SuniApp {
         };
         let spacing = ui.spacing().item_spacing.x;
         let count = info.commands().count() as f32;
-        // Retour + pastille + nom + séparateurs + bouton « Quitter l'outil » + marges.
-        let fixed = ICON_W
+        // Marges (6 + 6), retour, pastille, nom (semi-gras, ~8 % plus large), un séparateur de 6 px
+        // par groupe, bouton « Quitter l'outil », espacements entre ces éléments, 12 px de sécurité.
+        let fixed = 12.0
+            + ICON_W
             + 28.0
-            + width(tr(lang, info.name_key), 15.0)
+            + width(tr(lang, info.name_key), 15.0) * 1.08
+            + info.groups.len() as f32 * (6.0 + spacing)
             + ICON_W
             + width(tr(lang, "hub.leave"), LABEL_FONT)
             + 10.0
-            + (info.groups.len() as f32 + 1.0) * (2.0 * spacing + 1.0)
-            + 6.0 * spacing
-            + 40.0;
+            + 4.0 * spacing
+            + 12.0;
         let label_w = |tools: bool| -> f32 {
             info.commands()
                 .filter(|c| Tool::from_command(*c).is_some() == tools)
@@ -515,7 +518,17 @@ impl SuniApp {
         };
         let room = ui.available_width() - fixed - count * (ICON_W + spacing);
         let tools = label_w(true);
-        (tools <= room, tools + label_w(false) <= room)
+        // Libellé de l'outil de dessin actif, affiché même en icônes seules.
+        let active_label: f32 = info
+            .commands()
+            .filter(|c| Tool::from_command(*c) == Some(self.annotate.tool))
+            .map(|c| width(tr(lang, c.info().label_key), LABEL_FONT) + 10.0)
+            .sum();
+        BarLayout {
+            tool_labels: tools <= room,
+            action_labels: tools + label_w(false) <= room,
+            compact: room < active_label,
+        }
     }
 
     /// Barre contextuelle de l'outil actif (entre la barre d'outils et la recherche).
@@ -528,9 +541,10 @@ impl SuniApp {
         let dark = self.settings.dark_theme;
         let p = theme::palette(dark);
         let has_icons = self.has_icons;
-        let (tool_labels, action_labels) = self.bar_labels(ui, info);
+        let layout = self.bar_layout(ui, info);
         let mut run = None;
         let mut back = false;
+        let mut leave = false;
         // Filet de la couleur de l'outil, en haut de la barre.
         let full = ui.max_rect();
         ui.painter().rect_filled(
@@ -539,85 +553,78 @@ impl SuniApp {
             info.color,
         );
         ui.add_space(6.0);
-        ui.horizontal(|ui| {
-            ui.add_space(6.0);
-            back = bar_button(
+        let leave_tip = format!(
+            "{}  ({})",
+            tr(lang, "hub.leave"),
+            tr(lang, "shortcut.hub_leave")
+        );
+        // « Quitter l'outil » est placé d'abord, à droite ; le reste se partage la largeur restante.
+        egui::containers::Sides::new()
+            .shrink_left()
+            .height(BAR_BUTTON_H)
+            .show(
                 ui,
-                has_icons,
-                BarButton {
-                    icon: (glyph::ARROW_LEFT, "‹"),
-                    tint: None,
-                    label: tr(lang, "hub.back"),
-                    show_label: false,
-                    tooltip: tr(lang, "hub.back"),
-                    selected: false,
-                    enabled: true,
+                |ui| {
+                    ui.add_space(6.0);
+                    back = bar_button(
+                        ui,
+                        has_icons,
+                        BarButton {
+                            icon: (glyph::ARROW_LEFT, "‹"),
+                            tint: None,
+                            label: tr(lang, "hub.back"),
+                            show_label: false,
+                            tooltip: tr(lang, "hub.back"),
+                            selected: false,
+                            enabled: true,
+                        },
+                    )
+                    .clicked();
+                    crate::shell::badge(ui, has_icons, info.icon, info.color, 28.0, dark);
+                    if !layout.compact {
+                        ui.label(icons::semibold(tr(lang, info.name_key), 15.0).color(p.text));
+                    }
+                    egui::ScrollArea::horizontal()
+                        .id_salt("workspace-bar")
+                        .show(ui, |ui| {
+                            // Rangée de la hauteur des boutons : même centre vertical que la pastille.
+                            ui.spacing_mut().interact_size.y = BAR_BUTTON_H;
+                            ui.horizontal(|ui| {
+                                for group in info.groups {
+                                    ui.separator();
+                                    for &c in *group {
+                                        if self.bar_command(ui, info, c, layout) {
+                                            run = Some(c);
+                                        }
+                                    }
+                                }
+                            });
+                        });
                 },
-            )
-            .clicked();
-            crate::shell::badge(ui, has_icons, info.icon, info.color, 28.0, dark);
-            ui.label(icons::semibold(tr(lang, info.name_key), 15.0).color(p.text));
-            for group in info.groups {
-                ui.separator();
-                for &c in *group {
-                    let ci = c.info();
-                    let label = tr(lang, ci.label_key);
-                    let tooltip = match ci.shortcut_key {
-                        Some(k) => format!("{label}  ({})", tr(lang, k)),
-                        None => label.to_string(),
-                    };
-                    let is_tool = Tool::from_command(c).is_some();
-                    let selected = self.command_selected(c);
+                |ui| {
+                    ui.add_space(6.0);
                     let r = bar_button(
                         ui,
                         has_icons,
                         BarButton {
-                            icon: crate::shell::command_icon(c),
-                            tint: Some(info.color),
-                            label,
-                            // L'outil de dessin actif garde son libellé même en icônes seules.
-                            show_label: if is_tool {
-                                tool_labels || selected
-                            } else {
-                                action_labels
-                            },
-                            tooltip: &tooltip,
-                            selected,
-                            enabled: self.command_enabled(c),
+                            icon: (glyph::CLOSE, "✕"),
+                            tint: None,
+                            label: tr(lang, "hub.leave"),
+                            show_label: !layout.compact,
+                            tooltip: &leave_tip,
+                            selected: false,
+                            enabled: true,
                         },
                     );
                     if r.clicked() {
                         r.surrender_focus();
-                        run = Some(c);
+                        leave = true;
                     }
-                }
-            }
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.add_space(6.0);
-                let tooltip = format!(
-                    "{}  ({})",
-                    tr(lang, "hub.leave"),
-                    tr(lang, "shortcut.hub_leave")
-                );
-                let r = bar_button(
-                    ui,
-                    has_icons,
-                    BarButton {
-                        icon: (glyph::CLOSE, "✕"),
-                        tint: None,
-                        label: tr(lang, "hub.leave"),
-                        show_label: true,
-                        tooltip: &tooltip,
-                        selected: false,
-                        enabled: true,
-                    },
-                );
-                if r.clicked() {
-                    r.surrender_focus();
-                    run = Some(Command::HubLeave);
-                }
-            });
-        });
+                },
+            );
+        if leave {
+            run = Some(Command::HubLeave);
+        }
         if back {
             self.show_tools = true;
             self.settings.show_tools = true;
@@ -628,8 +635,49 @@ impl SuniApp {
             self.execute(ctx, c);
         }
     }
+
+    /// Un bouton de commande de la barre ; `true` si cliqué.
+    fn bar_command(&self, ui: &mut egui::Ui, info: &WsInfo, c: Command, layout: BarLayout) -> bool {
+        let lang = self.lang();
+        let ci = c.info();
+        let label = tr(lang, ci.label_key);
+        let tooltip = match ci.shortcut_key {
+            Some(k) => format!("{label}  ({})", tr(lang, k)),
+            None => label.to_string(),
+        };
+        let is_tool = Tool::from_command(c).is_some();
+        let selected = self.command_selected(c);
+        let r = bar_button(
+            ui,
+            self.has_icons,
+            BarButton {
+                icon: crate::shell::command_icon(c),
+                tint: Some(info.color),
+                label,
+                // L'outil de dessin actif garde son libellé même en icônes seules (sauf compact).
+                show_label: if is_tool {
+                    layout.tool_labels || (selected && !layout.compact)
+                } else {
+                    layout.action_labels
+                },
+                tooltip: &tooltip,
+                selected,
+                enabled: self.command_enabled(c),
+            },
+        );
+        if r.clicked() {
+            r.surrender_focus();
+        }
+        r.clicked()
+    }
 }
 
+#[derive(Clone, Copy)]
+struct BarLayout {
+    tool_labels: bool,
+    action_labels: bool,
+    compact: bool,
+}
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -10,8 +10,12 @@ param(
     [string]$Commands = "",
     # Glissement souris relatif Ã  la fenÃªtre : "x1,y1,x2,y2" (points logiques).
     [string]$Drag = "",
-    [string]$KeysAfter = ""
+    [string]$KeysAfter = "",
+    # Taille de fenetre imposee (pixels), ex. -Width 720 -Height 600 ; 0 = taille par defaut.
+    [int]$Width = 0,
+    [int]$Height = 0
 )
+# Exemple (hub d'outils) : -Pdf x.pdf -Commands "hub.comment,tool.highlight" -Drag "515,272,755,318"
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $Exe) { $Exe = Join-Path $root "target\debug\sunipdf.exe" }
@@ -44,7 +48,11 @@ try {
     if ($h -eq [IntPtr]::Zero) { throw "FenÃªtre introuvable (processus $($proc.Id))." }
     # Premier plan + position (0,0) sans redimensionner (SWP_NOSIZE=1, SWP_SHOWWINDOW=0x40), HWND_TOPMOST=-1.
     [Win]::ShowWindow($h, 5) | Out-Null
-    [Win]::SetWindowPos($h, [IntPtr](-1), 0, 0, 0, 0, 0x41) | Out-Null
+    if ($Width -gt 0 -and $Height -gt 0) {
+        [Win]::SetWindowPos($h, [IntPtr](-1), 0, 0, $Width, $Height, 0x40) | Out-Null
+    } else {
+        [Win]::SetWindowPos($h, [IntPtr](-1), 0, 0, 0, 0, 0x41) | Out-Null
+    }
     [Win]::SetForegroundWindow($h) | Out-Null
     Start-Sleep -Milliseconds 700
     $r = New-Object Win+RECT

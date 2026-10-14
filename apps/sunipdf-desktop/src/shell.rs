@@ -498,7 +498,8 @@ impl SuniApp {
                     icon: (glyph::ALL_APPS, "▤"),
                     tint: None,
                     label: tr(lang, "toolbar.all_tools"),
-                    show_label: true,
+                    // Fenêtre étroite : icône seule, la recherche (≈ 300 px) garde sa place.
+                    show_label: ui.available_width() > 460.0,
                     tooltip: &tools_tip,
                     selected: self.show_tools,
                     enabled: true,
@@ -1224,8 +1225,55 @@ mod tests {
         s.chars().any(|c| ('\u{E000}'..='\u{F8FF}').contains(&c))
     }
 
+    /// Anneau de focus (`theme::focus_ring`) présent parmi les formes peintes.
+    fn focus_ring_painted(shapes: &[egui::epaint::ClippedShape], color: Color32) -> bool {
+        shapes.iter().any(|c| {
+            matches!(&c.shape, egui::Shape::Rect(r) if r.stroke.color == color && r.stroke.width == 2.0)
+        })
+    }
+
+    /// Une passe sans fenêtre : panneau « Tous les outils » (Commenter actif) et barre de Commenter.
+    fn draw(ui: &mut egui::Ui, has_icons: bool, rows: &mut Vec<egui::Rect>) {
+        let lang = Language::French;
+        let comment = Workspace::Comment.info();
+        rows.clear();
+        ui.vertical(|ui| {
+            ui.set_width(250.0);
+            for ws in Workspace::available() {
+                let info = ws.info();
+                let r = tool_row(
+                    ui,
+                    has_icons,
+                    info,
+                    tr(lang, info.name_key),
+                    tr(lang, info.desc_key),
+                    ws == Workspace::Comment,
+                );
+                rows.push(r.rect);
+            }
+        });
+        ui.horizontal(|ui| {
+            for c in comment.commands() {
+                bar_button(
+                    ui,
+                    has_icons,
+                    BarButton {
+                        icon: command_icon(c),
+                        tint: Some(comment.color),
+                        label: tr(lang, c.info().label_key),
+                        show_label: true,
+                        tooltip: "",
+                        selected: c == Command::ToolSelect,
+                        enabled: c != Command::CopyText,
+                    },
+                );
+            }
+        });
+    }
+
     /// Mise en page et arbre AccessKit sans fenêtre : lignes du hub de 40 px sur toute la largeur,
-    /// libellés lisibles (jamais un glyphe d'icône), état sélectionné exposé, dans les deux thèmes.
+    /// libellés lisibles (jamais un glyphe d'icône), état sélectionné et désactivé exposés, anneau de
+    /// focus peint après Tab, dans les deux thèmes.
     #[test]
     fn hub_rows_and_bar_buttons_expose_readable_labels() {
         let lang = Language::French;
@@ -1240,57 +1288,23 @@ mod tests {
             ..Default::default()
         };
         let comment = Workspace::Comment.info();
+        let run = |input: egui::RawInput, rows: &mut Vec<egui::Rect>| {
+            let mut out = ctx.run_ui(input, |ui| draw(ui, has_icons, rows));
+            // Pas de rendu GPU ici : les textures produites sont abandonnées volontairement.
+            out.textures_delta.clear();
+            out
+        };
         for dark in [false, true] {
             theme::apply(&ctx, dark);
             let mut rows = Vec::new();
-            let mut output = None;
             // Deux passes : les polices installées ne servent qu'à partir de la passe suivante.
-            for _ in 0..2 {
-                rows.clear();
-                let mut out = ctx.run_ui(input.clone(), |ui| {
-                    ui.vertical(|ui| {
-                        ui.set_width(250.0);
-                        for ws in Workspace::available() {
-                            let info = ws.info();
-                            let r = tool_row(
-                                ui,
-                                has_icons,
-                                info,
-                                tr(lang, info.name_key),
-                                tr(lang, info.desc_key),
-                                ws == Workspace::Comment,
-                            );
-                            rows.push(r.rect);
-                        }
-                    });
-                    ui.horizontal(|ui| {
-                        for c in comment.commands() {
-                            bar_button(
-                                ui,
-                                has_icons,
-                                BarButton {
-                                    icon: command_icon(c),
-                                    tint: Some(comment.color),
-                                    label: tr(lang, c.info().label_key),
-                                    show_label: true,
-                                    tooltip: "",
-                                    selected: c == Command::ToolSelect,
-                                    enabled: c != Command::CopyText,
-                                },
-                            );
-                        }
-                    });
-                });
-                // Pas de rendu GPU ici : les textures produites sont abandonnées volontairement.
-                out.textures_delta.clear();
-                output = Some(out);
-            }
+            let _ = run(input.clone(), &mut rows);
+            let output = run(input.clone(), &mut rows);
             assert_eq!(rows.len(), Workspace::available().count());
             for r in &rows {
                 assert_eq!(r.height(), 40.0);
                 assert_eq!(r.width(), 250.0);
             }
-            let output = output.unwrap();
             assert!(!output.shapes.is_empty());
             let tree = output
                 .platform_output
@@ -1318,6 +1332,22 @@ mod tests {
             for (_, n) in &tree.nodes {
                 assert!(!n.label().is_some_and(private_use), "{:?}", n.label());
             }
+
+            // Clavier : Tab donne le focus à la première ligne, qui peint son anneau.
+            let focus = theme::palette(dark).focus;
+            assert!(!focus_ring_painted(&output.shapes, focus));
+            let mut tab = input.clone();
+            tab.events.push(egui::Event::Key {
+                key: Key::Tab,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            });
+            let output = run(tab, &mut rows);
+            assert!(ctx.memory(|m| m.focused().is_some()));
+            assert!(focus_ring_painted(&output.shapes, focus));
+            ctx.memory_mut(|m| m.surrender_focus(m.focused().unwrap()));
         }
     }
 }
