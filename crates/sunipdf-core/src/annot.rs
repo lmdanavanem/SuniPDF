@@ -15,10 +15,57 @@ pub enum MarkupKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AnnotationInfo {
     pub index: usize,
-    /// Sous-type PDF (`Highlight`, `Text`, `Link`…), tel que rapporté par PDFium.
-    pub kind: String,
+    /// Sous-type PDF en identifiant stable minuscule (`highlight`, `strikeout`, `text`, `link`…,
+    /// `other` pour les sous-types rares) : jamais le nom de variante d'une bibliothèque.
+    pub kind: &'static str,
     pub contents: Option<String>,
     pub rect: PointRect,
+}
+
+/// Identifiants de sous-types connus de l'interface (clés `comments.kind.*`).
+pub const ANNOTATION_KINDS: [&str; 18] = [
+    "text",
+    "link",
+    "freetext",
+    "line",
+    "square",
+    "circle",
+    "polygon",
+    "polyline",
+    "highlight",
+    "underline",
+    "squiggly",
+    "strikeout",
+    "stamp",
+    "ink",
+    "popup",
+    "fileattachment",
+    "widget",
+    "other",
+];
+
+fn kind_id(t: PdfPageAnnotationType) -> &'static str {
+    use PdfPageAnnotationType as T;
+    match t {
+        T::Text => "text",
+        T::Link => "link",
+        T::FreeText => "freetext",
+        T::Line => "line",
+        T::Square => "square",
+        T::Circle => "circle",
+        T::Polygon => "polygon",
+        T::Polyline => "polyline",
+        T::Highlight => "highlight",
+        T::Underline => "underline",
+        T::Squiggly => "squiggly",
+        T::Strikeout => "strikeout",
+        T::Stamp => "stamp",
+        T::Ink => "ink",
+        T::Popup => "popup",
+        T::FileAttachment => "fileattachment",
+        T::Widget => "widget",
+        _ => "other",
+    }
 }
 
 /// Texte sélectionné et ses rectangles de ligne (points PDF).
@@ -203,7 +250,7 @@ impl Document<'_> {
                 });
             out.push(AnnotationInfo {
                 index,
-                kind: format!("{:?}", a.annotation_type()),
+                kind: kind_id(a.annotation_type()),
                 contents: a.contents().filter(|c| !c.is_empty()),
                 rect,
             });
@@ -248,5 +295,20 @@ mod tests {
         assert_eq!(lines.len(), 2);
         assert_eq!(lines[0].right, 10.0);
         assert_eq!(lines[1].top, 30.0);
+    }
+
+    #[test]
+    fn annotation_kinds_are_stable_ids_known_to_the_ui() {
+        assert_eq!(kind_id(PdfPageAnnotationType::Strikeout), "strikeout");
+        assert_eq!(kind_id(PdfPageAnnotationType::Text), "text");
+        assert_eq!(kind_id(PdfPageAnnotationType::RichMedia), "other");
+        for t in [
+            PdfPageAnnotationType::Highlight,
+            PdfPageAnnotationType::Widget,
+            PdfPageAnnotationType::Ink,
+            PdfPageAnnotationType::Unknown,
+        ] {
+            assert!(ANNOTATION_KINDS.contains(&kind_id(t)), "{t:?}");
+        }
     }
 }

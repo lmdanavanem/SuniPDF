@@ -165,6 +165,9 @@ pub struct ClipInfo {
     pub pastes: u32,
 }
 
+/// Copie d'objets en vol : objets à supprimer ensuite (« couper »), (chemin, page) d'origine.
+pub type PendingCopy = (Option<(usize, Vec<usize>)>, Option<(PathBuf, usize)>);
+
 pub struct EditState {
     pub selection: Option<Selection>,
     /// Après une modification, resélectionner cet objet (page, index ; `usize::MAX` = dernier).
@@ -191,7 +194,8 @@ pub struct EditState {
     pub angle_field: f32,
     /// Presse-papiers d'objets : global (un onglet copie, un autre colle).
     pub clip: Option<ClipInfo>,
-    pending_copy: Option<(bool, Option<(PathBuf, usize)>)>,
+    /// Copie en vol : (objets à supprimer si c'est un « couper », page et chemin d'origine).
+    pub pending_copy: Option<PendingCopy>,
     /// Message affiché après la prochaine modification réussie.
     pub pending_status: Option<String>,
     /// Ce message survit à la resélection qui suit l'opération.
@@ -961,28 +965,17 @@ impl SuniApp {
             return;
         };
         let source = self.document.as_ref().map(|d| (d.info.path.clone(), page));
-        self.edit.pending_copy = Some((cut, source));
-        self.worker.send(Request::CopyObjects {
-            page,
-            indices: indices.clone(),
-        });
-        if cut {
-            // File FIFO du moteur : la copie précède la suppression ; Annuler ne défait que celle-ci.
-            self.edit.selection = None;
-            self.edit.pending_status = Some(tr_args(
-                self.lang(),
-                "status.objects_cut",
-                &[("count", &indices.len().to_string())],
-            ));
-            self.worker
-                .send(Request::Edit(EditOp::DeleteObjects { page, indices }));
-        }
+        // Couper : la suppression n'est envoyée qu'à la réponse `Copied` (une copie échouée ne
+        // supprime rien) ; Annuler ne défait que la suppression.
+        self.edit.pending_copy = Some((cut.then(|| (page, indices.clone())), source));
+        self.worker.send(Request::CopyObjects { page, indices });
     }
 
-    /// Réponse `Copied` : repère texte dans le presse-papiers système (Ctrl+V le reconnaît).
+    /// Réponse `Copied` : repère texte dans le presse-papiers système (Ctrl+V le reconnaît), puis
+    /// suppression des objets s'il s'agissait d'un « couper ».
     pub fn on_copied(&mut self, ctx: &egui::Context, count: usize, text: String) {
         let lang = self.lang();
-        let (cut, source) = self.edit.pending_copy.take().unwrap_or((false, None));
+        let (cut, source) = self.edit.pending_copy.take().unwrap_or((None, None));
         let marker = if text.trim().is_empty() {
             tr_args(lang, "clipboard.marker", &[("count", &count.to_string())])
         } else {
@@ -994,12 +987,24 @@ impl SuniApp {
             source,
             pastes: 0,
         });
-        if !cut {
-            self.status_msg = Some(tr_args(
-                lang,
-                "status.objects_copied",
-                &[("count", &count.to_string())],
-            ));
+        match cut {
+            Some((page, indices)) => {
+                self.edit.selection = None;
+                self.edit.pending_status = Some(tr_args(
+                    lang,
+                    "status.objects_cut",
+                    &[("count", &indices.len().to_string())],
+                ));
+                self.worker
+                    .send(Request::Edit(EditOp::DeleteObjects { page, indices }));
+            }
+            None => {
+                self.status_msg = Some(tr_args(
+                    lang,
+                    "status.objects_copied",
+                    &[("count", &count.to_string())],
+                ));
+            }
         }
     }
 

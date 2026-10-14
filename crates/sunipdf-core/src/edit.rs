@@ -200,6 +200,11 @@ fn in_quad(q: &[(f32, f32); 4], x: f32, y: f32) -> bool {
     true
 }
 
+/// Angle (degrés) qui n'est pas un multiple de 90° à 0,5° près.
+fn tilted(deg: f32) -> bool {
+    (deg / 90.0 - (deg / 90.0).round()).abs() * 90.0 > 0.5
+}
+
 /// Angle normalisé dans (-180, 180].
 pub(crate) fn norm180(deg: f32) -> f32 {
     let d = deg.rem_euclid(360.0);
@@ -390,11 +395,9 @@ impl Document<'_> {
             let in_box =
                 x >= b.left - 1.0 && x <= b.right + 1.0 && y >= b.bottom - 1.0 && y <= b.top + 1.0;
             // Texte ou image pivotés : test sur le cadre orienté, pas sur la boîte englobante.
-            let tilted = matches!(kind_of(&object), ObjectKind::Text | ObjectKind::Image) && {
-                let a = norm180(object.get_rotation_clockwise_degrees());
-                (a / 90.0 - (a / 90.0).round()).abs() * 90.0 > 0.5
-            };
-            if in_box && (!tilted || in_quad(&quad, x, y)) {
+            let oriented = matches!(kind_of(&object), ObjectKind::Text | ObjectKind::Image)
+                && tilted(norm180(object.get_rotation_clockwise_degrees()));
+            if in_box && (!oriented || in_quad(&quad, x, y)) {
                 let text = page.text().ok();
                 return Ok(Some(describe(i, &object, &geo, text.as_ref())));
             }
@@ -430,9 +433,10 @@ impl Document<'_> {
     }
 
     /// Ajoute du texte dont le coin bas-gauche de la première ligne de base est en (x, y), droit à
-    /// l'écran. Une ligne par `\n` (interligne 1,2 × taille). Police standard (WinAnsi : latin
-    /// seulement) ou police TrueType du système incorporée (`style.font_file`) : un caractère
-    /// absent de la police donne [`EngineError::MissingGlyphs`] et le document reste intact.
+    /// l'écran. Une ligne par `\n` (interligne 1,2 × taille) ; une tabulation vaut quatre espaces.
+    /// Police standard (WinAnsi : latin seulement) ou police TrueType du système incorporée
+    /// (`style.font_file`) : un caractère absent de la police donne
+    /// [`EngineError::MissingGlyphs`] (qui liste ces caractères) et le document reste intact.
     /// Renvoie le nombre d'objets ajoutés.
     pub fn add_text(
         &mut self,
@@ -457,6 +461,9 @@ impl Document<'_> {
         let pitch = style.size_pt * 1.2;
         let mut page = self.page_handle(page_index)?;
         let mut added = 0usize;
+        // Aucune police PDF n'a de glyphe de tabulation (PDFium écrirait un caractère de
+        // remplacement) : quatre espaces, comme un éditeur de texte.
+        let text = text.replace('\t', "    ");
         for (i, line) in text
             .split('\n')
             .map(|l| l.trim_end_matches('\r'))
@@ -485,7 +492,13 @@ impl Document<'_> {
                     page.objects_mut().remove_object_at_index(n - 1)?;
                 }
                 page.regenerate_content()?;
-                return Err(EngineError::MissingGlyphs);
+                // Caractères perdus ou remplacés : ceux de la ligne absents de la relecture.
+                let mut missing: Vec<char> = line
+                    .chars()
+                    .filter(|c| !c.is_whitespace() && !back.contains(*c))
+                    .collect();
+                missing.dedup();
+                return Err(EngineError::MissingGlyphs(missing.into_iter().collect()));
             }
         }
         page.regenerate_content()?;
@@ -569,6 +582,8 @@ impl Document<'_> {
 
     /// Redimensionne un objet pour que ses limites d'affichage deviennent `bounds` (mise à
     /// l'échelle de sa matrice ; le coin bas-gauche d'origine est ramené sur le nouveau).
+    /// Un objet pivoté d'un angle non multiple de 90° est mis à l'échelle uniformément (le plus
+    /// petit des deux facteurs) : des facteurs différents selon les axes de la page le cisailleraient.
     pub fn resize_object(
         &mut self,
         page_index: usize,
@@ -576,12 +591,18 @@ impl Document<'_> {
         bounds: PointRect,
     ) -> Result<(), EngineError> {
         let geo = self.page_geometry(page_index)?;
-        let current = geo.rect_to_user(self.object_info(page_index, index)?.bounds);
+        let info = self.object_info(page_index, index)?;
+        let current = geo.rect_to_user(info.bounds);
         let target = geo.rect_to_user(bounds);
         let (old_w, old_h) = (current.right - current.left, current.top - current.bottom);
         let (new_w, new_h) = (target.right - target.left, target.top - target.bottom);
         if !(old_w > 0.0 && old_h > 0.0 && new_w > 0.0 && new_h > 0.0) {
             return Err(EngineError::Other("invalid object size".into()));
+        }
+        let (mut sx, mut sy) = (new_w / old_w, new_h / old_h);
+        if tilted(info.angle_deg) {
+            sx = sx.min(sy);
+            sy = sx;
         }
         let mut page = self.page_handle(page_index)?;
         let mut object = page
@@ -592,7 +613,7 @@ impl Document<'_> {
             PdfPoints::new(-current.left),
             PdfPoints::new(-current.bottom),
         )?;
-        object.scale(new_w / old_w, new_h / old_h)?;
+        object.scale(sx, sy)?;
         object.translate(PdfPoints::new(target.left), PdfPoints::new(target.bottom))?;
         drop(object);
         page.regenerate_content()?;
@@ -773,11 +794,10 @@ impl Document<'_> {
         let count = self.page_handle(page_index)?.objects().len();
         let selected = checked_indices(indices, count)?;
         let target = reorder_target(count, &selected, op);
-        if op != ZOrder::Front {
-            // Un objet retiré puis réinséré garde son flux d'origine : l'ordre n'est respecté
-            // qu'au sein d'un flux unique. (Premier plan : ajout en fin, sans fusion.)
-            self.merge_content_streams(page_index)?;
-        }
+        // Un objet retiré puis réinséré garde son flux d'origine et PDFium dessine flux par flux :
+        // l'ordre n'est respecté qu'au sein d'un flux unique, premier plan compris (un objet
+        // ajouté par PDFium vit dans son propre flux, ajouté en fin).
+        self.merge_content_streams(page_index)?;
         let mut page = self.page_handle(page_index)?;
         if op == ZOrder::Front {
             for (k, &i) in selected.iter().enumerate() {
@@ -851,8 +871,7 @@ impl Document<'_> {
         width_pt: f32,
         opacity: f32,
     ) -> Result<(), EngineError> {
-        let img = image::open(image_path)
-            .map_err(|e| EngineError::Other(format!("{}: {e}", image_path.display())))?;
+        let img = crate::convert::load_image(image_path)?;
         if !(width_pt.is_finite() && width_pt > 0.0) || img.width() == 0 || img.height() == 0 {
             return Err(EngineError::Other("invalid image size".into()));
         }
@@ -883,8 +902,7 @@ impl Document<'_> {
         index: usize,
         image_path: &Path,
     ) -> Result<(), EngineError> {
-        let img = image::open(image_path)
-            .map_err(|e| EngineError::Other(format!("{}: {e}", image_path.display())))?;
+        let img = crate::convert::load_image(image_path)?;
         if img.width() == 0 || img.height() == 0 {
             return Err(EngineError::Other("invalid image size".into()));
         }

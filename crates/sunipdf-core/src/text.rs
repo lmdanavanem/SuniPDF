@@ -24,7 +24,16 @@ impl Document<'_> {
     /// Texte complet d'une page, dans l'ordre fourni par PDFium.
     pub fn page_text(&self, page_index: usize) -> Result<String, EngineError> {
         let page = self.page(page_index)?;
-        let text = page.text()?.all();
+        // `all()` borne par la taille affichée (après `/Rotate`) alors que PDFium cherche en
+        // espace utilisateur : une page pivotée perdrait le texte au-delà de la largeur. Boîte
+        // effective en espace utilisateur.
+        let b = crate::geometry::geometry_of(&page)?.bbox;
+        let text = page.text()?.inside_rect(PdfRect::new(
+            PdfPoints::new(b.bottom),
+            PdfPoints::new(b.left),
+            PdfPoints::new(b.top),
+            PdfPoints::new(b.right),
+        ));
         Ok(text)
     }
 

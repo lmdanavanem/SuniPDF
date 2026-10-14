@@ -120,6 +120,11 @@ impl Document<'_> {
             let size = self.page_size(page)?;
             self.add_text(page, 0.0, 0.0, &text, &stamp.style)?;
             let index = self.page_objects(page)?.len() - 1;
+            // Pivoter d'abord : la position se calcule sur la boîte englobante du texte pivoté,
+            // sinon un tampon à 45° dans un coin déborde de la page.
+            if stamp.angle != 0.0 {
+                self.rotate_object(page, index, -stamp.angle)?;
+            }
             let b = self.object_info(page, index)?.bounds;
             let (w, h) = (b.right - b.left, b.top - b.bottom);
             let m = stamp.margin_pt;
@@ -133,9 +138,6 @@ impl Document<'_> {
                 StampPosition::BottomRight => (size.width_pt - m - w, m),
             };
             self.move_object(page, index, x - b.left, y - b.bottom)?;
-            if stamp.angle != 0.0 {
-                self.rotate_object(page, index, -stamp.angle)?;
-            }
         }
         Ok(targets.len())
     }

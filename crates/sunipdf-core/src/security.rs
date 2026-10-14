@@ -25,10 +25,61 @@ pub struct Protection {
     pub aes256: bool,
 }
 
+/// Raison du refus d'une [`Protection`] (l'interface traduit, la CLI reçoit l'`EngineError`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProtectionProblem {
+    NoPassword,
+    /// Des restrictions sans mot de passe propriétaire distinct seraient trompeuses.
+    OwnerNeeded,
+    /// AES-128 : un mot de passe contient un caractère hors PDFDocEncoding.
+    NotLatin1,
+}
+
+impl From<ProtectionProblem> for EngineError {
+    fn from(p: ProtectionProblem) -> Self {
+        match p {
+            ProtectionProblem::NoPassword => EngineError::Other("a password is required".into()),
+            ProtectionProblem::OwnerNeeded => {
+                EngineError::Other("permissions require a distinct owner password".into())
+            }
+            ProtectionProblem::NotLatin1 => EngineError::PasswordNotLatin1,
+        }
+    }
+}
+
+/// Caractère encodable en PDFDocEncoding (mots de passe R4) : Latin-1 imprimable (sans les
+/// contrôles C1, l'espace insécable ni le trait d'union conditionnel) plus les symboles propres à
+/// cet encodage (euro, tirets, guillemets typographiques, ligatures…). lopdf abandonne les autres
+/// sans erreur, ce qui donnerait un mot de passe vide ou tronqué.
+fn pdf_doc_encodable(c: char) -> bool {
+    matches!(c as u32, 0x20..=0x7E | 0xA1..=0xAC | 0xAE..=0xFF)
+        || "€•†‡…—–ƒ⁄‹›−‰„“”‘’‚™ﬁﬂŁŒŠŸŽıłœšžˆˇ˘˙˝˛˚˜".contains(c)
+}
+
 impl Protection {
     /// Au moins une permission retirée.
     pub fn restricts(&self) -> bool {
         !(self.allow_print && self.allow_copy && self.allow_modify && self.allow_annotate)
+    }
+
+    /// Vérifications partagées par l'interface (avant d'envoyer) et par [`protect`].
+    pub fn validate(&self) -> Result<(), ProtectionProblem> {
+        if self.user_password.is_empty() && self.owner_password.is_empty() {
+            return Err(ProtectionProblem::NoPassword);
+        }
+        if self.restricts()
+            && (self.owner_password.is_empty() || self.owner_password == self.user_password)
+        {
+            return Err(ProtectionProblem::OwnerNeeded);
+        }
+        if !self.aes256
+            && [&self.user_password, &self.owner_password]
+                .iter()
+                .any(|s| !s.chars().all(pdf_doc_encodable))
+        {
+            return Err(ProtectionProblem::NotLatin1);
+        }
+        Ok(())
     }
 }
 
@@ -117,12 +168,14 @@ pub(crate) fn save(mut doc: lopdf::Document) -> Result<Vec<u8>, EngineError> {
 }
 
 fn permissions(p: &Protection) -> Permissions {
-    let mut perms = Permissions::empty();
+    // Bit 10 (extraction pour l'accessibilité) toujours accordé : les lecteurs d'écran ne sont
+    // jamais bloqués (ISO 32000-2 l'impose pour R6).
+    let mut perms = Permissions::COPYABLE_FOR_ACCESSIBILITY;
     if p.allow_print {
         perms |= Permissions::PRINTABLE | Permissions::PRINTABLE_IN_HIGH_QUALITY;
     }
     if p.allow_copy {
-        perms |= Permissions::COPYABLE | Permissions::COPYABLE_FOR_ACCESSIBILITY;
+        perms |= Permissions::COPYABLE;
     }
     if p.allow_modify {
         perms |= Permissions::MODIFIABLE | Permissions::ASSEMBLABLE;
@@ -139,16 +192,7 @@ pub fn protect(
     current_password: Option<&str>,
     p: &Protection,
 ) -> Result<Vec<u8>, EngineError> {
-    if p.user_password.is_empty() && p.owner_password.is_empty() {
-        return Err(EngineError::Other("a password is required".into()));
-    }
-    if p.restricts() && (p.owner_password.is_empty() || p.owner_password == p.user_password) {
-        // Sans mot de passe propriétaire distinct, quiconque ouvre le fichier a tous les droits :
-        // des restrictions seraient trompeuses.
-        return Err(EngineError::Other(
-            "permissions require a distinct owner password".into(),
-        ));
-    }
+    p.validate()?;
     let mut doc = load(input, current_password)?;
     // Remplacer la protection existante, pas la superposer.
     doc.encryption_state = None;
@@ -264,7 +308,52 @@ fn set_or_remove(dict: &mut Dictionary, key: &str, value: &Option<String>) {
     }
 }
 
-/// Remplace titre, auteur, sujet et mots-clés (`None` = supprimer la clé).
+fn xml_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// Paquet XMP minimal cohérent avec /Info : les lecteurs qui préfèrent XMP (Acrobat, indexeurs)
+/// ne montrent plus l'ancien titre ou auteur.
+fn xmp_packet(m: &Metadata) -> String {
+    let field = |v: &Option<String>| {
+        v.as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(xml_escape)
+    };
+    let alt = |tag: &str, v: Option<String>| match v {
+        Some(v) => format!(
+            "   <{tag}><rdf:Alt><rdf:li xml:lang=\"x-default\">{v}</rdf:li></rdf:Alt></{tag}>\n"
+        ),
+        None => String::new(),
+    };
+    let seq = |tag: &str, v: Option<String>| match v {
+        Some(v) => format!("   <{tag}><rdf:Seq><rdf:li>{v}</rdf:li></rdf:Seq></{tag}>\n"),
+        None => String::new(),
+    };
+    let simple = |tag: &str, v: Option<String>| match v {
+        Some(v) => format!("   <{tag}>{v}</{tag}>\n"),
+        None => String::new(),
+    };
+    format!(
+        "<?xpacket begin=\"\u{FEFF}\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n\
+         <x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n \
+         <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n  \
+         <rdf:Description rdf:about=\"\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" \
+         xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n{}{}{}{}  </rdf:Description>\n \
+         </rdf:RDF>\n</x:xmpmeta>\n<?xpacket end=\"w\"?>",
+        alt("dc:title", field(&m.title)),
+        seq("dc:creator", field(&m.author)),
+        alt("dc:description", field(&m.subject)),
+        simple("pdf:Keywords", field(&m.keywords)),
+    )
+}
+
+/// Remplace titre, auteur, sujet et mots-clés (`None` = supprimer la clé). Un flux XMP du
+/// catalogue est régénéré (paquet minimal) pour rester cohérent avec /Info.
 pub fn set_metadata(
     input: &[u8],
     password: Option<&str>,
@@ -278,29 +367,53 @@ pub fn set_metadata(
         set_or_remove(info, "Subject", &m.subject);
         set_or_remove(info, "Keywords", &m.keywords);
     }
+    let xmp_id = doc
+        .catalog()
+        .ok()
+        .and_then(|c| c.get(b"Metadata").ok())
+        .and_then(|o| o.as_reference().ok());
+    if let Some(id) = xmp_id {
+        let mut dict = Dictionary::new();
+        dict.set("Type", Object::Name(b"Metadata".to_vec()));
+        dict.set("Subtype", Object::Name(b"XML".to_vec()));
+        doc.objects.insert(
+            id,
+            Object::Stream(lopdf::Stream::new(dict, xmp_packet(m).into_bytes())),
+        );
+    }
     save(doc)
 }
 
-/// Supprime toutes les métadonnées : dictionnaire /Info et flux XMP /Metadata du catalogue.
+/// Supprime toutes les métadonnées : dictionnaire /Info, flux XMP (/Metadata du catalogue, des
+/// pages et des images) et données privées /PieceInfo.
 pub fn strip_metadata(input: &[u8], password: Option<&str>) -> Result<Vec<u8>, EngineError> {
     let mut doc = load(input, password)?;
     if let Ok(id) = doc.trailer.get(b"Info").and_then(Object::as_reference) {
         doc.delete_object(id);
     }
     doc.trailer.remove(b"Info");
-    if let Ok(catalog) = doc.catalog_mut() {
-        if let Ok(id) = catalog.get(b"Metadata").and_then(Object::as_reference) {
-            catalog.remove(b"Metadata");
-            doc.delete_object(id);
-        } else {
-            catalog.remove(b"Metadata");
-        }
+    for object in doc.objects.values_mut() {
+        let dict = match object {
+            Object::Dictionary(d) => d,
+            Object::Stream(s) => &mut s.dict,
+            _ => continue,
+        };
+        dict.remove(b"Metadata");
+        dict.remove(b"PieceInfo");
     }
     doc.prune_objects();
     save(doc)
 }
 
 impl Document<'_> {
+    /// Le document ouvert porte un gestionnaire de sécurité (mot de passe ou restrictions).
+    pub fn is_encrypted(&self) -> bool {
+        !matches!(
+            self.inner.permissions().security_handler_revision(),
+            Ok(PdfSecurityHandlerRevision::Unprotected)
+        )
+    }
+
     pub fn properties(&self) -> Properties {
         let meta = self.inner.metadata();
         let get = |t: PdfDocumentMetadataTagType| {
@@ -404,6 +517,45 @@ mod tests {
             allow_annotate: false,
             ..Default::default()
         });
-        assert!(none.is_empty());
+        assert_eq!(
+            none,
+            Permissions::COPYABLE_FOR_ACCESSIBILITY,
+            "l'accessibilité reste accordée"
+        );
+        assert!(!none.contains(Permissions::COPYABLE));
+    }
+
+    #[test]
+    fn aes128_refuses_passwords_outside_pdf_doc_encoding() {
+        let p = |user: &str, aes256: bool| Protection {
+            user_password: user.into(),
+            aes256,
+            ..Default::default()
+        };
+        assert_eq!(
+            p("Été 5 € ¿ — “œ”", false).validate(),
+            Ok(()),
+            "PDFDocEncoding accepté"
+        );
+        for pw in ["пароль", "Пароль2026", "日本", "a\u{00AD}b", "x\u{A0}"] {
+            assert_eq!(
+                p(pw, false).validate(),
+                Err(ProtectionProblem::NotLatin1),
+                "{pw:?}"
+            );
+            assert_eq!(p(pw, true).validate(), Ok(()), "AES-256 (UTF-8) : {pw:?}");
+        }
+        assert_eq!(p("", true).validate(), Err(ProtectionProblem::NoPassword));
+        assert!(matches!(
+            EngineError::from(ProtectionProblem::NotLatin1),
+            EngineError::PasswordNotLatin1
+        ));
+        let xmp = xmp_packet(&Metadata {
+            title: Some("A & B <c>".into()),
+            author: Some("Jean".into()),
+            ..Default::default()
+        });
+        assert!(xmp.contains("A &amp; B &lt;c&gt;") && xmp.contains("<rdf:li>Jean</rdf:li>"));
+        assert!(!xmp.contains("dc:description"));
     }
 }

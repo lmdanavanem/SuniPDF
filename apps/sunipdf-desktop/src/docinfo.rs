@@ -5,8 +5,8 @@ use crate::icons::{self, glyph};
 use crate::theme;
 use crate::worker::{BytesOp, EditOp, Request};
 use egui::{Align, Button, Frame, Layout, RichText, Stroke};
-use sunipdf_core::{Bookmark, Command, Metadata, Properties, Protection};
-use sunipdf_i18n::{tr, tr_args};
+use sunipdf_core::{Bookmark, Command, Metadata, Properties, Protection, ProtectionProblem};
+use sunipdf_i18n::{tr, tr_args, Language};
 
 #[derive(Default)]
 pub struct DocInfoState {
@@ -22,13 +22,26 @@ pub struct DocInfoState {
     pub unprotect_password: String,
 }
 
-fn human_size(bytes: u64) -> String {
+/// Taille lisible, unités et séparateur décimal du catalogue (« 2,3 Mo » / « 2.3 MB »).
+pub fn human_size(lang: Language, bytes: u64) -> String {
     if bytes >= 1_048_576 {
-        format!("{:.1} Mo", bytes as f64 / 1_048_576.0)
+        let value = format!("{:.1}", bytes as f64 / 1_048_576.0)
+            .replace('.', tr(lang, "unit.decimal_separator"));
+        tr_args(lang, "unit.mb", &[("value", &value)])
     } else if bytes >= 1024 {
-        format!("{:.0} Ko", bytes as f64 / 1024.0)
+        let value = format!("{:.0}", bytes as f64 / 1024.0);
+        tr_args(lang, "unit.kb", &[("value", &value)])
     } else {
-        format!("{bytes} o")
+        tr_args(lang, "unit.bytes", &[("value", &bytes.to_string())])
+    }
+}
+
+/// Clé du message d'une protection refusée.
+fn protection_error_key(p: ProtectionProblem) -> &'static str {
+    match p {
+        ProtectionProblem::NoPassword => "protect.error_empty",
+        ProtectionProblem::OwnerNeeded => "protect.error_owner_needed",
+        ProtectionProblem::NotLatin1 => "protect.error_latin1",
     }
 }
 
@@ -110,6 +123,7 @@ impl SuniApp {
         .icon(icons::glyph::INFO, "i")
         .width(560.0);
         let props_opt = self.docinfo.properties.clone();
+        let loaded = props_opt.is_some();
         let edit = &mut self.docinfo.metadata_edit;
         crate::dialog::show(
             ctx,
@@ -169,7 +183,7 @@ impl SuniApp {
                                     "properties.size",
                                     props
                                         .file_size
-                                        .map(human_size)
+                                        .map(|b| human_size(lang, b))
                                         .unwrap_or_else(|| "—".into()),
                                 );
                                 row(
@@ -204,9 +218,13 @@ impl SuniApp {
                     });
             },
             |ui| {
-                if crate::dialog::primary(ui, tr(lang, "properties.apply")) {
-                    apply = true;
-                }
+                // Avant l'arrivée des propriétés, « Appliquer » enverrait des champs vides et
+                // effacerait titre, auteur, sujet et mots-clés.
+                ui.add_enabled_ui(loaded, |ui| {
+                    if crate::dialog::primary(ui, tr(lang, "properties.apply")) {
+                        apply = true;
+                    }
+                });
                 if crate::dialog::secondary(ui, tr(lang, "about.close"))
                     || ui.input(|i| i.key_pressed(egui::Key::Escape))
                 {
@@ -214,7 +232,7 @@ impl SuniApp {
                 }
             },
         );
-        if apply {
+        if apply && loaded {
             let meta = self.docinfo.metadata_edit.clone();
             self.worker
                 .send(Request::Edit(EditOp::Bytes(BytesOp::SetMetadata(meta))));
@@ -281,7 +299,7 @@ impl SuniApp {
                 ui.add_space(4.0);
                 ui.checkbox(&mut pr.aes256, tr(lang, "protect.aes256"));
                 if let Some(err) = protect_error {
-                    ui.colored_label(theme::ERROR, tr(lang, err));
+                    ui.colored_label(p.error, tr(lang, err));
                 }
             },
             |ui| {
@@ -296,20 +314,16 @@ impl SuniApp {
             },
         );
         if submit {
-            let pr = &self.docinfo.protection;
-            if pr.user_password.is_empty() && pr.owner_password.is_empty() {
-                self.docinfo.protect_error = Some("protect.error_empty");
-            } else if pr.restricts()
-                && (pr.owner_password.is_empty() || pr.owner_password == pr.user_password)
-            {
-                self.docinfo.protect_error = Some("protect.error_owner_needed");
-            } else {
-                let protection = pr.clone();
-                self.docinfo.protect_open = false;
-                self.docinfo.protect_error = None;
-                self.docinfo.protection = Protection::default();
-                self.worker
-                    .send(Request::Edit(EditOp::Bytes(BytesOp::Protect(protection))));
+            // Mêmes règles que le moteur (`Protection::validate`) : le message reste dans la boîte.
+            match self.docinfo.protection.validate() {
+                Err(problem) => self.docinfo.protect_error = Some(protection_error_key(problem)),
+                Ok(()) => {
+                    let protection = std::mem::take(&mut self.docinfo.protection);
+                    self.docinfo.protect_open = false;
+                    self.docinfo.protect_error = None;
+                    self.worker
+                        .send(Request::Edit(EditOp::Bytes(BytesOp::Protect(protection))));
+                }
             }
         } else if close {
             self.docinfo.protect_open = false;
@@ -377,6 +391,35 @@ impl SuniApp {
         } else if close {
             self.docinfo.unprotect_open = false;
             self.docinfo.unprotect_password.clear();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sizes_follow_the_catalog_units_and_decimal_separator() {
+        assert_eq!(human_size(Language::French, 2_411_724), "2,3 Mo");
+        assert_eq!(human_size(Language::English, 2_411_724), "2.3 MB");
+        assert_eq!(human_size(Language::French, 812 * 1024), "812 Ko");
+        assert_eq!(human_size(Language::English, 812 * 1024), "812 KB");
+        assert_eq!(human_size(Language::French, 900), "900 o");
+        assert_eq!(human_size(Language::English, 900), "900 B");
+    }
+
+    #[test]
+    fn every_protection_problem_has_a_message() {
+        for p in [
+            ProtectionProblem::NoPassword,
+            ProtectionProblem::OwnerNeeded,
+            ProtectionProblem::NotLatin1,
+        ] {
+            let key = protection_error_key(p);
+            for lang in Language::ALL {
+                assert_ne!(tr(lang, key), key, "{key} en {}", lang.code());
+            }
         }
     }
 }

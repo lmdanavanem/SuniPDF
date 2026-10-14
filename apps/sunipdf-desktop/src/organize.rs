@@ -215,7 +215,11 @@ impl SuniApp {
                                     if from < to {
                                         to -= 1;
                                     }
-                                    dropped = Some((from, to));
+                                    // Déposée à sa propre place : rien à déplacer (ni « modifié »,
+                                    // ni entrée d'annulation).
+                                    if from != to {
+                                        dropped = Some((from, to));
+                                    }
                                 }
                             }
                             if resp.double_clicked() {

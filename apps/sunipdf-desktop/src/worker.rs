@@ -27,6 +27,8 @@ pub struct SuspendedDoc {
     pub path: PathBuf,
     pub undo: Vec<Snapshot>,
     pub redo: Vec<Snapshot>,
+    /// Point d'enregistrement (voir `State::save_point`).
+    pub save_point: Option<usize>,
     /// Modifié depuis l'ouverture ou le dernier enregistrement.
     pub modified: bool,
 }
@@ -55,10 +57,13 @@ pub enum BatchResult {
     },
     Split {
         files: Vec<PathBuf>,
+        /// Le document d'origine était protégé : les parties ne le sont pas (D046).
+        encryption_removed: bool,
     },
     Extracted {
         out: PathBuf,
         pages: usize,
+        encryption_removed: bool,
     },
     Created {
         out: PathBuf,
@@ -473,8 +478,11 @@ struct State<'a> {
     wanted: WantedQueue,
     undo: Vec<Snapshot>,
     redo: Vec<Snapshot>,
-    /// Modifié depuis l'ouverture, la reprise ou le dernier enregistrement.
-    modified: bool,
+    /// Longueur de la pile d'annulation à l'ouverture ou au dernier enregistrement : le document
+    /// est « modifié » tant qu'elle en diffère (annuler jusqu'à l'état enregistré l'efface).
+    /// `None` : l'état enregistré n'est plus atteignable (modifié après une annulation, ou
+    /// instantané sorti de l'historique).
+    save_point: Option<usize>,
     /// Derniers objets décalés au clavier (page, index).
     last_nudge: Option<(usize, Vec<usize>)>,
     /// Presse-papiers d'objets : survit aux changements d'onglet (copier d'un document, coller
@@ -514,17 +522,26 @@ impl State<'_> {
         self.wanted.clear();
     }
 
+    fn modified(&self) -> bool {
+        self.save_point != Some(self.undo.len())
+    }
+
     fn doc_state(&self) -> Option<DocState> {
         self.document.as_ref().map(|d| DocState {
             info: d.info().clone(),
             can_undo: !self.undo.is_empty(),
             can_redo: !self.redo.is_empty(),
-            modified: self.modified,
+            modified: self.modified(),
             pages_unchanged: false,
         })
     }
 
     fn push_undo(&mut self, snapshot: Snapshot) {
+        if self.save_point.is_some_and(|sp| sp > self.undo.len()) {
+            // Modification après une annulation : l'état enregistré (dans la pile de rétablissement
+            // qu'on vide) n'est plus atteignable.
+            self.save_point = None;
+        }
         self.undo.push(snapshot);
         self.redo.clear();
         while self.undo.len() > UNDO_MAX_ENTRIES
@@ -532,6 +549,7 @@ impl State<'_> {
                 && self.undo.iter().map(|s| s.bytes.len()).sum::<usize>() > UNDO_MAX_BYTES)
         {
             self.undo.remove(0);
+            self.save_point = self.save_point.and_then(|sp| sp.checked_sub(1));
         }
     }
 
@@ -566,7 +584,6 @@ impl State<'_> {
                     None => self.redo.clear(),
                 }
                 self.last_nudge = nudge;
-                self.modified = true;
                 self.invalidate();
                 Response::DocumentChanged(DocState {
                     pages_unchanged: keeps_pages,
@@ -610,9 +627,83 @@ impl State<'_> {
         }
         to.push(current);
         self.last_nudge = None;
-        self.modified = true;
         self.invalidate();
         Some(Response::DocumentChanged(self.doc_state()?))
+    }
+}
+
+/// Point d'enregistrement : le document n'est « modifié » que si la pile d'annulation n'a pas la
+/// longueur mémorisée à l'ouverture ou au dernier enregistrement.
+#[cfg(test)]
+mod save_point_tests {
+    use super::*;
+
+    fn state() -> State<'static> {
+        State {
+            document: None,
+            cache: RenderCache::new(1024),
+            wanted: WantedQueue::default(),
+            undo: Vec::new(),
+            redo: Vec::new(),
+            save_point: Some(0),
+            last_nudge: None,
+            clip: None,
+            fonts: None,
+        }
+    }
+
+    fn snap(n: u8) -> Snapshot {
+        Snapshot {
+            bytes: vec![n],
+            password: None,
+        }
+    }
+
+    #[test]
+    fn undoing_back_to_the_saved_state_clears_modified() {
+        let mut s = state();
+        assert!(!s.modified(), "ouverture");
+        s.push_undo(snap(1));
+        assert!(s.modified());
+        // Annuler (le thread moteur déplace l'instantané vers la pile de rétablissement).
+        let u = s.undo.pop().unwrap();
+        s.redo.push(u);
+        assert!(!s.modified(), "retour à l'état d'ouverture");
+        let r = s.redo.pop().unwrap();
+        s.undo.push(r);
+        assert!(s.modified(), "rétabli");
+        // Enregistrer ici, puis annuler : modifié ; rétablir : intact.
+        s.save_point = Some(s.undo.len());
+        assert!(!s.modified());
+        let u = s.undo.pop().unwrap();
+        s.redo.push(u);
+        assert!(s.modified());
+        // Nouvelle modification après l'annulation : l'état enregistré est perdu, même en revenant
+        // à la même longueur de pile.
+        s.push_undo(snap(2));
+        assert_eq!(s.save_point, None);
+        assert!(s.modified());
+        let u = s.undo.pop().unwrap();
+        s.redo.push(u);
+        assert!(s.modified(), "même longueur, mais contenu différent");
+    }
+
+    #[test]
+    fn trimming_the_history_shifts_or_drops_the_save_point() {
+        let mut s = state();
+        for i in 0..3 {
+            s.push_undo(snap(i));
+        }
+        s.save_point = Some(2);
+        for i in 3..UNDO_MAX_ENTRIES as u8 + 1 {
+            s.push_undo(snap(i));
+        }
+        assert_eq!(s.undo.len(), UNDO_MAX_ENTRIES);
+        assert_eq!(s.save_point, Some(1), "décalé d'un cran");
+        s.push_undo(snap(99));
+        s.push_undo(snap(100));
+        assert_eq!(s.save_point, None, "instantané sorti de l'historique");
+        assert!(s.modified());
     }
 }
 
@@ -834,12 +925,19 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_else(|| "document".into());
             let files = doc.split_to(every, &out_dir, &stem, false)?;
-            Ok(BatchResult::Split { files })
+            Ok(BatchResult::Split {
+                files,
+                encryption_removed: doc.is_encrypted(),
+            })
         }
         BatchOp::Extract { pages, out } => {
             let doc = doc.ok_or(EngineError::Other("no document".into()))?;
             let n = doc.extract_to(&pages, &out)?;
-            Ok(BatchResult::Extracted { out, pages: n })
+            Ok(BatchResult::Extracted {
+                out,
+                pages: n,
+                encryption_removed: doc.is_encrypted(),
+            })
         }
         BatchOp::CreateFromImages { images, out } => {
             let pages = engine.images_to_pdf(&images, &out, 150.0)?;
@@ -885,7 +983,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         wanted: WantedQueue::default(),
         undo: Vec::new(),
         redo: Vec::new(),
-        modified: false,
+        save_point: Some(0),
         last_nudge: None,
         clip: None,
         fonts: None,
@@ -927,7 +1025,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     state.invalidate();
                     state.undo.clear();
                     state.redo.clear();
-                    state.modified = false;
+                    state.save_point = Some(0);
                     state.last_nudge = None;
                     Response::Opened(state.doc_state().expect("document ouvert"))
                 }
@@ -997,9 +1095,10 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     },
                     password: doc.password().map(str::to_owned),
                     path: doc.info().path.clone(),
+                    modified: state.modified(),
                     undo: std::mem::take(&mut state.undo),
                     redo: std::mem::take(&mut state.redo),
-                    modified: std::mem::replace(&mut state.modified, false),
+                    save_point: state.save_point.replace(0),
                 };
                 Response::Suspended(suspended)
             }
@@ -1014,7 +1113,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         state.invalidate();
                         state.undo = s.undo;
                         state.redo = s.redo;
-                        state.modified = s.modified;
+                        state.save_point = s.save_point;
                         state.last_nudge = None;
                         Response::Resumed(state.doc_state().expect("document repris"))
                     }
@@ -1120,7 +1219,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Ok(()) => {
                         // « Enregistrer sous » : le document suit son nouveau chemin (Ctrl+S, onglets).
                         doc.set_path(path.clone());
-                        state.modified = false;
+                        state.save_point = Some(state.undo.len());
+                        // Le prochain décalage clavier prend son propre instantané (sinon il serait
+                        // fusionné avec celui d'avant l'enregistrement et passerait pour « intact »).
                         state.last_nudge = None;
                         Response::Saved { path }
                     }
@@ -1132,7 +1233,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 state.invalidate();
                 state.undo.clear();
                 state.redo.clear();
-                state.modified = false;
+                state.save_point = Some(0);
                 state.last_nudge = None;
                 continue;
             }

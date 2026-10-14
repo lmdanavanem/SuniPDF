@@ -67,8 +67,14 @@ fn frame(p: &Palette, dark: bool) -> Frame {
         })
 }
 
+/// Hauteur réservée à l'en-tête, au pied et aux marges : le corps défile au-delà, pour que les
+/// boutons restent visibles dans une fenêtre basse (minimum 720 × 480).
+const CHROME_H: f32 = 170.0;
+
 /// Affiche une boîte modale. `body` dessine le contenu, `footer` les boutons (rangée alignée à
 /// droite : le premier bouton ajouté est le plus à droite, donc l'action principale).
+/// Échap : si une liste déroulante ou un sélecteur de couleur du corps était ouvert, la touche
+/// ne ferme que lui (consommée ici, le pied ne la voit pas).
 pub fn show<R>(
     ctx: &egui::Context,
     spec: Spec<'_>,
@@ -77,6 +83,9 @@ pub fn show<R>(
 ) -> R {
     let p = theme::palette(spec.dark);
     let tint = spec.tint.unwrap_or(p.accent);
+    // État de l'image précédente : la liste était ouverte quand Échap a été pressé.
+    let popup_open = egui::Popup::is_any_open(ctx);
+    let body_max_h = (ctx.content_rect().height() - CHROME_H).max(120.0);
     egui::Modal::new(egui::Id::new(spec.id))
         .backdrop_color(Color32::from_black_alpha(if spec.dark { 150 } else { 110 }))
         .frame(frame(&p, spec.dark))
@@ -135,9 +144,18 @@ pub fn show<R>(
                 })
                 .show(ui, |ui| {
                     ui.set_width(spec.width - 44.0);
-                    body(ui)
+                    egui::ScrollArea::vertical()
+                        .max_height(body_max_h)
+                        .show(ui, |ui| {
+                            ui.set_width(spec.width - 44.0);
+                            body(ui)
+                        })
+                        .inner
                 })
                 .inner;
+            if popup_open {
+                ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+            }
             // Pied.
             Frame::new()
                 .fill(p.chrome)
@@ -210,4 +228,104 @@ pub fn secondary(ui: &mut egui::Ui, text: &str) -> bool {
 pub fn field_label(ui: &mut egui::Ui, text: &str) {
     let p = theme::palette(ui.visuals().dark_mode);
     ui.label(RichText::new(text).size(12.5).color(p.text_muted));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn esc() -> egui::Event {
+        egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }
+    }
+
+    /// Une image de la boîte : (liste ouverte vue par le corps, Échap vu par le pied).
+    fn frame(ctx: &egui::Context, events: Vec<egui::Event>, open_list: bool) -> (bool, bool) {
+        let mut seen = (false, false);
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(900.0, 700.0),
+            )),
+            events,
+            ..Default::default()
+        };
+        let mut out = ctx.run_ui(input, |ui| {
+            show(
+                ui.ctx(),
+                Spec::new("t", "Titre", false, false),
+                |ui| {
+                    // Même mécanique qu'une `ComboBox` ou un sélecteur de couleur (`Popup::menu`).
+                    let menu = ui.menu_button("Liste", |ui| ui.label("a"));
+                    seen.0 = menu.inner.is_some();
+                    if open_list {
+                        egui::Popup::open_id(
+                            ui.ctx(),
+                            egui::Popup::default_response_id(&menu.response),
+                        );
+                    }
+                },
+                |ui| {
+                    seen.1 = ui.input(|i| i.key_pressed(egui::Key::Escape));
+                },
+            );
+        });
+        out.textures_delta.clear();
+        seen
+    }
+
+    /// Scénario de la revue : Échap sur une liste ouverte ferme la liste, pas la boîte.
+    #[test]
+    fn escape_closes_an_open_list_without_reaching_the_footer() {
+        let ctx = egui::Context::default();
+        // Famille « semibold » de l'en-tête (polices système si présentes, sinon repli).
+        let _ = icons::install(&ctx);
+        let _ = frame(&ctx, vec![], true);
+        assert_eq!(frame(&ctx, vec![], false), (true, false), "liste ouverte");
+        // egui ferme la liste à la fin de l'image où Échap arrive ; le pied ne voit pas la touche.
+        assert_eq!(
+            frame(&ctx, vec![esc()], false),
+            (true, false),
+            "liste fermée seule"
+        );
+        assert_eq!(
+            frame(&ctx, vec![esc()], false),
+            (false, true),
+            "le pied voit l'Échap suivant"
+        );
+    }
+
+    #[test]
+    fn primary_and_error_text_contrast_is_at_least_4_5_in_both_themes() {
+        fn lum(c: Color32) -> f64 {
+            let f = |v: u8| {
+                let v = v as f64 / 255.0;
+                if v <= 0.03928 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * f(c.r()) + 0.7152 * f(c.g()) + 0.0722 * f(c.b())
+        }
+        let contrast = |a: Color32, b: Color32| {
+            let (x, y) = (lum(a) + 0.05, lum(b) + 0.05);
+            x.max(y) / x.min(y)
+        };
+        for dark in [false, true] {
+            let p = theme::palette(dark);
+            assert!(
+                contrast(Color32::WHITE, p.accent_fill) >= 4.5,
+                "bouton (dark={dark})"
+            );
+            for surface in [p.surface, p.chrome] {
+                assert!(contrast(p.error, surface) >= 4.5, "erreur (dark={dark})");
+            }
+        }
+    }
 }

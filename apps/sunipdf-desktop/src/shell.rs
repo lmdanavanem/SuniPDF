@@ -659,10 +659,7 @@ impl SuniApp {
                                 .corner_radius(8)
                                 .inner_margin(14)
                                 .show(ui, |ui| {
-                                    ui.colored_label(
-                                        theme::ERROR,
-                                        tr(lang, "error.engine_missing"),
-                                    );
+                                    ui.colored_label(p.error, tr(lang, "error.engine_missing"));
                                 });
                             ui.add_space(12.0);
                         }
@@ -1240,7 +1237,8 @@ impl SuniApp {
                     ui.label(muted(tr(lang, "status.engine_starting").into()));
                 }
                 (EngineState::Failed, _, _) => {
-                    ui.colored_label(theme::ERROR, tr(lang, "error.engine_load"));
+                    let error = theme::palette(ui.visuals().dark_mode).error;
+                    ui.colored_label(error, tr(lang, "error.engine_load"));
                 }
                 (_, _, Some(path)) => {
                     ui.spinner();

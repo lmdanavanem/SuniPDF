@@ -90,6 +90,9 @@ pub struct AnnotateState {
     pub tool: Tool,
     pub drag: Option<Drag>,
     pub selection: Option<(usize, TextSelection)>,
+    /// Annotation voulue par le glissement en cours de résolution (`TextInRect` envoyé) :
+    /// changer d'outil avant la réponse ne change pas l'effet.
+    pub pending_markup: Option<(MarkupKind, (u8, u8, u8))>,
     pub note_prompt: Option<(usize, f32, f32, String)>,
     pub comments_open: bool,
     pub annotations: Vec<AnnotationInfo>,
@@ -155,6 +158,7 @@ impl SuniApp {
                 if tiny {
                     self.annotate.selection = None;
                 } else {
+                    self.annotate.pending_markup = None;
                     self.worker.send(Request::TextInRect {
                         page: drag.page,
                         rect,
@@ -170,6 +174,7 @@ impl SuniApp {
             _ => {
                 // Outils de texte : la sélection revient par TextSelected, puis l'annotation est créée.
                 if !tiny {
+                    self.annotate.pending_markup = self.annotate.tool.markup();
                     self.worker.send(Request::TextInRect {
                         page: drag.page,
                         rect,
@@ -310,7 +315,7 @@ impl SuniApp {
                         .show(ui, |ui| {
                             ui.set_width(ui.available_width());
                             ui.horizontal(|ui| {
-                                ui.label(icons::semibold(annotation_label(lang, &a.kind), 13.0));
+                                ui.label(icons::semibold(annotation_label(lang, a.kind), 13.0));
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     if ui
                                         .add(
@@ -343,19 +348,43 @@ impl SuniApp {
     }
 }
 
+/// Libellé traduit d'un sous-type d'annotation (identifiants stables du moteur, jamais un nom
+/// de variante de bibliothèque ; sous-type inconnu → « Autre annotation »).
 fn annotation_label(lang: sunipdf_i18n::Language, kind: &str) -> String {
-    let key = match kind {
-        "Highlight" => "comments.kind.highlight",
-        "Underline" => "comments.kind.underline",
-        "StrikeOut" => "comments.kind.strikeout",
-        "Text" => "comments.kind.note",
-        "Link" => "comments.kind.link",
-        "Widget" => "comments.kind.widget",
-        _ => "",
-    };
-    if key.is_empty() {
-        kind.to_string()
+    let id = if sunipdf_core::ANNOTATION_KINDS.contains(&kind) {
+        kind
     } else {
-        tr(lang, key).to_string()
+        "other"
+    };
+    tr(lang, &format!("comments.kind.{id}")).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sunipdf_i18n::Language;
+
+    #[test]
+    fn every_annotation_kind_has_a_translated_label() {
+        for kind in sunipdf_core::ANNOTATION_KINDS {
+            for lang in Language::ALL {
+                let label = annotation_label(lang, kind);
+                assert!(
+                    !label.contains("comments.kind"),
+                    "{kind} en {}",
+                    lang.code()
+                );
+            }
+        }
+        assert_eq!(annotation_label(Language::French, "strikeout"), "Barré");
+        assert_eq!(
+            annotation_label(Language::English, "strikeout"),
+            "Strikethrough"
+        );
+        assert_eq!(
+            annotation_label(Language::French, "Strikeout"),
+            annotation_label(Language::French, "other"),
+            "nom de variante inconnu : libellé générique"
+        );
     }
 }

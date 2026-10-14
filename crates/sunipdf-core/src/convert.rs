@@ -1,6 +1,8 @@
 //! Conversions : images → PDF, PDF → images, optimisation de taille.
 
 use crate::{write_atomic, Document, Engine, EngineError};
+use image::metadata::Orientation;
+use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader};
 use pdfium_render::prelude::*;
 use std::path::{Path, PathBuf};
 
@@ -11,9 +13,84 @@ pub struct Optimized {
     pub after: u64,
 }
 
+fn image_err(path: &Path, e: image::ImageError) -> EngineError {
+    match e {
+        image::ImageError::IoError(io) => EngineError::Io(io),
+        other => EngineError::Other(format!("{}: {other}", path.display())),
+    }
+}
+
+/// Lecteur au format deviné d'après le contenu (l'extension peut mentir).
+fn reader(path: &Path) -> Result<ImageReader<std::io::BufReader<std::fs::File>>, EngineError> {
+    ImageReader::open(path)?
+        .with_guessed_format()
+        .map_err(EngineError::Io)
+}
+
+/// Décode une image en appliquant son orientation EXIF (photos de téléphone en portrait) :
+/// chargeur unique des images insérées, remplacées ou converties en pages.
+pub(crate) fn load_image(path: &Path) -> Result<DynamicImage, EngineError> {
+    let mut decoder = reader(path)?
+        .into_decoder()
+        .map_err(|e| image_err(path, e))?;
+    let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+    let mut img = DynamicImage::from_decoder(decoder).map_err(|e| image_err(path, e))?;
+    img.apply_orientation(orientation);
+    Ok(img)
+}
+
+/// Matrice PDF qui affiche une image de `w` × `h` points (dimensions brutes, avant orientation)
+/// avec son orientation EXIF appliquée, coin bas-gauche en (0, 0) ; `None` pour les deux
+/// combinaisons rotation + miroir (passage par le décodage).
+fn oriented_matrix(o: Orientation, w: f32, h: f32) -> Option<[f32; 6]> {
+    Some(match o {
+        Orientation::NoTransforms => [w, 0.0, 0.0, h, 0.0, 0.0],
+        Orientation::Rotate90 => [0.0, -w, h, 0.0, 0.0, w],
+        Orientation::Rotate180 => [-w, 0.0, 0.0, -h, w, h],
+        Orientation::Rotate270 => [0.0, w, -h, 0.0, h, 0.0],
+        Orientation::FlipHorizontal => [-w, 0.0, 0.0, h, w, 0.0],
+        Orientation::FlipVertical => [w, 0.0, 0.0, -h, 0.0, h],
+        Orientation::Rotate90FlipH | Orientation::Rotate270FlipH => return None,
+    })
+}
+
+/// JPEG incorporé tel quel (`FPDFImageObj_LoadJpegFileInline`) : ni décodage en mémoire ni
+/// recompression ; renvoie l'objet et la taille de page (points) après orientation.
+fn jpeg_object<'a>(
+    doc: &PdfDocument<'a>,
+    path: &Path,
+    dpi: f32,
+) -> Result<Option<(PdfPageImageObject<'a>, f32, f32)>, EngineError> {
+    let mut decoder = reader(path)?;
+    if decoder.format() != Some(ImageFormat::Jpeg) {
+        return Ok(None);
+    }
+    let (pw, ph) = decoder.into_dimensions().map_err(|e| image_err(path, e))?;
+    decoder = reader(path)?;
+    let orientation = decoder
+        .into_decoder()
+        .map_err(|e| image_err(path, e))?
+        .orientation()
+        .unwrap_or(Orientation::NoTransforms);
+    let (w, h) = (pw as f32 * 72.0 / dpi, ph as f32 * 72.0 / dpi);
+    let Some(m) = oriented_matrix(orientation, w, h) else {
+        return Ok(None);
+    };
+    let mut object = PdfPageImageObject::new_from_jpeg_reader(doc, std::fs::File::open(path)?)?;
+    object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
+    let swapped = matches!(orientation, Orientation::Rotate90 | Orientation::Rotate270);
+    Ok(Some(if swapped {
+        (object, h, w)
+    } else {
+        (object, w, h)
+    }))
+}
+
 impl Engine {
     /// Crée un PDF d'une page par image (PNG, JPEG, BMP, GIF, TIFF, WebP). La taille de page
-    /// correspond à l'image à `dpi` points par pouce. Renvoie le nombre de pages.
+    /// correspond à l'image à `dpi` points par pouce, orientation EXIF appliquée. Un JPEG est
+    /// incorporé tel quel (fichier de la taille des JPEG d'entrée, mémoire constante) ; les
+    /// autres formats sont décodés. Renvoie le nombre de pages.
     pub fn images_to_pdf(
         &self,
         images: &[PathBuf],
@@ -28,26 +105,29 @@ impl Engine {
         }
         let mut doc = self.pdfium.create_new_pdf()?;
         for path in images {
-            let img = image::open(path).map_err(|e| match e {
-                image::ImageError::IoError(io) => EngineError::Io(io),
-                other => EngineError::Other(format!("{}: {other}", path.display())),
-            })?;
-            let (w, h) = (
-                img.width() as f32 * 72.0 / dpi,
-                img.height() as f32 * 72.0 / dpi,
-            );
+            let (object, w, h) = match jpeg_object(&doc, path, dpi)? {
+                Some(ready) => ready,
+                None => {
+                    let img = load_image(path)?;
+                    let (w, h) = (
+                        img.width() as f32 * 72.0 / dpi,
+                        img.height() as f32 * 72.0 / dpi,
+                    );
+                    let object = PdfPageImageObject::new_with_size(
+                        &doc,
+                        &img,
+                        PdfPoints::new(w),
+                        PdfPoints::new(h),
+                    )?;
+                    (object, w, h)
+                }
+            };
             let mut page = doc
                 .pages_mut()
                 .create_page_at_end(PdfPagePaperSize::new_custom(
                     PdfPoints::new(w),
                     PdfPoints::new(h),
                 ))?;
-            let object = PdfPageImageObject::new_with_size(
-                &doc,
-                &img,
-                PdfPoints::new(w),
-                PdfPoints::new(h),
-            )?;
             page.objects_mut().add_image_object(object)?;
         }
         let count = doc.pages().len() as usize;
@@ -131,4 +211,40 @@ pub fn optimize_file(
         before: bytes.len() as u64,
         after: out.len() as u64,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Chaque orientation envoie les coins de l'image brute (unité) sur ceux de la boîte affichée.
+    #[test]
+    fn oriented_matrices_map_the_unit_square_onto_the_display_box() {
+        let (w, h) = (300.0, 200.0);
+        let apply =
+            |m: [f32; 6], x: f32, y: f32| (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]);
+        let corners = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)];
+        for (o, bw, bh) in [
+            (Orientation::NoTransforms, w, h),
+            (Orientation::Rotate90, h, w),
+            (Orientation::Rotate180, w, h),
+            (Orientation::Rotate270, h, w),
+            (Orientation::FlipHorizontal, w, h),
+            (Orientation::FlipVertical, w, h),
+        ] {
+            let m = oriented_matrix(o, w, h).unwrap();
+            let mut seen: Vec<(i32, i32)> = corners
+                .iter()
+                .map(|&(x, y)| apply(m, x, y))
+                .map(|(x, y)| (x.round() as i32, y.round() as i32))
+                .collect();
+            seen.sort_unstable();
+            let (bw, bh) = (bw as i32, bh as i32);
+            assert_eq!(seen, vec![(0, 0), (0, bh), (bw, 0), (bw, bh)], "{o:?}");
+        }
+        // Rotation 90° horaire (EXIF 6) : le coin haut-gauche brut (0, 1) passe en haut à droite.
+        let m = oriented_matrix(Orientation::Rotate90, w, h).unwrap();
+        assert_eq!(apply(m, 0.0, 1.0), (h, w));
+        assert!(oriented_matrix(Orientation::Rotate90FlipH, w, h).is_none());
+    }
 }

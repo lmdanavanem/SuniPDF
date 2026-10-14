@@ -23,7 +23,7 @@ pub mod stamp;
 pub mod text;
 pub mod tiles;
 
-pub use annot::{AnnotationInfo, MarkupKind, TextSelection};
+pub use annot::{AnnotationInfo, MarkupKind, TextSelection, ANNOTATION_KINDS};
 pub use boxes::{PageMargins, ResizeMode};
 pub use cache::{cache_key, tile_key, RenderCache};
 pub use clipboard::ObjectClip;
@@ -37,7 +37,7 @@ pub use error::EngineError;
 pub use fonts::SystemFont;
 pub use geometry::PageGeometry;
 pub use pages::{write_atomic, Rotation};
-pub use security::{Bookmark, Metadata, Properties, Protection};
+pub use security::{Bookmark, Metadata, Properties, Protection, ProtectionProblem};
 pub use stamp::{Stamp, StampPosition};
 pub use text::{PointRect, TextMatch};
 pub use tiles::{PixelRect, TileJob, TileLimits};

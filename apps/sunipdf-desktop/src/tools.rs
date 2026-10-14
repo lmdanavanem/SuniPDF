@@ -74,20 +74,14 @@ fn file_name(path: &Path) -> String {
         .unwrap_or_else(|| path.display().to_string())
 }
 
-fn human_size(bytes: u64) -> String {
-    if bytes >= 1_048_576 {
-        format!("{:.1} Mo", bytes as f64 / 1_048_576.0)
-    } else {
-        format!("{:.0} Ko", bytes as f64 / 1024.0)
-    }
-}
-
 impl SuniApp {
     fn pdf_filter(&self) -> rfd::FileDialog {
         rfd::FileDialog::new().add_filter(self.t("dialog.open.filter_pdf"), &["pdf"])
     }
 
-    fn suggest_output(&self, suffix: &str) -> PathBuf {
+    /// Nom proposé : `<nom>-<suffixe traduit>.pdf` (`suffix_key` = `tools.suffix.*`).
+    fn suggest_output(&self, suffix_key: &str) -> PathBuf {
+        let suffix = self.t(suffix_key);
         match &self.document {
             Some(doc) => {
                 let stem = doc
@@ -96,9 +90,9 @@ impl SuniApp {
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
                     .unwrap_or_else(|| "document".into());
-                doc.info.path.with_file_name(format!("{stem}{suffix}.pdf"))
+                doc.info.path.with_file_name(format!("{stem}-{suffix}.pdf"))
             }
-            None => PathBuf::from(format!("sunipdf{suffix}.pdf")),
+            None => PathBuf::from(format!("sunipdf-{suffix}.pdf")),
         }
     }
 
@@ -131,8 +125,10 @@ impl SuniApp {
         if inputs.is_empty() {
             return;
         }
-        let Some(out) = self.save_dialog("tools.combine.save", &self.suggest_output("-combine"))
-        else {
+        let Some(out) = self.save_dialog(
+            "tools.combine.save",
+            &self.suggest_output("tools.suffix.combine"),
+        ) else {
             return;
         };
         self.run_batch(BatchOp::Combine { inputs, out }, "tools.running.combine");
@@ -179,6 +175,13 @@ impl SuniApp {
         )
         .width(520.0);
         let form = &mut self.tools.stamp;
+        // Sans texte, rien à apposer : bouton grisé plutôt qu'un clic sans effet (le
+        // « CONFIDENTIEL » du champ n'est qu'une suggestion). Valeur de l'image précédente.
+        let has_text = !if numbers {
+            form.numbers_template.trim().is_empty()
+        } else {
+            form.text.trim().is_empty()
+        };
         crate::dialog::show(
             ctx,
             spec,
@@ -273,11 +276,15 @@ impl SuniApp {
                 });
             },
             |ui| {
-                if crate::dialog::primary(
-                    ui,
-                    tr(lang, if numbers { "numbers.ok" } else { "stamp.ok" }),
-                ) || ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter))
-                {
+                ui.add_enabled_ui(has_text, |ui| {
+                    if crate::dialog::primary(
+                        ui,
+                        tr(lang, if numbers { "numbers.ok" } else { "stamp.ok" }),
+                    ) {
+                        submit = true;
+                    }
+                });
+                if has_text && ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter)) {
                     submit = true;
                 }
                 if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
@@ -351,8 +358,10 @@ impl SuniApp {
         if pages.is_empty() {
             return;
         }
-        let Some(out) = self.save_dialog("tools.extract.save", &self.suggest_output("-extrait"))
-        else {
+        let Some(out) = self.save_dialog(
+            "tools.extract.save",
+            &self.suggest_output("tools.suffix.extract"),
+        ) else {
             return;
         };
         self.run_batch(BatchOp::Extract { pages, out }, "tools.running.extract");
@@ -397,8 +406,10 @@ impl SuniApp {
     }
 
     pub fn tool_optimize(&mut self) {
-        let Some(out) = self.save_dialog("tools.optimize.save", &self.suggest_output("-optimise"))
-        else {
+        let Some(out) = self.save_dialog(
+            "tools.optimize.save",
+            &self.suggest_output("tools.suffix.optimize"),
+        ) else {
             return;
         };
         self.run_batch(BatchOp::Optimize { out }, "tools.running.optimize");
@@ -479,19 +490,35 @@ impl SuniApp {
                 ));
                 self.open_path(out, None);
             }
-            BatchResult::Split { files } => {
-                self.status_msg = Some(tr_args(
+            BatchResult::Split {
+                files,
+                encryption_removed,
+            } => {
+                let mut msg = tr_args(
                     lang,
                     "tools.done.split",
                     &[("count", &files.len().to_string())],
-                ));
+                );
+                if encryption_removed {
+                    // D046 : les parties d'un document protégé ne le sont pas, dit clairement.
+                    msg = format!("{msg} {}", tr(lang, "tools.done.encryption_removed"));
+                }
+                self.status_msg = Some(msg);
             }
-            BatchResult::Extracted { out, pages } => {
-                self.status_msg = Some(tr_args(
+            BatchResult::Extracted {
+                out,
+                pages,
+                encryption_removed,
+            } => {
+                let mut msg = tr_args(
                     lang,
                     "tools.done.extract",
                     &[("pages", &pages.to_string()), ("name", &file_name(&out))],
-                ));
+                );
+                if encryption_removed {
+                    msg = format!("{msg} {}", tr(lang, "tools.done.encryption_removed"));
+                }
+                self.status_msg = Some(msg);
             }
             BatchResult::Created { out, pages } => {
                 self.status_msg = Some(tr_args(
@@ -519,8 +546,8 @@ impl SuniApp {
                     "tools.done.optimize",
                     &[
                         ("name", &file_name(&out)),
-                        ("before", &human_size(before)),
-                        ("after", &human_size(after)),
+                        ("before", &crate::docinfo::human_size(lang, before)),
+                        ("after", &crate::docinfo::human_size(lang, after)),
                         ("percent", &format!("{percent:.0}")),
                     ],
                 ));

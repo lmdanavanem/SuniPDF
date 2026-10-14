@@ -528,7 +528,10 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let doc = engine.open(&file, password.as_deref())?;
             let selection = parse_pages(&pages, doc.page_count())?;
             let n = doc.extract_to(&selection, &out)?;
-            Ok(serde_json::json!({ "out": out, "page_count": n }))
+            // D046 : les pages copiées dans un document neuf ne sont pas chiffrées ; dit ici.
+            Ok(serde_json::json!({
+                "out": out, "page_count": n, "encryption_removed": doc.is_encrypted()
+            }))
         }
         Command::Split {
             file,
@@ -536,8 +539,15 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             out_dir,
             password,
         } => {
-            let files = engine.split(&file, password.as_deref(), every, &out_dir, overwrite)?;
-            Ok(serde_json::json!({ "files": files, "count": files.len() }))
+            let doc = engine.open(&file, password.as_deref())?;
+            let stem = file
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "document".into());
+            let files = doc.split_to(every, &out_dir, &stem, overwrite)?;
+            Ok(serde_json::json!({
+                "files": files, "count": files.len(), "encryption_removed": doc.is_encrypted()
+            }))
         }
         Command::Rotate {
             file,

@@ -288,7 +288,8 @@ impl SuniApp {
                                 .color(muted),
                             ),
                             None => {
-                                ui.colored_label(theme::ERROR, tr(lang, "pagesetup.crop.too_small"))
+                                let error = theme::palette(ui.visuals().dark_mode).error;
+                                ui.colored_label(error, tr(lang, "pagesetup.crop.too_small"))
                             }
                         };
                         scope(ui, &mut f.all);

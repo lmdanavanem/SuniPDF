@@ -416,11 +416,16 @@ fn text_selection_and_annotations_round_trip() {
         .unwrap();
     doc.add_note(0, 300.0, 600.0, "Relire ce paragraphe")
         .unwrap();
+    doc.add_markup(0, MarkupKind::StrikeOut, &sel.rects, (220, 38, 38))
+        .unwrap();
     let list = doc.annotations(0).unwrap();
-    assert_eq!(list.len(), 3);
-    assert_eq!(list[0].kind, "Highlight");
-    assert_eq!(list[2].kind, "Text");
+    assert_eq!(list.len(), 4);
+    // Identifiants stables (pas le nom de variante de pdfium-render, « Strikeout »).
+    assert_eq!(list[0].kind, "highlight");
+    assert_eq!(list[2].kind, "text");
+    assert_eq!(list[3].kind, "strikeout");
     assert_eq!(list[2].contents.as_deref(), Some("Relire ce paragraphe"));
+    doc.delete_annotation(0, 3).unwrap();
 
     // Le surlignage est visible au rendu : pixels jaunes dans la zone du texte.
     let img = doc.render_page(0, 1.0).unwrap();
@@ -1905,11 +1910,25 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
         let engine = engine();
         let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
         let count = doc.page_objects(0).unwrap().len();
-        assert!(matches!(
-            doc.add_text(0, 60.0, 300.0, "Привет", &TextStyle::default()),
-            Err(EngineError::MissingGlyphs)
-        ));
-        assert_eq!(doc.page_objects(0).unwrap().len(), count);
+        // L'erreur liste les caractères absents (dédoublonnés) ; tabulation = quatre espaces.
+        match doc.add_text(0, 60.0, 300.0, "Привет", &TextStyle::default()) {
+            Err(EngineError::MissingGlyphs(chars)) => {
+                assert_eq!(chars, "Привет", "{chars:?}")
+            }
+            other => panic!("attendu MissingGlyphs, obtenu {other:?}"),
+        }
+        assert_eq!(doc.page_objects(0).unwrap().len(), count, "document intact");
+        assert_eq!(
+            doc.add_text(0, 60.0, 280.0, "a\tb", &TextStyle::default())
+                .unwrap(),
+            1
+        );
+        let last = doc.page_objects(0).unwrap().pop().unwrap();
+        let t = last.text.clone().unwrap_or_default();
+        assert!(
+            t.starts_with('a') && t.ends_with('b') && t.contains(' ') && !t.contains('\t'),
+            "{t:?}"
+        );
         assert_eq!(
             doc.add_text(0, 60.0, 300.0, "Été « 5 € »", &TextStyle::default())
                 .unwrap(),
@@ -1963,7 +1982,7 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
     let count = doc.page_objects(0).unwrap().len();
     assert!(matches!(
         doc.add_text(0, 60.0, 220.0, "日本", &style),
-        Err(EngineError::MissingGlyphs)
+        Err(EngineError::MissingGlyphs(_))
     ));
     assert_eq!(doc.page_objects(0).unwrap().len(), count, "document intact");
     let not_a_font = png(&dir, "x.png", 2, 2, [0, 0, 0]);
@@ -2753,5 +2772,377 @@ fn render_scroll_100_pages_timing() {
             total / count,
             first.unwrap()
         );
+    }
+}
+
+// ----- Correctifs des revues adverses (tranche review-fixes) -----
+
+/// JPEG `w` × `h` : moitié gauche rouge, moitié droite bleue, orientation EXIF `exif` (6 = 90° horaire).
+fn exif_jpeg(dir: &Path, name: &str, w: u32, h: u32, exif: u8) -> PathBuf {
+    use image::ImageEncoder;
+    let path = dir.join(name);
+    let img = image::RgbImage::from_fn(w, h, |x, _| {
+        image::Rgb(if x < w / 2 { [255, 0, 0] } else { [0, 0, 255] })
+    });
+    // Bloc TIFF minimal (petit-boutiste) : une entrée IFD0, tag 0x0112 Orientation, SHORT.
+    let chunk = [
+        b"II*\0".to_vec(),
+        8u32.to_le_bytes().to_vec(),
+        1u16.to_le_bytes().to_vec(),
+        0x0112u16.to_le_bytes().to_vec(),
+        3u16.to_le_bytes().to_vec(),
+        1u32.to_le_bytes().to_vec(),
+        (exif as u16).to_le_bytes().to_vec(),
+        0u16.to_le_bytes().to_vec(),
+        0u32.to_le_bytes().to_vec(),
+    ]
+    .concat();
+    let mut file = std::fs::File::create(&path).unwrap();
+    let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 95);
+    enc.set_exif_metadata(chunk).unwrap();
+    enc.encode_image(&img).unwrap();
+    path
+}
+
+#[test]
+fn review_aes128_refuses_non_latin1_passwords_and_keeps_accessibility_bit() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = temp_dir("review-sec");
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    let cyrillic = Protection {
+        user_password: "пароль".into(),
+        owner_password: "Пароль2026".into(),
+        allow_copy: false,
+        aes256: false,
+        ..Default::default()
+    };
+    assert!(matches!(
+        security::protect(&input, None, &cyrillic),
+        Err(EngineError::PasswordNotLatin1)
+    ));
+    // AES-256 (UTF-8 + SASLprep) accepte le même mot de passe, et il protège vraiment.
+    let bytes = security::protect(
+        &input,
+        None,
+        &Protection {
+            aes256: true,
+            ..cyrillic.clone()
+        },
+    )
+    .unwrap();
+    let path = dir.join("cyr.pdf");
+    std::fs::write(&path, &bytes).unwrap();
+    assert!(matches!(
+        engine.open(&path, None),
+        Err(EngineError::PasswordRequired)
+    ));
+    assert!(matches!(
+        engine.open(&path, Some("")),
+        Err(EngineError::PasswordRequired)
+    ));
+    let doc = engine.open(&path, Some("пароль")).unwrap();
+    assert!(doc.is_encrypted() && !doc.properties().can_copy);
+    assert!(engine.open(&path, Some("Пароль2026")).is_ok());
+    // Latin-1 accepté en AES-128 ; la copie est refusée mais le bit 10 (accessibilité) reste à 1.
+    let latin = security::protect(
+        &input,
+        None,
+        &Protection {
+            user_password: "Été".into(),
+            owner_password: "Noël¿".into(),
+            allow_copy: false,
+            aes256: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let doc =
+        lopdf::Document::load_mem_with_options(&latin, lopdf::LoadOptions::with_password("Été"))
+            .unwrap();
+    let bits = doc.encryption_state.as_ref().unwrap().permissions().bits();
+    assert_eq!(bits & (1 << 9), 1 << 9, "bit 10 accessibilité : {bits:#x}");
+    assert_eq!(bits & (1 << 4), 0, "bit 5 copie refusé : {bits:#x}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn review_metadata_edits_reach_xmp_and_strip_cleans_pages_and_images() {
+    use sunipdf_core::{security, Metadata};
+    let engine = engine();
+    let dir = temp_dir("review-xmp");
+    // Fixture avec XMP de catalogue, XMP de page et /PieceInfo (exports Word / InDesign).
+    let mut doc = lopdf::Document::load(fixture("two-pages.pdf")).unwrap();
+    let xmp = |who: &str| {
+        lopdf::Stream::new(
+            lopdf::dictionary! { "Type" => "Metadata", "Subtype" => "XML" },
+            format!("<x:xmpmeta><dc:creator><rdf:li>{who}</rdf:li></dc:creator></x:xmpmeta>")
+                .into_bytes(),
+        )
+    };
+    let cat_xmp = doc.add_object(xmp("Jean Dupont"));
+    doc.catalog_mut()
+        .unwrap()
+        .set("Metadata", lopdf::Object::Reference(cat_xmp));
+    let page_xmp = doc.add_object(xmp("jdoe PageAuthor"));
+    let page_id = doc.get_pages()[&1];
+    let page = doc.get_object_mut(page_id).unwrap().as_dict_mut().unwrap();
+    page.set("Metadata", lopdf::Object::Reference(page_xmp));
+    page.set(
+        "PieceInfo",
+        lopdf::dictionary! { "Illustrator" => lopdf::dictionary! { "Private" => "C:/Users/jdoe/secret.ai" } },
+    );
+    let mut input = Vec::new();
+    doc.save_to(&mut input).unwrap();
+    assert!(String::from_utf8_lossy(&input).contains("Jean Dupont"));
+
+    let edited = security::set_metadata(
+        &input,
+        None,
+        &Metadata {
+            title: Some("Nouveau titre".into()),
+            author: None,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let text = String::from_utf8_lossy(&edited);
+    assert!(!text.contains("Jean Dupont"), "ancien auteur retiré du XMP");
+    assert!(
+        text.contains("<dc:title>") && text.contains("Nouveau titre"),
+        "XMP régénéré"
+    );
+    let path = dir.join("meta.pdf");
+    std::fs::write(&path, &edited).unwrap();
+    let props = engine.open(&path, None).unwrap().properties();
+    assert_eq!(props.metadata.title.as_deref(), Some("Nouveau titre"));
+    assert_eq!(props.metadata.author, None);
+
+    let stripped = security::strip_metadata(&input, None).unwrap();
+    let text = String::from_utf8_lossy(&stripped);
+    for leak in [
+        "Jean Dupont",
+        "jdoe",
+        "PieceInfo",
+        "/Metadata",
+        "SuniPDF tests",
+    ] {
+        assert!(!text.contains(leak), "{leak} encore présent");
+    }
+    let path = dir.join("stripped.pdf");
+    std::fs::write(&path, &stripped).unwrap();
+    let doc = engine.open(&path, None).unwrap();
+    assert_eq!(doc.page_count(), 2);
+    assert!(doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn review_extract_from_protected_document_is_detectable() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = temp_dir("review-extract");
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    let protected = security::protect(
+        &input,
+        None,
+        &Protection {
+            user_password: "secret".into(),
+            owner_password: "owner".into(),
+            allow_copy: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let path = dir.join("protected.pdf");
+    std::fs::write(&path, &protected).unwrap();
+    let doc = engine.open(&path, Some("secret")).unwrap();
+    assert!(
+        doc.is_encrypted(),
+        "document protégé ouvert avec mot de passe"
+    );
+    assert!(!engine
+        .open(&fixture("two-pages.pdf"), None)
+        .unwrap()
+        .is_encrypted());
+    assert!(engine
+        .open(&fixture("encrypted-rc4.pdf"), Some("secret"))
+        .unwrap()
+        .is_encrypted());
+    // D046 : l'extrait n'est pas chiffré (copie de pages dans un document neuf) ; annoncé par
+    // l'interface et la CLI, jamais en silence.
+    let out = dir.join("extract.pdf");
+    assert_eq!(doc.extract_to(&[1], &out).unwrap(), 1);
+    let extracted = engine.open(&out, None).unwrap();
+    assert!(!extracted.is_encrypted());
+    assert!(extracted.page_text(0).unwrap().contains("SuniPDF page 2"));
+    let parts = doc.split_to(1, &dir, "part", false).unwrap();
+    assert_eq!(parts.len(), 2);
+    assert!(!engine.open(&parts[0], None).unwrap().is_encrypted());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn review_images_follow_exif_orientation_and_jpegs_are_embedded_as_is() {
+    let engine = engine();
+    let dir = temp_dir("review-exif");
+    // 40 × 20 : gauche rouge, droite bleue ; EXIF 6 = 90° horaire → affichée 20 × 40, rouge en haut.
+    let portrait = exif_jpeg(&dir, "portrait.jpg", 40, 20, 6);
+    let plain = exif_jpeg(&dir, "plain.jpg", 40, 20, 1);
+    let out = dir.join("photos.pdf");
+    assert_eq!(
+        engine
+            .images_to_pdf(&[portrait.clone(), plain.clone()], &out, 72.0)
+            .unwrap(),
+        2
+    );
+    let bytes = std::fs::read(&out).unwrap();
+    assert!(
+        String::from_utf8_lossy(&bytes).contains("DCTDecode"),
+        "JPEG incorporé tel quel (pas de pixels bruts recompressés)"
+    );
+    let doc = engine.open(&out, None).unwrap();
+    let size = doc.page_size(0).unwrap();
+    assert_eq!((size.width_pt, size.height_pt), (20.0, 40.0));
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(
+        is_red(px(&img, 10.0, 35.0)),
+        "haut rouge : {:?}",
+        px(&img, 10.0, 35.0)
+    );
+    assert!(
+        is_blue(px(&img, 10.0, 5.0)),
+        "bas bleu : {:?}",
+        px(&img, 10.0, 5.0)
+    );
+    let size = doc.page_size(1).unwrap();
+    assert_eq!((size.width_pt, size.height_pt), (40.0, 20.0));
+    let img = doc.render_page(1, 1.0).unwrap();
+    assert!(is_red(px(&img, 5.0, 10.0)) && is_blue(px(&img, 35.0, 10.0)));
+
+    // Insertion et remplacement d'image : même chargeur, même orientation.
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.add_image(0, &portrait, 100.0, 100.0, 50.0).unwrap();
+    let index = doc.page_objects(0).unwrap().len() - 1;
+    let b = doc.object_info(0, index).unwrap().bounds;
+    assert!(
+        (b.right - b.left - 50.0).abs() < 0.5 && (b.top - b.bottom - 100.0).abs() < 0.5,
+        "portrait : {b:?}"
+    );
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(is_red(px(&img, 125.0, 190.0)) && is_blue(px(&img, 125.0, 110.0)));
+    doc.replace_image(0, index, &plain).unwrap();
+    let b = doc.object_info(0, index).unwrap().bounds;
+    assert!(
+        (b.right - b.left - 50.0).abs() < 0.5 && (b.top - b.bottom - 25.0).abs() < 0.5,
+        "paysage contenu dans le cadre : {b:?}"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn review_bring_to_front_survives_reload_and_stamps_stay_inside_corners() {
+    use sunipdf_core::{ShapeKind, ShapeStyle, Stamp, StampPosition};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let filled = |rgb| ShapeStyle {
+        stroke_rgb: rgb,
+        stroke_width: 0.5,
+        fill_rgb: Some(rgb),
+        ..Default::default()
+    };
+    let square = rect(100.0, 100.0, 200.0, 200.0);
+    // Chaque ajout PDFium vit dans son propre flux de contenu : bleu (flux 1) puis rouge (flux 2).
+    doc.add_shape(0, ShapeKind::Rectangle, square, &filled((0, 0, 255)))
+        .unwrap();
+    let blue = doc.page_objects(0).unwrap().len() - 1;
+    doc.add_shape(0, ShapeKind::Rectangle, square, &filled((255, 0, 0)))
+        .unwrap();
+    let probe = |doc: &sunipdf_core::Document| px(&doc.render_page(0, 1.0).unwrap(), 150.0, 150.0);
+    assert!(is_red(probe(&doc)));
+    let front = doc.reorder_object(0, blue, true).unwrap();
+    assert_eq!(front, doc.page_objects(0).unwrap().len() - 1);
+    assert!(is_blue(probe(&doc)), "bleu devant");
+    // Rechargement (ce que font chaque rendu, l'annulation et l'enregistrement) : toujours devant.
+    let snapshot = doc.snapshot().unwrap();
+    doc.restore(snapshot).unwrap();
+    assert!(
+        is_blue(probe(&doc)),
+        "bleu toujours devant après rechargement"
+    );
+
+    // Tampon à 45° dans un coin : la boîte pivotée reste dans la page, à la marge près.
+    let size = doc.page_size(0).unwrap();
+    for position in [
+        StampPosition::TopRight,
+        StampPosition::BottomLeft,
+        StampPosition::TopLeft,
+        StampPosition::BottomRight,
+    ] {
+        let stamp = Stamp {
+            text: "CONFIDENTIEL".into(),
+            position,
+            ..Default::default()
+        };
+        doc.stamp_pages(Some(&[0]), &stamp).unwrap();
+        let last = doc.page_objects(0).unwrap().pop().unwrap();
+        let b = last.bounds;
+        assert!(
+            b.left >= 27.0
+                && b.bottom >= 27.0
+                && b.right <= size.width_pt - 27.0
+                && b.top <= size.height_pt - 27.0,
+            "{position:?} : {b:?}"
+        );
+        assert!(
+            b.top - b.bottom > 100.0 && (last.angle_deg + 45.0).abs() < 1.0,
+            "pivoté : {:?} {}",
+            b,
+            last.angle_deg
+        );
+    }
+}
+
+#[test]
+fn review_resizing_a_tilted_object_scales_uniformly_and_rotated_pages_keep_their_text() {
+    use sunipdf_core::{Rotation, ShapeKind, ShapeStyle};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(300.0, 300.0, 400.0, 350.0),
+        &ShapeStyle::default(),
+    )
+    .unwrap();
+    let index = doc.page_objects(0).unwrap().len() - 1;
+    doc.rotate_object(0, index, 45.0).unwrap();
+    let before = doc.object_info(0, index).unwrap();
+    let w = before.bounds.right - before.bounds.left;
+    assert!((w - (before.bounds.top - before.bounds.bottom)).abs() < 1.0);
+    // Cible 2 × 1 : des facteurs différents cisailleraient le rectangle à 45°.
+    doc.resize_object(0, index, rect(100.0, 100.0, 300.0, 200.0))
+        .unwrap();
+    let after = doc.object_info(0, index).unwrap();
+    let (aw, ah) = (
+        after.bounds.right - after.bounds.left,
+        after.bounds.top - after.bounds.bottom,
+    );
+    assert!((aw - ah).abs() < 1.0, "boîte restée carrée : {aw} × {ah}");
+    assert!((aw - 100.0).abs() < 1.5, "plus petit facteur : {aw}");
+    assert!((after.bounds.left - 100.0).abs() < 1.0 && (after.bounds.bottom - 100.0).abs() < 1.0);
+    assert!((after.angle_deg - before.angle_deg).abs() < 0.5);
+
+    // Texte complet d'une page pivotée : « SuniPDF page 1 » est en y = 700 > 612 (largeur affichée).
+    doc.set_page_rotation(0, Rotation::R90).unwrap();
+    assert!(doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+    doc.set_page_rotation(0, Rotation::R180).unwrap();
+    assert!(doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+    let boxes = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    for (p, name) in ["A", "B", "C", "D"].iter().enumerate() {
+        assert!(boxes
+            .page_text(p)
+            .unwrap()
+            .contains(&format!("BOXES {name}")));
     }
 }

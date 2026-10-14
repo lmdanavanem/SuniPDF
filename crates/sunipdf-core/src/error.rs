@@ -22,8 +22,12 @@ pub enum EngineError {
     RenderTooLarge,
     #[error("output already exists: {0}")]
     AlreadyExists(PathBuf),
-    #[error("font does not contain every requested character")]
-    MissingGlyphs,
+    /// Caractères absents de la police (liste dédoublonnée, sans espaces).
+    #[error("font does not contain every requested character: {0:?}")]
+    MissingGlyphs(String),
+    /// AES-128 (R4) n'encode les mots de passe qu'en PDFDocEncoding (Latin-1 imprimable).
+    #[error("AES-128 passwords accept Latin-1 characters only; use AES-256")]
+    PasswordNotLatin1,
     #[error("font cannot be embedded (licence, format or size)")]
     FontNotEmbeddable,
     #[error("engine error: {0}")]
@@ -43,7 +47,8 @@ impl EngineError {
             Self::PageOutOfRange(_) => "page_out_of_range",
             Self::RenderTooLarge => "render_too_large",
             Self::AlreadyExists(_) => "already_exists",
-            Self::MissingGlyphs => "missing_glyphs",
+            Self::MissingGlyphs(_) => "missing_glyphs",
+            Self::PasswordNotLatin1 => "password_not_latin1",
             Self::FontNotEmbeddable => "font_not_embeddable",
             Self::Other(_) => "other",
         }

@@ -84,6 +84,96 @@ pub struct PaletteState {
     pub focus_requested: bool,
 }
 
+/// Raccourcis qui restent actifs quand un champ de saisie a le clavier (Ctrl seulement).
+const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::S,
+        Command::SaveAs,
+    ),
+    (Modifiers::COMMAND, Key::O, Command::OpenDocument),
+    (Modifiers::COMMAND, Key::S, Command::Save),
+    (Modifiers::COMMAND, Key::K, Command::CommandPalette),
+    (Modifiers::COMMAND, Key::F, Command::Find),
+];
+
+/// Raccourcis globaux, dans l'ordre de lecture : une combinaison avec Maj précède toujours la
+/// même touche sans Maj (`consume_key` ignore un Maj en trop ; invariant testé).
+const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
+    (Modifiers::COMMAND, Key::O, Command::OpenDocument),
+    (Modifiers::COMMAND, Key::W, Command::CloseDocument),
+    (Modifiers::COMMAND, Key::Plus, Command::ZoomIn),
+    (Modifiers::COMMAND, Key::Equals, Command::ZoomIn),
+    (Modifiers::COMMAND, Key::Minus, Command::ZoomOut),
+    (Modifiers::COMMAND, Key::Num0, Command::ActualSize),
+    (Modifiers::NONE, Key::PageDown, Command::NextPage),
+    (Modifiers::NONE, Key::ArrowRight, Command::NextPage),
+    (Modifiers::NONE, Key::PageUp, Command::PreviousPage),
+    (Modifiers::NONE, Key::ArrowLeft, Command::PreviousPage),
+    (Modifiers::NONE, Key::Home, Command::FirstPage),
+    (Modifiers::NONE, Key::End, Command::LastPage),
+    (Modifiers::NONE, Key::F4, Command::ToggleThumbnails),
+    (Modifiers::COMMAND, Key::F, Command::Find),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::S,
+        Command::SaveAs,
+    ),
+    (Modifiers::COMMAND, Key::S, Command::Save),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::R,
+        Command::RotateCounterClockwise,
+    ),
+    (Modifiers::COMMAND, Key::R, Command::RotateClockwise),
+    (Modifiers::COMMAND, Key::Delete, Command::DeletePage),
+    (Modifiers::NONE, Key::F9, Command::ToggleTools),
+    (Modifiers::NONE, Key::F8, Command::OrganizePages),
+    (Modifiers::NONE, Key::F7, Command::ToggleComments),
+    (Modifiers::NONE, Key::F6, Command::ToggleBookmarks),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::D,
+        Command::DuplicateObject,
+    ),
+    (Modifiers::COMMAND, Key::D, Command::Properties),
+    (Modifiers::NONE, Key::F3, Command::ToggleObjects),
+    (Modifiers::NONE, Key::V, Command::ToolSelect),
+    (Modifiers::NONE, Key::H, Command::ToolHighlight),
+    (Modifiers::NONE, Key::U, Command::ToolUnderline),
+    (Modifiers::NONE, Key::X, Command::ToolStrikeOut),
+    (Modifiers::NONE, Key::N, Command::ToolNote),
+    (Modifiers::NONE, Key::E, Command::ToolSelectObject),
+    (Modifiers::NONE, Key::T, Command::ToolAddText),
+    (Modifiers::NONE, Key::I, Command::ToolAddImage),
+    (Modifiers::NONE, Key::R, Command::ToolRectangle),
+    (Modifiers::NONE, Key::O, Command::ToolEllipse),
+    (Modifiers::NONE, Key::L, Command::ToolLine),
+    (Modifiers::NONE, Key::Delete, Command::DeleteObject),
+    (Modifiers::NONE, Key::F2, Command::EditObjectText),
+    (Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront),
+    (Modifiers::COMMAND, Key::OpenBracket, Command::SendToBack),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::Z,
+        Command::Redo,
+    ),
+    (Modifiers::COMMAND, Key::Z, Command::Undo),
+    (Modifiers::COMMAND, Key::Y, Command::Redo),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::I,
+        Command::InsertPages,
+    ),
+    (Modifiers::COMMAND, Key::K, Command::CommandPalette),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::Tab,
+        Command::PrevTab,
+    ),
+    (Modifiers::COMMAND, Key::Tab, Command::NextTab),
+];
+
 pub struct SuniApp {
     pub settings: Settings,
     pub worker: Worker,
@@ -137,6 +227,9 @@ impl SuniApp {
         let settings = Settings::load();
         let has_icons = crate::icons::install(&cc.egui_ctx);
         theme::apply(&cc.egui_ctx, settings.dark_theme);
+        // Ctrl+Plus / Moins / 0 zooment la page, jamais l'interface (egui les prendrait dès que
+        // `handle_input` laisse passer les touches : champ focalisé, boîte de dialogue, palette).
+        cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
         Self {
             has_icons,
             logo: None,
@@ -448,7 +541,7 @@ impl SuniApp {
                     can_undo,
                     can_redo,
                     pages_unchanged,
-                    ..
+                    modified,
                 }) => {
                     self.can_undo = can_undo;
                     self.can_redo = can_redo;
@@ -485,26 +578,36 @@ impl SuniApp {
                     self.worker.send(Request::Bookmarks);
                     if self.docinfo.properties_open {
                         self.worker.send(Request::Properties);
+                    } else {
+                        // Chiffrement, permissions et métadonnées ont pu changer (Protéger…) :
+                        // le cache ne doit pas bloquer « Retirer la protection ».
+                        self.docinfo.properties = None;
                     }
-                    self.dirty = true;
+                    // Annuler jusqu'à l'état enregistré rend le document « intact » (point
+                    // d'enregistrement tenu par le thread moteur).
+                    self.dirty = modified;
                     self.status_msg = self.edit.pending_status.take();
                     // Le message de l'opération reste affiché après la resélection.
                     self.edit.hold_status = self.status_msg.is_some();
                     self.update_title(ctx);
                 }
-                Response::TextSelected { page, selection } => match self.annotate.tool.markup() {
-                    Some((kind, rgb)) if !selection.rects.is_empty() => {
-                        self.worker.send(Request::Edit(EditOp::Markup {
-                            page,
-                            kind,
-                            rects: selection.rects,
-                            rgb,
-                        }));
-                        self.annotate.selection = None;
+                // L'intention (surligner, souligner, barrer ou simple sélection) est celle du
+                // glissement, pas celle de l'outil au moment où la réponse arrive.
+                Response::TextSelected { page, selection } => {
+                    match self.annotate.pending_markup.take() {
+                        Some((kind, rgb)) if !selection.rects.is_empty() => {
+                            self.worker.send(Request::Edit(EditOp::Markup {
+                                page,
+                                kind,
+                                rects: selection.rects,
+                                rgb,
+                            }));
+                            self.annotate.selection = None;
+                        }
+                        Some(_) => self.annotate.selection = None,
+                        None => self.annotate.selection = Some((page, selection)),
                     }
-                    Some(_) => self.annotate.selection = None,
-                    None => self.annotate.selection = Some((page, selection)),
-                },
+                }
                 Response::Annotations { page, list } => {
                     if self.annotate.annotations_page == Some(page) {
                         self.annotate.annotations = list;
@@ -545,9 +648,11 @@ impl SuniApp {
                     self.edit.pending_status = None;
                     self.edit.reselect = None;
                     self.edit.reselect_many = None;
+                    // Copie échouée : le « couper » qui l'attendait ne supprime rien.
+                    self.edit.pending_copy = None;
                     if matches!(
                         e,
-                        EngineError::MissingGlyphs | EngineError::FontNotEmbeddable
+                        EngineError::MissingGlyphs(_) | EngineError::FontNotEmbeddable
                     ) {
                         // Le texte saisi n'est pas perdu : l'éditeur rouvre pour changer de police.
                         if let Some(mut p) = self.edit.last_prompt.take() {
@@ -627,33 +732,17 @@ impl SuniApp {
                 self.error = Some("error.not_pdf_dropped");
             }
         }
-        if self.password_prompt.is_some()
-            || self.show_about
-            || self.unsaved_prompt.is_some()
-            || self.tools.split_open
-            || self.tools.stamp_open.is_some()
-            || self.docinfo.unprotect_open
-            || self.docinfo.properties_open
-            || self.docinfo.protect_open
-            || self.pagesetup.dialog.is_some()
-        {
+        if self.dialog_open() {
             // Les boîtes de dialogue lisent elles-mêmes Entrée et Échap.
             return;
         }
-        if self.annotate.note_prompt.is_some()
-            || self.edit.text_prompt.is_some()
-            || ctx.memory(|m| m.focused().is_some())
-        {
+        if ctx.memory(|m| m.focused().is_some()) {
             // Un champ de saisie a le clavier : seuls les raccourcis avec Ctrl restent actifs.
+            // La combinaison avec Maj est lue d'abord (`consume_key` ignore un Maj en trop).
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
-                for (k, c) in [
-                    (Key::O, Command::OpenDocument),
-                    (Key::S, Command::Save),
-                    (Key::K, Command::CommandPalette),
-                    (Key::F, Command::Find),
-                ] {
-                    if i.consume_key(Modifiers::COMMAND, k) {
+                for &(m, k, c) in FIELD_SHORTCUTS {
+                    if i.consume_key(m, k) {
                         cmds.push(c);
                     }
                 }
@@ -778,91 +867,21 @@ impl SuniApp {
             }
         }
         ctx.input_mut(|i| {
-            let mut key = |m: Modifiers, k: Key, c: Command| {
+            for &(m, k, c) in SHORTCUTS {
                 if i.consume_key(m, k) {
                     commands.push(c);
                 }
-            };
-            key(Modifiers::COMMAND, Key::O, Command::OpenDocument);
-            key(Modifiers::COMMAND, Key::W, Command::CloseDocument);
-            key(Modifiers::COMMAND, Key::Plus, Command::ZoomIn);
-            key(Modifiers::COMMAND, Key::Equals, Command::ZoomIn);
-            key(Modifiers::COMMAND, Key::Minus, Command::ZoomOut);
-            key(Modifiers::COMMAND, Key::Num0, Command::ActualSize);
-            key(Modifiers::NONE, Key::PageDown, Command::NextPage);
-            key(Modifiers::NONE, Key::ArrowRight, Command::NextPage);
-            key(Modifiers::NONE, Key::PageUp, Command::PreviousPage);
-            key(Modifiers::NONE, Key::ArrowLeft, Command::PreviousPage);
-            key(Modifiers::NONE, Key::Home, Command::FirstPage);
-            key(Modifiers::NONE, Key::End, Command::LastPage);
-            key(Modifiers::NONE, Key::F4, Command::ToggleThumbnails);
-            key(Modifiers::COMMAND, Key::F, Command::Find);
-            key(
-                Modifiers::COMMAND | Modifiers::SHIFT,
-                Key::S,
-                Command::SaveAs,
-            );
-            key(Modifiers::COMMAND, Key::S, Command::Save);
-            key(
-                Modifiers::COMMAND | Modifiers::SHIFT,
-                Key::R,
-                Command::RotateCounterClockwise,
-            );
-            key(Modifiers::COMMAND, Key::R, Command::RotateClockwise);
-            key(Modifiers::COMMAND, Key::Delete, Command::DeletePage);
-            key(Modifiers::NONE, Key::F9, Command::ToggleTools);
-            key(Modifiers::NONE, Key::F8, Command::OrganizePages);
-            key(Modifiers::NONE, Key::F7, Command::ToggleComments);
-            key(Modifiers::NONE, Key::F6, Command::ToggleBookmarks);
-            key(Modifiers::COMMAND, Key::D, Command::Properties);
-            if object_tool {
-                key(Modifiers::COMMAND, Key::A, Command::SelectAllObjects);
             }
-            key(Modifiers::NONE, Key::F3, Command::ToggleObjects);
-            key(
-                Modifiers::NONE,
-                Key::F5,
-                if continuous {
+            if object_tool && i.consume_key(Modifiers::COMMAND, Key::A) {
+                commands.push(Command::SelectAllObjects);
+            }
+            if i.consume_key(Modifiers::NONE, Key::F5) {
+                commands.push(if continuous {
                     Command::ViewSinglePage
                 } else {
                     Command::ViewContinuous
-                },
-            );
-            key(Modifiers::NONE, Key::V, Command::ToolSelect);
-            key(Modifiers::NONE, Key::H, Command::ToolHighlight);
-            key(Modifiers::NONE, Key::U, Command::ToolUnderline);
-            key(Modifiers::NONE, Key::X, Command::ToolStrikeOut);
-            key(Modifiers::NONE, Key::N, Command::ToolNote);
-            key(Modifiers::NONE, Key::E, Command::ToolSelectObject);
-            key(Modifiers::NONE, Key::T, Command::ToolAddText);
-            key(Modifiers::NONE, Key::I, Command::ToolAddImage);
-            key(Modifiers::NONE, Key::R, Command::ToolRectangle);
-            key(Modifiers::NONE, Key::O, Command::ToolEllipse);
-            key(Modifiers::NONE, Key::L, Command::ToolLine);
-            key(Modifiers::NONE, Key::Delete, Command::DeleteObject);
-            key(Modifiers::NONE, Key::F2, Command::EditObjectText);
-            key(
-                Modifiers::COMMAND | Modifiers::SHIFT,
-                Key::D,
-                Command::DuplicateObject,
-            );
-            key(Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront);
-            key(Modifiers::COMMAND, Key::OpenBracket, Command::SendToBack);
-            key(Modifiers::COMMAND, Key::Z, Command::Undo);
-            key(Modifiers::COMMAND, Key::Y, Command::Redo);
-            key(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z, Command::Redo);
-            key(
-                Modifiers::COMMAND | Modifiers::SHIFT,
-                Key::I,
-                Command::InsertPages,
-            );
-            key(Modifiers::COMMAND, Key::K, Command::CommandPalette);
-            key(
-                Modifiers::COMMAND | Modifiers::SHIFT,
-                Key::Tab,
-                Command::PrevTab,
-            );
-            key(Modifiers::COMMAND, Key::Tab, Command::NextTab);
+                });
+            }
         });
         for command in commands {
             // Raccourci sans document : ignoré (seuls les clics d'outils ouvrent d'abord un fichier).
@@ -873,7 +892,22 @@ impl SuniApp {
         }
     }
 
-    /// Point d'entrée unique de toutes les commandes (menus, clavier, future palette / automatisation).
+    /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
+    /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
+    pub fn dialog_open(&self) -> bool {
+        self.password_prompt.is_some()
+            || self.show_about
+            || self.unsaved_prompt.is_some()
+            || self.tools.split_open
+            || self.tools.stamp_open.is_some()
+            || self.docinfo.unprotect_open
+            || self.docinfo.properties_open
+            || self.docinfo.protect_open
+            || self.pagesetup.dialog.is_some()
+            || self.annotate.note_prompt.is_some()
+            || self.edit.text_prompt.is_some()
+    }
+
     /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
     fn open_next_pending(&mut self) {
         if !self.pending_files.is_empty() {
@@ -955,6 +989,9 @@ impl SuniApp {
                     self.error = Some("error.last_page");
                 } else {
                     self.worker.send(Request::Edit(EditOp::Delete { pages }));
+                    // Les index de la grille désigneraient d'autres pages après la suppression.
+                    self.organize.selected.clear();
+                    self.organize.anchor = None;
                 }
             }
             Command::Undo => {
@@ -1185,7 +1222,8 @@ impl SuniApp {
             .inner_margin(8.0)
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.colored_label(theme::ERROR, format!("⚠ {}", tr(lang, key)));
+                    let error = theme::palette(ui.visuals().dark_mode).error;
+                    ui.colored_label(error, format!("⚠ {}", tr(lang, key)));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.button(tr(lang, "error.dismiss")).clicked() {
                             self.error = None;
@@ -1200,7 +1238,8 @@ impl SuniApp {
         if self.document.is_none() {
             if matches!(self.engine, EngineState::Failed) {
                 ui.centered_and_justified(|ui| {
-                    ui.colored_label(theme::ERROR, tr(lang, "error.engine_missing"))
+                    let error = theme::palette(ui.visuals().dark_mode).error;
+                    ui.colored_label(error, tr(lang, "error.engine_missing"))
                 });
                 return;
             }
@@ -1301,7 +1340,9 @@ impl SuniApp {
                             if from < to {
                                 to -= 1;
                             }
-                            moved = Some((from, to));
+                            if from != to {
+                                moved = Some((from, to));
+                            }
                         }
                     }
                     let stroke = if page == current {
@@ -1394,7 +1435,8 @@ impl SuniApp {
                         ],
                     ));
                 } else {
-                    ui.colored_label(theme::ERROR, tr(lang, "find.none"));
+                    let error = theme::palette(ui.visuals().dark_mode).error;
+                    ui.colored_label(error, tr(lang, "find.none"));
                 }
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1413,7 +1455,8 @@ impl SuniApp {
             self.close_find();
             return;
         }
-        if ui.input(|i| i.key_pressed(Key::Escape)) {
+        // Échap d'une boîte de dialogue ou de la palette (dessinées après) ne ferme pas la recherche.
+        if !self.dialog_open() && !self.palette.open && ui.input(|i| i.key_pressed(Key::Escape)) {
             self.close_find();
             return;
         }
@@ -1628,7 +1671,8 @@ impl SuniApp {
                     enter = true;
                 }
                 if wrong {
-                    ui.colored_label(theme::ERROR, tr(lang, "error.password_wrong"));
+                    let error = theme::palette(ui.visuals().dark_mode).error;
+                    ui.colored_label(error, tr(lang, "error.password_wrong"));
                 } else {
                     ui.label(
                         egui::RichText::new(tr(lang, "dialog.password.subtitle"))
@@ -1977,8 +2021,9 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::PageOutOfRange(_) => "error.page_range",
         EngineError::RenderTooLarge => "error.render_too_large",
         EngineError::AlreadyExists(_) => "error.already_exists",
-        EngineError::MissingGlyphs => "error.missing_glyphs",
+        EngineError::MissingGlyphs(_) => "error.missing_glyphs",
         EngineError::FontNotEmbeddable => "error.font_not_embeddable",
+        EngineError::PasswordNotLatin1 => "error.password_not_latin1",
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -1999,8 +2044,9 @@ mod tests {
             EngineError::PageOutOfRange(0),
             EngineError::RenderTooLarge,
             EngineError::AlreadyExists(PathBuf::new()),
-            EngineError::MissingGlyphs,
+            EngineError::MissingGlyphs(String::new()),
             EngineError::FontNotEmbeddable,
+            EngineError::PasswordNotLatin1,
             EngineError::Other(String::new()),
         ];
         for e in errors {
@@ -2050,6 +2096,59 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// `consume_key(COMMAND, k)` accepte aussi Ctrl+Maj+k : la variante avec Maj doit être lue en
+    /// premier, sinon Ctrl+Maj+S enregistre sur l'original, Ctrl+Maj+D ouvre Propriétés et
+    /// Ctrl+Maj+Z annule au lieu de rétablir (constats des revues).
+    #[test]
+    fn shift_shortcuts_precede_their_plain_variant() {
+        for (name, table) in [("field", FIELD_SHORTCUTS), ("global", SHORTCUTS)] {
+            for (i, (m, k, c)) in table.iter().enumerate() {
+                if !m.shift {
+                    continue;
+                }
+                let plain = Modifiers { shift: false, ..*m };
+                let before = table[..i]
+                    .iter()
+                    .find(|(m2, k2, _)| k2 == k && *m2 == plain);
+                assert!(
+                    before.is_none(),
+                    "{name} : {:?} lu avant {m:?}+{k:?} ({c:?})",
+                    before.unwrap()
+                );
+            }
+        }
+        let pos = |c: Command| SHORTCUTS.iter().position(|(_, _, x)| *x == c).unwrap();
+        assert!(pos(Command::SaveAs) < pos(Command::Save));
+        assert!(pos(Command::DuplicateObject) < pos(Command::Properties));
+        assert!(pos(Command::Redo) < pos(Command::Undo));
+        assert!(pos(Command::RotateCounterClockwise) < pos(Command::RotateClockwise));
+        assert_eq!(FIELD_SHORTCUTS[0].2, Command::SaveAs);
+        // Le scénario réel : Ctrl+Maj+S avec un champ focalisé donne « Enregistrer sous ».
+        let ctx = egui::Context::default();
+        let input = egui::RawInput {
+            events: vec![egui::Event::Key {
+                key: Key::S,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Modifiers::COMMAND | Modifiers::SHIFT,
+            }],
+            ..Default::default()
+        };
+        let mut seen = Vec::new();
+        let mut out = ctx.run_ui(input, |ui| {
+            ui.ctx().input_mut(|i| {
+                for &(m, k, c) in FIELD_SHORTCUTS {
+                    if i.consume_key(m, k) {
+                        seen.push(c);
+                    }
+                }
+            });
+        });
+        out.textures_delta.clear();
+        assert_eq!(seen, vec![Command::SaveAs]);
     }
 
     #[test]

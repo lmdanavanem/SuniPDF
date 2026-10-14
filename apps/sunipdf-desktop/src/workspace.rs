@@ -543,9 +543,16 @@ impl SuniApp {
             Command::RotateClockwise
             | Command::RotateCounterClockwise
             | Command::DeletePage
-            | Command::MovePageLeft
-            | Command::MovePageRight
             | Command::ExtractPages => !self.organize.active || grid_selection,
+            // Une seule page à la fois, et pas déjà en bout de document.
+            Command::MovePageLeft | Command::MovePageRight => {
+                let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
+                match self.target_pages()[..] {
+                    [page] if c == Command::MovePageLeft => page > 0,
+                    [page] => page + 1 < count,
+                    _ => false,
+                }
+            }
             _ => true,
         }
     }

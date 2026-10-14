@@ -33,6 +33,8 @@ pub struct Palette {
     pub accent_soft: Color32,
     /// Anneau de focus clavier.
     pub focus: Color32,
+    /// Texte d'erreur lisible sur les surfaces du thème (≥ 4,5:1 ; `ERROR` sert aux fonds).
+    pub error: Color32,
 }
 
 /// Rayons des coins (contrôles, lignes, cartes).
@@ -55,6 +57,7 @@ pub fn palette(dark: bool) -> Palette {
             accent_fill: BLUE,
             accent_soft: Color32::from_rgb(0x2C, 0x3C, 0x59),
             focus: Color32::from_rgb(0x60, 0xA5, 0xFA),
+            error: Color32::from_rgb(0xF8, 0x71, 0x71),
         }
     } else {
         Palette {
@@ -69,6 +72,7 @@ pub fn palette(dark: bool) -> Palette {
             accent_fill: BLUE,
             accent_soft: Color32::from_rgb(0xE9, 0xEF, 0xFD),
             focus: BLUE,
+            error: ERROR,
         }
     }
 }
