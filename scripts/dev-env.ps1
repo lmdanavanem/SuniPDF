@@ -1,4 +1,4 @@
-# Prépare la session PowerShell pour compiler SuniPDF sur ce poste.
+﻿# Prépare la session PowerShell pour compiler SuniPDF sur ce poste.
 # À « sourcer » :  . .\scripts\dev-env.ps1
 #
 # Cible de référence : x86_64-pc-windows-msvc (Visual Studio Build Tools + Windows SDK).

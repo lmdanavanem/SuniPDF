@@ -1,4 +1,4 @@
-# Vérifie, teste puis lance SuniPDF.
+﻿# Vérifie, teste puis lance SuniPDF.
 param([string]$Pdf)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
@@ -9,8 +9,8 @@ if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
 }
 & (Join-Path $PSScriptRoot "fetch-pdfium.ps1")
 & (Join-Path $PSScriptRoot "check-i18n.ps1")
-Write-Host "cargo test --workspace"
-cargo test --workspace
+Write-Host "cargo test --workspace -j 2"
+cargo test --workspace -j 2
 if ($LASTEXITCODE -ne 0) { throw "cargo test failed" }
 Write-Host "cargo run -p sunipdf-desktop"
-if ($Pdf) { cargo run -p sunipdf-desktop -- $Pdf } else { cargo run -p sunipdf-desktop }
+if ($Pdf) { cargo run -j 2 -p sunipdf-desktop -- $Pdf } else { cargo run -j 2 -p sunipdf-desktop }

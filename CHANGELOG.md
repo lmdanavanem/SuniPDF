@@ -35,6 +35,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   multiples de 90 ; couleur non ASCII refusée au lieu d'un plantage ; angles négatifs acceptés ; pages
   en double traitées une fois ; erreurs lopdf typées (format invalide, E/S) ; numéros de page des
   messages en base 1 ; `optimize` ne produit jamais un fichier plus gros que l'entrée.
+- **Distribution** : les exécutables ne dépendent plus de `VCRUNTIME140.dll` (CRT statique,
+  `.cargo/config.toml`) et démarrent sur un Windows neuf ; le MSI installe les licences et notices tierces
+  (17 fichiers) et un LISEZMOI propre à l'installation, et accepte la réinstallation à version égale ;
+  `release.yml` exécute les tests avant l'empaquetage, a le droit de publier la Release, recalcule
+  l'empreinte du MSI après signature et annonce l'ARM64 comme non testé ; l'artefact de `ci.yml` est le
+  paquet officiel ; `fetch-pdfium.ps1` vérifie l'empreinte épinglée et le numéro de build ; scripts
+  PowerShell en UTF-8 avec BOM (LISEZMOI lisible sous Windows PowerShell 5.1) ; `start.ps1` en `-j 2` ;
+  `pdfium.dll` n'est plus cherché dans le répertoire courant en version publiée.
 
 ## [0.3.0] — 2026-10-14
 

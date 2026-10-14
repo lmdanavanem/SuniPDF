@@ -1,4 +1,4 @@
-# Construit l'installateur MSI avec WiX Toolset v3 (candle.exe / light.exe).
+﻿# Construit l'installateur MSI avec WiX Toolset v3 (candle.exe / light.exe).
 # Prérequis : dossier portable préparé par package-portable.ps1 (dist\SuniPDF-<version>-win-<arch>-portable).
 # WiX 3.14 est préinstallé sur les runners GitHub windows-latest ; localement : winget install WiXToolset.WiXToolset.
 param(
@@ -29,10 +29,38 @@ if (-not $wixBin) {
 $obj = Join-Path $root "target\wix"
 New-Item -ItemType Directory -Force $obj | Out-Null
 $msi = Join-Path $root "dist\SuniPDF-$version-win-$Arch.msi"
-& (Join-Path $wixBin "candle.exe") -nologo -arch $Arch "-dVersion=$version" "-dArch=$Arch" "-dSourceDir=$stage" "-dIconPath=$root\assets\icon\sunipdf.ico" `
-    -out "$obj\SuniPDF.wixobj" "$root\packaging\wix\SuniPDF.wxs"
+
+# Licences et notices tierces : un composant par fichier du dossier licenses du paquet.
+$licenses = Get-ChildItem -File (Join-Path $stage "licenses") | Sort-Object Name
+if (-not $licenses) { throw "Aucune licence dans $stage\licenses" }
+$components = for ($i = 0; $i -lt $licenses.Count; $i++) {
+    $src = [System.Security.SecurityElement]::Escape($licenses[$i].FullName)
+    "      <Component Id=`"License$i`" Guid=`"*`" Win64=`"yes`"><File Id=`"License$i`" Source=`"$src`" KeyPath=`"yes`" /></Component>"
+}
+$fragment = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <ComponentGroup Id="LicenseFiles" Directory="LicensesFolder">
+$($components -join "`n")
+    </ComponentGroup>
+  </Fragment>
+</Wix>
+"@
+[System.IO.File]::WriteAllText("$obj\Licenses.wxs", $fragment, (New-Object System.Text.UTF8Encoding $false))
+
+# LISEZMOI propre à l'installation (celui du paquet portable parle de « portable »).
+$readme = "$obj\LISEZMOI.txt"
+$readmeText = "SuniPDF $version (Windows $Arch)`r`n" +
+    "Installé dans ce dossier. Aucune télémétrie ; les préférences sont dans %APPDATA%\SuniPDF.`r`n" +
+    "Ligne de commande : sunipdf-cli.exe --help`r`n" +
+    "Licences et notices tierces : dossier licenses\`r`n"
+[System.IO.File]::WriteAllText($readme, $readmeText, (New-Object System.Text.UTF8Encoding $true))
+
+& (Join-Path $wixBin "candle.exe") -nologo -arch $Arch "-dVersion=$version" "-dArch=$Arch" "-dSourceDir=$stage" "-dReadmePath=$readme" "-dIconPath=$root\assets\icon\sunipdf.ico" `
+    -out "$obj\" "$root\packaging\wix\SuniPDF.wxs" "$obj\Licenses.wxs"
 if ($LASTEXITCODE -ne 0) { throw "candle failed" }
-& (Join-Path $wixBin "light.exe") -nologo -sval -out $msi "$obj\SuniPDF.wixobj"
+& (Join-Path $wixBin "light.exe") -nologo -sval -out $msi "$obj\SuniPDF.wixobj" "$obj\Licenses.wixobj"
 if ($LASTEXITCODE -ne 0) { throw "light failed" }
 $hash = (Get-FileHash $msi -Algorithm SHA256).Hash
 Set-Content -Path "$msi.sha256" -Value "$hash  $(Split-Path -Leaf $msi)" -Encoding ascii

@@ -1,4 +1,4 @@
-# Construit la version portable : dist\SuniPDF-<version>-win-<arch>-portable.zip + SHA256.
+﻿# Construit la version portable : dist\SuniPDF-<version>-win-<arch>-portable.zip + SHA256.
 # Usage : .\scripts\package-portable.ps1 [-Arch x64|arm64] [-SkipBuild]
 param(
     [ValidateSet("x64", "arm64")] [string]$Arch = "x64",
@@ -26,7 +26,7 @@ Copy-Item "third_party\pdfium\win-$Arch\bin\pdfium.dll" $stage
 Copy-Item "third_party\pdfium\win-$Arch\LICENSE" "$stage\licenses\pdfium-binaries-MIT.txt"
 Copy-Item "third_party\pdfium\win-$Arch\licenses\*" "$stage\licenses\"
 Copy-Item "docs\THIRD_PARTY_NOTICES.md" "$stage\licenses\"
-Copy-Item "docs\USER_GUIDE.fr.md", "docs\USER_GUIDE.en.md", "README.md" $stage -ErrorAction SilentlyContinue
+Copy-Item "docs\USER_GUIDE.fr.md", "docs\USER_GUIDE.en.md", "CHANGELOG.md" $stage
 Set-Content -Path "$stage\LISEZMOI.txt" -Encoding utf8 -Value @"
 SuniPDF $version (portable, Windows $Arch)
 Lancer sunipdf.exe. Aucune installation, aucune télémétrie. Les préférences sont dans %APPDATA%\SuniPDF.

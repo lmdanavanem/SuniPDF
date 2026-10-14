@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
   Installateur MSI SuniPDF (WiX Toolset v3). Construit par scripts/package-msi.ps1 (candle + light).
   Variables : Version, SourceDir (dossier portable préparé), Arch (x64|arm64).
@@ -18,7 +18,8 @@
            UpgradeCode="7C3C3E0E-5B6A-4C2B-9F1E-2A0F1D4B9C11">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="$(var.Platform)"
              Description="SuniPDF — lecteur et éditeur PDF pour Windows" Languages="1036" SummaryCodepage="1252" />
-    <MajorUpgrade DowngradeErrorMessage="Une version plus récente de SuniPDF est déjà installée." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="Une version plus récente de SuniPDF est déjà installée." />
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="SuniPDF.ico" SourceFile="$(var.IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="SuniPDF.ico" />
@@ -26,6 +27,7 @@
 
     <Feature Id="Main" Title="SuniPDF" Level="1" Absent="disallow">
       <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="LicenseFiles" />
       <ComponentRef Id="StartMenuShortcut" />
     </Feature>
     <Feature Id="OpenWith" Title="Ouvrir avec SuniPDF (fichiers .pdf)" Level="1">
@@ -54,7 +56,7 @@
         <File Id="PdfiumDll" Source="$(var.SourceDir)\pdfium.dll" KeyPath="yes" />
       </Component>
       <Component Id="ReadMe" Guid="*" Win64="yes">
-        <File Id="LisezMoi" Source="$(var.SourceDir)\LISEZMOI.txt" KeyPath="yes" />
+        <File Id="LisezMoi" Name="LISEZMOI.txt" Source="$(var.ReadmePath)" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 

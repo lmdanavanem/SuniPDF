@@ -1,0 +1,7 @@
+# CRT Visual C++ liée statiquement : les exécutables livrés ne dépendent pas de VCRUNTIME140.dll,
+# absent d'un Windows neuf (pdfium.dll est déjà en CRT statique).
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.aarch64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

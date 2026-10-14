@@ -24,15 +24,11 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --workspace
-      - name: Build release x64
-        run: cargo build --release --workspace
-      - name: Artefacts portables
-        run: |
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item target\release\sunipdf.exe, target\release\sunipdf-cli.exe, third_party\pdfium\win-x64\bin\pdfium.dll dist\
-          Copy-Item third_party\pdfium\win-x64\LICENSE dist\LICENSE-pdfium-binaries.txt
-          Copy-Item third_party\pdfium\win-x64\licenses\pdfium.txt dist\LICENSE-pdfium.txt
+      - name: Paquet portable x64 (même contenu que la release : licences et notices comprises)
+        run: .\scripts\package-portable.ps1 -Arch x64
       - uses: actions/upload-artifact@v4
         with:
           name: sunipdf-win-x64-portable
-          path: dist
+          path: |
+            dist/*.zip
+            dist/*.sha256

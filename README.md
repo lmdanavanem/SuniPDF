@@ -3,11 +3,14 @@
 Lecteur et éditeur PDF professionnel pour Windows 10/11, natif (Rust), hors ligne, sans télémétrie,
 entièrement bilingue français / anglais. Moteur de rendu : PDFium.
 
-État : **version 0.2.0** — lecture (onglets, miniatures, recherche, signets), annotations, organisation des
-pages, fusion / division / extraction, conversions images, optimisation, protection AES, édition du contenu
-(texte, images, formes, objets existants : déplacer, redimensionner, recolorer), CLI JSON. Détail fait vs
-planifié : `docs/PROJECT_STATUS.md`, `docs/FEATURE_MATRIX.md`, `docs/ROADMAP.md`, `CHANGELOG.md`.
-Téléchargements : page **Releases** GitHub (ZIP portable x64/ARM64, MSI x64, produits par `release.yml`).
+État : lecture (onglets, miniatures, recherche, signets), annotations, organisation des pages, fusion /
+division / extraction, conversions images, optimisation, protection AES, édition du contenu (texte, images,
+formes, objets existants : déplacer, redimensionner, recolorer), tampons et numéros de page, CLI JSON.
+Version et nouveautés : `CHANGELOG.md` ; fait vs planifié : `docs/PROJECT_STATUS.md`, `docs/FEATURE_MATRIX.md`,
+`docs/ROADMAP.md` ; plans des prochaines tranches : `docs/plans/`.
+Téléchargements : page **Releases** GitHub, produite par `release.yml` à chaque tag `v*` : ZIP portable et MSI x64
+(testés en CI), ZIP ARM64 (compilé en CI, jamais exécuté sur du matériel ARM64). Les exécutables embarquent la
+bibliothèque C (aucun redistribuable Visual C++ à installer).
 
 ## Prérequis
 
@@ -21,7 +24,8 @@ Téléchargements : page **Releases** GitHub (ZIP portable x64/ARM64, MSI x64, p
 ## Installation (utilisateurs)
 
 - Portable : `scripts\package-portable.ps1` produit `dist\SuniPDF-<version>-win-x64-portable.zip` (+ SHA256). Décompresser et lancer `sunipdf.exe`.
-- MSI : `scripts\package-msi.ps1` (WiX v3 requis) ou artefact de `release.yml`.
+- MSI : `scripts\package-msi.ps1` (WiX 3.14 autonome téléchargé dans `third_party\wix314` si absent) ou
+  artefact de `release.yml`. Licences et notices tierces installées dans `licenses\`.
 - Guides : `docs/USER_GUIDE.fr.md`, `docs/USER_GUIDE.en.md`.
 
 ## Démarrage (développeurs)
