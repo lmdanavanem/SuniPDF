@@ -3,6 +3,14 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [Non publié]
+
+### Ajouté
+- **Tampon / filigrane** et **numérotation des pages** (catégories Pages et Éditer) : texte apposé sur
+  toutes les pages ou la page courante, taille, couleur, gras, angle, opacité, 7 positions,
+  variables `{n}` et `{total}` ; chaque tampon reste un objet modifiable et annulable.
+  Moteur `sunipdf-core::stamp`, CLI `stamp` et `page-numbers`, 1 test moteur.
+
 ## [0.3.0] — 2026-10-14
 
 ### Ajouté

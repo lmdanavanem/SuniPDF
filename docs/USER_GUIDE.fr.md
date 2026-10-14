@@ -67,6 +67,14 @@ verrouiller).
 Limites : pas de rotation à angle libre ; polices limitées aux 14 polices standard ; le texte modifié
 conserve sa police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
+## Tampons, filigranes et numéros de page
+
+**Tampon / filigrane…** (catégories Pages et Éditer) appose un texte sur toutes les pages ou sur la page
+courante : taille, couleur, gras, angle, opacité et position (centre ou l'un des six bords). **Numéroter les
+pages…** ajoute un numéro selon un modèle : `{n}` est le numéro de la page, `{total}` le nombre de pages
+(par exemple `Page {n} / {total}`). Chaque tampon est un objet de la page : il se sélectionne, se déplace, se
+supprime et s'annule comme les autres.
+
 ## Organiser les pages
 
 - **Organiser les pages** (F8) : grille des pages avec sélection multiple (clic, Ctrl+clic, Maj+clic),

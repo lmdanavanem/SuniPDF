@@ -64,6 +64,13 @@ them); other objects resize freely (Shift to lock).
 Limits: no free-angle rotation; fonts limited to the 14 standard fonts; edited text keeps its original
 font, which may not contain every character you type.
 
+## Stamps, watermarks and page numbers
+
+**Stamp / Watermark…** (Pages and Edit categories) places a text on every page or on the current page:
+size, colour, bold, angle, opacity and position (centre or one of six edges). **Number Pages…** adds a
+number from a template: `{n}` is the page number, `{total}` the page count (for example
+`Page {n} / {total}`). Each stamp is a page object: select, move, delete and undo it like any other.
+
 ## Organizing pages
 
 - **Organize pages** (F8): page grid with multi-selection (click, Ctrl+click, Shift+click), rotate, delete,

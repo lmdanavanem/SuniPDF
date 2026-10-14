@@ -65,7 +65,7 @@ pub mod glyph {
     pub const WARNING: &str = "\u{E7BA}";
     pub const SHIELD: &str = "\u{EA18}";
     pub const APP: &str = "\u{E8A5}";
-    pub const STAMP: &str = "\u{E8D5}";
+    pub const STAMP: &str = "\u{E8EC}";
     pub const NUMBERS: &str = "\u{E8EF}";
 }
 
