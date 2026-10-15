@@ -936,8 +936,9 @@ impl SuniApp {
         if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
             self.forms_activate(s.page, field, widget);
         }
-        self.forms_editor(ctx, s.rect, s.page, h);
-        self.forms_popup(ctx, s.rect, s.page, h);
+        let view = ui.clip_rect();
+        self.forms_editor(ctx, view, s.rect, s.page, h);
+        self.forms_popup(ctx, view, s.rect, s.page, h);
         event.map(|e| (s.page, e))
     }
 

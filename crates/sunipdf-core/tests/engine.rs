@@ -3883,6 +3883,129 @@ fn flatten_keeps_content_and_removes_widgets() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Liens `/Link` de la page 1 relus par lopdf : (URI, page de destination d'un GoTo), triés.
+fn links_in(bytes: &[u8]) -> Vec<(Option<String>, Option<u32>)> {
+    let d = lopdf::Document::load_mem(bytes).unwrap();
+    let pages = d.get_pages();
+    let page = d.get_dictionary(pages[&1]).unwrap();
+    let annots = d
+        .get_object(
+            page.get(b"Annots")
+                .unwrap()
+                .as_reference()
+                .unwrap_or((0, 0)),
+        )
+        .ok()
+        .or_else(|| page.get(b"Annots").ok())
+        .and_then(|a| a.as_array().ok())
+        .cloned()
+        .unwrap_or_default();
+    let mut out = Vec::new();
+    for a in annots {
+        let (_, a) = d.dereference(&a).unwrap();
+        let a = a.as_dict().unwrap();
+        if a.get(b"Subtype").unwrap().as_name().unwrap() != b"Link" {
+            continue;
+        }
+        let (_, action) = d.dereference(a.get(b"A").unwrap()).unwrap();
+        let action = action.as_dict().unwrap();
+        let uri = action
+            .get(b"URI")
+            .ok()
+            .map(|u| String::from_utf8_lossy(u.as_str().unwrap()).into_owned());
+        let dest = action
+            .get(b"D")
+            .ok()
+            .and_then(|dst| dst.as_array().ok())
+            .and_then(|dst| dst.first()?.as_reference().ok())
+            .and_then(|id| pages.iter().find(|(_, pid)| **pid == id).map(|(n, _)| *n));
+        out.push((uri, dest));
+    }
+    out.sort();
+    out
+}
+
+#[test]
+fn flatten_keeps_link_annotations() {
+    let engine = engine();
+    let dir = temp_dir("forms-flatten-links");
+    let expected = vec![
+        (None, Some(2)),
+        (Some("https://example.org/suni".to_string()), None),
+    ];
+    let mut doc = engine.open(&fixture("acroform-links.pdf"), None).unwrap();
+    assert_eq!(doc.page_count(), 2);
+    assert_eq!(links_in(&doc.snapshot().unwrap()), expected);
+    assert_eq!(doc.form_info().unwrap().fields.len(), 14);
+    doc.fill_form(&[("nom".to_string(), text("Jean"))], FillMode::Strict)
+        .unwrap();
+    // 17 widgets aplatis ; les deux liens ne comptent pas.
+    assert_eq!(doc.flatten(None).unwrap(), 17);
+    assert_eq!(doc.form_kind(), FormKind::None);
+    let after = doc.annotations(0).unwrap();
+    assert_eq!(after.len(), 2, "{after:?}");
+    assert!(after.iter().all(|a| a.kind == "link"));
+    assert_eq!(after[0].rect, rect(40.0, 740.0, 200.0, 760.0));
+    assert_eq!(after[1].rect, rect(300.0, 740.0, 500.0, 760.0));
+    assert_eq!(
+        links_in(&doc.snapshot().unwrap()),
+        expected,
+        "cibles intactes"
+    );
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(dark_in(&img, NOM) > 300, "valeur aplatie dessinée");
+    let out = dir.join("links-flat.pdf");
+    doc.save_as(&out).unwrap();
+    let mut reopened = engine.open(&out, None).unwrap();
+    assert_eq!(reopened.form_kind(), FormKind::None);
+    assert_eq!(links_in(&std::fs::read(&out).unwrap()), expected);
+    assert_eq!(reopened.annotations(0).unwrap().len(), 2);
+    // Page où il ne reste que des liens : PDFium n'a rien à faire et garde /Annots ; les liens
+    // ne sont pas dupliqués.
+    assert_eq!(reopened.flatten(None).unwrap(), 0, "plus rien à aplatir");
+    assert_eq!(reopened.annotations(0).unwrap().len(), 2);
+    assert_eq!(links_in(&reopened.snapshot().unwrap()), expected);
+    // Aplatissement partiel (page 1 seulement, formulaire conservé) : mêmes liens ; pages en
+    // double dans la liste = une seule fois.
+    let mut partial = engine.open(&fixture("acroform-links.pdf"), None).unwrap();
+    assert_eq!(partial.flatten(Some(&[0, 0])).unwrap(), 17);
+    assert_eq!(partial.form_kind(), FormKind::AcroForm);
+    assert_eq!(links_in(&partial.snapshot().unwrap()), expected);
+    assert_eq!(partial.annotations(0).unwrap().len(), 2);
+    // Page sans lien ni champ : rien à faire, rien ne change.
+    assert_eq!(partial.flatten(Some(&[1])).unwrap(), 0);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn form_password_field_is_listed_but_never_filled_nor_exported() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("acroform-links.pdf"), None).unwrap();
+    let info = doc.form_info().unwrap();
+    let secret = info.field("secret").unwrap();
+    assert!(secret.password && !secret.fillable() && secret.cleared().is_none());
+    assert!(form_data::values_to_json(&info).get("secret").is_none());
+    let err = doc
+        .fill_form(&[("secret".to_string(), text("x"))], FillMode::Strict)
+        .unwrap_err();
+    assert_eq!(err.code(), "form_value_invalid");
+    // Export → import strict : rien d'ignoré, la lecture seule n'est pas réécrite.
+    let plan = form_data::plan_from_json(&info, &form_data::values_to_json(&info)).unwrap();
+    assert!(plan.skipped_unknown.is_empty() && plan.skipped_invalid.is_empty());
+    assert!(plan.values.iter().all(|(n, _)| n != "ref" && n != "secret"));
+    let report = doc.fill_form(&plan.values, FillMode::Strict).unwrap();
+    assert_eq!(report.applied.len(), plan.values.len());
+    // La valeur courante d'un champ en lecture seule est acceptée sans être écrite.
+    let report = doc
+        .fill_form(&[("ref".to_string(), text("REF-42"))], FillMode::Strict)
+        .unwrap();
+    assert!(report.applied.is_empty() && report.skipped_invalid.is_empty());
+    assert_eq!(
+        doc.form_info().unwrap().field("ref").unwrap().value,
+        text("REF-42")
+    );
+}
+
 #[test]
 fn form_xfa_is_reported_and_blocks_write() {
     let engine = engine();

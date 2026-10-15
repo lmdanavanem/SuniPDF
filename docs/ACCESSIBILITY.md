@@ -19,7 +19,7 @@ FAITE** (aucune session de test avec un lecteur d'écran n'a été exécutée su
 | Rectangle de champ sur la page (outil Remplir) | `a11y.forms.widget` (« Champ {name}, type {kind} ») ou `a11y.forms.widget_value` | Clic seulement ; pas d'activation par Espace / Entrée (feuille de route) |
 | Éditeur posé sur un champ texte | `a11y.forms.editor` (« Saisie du champ {name} ») | Entrée valide (Ctrl+Entrée en multiligne), Échap annule, Tab / Maj+Tab valident et passent au champ texte ou liste suivant / précédent (contenu sélectionné) |
 | Liste de choix flottante | `a11y.forms.option` (« {name} : {option} ») par entrée | Clic, Échap ferme |
-| Panneau « Champs du formulaire » (Ctrl+Maj+F) | titre `forms.panel.title`, un contrôle egui natif par champ (zone de texte, case `a11y.forms.checked` / `unchecked`, boutons radio, liste déroulante, cases de zone de liste) | Tab entre contrôles, Espace, flèches, Entrée ; Échap restaure la saisie d'une zone de texte |
+| Panneau « Champs du formulaire » (Ctrl+Maj+F) | titre `forms.panel.title`, un contrôle egui natif par champ (zone de texte, case `a11y.forms.checked` / `unchecked`, boutons radio, liste déroulante, cases de zone de liste), chacun rattaché au libellé du champ par `labelled_by` | Tab entre contrôles, Espace, flèches, Entrée ; Échap restaure la saisie d'une zone de texte |
 | Bandeaux (formulaire présent, XFA, scripts), boîte Aplatir | textes traduits, `dialog::show` (Entrée / Échap) | Tab |
 
 Limites : la page est une image (texture) ; son texte n'est pas exposé aux lecteurs d'écran, seuls les rectangles

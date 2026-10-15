@@ -68,7 +68,8 @@ fn form_fields_fill_form_and_flatten_round_trip() {
         serde_json::json!([150.0, 436.0, 350.0, 456.0])
     );
 
-    // Valeurs seules : le format accepté par --values.
+    // Valeurs seules : le format accepté par --values, réimporté tel quel en mode strict (le champ
+    // en lecture seule « ref » est exporté avec sa valeur et accepté sans être réécrit).
     let o = cli()
         .arg("form-fields")
         .arg(&form)
@@ -77,7 +78,34 @@ fn form_fields_fill_form_and_flatten_round_trip() {
         .unwrap();
     let values = stdout_json(&o);
     assert_eq!(values["pays"], "BE");
+    assert_eq!(values["ref"], "REF-42");
     assert!(values.get("signature").is_none());
+    let exported = dir.join("exported.json");
+    std::fs::write(&exported, o.stdout).unwrap();
+    let roundtrip = dir.join("roundtrip.pdf");
+    let o = cli()
+        .arg("fill-form")
+        .arg(&form)
+        .arg("--values")
+        .arg(&exported)
+        .arg("--out")
+        .arg(&roundtrip)
+        .output()
+        .unwrap();
+    let v = stdout_json(&o);
+    assert_eq!(v["applied"], values.as_object().unwrap().len() - 1);
+    assert_eq!(v["skipped"]["invalid"], serde_json::json!([]));
+    assert_eq!(value_of(&fields(&roundtrip), "ref"), "REF-42");
+    let o = cli()
+        .arg("form-fields")
+        .arg(fixture("acroform-links.pdf"))
+        .arg("--values-only")
+        .output()
+        .unwrap();
+    assert!(
+        stdout_json(&o).get("secret").is_none(),
+        "mot de passe jamais exporté"
+    );
 
     // --set, puis relecture dans le fichier produit.
     let out = dir.join("filled.pdf");
@@ -182,6 +210,7 @@ fn form_fields_fill_form_and_flatten_round_trip() {
     assert_eq!(v["applied"], 0);
     assert_eq!(v["skipped"]["unknown"], serde_json::json!(["inconnu"]));
     assert_eq!(v["skipped"]["invalid"][0]["field"], "ref");
+    assert_eq!(v["skipped"]["invalid"][0]["reason"], "read-only");
     assert!(out2.exists());
 
     // Valeur refusée (lecture seule) en mode strict.
@@ -217,6 +246,21 @@ fn form_fields_fill_form_and_flatten_round_trip() {
         .unwrap();
     assert_eq!(o.status.code(), Some(6));
     assert_eq!(stderr_json(&o)["error"], "already_exists");
+
+    // Les liens ne sont pas aplatis (comptés à part, conservés : test moteur
+    // `flatten_keeps_link_annotations`) : 17 widgets sur deux pages, formulaire retiré.
+    let links_flat = dir.join("links-flat.pdf");
+    let o = cli()
+        .arg("flatten")
+        .arg(fixture("acroform-links.pdf"))
+        .arg("--out")
+        .arg(&links_flat)
+        .output()
+        .unwrap();
+    let v = stdout_json(&o);
+    assert_eq!(v["annotations"], 17);
+    assert_eq!(v["pages"], 2);
+    assert_eq!(fields(&links_flat)["kind"], "none");
 
     // XFA : lecture seule.
     let o = cli()

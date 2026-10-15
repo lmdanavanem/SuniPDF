@@ -199,11 +199,39 @@ impl FormField {
             .map_or(value, |o| o.label.as_str())
     }
 
+    /// Modifiable par l'utilisateur : ni bouton, ni signature, ni lecture seule, ni mot de passe
+    /// (une valeur de champ mot de passe n'est jamais stockée).
+    pub fn fillable(&self) -> bool {
+        self.kind.fillable() && !self.read_only && !self.password
+    }
+
+    /// Valeur « vide » d'un champ que « Effacer les champs » peut changer : `None` si le champ est
+    /// hors d'atteinte (lecture seule, mot de passe, bouton, signature, radio « toujours un
+    /// choix ») ou déjà vide.
+    pub fn cleared(&self) -> Option<FieldValue> {
+        if !self.fillable() {
+            return None;
+        }
+        let empty = match self.kind {
+            FieldKind::Text => FieldValue::Text(String::new()),
+            FieldKind::Checkbox => FieldValue::Bool(false),
+            FieldKind::Radio if !self.no_toggle_off => FieldValue::Choice(Vec::new()),
+            FieldKind::Combo | FieldKind::List => FieldValue::Choice(Vec::new()),
+            _ => return None,
+        };
+        (self.value != empty).then_some(empty)
+    }
+
     /// Vérifie une valeur sans rien modifier. La raison est en anglais (jamais affichée telle
-    /// quelle par l'interface, qui n'a que la clé `error.form_value_invalid`).
+    /// quelle par l'interface, qui n'a que la clé `error.form_value_invalid`). Un champ en lecture
+    /// seule accepte sa valeur courante (aller-retour export → import sans erreur) et rien d'autre.
     pub fn validate(&self, v: &FieldValue) -> Result<(), String> {
         if self.read_only {
-            return Err("read-only".into());
+            return if *v == self.value {
+                Ok(())
+            } else {
+                Err("read-only".into())
+            };
         }
         match (self.kind, v) {
             (FieldKind::PushButton | FieldKind::Signature, _) => Err("not fillable".into()),
@@ -361,11 +389,106 @@ fn ids_of(d: &lopdf::Document, o: &Object) -> Vec<ObjectId> {
         .unwrap_or_default()
 }
 
-fn is_widget(dict: &Dictionary) -> bool {
+fn subtype_is(dict: &Dictionary, subtype: &[u8]) -> bool {
     dict.get(b"Subtype")
         .ok()
         .and_then(|s| s.as_name().ok())
-        .is_some_and(|n| n == b"Widget")
+        .is_some_and(|n| n == subtype)
+}
+
+fn is_widget(dict: &Dictionary) -> bool {
+    subtype_is(dict, b"Widget")
+}
+
+fn is_link(d: &lopdf::Document, annot: &Object) -> bool {
+    deref(d, annot)
+        .and_then(|a| a.as_dict().ok())
+        .is_some_and(|a| subtype_is(a, b"Link"))
+}
+
+/// Entrées de `/Annots` d'une page (tableau direct ou indirect), telles quelles.
+fn annots_of(d: &lopdf::Document, page_id: ObjectId) -> Vec<Object> {
+    d.get_dictionary(page_id)
+        .ok()
+        .and_then(|p| get(d, p, b"Annots"))
+        .and_then(|a| a.as_array().ok())
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// Annotations `/Link` d'une page, résolues et copiées : la navigation (URI, destination) n'a pas
+/// d'apparence et `FPDFPage_Flatten` la supprimerait sans rien dessiner.
+fn links_of(d: &lopdf::Document, page_id: ObjectId) -> Vec<Object> {
+    annots_of(d, page_id)
+        .iter()
+        .filter(|a| is_link(d, a))
+        .filter_map(|a| deref(d, a).cloned())
+        .collect()
+}
+
+/// Copie profonde d'un objet de `src` (document avant aplatissement) vers `dst` (après) : PDFium
+/// n'enregistre pas les objets que plus rien ne référence, l'action `/A` indirecte d'un lien
+/// supprimé a donc disparu. Les références sont résolues et inlinées, sauf les pages (traduites
+/// par `page_map`, numéro pour numéro) et les flux (réajoutés comme objets indirects). Profondeur
+/// bornée : une chaîne d'actions cyclique s'arrête sur `Null`.
+fn deep_copy(
+    src: &lopdf::Document,
+    dst: &mut lopdf::Document,
+    page_map: &HashMap<ObjectId, ObjectId>,
+    o: &Object,
+    depth: u8,
+) -> Object {
+    if depth == 0 {
+        return Object::Null;
+    }
+    let copy = |dst: &mut lopdf::Document, x: &Object| deep_copy(src, dst, page_map, x, depth - 1);
+    match o {
+        Object::Reference(id) => {
+            if let Some(&page) = page_map.get(id) {
+                return Object::Reference(page);
+            }
+            match src.get_object(*id) {
+                Ok(Object::Stream(s)) => {
+                    let mut s = s.clone();
+                    s.dict = s
+                        .dict
+                        .iter()
+                        .map(|(k, v)| (k.clone(), copy(dst, v)))
+                        .collect();
+                    Object::Reference(dst.add_object(Object::Stream(s)))
+                }
+                Ok(target) => copy(dst, target),
+                Err(_) => Object::Null,
+            }
+        }
+        Object::Dictionary(d) => {
+            Object::Dictionary(d.iter().map(|(k, v)| (k.clone(), copy(dst, v))).collect())
+        }
+        Object::Array(a) => Object::Array(a.iter().map(|x| copy(dst, x)).collect()),
+        o => o.clone(),
+    }
+}
+
+/// Remet des liens relevés dans `before` dans `/Annots` d'une page aplatie de `ld` (les liens que
+/// PDFium aurait laissés sont d'abord retirés : aucun doublon).
+fn restore_links(
+    before: &lopdf::Document,
+    ld: &mut lopdf::Document,
+    page_map: &HashMap<ObjectId, ObjectId>,
+    page_id: ObjectId,
+    links: &[Object],
+) -> Result<(), EngineError> {
+    let mut annots: Vec<Object> = annots_of(ld, page_id)
+        .into_iter()
+        .filter(|a| !is_link(ld, a))
+        .collect();
+    for link in links {
+        let link = deep_copy(before, ld, page_map, link, 16);
+        let id = ld.add_object(link);
+        annots.push(Object::Reference(id));
+    }
+    dict_mut(ld, page_id)?.set("Annots", Object::Array(annots));
+    Ok(())
 }
 
 fn kind_of_field(inh: &Inherited) -> Option<FieldKind> {
@@ -838,6 +961,9 @@ impl Document<'_> {
                 },
             }
         }
+        // Lecture seule : la validation n'a accepté que la valeur courante, rien à écrire (et
+        // surtout pas d'apparence à régénérer).
+        plan.retain(|&(i, _)| !model.raws[i].view.read_only);
         if plan.is_empty() {
             return Ok(report);
         }
@@ -865,43 +991,47 @@ impl Document<'_> {
         let values: Vec<(String, FieldValue)> = info
             .fields
             .iter()
-            .filter(|f| !f.read_only)
-            .filter_map(|f| {
-                let empty = match f.kind {
-                    FieldKind::Text => FieldValue::Text(String::new()),
-                    FieldKind::Checkbox => FieldValue::Bool(false),
-                    FieldKind::Radio if !f.no_toggle_off => FieldValue::Choice(Vec::new()),
-                    FieldKind::Combo | FieldKind::List => FieldValue::Choice(Vec::new()),
-                    _ => return None,
-                };
-                (f.value != empty).then(|| (f.name.clone(), empty))
-            })
+            .filter_map(|f| f.cleared().map(|v| (f.name.clone(), v)))
             .collect();
         Ok(self.fill_form(&values, FillMode::Lenient)?.applied.len())
     }
 
     /// Aplatit champs **et** annotations dans le contenu des pages (`FPDFPage_Flatten`, mode
     /// impression) ; `None` = toutes les pages, et `/AcroForm` est alors retiré du catalogue.
-    /// Renvoie le nombre d'annotations traitées. Les annotations sans indicateur « Print » le
-    /// reçoivent d'abord (sinon PDFium les supprime sans les dessiner) et les apparences manquantes
-    /// sont générées (sinon un champ jamais affiché disparaît).
+    /// Renvoie le nombre d'annotations aplaties. Les annotations sans indicateur « Print » le
+    /// reçoivent d'abord (sinon PDFium les supprime sans les dessiner), les apparences manquantes
+    /// sont générées (sinon un champ jamais affiché disparaît) et les liens (`/Link`, sans
+    /// apparence : PDFium les supprimerait) sont relevés avant puis remis dans `/Annots`.
     pub fn flatten(&mut self, pages: Option<&[usize]>) -> Result<usize, EngineError> {
         if self.form_kind() == FormKind::Xfa {
             return Err(EngineError::FormXfa);
         }
         let total = self.page_count();
-        let targets: Vec<usize> = match pages {
-            Some(p) => p.to_vec(),
+        let targets: BTreeSet<usize> = match pages {
+            Some(p) => p.iter().copied().collect(),
             None => (0..total).collect(),
         };
         if let Some(&bad) = targets.iter().find(|&&p| p >= total) {
             return Err(EngineError::PageOutOfRange(bad));
         }
+        let before = crate::security::load(&self.snapshot()?, self.password())?;
+        let page_ids = before.get_pages();
+        let links: Vec<(usize, Vec<Object>)> = targets
+            .iter()
+            .filter_map(|&p| {
+                let id = page_ids.get(&(p as u32 + 1))?;
+                let l = links_of(&before, *id);
+                (!l.is_empty()).then_some((p, l))
+            })
+            .collect();
         let mut count = 0;
         for &p in &targets {
             self.ensure_appearances(p)?;
             let mut page = self.page_handle(p)?;
             for mut a in page.annotations().iter() {
+                if a.annotation_type() == PdfPageAnnotationType::Link {
+                    continue;
+                }
                 count += 1;
                 if !a.is_hidden() && !a.is_printed() {
                     a.set_is_printed(true)?;
@@ -913,9 +1043,23 @@ impl Document<'_> {
         // catalogue perd son /AcroForm quand plus aucune page n'a de champ.
         let bytes = self.snapshot()?;
         let all = targets.len() == total && self.form_kind() != FormKind::None;
-        let bytes = if all {
+        let bytes = if all || !links.is_empty() {
             let mut ld = crate::security::load(&bytes, self.password())?;
-            ld.catalog_mut().map_err(lopdf_err)?.remove(b"AcroForm");
+            if all {
+                ld.catalog_mut().map_err(lopdf_err)?.remove(b"AcroForm");
+            }
+            // Pages d'avant → pages d'après, numéro pour numéro (PDFium garde les numéros
+            // d'objet, la traduction ne dépend pas de cette hypothèse).
+            let after_ids = ld.get_pages();
+            let page_map: HashMap<ObjectId, ObjectId> = page_ids
+                .iter()
+                .filter_map(|(n, &id)| Some((id, *after_ids.get(n)?)))
+                .collect();
+            for (p, l) in &links {
+                if let Some(&id) = after_ids.get(&(*p as u32 + 1)) {
+                    restore_links(&before, &mut ld, &page_map, id, l)?;
+                }
+            }
             ld.prune_objects();
             crate::security::save(ld)?
         } else {
@@ -1027,12 +1171,34 @@ mod tests {
         assert!(multi.validate(&t("abcd")).is_err());
         let ro = FormField {
             read_only: true,
+            value: FieldValue::Bool(false),
             ..field(FieldKind::Checkbox)
         };
         assert_eq!(
             ro.validate(&FieldValue::Bool(true)),
             Err("read-only".into())
         );
+        assert!(
+            ro.validate(&FieldValue::Bool(false)).is_ok(),
+            "valeur courante acceptée (aller-retour export → import)"
+        );
+        assert!(!ro.fillable() && ro.cleared().is_none());
+        let secret = FormField {
+            password: true,
+            value: FieldValue::Text("x".into()),
+            ..field(FieldKind::Text)
+        };
+        assert!(!secret.fillable() && secret.cleared().is_none());
+        let filled = FormField {
+            value: FieldValue::Text("x".into()),
+            ..field(FieldKind::Text)
+        };
+        assert_eq!(filled.cleared(), Some(FieldValue::Text(String::new())));
+        let empty = FormField {
+            value: FieldValue::Text(String::new()),
+            ..field(FieldKind::Text)
+        };
+        assert_eq!(empty.cleared(), None, "déjà vide");
         let combo = field(FieldKind::Combo);
         assert!(combo.validate(&c(&["Belgique"])).is_ok(), "libellé accepté");
         assert!(combo.validate(&c(&["XX"])).is_err());
@@ -1058,6 +1224,23 @@ mod tests {
         assert!(radio.validate(&c(&[])).is_err());
         assert!(radio.validate(&c(&["FR"])).is_ok());
         assert!(field(FieldKind::Radio).validate(&c(&[])).is_ok());
+        assert_eq!(
+            FormField {
+                value: c(&["FR"]),
+                ..field(FieldKind::Radio)
+            }
+            .cleared(),
+            Some(c(&[]))
+        );
+        assert_eq!(
+            FormField {
+                no_toggle_off: true,
+                value: c(&["FR"]),
+                ..field(FieldKind::Radio)
+            }
+            .cleared(),
+            None
+        );
         for k in [FieldKind::PushButton, FieldKind::Signature] {
             assert!(field(k).validate(&FieldValue::None).is_err());
         }

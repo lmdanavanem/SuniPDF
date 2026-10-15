@@ -20,10 +20,15 @@ pub fn value_to_json(f: &FormField) -> Value {
     }
 }
 
-/// `{ nom: valeur }` des champs remplissables ; homonymes : le premier gagne.
+/// `{ nom: valeur }` des champs texte, case, radio et listes (lecture seule comprise : l'import
+/// accepte la valeur courante d'un tel champ) ; jamais un mot de passe ; homonymes : le premier gagne.
 pub fn values_to_json(info: &FormInfo) -> Value {
     let mut map = serde_json::Map::new();
-    for f in info.fields.iter().filter(|f| f.kind.fillable()) {
+    for f in info
+        .fields
+        .iter()
+        .filter(|f| f.kind.fillable() && !f.password)
+    {
         map.entry(f.name.clone())
             .or_insert_with(|| value_to_json(f));
     }
@@ -119,7 +124,8 @@ fn json_to_value(f: &FormField, v: &Value) -> Result<FieldValue, String> {
 }
 
 /// Plan d'import : chaque entrée de l'objet JSON est rattachée à son champ et validée ; un JSON
-/// qui n'est pas un objet → `FormValueInvalid`.
+/// qui n'est pas un objet → `FormValueInvalid`. Un champ en lecture seule qui reçoit sa valeur
+/// courante (fichier exporté puis réimporté) n'est ni appliqué ni compté comme ignoré.
 pub fn plan_from_json(info: &FormInfo, json: &Value) -> Result<ImportPlan, EngineError> {
     let Value::Object(map) = json else {
         return Err(EngineError::FormValueInvalid(
@@ -133,6 +139,7 @@ pub fn plan_from_json(info: &FormInfo, json: &Value) -> Result<ImportPlan, Engin
             continue;
         };
         match json_to_value(f, v).and_then(|value| f.validate(&value).map(|_| value)) {
+            Ok(_) if f.read_only => {}
             Ok(value) => plan.values.push((name.clone(), value)),
             Err(reason) => plan.skipped_invalid.push((name.clone(), reason)),
         }
@@ -142,14 +149,13 @@ pub fn plan_from_json(info: &FormInfo, json: &Value) -> Result<ImportPlan, Engin
 
 impl FormField {
     /// Texte de ligne de commande → valeur : case = booléen, radio / liste déroulante = un choix
-    /// (`""` = aucun), zone de liste = choix séparés par `;`.
-    pub fn coerce_text(&self, text: &str) -> Result<FieldValue, EngineError> {
-        let bad =
-            |reason: String| EngineError::FormValueInvalid(format!("{}: {reason}", self.name));
+    /// (`""` = aucun), zone de liste = choix séparés par `;`. Raison de refus en anglais, sans le
+    /// nom du champ (l'appelant le place).
+    pub fn coerce_text(&self, text: &str) -> Result<FieldValue, String> {
         let value = match self.kind {
             FieldKind::Text => FieldValue::Text(text.to_string()),
             FieldKind::Checkbox => FieldValue::Bool(
-                parse_bool(text).ok_or_else(|| bad(format!("not a boolean: {text:?}")))?,
+                parse_bool(text).ok_or_else(|| format!("not a boolean: {text:?}"))?,
             ),
             FieldKind::Radio | FieldKind::Combo => FieldValue::Choice(if text.is_empty() {
                 Vec::new()
@@ -165,7 +171,7 @@ impl FormField {
             ),
             FieldKind::PushButton | FieldKind::Signature => FieldValue::None,
         };
-        self.validate(&value).map_err(bad)?;
+        self.validate(&value)?;
         Ok(value)
     }
 }
@@ -229,6 +235,11 @@ mod tests {
                     ..field("ref", FieldKind::Text)
                 },
                 field("envoyer", FieldKind::PushButton),
+                FormField {
+                    password: true,
+                    value: FieldValue::Text("hunter2".into()),
+                    ..field("secret", FieldKind::Text)
+                },
             ],
         }
     }
@@ -243,6 +254,12 @@ mod tests {
         assert_eq!(v["langues"], json!(["FR", "BE"]));
         assert_eq!(v["ref"], "REF");
         assert!(v.get("envoyer").is_none(), "bouton omis");
+        assert!(v.get("secret").is_none(), "mot de passe jamais exporté");
+        // Export → import tel quel : rien d'ignoré, la lecture seule n'est pas réécrite.
+        let same = plan_from_json(&info, &v).unwrap();
+        assert!(same.skipped_unknown.is_empty() && same.skipped_invalid.is_empty());
+        assert_eq!(same.values.len(), 4);
+        assert!(same.values.iter().all(|(n, _)| n != "ref"));
         let plan = plan_from_json(
             &info,
             &json!({
@@ -278,7 +295,7 @@ mod tests {
             Err(EngineError::FormValueInvalid(_))
         ));
         let full = info_to_json(&info);
-        assert_eq!(full["count"], 6);
+        assert_eq!(full["count"], 7);
         assert_eq!(full["fields"][3]["multi_select"], true);
         assert_eq!(full["fields"][2]["options"][1]["label"], "BE-label");
     }
@@ -297,8 +314,14 @@ mod tests {
             f("pays").coerce_text("").unwrap(),
             FieldValue::Choice(vec![])
         );
-        assert!(f("pays").coerce_text("XX").is_err());
+        assert_eq!(
+            f("pays").coerce_text("XX"),
+            Err("unknown option: XX".into()),
+            "raison sans le nom du champ"
+        );
         assert!(f("ref").coerce_text("x").is_err(), "lecture seule");
+        assert!(f("ref").coerce_text("REF").is_ok(), "valeur courante");
+        assert!(f("secret").coerce_text("x").is_err(), "mot de passe");
         assert_eq!(
             f("nom").coerce_text("Jean").unwrap(),
             FieldValue::Text("Jean".into())

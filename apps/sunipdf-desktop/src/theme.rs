@@ -159,6 +159,21 @@ pub fn apply(ctx: &egui::Context, dark: bool) {
     });
 }
 
+/// Cases à cocher carrées (coins à 2 px) dans la portée de `ui` : le rayon du thème arrondit une
+/// case de 14 px au point de la confondre avec un bouton radio.
+pub fn square_boxes(ui: &mut egui::Ui) {
+    let w = &mut ui.visuals_mut().widgets;
+    for s in [
+        &mut w.noninteractive,
+        &mut w.inactive,
+        &mut w.hovered,
+        &mut w.active,
+        &mut w.open,
+    ] {
+        s.corner_radius = CornerRadius::same(2);
+    }
+}
+
 /// Fond de la zone document (gris neutre, distinct de la page blanche).
 pub fn canvas_bg(dark: bool) -> Color32 {
     palette(dark).canvas

@@ -152,9 +152,12 @@ runs them, calculated fields are not updated).
 **Forms** menu: **Clear fields** (texts emptied, boxes unchecked, lists deselected; read-only fields and "always
 one choice" radio groups are kept), **Export form values (JSON)…** (a `{ "field name": value }` file), **Import
 values into the form (JSON)…** (same format; unknown fields and rejected values are skipped and counted in the
-status message), **Flatten form and annotations…** (all pages or the current page: values, highlights and notes
-become fixed content; undo with Ctrl+Z while the document is open; flattening every page removes the form from
-the document). A password-protected document is filled like any other and stays protected.
+status message; an exported file imports back as is, read-only fields are listed with their value and are not
+rewritten), **Flatten form and annotations…** (all pages or the current page: values, highlights and notes
+become fixed content; links — web addresses, jumps to a page — have no appearance and are kept as they are; undo
+with Ctrl+Z while the document is open; flattening every page removes the form from the document). A
+**password** field is neither fillable nor exported (its value must never be stored). A password-protected
+document is filled like any other and stays protected. Ctrl+S confirms the entry in progress first.
 
 ## Signing and initialing
 

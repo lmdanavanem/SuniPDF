@@ -476,7 +476,8 @@ enum Command {
     /// List the AcroForm fields (name, type, value, options, widgets with 1-based pages) as JSON.
     FormFields {
         file: PathBuf,
-        /// Print only the {name: value} object (the format accepted by `fill-form --values`).
+        /// Print only the {name: value} object (the format accepted by `fill-form --values`;
+        /// read-only fields are included with their current value, password fields never).
         #[arg(long)]
         values_only: bool,
         #[arg(long)]
@@ -1241,12 +1242,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             for spec in &set {
                 let (name, value) = split_set(spec)?;
                 match info.field(name) {
+                    // Lecture seule avec sa valeur courante : accepté, rien à écrire.
                     Some(f) => match f.coerce_text(value) {
+                        Ok(_) if f.read_only => {}
                         Ok(v) => plan.values.push((name.to_string(), v)),
-                        Err(e) if ignore_unknown => {
-                            plan.skipped_invalid.push((name.to_string(), e.to_string()))
-                        }
-                        Err(e) => return Err(e),
+                        Err(reason) => plan.skipped_invalid.push((name.to_string(), reason)),
                     },
                     None => plan.skipped_unknown.push(name.to_string()),
                 }

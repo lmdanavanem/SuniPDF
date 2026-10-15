@@ -59,6 +59,9 @@ pub struct FormsState {
     pub flatten_all_pages: bool,
     /// Valeurs JSON à appliquer dès que le modèle est lu.
     pub pending_import: Option<serde_json::Value>,
+    /// « Effacer les champs » demandé : exécuté dès que le modèle est lu (rien n'est envoyé au
+    /// moteur s'il n'y a rien à effacer : pas de niveau d'annulation vide).
+    pub pending_clear: bool,
     /// Champ mis en évidence sur la page (clic sur son nom dans le panneau).
     pub focus: Option<String>,
 }
@@ -186,14 +189,25 @@ impl SuniApp {
             }
             f.stale = false;
             f.pending_import = None;
+            f.pending_clear = false;
+            f.editing = None;
+            f.popup = None;
+            // Outil Remplir sans plus aucun champ (aplatissement complet) : il ne ferait rien.
+            if self.annotate.tool == Tool::FillForm {
+                self.annotate.tool = Tool::Select;
+            }
             return;
         }
-        let wanted =
-            f.panel_open || self.annotate.tool == Tool::FillForm || f.pending_import.is_some();
+        let wanted = f.panel_open
+            || self.annotate.tool == Tool::FillForm
+            || f.pending_import.is_some()
+            || f.pending_clear;
         if wanted && (f.stale || f.info.is_none()) && !f.requested {
             f.requested = true;
             f.stale = false;
             self.worker.send(Request::FormInfo);
+        } else if f.pending_clear && !f.stale && f.info.is_some() {
+            self.clear_form_now();
         }
     }
 
@@ -207,6 +221,22 @@ impl SuniApp {
         self.forms.info = Some(info);
         if let Some(json) = self.forms.pending_import.take() {
             self.apply_import(&json);
+        }
+        if self.forms.pending_clear {
+            self.clear_form_now();
+        }
+    }
+
+    /// « Effacer les champs » sur le modèle lu : rien à effacer = message d'état seulement.
+    fn clear_form_now(&mut self) {
+        let lang = self.lang();
+        self.forms.pending_clear = false;
+        let Some(info) = &self.forms.info else { return };
+        if info.fields.iter().any(|f| f.cleared().is_some()) {
+            self.edit.pending_status = Some(tr(lang, "status.form_cleared").to_string());
+            self.worker.send(Request::Edit(EditOp::ClearForm));
+        } else {
+            self.status_msg = Some(tr(lang, "status.form_nothing_to_clear").to_string());
         }
     }
 
@@ -266,7 +296,7 @@ impl SuniApp {
         let clip = ui.clip_rect();
         let mut hit = None;
         for (fi, f) in info.fields.iter().enumerate() {
-            let fillable = f.kind.fillable() && !f.read_only && info.kind != FormKind::Xfa;
+            let fillable = f.fillable() && info.kind != FormKind::Xfa;
             let color = if !fillable {
                 Color32::from_gray(140)
             } else if f.required {
@@ -348,7 +378,7 @@ impl SuniApp {
         let Some(f) = info.fields.get(fi) else { return };
         let Some(w) = f.widgets.get(wi) else { return };
         self.forms.focus = None;
-        if f.read_only || !f.kind.fillable() || info.kind == FormKind::Xfa {
+        if !f.fillable() || info.kind == FormKind::Xfa {
             self.status_msg = Some(tr(lang, "status.form_unsupported_widget").to_string());
             return;
         }
@@ -400,10 +430,30 @@ impl SuniApp {
         }
     }
 
-    /// Éditeur de texte posé sur le widget en cours de saisie (page `page`).
+    /// Valide la saisie en cours de l'éditeur posé sur la page (texte changé → `commit_form`) et
+    /// le ferme ; renvoie l'éditeur fermé. Appelé par Entrée, Tab, un clic ailleurs, la sortie
+    /// du widget de la zone visible et l'enregistrement (Ctrl+S).
+    pub fn commit_editor(&mut self) -> Option<InPlace> {
+        let e = self.forms.editing.take()?;
+        let current = self
+            .forms
+            .info
+            .as_ref()
+            .and_then(|i| i.field(&e.field))
+            .map(|f| f.value.clone());
+        if current != Some(FieldValue::Text(e.text.clone())) {
+            self.commit_form(e.field.clone(), FieldValue::Text(e.text.clone()));
+        }
+        Some(e)
+    }
+
+    /// Éditeur de texte posé sur le widget en cours de saisie (page `page`), découpé à la zone
+    /// visible du document `view` (jamais par-dessus les onglets ou les panneaux) ; validé et fermé
+    /// dès que le widget sort entièrement de cette zone.
     pub fn forms_editor(
         &mut self,
         ctx: &egui::Context,
+        view: egui::Rect,
         page_rect: egui::Rect,
         page: usize,
         page_h_pt: f32,
@@ -426,6 +476,10 @@ impl SuniApp {
             return;
         };
         let r = to_screen(display, page_rect, k, page_h_pt);
+        if !view.intersects(r) {
+            self.commit_editor();
+            return;
+        }
         let e = self.forms.editing.as_mut().expect("éditeur");
         let multiline = e.multiline;
         let font_px = if multiline {
@@ -438,7 +492,11 @@ impl SuniApp {
         let area = egui::Area::new(egui::Id::new(("form-editor", page)))
             .order(egui::Order::Foreground)
             .fixed_pos(r.min)
+            // Collé au widget (jamais déplacé) et découpé à la vue : la partie hors de la zone du
+            // document n'est ni dessinée ni cliquable.
+            .constrain(false)
             .show(ctx, |ui| {
+                ui.set_clip_rect(view);
                 Frame::new()
                     .fill(Color32::WHITE)
                     .stroke(Stroke::new(1.5, theme::BLUE))
@@ -483,7 +541,7 @@ impl SuniApp {
                         }
                     });
             });
-        let edit_rect = area.response.rect;
+        let edit_rect = area.response.rect.intersect(view);
         let (enter, escape, tab, shift, pressed_outside) = ctx.input(|i| {
             let press = i.pointer.interact_pos().filter(|_| i.pointer.any_pressed());
             (
@@ -499,16 +557,7 @@ impl SuniApp {
         if escape {
             self.forms.editing = None;
         } else if enter || tab || commit_click {
-            let e = self.forms.editing.take().expect("éditeur");
-            let current = self
-                .forms
-                .info
-                .as_ref()
-                .and_then(|i| i.field(&e.field))
-                .map(|f| f.value.clone());
-            if current != Some(FieldValue::Text(e.text.clone())) {
-                self.commit_form(e.field.clone(), FieldValue::Text(e.text));
-            }
+            let e = self.commit_editor().expect("éditeur");
             if tab {
                 self.open_next_field(&e.field, e.widget, shift);
             }
@@ -537,7 +586,7 @@ impl SuniApp {
             };
             let (f, w) = order[i];
             let target = &info.fields[f];
-            if target.read_only
+            if !target.fillable()
                 || !matches!(
                     target.kind,
                     FieldKind::Text | FieldKind::Combo | FieldKind::List
@@ -558,10 +607,12 @@ impl SuniApp {
         }
     }
 
-    /// Liste de choix flottante sous un widget liste déroulante ou zone de liste.
+    /// Liste de choix flottante sous un widget liste déroulante ou zone de liste, maintenue dans
+    /// la zone visible du document `view` ; fermée dès que le widget en sort entièrement.
     pub fn forms_popup(
         &mut self,
         ctx: &egui::Context,
+        view: egui::Rect,
         page_rect: egui::Rect,
         page: usize,
         page_h_pt: f32,
@@ -587,14 +638,19 @@ impl SuniApp {
             return;
         };
         let r = to_screen(w.display, page_rect, k, page_h_pt);
+        if !view.intersects(r) {
+            self.forms.popup = None;
+            return;
+        }
         let multi = f.kind == FieldKind::List && f.multi_select;
         let current = chosen(&f);
         let mut new_value: Option<Vec<String>> = None;
         let area = egui::Area::new(egui::Id::new(("form-choice", page)))
             .order(egui::Order::Foreground)
             .fixed_pos(r.left_bottom() + egui::vec2(0.0, 2.0))
-            .constrain(true)
+            .constrain_to(view)
             .show(ctx, |ui| {
+                theme::square_boxes(ui);
                 Frame::popup(ui.style()).show(ui, |ui| {
                     ui.set_min_width(r.width().max(180.0));
                     egui::ScrollArea::vertical()
@@ -692,20 +748,20 @@ impl SuniApp {
             .inner_margin(Margin::symmetric(12, 7))
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
-                ui.horizontal(|ui| {
+                // Rangée repliable : en zone étroite, les boutons passent sous le texte au lieu
+                // de le recouvrir ou de sortir de l'écran.
+                ui.horizontal_wrapped(|ui| {
                     ui.label(icons::icon(has_icons, glyph::FORM, "☑", 16.0).color(p.accent));
                     ui.label(RichText::new(tr(lang, "forms.bar.text")).size(13.5));
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ui
-                            .add(Button::new(tr(lang, "forms.bar.dismiss")).frame(false))
-                            .clicked()
-                        {
-                            dismiss = true;
-                        }
-                        if dialog::primary(ui, tr(lang, "menu.forms.fill_tool")) {
-                            fill = true;
-                        }
-                    });
+                    if dialog::primary(ui, tr(lang, "menu.forms.fill_tool")) {
+                        fill = true;
+                    }
+                    if ui
+                        .add(Button::new(tr(lang, "forms.bar.dismiss")).frame(false))
+                        .clicked()
+                    {
+                        dismiss = true;
+                    }
                 });
             });
         if fill {
@@ -810,16 +866,18 @@ impl SuniApp {
                             tr(lang, "forms.panel.scope_all"),
                         );
                     });
-                    ui.add(
-                        egui::Label::new(
-                            RichText::new(tr(lang, "forms.hint"))
-                                .size(12.0)
-                                .color(p.text_muted),
-                        )
-                        .wrap(),
-                    );
-                    ui.add_space(4.0);
                     let editable = info.kind == FormKind::AcroForm;
+                    if editable {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(tr(lang, "forms.hint"))
+                                    .size(12.0)
+                                    .color(p.text_muted),
+                            )
+                            .wrap(),
+                        );
+                    }
+                    ui.add_space(4.0);
                     let order = reading_order(info);
                     // Un champ par ligne (son premier widget), groupé par page.
                     let mut rows: Vec<(usize, usize)> = order
@@ -1079,7 +1137,7 @@ fn field_card(
     go: &mut Option<String>,
     error: &mut bool,
 ) {
-    let enabled = editable && !f.read_only && f.kind.fillable();
+    let enabled = editable && f.fillable();
     Frame::new()
         .fill(p.surface)
         .stroke(Stroke::new(1.0, p.border))
@@ -1087,39 +1145,44 @@ fn field_card(
         .inner_margin(10)
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.horizontal_wrapped(|ui| {
-                let title = f.tooltip.clone().unwrap_or_else(|| f.name.clone());
-                let name = ui
-                    .add(
-                        egui::Label::new(icons::semibold(title, 13.0).color(p.text))
-                            .sense(egui::Sense::click()),
-                    )
-                    .on_hover_cursor(egui::CursorIcon::PointingHand)
-                    .on_hover_text(&f.name);
-                if name.clicked() && !f.widgets.is_empty() {
-                    *go = Some(f.name.clone());
-                }
-                ui.label(
-                    RichText::new(tr(lang, &kind_key(f.kind)))
-                        .size(11.5)
-                        .color(p.text_muted),
-                );
-                if f.required {
+            // Le libellé du champ nomme chaque contrôle pour les lecteurs d'écran (`labelled_by`).
+            let label_id = ui
+                .horizontal_wrapped(|ui| {
+                    let title = f.tooltip.clone().unwrap_or_else(|| f.name.clone());
+                    let name = ui
+                        .add(
+                            egui::Label::new(icons::semibold(title, 13.0).color(p.text))
+                                .sense(egui::Sense::click()),
+                        )
+                        .on_hover_cursor(egui::CursorIcon::PointingHand)
+                        .on_hover_text(&f.name);
+                    if name.clicked() && !f.widgets.is_empty() {
+                        *go = Some(f.name.clone());
+                    }
                     ui.label(
-                        RichText::new(tr(lang, "forms.panel.required"))
-                            .size(11.5)
-                            .color(p.error),
-                    );
-                }
-                if f.read_only {
-                    ui.label(
-                        RichText::new(tr(lang, "forms.panel.read_only"))
+                        RichText::new(tr(lang, &kind_key(f.kind)))
                             .size(11.5)
                             .color(p.text_muted),
                     );
-                }
-            });
+                    if f.required {
+                        ui.label(
+                            RichText::new(tr(lang, "forms.panel.required"))
+                                .size(11.5)
+                                .color(p.error),
+                        );
+                    }
+                    if f.read_only {
+                        ui.label(
+                            RichText::new(tr(lang, "forms.panel.read_only"))
+                                .size(11.5)
+                                .color(p.text_muted),
+                        );
+                    }
+                    name.id
+                })
+                .inner;
             ui.add_space(2.0);
+            theme::square_boxes(ui);
             ui.add_enabled_ui(enabled, |ui| match f.kind {
                 FieldKind::Text => {
                     let current = match &f.value {
@@ -1140,7 +1203,7 @@ fn field_card(
                     if let Some(n) = f.max_len {
                         edit = edit.char_limit(n as usize);
                     }
-                    let resp = ui.add(edit);
+                    let resp = ui.add(edit).labelled_by(label_id);
                     if resp.changed() {
                         drafts.insert(f.name.clone(), text.clone());
                     }
@@ -1169,7 +1232,7 @@ fn field_card(
                             "a11y.forms.unchecked"
                         },
                     );
-                    if ui.checkbox(&mut on, label).changed() {
+                    if ui.checkbox(&mut on, label).labelled_by(label_id).changed() {
                         commits.push((f.name.clone(), FieldValue::Bool(on)));
                     }
                 }
@@ -1177,10 +1240,12 @@ fn field_card(
                     let mut value = chosen(f).first().cloned();
                     let before = value.clone();
                     for o in &f.options {
-                        ui.radio_value(&mut value, Some(o.value.clone()), &o.label);
+                        ui.radio_value(&mut value, Some(o.value.clone()), &o.label)
+                            .labelled_by(label_id);
                     }
                     if !f.no_toggle_off {
-                        ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"));
+                        ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"))
+                            .labelled_by(label_id);
                     }
                     if value != before {
                         commits.push((
@@ -1209,7 +1274,9 @@ fn field_card(
                             for o in &f.options {
                                 ui.selectable_value(&mut value, Some(o.value.clone()), &o.label);
                             }
-                        });
+                        })
+                        .response
+                        .labelled_by(label_id);
                     if value != current {
                         commits.push((
                             f.name.clone(),
@@ -1224,7 +1291,11 @@ fn field_card(
                         let mut changed = false;
                         for o in &f.options {
                             let mut on = wanted.contains(&o.value);
-                            if ui.checkbox(&mut on, &o.label).changed() {
+                            if ui
+                                .checkbox(&mut on, &o.label)
+                                .labelled_by(label_id)
+                                .changed()
+                            {
                                 changed = true;
                                 if on {
                                     wanted.push(o.value.clone());
@@ -1239,9 +1310,11 @@ fn field_card(
                     } else {
                         let mut value = current.first().cloned();
                         let before = value.clone();
-                        ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"));
+                        ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"))
+                            .labelled_by(label_id);
                         for o in &f.options {
-                            ui.radio_value(&mut value, Some(o.value.clone()), &o.label);
+                            ui.radio_value(&mut value, Some(o.value.clone()), &o.label)
+                                .labelled_by(label_id);
                         }
                         if value != before {
                             commits.push((

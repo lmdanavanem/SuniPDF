@@ -123,11 +123,13 @@ def many_pages(path, n=120):
     objs[1] = f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {n} >>".encode()
     open(path, "wb").write(build(objs))
 
-def acroform(path, with_ap=True, xfa=False):
+def acroform(path, with_ap=True, xfa=False, links=False):
     """Formulaire AcroForm d'une page (612x792) : texte, multiligne, lecture seule, case à cocher, groupe de
     boutons radio, liste déroulante (export/affichage), liste à choix multiple, champs hiérarchiques,
     champ à deux widgets, signature, bouton. with_ap=False : aucun flux d'apparence pour les champs texte/choix/case
-    (PDFium les génère). xfa=True : ajoute /XFA à l'AcroForm."""
+    (PDFium les génère). xfa=True : ajoute /XFA à l'AcroForm. links=True : deuxième page (vierge), un lien URI
+    (/F 4) et un lien GoTo vers la page 2 (/F 0, action indirecte) sur la page 1, et un champ texte mot de passe
+    (/Ff 8192) : l'aplatissement doit conserver les liens, le mot de passe n'est jamais rempli ni exporté."""
     objs = []
 
     def add(body):
@@ -228,6 +230,14 @@ def acroform(path, with_ap=True, xfa=False):
     fields.append(new_widget((150, 190, 350, 230), b"/FT /Sig /T (signature)"))
     fields.append(new_widget((400, 190, 500, 214),
                              b"/FT /Btn /Ff 65536 /T (envoyer) /MK << /BC [0 0 0] /BG [0.8 0.8 0.8] /CA (Envoyer) >> /DA (/Helv 12 Tf 0 g)"))
+    if links:
+        fields.append(new_widget((150, 150, 350, 170), b"/FT /Tx /Ff 8192 /T (secret) " + BOX, apref(200, 20)))
+        page2 = add(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+        objs[1] = b"<< /Type /Pages /Kids [3 0 R %s] /Count 2 >>" % ref(page2)
+        annots.append(add(b"<< /Type /Annot /Subtype /Link /F 4 /Rect [40 740 200 760] /Border [0 0 0] "
+                          b"/A << /S /URI /URI (https://example.org/suni) >> >>"))
+        goto = add(b"<< /S /GoTo /D [%s /Fit] >>" % ref(page2))
+        annots.append(add(b"<< /Type /Annot /Subtype /Link /F 0 /Rect [300 740 500 760] /Border [0 0 0] /A %s >>" % ref(goto)))
     acro = b"<< /Fields [%s] /DA (/Helv 0 Tf 0 g) /DR << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >>" % b" ".join(ref(f) for f in fields)
     if xfa:
         acro += b" /XFA [(preamble) 4 0 R]"
@@ -251,4 +261,5 @@ if __name__ == "__main__":
     acroform(os.path.join(out, "acroform.pdf"))
     acroform(os.path.join(out, "acroform-noap.pdf"), with_ap=False)
     acroform(os.path.join(out, "acroform-xfa.pdf"), xfa=True)
+    acroform(os.path.join(out, "acroform-links.pdf"), links=True)
     print("ok")

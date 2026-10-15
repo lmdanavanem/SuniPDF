@@ -5,6 +5,24 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Corrigé (revue de la tranche forms)
+- **Aplatir supprimait les liens** (adresses web, renvois vers une page) : `FPDFPage_Flatten` retire tout
+  `/Annots` et un lien n'a pas d'apparence. Les liens des pages aplaties sont relevés avant (lopdf) et remis
+  dans `/Annots` après ; le compte d'annotations renvoyé les exclut. Fixture `acroform-links.pdf`, test
+  `flatten_keeps_link_annotations`, texte de la boîte Aplatir et guides mis à jour.
+- L'**éditeur posé sur un champ texte** et la **liste de choix** suivaient leur widget hors de la zone du document
+  (dessinés par-dessus la barre d'onglets, clics capturés) : découpés à la zone visible, validés et fermés dès que
+  le widget en sort entièrement ; la liste reste dans la zone du document.
+- **Aller-retour `form-fields --values-only` → `fill-form --values`** : la valeur courante d'un champ en lecture
+  seule est acceptée sans être réécrite (CLI, import JSON, moteur) ; même règle dans l'interface (« 0 ignorée »).
+- Champ **mot de passe** : ni surligné, ni ouvert, ni exporté (fixture et test) ; `--set` tolérant : raison sans
+  le préfixe « invalid form value: nom: » ; `flatten(Some(..))` dédoublonne les pages.
+- Interface : contrôles du panneau rattachés au nom du champ (`labelled_by`) ; cases à cocher carrées ; bandeau
+  « formulaire à remplir » repliable en zone étroite ; outil Remplir quitté après un aplatissement complet ;
+  Ctrl+S valide la saisie en cours ; valeur refusée par le moteur → modèle relu ; « Effacer les champs » sans
+  rien à effacer n'ajoute plus de niveau d'annulation (message d'état) ; indication de saisie masquée pour un
+  formulaire XFA.
+
 ### Ajouté (formulaires AcroForm, tranche forms)
 - **Remplir et signer** gagne sa moitié « remplir » : outil **Remplir le formulaire** (champs surlignés sur la
   page — bleu, rouge si obligatoire, gris si lecture seule —, clic = case ou bouton radio basculés, éditeur posé

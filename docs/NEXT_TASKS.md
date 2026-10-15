@@ -33,7 +33,10 @@ Reste, non bloquant (voir `KNOWN_ISSUES.md` A38, décisions D061–D066) :
 - export XFDF (sans dépendance) puis import XFDF/FDF (lecteur XML à choisir) ;
 - mode « Appliquer » groupé (plusieurs champs, un seul niveau d'annulation et un seul rechargement) ;
 - texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
-  (Espace / Entrée) des rectangles de champs de la page ; vérification Narrateur Windows ;
+  (Espace / Entrée) des rectangles de champs de la page ; vérification Narrateur Windows (noms `labelled_by`
+  posés, non écoutés) ;
+- aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
+  `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
 - avertir quand le document porte une signature numérique (D056, toute modification l'invalide).
 
 ## Après sign-image (signature visuelle, tranche livrée)

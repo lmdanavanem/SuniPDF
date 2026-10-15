@@ -205,7 +205,11 @@ A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté e
      libre par la CLI `--set` seulement) ; valeurs d'export `/Opt` des boutons radio ignorées (l'état du
      widget est la valeur) ; texte riche `/RV` remplacé par du texte simple ; cases à cocher à états multiples
      simplifiées (un état actif par widget) ; aplatissement partiel : les champs de la page aplatie restent dans
-     le formulaire sans emplacement ; les widgets ne sont cliquables sur la page qu'avec l'outil Remplir (le
+     le formulaire sans emplacement ; aplatissement : les **liens** (`/Link`) sont relevés avant et remis dans
+     `/Annots` après (PDFium les supprimerait sans les dessiner), les autres annotations sans apparence
+     (fenêtres `/Popup`, pièces jointes sans `/AP`…) disparaissent avec le contenu dessiné de leur parent ; un
+     lien qui porte un `/AP` est dessiné dans le contenu **et** conservé comme lien (même rendu) ; champ **mot de
+     passe** : listé, jamais rempli ni exporté ; les widgets ne sont cliquables sur la page qu'avec l'outil Remplir (le
      panneau sert au clavier : Tab / Maj+Tab entre champs texte et listes depuis l'éditeur posé sur la page,
      pas d'activation d'un widget de la page par Espace ou Entrée) ; **Narrateur Windows non testé** (noms
      AccessKit posés : `a11y.forms.*`) ; la page reste une image pour un lecteur d'écran, seuls les rectangles

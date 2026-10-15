@@ -161,10 +161,14 @@ et formats JavaScript : SuniPDF ne les exécute jamais, les champs calculés ne 
 Menu **Formulaires** : **Effacer les champs** (textes vidés, cases décochées, listes désélectionnées ; les champs
 en lecture seule et les groupes radio « toujours un choix » sont conservés), **Exporter les valeurs (JSON)…**
 (fichier `{ "nom du champ": valeur }`), **Importer des valeurs (JSON)…** (même format ; les champs inconnus et les
-valeurs refusées sont ignorés et comptés dans le message d'état), **Aplatir le formulaire et les annotations…**
-(toutes les pages ou la page courante : les valeurs, surlignages et notes deviennent du contenu fixe ; annulable
-par Ctrl+Z tant que le document est ouvert ; aplatir toutes les pages retire le formulaire du document). Un
-document protégé par mot de passe se remplit comme les autres et reste protégé.
+valeurs refusées sont ignorés et comptés dans le message d'état ; un fichier exporté se réimporte tel quel, les
+champs en lecture seule y figurent avec leur valeur et ne sont pas réécrits), **Aplatir le formulaire et les
+annotations…** (toutes les pages ou la page courante : les valeurs, surlignages et notes deviennent du contenu
+fixe ; les liens — adresses web, renvois vers une page — n'ont pas d'apparence et sont conservés tels quels ;
+annulable par Ctrl+Z tant que le document est ouvert ; aplatir toutes les pages retire le formulaire du
+document). Un champ **mot de passe** n'est ni remplissable ni exporté (sa valeur ne doit jamais être stockée). Un
+document protégé par mot de passe se remplit comme les autres et reste protégé. Ctrl+S valide d'abord la saisie
+en cours.
 
 ## Signer et parapher
 

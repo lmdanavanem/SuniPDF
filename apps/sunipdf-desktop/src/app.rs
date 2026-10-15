@@ -680,6 +680,9 @@ impl SuniApp {
                     self.edit.reselect_many = None;
                     // Copie échouée : le « couper » qui l'attendait ne supprime rien.
                     self.edit.pending_copy = None;
+                    // Valeur de champ refusée par le moteur : la valeur locale optimiste est
+                    // fausse, le modèle est relu.
+                    self.forms.stale = true;
                     if matches!(
                         e,
                         EngineError::MissingGlyphs(_) | EngineError::FontNotEmbeddable
@@ -1163,8 +1166,8 @@ impl SuniApp {
             Command::ClearForm => {
                 self.forms.editing = None;
                 self.forms.popup = None;
-                self.edit.pending_status = Some(self.t("status.form_cleared").to_string());
-                self.worker.send(Request::Edit(EditOp::ClearForm));
+                // Exécuté sur le modèle lu (`refresh_forms_if_needed` / `on_form_info`).
+                self.forms.pending_clear = true;
             }
             Command::FlattenForm => {
                 self.forms.flatten_all_pages = true;
@@ -1676,8 +1679,10 @@ impl SuniApp {
         }
     }
 
-    /// Enregistre vers le chemin courant, ou demande un chemin (`ask_path`).
+    /// Enregistre vers le chemin courant, ou demande un chemin (`ask_path`). Une saisie de champ
+    /// en cours est validée d'abord (le thread moteur l'applique avant d'enregistrer).
     fn save_document(&mut self, ask_path: bool) {
+        self.commit_editor();
         let Some(doc) = &self.document else { return };
         let mut path = doc.info.path.clone();
         if ask_path {
