@@ -1880,17 +1880,17 @@ impl SuniApp {
                     ui.vertical(|ui| {
                         ui.spacing_mut().item_spacing.y = 3.0;
                         ui.label(crate::icons::semibold("SuniPDF", 26.0).color(p.text));
-                    }
-                    ui.label(
-                        egui::RichText::new(tr_args(
-                            lang,
-                            "about.version",
-                            &[("version", env!("CARGO_PKG_VERSION"))],
-                        ))
-                        .size(13.0)
-                        .color(p.text_muted),
-                    );
-                    ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
+                        ui.label(
+                            egui::RichText::new(tr_args(
+                                lang,
+                                "about.version",
+                                &[("version", env!("CARGO_PKG_VERSION"))],
+                            ))
+                            .size(13.0)
+                            .color(p.text_muted),
+                        );
+                        ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
+                    });
                 });
                 ui.add_space(10.0);
                 egui::Frame::new()
