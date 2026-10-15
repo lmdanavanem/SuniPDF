@@ -5,6 +5,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Corrigé (sécurité, AES-256)
+- Un mot de passe AES-256 contenant un espace spécial ou une ligature (normalisés SASLprep par lopdf au
+  chiffrement) ne rouvrait pas le fichier dans SuniPDF : l'ouverture réessaie avec la forme normalisée et le
+  mot de passe mémorisé pour l'annulation est celle-ci (test moteur ajouté).
+
 ### Ajouté (signature visuelle, tranche sign-image)
 - **Remplir et signer** (moitié « signer ») devient un outil réel du hub, avec sa barre : **Signer (signature
   manuscrite)…** (S), **Parapher (initiales)…**, **Insérer la date du jour** ; aussi dans le menu Édition et la

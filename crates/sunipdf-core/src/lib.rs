@@ -95,6 +95,13 @@ pub struct Document<'a> {
     font_cache: std::collections::HashMap<PathBuf, PdfFontToken>,
 }
 
+/// Forme SASLprep du mot de passe si elle diffère de la saisie (sinon rien à réessayer).
+fn normalized_fallback(password: Option<&str>) -> Option<String> {
+    let raw = password?;
+    let norm = security::normalized_password(raw);
+    (norm != raw).then_some(norm)
+}
+
 /// Répertoires explorés pour trouver `pdfium.dll`, dans l'ordre.
 pub fn default_library_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
@@ -167,14 +174,33 @@ impl Engine {
         password: Option<&str>,
         path: &Path,
     ) -> Result<Document<'_>, EngineError> {
-        let inner = self.pdfium.load_pdf_from_byte_vec(bytes, password)?;
-        self.wrap(inner, path, password)
+        let fallback = normalized_fallback(password);
+        let retry_bytes = fallback.as_ref().map(|_| bytes.clone());
+        match self.pdfium.load_pdf_from_byte_vec(bytes, password) {
+            Ok(inner) => self.wrap(inner, path, password),
+            Err(e) => match (EngineError::from(e), fallback, retry_bytes) {
+                (EngineError::PasswordRequired, Some(norm), Some(bytes)) => {
+                    let inner = self.pdfium.load_pdf_from_byte_vec(bytes, Some(&norm))?;
+                    self.wrap(inner, path, Some(&norm))
+                }
+                (err, _, _) => Err(err),
+            },
+        }
     }
 
-    /// Ouvre un document. `password` : mot de passe utilisateur ou propriétaire.
+    /// Ouvre un document. `password` : mot de passe utilisateur ou propriétaire. Un mot de passe
+    /// AES-256 est réessayé sous sa forme normalisée SASLprep (celle qui a servi au chiffrement).
     pub fn open(&self, path: &Path, password: Option<&str>) -> Result<Document<'_>, EngineError> {
-        let inner = self.pdfium.load_pdf_from_file(path, password)?;
-        self.wrap(inner, path, password)
+        match self.pdfium.load_pdf_from_file(path, password) {
+            Ok(inner) => self.wrap(inner, path, password),
+            Err(e) => match (EngineError::from(e), normalized_fallback(password)) {
+                (EngineError::PasswordRequired, Some(norm)) => {
+                    let inner = self.pdfium.load_pdf_from_file(path, Some(&norm))?;
+                    self.wrap(inner, path, Some(&norm))
+                }
+                (err, _) => Err(err),
+            },
+        }
     }
 
     fn wrap<'a>(

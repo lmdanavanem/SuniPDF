@@ -187,6 +187,15 @@ fn permissions(p: &Protection) -> Permissions {
     perms
 }
 
+/// Forme normalisée (SASLprep, RFC 4013) d'un mot de passe AES-256 : c'est elle que lopdf chiffre
+/// (révision 6) et donc celle que PDFium doit recevoir à l'ouverture. Espaces spéciaux et
+/// ligatures sont ramenés à leur forme simple ; un mot de passe déjà simple est inchangé.
+pub fn normalized_password(password: &str) -> String {
+    stringprep::saslprep(password)
+        .map(|c| c.into_owned())
+        .unwrap_or_else(|_| password.to_string())
+}
+
 /// Chiffre un PDF (AES-128 ou AES-256) avec mots de passe et permissions.
 pub fn protect(
     input: &[u8],

@@ -125,6 +125,10 @@ A17. ~~Indicateur « modifié » après annulation~~ **Corrigé (review-fixes, D
 A29. **Extraire / diviser un document protégé** : les fichiers produits ne sont pas chiffrés (PDFium copie les
      pages dans un document neuf) ; l'interface et la CLI (`encryption_removed`) le disent, et Protéger
      s'applique ensuite au fichier créé (D046). Rechiffrement automatique en feuille de route.
+A30b. **AES-256 et mots de passe** : le mot de passe est normalisé SASLprep avant chiffrement (espaces spéciaux
+    ramenés à l'espace, ligatures décomposées, caractères de contrôle refusés) ; SuniPDF applique la même
+    normalisation à l'ouverture, un autre lecteur peut exiger la forme simple (par exemple « pass word » pour
+    une saisie avec espace insécable).
 A30. **AES-128 et mots de passe** : seul le Latin-1 imprimable est accepté (0x20–0x7E, 0xA1–0xFF sauf 0xAD ;
      lettres accentuées comprises). Les symboles propres à PDFDocEncoding hors Latin-1 (€, œ, Œ, ligatures,
      tirets et guillemets typographiques…) sont refusés (`password_not_latin1`) bien que lopdf les code : PDFium

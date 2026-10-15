@@ -3375,3 +3375,60 @@ fn signature_strokes_to_page_pipeline() {
     let p = px(&r, 300.0 + 16.0 * k, 100.0 + h_pt - 16.0 * k);
     assert_eq!(p, [255, 255, 255]);
 }
+
+#[test]
+fn aes256_passwords_normalized_by_lopdf_still_open_as_typed() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = std::env::temp_dir().join(format!("sunipdf-saslprep-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    // SASLprep ramène l'espace insécable à un espace et la ligature « ﬁ » à « fi » : lopdf chiffre
+    // cette forme, PDFium reçoit la saisie brute. Les deux formes doivent ouvrir le fichier.
+    for (typed, simple) in [("pass\u{00A0}word", "pass word"), ("\u{FB01}nal", "final")] {
+        assert_eq!(security::normalized_password(typed), simple);
+        let bytes = security::protect(
+            &input,
+            None,
+            &Protection {
+                user_password: typed.into(),
+                owner_password: "own".into(),
+                aes256: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let path = dir.join(format!("{simple}.pdf"));
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(matches!(
+            engine.open(&path, None),
+            Err(EngineError::PasswordRequired)
+        ));
+        assert!(matches!(
+            engine.open(&path, Some("password")),
+            Err(EngineError::PasswordRequired)
+        ));
+        let doc = engine.open(&path, Some(typed)).unwrap();
+        assert!(
+            doc.page_text(0).unwrap().contains("SuniPDF page 1"),
+            "{typed:?}"
+        );
+        assert_eq!(
+            doc.password(),
+            Some(simple),
+            "mot de passe mémorisé sous sa forme normalisée"
+        );
+        let snapshot = doc.snapshot().unwrap();
+        let mut doc = doc;
+        doc.restore(snapshot).unwrap();
+        assert!(engine.open(&path, Some(simple)).is_ok());
+        let again = engine
+            .open_bytes(bytes.clone(), Some(typed), &path)
+            .unwrap();
+        assert_eq!(again.page_count(), 2);
+    }
+    // Un mot de passe simple n'est pas réessayé ni modifié.
+    assert_eq!(security::normalized_password("Été 2026"), "Été 2026");
+    let _ = std::fs::remove_dir_all(dir);
+}

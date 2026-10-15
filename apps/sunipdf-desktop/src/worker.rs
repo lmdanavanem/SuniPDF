@@ -912,10 +912,16 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             match op {
                 BytesOp::Protect(p) => {
                     let bytes = security::protect(&current, password.as_deref(), &p)?;
-                    let new_password = if p.user_password.is_empty() {
+                    let typed = if p.user_password.is_empty() {
                         p.owner_password
                     } else {
                         p.user_password
+                    };
+                    // AES-256 : lopdf chiffre la forme SASLprep ; c'est elle qui rouvre le document.
+                    let new_password = if p.aes256 {
+                        security::normalized_password(&typed)
+                    } else {
+                        typed
                     };
                     doc.restore_with_password(bytes, Some(new_password))
                 }

@@ -19,6 +19,7 @@ sunipdf-core = { path = "crates/sunipdf-core" }
 sunipdf-i18n = { path = "crates/sunipdf-i18n" }
 pdfium-render = "0.9.4"
 lopdf = "0.45"
+stringprep = "0.1"
 # Backend glow (OpenGL) : le backend wgpu/DX12 ne compile pas (wgpu-hal 30.0.1 vs gpu-allocator 0.28), voir KNOWN_ISSUES.
 eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "glow", "links"] }
 egui = "0.36"
