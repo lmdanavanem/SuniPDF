@@ -5,6 +5,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+(rien pour l'instant)
+
+## [0.5.0] — 2026-10-15
+
+Vague 2 du backlog, chaque tranche implémentée, revue par un agent indépendant, corrigée puis re-revue :
+correctifs des 39 constats de la revue adverse, signature visuelle (moitié « signer » de Remplir et signer),
+formulaires AcroForm (moitié « remplir »), chiffrement AES-256 et mots de passe normalisés, distribution.
+
 ### Corrigé (revue de la tranche forms)
 - **Aplatir supprimait les liens** (adresses web, renvois vers une page) : `FPDFPage_Flatten` retire tout
   `/Annots` et un lien n'a pas d'apparence. Les liens des pages aplaties sont relevés avant (lopdf) et remis
