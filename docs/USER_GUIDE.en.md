@@ -1,15 +1,27 @@
 # SuniPDF — User Guide
 
-SuniPDF is a PDF reader and editor for Windows 10/11. It works entirely offline: no account, no telemetry,
+SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
 ## Installation
 
 - **Portable**: unzip `SuniPDF-<version>-win-x64-portable.zip` anywhere and run `sunipdf.exe`. Nothing is
-  written outside your preferences (`%APPDATA%\SuniPDF\settings.json`).
+  installed system-wide. Preferences use `%APPDATA%\SuniPDF\settings.json`; update downloads use a temporary folder.
 - **MSI installer**: double-click `SuniPDF-<version>-win-x64.msi`. SuniPDF appears in the Start menu and in
   "Open with" for PDF files; it does not become the default reader without your consent.
 - Uninstall: Windows Settings › Apps, or delete the folder for the portable version.
+
+## Updates and language
+
+English is the default interface language. French is available in Settings; an existing language preference is preserved.
+From 0.8.2, the application checks GitHub Releases at startup without sending PDF files. Disable automatic checks in About,
+or use **Check for updates** there at any time. A failed automatic check does not block local PDF work.
+
+When a newer version is available, choose **Download update**. After size and SHA256 verification, choose **Close and install**.
+Save or discard changes in each open document as usual; cancelling or a failed save cancels installation.
+Installed x64 copies use the Windows MSI installer and may show a Windows administrator prompt. Portable x64/ARM64 copies
+replace the application files in their own folder and keep a rollback backup. A failed portable replacement restores the old files.
+Older versions require one manual upgrade to obtain this feature. The updater never restarts the computer automatically.
 
 ## Home screen
 

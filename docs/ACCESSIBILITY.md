@@ -1,28 +1,30 @@
-# Accessibilité — état réel
+# Accessibility: actual state
 
-SuniPDF expose son interface aux technologies d'assistance par AccessKit (egui). Ce document décrit ce qui est
-nommé et testable au clavier, et ce qui ne l'est pas. **Vérification manuelle avec le Narrateur Windows : NON
-FAITE** (aucune session de test avec un lecteur d'écran n'a été exécutée sur ce poste).
+[Français](ACCESSIBILITY.fr.md)
 
-## Principe commun
+SuniPDF exposes its interface to assistive technologies through AccessKit (egui). This document describes what is
+named and keyboard-testable, and what is not. **Manual verification with Windows Narrator: NOT
+DONE** (no test session with a screen reader has been run on this machine).
 
-- Tout bouton dessiné à la main porte un libellé AccessKit lisible (`widget_info`), jamais un glyphe de la police
-  d'icônes (`workspace::bar_button`, `shell::tool_row`).
-- Les raccourcis à une lettre sont coupés dès qu'un champ de saisie a le clavier ; Échap suit un ordre unique
+## Common principle
+
+- Every hand-drawn button carries a readable AccessKit label (`widget_info`), never a glyph from the icon
+  font (`workspace::bar_button`, `shell::tool_row`).
+- Single-letter shortcuts are cut off as soon as an input field has the keyboard; Escape follows a single order
   (`workspace::EscState`).
-- Le bit 10 (extraction pour l'accessibilité) est toujours accordé par Protéger (D050).
+- Bit 10 (extraction for accessibility) is always granted by Protect (D050).
 
-## Formulaires AcroForm (tranche forms)
+## AcroForm forms (forms slice)
 
-| Contrôle | Nom accessible (clé) | Clavier |
+| Control | Accessible name (key) | Keyboard |
 |---|---|---|
-| Rectangle de champ sur la page (outil Remplir) | `a11y.forms.widget` (« Champ {name}, type {kind} ») ou `a11y.forms.widget_value` | Clic seulement ; pas d'activation par Espace / Entrée (feuille de route) |
-| Éditeur posé sur un champ texte | `a11y.forms.editor` (« Saisie du champ {name} ») | Entrée valide (Ctrl+Entrée en multiligne), Échap annule, Tab / Maj+Tab valident et passent au champ texte ou liste suivant / précédent (contenu sélectionné) |
-| Liste de choix flottante | `a11y.forms.option` (« {name} : {option} ») par entrée | Clic, Échap ferme |
-| Panneau « Champs du formulaire » (Ctrl+Maj+F) | titre `forms.panel.title`, un contrôle egui natif par champ (zone de texte, case `a11y.forms.checked` / `unchecked`, boutons radio, liste déroulante, cases de zone de liste), chacun rattaché au libellé du champ par `labelled_by` | Tab entre contrôles, Espace, flèches, Entrée ; Échap restaure la saisie d'une zone de texte |
-| Bandeaux (formulaire présent, XFA, scripts), boîte Aplatir | textes traduits, `dialog::show` (Entrée / Échap) | Tab |
+| Field rectangle on the page (Fill tool) | `a11y.forms.widget` ("Field {name}, type {kind}") or `a11y.forms.widget_value` | Click only; no activation by Space / Enter (roadmap) |
+| Editor placed on a text field | `a11y.forms.editor` ("Editing field {name}") | Enter confirms (Ctrl+Enter in multiline), Escape cancels, Tab / Shift+Tab confirm and move to the next / previous text or list field (content selected) |
+| Floating choice list | `a11y.forms.option` ("{name}: {option}") per entry | Click, Escape closes |
+| "Form fields" panel (Ctrl+Shift+F) | title `forms.panel.title`, one native egui control per field (text box, checkbox `a11y.forms.checked` / `unchecked`, radio buttons, drop-down list, list box boxes), each attached to the field label by `labelled_by` | Tab between controls, Space, arrows, Enter; Escape restores the input of a text box |
+| Banners (form present, XFA, scripts), Flatten dialog | translated texts, `dialog::show` (Enter / Escape) | Tab |
 
-Limites : la page est une image (texture) ; son texte n'est pas exposé aux lecteurs d'écran, seuls les rectangles
-de champs et le panneau le sont. Lecture de la structure balisée (Tagged PDF) : hors périmètre. Contraste des
-surbrillances : `theme::BLUE` / `theme::ERROR` à 12 % de remplissage et contour à 100 % (22 % et 1,5 px au survol),
-vérifié sur capture en thème clair et sombre (pas de mesure automatique du ratio pour ces contours).
+Limits: the page is an image (texture); its text is not exposed to screen readers, only the field rectangles
+and the panel are. Reading the tagged structure (Tagged PDF): out of scope. Contrast of
+highlights: `theme::BLUE` / `theme::ERROR` at 12% fill and 100% outline (22% and 1.5 px on hover),
+verified on captures in light and dark themes (no automatic ratio measurement for these outlines).

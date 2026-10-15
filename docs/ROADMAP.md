@@ -1,78 +1,80 @@
-# Roadmap SuniPDF
+# SuniPDF Roadmap
 
-Chaque phase a un critère de sortie vérifiable par des commandes réelles. Une phase n'est « terminée »
-que si ses critères fondamentaux sont atteints et consignés dans `PROJECT_STATUS.md`.
+[Français](ROADMAP.fr.md)
 
-## Phase 0 — Audit et planification — **terminée (2026-10-13)**
-Livrables : `FEATURE_MATRIX.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `ROADMAP.md`,
+Each phase has an exit criterion verifiable through real commands. A phase is only "completed"
+once its fundamental criteria are met and recorded in `PROJECT_STATUS.md`.
+
+## Phase 0 - Audit and planning - **completed (2026-10-13)**
+Deliverables: `FEATURE_MATRIX.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `ROADMAP.md`,
 `I18N.md`, `DECISIONS.md`.
 
-## Phase 1 — Fondations — **terminée (2026-10-14)**
-- [x] Workspace Rust compilable, application Windows démarrable (cible MSVC ; repli GNU documenté).
-- [x] Moteur PDFium intégré, chargé dynamiquement, erreurs typées.
-- [x] Ouvrir → afficher → naviguer → zoomer → fermer ; mot de passe ; glisser-déposer ; argument ligne de commande.
-- [x] i18n fr-FR/en-US, changement à chaud, préférence persistée (écriture atomique), thème clair/sombre.
-- [x] Tests : moteur (7, dont chiffré et fichiers invalides), i18n (6), app (3).
-- [x] Compilation MSVC (Build Tools installés le 13/10) ; exécution vérifiée par captures d'écran automatisées.
-- [x] Icône et identité visuelle originales (`assets/icon`, `scripts/make_icon.py`).
-Critère de sortie : `cargo test --workspace` vert + un PDF réel ouvert et affiché dans l'application.
+## Phase 1 - Foundations - **completed (2026-10-14)**
+- [x] Compilable Rust workspace, startable Windows application (MSVC target; GNU fallback documented).
+- [x] PDFium engine integrated, dynamically loaded, typed errors.
+- [x] Open → display → navigate → zoom → close; password; drag and drop; command-line argument.
+- [x] fr-FR/en-US i18n, hot switching, persisted preference (atomic write), light/dark theme.
+- [x] Tests: engine (7, including encrypted and invalid files), i18n (6), app (3).
+- [x] MSVC build (Build Tools installed on 13/10); execution verified by automated screenshots.
+- [x] Original icon and visual identity (`assets/icon`, `scripts/make_icon.py`).
+Exit criterion: `cargo test --workspace` green + a real PDF opened and displayed in the application.
 
-## Phase 2 — Fonctions essentielles — **largement livrée (2026-10-14)**
-Fait : registre de commandes, onglets, cache de rendu + miniatures, recherche, sélection/copie de texte, signets,
-fusion/division/extraction/rotation/réorganisation, enregistrement atomique, undo/redo, annotations principales,
-affichage continu virtualisé et rendu en tuiles pour le zoom profond (SUNI-012b).
-Reste : vérification qpdf en CI (plan `docs/plans/compress-lossy.md`) ; double page, rotation de vue, sélection de
-texte sur plusieurs pages.
+## Phase 2 - Core features - **largely delivered (2026-10-14)**
+Done: command registry, tabs, render cache + thumbnails, search, text selection/copy, bookmarks,
+merge/split/extract/rotate/reorder, atomic save, undo/redo, main annotations,
+virtualised continuous display and tiled rendering for deep zoom (SUNI-012b).
+Remaining: qpdf verification in CI (plan `docs/plans/compress-lossy.md`); two-page view, view rotation, text
+selection across several pages.
 
-### Détail initial
-Registre de commandes ; onglets ; affichage continu ; cache de rendu plafonné + miniatures ; recherche ;
-sélection/copie de texte ; signets ; fusion/division/extraction/rotation/réorganisation ; sauvegarde atomique
-vérifiée par qpdf ; undo/redo ; annotations principales (surlignage, note, formes).
-Critère : opérations de bout en bout testées (fichier produit vérifié par qpdf + relecture PDFium).
+### Initial detail
+Command registry; tabs; continuous display; capped render cache + thumbnails; search;
+text selection/copy; bookmarks; merge/split/extract/rotate/reorder; atomic save
+verified by qpdf; undo/redo; main annotations (highlight, note, shapes).
+Criterion: end-to-end operations tested (output file verified by qpdf + PDFium re-read).
 
-## Phase 3 — Édition professionnelle — **partiellement livrée**
-Fait : notes, surlignage/soulignement/barré, commentaires (panneau), métadonnées, propriétés, palette de commandes.
-Fait (SUNI-031 à 033) : ajout de texte/images, formes, modification/déplacement/redimensionnement/rotation 90°/duplication/ordre Z/suppression d'objets existants, couleurs, polices standard, tampons, filigranes, numéros de page, dialogues unifiés.
-Fait (tool-hub, SUNI-040) : hub « Tous les outils » (9 outils réels sur 14, barre contextuelle par outil, menu Outils, cartes d'accueil), finition du chrome ; les 5 outils restants apparaîtront avec leur fonction (OCR, caviardage, formulaires, signature, certificat).
-Fait (SUNI-031c) : rotation libre, opacité, sélection multiple et déplacement groupé, couper/copier/coller d'objets entre pages et onglets, panneau Objets, texte saisi sur la page, polices TrueType du système incorporées, remplacement d'image, pages vierges, recadrage, redimensionnement des pages, pages pivotées et rognées corrigées.
-Fait (sign-image) : signature manuscrite **visuelle** (image à masque alpha dessinée, importée avec fond retiré, ou reprise de la bibliothèque locale), paraphe, date du jour, outil « Remplir et signer » (moitié « signer » ; jamais présentée comme certifiée), CLI `add-image`.
-Fait (forms) : formulaires AcroForm — lister, remplir (texte, case, radio, listes ; valeurs écrites par lopdf, apparences régénérées par PDFium), effacer, aplatir, export/import JSON, panneau accessible, outil sur la page ; XFA en lecture seule ; CLI `form-fields` / `fill-form` / `flatten`.
-Fait (annotations-advanced) : encre, texte libre, rectangle / ellipse / ligne / flèche en vraies annotations, liens cliquables (adresse externe confirmée), sélection / déplacement / redimensionnement / recoloration d'une annotation, fils de réponses et statuts, CLI `annotate` / `annotations` / `reply` / `review-state` / `annotation-delete`.
-Reste : sous-ensemble de polices et `.otf`/`.ttc`, collage éditable, rotation/redimensionnement de groupe, recadrage à la souris (SUNI-031d), création de champs de formulaire et FDF/XFDF, autosave/récupération (plans dans `docs/plans/`).
+## Phase 3 - Professional editing - **partially delivered**
+Done: notes, highlight/underline/strikethrough, comments (panel), metadata, properties, command palette.
+Done (SUNI-031 to 033): adding text/images, shapes, modifying/moving/resizing/90° rotation/duplication/Z-order/deletion of existing objects, colours, standard fonts, stamps, watermarks, page numbers, unified dialogs.
+Done (tool-hub, SUNI-040): "All tools" hub (9 real tools out of 14, contextual bar per tool, Tools menu, home cards), chrome polish; the 5 remaining tools will appear with their feature (OCR, redaction, forms, signature, certificate).
+Done (SUNI-031c): free rotation, opacity, multiple selection and grouped move, cut/copy/paste of objects across pages and tabs, Objects panel, text typed on the page, system TrueType fonts embedded, image replacement, blank pages, cropping, page resizing, rotated and cropped pages fixed.
+Done (sign-image): **visual** handwritten signature (alpha-masked image drawn, imported with the background removed, or reused from the local library), initials, today's date, "Fill & Sign" tool ("sign" half; never presented as certified), CLI `add-image`.
+Done (forms): AcroForm forms: list, fill (text, checkbox, radio, lists; values written by lopdf, appearances regenerated by PDFium), clear, flatten, JSON export/import, accessible panel, on-page tool; XFA read-only; CLI `form-fields` / `fill-form` / `flatten`.
+Done (annotations-advanced): ink, free text, rectangle / ellipse / line / arrow as real annotations, clickable links (external address confirmed), select / move / resize / recolour an annotation, reply threads and statuses, CLI `annotate` / `annotations` / `reply` / `review-state` / `annotation-delete`.
+Remaining: font subsetting and `.otf`/`.ttc`, editable pasting, group rotation/resizing, mouse cropping (SUNI-031d), form field creation and FDF/XFDF, autosave/recovery (plans in `docs/plans/`).
 
-### Détail initial
-Ajout de texte/images ; modification de texte selon capacités PDFium ; formulaires AcroForm + FDF/XFDF ;
-filigranes, en-têtes/pieds ; liens ; commentaires avec fils ; métadonnées ; autosave/récupération ;
-palette de commandes ; signature manuscrite (image, explicitement non certifiée).
+### Initial detail
+Adding text/images; text modification within PDFium's capabilities; AcroForm forms + FDF/XFDF;
+watermarks, headers/footers; links; threaded comments; metadata; autosave/recovery;
+command palette; handwritten signature (image, explicitly not certified).
 
-## Phase 4 — Conversion et OCR — **partiellement livrée**
-Fait : images ↔ PDF, PDF → texte, export PNG, optimisation sans perte, lots via CLI.
-Reste : OCR, PDF → Word/Excel, Office → PDF.
+## Phase 4 - Conversion and OCR - **partially delivered**
+Done: images ↔ PDF, PDF → text, PNG export, lossless optimisation, batches via the CLI.
+Remaining: OCR, PDF → Word/Excel, Office → PDF.
 
-### Détail initial
-Images↔PDF ; PDF→texte ; OCR Tesseract fra/eng ; PDF→Word/Excel avec niveau de fidélité mesuré et
-affiché ; Office→PDF via convertisseur installé (LibreOffice/Word) détecté ; lots.
+### Initial detail
+Images↔PDF; PDF→text; Tesseract OCR fra/eng; PDF→Word/Excel with a measured and
+displayed fidelity level; Office→PDF through an installed converter (LibreOffice/Word) detected; batches.
 
-## Phase 5 — Sécurité et productivité — **partiellement livrée**
-Fait : chiffrement AES-128/256 + permissions, retrait de protection, nettoyage des métadonnées, CLI complète
-(33 commandes JSON), commandes de démarrage pour l'automatisation.
-Reste : caviardage, signatures, comparaison, MCP, intégration Explorateur, profils.
+## Phase 5 - Security and productivity - **partially delivered**
+Done: AES-128/256 encryption + permissions, protection removal, metadata cleanup, complete CLI
+(33 JSON commands), startup commands for automation.
+Remaining: redaction, signatures, comparison, MCP, Explorer integration, profiles.
 
-### Détail initial
-Chiffrement AES-256 et permissions à l'écriture (vérifiés qpdf) ; caviardage irréversible avec test
-d'absence ; nettoyage des métadonnées ; signatures CMS/PKCS#12 + vérification ; compression ; comparaison ;
-CLI complète ; MCP opt-in confiné ; intégration Explorateur ; profils de conversion ; raccourcis configurables.
+### Initial detail
+AES-256 encryption and permissions on write (qpdf-verified); irreversible redaction with an
+absence test; metadata cleanup; CMS/PKCS#12 signatures + verification; compression; comparison;
+complete CLI; confined opt-in MCP; Explorer integration; conversion profiles; configurable shortcuts.
 
-## Phase 6 — Qualité et distribution — **partiellement livrée**
-Fait : ZIP portable x64 + SHA256, MSI x64 construit localement (WiX 3.14 autonome) + workflow `release.yml` (x64, ARM64,
-signature optionnelle) déclenché par les tags `v*`, ressources Windows, guides utilisateur FR/EN, notices tierces.
-Reste : résultat de la CI à confirmer, ARM64 compilé, corpus et fuzzing, benchmarks publiés.
+## Phase 6 - Quality and distribution - **partially delivered**
+Done: portable x64 ZIP + SHA256, x64 MSI built locally (standalone WiX 3.14) + `release.yml` workflow (x64, ARM64,
+optional signing) triggered by the `v*` tags, Windows resources, FR/EN user guides, third-party notices.
+Remaining: CI result to confirm, ARM64 compiled, corpus and fuzzing, published benchmarks.
 
-### Détail initial
-Corpus de non-régression + fuzzing ; benchmarks publiés avec matériel ; audit sécurité et licences ;
-x64 + ARM64 ; MSI (WiX) + ZIP portable + checksums ; CI complète ; documentation utilisateur FR/EN ;
-réévaluation d'un repli pur Rust (hayro).
+### Initial detail
+Non-regression corpus + fuzzing; benchmarks published with the hardware; security and licence audit;
+x64 + ARM64; MSI (WiX) + portable ZIP + checksums; full CI; FR/EN user documentation;
+reassessment of a pure-Rust fallback (hayro).
 
-## Fonctions différenciantes (transversales, après P2)
-Lot ergonomique, profils enregistrables, recherche multi-documents, OCR multilingue, comparaison côte à côte,
-workflows locaux, IA générative strictement optionnelle et désactivée par défaut.
+## Differentiating features (cross-cutting, after P2)
+Ergonomic batch processing, savable profiles, multi-document search, multilingual OCR, side-by-side comparison,
+local workflows, generative AI strictly optional and disabled by default.

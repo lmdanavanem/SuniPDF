@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Interface en ligne de commande SuniPDF."
+description = "SuniPDF command-line interface."
 
 [dependencies]
 sunipdf-core = { workspace = true }

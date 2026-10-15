@@ -2,8 +2,8 @@
 <!--
   Installateur MSI SuniPDF (WiX Toolset v3). Construit par scripts/package-msi.ps1 (candle + light).
   Variables : Version, SourceDir (dossier portable préparé), Arch (x64|arm64).
-  Installation par machine dans Program Files, raccourci Menu Démarrer, association .pdf facultative
-  (« Ouvrir avec » uniquement : SuniPDF ne s'impose pas comme lecteur par défaut).
+  Per-machine installation in Program Files, Start Menu shortcut and optional .pdf association
+  ("Open with" only: SuniPDF does not change the default PDF reader).
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <?if $(var.Arch) = "arm64" ?>
@@ -17,9 +17,9 @@
   <Product Id="*" Name="SuniPDF" Language="1036" Codepage="1252" Version="$(var.Version)" Manufacturer="Navanem"
            UpgradeCode="7C3C3E0E-5B6A-4C2B-9F1E-2A0F1D4B9C11">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="$(var.Platform)"
-             Description="SuniPDF — lecteur et éditeur PDF pour Windows" Languages="1036" SummaryCodepage="1252" />
-    <MajorUpgrade AllowSameVersionUpgrades="yes"
-                  DowngradeErrorMessage="Une version plus récente de SuniPDF est déjà installée." />
+             Description="SuniPDF — PDF reader and editor for Windows" Languages="1036" SummaryCodepage="1252" />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize"
+                  DowngradeErrorMessage="A newer version of SuniPDF is already installed." />
     <MediaTemplate EmbedCab="yes" />
     <Icon Id="SuniPDF.ico" SourceFile="$(var.IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="SuniPDF.ico" />
@@ -30,7 +30,7 @@
       <ComponentGroupRef Id="LicenseFiles" />
       <ComponentRef Id="StartMenuShortcut" />
     </Feature>
-    <Feature Id="OpenWith" Title="Ouvrir avec SuniPDF (fichiers .pdf)" Level="1">
+    <Feature Id="OpenWith" Title="Open PDF files with SuniPDF" Level="1">
       <ComponentRef Id="OpenWithPdf" />
     </Feature>
 
@@ -56,13 +56,13 @@
         <File Id="PdfiumDll" Source="$(var.SourceDir)\pdfium.dll" KeyPath="yes" />
       </Component>
       <Component Id="ReadMe" Guid="*" Win64="yes">
-        <File Id="LisezMoi" Name="LISEZMOI.txt" Source="$(var.ReadmePath)" KeyPath="yes" />
+        <File Id="LisezMoi" Name="README.txt" Source="$(var.ReadmePath)" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
     <DirectoryRef Id="AppMenuFolder">
       <Component Id="StartMenuShortcut" Guid="4D1F6B2A-9C3E-4F7B-8A1D-5E2C7B9F0A21" Win64="yes">
-        <Shortcut Id="StartMenuSuniPDF" Name="SuniPDF" Description="Lecteur et éditeur PDF"
+        <Shortcut Id="StartMenuSuniPDF" Name="SuniPDF" Description="PDF reader and editor"
                   Target="[INSTALLFOLDER]sunipdf.exe" WorkingDirectory="INSTALLFOLDER" Icon="SuniPDF.ico" />
         <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\Navanem\SuniPDF" Name="installed" Type="integer" Value="1" KeyPath="yes" />

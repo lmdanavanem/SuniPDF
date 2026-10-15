@@ -4,6 +4,7 @@ use crate::dialog;
 use crate::icons::glyph;
 use crate::settings::Settings;
 use crate::theme;
+use crate::updater::{Phase as UpdatePhase, Updater};
 use crate::view::ViewMode;
 use crate::worker::{BytesOp, DocState, EditOp, Request, Response, Worker};
 use crate::workspace::Esc;
@@ -223,6 +224,10 @@ pub struct SuniApp {
     unsaved_prompt: Option<PendingAction>,
     after_save: Option<PendingAction>,
     deferred_close: Option<PendingAction>,
+    install_on_quit: bool,
+    updater: Updater,
+    update_errors_visible: bool,
+    install_confirm: bool,
     pub status_msg: Option<String>,
     pub has_icons: bool,
     /// Textures de marque (symbole, logos clair et sombre), chargées au premier usage.
@@ -259,7 +264,7 @@ impl SuniApp {
         // Ctrl+Plus / Moins / 0 zooment la page, jamais l'interface (egui les prendrait dès que
         // `handle_input` laisse passer les touches : champ focalisé, boîte de dialogue, palette).
         cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
-        Self {
+        let mut app = Self {
             has_icons,
             brand: None,
             after_open: None,
@@ -328,8 +333,14 @@ impl SuniApp {
             unsaved_prompt: None,
             after_save: None,
             deferred_close: None,
+            install_on_quit: false,
+            updater: Updater::default(),
+            update_errors_visible: false,
+            install_confirm: false,
             status_msg: None,
-        }
+        };
+        app.start_update_check(&cc.egui_ctx, false);
+        app
     }
 
     pub fn lang(&self) -> Language {
@@ -710,7 +721,7 @@ impl SuniApp {
                 Response::OperationFailed(e) => {
                     self.pending_save = None;
                     self.saving = false;
-                    self.after_save = None;
+                    self.cancel_after_save();
                     log::warn!("opération impossible : {e}");
                     self.error = Some(error_key(&e));
                     self.redact_failed();
@@ -758,7 +769,7 @@ impl SuniApp {
                 Response::SaveFailed(e) => {
                     self.saving = false;
                     self.saving_drafts.clear();
-                    self.after_save = None;
+                    self.cancel_after_save();
                     log::error!("enregistrement impossible : {e}");
                     self.error = Some("error.save_failed");
                 }
@@ -792,6 +803,105 @@ impl SuniApp {
 
     pub fn has_unsaved_changes(&self) -> bool {
         self.dirty || self.forms.has_unsaved_input()
+    }
+
+    fn start_update_check(&mut self, ctx: &egui::Context, manual: bool) {
+        if manual {
+            self.update_errors_visible = true;
+        }
+        if manual || self.settings.check_updates {
+            self.updater.start_check(ctx);
+        }
+    }
+
+    fn update_controls(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let (mut download, mut install, mut check) = (false, false, false);
+        ui.horizontal_wrapped(|ui| match &self.updater.phase {
+            UpdatePhase::Idle => {}
+            UpdatePhase::Checking => {
+                ui.spinner();
+                ui.label(tr(lang, "updates.checking"));
+            }
+            UpdatePhase::UpToDate => {
+                ui.label(tr(lang, "updates.uptodate"));
+            }
+            UpdatePhase::Available(release) => {
+                ui.label(tr_args(
+                    lang,
+                    "updates.available",
+                    &[("version", &release.version)],
+                ));
+                download = ui.button(tr(lang, "updates.download")).clicked();
+                ui.hyperlink_to(tr(lang, "updates.notes"), &release.notes_url);
+            }
+            UpdatePhase::Downloading => {
+                ui.spinner();
+                ui.label(tr(lang, "updates.downloading"));
+            }
+            UpdatePhase::Ready(prepared) => {
+                ui.label(tr_args(
+                    lang,
+                    "updates.ready",
+                    &[("version", &prepared.release.version)],
+                ));
+                install = ui.button(tr(lang, "updates.install")).clicked();
+            }
+            UpdatePhase::Failed(error) if self.update_errors_visible => {
+                ui.colored_label(
+                    theme::palette(self.settings.dark_theme).error,
+                    tr_args(lang, "updates.failed", &[("error", error)]),
+                );
+                check = !self.show_about && ui.button(tr(lang, "updates.check")).clicked();
+            }
+            UpdatePhase::Failed(_) => {}
+        });
+        if download {
+            self.update_errors_visible = true;
+            self.updater.download(ctx);
+        }
+        if install {
+            self.show_about = false;
+            self.install_confirm = true;
+        }
+        if check {
+            self.start_update_check(ctx, true);
+        }
+    }
+
+    fn update_install_dialog(&mut self, ctx: &egui::Context) {
+        if !self.install_confirm {
+            return;
+        }
+        let lang = self.lang();
+        let (mut install, mut cancel) = (false, false);
+        dialog::show(
+            ctx,
+            dialog::Spec::new(
+                "update-install",
+                tr(lang, "updates.confirm.title"),
+                self.settings.dark_theme,
+                self.has_icons,
+            )
+            .width(460.0),
+            |ui| {
+                ui.label(tr(lang, "updates.confirm.text"));
+            },
+            |ui| {
+                install = dialog::primary(ui, tr(lang, "updates.confirm.install"));
+                cancel = dialog::secondary(ui, tr(lang, "updates.confirm.cancel"))
+                    || ui.input(|i| i.key_pressed(Key::Escape));
+            },
+        );
+        if install || cancel {
+            self.install_confirm = false;
+        }
+        if install {
+            self.install_on_quit = true;
+            self.execute(ctx, Command::Quit);
+        } else if cancel {
+            self.cancel_after_save();
+        }
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
@@ -1053,6 +1163,7 @@ impl SuniApp {
             || self.forms.flatten_open
             || self.annotate.adv.dialog_open()
             || self.annotate.redact.dialog_open()
+            || self.install_confirm
     }
 
     /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
@@ -1069,6 +1180,9 @@ impl SuniApp {
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
+        if command == Command::CloseDocument && self.install_on_quit {
+            self.cancel_after_save();
+        }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
             self.deferred_close = Some(if command == Command::CloseDocument {
                 PendingAction::Close
@@ -1100,6 +1214,14 @@ impl SuniApp {
                     self.tabs.quit_pending = true;
                     self.switch_to(i);
                 } else {
+                    if self.install_on_quit {
+                        self.install_on_quit = false;
+                        if let Err(error) = self.updater.launch_prepared() {
+                            log::warn!("installation impossible : {error}");
+                            self.error = Some("updates.install_failed");
+                            return;
+                        }
+                    }
                     self.allow_close = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -1794,7 +1916,10 @@ impl SuniApp {
                     self.execute(ctx, Command::Quit);
                 }
             }
-            Some(UnsavedChoice::Cancel) => self.unsaved_prompt = None,
+            Some(UnsavedChoice::Cancel) => {
+                self.unsaved_prompt = None;
+                self.cancel_after_save();
+            }
             None => {}
         }
     }
@@ -1804,6 +1929,10 @@ impl SuniApp {
     /// Abandonne l'action prévue après l'enregistrement (fermer, quitter…).
     pub(crate) fn cancel_after_save(&mut self) {
         self.after_save = None;
+        if self.install_on_quit {
+            self.install_on_quit = false;
+            self.deferred_close = None;
+        }
     }
 
     pub(crate) fn save_document(&mut self, ask_path: bool) {
@@ -1816,7 +1945,7 @@ impl SuniApp {
             return;
         }
         if !self.commit_form_input() {
-            self.after_save = None;
+            self.cancel_after_save();
             return;
         }
         let Some(doc) = &self.document else { return };
@@ -1833,7 +1962,7 @@ impl SuniApp {
             match dialog.save_file() {
                 Some(chosen) => path = chosen,
                 None => {
-                    self.after_save = None;
+                    self.cancel_after_save();
                     return;
                 }
             }
@@ -1853,7 +1982,7 @@ impl SuniApp {
         if !self.commit_form_input() {
             self.pending_save = None;
             self.saving = false;
-            self.after_save = None;
+            self.cancel_after_save();
             return;
         }
         if !self.worker.has_pending_mutations() {
@@ -1933,6 +2062,7 @@ impl SuniApp {
             });
         } else if cancel {
             self.password_prompt = None;
+            self.cancel_after_save();
         }
     }
 
@@ -1944,6 +2074,8 @@ impl SuniApp {
         let p = theme::palette(self.settings.dark_theme);
         let logo = self.brand_wordmark(ctx, 150.0);
         let mut close = false;
+        let mut startup_check = self.settings.check_updates;
+        let mut manual_check = false;
         let spec = dialog::Spec::new(
             "about",
             tr(lang, "about.title"),
@@ -1997,6 +2129,16 @@ impl SuniApp {
                         );
                     });
                 ui.add_space(10.0);
+                self.update_controls(ctx, ui);
+                ui.checkbox(&mut startup_check, tr(lang, "updates.startup"));
+                let busy = matches!(
+                    self.updater.phase,
+                    UpdatePhase::Checking | UpdatePhase::Downloading | UpdatePhase::Ready(_)
+                );
+                manual_check = ui
+                    .add_enabled(!busy, egui::Button::new(tr(lang, "updates.check")))
+                    .clicked();
+                ui.add_space(10.0);
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
                     ui.label(crate::icons::semibold(tr(lang, "about.credit"), 13.5).color(p.text));
@@ -2018,12 +2160,22 @@ impl SuniApp {
         if close {
             self.show_about = false;
         }
+        if startup_check != self.settings.check_updates {
+            self.settings.check_updates = startup_check;
+            self.persist_settings();
+        }
+        if manual_check {
+            self.start_update_check(ctx, true);
+        }
     }
 }
 
 impl eframe::App for SuniApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        if self.updater.poll() {
+            ctx.request_repaint();
+        }
         self.handle_responses(&ctx);
         self.handle_input(&ctx);
         let p = theme::palette(self.settings.dark_theme);
@@ -2044,6 +2196,19 @@ impl eframe::App for SuniApp {
                     .inner_margin(egui::Margin::symmetric(6, 6)),
             )
             .show(ui, |ui| self.toolbar(&ctx, ui));
+        if matches!(
+            self.updater.phase,
+            UpdatePhase::Available(_) | UpdatePhase::Downloading | UpdatePhase::Ready(_)
+        ) || (self.update_errors_visible
+            && matches!(
+                self.updater.phase,
+                UpdatePhase::Checking | UpdatePhase::Failed(_)
+            ))
+        {
+            egui::Panel::top("update-banner")
+                .frame(chrome(p.surface))
+                .show(ui, |ui| self.update_controls(&ctx, ui));
+        }
         if self.document.is_some() && self.annotate.workspace.is_some_and(|w| w.is_mode()) {
             // Hauteur fixe : pas de saut quand les libellés apparaissent ou disparaissent.
             egui::Panel::top("workspace")
@@ -2201,6 +2366,7 @@ impl eframe::App for SuniApp {
         self.adv_dialogs(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
+        self.update_install_dialog(&ctx);
         self.command_palette(&ctx);
         self.focus_last_frame = ctx.memory(|m| m.focused().is_some());
     }
@@ -2296,6 +2462,10 @@ mod tests {
             pending_save: None,
             saving_drafts: HashMap::new(),
             deferred_close: None,
+            install_on_quit: false,
+            updater: Updater::default(),
+            update_errors_visible: false,
+            install_confirm: false,
             unsaved_prompt: None,
             after_save: None,
             status_msg: None,
@@ -2341,6 +2511,164 @@ mod tests {
             }],
             form: sunipdf_core::FormKind::AcroForm,
         }
+    }
+
+    fn cancel_unsaved_prompt(app: &mut SuniApp, ctx: &egui::Context) {
+        crate::icons::install(ctx);
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |_| app.unsaved_dialog(ctx),
+        );
+        out.textures_delta.clear();
+    }
+
+    #[test]
+    fn cancelling_quit_disarms_update_installation_and_keeps_the_document() {
+        let (mut app, _requests, _responses) = test_app();
+        app.dirty = true;
+        app.install_on_quit = true;
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Command::Quit);
+        cancel_unsaved_prompt(&mut app, &ctx);
+        assert!(
+            !app.install_on_quit,
+            "Cancel must disarm installation on a later Quit"
+        );
+        assert!(app.document.is_some());
+        assert!(!app.allow_close);
+        app.dirty = false;
+        let mut out = ctx.run_ui(Default::default(), |_| app.execute(&ctx, Command::Quit));
+        out.textures_delta.clear();
+        assert!(
+            out.viewport_output
+                .values()
+                .any(|v| v.commands.contains(&egui::ViewportCommand::Close)),
+            "a later normal Quit must not try to install the cancelled update"
+        );
+    }
+
+    #[test]
+    fn save_failure_disarms_update_installation() {
+        let (mut app, requests, responses) = test_app();
+        app.dirty = true;
+        app.install_on_quit = true;
+        app.after_save = Some(PendingAction::Quit);
+        app.save_document(false);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+        responses
+            .send(Response::SaveFailed(EngineError::InvalidFormat))
+            .unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&egui::Context::default());
+        assert!(
+            !app.install_on_quit,
+            "failed Save must cancel the installation intent"
+        );
+        assert!(app.document.is_some());
+        assert!(!app.allow_close);
+    }
+
+    #[test]
+    fn invalid_form_draft_disarms_update_installation() {
+        let (mut app, requests, _responses) = test_app();
+        form_draft(&mut app, "Too long to fit");
+        app.install_on_quit = true;
+        app.after_save = Some(PendingAction::Quit);
+        app.save_document(false);
+        assert!(
+            !app.install_on_quit,
+            "invalid draft must cancel the installation intent"
+        );
+        assert!(!requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+        assert!(app.document.is_some());
+    }
+
+    #[test]
+    fn update_installation_waits_for_pending_edit_and_unsaved_confirmation() {
+        let (mut app, _requests, responses) = test_app();
+        app.install_on_quit = true;
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Command::RotateClockwise);
+        app.execute(&ctx, Command::Quit);
+        assert!(!app.allow_close);
+        assert!(app.unsaved_prompt.is_none());
+        responses.send(changed("test/first.pdf", true)).unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(matches!(app.unsaved_prompt, Some(PendingAction::Quit)));
+        assert!(app.install_on_quit);
+        cancel_unsaved_prompt(&mut app, &ctx);
+        assert!(!app.install_on_quit);
+        assert!(app.document.is_some());
+    }
+
+    #[test]
+    fn startup_update_check_obeys_preference_and_manual_check_can_override_it() {
+        let (mut app, _requests, _responses) = test_app();
+        let (updater, checks) = Updater::test_channels();
+        app.updater = updater;
+        let ctx = egui::Context::default();
+        app.settings.check_updates = false;
+        app.start_update_check(&ctx, false);
+        assert!(
+            checks.try_recv().is_err(),
+            "disabled startup check must not send a request"
+        );
+        app.settings.check_updates = true;
+        app.start_update_check(&ctx, false);
+        assert!(checks.try_recv().is_ok());
+        assert!(!app.update_errors_visible, "startup failures stay quiet");
+        app.updater.phase = UpdatePhase::Idle;
+        app.settings.check_updates = false;
+        app.start_update_check(&ctx, true);
+        assert!(checks.try_recv().is_ok());
+        assert!(app.update_errors_visible);
+    }
+
+    #[test]
+    fn installation_launch_failure_keeps_the_application_open_and_disarms_retry() {
+        let (mut app, _requests, _responses) = test_app();
+        app.install_on_quit = true;
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(Default::default(), |_| app.execute(&ctx, Command::Quit));
+        out.textures_delta.clear();
+        assert!(!out
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::Close)));
+        assert!(!app.allow_close);
+        assert!(!app.install_on_quit);
+        assert!(app.document.is_some());
+        assert_eq!(app.error, Some("updates.install_failed"));
+    }
+
+    #[test]
+    fn closing_a_tab_instead_of_pending_update_quit_disarms_installation() {
+        let (mut app, _requests, _responses) = test_app();
+        app.install_on_quit = true;
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Command::RotateClockwise);
+        app.execute(&ctx, Command::Quit);
+        app.execute(&ctx, Command::CloseDocument);
+        assert!(
+            !app.install_on_quit,
+            "replacing Quit with a tab close must not install on a later Quit"
+        );
+        assert!(matches!(app.deferred_close, Some(PendingAction::Close)));
+        assert!(app.document.is_some());
     }
 
     #[test]

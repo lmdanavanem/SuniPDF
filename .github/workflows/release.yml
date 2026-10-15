@@ -25,12 +25,13 @@ jobs:
           .\scripts\fetch-pdfium.ps1 -Arch x64
           .\scripts\check-i18n.ps1
           cargo test --workspace
+          .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: Portable (${{ matrix.arch }})
         run: .\scripts\package-portable.ps1 -Arch ${{ matrix.arch }}
-      - name: MSI (x64 seulement)
+      - name: MSI (x64 only)
         if: matrix.arch == 'x64'
         run: .\scripts\package-msi.ps1 -Arch x64
-      - name: Signature de code (si certificat fourni)
+      - name: Code signing (when a certificate is configured)
         if: matrix.arch == 'x64' && env.SIGN_PFX_BASE64 != ''
         env:
           SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
@@ -66,5 +67,5 @@ jobs:
           files: artifacts/**/*
           generate_release_notes: true
           body: |
-            Paquets Windows x64 (ZIP portable et MSI) testés en CI. Le ZIP ARM64 est compilé en CI mais
-            n'a pas encore été exécuté sur du matériel ARM64. Empreintes SHA256 jointes (.sha256).
+            Windows x64 packages (portable ZIP and MSI) tested in CI. The ARM64 ZIP is built in CI but
+            has not been run on ARM64 hardware. SHA256 checksums are included (.sha256).

@@ -9,7 +9,7 @@ $root = Split-Path -Parent $PSScriptRoot
 Set-Location $root
 $version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
 $stage = Join-Path $root "dist\SuniPDF-$version-win-$Arch-portable"
-if (-not (Test-Path "$stage\sunipdf.exe")) { throw "Dossier portable absent : lancer package-portable.ps1 -Arch $Arch d'abord." }
+if (-not (Test-Path "$stage\sunipdf.exe")) { throw "Portable package missing: run package-portable.ps1 -Arch $Arch first." }
 
 $wixBin = $env:WIX_BIN
 if (-not $wixBin) {
@@ -32,7 +32,7 @@ $msi = Join-Path $root "dist\SuniPDF-$version-win-$Arch.msi"
 
 # Licences et notices tierces : un composant par fichier du dossier licenses du paquet.
 $licenses = Get-ChildItem -File (Join-Path $stage "licenses") | Sort-Object Name
-if (-not $licenses) { throw "Aucune licence dans $stage\licenses" }
+if (-not $licenses) { throw "No licenses found in $stage\licenses" }
 $components = for ($i = 0; $i -lt $licenses.Count; $i++) {
     $src = [System.Security.SecurityElement]::Escape($licenses[$i].FullName)
     "      <Component Id=`"License$i`" Guid=`"*`" Win64=`"yes`"><File Id=`"License$i`" Source=`"$src`" KeyPath=`"yes`" /></Component>"
@@ -49,12 +49,13 @@ $($components -join "`n")
 "@
 [System.IO.File]::WriteAllText("$obj\Licenses.wxs", $fragment, (New-Object System.Text.UTF8Encoding $false))
 
-# LISEZMOI propre à l'installation (celui du paquet portable parle de « portable »).
-$readme = "$obj\LISEZMOI.txt"
+# The installed package has its own readme.
+$readme = "$obj\README.txt"
 $readmeText = "SuniPDF $version (Windows $Arch)`r`n" +
-    "Installé dans ce dossier. Aucune télémétrie ; les préférences sont dans %APPDATA%\SuniPDF.`r`n" +
-    "Ligne de commande : sunipdf-cli.exe --help`r`n" +
-    "Licences et notices tierces : dossier licenses\`r`n"
+    "Installed in this directory. Preferences are stored in %APPDATA%\SuniPDF.`r`n" +
+    "The optional startup update check contacts GitHub for release information. No PDF files are sent.`r`n" +
+    "Command line: sunipdf-cli.exe --help`r`n" +
+    "Licenses and third-party notices: licenses\`r`n"
 [System.IO.File]::WriteAllText($readme, $readmeText, (New-Object System.Text.UTF8Encoding $true))
 
 & (Join-Path $wixBin "candle.exe") -nologo -arch $Arch "-dVersion=$version" "-dArch=$Arch" "-dSourceDir=$stage" "-dReadmePath=$readme" "-dIconPath=$root\assets\icon\sunipdf.ico" `

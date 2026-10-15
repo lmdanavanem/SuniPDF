@@ -1,21 +1,23 @@
-# Notes d'ingénierie (à lire avant de modifier le code)
+# Engineering Notes (read before modifying the code)
 
-Ce document rassemble ce qu'il faut savoir pour livrer une tranche verticale sans casser le dépôt :
-commandes, garde-fous, patrons de code et pièges déjà rencontrés. Il complète `CONTRIBUTING.md` et
+[Français](ENGINEERING_NOTES.fr.md)
+
+This document gathers what you need to know to ship a vertical slice without breaking the repository:
+commands, guard rails, code patterns and pitfalls already encountered. It complements `CONTRIBUTING.md` and
 `docs/ARCHITECTURE.md`.
 
-## 1. Environnement et commandes
+## 1. Environment and commands
 
-- Poste de référence : Windows 11, 14 Go de RAM. **Toujours `-j 2`** avec cargo, **jamais deux cargo en
-  parallèle**, jamais `cargo clean` (une reconstruction complète coûte plus de dix minutes).
-- `cargo` n'est pas dans le PATH par défaut :
-  - Git Bash : `export PATH="$HOME/.cargo/bin:$PATH"`
-  - PowerShell : `$env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"`
-- Windows PowerShell 5.1 transforme la sortie d'erreur de cargo en exception : lancer les scripts de
-  packaging depuis Git Bash (`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/x.ps1`).
-- PDFium : `third_party/pdfium/win-x64/bin/pdfium.dll` (ignoré par git, `scripts/fetch-pdfium.ps1`).
+- Reference machine: Windows 11, 14 GB of RAM. **Always `-j 2`** with cargo, **never two cargo processes in
+  parallel**, never `cargo clean` (a full rebuild costs more than ten minutes).
+- `cargo` is not in the PATH by default:
+  - Git Bash: `export PATH="$HOME/.cargo/bin:$PATH"`
+  - PowerShell: `$env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"`
+- Windows PowerShell 5.1 turns cargo's error output into an exception: run the packaging scripts
+  from Git Bash (`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/x.ps1`).
+- PDFium: `third_party/pdfium/win-x64/bin/pdfium.dll` (ignored by git, `scripts/fetch-pdfium.ps1`).
 
-### Garde-fous obligatoires avant tout commit (les quatre doivent être verts)
+### Mandatory guard rails before any commit (all four must be green)
 
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -25,186 +27,183 @@ cargo test --workspace -j 2
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-i18n.ps1
 ```
 
-`cargo fmt --all` reformate : relire un fichier (ou `grep -n`) avant de l'éditer après un formatage.
+`cargo fmt --all` reformats: re-read a file (or `grep -n`) before editing it after a formatting pass.
 
-## 2. Écrire du code sans se piéger
+## 2. Writing code without trapping yourself
 
-- Modifier les fichiers avec les outils d'édition, pas avec des heredocs shell : les heredocs mangent
-  les `\n`, `\u{...}` et les apostrophes. Pour un script de modification, l'écrire dans un fichier puis
-  l'exécuter avec `python -I fichier.py`.
-- Aucune chaîne visible par l'utilisateur en dur dans `apps/` : `tr(lang, "cle")` ou
-  `tr_args(lang, "cle", &[("nom", valeur)])`. Toute clé va dans `assets/i18n/fr-FR.json` **et**
-  `assets/i18n/en-US.json` (mêmes clés, JSON indenté de 2 espaces, UTF-8 sans BOM).
-- La CLI parle anglais et sort du JSON (`serde_json::json!`), erreurs via `EngineError`.
-- L'UI n'importe jamais `pdfium-render` : tout passe par `sunipdf-core` et par le thread moteur.
+- Modify files with the editing tools, not with shell heredocs: heredocs eat
+  `\n`, `\u{...}` and apostrophes. For a modification script, write it to a file and then
+  run it with `python -I file.py`.
+- No hard-coded user-visible string in `apps/`: `tr(lang, "key")` or
+  `tr_args(lang, "key", &[("name", value)])`. Every key goes into `assets/i18n/fr-FR.json` **and**
+  `assets/i18n/en-US.json` (same keys, JSON indented with 2 spaces, UTF-8 without BOM).
+- The CLI speaks English and outputs JSON (`serde_json::json!`), errors via `EngineError`.
+- The UI never imports `pdfium-render`: everything goes through `sunipdf-core` and the engine thread.
 
-## 3. Patrons de cette base de code
+## 3. Patterns of this code base
 
-### Ajouter une opération d'édition annulable
-1. Moteur : méthode `impl Document<'_>` dans le module concerné de `crates/sunipdf-core/src/`
-   (`edit.rs`, `annot.rs`, `stamp.rs`, `pages.rs`…), erreurs `EngineError`, export dans `lib.rs`.
-2. Thread moteur (`apps/sunipdf-desktop/src/worker.rs`) : variante dans `EditOp`, bras dans
-   `fn apply(doc, op)`. `State::edit` prend un instantané d'octets avant, l'empile dans l'annulation et
-   renvoie `Response::DocumentChanged` ; en cas d'erreur l'instantané est restauré.
-3. Lecture seule : variante `Request` + `Response` (voir `ObjectAt` / `ObjectSelected`).
-4. Tâche de fichier longue (sortie dans un autre fichier) : `BatchOp` + `BatchResult`
-   (voir `tools.rs`, `on_batch_done`).
+### Adding an undoable edit operation
+1. Engine: `impl Document<'_>` method in the relevant module of `crates/sunipdf-core/src/`
+   (`edit.rs`, `annot.rs`, `stamp.rs`, `pages.rs`, etc.), `EngineError` errors, export in `lib.rs`.
+2. Engine thread (`apps/sunipdf-desktop/src/worker.rs`): variant in `EditOp`, arm in
+   `fn apply(doc, op)`. `State::edit` takes a byte snapshot beforehand, pushes it onto the undo stack and
+   returns `Response::DocumentChanged`; on error the snapshot is restored.
+3. Read-only: `Request` + `Response` variant (see `ObjectAt` / `ObjectSelected`).
+4. Long file task (output to another file): `BatchOp` + `BatchResult`
+   (see `tools.rs`, `on_batch_done`).
 
-### Ajouter une commande
-1. `crates/sunipdf-core/src/command.rs` : variante dans `enum Command`, entrée `cmd!(Variante, "menu.id",
-   "cle.libelle", Some("cle.raccourci") | None, a_besoin_d_un_document, Menu)`.
-2. `apps/sunipdf-desktop/src/shell.rs` : bras dans `command_icon` (glyphe de `icons.rs` + repli texte).
-   `apps/sunipdf-desktop/src/workspace.rs` : placer la commande dans le groupe de **son outil** (`TABLE`,
-   un seul outil par commande, couleur et barre en découlent) ou, pour une commande système, dans
-   `SYSTEM_COMMANDS` du test `every_registry_command_has_a_home`. Contrat complet : `docs/NEXT_TASKS.md`.
-3. `apps/sunipdf-desktop/src/app.rs` : bras dans `execute`, raccourci dans `handle_input`
-   (`key(Modifiers::…, Key::…, Command::…)`). Les raccourcis à une lettre sont ignorés quand un champ de
-   saisie ou une boîte de dialogue a le clavier.
-4. Clés i18n du libellé et du raccourci dans les deux catalogues.
-Une commande qui exige un document et qui est lancée sans document ouvre d'abord un fichier puis
-s'exécute (`after_open`).
+### Adding a command
+1. `crates/sunipdf-core/src/command.rs`: variant in `enum Command`, entry `cmd!(Variant, "menu.id",
+   "label.key", Some("shortcut.key") | None, needs_a_document, Menu)`.
+2. `apps/sunipdf-desktop/src/shell.rs`: arm in `command_icon` (glyph from `icons.rs` + text fallback).
+   `apps/sunipdf-desktop/src/workspace.rs`: place the command in the group of **its tool** (`TABLE`,
+   a single tool per command; colour and bar follow from it) or, for a system command, in
+   `SYSTEM_COMMANDS` of the `every_registry_command_has_a_home` test. Full contract: `docs/NEXT_TASKS.md`.
+3. `apps/sunipdf-desktop/src/app.rs`: arm in `execute`, shortcut in `handle_input`
+   (`key(Modifiers::…, Key::…, Command::…)`). Single-letter shortcuts are ignored when an input
+   field or a dialog has the keyboard.
+4. i18n keys of the label and shortcut in both catalogues.
+A command that requires a document and is launched without one first opens a file and then
+runs (`after_open`).
 
-### Ajouter une boîte de dialogue
-Toujours `crate::dialog::show(ctx, dialog::Spec::new(id, titre, dark, has_icons).subtitle(..).icon(..)
-.width(..), |ui| corps, |ui| pied)` avec `dialog::primary`, `dialog::secondary`, `dialog::danger`
-(le pied est aligné à droite : le premier bouton ajouté est l'action principale). Pas d'`egui::Modal`
-direct. Donner le focus au premier champ une seule fois
-(`if ui.memory(|m| m.focused().is_none()) { champ.request_focus(); }`), sinon les autres champs
-deviennent inéditables. Ajouter l'état « ouvert » à la garde en tête de `handle_input` pour bloquer les
-raccourcis pendant la saisie.
+### Adding a dialog
+Always `crate::dialog::show(ctx, dialog::Spec::new(id, title, dark, has_icons).subtitle(..).icon(..)
+.width(..), |ui| body, |ui| footer)` with `dialog::primary`, `dialog::secondary`, `dialog::danger`
+(the footer is right-aligned: the first button added is the primary action). No direct
+`egui::Modal`. Give focus to the first field only once
+(`if ui.memory(|m| m.focused().is_none()) { field.request_focus(); }`), otherwise the other fields
+become uneditable. Add the "open" state to the guard at the top of `handle_input` to block
+shortcuts during input.
 
-### État par onglet
-L'état d'interface lié au document (page, zoom, sélection, outils) est échangé par `tabs.rs`
-(`take_tab` / `put_tab`). Tout nouvel état lié au document doit y être ajouté, sinon il fuit d'un
-onglet à l'autre.
+### Per-tab state
+Document-related interface state (page, zoom, selection, tools) is exchanged through `tabs.rs`
+(`take_tab` / `put_tab`). Any new document-related state must be added there, otherwise it leaks from one
+tab to another.
 
-### Vue du document (`view.rs`)
-Une page à l'écran = `paint_slot` (rectangle écran `page_rect`, zoom uniforme `effective_zoom`) : toute
-surcouche par page (surbrillance, sélection, poignées, éditeur) prend `(painter, page_rect, page, page_h_pt)` et
-filtre sur sa page, elle sert alors en continu comme en page unique. Ne jamais supposer « page affichée =
-`doc.page` » : en continu plusieurs pages sont visibles ; `doc.page` est la page courante (dominante ou touchée).
-Défiler = `self.view.request(ScrollRequest::…)` ou `go_to_page` (jamais `scroll_offset` en dehors de
-`document_view`, egui le réappliquerait à chaque image). Après une édition, `DocState.pages_unchanged` décide si
-les textures restent affichées (périmées) : une nouvelle `EditOp` qui change nombre, ordre ou taille des pages
-doit figurer dans `EditOp::keeps_pages`.
+### Document view (`view.rs`)
+A page on screen = `paint_slot` (screen rectangle `page_rect`, uniform zoom `effective_zoom`): every
+per-page overlay (highlight, selection, handles, editor) takes `(painter, page_rect, page, page_h_pt)` and
+filters on its page; it then works in continuous mode as well as in single-page mode. Never assume "displayed page =
+`doc.page`": in continuous mode several pages are visible; `doc.page` is the current page (dominant or touched).
+Scrolling = `self.view.request(ScrollRequest::…)` or `go_to_page` (never `scroll_offset` outside
+`document_view`, egui would reapply it on every frame). After an edit, `DocState.pages_unchanged` decides whether
+the textures stay displayed (stale): any new `EditOp` that changes the number, order or size of pages
+must appear in `EditOp::keeps_pages`.
 
-### Coordonnées
-L'API du moteur parle en **espace d'affichage** : points, origine en bas à gauche de la page telle
-qu'affichée (après `/Rotate`, boîte MediaBox ∩ CropBox) ; l'écran a l'origine en haut à gauche.
-Conversions UI : `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` et, dans l'autre sens,
-`page_rect.min + vec2(x * k, (page_h_pt - y) * k)` avec `k = effective_zoom * SCREEN_PER_PDF_POINT`.
-Dans le moteur, toute nouvelle fonction qui touche des objets, du texte ou des annotations convertit avec
-`geometry::geometry_of(&page)` (`to_user`, `rect_to_user`, `vec_to_user`, `upright_matrix`, et l'inverse en
-sortie) ; tester sur `tests/fixtures/boxes.pdf` (pages pivotées 90/180/270 et rognées).
+### Coordinates
+The engine API speaks in **display space**: points, origin at the bottom left of the page as
+displayed (after `/Rotate`, MediaBox ∩ CropBox box); the screen has its origin at the top left.
+UI conversions: `annotate::to_pdf(pos, page_rect, zoom, page_h_pt)` and, in the other direction,
+`page_rect.min + vec2(x * k, (page_h_pt - y) * k)` with `k = effective_zoom * SCREEN_PER_PDF_POINT`.
+In the engine, every new function that touches objects, text or annotations converts with
+`geometry::geometry_of(&page)` (`to_user`, `rect_to_user`, `vec_to_user`, `upright_matrix`, and the inverse on
+output); test on `tests/fixtures/boxes.pdf` (pages rotated 90/180/270 and cropped).
 
-## 4. Pièges des bibliothèques
+## 4. Library pitfalls
 
 ### pdfium-render 0.9.4 / PDFium 7881
-- PDFium n'est pas thread-safe : un seul thread moteur. Il ne se réinitialise pas dans un même
-  processus : les tests d'intégration partagent un moteur unique (`engine()` dans `tests/engine.rs`),
-  jamais `Engine::new()` directement dans un test.
-- Un objet de page modifié en place (texte, matrice, couleur) n'est écrit qu'après
-  `page.regenerate_content()` ; l'ajout et la suppression régénèrent seuls.
-- `page.objects()` emprunte la page ; pour garder un objet tout en passant `&mut page` à une autre
-  fonction, l'obtenir par `page.objects_mut().get(i)`.
-- L'ordre de dessin suit les flux de contenu : réordonner des objets n'a d'effet qu'après fusion des
-  flux (`merge_content_streams`, lopdf).
-- Les limites d'un objet texte partent de la ligne de base (les jambages dépassent en dessous).
-- PDFium ne chiffre pas à l'écriture et ne modifie pas les signets : ces opérations passent par lopdf
-  sur les octets du document (`security.rs`), puis `Document::restore`.
+- PDFium is not thread-safe: a single engine thread. It does not reinitialise within the same
+  process: integration tests share a single engine (`engine()` in `tests/engine.rs`),
+  never `Engine::new()` directly in a test.
+- A page object modified in place (text, matrix, colour) is only written after
+  `page.regenerate_content()`; addition and removal regenerate on their own.
+- `page.objects()` borrows the page; to keep an object while passing `&mut page` to another
+  function, obtain it through `page.objects_mut().get(i)`.
+- Drawing order follows the content streams: reordering objects only has an effect after merging the
+  streams (`merge_content_streams`, lopdf).
+- The bounds of a text object start at the baseline (descenders extend below).
+- PDFium does not encrypt on write and does not modify bookmarks: these operations go through lopdf
+  on the document bytes (`security.rs`), then `Document::restore`.
 
 ### egui / eframe 0.36
-- `impl eframe::App { fn ui(&mut self, ui, frame) }`, panneaux `egui::Panel::top/left/right/bottom`,
+- `impl eframe::App { fn ui(&mut self, ui, frame) }`, panels `egui::Panel::top/left/right/bottom`,
   `Frame::new().corner_radius(..)`, `ComboBox::from_id_salt`, `StrokeKind`, `EllipseShape { angle, .. }`.
-- Icônes : `icons::icon(has_icons, glyph::X, "repli", taille)` ; ne jamais concaténer un glyphe d'icône
-  dans une chaîne de texte (police différente) : utiliser `Button::new((icone, libelle))` ou peindre
-  avec `painter.text(.., FontId::new(taille, FontFamily::Name(icons::ICONS.into())), ..)`.
-- Le fond « inactif » du thème est la couleur de surface : un `Slider` a besoin d'un
-  `ui.visuals_mut().widgets.inactive.bg_fill` local pour que son rail soit visible.
-- Clavier : `ctx.input_mut(|i| i.consume_key(Modifiers::…, Key::…))` pour éviter qu'une touche serve
-  deux fois dans la même image. `consume_key` ignore une touche Maj ou Alt en trop (`matches_logically`) :
-  lire la variante avec Maj **avant** la variante simple (Maj+Espace avant Espace).
-- `ScrollArea::max_height(h)` ne descend pas sous 64 px (`min_scrolled_height`) : pour une zone plus basse,
-  ajouter `.min_scrolled_height(0.0)`, sinon le contenu voisin la recouvre.
-- Origine d'un glissement : `ui.input(|i| i.pointer.press_origin())`, pas la position au moment où le
-  seuil de glissement est franchi.
-- Widget dessiné à la main : `allocate_exact_size(.., Sense::click())` (focalisable), puis
-  `resp.widget_info(..)` pour un libellé AccessKit lisible (jamais le glyphe d'icône), peinture après
-  l'allocation (le survol n'est connu qu'ensuite). Après une activation, `resp.surrender_focus()` : un widget
-  focalisé fait taire les raccourcis à une lettre de `handle_input`.
-- egui retire le focus sur Échap **avant** que l'application lise la touche : `SuniApp::focus_last_frame`
-  garde l'état de l'image précédente (Échap dans un champ ne quitte pas l'outil actif).
-- Échap passe par un seul point : `workspace::take_escape` (ordre dans `EscState::action`, testé). Les menus
-  et listes egui (`menu_button`, `ComboBox`, sélecteur de couleur) ne lisent Échap qu'au moment de leur
-  dessin : `handle_input`, qui tourne avant, consommerait la touche. `egui::Popup::is_any_open(ctx)` lu en
-  début d'image donne l'état de l'image précédente ; `take_escape` ferme alors le menu lui-même
-  (`Popup::close_all`) et consomme la touche. Toute nouvelle action sur Échap s'ajoute à `EscState`.
-- `Visuals::interact_cursor` ne s'applique qu'aux `egui::Button` ; les widgets maison posent
-  `on_hover_cursor(PointingHand)`. `ui.set_max_width(w)` peut **élargir** : borner par `available_width()`.
-- Une rangée `ui.horizontal` démarre à `interact_size.y` de haut ; pour centrer des boutons plus hauts
-  sur une pastille voisine, régler `interact_size.y` à leur hauteur.
-- Test sans fenêtre : `Context::run_ui` + `enable_accesskit()` ; vider `out.textures_delta` avant de
-  jeter la sortie (assertion de débogage d'epaint).
-- Ctrl+C / X / V n'arrivent **jamais** comme `Event::Key` : egui-winit les change en `Event::Copy`, `Cut`,
-  `Paste(texte)` (Paste seulement si le presse-papiers système contient du texte). Les lire dans `i.events`.
-- Une fenêtre surgissante (`ComboBox`, `Area`) garde la taille de l'image précédente : un contenu qui grandit
-  après coup (liste chargée en différé) est tronqué. Donner une hauteur fixe à la partie variable
+- Icons: `icons::icon(has_icons, glyph::X, "fallback", size)`; never concatenate an icon glyph
+  into a text string (different font): use `Button::new((icon, label))` or paint
+  with `painter.text(.., FontId::new(size, FontFamily::Name(icons::ICONS.into())), ..)`.
+- The theme's "inactive" background is the surface colour: a `Slider` needs a local
+  `ui.visuals_mut().widgets.inactive.bg_fill` for its rail to be visible.
+- Keyboard: `ctx.input_mut(|i| i.consume_key(Modifiers::…, Key::…))` to prevent a key from being used
+  twice in the same frame. `consume_key` ignores an extra Shift or Alt key (`matches_logically`):
+  read the Shift variant **before** the plain variant (Shift+Space before Space).
+- `ScrollArea::max_height(h)` does not go below 64 px (`min_scrolled_height`): for a shorter area,
+  add `.min_scrolled_height(0.0)`, otherwise the neighbouring content covers it.
+- Drag origin: `ui.input(|i| i.pointer.press_origin())`, not the position at the moment the
+  drag threshold is crossed.
+- Hand-drawn widget: `allocate_exact_size(.., Sense::click())` (focusable), then
+  `resp.widget_info(..)` for a readable AccessKit label (never the icon glyph), painting after
+  the allocation (hover is only known afterwards). After an activation, `resp.surrender_focus()`: a focused
+  widget silences the single-letter shortcuts of `handle_input`.
+- egui removes focus on Escape **before** the application reads the key: `SuniApp::focus_last_frame`
+  keeps the state of the previous frame (Escape in a field does not leave the active tool).
+- Escape goes through a single point: `workspace::take_escape` (order in `EscState::action`, tested). egui menus
+  and lists (`menu_button`, `ComboBox`, colour picker) only read Escape at the moment they are
+  drawn: `handle_input`, which runs before, would consume the key. `egui::Popup::is_any_open(ctx)` read at the
+  start of a frame gives the state of the previous frame; `take_escape` then closes the menu itself
+  (`Popup::close_all`) and consumes the key. Any new action on Escape is added to `EscState`.
+- `Visuals::interact_cursor` only applies to `egui::Button`; home-made widgets set
+  `on_hover_cursor(PointingHand)`. `ui.set_max_width(w)` can **widen**: bound it by `available_width()`.
+- A `ui.horizontal` row starts at `interact_size.y` high; to centre taller buttons
+  on a neighbouring chip, set `interact_size.y` to their height.
+- Headless test: `Context::run_ui` + `enable_accesskit()`; clear `out.textures_delta` before
+  discarding the output (epaint debug assertion).
+- Ctrl+C / X / V **never** arrive as `Event::Key`: egui-winit turns them into `Event::Copy`, `Cut`,
+  `Paste(text)` (Paste only if the system clipboard contains text). Read them from `i.events`.
+- A popup window (`ComboBox`, `Area`) keeps the size of the previous frame: content that grows
+  afterwards (list loaded lazily) is truncated. Give a fixed height to the variable part
   (`ScrollArea::max_height(..).auto_shrink([false, false])`).
-- Un `ui.horizontal` imbriqué dans `horizontal_wrapped` ne passe pas à la ligne : il déborde. Préférer des
-  widgets simples, ou une rangée par `horizontal_wrapped`.
-- Dans une `Area` / `Modal`, l'espace « disponible » est la taille mémorisée de l'image précédente : un
-  `with_layout(right_to_left(Align::Center))` qui centre ses boutons dans cet espace fait grandir la boîte à
-  chaque image (pied de 150 px, en-tête hors écran). Donner une hauteur fixe (`allocate_ui_with_layout`) et,
-  pour une `ScrollArea` bornée, fixer aussi `min_scrolled_height` (sinon elle ne grandit que de quelques
-  pixels par image et s'arrête avec le dernier rafraîchissement). `dialog::show` applique les deux, et réserve
-  10 px à la barre flottante du thème quand le corps déborde (`scroll.floating_allocated_width`, avec
-  `set_width(available_width())` dans la zone) : sans cela la barre recouvre le bord droit du contenu.
-- Un cadre (`Frame`) imbriqué dans une rangée `ui.horizontal` qui contient `ui.set_width(ui.available_width())`
-  fait grandir un panneau d'une image à l'autre jusqu'à la largeur de la fenêtre : indenter une carte avec
-  `Frame::outer_margin`, pas avec `horizontal` + `add_space`. Un `TextEdit` dans un panneau se borne par
-  `available_width()`.
-- `consume_key(COMMAND, k)` accepte aussi Ctrl+Maj+k : les tables `FIELD_SHORTCUTS` / `SHORTCUTS` d'`app.rs`
-  lisent la variante avec Maj d'abord (invariant testé) ; tout nouveau raccourci va dans ces tables.
+- A `ui.horizontal` nested inside `horizontal_wrapped` does not wrap: it overflows. Prefer simple
+  widgets, or one row per `horizontal_wrapped`.
+- Inside an `Area` / `Modal`, the "available" space is the remembered size of the previous frame: a
+  `with_layout(right_to_left(Align::Center))` that centres its buttons in that space makes the dialog grow
+  on every frame (150 px footer, header off screen). Give a fixed height (`allocate_ui_with_layout`) and,
+  for a bounded `ScrollArea`, also set `min_scrolled_height` (otherwise it only grows by a few
+  pixels per frame and stops with the last repaint). `dialog::show` applies both, and reserves
+  10 px for the theme's floating bar when the body overflows (`scroll.floating_allocated_width`, with
+  `set_width(available_width())` inside the area): without that the bar covers the right edge of the content.
+- A `Frame` nested in a `ui.horizontal` row that contains `ui.set_width(ui.available_width())` makes a panel grow
+  from one frame to the next up to the window width: indent a card with `Frame::outer_margin`, not with
+  `horizontal` + `add_space`. A `TextEdit` in a panel is bounded by `available_width()`.
+- `consume_key(COMMAND, k)` also accepts Ctrl+Shift+k: the `FIELD_SHORTCUTS` / `SHORTCUTS` tables of `app.rs`
+  read the Shift variant first (tested invariant); every new shortcut goes into these tables.
 
-### Annotations (lopdf écrit, PDFium rend)
-- Une annotation avancée s'écrit par `annot_write.rs` : `edit_pdf` (instantané → `security::load` → lopdf →
-  `security::save` → `restore`) puis un flux `/AP` explicite ; jamais par les setters d'annotation de
-  `pdfium-render` (pas de cercle ni de ligne, repli de couleur qui transtype un handle d'annotation en objet de page).
-  Les apparences sont dessinées en coordonnées **locales d'affichage** avec `/Matrix` = partie linéaire de la rotation
-  de la page : texte droit sur une page `/Rotate`.
-- Les indices d'annotation sont ceux de `/Annots` (= `FPDFPage_GetAnnot(i)`) : jamais `iter()` de `pdfium-render`
-  (s'arrête à la première entrée illisible), jamais `page.links()` (doublons), jamais `lopdf::get_page_annotations`
-  (saute les entrées invalides). Seules les annotations `/NM SuniPDF-…` voient leur apparence régénérée.
-- Une adresse externe ne s'ouvre qu'après `is_safe_external_uri` **et** la boîte de confirmation (`link_action`).
+### Annotations (lopdf writes, PDFium renders)
+- An advanced annotation is written by `annot_write.rs`: `edit_pdf` (snapshot → `security::load` → lopdf →
+  `security::save` → `restore`) then an explicit `/AP` stream; never through `pdfium-render`'s annotation setters
+  (no circle or line, colour fallback that casts an annotation handle to a page object). Appearances are drawn in
+  **local display coordinates** with `/Matrix` = linear part of the page rotation: upright text on a `/Rotate` page.
+- Annotation indices are those of `/Annots` (= `FPDFPage_GetAnnot(i)`): never `pdfium-render`'s `iter()` (stops at
+  the first unreadable entry), never `page.links()` (duplicates), never `lopdf::get_page_annotations` (skips
+  invalid entries). Only `/NM SuniPDF-…` annotations have their appearance regenerated.
+- An external address only opens after `is_safe_external_uri` **and** the confirmation dialog (`link_action`).
 
-## 5. Vérification visuelle
+## 5. Visual verification
 
 `scripts/dev-screenshot.ps1 -Out capture.png [-Pdf "a.pdf;b.pdf"] [-Commands "id1,id2"]
-[-Drag "x1,y1,x2,y2;x1,y1,x2,y2"] [-Keys "^k"] [-KeysAfter "{F2}|^c|^v"] [-Delay 5]` lance `target\debug\sunipdf.exe`,
-exécute les commandes au démarrage (`SUNIPDF_STARTUP_COMMANDS`), simule des glissements (coordonnées
-relatives à la fenêtre, page affichée à partir de x≈440, y≈140 avec le panneau d'outils ouvert, y≈190 quand
-la barre d'un outil est affichée ; un glissement de hauteur nulle ne sélectionne pas de texte), `-Width`/`-Height`
-imposent la taille de la fenêtre, `-Wheel "x,y,crans[,ctrl]"` fait tourner la molette (Ctrl + molette = zoom
-ancré sous le pointeur), capture
-la fenêtre puis ferme l'application. Depuis la vue continue, les pages sont empilées et la première page est
-centrée horizontalement : repérer le texte sur une capture sans `-Drag` avant de rejouer un glissement. Un seul lancement à la fois : le script prend le premier plan et
-déplace la souris. Journal : `$env:SUNIPDF_LOG = "fichier.log"` et `$env:RUST_LOG = "debug"`.
-Glissements : les coordonnées de `-Drag` / `-Wheel` sont celles de la fenêtre en **pixels de capture divisés par
-1,5** (Windows à 150 %) ; la barre d'un outil décale la page de 72 px ; la **première pression** part de la position
-périmée du centre de la fenêtre (faire un glissement d'échauffement dans le fond gris) ; un **clic** est un
-glissement de longueur nulle (`x,y,x,y`) ; une boîte de dialogue ouverte avale les glissements suivants ; une
-capture de 335 × 39 px est une fenêtre réduite par un clic parasite (relancer). Les journaux `log::debug!` de
-`annot_adv` donnent les coordonnées PDF d'un début de geste pour étalonner. Les préférences sont dans `%APPDATA%\SuniPDF\settings.json` : restaurer le fichier si un test le modifie.
-Signature visuelle : `SUNIPDF_SIGNATURES_DIR` remplace `%APPDATA%\SuniPDF\signatures` (ne pas polluer le vrai
-profil pendant une capture) et `SUNIPDF_PICK_FILE` donne le chemin que « Choisir une image… » renvoie à la place
-du sélecteur natif, qui ne se pilote pas. Une boîte dont la hauteur dépend de son contenu (cartes de la
-bibliothèque) décale ses contrôles : relever les coordonnées sur une capture A avant de rejouer un glissement.
+[-Drag "x1,y1,x2,y2;x1,y1,x2,y2"] [-Keys "^k"] [-KeysAfter "{F2}|^c|^v"] [-Delay 5]` launches `target\debug\sunipdf.exe`,
+runs the commands at startup (`SUNIPDF_STARTUP_COMMANDS`), simulates drags (coordinates
+relative to the window, page displayed from x≈440, y≈140 with the tools panel open, y≈190 when
+a tool's bar is displayed; a zero-height drag does not select text), `-Width`/`-Height`
+force the window size, `-Wheel "x,y,notches[,ctrl]"` turns the mouse wheel (Ctrl + wheel = zoom
+anchored under the pointer), captures
+the window and then closes the application. Since the continuous view, pages are stacked and the first page is
+centred horizontally: locate the text on a capture without `-Drag` before replaying a drag. One launch at a time: the script takes the foreground and
+moves the mouse. Log: `$env:SUNIPDF_LOG = "file.log"` and `$env:RUST_LOG = "debug"`.
+Drags: the `-Drag` / `-Wheel` coordinates are window coordinates in **capture pixels divided by 1.5** (Windows at
+150 %); a tool bar shifts the page by 72 px; the **first press** starts from the stale position of the window centre
+(do a warm-up drag on the grey background); a **click** is a zero-length drag (`x,y,x,y`); an open dialog swallows the
+following drags; a 335 × 39 px capture is a window minimised by a stray click (run again). The `log::debug!` lines of
+`annot_adv` give the PDF coordinates of a gesture start, to calibrate. Preferences are in `%APPDATA%\SuniPDF\settings.json`: restore the file if a test modifies it.
+Visual signature: `SUNIPDF_SIGNATURES_DIR` replaces `%APPDATA%\SuniPDF\signatures` (do not pollute the real
+profile during a capture) and `SUNIPDF_PICK_FILE` gives the path that "Choose an image…" returns instead
+of the native picker, which cannot be driven. A dialog whose height depends on its content (library
+cards) shifts its controls: note the coordinates on a capture A before replaying a drag.
 
-## 6. Définition de « terminé » pour une tranche
+## 6. Definition of "done" for a slice
 
-Code réel de bout en bout (moteur, thread moteur, interface, CLI si pertinent), commande accessible
-depuis le panneau d'outils et la palette, clés i18n fr et en, test d'intégration qui vérifie le résultat
-(relecture du texte, pixels du rendu, fichier rouvert), cas d'erreur gérés, capture d'écran regardée,
-documentation à jour (`PROJECT_STATUS.md`, `FEATURE_MATRIX.md`, `CHANGELOG.md` section « Non publié »,
-guides utilisateur fr et en, `KNOWN_ISSUES.md` pour les limites), les quatre garde-fous verts.
-Ce qui n'est pas fait reste dans la roadmap, avec la raison.
+Real end-to-end code (engine, engine thread, interface, CLI if relevant), command reachable
+from the tools panel and the palette, fr and en i18n keys, integration test that verifies the result
+(text re-read, rendered pixels, file reopened), error cases handled, screenshot looked at,
+documentation up to date (`PROJECT_STATUS.md`, `FEATURE_MATRIX.md`, `CHANGELOG.md` "Non publié" (Unreleased) section,
+fr and en user guides, `KNOWN_ISSUES.md` for the limits), the four guard rails green.
+What is not done stays in the roadmap, with the reason.

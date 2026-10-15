@@ -25,13 +25,23 @@ Copy-Item "$targetDir\sunipdf.exe", "$targetDir\sunipdf-cli.exe" $stage
 Copy-Item "third_party\pdfium\win-$Arch\bin\pdfium.dll" $stage
 Copy-Item "third_party\pdfium\win-$Arch\LICENSE" "$stage\licenses\pdfium-binaries-MIT.txt"
 Copy-Item "third_party\pdfium\win-$Arch\licenses\*" "$stage\licenses\"
-Copy-Item "docs\THIRD_PARTY_NOTICES.md" "$stage\licenses\"
-Copy-Item "docs\USER_GUIDE.fr.md", "docs\USER_GUIDE.en.md", "CHANGELOG.md" $stage
+Copy-Item "docs\THIRD_PARTY_NOTICES.md", "docs\THIRD_PARTY_NOTICES.fr.md" "$stage\licenses\"
+Copy-Item "assets\licenses\update-dependencies.txt" "$stage\licenses\"
+Copy-Item "docs\USER_GUIDE.fr.md", "docs\USER_GUIDE.en.md", "CHANGELOG.md", "CHANGELOG.fr.md" $stage
 Set-Content -Path "$stage\LISEZMOI.txt" -Encoding utf8 -Value @"
 SuniPDF $version (portable, Windows $Arch)
-Lancer sunipdf.exe. Aucune installation, aucune télémétrie. Les préférences sont dans %APPDATA%\SuniPDF.
+Lancer sunipdf.exe. Aucune installation requise. Les préférences sont dans %APPDATA%\SuniPDF.
+La vérification facultative au démarrage consulte les versions GitHub. Aucun fichier PDF n'est envoyé.
 Ligne de commande : sunipdf-cli.exe --help
 Licences : dossier licenses\
+"@
+Set-Content -Path "$stage\README.txt" -Encoding utf8 -Value @"
+SuniPDF $version (portable, Windows $Arch)
+Run sunipdf.exe. No installation is required. Preferences are stored in %APPDATA%\SuniPDF.
+The optional startup update check contacts GitHub for release information. No PDF files are sent.
+Command line: sunipdf-cli.exe --help
+User guides: USER_GUIDE.en.md and USER_GUIDE.fr.md
+Licenses: licenses\
 "@
 
 $zip = Join-Path $root "dist\$name.zip"

@@ -1,271 +1,271 @@
-# Problèmes connus
+# Known issues
 
-## Environnement de build (ce poste)
+[Français](KNOWN_ISSUES.fr.md)
 
-1. ~~Pas de Build Tools~~ **Résolu le 2026-10-13** : Build Tools installés, override GNU retiré, tests verts en MSVC.
-   Le repli GNU + WinLibs reste documenté dans `scripts/dev-env.ps1` pour un poste sans droits admin.
-2. **Mémoire limitée (14 Go, ~1,5 Go libres pendant la session).** Avec 16 cœurs, `cargo` lance 16 `rustc`
-   et le système atteint sa limite de commit : abandons `0xC0000409` et erreurs trompeuses
-   (« only metadata stub found », ICE). Contournement : `cargo build -j 2` (ou `CARGO_BUILD_JOBS=2`)
-   et `debug = "line-tables-only"` en profil dev.
-3. (Repli GNU seulement) **Les binutils livrés par rustup ne suffisent pas** pour les crates `raw-dylib`
-   (`dlltool` sans `as`) et le rustc GNU abandonne sous clippy sur le crate `windows` : WinLibs complet requis,
-   clippy limité aux crates sans dépendance `windows`.
+## Build environment (this machine)
 
-## Dépendances
+1. ~~No Build Tools~~ **Resolved on 2026-10-13**: Build Tools installed, GNU override removed, tests green under MSVC.
+   The GNU + WinLibs fallback remains documented in `scripts/dev-env.ps1` for a machine without admin rights.
+2. **Limited memory (14 GB, ~1.5 GB free during the session).** With 16 cores, `cargo` launches 16 `rustc`
+   and the system reaches its commit limit: `0xC0000409` aborts and misleading errors
+   ("only metadata stub found", ICE). Workaround: `cargo build -j 2` (or `CARGO_BUILD_JOBS=2`)
+   and `debug = "line-tables-only"` in the dev profile.
+3. (GNU fallback only) **The binutils shipped by rustup are not enough** for `raw-dylib` crates
+   (`dlltool` without `as`) and the GNU rustc aborts under clippy on the `windows` crate: full WinLibs required,
+   clippy limited to crates without a `windows` dependency.
 
-4. **wgpu/DX12 désactivé** : `wgpu-hal` 30.0.1 ne compile pas avec `gpu-allocator` 0.28 (D010).
-   Backend glow/OpenGL utilisé. Impact possible : machines sans pilote OpenGL correct (VM, ARM64).
-   Piste : `cargo update -p gpu-allocator --precise 0.27.x` ou eframe plus récent.
-5. **pdfium-render 0.9.4 cible le build PDFium 7881** ; les builds plus récents (8100 au 2026-10-12)
-   fonctionnent probablement mais ne sont pas testés. Version épinglée dans `scripts/fetch-pdfium.ps1`.
+## Dependencies
 
-11. ~~MSI non construit~~ **Résolu le 2026-10-14** : binaires WiX 3.14 autonomes (`third_party/wix314`, zip officiel, sans
-    installation ni droits admin) ; `scripts/package-msi.ps1` les détecte via `WIX_BIN` ; MSI x64 produit et validé
-    (ICE `smoke.exe`, extraction administrative).
-12. **Build ARM64 local bloqué par un composant Visual Studio manquant** (tenté le 2026-10-14) : la cible Rust
-    `aarch64-pc-windows-msvc` est installée et le PDFium ARM64 se télécharge, mais l'édition de liens échoue car
-    les Build Tools n'ont que les outils x64 et x86 (`VC\Tools\MSVC\<version>\bin\Hostx64\arm64` absent, CRT ARM64
-    absente). Installation (droits administrateur requis, refusée pendant la session autonome) :
+4. **wgpu/DX12 disabled**: `wgpu-hal` 30.0.1 does not compile with `gpu-allocator` 0.28 (D010).
+   glow/OpenGL backend used. Possible impact: machines without a proper OpenGL driver (VM, ARM64).
+   Lead: `cargo update -p gpu-allocator --precise 0.27.x` or a newer eframe.
+5. **pdfium-render 0.9.4 targets PDFium build 7881**; newer builds (8100 as of 2026-10-12)
+   probably work but are untested. Version pinned in `scripts/fetch-pdfium.ps1`.
+
+11. ~~MSI not built~~ **Resolved on 2026-10-14**: standalone WiX 3.14 binaries (`third_party/wix314`, official zip, no
+    installation or admin rights); `scripts/package-msi.ps1` detects them through `WIX_BIN`; x64 MSI produced and validated
+    (ICE `smoke.exe`, administrative extraction).
+12. **Local ARM64 build blocked by a missing Visual Studio component** (attempted on 2026-10-14): the Rust target
+    `aarch64-pc-windows-msvc` is installed and the ARM64 PDFium downloads, but linking fails because
+    the Build Tools only have the x64 and x86 tools (`VC\Tools\MSVC\<version>\bin\Hostx64\arm64` missing, ARM64 CRT
+    missing). Installation (administrator rights required, refused during the unattended session):
     `& "C:\Program Files (x86)\Microsoft Visual Studio\Installer\setup.exe" modify --installPath
     "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools" --add Microsoft.VisualStudio.Component.VC.Tools.ARM64
-    --passive --norestart`, puis `scripts\package-portable.ps1 -Arch arm64` (depuis Git Bash).
-    Les runners GitHub `windows-latest` ont ce composant : `release.yml` construit l'ARM64 en CI.
+    --passive --norestart`, then `scripts\package-portable.ps1 -Arch arm64` (from Git Bash).
+    GitHub `windows-latest` runners have this component: `release.yml` builds ARM64 in CI.
 
 ## Application
 
-A1. **Icônes Fluent** : lues dans `C:\Windows\Fonts\SegoeIcons.ttf` (ou `segmdl2.ttf`). Sur un Windows sans ces
-    polices (cas rare : LTSC allégé), les icônes sont remplacées par des symboles texte, moins élégants mais lisibles.
-A2. ~~Affichage page par page~~ **Résolu (SUNI-012b)** : défilement continu par défaut, page unique en option (F5).
-A3. ~~Rendu à fort zoom limité à 16 384 px~~ **Résolu pour l'écran (SUNI-012b)** : rendu en tuiles jusqu'à
-    3200 % (côté de page rendue <= 131 072 px). Corrige aussi un plantage latent : une page rendue d'un seul
-    tenant pouvait dépasser la taille de texture maximale du GPU (panique d'`egui_glow` si le pilote limite à
-    8192 px) ; aucune texture ne dépasse plus `max_texture_side`. La limite de 16 384 px reste vraie pour
-    `Document::render_page`, l'export d'images et `sunipdf-cli render` sans `--region`.
-A4. **Chiffrement** : AES-128/256 écrit par lopdf et relu par PDFium dans les tests (aller-retour) ; RC4 40 bits
-    par fixture. Aucune fixture AES produite par un outil tiers (qpdf) : à ajouter avec la vérification qpdf.
-A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle UI** le temps du choix :
-    comportement natif Windows, acceptable.
-A6. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
-    (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
-    Contournement : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
-A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
-    du système. Restent : **rotation et redimensionnement d'un groupe** de plusieurs objets non proposés
-    (déplacement seulement) ; un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
-    (le redimensionner le déformerait) ; pivot = centre de la boîte englobante, donc un tracé asymétrique peut
-    dériver légèrement à chaque rotation successive.
-A8. **Réordonner (arrière-plan, reculer, avancer) fusionne les flux de contenu de la page** (lopdf) avant de
-    réordonner : PDFium dessine flux par flux. Le PDF reste valide. Les objets **dupliqués ou collés sont des
-    groupes** (XObjects formulaires) : non éditables comme texte, couleur et opacité non modifiables (champ
-    Opacité grisé), bornés à la boîte de la page d'origine (un objet qui dépassait de sa page est rogné).
-A18. **Polices système incorporées en entier** (pas de sous-ensemble) : chaque police ajoute sa taille au PDF
-     (0,2 à 1,6 Mo pour les polices Windows courantes), une seule fois par document ; après Annuler / Rétablir,
-     la première insertion suivante l'incorpore à nouveau et l'ancienne copie reste orpheline jusqu'à
-     « Optimiser ». Seules les polices `.ttf` à contours TrueType sont proposées (`.otf` PostScript, `.ttc` et
-     polices dont la licence interdit l'incorporation : refus typé `font_not_embeddable`). Liste lue par
-     `reg.exe` (repli : dossier des polices) ; un nom non ASCII peut s'afficher mal (page de code OEM). Rendu
-     vérifié par PDFium seulement (aucun autre lecteur ni qpdf sur ce poste).
-A19. **Recadrer masque, n'efface pas** : le contenu hors cadre reste dans le fichier (ce n'est pas un
-     caviardage ; dit dans le dialogue). Recadrage à la souris non proposé (marges numériques avec aperçu).
-A20. **Texte sur la page** : le champ de saisie affiche le texte avec la police de l'interface (Segoe UI ou
-     monospace pour Courier), pas avec la police du PDF : largeur et retours à la ligne approximatifs pendant la
-     saisie. Un texte existant pivoté s'édite dans une boîte de dialogue. Pas d'édition de paragraphes (une ligne
-     = un objet).
-A21. **Redimensionner en mode « Adapter »** : le contenu est mis à l'échelle (`FPDFPage_TransFormWithClip`),
-     pas les annotations ni les liens existants (note permanente dans le dialogue).
-A22. **Opacité d'une image existante non lisible** : PDFium 7881 ne renvoie pas la couleur (donc l'alpha) d'un
-     objet image ; une image transparente garde dans la barre d'objet la valeur précédente du champ Opacité.
-     L'application d'une opacité fonctionne (vérifiée au rendu).
-A23. **Angle affiché des objets d'une page pivotée** : l'angle d'un objet est celui de son contenu à l'écran ;
-     un rectangle dessiné dans le PDF sur une page `/Rotate 90` est donc annoncé à 90° (CLI `objects`, champ
-     Angle). Les poignées d'angle restent disponibles (multiple de 90°).
-A24. **Presse-papiers d'objets et presse-papiers système** : Ctrl+V ne colle les objets que si le repère écrit
-     par la copie (texte des objets, ou « [SuniPDF : n objet(s) copié(s)] ») est encore dans le presse-papiers
-     Windows ; le menu Édition, la palette et la barre d'objet collent sans cette condition. Le presse-papiers
-     d'objets vit en mémoire le temps de la session (perdu à la fermeture de l'application).
-A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
-    `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).
-A10. **Résultat de la CI GitHub non vérifié par l'agent** : dépôt privé, ni `gh` ni jeton sur ce poste. Les
-     workflows `ci.yml` et `release.yml` sont déclenchés par les push et les tags ; leur état se lit dans l'onglet
-     Actions.
-A11. **Hub « Tous les outils » : 10 outils par tâche sur 14.** Numériser et OCR, Caviarder, Préparer un
-     formulaire (création de champs) et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
-     (entrée `None` dans `workspace::TABLE`), pas grisés. Exporter, Créer, Combiner et Compresser n'ont pas de
-     barre (une seule commande chacun, boîte de dialogue directe).
-A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
-     dans les dépendances. Les tests couvrent les données (table, registre, contraste des glyphes), la bascule
-     d'outil, la géométrie des lignes, l'arbre AccessKit et l'anneau de focus (passe egui sans fenêtre) ; le
-     rendu réel est contrôlé par captures (`scripts/dev-screenshot.ps1`). Les glyphes de repli (sans Segoe
-     Fluent Icons) des nouvelles icônes ne sont pas vérifiés visuellement (voir A1).
-A13. **Barre d'outil en fenêtre étroite** : la largeur des libellés est estimée avant le dessin ; sous la
-     largeur nécessaire, icônes seules, puis mode compact (nom et « Quitter l'outil » sans libellé) et
-     défilement horizontal des boutons (barre de défilement flottante, au survol ; la molette verticale ne fait
-     pas défiler, Maj+molette oui). **Défilement non démontré** : à 100 % d'échelle et à la largeur minimale
-     de la fenêtre (720 px), la barre la plus longue (Modifier) tient en mode compact ; le défilement n'est
-     atteint qu'avec une échelle d'affichage Windows plus grande et n'a été vérifié ni par un test ni par une
-     capture.
-A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'un bouton du hub ou de l'accès
-     rapide (Ouvrir, Enregistrer, Annuler, Rétablir), le focus est relâché pour que les raccourcis à une
-     lettre restent actifs ; Tab repart donc du début. Les boutons egui standard (barre d'onglets, menu)
-     n'affichent qu'un indice de focus discret ; les lignes, cartes et boutons du hub ont un anneau de 2 px.
-     Échap agit dans l'ordre (un Échap, un effet ; `workspace::EscState::action`, testé) : menu ou liste
-     déroulante ouverts, champ ou recherche, objet sélectionné, outil actif. Deux Échap reçus dans la même
-     image (impossible au clavier, possible par injection) peuvent encore produire deux effets.
-A15. ~~Rail droit en fenêtre basse : chevauchement~~ **Corrigé (SUNI-012b)** : sous ~700 px de haut, le groupe du
-     haut (panneaux, bascule de vue, recherche) défile (molette au survol) au lieu de chevaucher la navigation ;
-     ses dernières icônes sont alors masquées tant qu'on ne fait pas défiler. Seules des icônes entières sont
-     montrées et une fine barre de défilement, visible sans survol, signale la suite (capture 1000 x 560).
-A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute séquence `{n}` d'un texte d'aide
-     par un saut de ligne (`clap_builder` 4.6, sans échappement possible) ; l'aide affiche donc « : ⏎ = page
-     number » au lieu de `{n}`. Les variables `{n}` et `{total}` fonctionnent ; seul le texte d'aide est
-     tronqué (relevé par la revue du hub, non traité).
-A17. ~~Indicateur « modifié » après annulation~~ **Corrigé (review-fixes, D052)** : point d'enregistrement dans
-     l'historique ; perdu seulement si l'on modifie après une annulation ou si l'instantané enregistré sort des 50
-     niveaux (le document reste alors « modifié » jusqu'au prochain enregistrement).
-A29. **Extraire / diviser un document protégé** : les fichiers produits ne sont pas chiffrés (PDFium copie les
-     pages dans un document neuf) ; l'interface et la CLI (`encryption_removed`) le disent, et Protéger
-     s'applique ensuite au fichier créé (D046). Rechiffrement automatique en feuille de route.
-A30b. **AES-256 et mots de passe** : le mot de passe est normalisé SASLprep avant chiffrement (espaces spéciaux
-    ramenés à l'espace, ligatures décomposées), puis limité à un préfixe UTF-8 valide de 127 octets. SuniPDF
-    applique la même transformation à l'ouverture ; un autre lecteur peut exiger cette forme effective
-    (par exemple « pass word » pour une saisie avec espace insécable). Depuis 0.8.0, un mot de passe d'ouverture
-    devenu vide est refusé ; les restrictions exigent des mots de passe effectifs distincts.
-A30. **AES-128 et mots de passe** : seul le Latin-1 imprimable est accepté (0x20–0x7E, 0xA1–0xFF sauf 0xAD ;
-     lettres accentuées comprises). Les symboles propres à PDFDocEncoding hors Latin-1 (€, œ, Œ, ligatures,
-     tirets et guillemets typographiques…) sont refusés (`password_not_latin1`) bien que lopdf les code : PDFium
-     reçoit le mot de passe en UTF-8 et ne réessaie qu'en Latin-1, SuniPDF ne rouvrirait donc pas le fichier
-     (vérifié par `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choisir AES-256 pour ces
-     mots de passe. AES-128 utilise les 32 premiers octets encodés, complétés selon le format PDF ; depuis 0.8.0,
-     la différence propriétaire/utilisateur est vérifiée sur ces octets effectifs.
-A31. **Images → PDF** : les JPEG sont incorporés tels quels sauf pour les orientations EXIF 5 et 7 (rotation +
-     miroir), décodées ; PNG, TIFF, BMP, GIF et WebP sont décodés en mémoire et stockés en pixels compressés
-     (Flate), donc plus lourds que l'original. Un très grand lot de PNG reste limité par la mémoire du poste.
-     Un JPEG CMJN incorporé tel quel est converti en RVB par PDFium au rendu (rouge pur → 238,29,35) :
-     conversion normale d'un flux DCT, pas d'inversion.
-A32. **Texte ajouté** : une tabulation vaut quatre espaces (aucune police PDF n'a de glyphe de tabulation).
-     Le panneau Commentaires nomme 17 sous-types d'annotation ; les autres (son, vidéo, 3D, filigrane,
-     caviardage…) s'affichent « Autre annotation ».
-A33. **Point d'enregistrement** : « modifié » s'efface en annulant jusqu'à l'état enregistré, sauf si une
-     modification a suivi une annulation (l'état enregistré est alors inatteignable) ou si l'instantané
-     enregistré est sorti des 50 niveaux d'historique (D052).
-A34. **Propriétés et PDF/A** : modifier les métadonnées régénère un paquet XMP minimal (D048) qui ne reprend pas
-     l'identification PDF/A (`pdfaid:part`, `pdfaid:conformance`) ni les autres espaces de noms du paquet
-     d'origine : un fichier PDF/A perd son identification après `set-metadata`, sans avertissement.
-A25. **Vue continue : limites (SUNI-012b)**.
-     - Une **sélection de texte reste sur sa page** (le glissement est borné à la page d'origine) : pas de
-       sélection à cheval sur deux pages, pas de défilement automatique quand on glisse près du bord.
-     - Défilement **sans animation ni inertie** pour les « aller à » et le clavier (saut direct).
-     - **Pincement** (pavé tactile ou écran tactile) : même chemin que Ctrl + molette (`zoom_delta`), non testé
-       (aucun test sur ce poste).
-       Ctrl + molette vérifié par capture (`dev-screenshot.ps1 -Wheel`).
-     - Un **rendu de tuile déjà commencé ne s'interrompt pas** : en défilant vite, la latence d'annulation est
-       la durée d'une tuile (mesurée : 1,2 ms par tuile 1024² sur `many-pages.pdf`, plus pour une page lourde).
-     - Recollage des tuiles : les glyphes qui traversent un bord de tuile peuvent différer d'un pixel
-       d'anticrénelage du rendu d'un seul tenant (121 pixels sur 1,9 million mesurés, D044).
-     - Double page, mode livre et rotation de la vue : non proposés (feuille de route).
-A26. **« Ajuster » en défilement continu sur un document de tailles mixtes** : le zoom est commun à toutes les
-     pages et ajuste la **plus grande** page (D041) ; une page portrait parmi des pages paysage est donc plus
-     étroite que l'écran. En page unique, l'ajustement suit la page courante.
-A27. **Très longs documents** : positions en `f32` ; le zoom est plafonné pour que la hauteur totale reste
-     <= 8 000 000 px logiques (message « Zoom maximal atteint pour ce document »). Un document de 5000 pages
-     Lettre est ainsi limité à environ 150 %.
-A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (hors textures de l'écran), cache du
-     moteur 256 Mio (tuiles et miniatures), 256 miniatures au plus. Mesuré en build de débogage, 500 pages,
-     300 « Page suiv. » puis Fin puis 300 « Page préc. » : mémoire privée stable vers 810-830 Mo (WorkingSet
-     438 Mo) après 175 Mo à l'ouverture ; pas de croissance au-delà (pilote OpenGL NVIDIA, copies système des
-     textures comprises). Plafonds en constantes (`view.rs`, `worker.rs`), pas de réglage utilisateur.
-A35. **Signature manuscrite = signature visuelle, sans valeur cryptographique** (tranche sign-image). C'est une image
-     posée sur la page : elle ne prouve ni l'identité du signataire ni l'intégrité du document, et quiconque modifie
-     le fichier peut la copier ou la retirer. Pas de certificat, de CMS/PAdES, d'horodatage ni de vérification
-     (crate `sunipdf-signatures`, P5). La boîte le dit en permanence ; la CLI `add-image` renvoie
-     `"digital_signature": false`. Aucun avertissement non plus si le document porte déjà une signature numérique,
-     que toute modification invalide (D056).
-A36. **Signatures enregistrées en clair** : PNG dans `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
-     `initials-<ms>.png`), protégés par les seules ACL du profil Windows : toute personne ayant accès à la session peut
-     les réutiliser. Parade : décocher « Enregistrer sur cet ordinateur » (rien n'est écrit) ou supprimer la vignette
-     (corbeille, en deux clics). Seules les 12 plus récentes par type sont listées ; le tri suppose des horodatages de
-     même longueur (13 chiffres, jusqu'en 2286).
-A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la pression du stylet), polyligne brute
-     sans lissage ; suppression du fond par **seuil de luminance global** à rampe douce (une photo très inégalement
-     éclairée demanderait un seuil adaptatif : juger sur l'aperçu, baisser ou monter le seuil, ou préférer un PNG
-     transparent) ; images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
-     l'en-tête, même borne de 512 Mio pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
-     à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
-     caractère, chiffres Helvetica), non mesurée ; pas de signature **tapée** (police manuscrite : dépend de
-     l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
-     page) ; bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
-     (le contenu se resserre d'autant à l'image qui suit l'apparition de la barre).
-A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté et lu (champs AcroForm de secours),
-     jamais rempli ni aplati (`form_xfa`) ; **scripts** (`/CO`, `/AA`, `/A` JavaScript) jamais exécutés, signalés
-     par un bandeau, les champs calculés et les formats restent tels quels ; **pas de création de champs**
-     (« Préparer un formulaire » absent du hub) ; **pas de FDF/XFDF** (JSON seulement) ; **un niveau d'annulation
-     par valeur validée** (un formulaire de 40 champs = 40 niveaux ; plafonds 50 niveaux / 512 Mo du journal) ;
-     chaque validation = instantané complet + analyse lopdf + rechargement + rendu minuscule, acceptable sous
-     5 Mo, lent au-delà (mode « Appliquer » groupé en feuille de route) ; polices : un texte hors Latin-1 reçoit de
-     PDFium une police **système non incorporée** (Arial, SimSun…), rendu variable sur une autre machine ;
-     liste déroulante **modifiable** (`/Ff` Edit) : seuls les choix prévus sont proposés dans l'interface (texte
-     libre par la CLI `--set` seulement) ; valeurs d'export `/Opt` des boutons radio ignorées (l'état du
-     widget est la valeur) ; texte riche `/RV` remplacé par du texte simple ; cases à cocher à états multiples
-     simplifiées (un état actif par widget) ; aplatissement partiel : les champs de la page aplatie restent dans
-     le formulaire sans emplacement ; aplatissement : les **liens** (`/Link`) sont relevés avant et remis dans
-     `/Annots` après (PDFium les supprimerait sans les dessiner), les autres annotations sans apparence
-     (fenêtres `/Popup`, pièces jointes sans `/AP`…) disparaissent avec le contenu dessiné de leur parent ; un
-     lien qui porte un `/AP` est dessiné dans le contenu **et** conservé comme lien (même rendu) ; champ **mot de
-     passe** : listé, jamais rempli ni exporté ; les widgets ne sont cliquables sur la page qu'avec l'outil Remplir (le
-     panneau sert au clavier : Tab / Maj+Tab entre champs texte et listes depuis l'éditeur posé sur la page,
-     pas d'activation d'un widget de la page par Espace ou Entrée) ; **Narrateur Windows non testé** (noms
-     AccessKit posés : `a11y.forms.*`) ; la page reste une image pour un lecteur d'écran, seuls les rectangles
-     de champs et le panneau lui sont exposés.
-A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **texte libre en Helvetica WinAnsi**
-    seulement (accents latins, € et ponctuation courante ; tout autre caractère s'affiche « ? » dans l'apparence,
-    `/Contents` garde le texte exact ; pas de gras, d'italique, de texte riche `/RC`, de CJK ni de droite à gauche) et
-    largeur de renvoi à la ligne calculée avec la table Helvetica (marge de 2 %) ; **un trait d'encre = une annotation**
-    et chaque opération (trait, déplacement, style) coûte un aller-retour complet instantané + lopdf + rechargement :
-    imperceptible sur un PDF courant, de l'ordre de la seconde sur un fichier de dizaines de Mo ; **fils de réponses et
-    statuts** écrits selon ISO 32000-1 mais **jamais testés dans Acrobat, Foxit ni Chrome** (réponses sans icône :
-    apparence vide + `F 4`), pas de modèle d'état « Marked » ; **lecture détaillée** des annotations (panneau,
-    sélection) demandée à la demande et par page, qui relit tout le document ; un lien existant ne change pas de cible
-    (supprimer puis recréer), destinations nommées non résolues, destination `/XYZ` réduite à la page, actions
-    Launch / JavaScript / GoToR jamais exécutées ; **redimensionnement et style réservés aux annotations de SuniPDF**
-    (`/NM` préfixé) : celles d'un autre producteur se déplacent, se commentent, se suppriment (surlignages et notes se
-    recolorent aussi) ; pas de gomme, de polygone, de nuage, de tampon, de pièce jointe, de bordure pointillée ;
-    plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt, zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
-    sélection d'une annotation de SuniPDF (cadre, quatre poignées, barre flottante) puis déplacement et
-    redimensionnement à la souris, déplacement d'une annotation d'un autre producteur (cadre sans poignées), boîtes de
-    dialogue (zone de texte, lien, confirmation d'adresse), panneau Commentaires avec fil, thèmes clair et sombre ;
-    **non rejoués en capture** : la zone de texte posée après sa boîte, la modification par double-clic, les flèches du
-    clavier, le redimensionnement d'une encre, d'une ligne ou d'une zone de texte (tous couverts par les tests moteur et
-    les tests purs de `annot_adv.rs`) ; `qpdf --check` non
-    exécuté sur les sorties (qpdf absent de ce poste, A4).
-A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone est **supprimé** (objets retirés, fichier
-    réécrit sans révision antérieure, vérifié par relecture), mais avec ces limites :
-    1. **Granularité** : un objet texte touché par une zone quitte la couche texte en entier ; ce qui dépasse de la
-       zone reste visible sous forme d'image (vignette à 200 ppp), ni sélectionnable ni trouvable. Idem pour une
-       image ou un tracé partiellement couvert.
-    2. **Texte d'une image numérisée sans OCR** : invisible pour « Caviarder un texte… » (il faut tracer la zone). Une
-       couche OCR décalée par rapport à l'image peut échapper à une zone tracée : l'option « Convertir entièrement
-       les pages caviardées en image » la supprime dans tous les cas.
-    3. **Polices incorporées** : si la police du texte caviardé sert encore ailleurs, son sous-ensemble de glyphes
-       reste dans le fichier (il révèle des caractères utilisés, ni leur ordre ni leur position).
-    4. **Non modifiés** : signets (un titre peut reprendre le texte caviardé), pièces jointes, JavaScript,
-       destinations nommées, contenu des pages non marquées ; une annotation `/Redact` posée par un autre logiciel est
-       traitée comme une annotation ordinaire (retirée seulement si elle est sous une zone).
-    5. **Champs de formulaire** : un champ dont un widget est sous une zone disparaît partout (tous ses widgets,
-       toutes les pages) ; `/XFA` est alors retiré.
-    6. **Balisage d'accessibilité** : supprimé pour tout le document quand « informations cachées » est coché (défaut)
-       ; conservé sinon, avec le risque qu'un texte alternatif décrive le contenu caviardé.
-    7. **Signatures numériques** : toute signature existante devient invalide (réécriture complète).
-    8. **Mémoire et disque** : l'historique d'annulation et les onglets suspendus gardent l'état d'avant en mémoire
-       vive (jamais écrit sur disque par SuniPDF) ; l'ancien fichier remplacé par l'enregistrement atomique n'est pas
-       effacé du support de façon sécurisée.
-    9. **Hypothèse restante** : les limites d'objet de PDFium englobent l'encre de l'objet. Pour le texte, elles sont
-       agrandies de 30 % et contrôlées à l'exécution (texte résiduel sous une zone = erreur, document inchangé) ; pour
-       images et tracés elles sont géométriques.
-    10. **Documents refusés** : un flux de contenu qui ne se décode pas strictement (lopdf) donne
-        `redaction_incomplete` sans rien modifier ; réessayer avec « page en image ».
-    11. **Supprimer un objet avec l'outil Modifier n'est pas un caviardage** : PDFium peut laisser l'objet orphelin ou
-        la ressource dans le fichier ; seul l'outil Caviarder assainit et réécrit le document.
-    12. Les zones sont **effacées à toute modification du document** (rotation, page supprimée, annulation…) ; les
-        zones dessinées n'ont pas de nœud d'accessibilité propre (leur nombre est annoncé dans la barre d'état).
-    13. Non vérifié : `qpdf --check` des sorties (A4), corpus de PDF réels (numérisations, PDF balisés lourds), pages de
-        plusieurs dizaines de milliers d'objets (`prune_objects` de lopdf est quadratique).
+A1. **Fluent icons**: read from `C:\Windows\Fonts\SegoeIcons.ttf` (or `segmdl2.ttf`). On a Windows without these
+    fonts (rare case: stripped-down LTSC), the icons are replaced by text symbols, less elegant but legible.
+A2. ~~Page-by-page display~~ **Resolved (SUNI-012b)**: continuous scrolling by default, single page as an option (F5).
+A3. ~~High-zoom rendering limited to 16,384 px~~ **Resolved for the screen (SUNI-012b)**: tiled rendering up to
+    3200% (rendered page side <= 131,072 px). Also fixes a latent crash: a page rendered in one
+    piece could exceed the GPU's maximum texture size (`egui_glow` panic if the driver limits to
+    8192 px); no texture exceeds `max_texture_side` any more. The 16,384 px limit still holds for
+    `Document::render_page`, image export and `sunipdf-cli render` without `--region`.
+A4. **Encryption**: AES-128/256 written by lopdf and re-read by PDFium in the tests (round trip); 40-bit RC4
+    through a fixture. No AES fixture produced by a third-party tool (qpdf): to be added with the qpdf verification.
+A5. **The open dialog (`rfd`) is modal and blocks the UI loop** for the duration of the choice:
+    native Windows behaviour, acceptable.
+A6. **Content editing: editing an existing text reuses its original font.** If that font
+    (often an embedded subset) does not contain a typed character, PDFium substitutes or omits it.
+    Workaround: delete the object and add a new one (Helvetica, Latin accents supported).
+A7. ~~Rotation in 90° steps, no system font~~ **Resolved (SUNI-031c)**: free rotation and system TrueType
+    fonts. Remaining: **rotation and resizing of a group** of several objects not offered
+    (moving only); an object rotated by an angle that is not a multiple of 90° no longer has corner handles
+    (resizing it would distort it); pivot = centre of the bounding box, so an asymmetric path may
+    drift slightly with each successive rotation.
+A8. **Reordering (send to back, send backward, bring forward) merges the page's content streams** (lopdf) before
+    reordering: PDFium draws stream by stream. The PDF remains valid. **Duplicated or pasted objects are
+    groups** (form XObjects): not editable as text, colour and opacity not modifiable (Opacity field
+    greyed out), bounded to the box of the original page (an object that extended past its page is clipped).
+A18. **System fonts embedded whole** (no subsetting): each font adds its size to the PDF
+     (0.2 to 1.6 MB for common Windows fonts), once per document; after Undo / Redo,
+     the next insertion embeds it again and the old copy remains orphaned until
+     "Optimize". Only `.ttf` fonts with TrueType outlines are offered (`.otf` PostScript, `.ttc` and
+     fonts whose licence forbids embedding: typed refusal `font_not_embeddable`). List read through
+     `reg.exe` (fallback: fonts folder); a non-ASCII name may display badly (OEM code page). Rendering
+     verified by PDFium only (no other reader nor qpdf on this machine).
+A19. **Crop hides, it does not erase**: the content outside the frame stays in the file (this is not
+     redaction; stated in the dialog). Mouse cropping not offered (numeric margins with preview).
+A20. **Text on the page**: the input field shows the text with the interface font (Segoe UI, or
+     monospace for Courier), not with the PDF font: approximate width and line breaks while
+     typing. An existing rotated text is edited in a dialog. No paragraph editing (one line
+     = one object).
+A21. **Resizing in "Fit" mode**: the content is scaled (`FPDFPage_TransFormWithClip`),
+     not the existing annotations or links (permanent note in the dialog).
+A22. **Opacity of an existing image not readable**: PDFium 7881 does not return the colour (hence the alpha) of an
+     image object; a transparent image keeps the previous value of the Opacity field in the object bar.
+     Applying an opacity works (verified at rendering).
+A23. **Displayed angle of objects on a rotated page**: an object's angle is that of its content on screen;
+     a rectangle drawn in the PDF on a `/Rotate 90` page is therefore reported at 90° (CLI `objects`, Angle
+     field). Corner handles remain available (multiple of 90°).
+A24. **Object clipboard and system clipboard**: Ctrl+V only pastes objects if the marker written
+     by the copy (the objects' text, or "[SuniPDF: n object(s) copied]") is still in the Windows
+     clipboard; the Edit menu, the palette and the object bar paste without this condition. The object
+     clipboard lives in memory for the session (lost when the application closes).
+A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same process after
+    `FPDF_DestroyLibrary`; the tests share a single engine that is never destroyed (`tests/engine.rs`).
+A10. **GitHub CI result not verified locally**: private repository, neither `gh` nor a token on this machine. The
+     `ci.yml` and `release.yml` workflows are triggered by pushes and tags; their state can be read in the
+     Actions tab.
+A11. **"All tools" hub: 10 task tools out of 14.** Scan & OCR, Redact a PDF, Prepare a
+     form (field creation) and Use a certificate have no real function: they are absent
+     (`None` entry in `workspace::TABLE`), not greyed out. Export, Create, Combine and Compress have no
+     bar (a single command each, direct dialog).
+A12. **Hub interface verified without automated pixel rendering**: no software renderer nor `egui_kittest`
+     in the dependencies. The tests cover the data (table, registry, glyph contrast), tool
+     switching, row geometry, the AccessKit tree and the focus ring (egui pass without a window); the
+     actual rendering is checked through screenshots (`scripts/dev-screenshot.ps1`). The fallback glyphs (without Segoe
+     Fluent Icons) of the new icons are not visually verified (see A1).
+A13. **Tool bar in a narrow window**: the label widths are estimated before drawing; below the
+     required width, icons only, then compact mode (name and "Leave tool" without label) and
+     horizontal scrolling of the buttons (floating scrollbar, on hover; the vertical wheel does not
+     scroll, Shift+wheel does). **Scrolling not demonstrated**: at 100% scale and at the minimum window
+     width (720 px), the longest bar (Edit) fits in compact mode; scrolling is only
+     reached with a larger Windows display scale and has been verified neither by a test nor by a
+     screenshot.
+A14. **Keyboard**: after a keyboard activation (Enter) of a hub row or button or of the quick
+     access (Open, Save, Undo, Redo), focus is released so that the single-letter shortcuts stay
+     active; Tab therefore starts again from the beginning. Standard egui buttons (tab bar, menu)
+     only show a discreet focus hint; hub rows, cards and buttons have a 2 px ring.
+     Esc acts in order (one Esc, one effect; `workspace::EscState::action`, tested): open menu or drop-down
+     list, field or search, selected object, active tool. Two Esc received in the same
+     frame (impossible from the keyboard, possible by injection) can still produce two effects.
+A15. ~~Right rail in a short window: overlap~~ **Fixed (SUNI-012b)**: below ~700 px high, the top
+     group (panels, view toggle, search) scrolls (wheel on hover) instead of overlapping the navigation;
+     its last icons are then hidden until scrolled. Only whole icons are
+     shown and a thin scrollbar, visible without hover, signals the rest (1000 x 560 screenshot).
+A16. **CLI help for `stamp` and `page-numbers`**: clap replaces any `{n}` sequence in a help text
+     with a line break (`clap_builder` 4.6, no escaping possible); the help therefore shows ": ⏎ = page
+     number" instead of `{n}`. The `{n}` and `{total}` variables work; only the help text is
+     truncated (raised by the hub review, not addressed).
+A17. ~~"Modified" indicator after undo~~ **Fixed (review-fixes, D052)**: save point in
+     the history; lost only if one edits after an undo or if the saved snapshot leaves the 50
+     levels (the document then stays "modified" until the next save).
+A29. **Extracting / splitting a protected document**: the produced files are not encrypted (PDFium copies the
+     pages into a new document); the interface and the CLI (`encryption_removed`) say so, and Protect
+     then applies to the created file (D046). Automatic re-encryption on the roadmap.
+A30b. **AES-256 and passwords**: the password is SASLprep-normalized before encryption (special spaces
+    mapped to spaces, ligatures decomposed), then limited to a valid UTF-8 prefix of 127 bytes. SuniPDF applies
+    the same transformation on opening; another reader may require this effective form (for example
+    "pass word" for an entry with a non-breaking space). Since 0.8.0, an opening password that becomes empty is
+    rejected; restrictions require distinct effective passwords.
+A30. **AES-128 and passwords**: only printable Latin-1 is accepted (0x20–0x7E, 0xA1–0xFF except 0xAD;
+     accented letters included). PDFDocEncoding-specific symbols outside Latin-1 (€, œ, Œ, ligatures,
+     typographic dashes and quotes…) are refused (`password_not_latin1`) although lopdf encodes them: PDFium
+     receives the password in UTF-8 and only retries in Latin-1, so SuniPDF would not reopen the file
+     (verified by `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choose AES-256 for these
+     passwords. AES-128 uses the first 32 encoded bytes, padded according to the PDF format; since 0.8.0,
+     owner/user differences are checked on these effective bytes.
+A31. **Images → PDF**: JPEGs are embedded as is except for EXIF orientations 5 and 7 (rotation +
+     mirror), which are decoded; PNG, TIFF, BMP, GIF and WebP are decoded in memory and stored as compressed pixels
+     (Flate), hence heavier than the original. A very large batch of PNGs remains limited by the machine's memory.
+     A CMYK JPEG embedded as is is converted to RGB by PDFium at rendering (pure red → 238,29,35):
+     normal conversion of a DCT stream, not an inversion.
+A32. **Added text**: a tab counts as four spaces (no PDF font has a tab glyph).
+     The Comments panel names 17 annotation subtypes; the others (sound, video, 3D, watermark,
+     redaction…) are shown as "Other annotation".
+A33. **Save point**: "modified" clears when undoing back to the saved state, unless an
+     edit followed an undo (the saved state is then unreachable) or the saved snapshot
+     has left the 50 history levels (D052).
+A34. **Properties and PDF/A**: editing the metadata regenerates a minimal XMP packet (D048) that does not carry over
+     the PDF/A identification (`pdfaid:part`, `pdfaid:conformance`) nor the other namespaces of the original
+     packet: a PDF/A file loses its identification after `set-metadata`, without a warning.
+A25. **Continuous view: limits (SUNI-012b)**.
+     - A **text selection stays on its page** (the drag is bounded to the original page): no
+       selection spanning two pages, no auto-scroll when dragging near the edge.
+     - Scrolling **without animation or inertia** for "go to" and the keyboard (direct jump).
+     - **Pinch** (touchpad or touch screen): same path as Ctrl + wheel (`zoom_delta`), untested
+       (no test on this machine).
+       Ctrl + wheel verified by screenshot (`dev-screenshot.ps1 -Wheel`).
+     - A **tile rendering already started is not interrupted**: when scrolling fast, the cancellation latency is
+       the duration of one tile (measured: 1.2 ms per 1024² tile on `many-pages.pdf`, more for a heavy page).
+     - Tile stitching: glyphs crossing a tile edge may differ by one anti-aliasing pixel
+       from the one-piece rendering (121 pixels out of 1.9 million measured, D044).
+     - Two-page, book mode and view rotation: not offered (roadmap).
+A26. **"Fit" in continuous scrolling on a document of mixed sizes**: the zoom is shared by all the
+     pages and fits the **largest** page (D041); a portrait page among landscape pages is therefore
+     narrower than the screen. In single page, the fit follows the current page.
+A27. **Very long documents**: positions in `f32`; the zoom is capped so that the total height stays
+     <= 8,000,000 logical px ("Maximum zoom reached for this document" message). A 5000-page Letter
+     document is thus limited to about 150%.
+A28. **View memory**: bounded but notable. Page textures 192 MiB (excluding screen textures), engine
+     cache 256 MiB (tiles and thumbnails), 256 thumbnails at most. Measured in a debug build, 500 pages,
+     300 "Page Down" then End then 300 "Page Up": private memory stable around 810-830 MB (WorkingSet
+     438 MB) after 175 MB at opening; no growth beyond (NVIDIA OpenGL driver, system copies of the
+     textures included). Caps as constants (`view.rs`, `worker.rs`), no user setting.
+A35. **Handwritten signature = visual signature, with no cryptographic value** (sign-image slice). It is an image
+     placed on the page: it proves neither the signer's identity nor the document's integrity, and anyone editing
+     the file can copy or remove it. No certificate, CMS/PAdES, timestamp or verification
+     (`sunipdf-signatures` crate, P5). The dialog says so permanently; the CLI `add-image` returns
+     `"digital_signature": false`. No warning either if the document already carries a digital signature,
+     which any edit invalidates (D056).
+A36. **Signatures saved unencrypted**: PNG in `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
+     `initials-<ms>.png`), protected only by the Windows profile ACLs: anyone with access to the session can
+     reuse them. Countermeasure: untick "Save on this computer for reuse" (nothing is written) or delete the thumbnail
+     (bin, two clicks). Only the 12 most recent per type are listed; sorting assumes timestamps of
+     the same length (13 digits, until 2286).
+A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pressure), raw polyline
+     without smoothing; background removal by a **global luminance threshold** with a soft ramp (a very unevenly
+     lit photo would need an adaptive threshold: judge on the preview, lower or raise the threshold, or prefer a
+     transparent PNG); imported images limited to 16,384 px per side and 512 MiB decoded (refused when reading
+     the header, same 512 MiB bound for Insert Image, Replace Image and Images → PDF), then reduced
+     to 1600 px per side; the placed date is kept inside the page over an **estimated** width (0.556 em per
+     character, Helvetica digits), not measured; no **typed** signature (handwriting font: depends on
+     font embedding, A7); initialling every page at once is not offered (Shift+click page by
+     page); full library: the dialog body scrolls and its floating bar gets a 10 px gutter
+     (the content tightens by as much on the frame following the bar's appearance).
+A38. **AcroForm forms (forms slice, D061–D066)**: **XFA** detected and read (fallback AcroForm fields),
+     never filled or flattened (`form_xfa`); **scripts** (`/CO`, `/AA`, `/A` JavaScript) never run, flagged
+     by a banner, calculated fields and formats stay as they are; **no field creation**
+     ("Prepare a form" absent from the hub); **no FDF/XFDF** (JSON only); **one undo level
+     per confirmed value** (a 40-field form = 40 levels; caps 50 levels / 512 MB of undo journal);
+     each confirmation = full snapshot + lopdf analysis + reload + tiny rendering, acceptable under
+     5 MB, slow beyond (grouped "Apply" mode on the roadmap); fonts: a text outside Latin-1 gets from
+     PDFium a **non-embedded system** font (Arial, SimSun…), variable rendering on another machine;
+     **editable** drop-down list (`/Ff` Edit): only the predefined choices are offered in the interface (free text
+     through the CLI `--set` only); `/Opt` export values of radio buttons ignored (the widget state is
+     the value); rich text `/RV` replaced by plain text; multi-state checkboxes
+     simplified (one active state per widget); partial flattening: the fields of the flattened page stay in
+     the form without a location; flattening: **links** (`/Link`) are collected beforehand and put back into
+     `/Annots` afterwards (PDFium would remove them without drawing them), the other annotations without an appearance
+     (`/Popup` windows, attachments without `/AP`…) disappear along with the drawn content of their parent; a
+     link carrying an `/AP` is drawn into the content **and** kept as a link (same rendering); **password**
+     field: listed, never filled or exported; widgets are only clickable on the page with the Fill tool (the
+     panel serves the keyboard: Tab / Shift+Tab between text fields and lists from the editor placed on the page,
+     no activation of a page widget with Space or Enter); **Windows Narrator untested** (AccessKit names
+     set: `a11y.forms.*`); the page remains an image for a screen reader, only the field rectangles
+     and the panel are exposed to it.
+A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free text in Helvetica WinAnsi** only
+    (Latin accents, € and common punctuation; any other character shows as "?" in the appearance, `/Contents` keeps
+    the exact text; no bold, italic, rich text `/RC`, CJK or right-to-left) and the wrapping width is computed with the
+    Helvetica table (2 % margin); **one ink stroke = one annotation** and every operation (stroke, move, style)
+    costs a full snapshot + lopdf + reload round trip: imperceptible on an ordinary PDF, about a second on a file of
+    tens of MB; **reply threads and statuses** written according to ISO 32000-1 but **never tested in Acrobat, Foxit
+    or Chrome** (replies without icon: empty appearance + `F 4`), no "Marked" state model; **detailed reading** of
+    annotations (panel, selection) is requested on demand, per page, and re-reads the whole document; an existing
+    link does not change target (delete then recreate), named destinations are not resolved, `/XYZ` destination
+    reduced to the page, Launch / JavaScript / GoToR actions are never executed; **resizing and styling reserved for
+    SuniPDF's own annotations** (prefixed `/NM`): those from another producer can be moved, commented and deleted
+    (highlights and notes can also be recoloured); no eraser, polygon, cloud, stamp, attachment, dashed border; caps:
+    64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,
+    selection of a SuniPDF annotation (frame, four handles, floating bar) then moving and resizing with the mouse,
+    moving another producer's annotation (frame without handles), dialogs (text box, link, address confirmation),
+    Comments panel with a thread, light and dark themes; **not replayed in screenshots**: the text box placed after
+    its dialog, editing by double-click, keyboard arrows, resizing an ink stroke, a line or a text box (all covered by
+    the engine tests and the pure tests of `annot_adv.rs`); `qpdf --check`
+    not run on the outputs (qpdf absent from this
+    machine, A4).
+A40. **Redaction (redaction slice, D077–D082)**: content under an area is **removed** (objects deleted, file rewritten
+    without any earlier revision, verified by reading it back), with these limits:
+    1. **Granularity**: a text object touched by an area leaves the text layer entirely; what extends beyond the area
+       stays visible as an image (200 dpi patch), neither selectable nor searchable. Same for a partly covered image
+       or drawing.
+    2. **Text in a scanned image without OCR**: invisible to "Find Text to Redact…" (draw the area). An OCR layer
+       offset from the image can escape a drawn area: the "Convert redacted pages entirely to images" option removes
+       it in every case.
+    3. **Embedded fonts**: if the font of the redacted text is still used elsewhere, its glyph subset stays in the file
+       (it reveals characters that were used, not their order or position).
+    4. **Not changed**: bookmarks (a title may repeat the redacted text), attachments, JavaScript, named destinations,
+       content of unmarked pages; a `/Redact` annotation placed by other software is handled as an ordinary
+       annotation (removed only when it lies under an area).
+    5. **Form fields**: a field with a widget under an area disappears everywhere (all its widgets, all pages); `/XFA`
+       is then removed.
+    6. **Accessibility tags**: removed for the whole document when "hidden information" is checked (default); kept
+       otherwise, with the risk that an alternate text describes the redacted content.
+    7. **Digital signatures**: any existing signature becomes invalid (full rewrite).
+    8. **Memory and disk**: the undo history and suspended tabs keep the previous state in RAM (never written to disk
+       by SuniPDF); the old file replaced by the atomic save is not securely wiped from the storage medium.
+    9. **Remaining assumption**: PDFium object bounds enclose the object's ink. For text they are enlarged by 30 % and
+       checked at run time (residual text under an area = error, document unchanged); for images and drawings they
+       are geometric.
+    10. **Refused documents**: a content stream that does not decode strictly (lopdf) gives `redaction_incomplete`
+        without changing anything; retry with "page as image".
+    11. **Deleting an object with the Edit tool is not redaction**: PDFium may leave the object orphaned or the
+        resource in the file; only the Redact tool sanitises and rewrites the document.
+    12. Areas are **cleared whenever the document changes** (rotation, deleted page, undo…); drawn areas have no
+        accessibility node of their own (their count is announced in the status bar).
+    13. Not verified: `qpdf --check` of the outputs (A4), a corpus of real PDFs (scans, heavily tagged PDFs), pages with
+        tens of thousands of objects (lopdf's `prune_objects` is quadratic).

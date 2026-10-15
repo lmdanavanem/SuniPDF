@@ -20,6 +20,7 @@ mod sign;
 mod tabs;
 mod theme;
 mod tools;
+mod updater;
 mod view;
 mod worker;
 mod workspace;

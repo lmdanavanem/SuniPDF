@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Application de bureau SuniPDF (Windows 10/11)."
+description = "SuniPDF desktop application for Windows 10/11."
 
 [[bin]]
 name = "sunipdf"
@@ -23,6 +23,10 @@ log = { workspace = true }
 env_logger = { workspace = true }
 image = { workspace = true }
 chrono = { workspace = true }
+ureq = { version = "3.4", default-features = false, features = ["rustls"] }
+sha2 = "0.11"
+semver = "1"
+tempfile = "3"
 
 [build-dependencies]
 winresource = "0.1"

@@ -19,7 +19,7 @@ pub enum Language {
 
 impl Language {
     pub const ALL: [Language; 2] = [Language::French, Language::English];
-    pub const DEFAULT: Language = Language::French;
+    pub const DEFAULT: Language = Language::English;
 
     /// Code BCP 47.
     pub fn code(self) -> &'static str {

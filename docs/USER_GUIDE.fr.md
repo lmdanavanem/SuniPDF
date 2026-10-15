@@ -1,15 +1,28 @@
 # SuniPDF — Guide utilisateur
 
-SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Il fonctionne entièrement hors ligne : aucun
+SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
 ## Installation
 
 - **Portable** : décompressez le fichier `SuniPDF-<version>-win-x64-portable.zip` où vous voulez et lancez
-  `sunipdf.exe`. Rien n'est écrit en dehors de vos préférences (`%APPDATA%\SuniPDF\settings.json`).
+  `sunipdf.exe`. Aucune installation système ; préférences dans `%APPDATA%\SuniPDF\settings.json` et téléchargements de mise à jour dans un dossier temporaire.
 - **Installateur MSI** : double-cliquez sur `SuniPDF-<version>-win-x64.msi`. SuniPDF apparaît dans le menu
   Démarrer et dans « Ouvrir avec » pour les fichiers PDF ; il ne devient pas le lecteur par défaut sans votre accord.
 - Désinstallation : Paramètres Windows › Applications, ou suppression du dossier pour la version portable.
+
+## Mises à jour et langue
+
+L'anglais est la langue par défaut ; le français est disponible dans Paramètres. Une préférence existante est conservée.
+À partir de la 0.8.2, l'application recherche une nouvelle version sur GitHub au démarrage sans envoyer de PDF.
+La recherche automatique peut être désactivée dans À propos, où la recherche manuelle reste disponible.
+Un échec de recherche automatique ne bloque pas le travail sur les PDF.
+
+Choisissez **Télécharger la mise à jour**, puis **Fermer et installer** après vérification de la taille et du SHA256.
+Enregistrez ou abandonnez les modifications de chaque document comme d'habitude ; annuler ou échouer à enregistrer annule l'installation.
+Une version x64 installée utilise le MSI Windows, qui peut demander les droits administrateur. Les portables x64/ARM64 remplacent
+les fichiers de l'application dans leur dossier et conservent une sauvegarde de retour arrière. Un échec restaure les anciens fichiers.
+Les anciennes versions nécessitent une première mise à niveau manuelle. Le programme ne redémarre jamais automatiquement l'ordinateur.
 
 ## Écran d'accueil
 

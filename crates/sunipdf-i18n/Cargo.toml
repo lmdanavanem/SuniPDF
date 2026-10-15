@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Catalogues de traduction fr-FR / en-US de SuniPDF."
+description = "English and French translation catalogs for SuniPDF."
 
 [dependencies]
 serde_json = { workspace = true }

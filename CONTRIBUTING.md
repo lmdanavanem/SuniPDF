@@ -1,57 +1,32 @@
-# Contribuer à SuniPDF / Contributing to SuniPDF
+# Contributing to SuniPDF
 
-*English version below.*
+[Français](CONTRIBUTING.fr.md)
 
-Merci de votre intérêt. SuniPDF est un logiciel libre (MIT ou Apache-2.0, au choix) créé et maintenu par
-Emanuel DE ALMEIDA ([@lmdanavanem](https://github.com/lmdanavanem)).
+SuniPDF is maintained by Emanuel DE ALMEIDA ([@lmdanavanem](https://github.com/lmdanavanem)) and is dual-licensed under MIT or Apache-2.0.
 
-## Avant de commencer
-- Lisez `docs/ENGINEERING_NOTES.md` (commandes, garde-fous, patrons de code, pièges des bibliothèques) et
-  `docs/ARCHITECTURE.md`.
-- Ouvrez une *issue* avant une modification importante pour en discuter ; les petites corrections peuvent
-  arriver directement en *pull request*.
+## Before you start
 
-## Règles du projet
-- Hors ligne, sans télémétrie : aucun fichier de l'utilisateur ne quitte sa machine.
-- Interface entièrement traduisible : aucune chaîne visible en dur dans `apps/`, toute clé va dans
-  `assets/i18n/fr-FR.json` **et** `assets/i18n/en-US.json`.
-- Moteur (`crates/sunipdf-core`) découplé de l'interface et de la CLI ; un seul thread touche PDFium.
-- Sauvegardes atomiques, jamais d'écrasement silencieux ; pas de bouton sans fonction réelle ; une
-  fonction non terminée reste dans la feuille de route.
-- Chaque fonctionnalité arrive avec ses tests (relecture du fichier produit, pixels du rendu) et sa
-  documentation (`CHANGELOG.md`, guides utilisateur, `docs/KNOWN_ISSUES.md` pour les limites).
+Read [Engineering notes](docs/ENGINEERING_NOTES.md) and [Architecture](docs/ARCHITECTURE.md).
+Open an issue before a significant change; small fixes can go straight to a pull request.
 
-## Garde-fous (tous verts avant une pull request)
-```bash
+## Project rules
+
+- PDF processing stays local. No telemetry or PDF uploads; the optional update check contacts GitHub for release information only.
+- English is the primary language. Every visible UI string belongs in both English and French catalogs.
+- Keep the engine independent from the interface and CLI. Only one thread accesses PDFium.
+- Save atomically, never overwrite silently, and keep unfinished features in the roadmap.
+- Ship changes with meaningful tests, changelog entries, user guides and documented limits.
+
+## Checks
+
+```powershell
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets -j 2 -- -D warnings
+cargo test --workspace -j 2
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-i18n.ps1
 ```
 
 ## Pull requests
-- Une PR = un sujet. Décrivez le comportement avant/après, les tests ajoutés et ce qui n'est pas couvert.
-- Les messages de commit sont en français ou en anglais, à l'impératif, courts.
-- En contribuant, vous acceptez que votre contribution soit publiée sous les deux licences du projet.
 
----
-
-## Before you start
-- Read `docs/ENGINEERING_NOTES.md` (commands, gates, code patterns, library pitfalls) and `docs/ARCHITECTURE.md`.
-- Open an issue before any significant change; small fixes can go straight to a pull request.
-
-## Project rules
-- Offline, no telemetry: user files never leave the machine.
-- Fully translatable UI: no literal visible string in `apps/`; every key goes into both
-  `assets/i18n/fr-FR.json` and `assets/i18n/en-US.json`.
-- The engine (`crates/sunipdf-core`) stays decoupled from the UI and the CLI; a single thread touches PDFium.
-- Atomic saves, never a silent overwrite; no button without a real function; unfinished features stay in the roadmap.
-- Every feature ships with tests (re-reading the produced file, rendered pixels) and documentation
-  (`CHANGELOG.md`, user guides, `docs/KNOWN_ISSUES.md` for limits).
-
-## Gates (all green before a pull request)
-See the four commands above.
-
-## Pull requests
-- One PR, one topic. Describe the behaviour before and after, the tests added and what is not covered.
-- By contributing you agree that your contribution is published under both project licences.
+Keep one topic per PR. Describe the resulting behavior, validation and remaining limits.
+Use clear English commit messages. Contributions are published under both project licenses.

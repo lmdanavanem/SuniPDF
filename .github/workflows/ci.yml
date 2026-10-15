@@ -16,7 +16,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: PDFium (x64)
         run: .\scripts\fetch-pdfium.ps1 -Arch x64
-      - name: Parité des catalogues i18n
+      - name: Translation catalog parity
         run: .\scripts\check-i18n.ps1
       - name: Format
         run: cargo fmt --all -- --check
@@ -24,7 +24,9 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --workspace
-      - name: "Paquet portable x64 (même contenu que la release : licences et notices comprises)"
+      - name: Update helper checks
+        run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
+      - name: "Portable x64 package (including licenses and notices)"
         run: .\scripts\package-portable.ps1 -Arch x64
       - uses: actions/upload-artifact@v4
         with:

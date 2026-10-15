@@ -17,6 +17,7 @@ pub struct Settings {
     pub recent: Vec<String>,
     /// Auteur écrit dans les annotations, réponses et statuts (vide : aucun nom écrit).
     pub author: String,
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -29,6 +30,7 @@ impl Default for Settings {
             continuous_view: true,
             recent: Vec::new(),
             author: String::new(),
+            check_updates: true,
         }
     }
 }
@@ -80,20 +82,24 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("sunipdf-settings-{}", std::process::id()));
         let path = dir.join("settings.json");
         let mut s = Settings::default();
-        assert_eq!(s.language(), Language::French);
-        s.set_language(Language::English);
+        assert_eq!(s.language(), Language::English);
+        s.set_language(Language::French);
         s.dark_theme = true;
+        s.check_updates = false;
         sunipdf_core::write_atomic(&path, &serde_json::to_vec(&s).unwrap()).unwrap();
         let back: Settings =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(back, s);
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
         let bad: Settings = serde_json::from_str(r#"{"language":"xx-XX"}"#).unwrap();
-        assert_eq!(bad.language(), Language::French);
+        assert_eq!(bad.language(), Language::English);
         assert!(bad.show_tools && bad.recent.is_empty());
         // Préférences antérieures à la vue continue : continu par défaut.
         assert!(bad.continuous_view);
         assert!(Settings::default().continuous_view);
+        let previous: Settings = serde_json::from_str(r#"{"language":"fr-FR"}"#).unwrap();
+        assert_eq!(previous.language(), Language::French);
+        assert!(previous.check_updates);
         let with_bom = "\u{feff}{\"dark_theme\":true}";
         let parsed: Settings =
             serde_json::from_str(with_bom.trim_start_matches('\u{feff}')).unwrap();

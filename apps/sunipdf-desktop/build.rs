@@ -8,11 +8,11 @@ fn main() {
     let mut res = winresource::WindowsResource::new();
     res.set_icon("../../assets/icon/sunipdf.ico")
         .set("ProductName", "SuniPDF")
-        .set("FileDescription", "SuniPDF — lecteur et éditeur PDF")
+        .set("FileDescription", "SuniPDF — PDF reader and editor")
         .set("CompanyName", "Navanem")
         .set("LegalCopyright", "© 2026 Emanuel DE ALMEIDA (Navanem). MIT OR Apache-2.0.")
         .set("OriginalFilename", "sunipdf.exe")
-        .set_language(0x040C)
+        .set_language(0x0409)
         .set_manifest(
             r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity version="0.1.0.0" processorArchitecture="*" name="Navanem.SuniPDF" type="win32"/>

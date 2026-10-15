@@ -1,139 +1,139 @@
-# Prochaines tâches (ordre conseillé)
+# Next tasks (recommended order)
 
-## Après la version 0.8.0
-Les six priorités de l'audit sont corrigées. Restent à traiter :
-- refuser les coordonnées non finies lors de l'ajout de texte ;
-- refuser ou prendre en charge les tampons multilignes ;
-- refuser ou prendre en charge l'opacité des annotations de texte libre dans la CLI ;
-- borner les miniatures conservées dans la grille Organiser comme dans le panneau latéral.
+[Français](NEXT_TASKS.fr.md)
 
-## À faire par l'utilisateur (hors de portée de l'agent)
-1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
-2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.
-3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
+## After version 0.8.0
+The six audit priorities are fixed. Remaining work:
+- reject non-finite coordinates when adding text;
+- reject or support multiline stamps;
+- reject or support free-text annotation opacity in the CLI;
+- bound cached thumbnails in the Organize grid as in the sidebar.
 
-## Hub d'outils : contrat pour les tranches suivantes (tool-hub livré, D021)
-Les onglets `ToolTab` et les cartes `home.card.*` n'existent plus : les plans de `docs/plans/` qui les citent
-(OCR, caviardage, export, compression, formulaires, signatures…) passent par `apps/sunipdf-desktop/src/workspace.rs`.
-Pour rendre un outil visible, une tranche fait exactement :
-1. ajouter ses `Command` (moteur + `REGISTRY`, id stable, `needs_document` correct) ;
-2. dans `workspace::TABLE`, passer `entry` à `Some(Entry::Direct(cmd))` ou `Some(Entry::Mode(Command::HubXxx))`,
-   renseigner `groups` (chaque commande dans **un seul** outil), choisir l'icône ;
-3. si l'outil a une barre : ajouter `HubXxx` au registre (menu `Tools`), au bras `Hub*` d'`execute` et à
-   `shell::command_icon` ;
-4. les noms, descriptions et couleurs des 14 outils existent déjà (`hub.*.name`, `hub.*.desc`).
-Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système ;
-`bar_icons_are_distinct` échoue si une icône se répète dans une barre ou reprend celle d'un bouton d'accès rapide.
-Outils encore absents : Numériser et OCR, Préparer un formulaire (création de champs), Utiliser un
-certificat. « Remplir et signer » est complet : moitié « signer » (tranche sign-image) et moitié « remplir »
-(tranche forms, groupe Remplir le formulaire / panneau / Effacer / Aplatir / Exporter / Importer).
+## To be done by the user (outside the automated scope)
+1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
+2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL rendering.
+3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
 
-## Après redaction (caviardage irréversible, tranche livrée)
-Reste, non bloquant (voir `KNOWN_ISSUES.md` A40, décisions D077–D082) :
-- `qpdf --check` des sorties et essai sur un corpus réel (numérisations avec couche OCR, PDF balisés lourds,
-  formulaires XObject imbriqués, polices Type 3) ; mesure sur une page de plusieurs dizaines de milliers d'objets
-  (`prune_objects` quadratique : accessibilité maison par `BTreeSet` si lent) ;
-- découpe fine du texte (garder sélectionnable la partie non caviardée d'une ligne) : demande de recréer des
-  fragments avec la police d'origine, hors de portée de `pdfium-render` 0.9.4 ;
-- couleur de remplissage et texte en surimpression (« CAVIARDÉ »), marques `/Redact` persistantes (pas de créateur
-  dans `pdfium-render`) ;
-- nettoyage des signets, pièces jointes, JavaScript et destinations nommées (outil « Assainir » séparé) ;
-- suppression d'un sous-ensemble de police devenu inutile ; aperçu « avant / après » de la page ;
-- `docs/SECURITY_MODEL.md` (méthode A/B/C, garanties, hypothèses) ; capture S3 (après application) non rejouée.
+## Tool hub: contract for the next slices (tool-hub delivered, D021)
+The `ToolTab` tabs and the `home.card.*` cards no longer exist: the plans in `docs/plans/` that cite them
+(OCR, redaction, export, compression, forms, signatures…) go through `apps/sunipdf-desktop/src/workspace.rs`.
+To make a tool visible, a slice does exactly this:
+1. add its `Command`s (engine + `REGISTRY`, stable id, correct `needs_document`);
+2. in `workspace::TABLE`, set `entry` to `Some(Entry::Direct(cmd))` or `Some(Entry::Mode(Command::HubXxx))`,
+   fill in `groups` (each command in **one single** tool), choose the icon;
+3. if the tool has a bar: add `HubXxx` to the registry (`Tools` menu), to the `Hub*` arm of `execute` and to
+   `shell::command_icon`;
+4. the names, descriptions and colours of the 14 tools already exist (`hub.*.name`, `hub.*.desc`).
+The `every_registry_command_has_a_home` test fails if a command has neither a tool nor a place in the system list;
+`bar_icons_are_distinct` fails if an icon repeats within a bar or reuses that of a quick access button.
+Tools still absent: Scan & OCR, Prepare a form (field creation), Use a
+certificate. "Fill & Sign" is complete: "sign" half (sign-image slice) and "fill" half
+(forms slice, Fill form group / panel / Clear / Flatten / Export / Import).
 
-## Après forms (formulaires AcroForm, tranche livrée)
-Reste, non bloquant (voir `KNOWN_ISSUES.md` A38, décisions D061–D066) :
-- **création de champs** (texte, case à cocher) par lopdf seul : widget sans `/AP` dans `/Annots` et
-  `/AcroForm /Fields`, apparence générée par PDFium (constat V11 de `docs/plans/forms.md` §3.11), outils
-  `ToolAddTextField` / `ToolAddCheckbox` et boîte « Nouveau champ » → passe `Workspace::PrepareForm` à
-  `Entry::Mode` ; tests : nom unique sans `.`, rectangle ≥ 4 pt, pages pivotées (`rect_to_user`), document
-  sans AcroForm ;
-- export XFDF (sans dépendance) puis import XFDF/FDF (lecteur XML à choisir) ;
-- mode « Appliquer » groupé (plusieurs champs, un seul niveau d'annulation et un seul rechargement) ;
-- texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
-  (Espace / Entrée) des rectangles de champs de la page ; vérification Narrateur Windows (noms `labelled_by`
-  posés, non écoutés) ;
-- aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
-  `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
-- avertir quand le document porte une signature numérique (D056, toute modification l'invalide).
+## After redaction (irreversible redaction, slice delivered)
+Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
+- `qpdf --check` of the outputs and a run on a real corpus (scans with an OCR layer, heavily tagged PDFs, nested
+  form XObjects, Type 3 fonts); measurement on a page with tens of thousands of objects (quadratic
+  `prune_objects`: own reachability with a `BTreeSet` if slow);
+- fine text splitting (keep the unredacted part of a line selectable): requires recreating fragments with the
+  original font, out of reach of `pdfium-render` 0.9.4;
+- fill colour and overlay text ("REDACTED"), persistent `/Redact` marks (no creator in `pdfium-render`);
+- cleaning of bookmarks, attachments, JavaScript and named destinations (separate "Sanitise" tool);
+- removal of a font subset that became unused; "before / after" page preview;
+- `docs/SECURITY_MODEL.md` (A/B/C method, guarantees, assumptions); screenshot S3 (after applying) not replayed.
 
-## Après sign-image (signature visuelle, tranche livrée)
-Reste, non bloquant (voir `KNOWN_ISSUES.md` A35–A37, décisions D054–D060) :
-- signature **tapée** (nom rendu dans une police manuscrite) : dépend de l'incorporation de polices (A7) ;
-- parapher **toutes les pages** d'un coup (aujourd'hui Maj+clic, page par page) ;
-- chiffrement DPAPI des signatures enregistrées (ADR à écrire, D055) ;
-- avertir quand le document porte déjà une **signature numérique** (toute modification l'invalide, D056) ;
-- lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
-  ombre portée ; pression du stylet si egui l'expose un jour.
+## After forms (AcroForm forms, slice delivered)
+Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
+- **field creation** (text, checkbox) with lopdf alone: widget without `/AP` in `/Annots` and
+  `/AcroForm /Fields`, appearance generated by PDFium (finding V11 of `docs/plans/forms.md` §3.11),
+  `ToolAddTextField` / `ToolAddCheckbox` tools and "New field" dialog → switches `Workspace::PrepareForm` to
+  `Entry::Mode`; tests: unique name without `.`, rectangle ≥ 4 pt, rotated pages (`rect_to_user`), document
+  without AcroForm;
+- XFDF export (no dependency) then XFDF/FDF import (XML reader to choose);
+- grouped "Apply" mode (several fields, a single undo level and a single reload);
+- free text in an editable drop-down list; `/Opt` export values of radio buttons; keyboard activation
+  (Space / Enter) of the page's field rectangles; Windows Narrator check (`labelled_by` names
+  set, not listened to);
+- flattening: also keep the annotations without an appearance other than links (attachments without
+  `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;
+- warn when the document carries a digital signature (D056, any edit invalidates it).
 
-Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit
-qui se chevauche sous ~650 px de haut (`KNOWN_ISSUES.md` A15) ; validation visuelle finale par l'utilisateur.
+## After sign-image (visual signature, slice delivered)
+Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060):
+- **typed** signature (name rendered in a handwriting font): depends on font embedding (A7);
+- initial **every page** at once (today Shift+click, page by page);
+- DPAPI encryption of the saved signatures (ADR to write, D055);
+- warn when the document already carries a **digital signature** (any edit invalidates it, D056);
+- stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
+  cast shadow; pen pressure if egui ever exposes it.
 
-## Après review-fixes (constats des revues adverses du 14/10, tranche livrée)
-Les 39 constats de `docs/plans/review-fixes.md` sont corrigés ou déjà couverts (tests moteur et application).
-Reste, non bloquant :
-- rechiffrer automatiquement les extraits et les parties d'une division d'un document protégé (D046, A29) ;
-- vérifier avec qpdf les fichiers AES produits (fixture tierce, A4) et les XMP régénérés (lecture par un
-  indexeur XMP) ;
-- reprendre `pdfaid:*` et les autres espaces de noms du XMP d'origine dans le paquet régénéré par
-  `set_metadata` (A34) ;
-- incorporer les JPEG d'orientation EXIF 5 et 7 sans décodage (A31) ; limiter la mémoire des lots de PNG ;
-- aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
+Rest of the hub (non-blocking): keyboard focus placed on the active row when the panel opens (F9); right rail
+overlapping below ~650 px high (`KNOWN_ISSUES.md` A15); final visual validation by the user.
 
-## SUNI-012c — Affichage, suite (owner : UI-UX)
-Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
+## After review-fixes (findings of the 14/10 adversarial reviews, slice delivered)
+The 39 findings of `docs/plans/review-fixes.md` are fixed or already covered (engine and application tests).
+Remaining, non-blocking:
+- automatically re-encrypt the extracts and the parts of a split of a protected document (D046, A29);
+- check the produced AES files with qpdf (third-party fixture, A4) and the regenerated XMP (reading by an
+  XMP indexer);
+- carry over `pdfaid:*` and the other namespaces of the original XMP into the packet regenerated by
+  `set_metadata` (A34);
+- embed JPEGs with EXIF orientation 5 and 7 without decoding (A31); limit the memory of PNG batches;
+- CLI help for `stamp` / `page-numbers` (A16, clap replaces `{n}`).
+
+## SUNI-012c — Display, continued (owner: UI-UX)
+Done: tabs (SUNI-012a); virtualized continuous view, tiles, anchored zoom, single page as an option (SUNI-012b,
 `docs/plans/continuous-view.md`, D038–D045).
-Reste (voir `KNOWN_ISSUES.md` A25–A28) :
-- sélection de texte à cheval sur plusieurs pages et défilement automatique en glissant au bord ;
-- double page / mode livre, rotation de la vue ;
-- défilement animé des « aller à » ; pincement tactile à vérifier sur un écran tactile ;
-- si une page lourde fige le défilement : `Document::render_regions` (une page chargée pour 3 à 4 tuiles
-  voisines), à n'ajouter qu'après mesure ; plafonds mémoire réglables si un besoin apparaît.
+Remaining (see `KNOWN_ISSUES.md` A25–A28):
+- text selection spanning several pages and auto-scroll when dragging at the edge;
+- two-page / book mode, view rotation;
+- animated scrolling for "go to"; touch pinch to check on a touch screen;
+- if a heavy page freezes scrolling: `Document::render_regions` (one page loaded for 3 to 4 neighbouring
+  tiles), to be added only after measurement; adjustable memory caps if a need arises.
 
-## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
-Fait : sélection rectangulaire, copie (Ctrl+C réparé en SUNI-031c via l'événement Copier d'egui).
-Reste : sélection en ordre de lecture (glisser au fil du texte), double-clic sur un mot.
+## SUNI-013b — Text selection and copy (owner: UI-UX)
+Done: rectangular selection, copy (Ctrl+C fixed in SUNI-031c through egui's Copy event).
+Remaining: selection in reading order (drag along the text), double-click on a word.
 
-## SUNI-031d — Édition du contenu, suite (owner : PDF-EDITOR)
-Fait en SUNI-031/031b/032/031c : sélection simple et multiple (rectangle, Maj/Ctrl+clic, Ctrl+A), déplacement
-groupé, redimensionnement, rotation libre, duplication, ordre Z (un cran ou extrême), suppression, couleurs,
-épaisseur, opacité, copier/couper/coller entre pages et onglets (groupe), panneau Objets, texte sur la page
-(polices standard et TrueType du système), remplacement d'image, pages vierges, recadrage, redimensionnement
-des pages, pages pivotées et rognées.
-Reste (voir `KNOWN_ISSUES.md` A7, A8, A18–A22) :
-- sous-ensemble des polices incorporées (crate `subsetter` MIT/Apache + post-traitement lopdf, ADR à écrire) ;
-  polices `.otf` (contours CFF) et collections `.ttc` ;
-- collage « natif » éditable (objets recréés un par un au lieu d'un XObject) ; opacité et couleur des groupes ;
-- rotation et redimensionnement d'un groupe de plusieurs objets ; pivot mémorisé pour les tracés asymétriques ;
-- recadrage à la souris ; glisser-déposer dans le panneau Objets ;
-- lecture de l'opacité d'une image existante (contournement PDFium : lire l'ExtGState du flux avec lopdf).
-Acceptation : chaque opération couverte par un test moteur avec rendu vérifié.
+## SUNI-031d — Content editing, continued (owner: PDF-EDITOR)
+Done in SUNI-031/031b/032/031c: single and multiple selection (rectangle, Shift/Ctrl+click, Ctrl+A), group
+move, resizing, free rotation, duplication, Z order (one step or extreme), deletion, colours,
+stroke width, opacity, copy/cut/paste between pages and tabs (group), Objects panel, text on the page
+(standard and system TrueType fonts), image replacement, blank pages, cropping, page resizing,
+rotated and cropped pages.
+Remaining (see `KNOWN_ISSUES.md` A7, A8, A18–A22):
+- subsetting of embedded fonts (`subsetter` crate MIT/Apache + lopdf post-processing, ADR to write);
+  `.otf` fonts (CFF outlines) and `.ttc` collections;
+- "native" editable paste (objects recreated one by one instead of an XObject); opacity and colour of groups;
+- rotation and resizing of a group of several objects; remembered pivot for asymmetric paths;
+- mouse cropping; drag and drop in the Objects panel;
+- reading the opacity of an existing image (PDFium workaround: read the stream's ExtGState with lopdf).
+Acceptance: each operation covered by an engine test with verified rendering.
 
-## SUNI-021b — Annotations avancées : livré, reste (owner : PDF-EDITOR)
-Livré (D067–D076) : encre, zone de texte libre, rectangle, ellipse, ligne, flèche, liens cliquables, sélection /
-déplacement / redimensionnement / recoloration / suppression, fils de réponses et statuts, auteur mémorisé, CLI
-`annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
-- **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
-  Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; `qpdf --check` des sorties (SUNI-025) ;
-- regroupement des traits d'encre (une annotation pour N traits, validée à l'inactivité) avec écriture garantie à
-  l'enregistrement et à la fermeture ; gomme ;
-- polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
-  incorporée) ;
-- modifier la cible d'un lien existant, résoudre les destinations nommées, respecter `/XYZ` (position et zoom) ;
-- aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
-- zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
+## SUNI-021b — Advanced annotations: delivered, what remains (owner: PDF-EDITOR)
+Delivered (D067–D076): ink, free text box, rectangle, ellipse, line, arrow, clickable links, select / move / resize /
+recolour / delete, reply threads and statuses, remembered author, CLI `annotations` / `annotate` / `reply` /
+`review-state` / `annotation-delete`. What remains:
+- **verify interoperability** of replies and statuses, ink, free text and shape appearances in Acrobat, Foxit and
+  Chrome (not available on the development machine); `qpdf --check` of the outputs (SUNI-025);
+- grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
+  time; eraser;
+- polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
+- change the target of an existing link, resolve named destinations, honour `/XYZ` (position and zoom);
+- lighter round trip for big files (write the annotation without reloading the whole document);
+- free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 
-## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
-Rééchantillonnage des images (PDFium : objets image → DynamicImage → réencodage JPEG), vérification qpdf en CI, fixtures AES produites par qpdf, test « sauvegarde interrompue ».
+## SUNI-025 — Lossy compression and qpdf verification (owner: OCR-CONVERSION + QA)
+Image resampling (PDFium: image objects → DynamicImage → JPEG re-encoding), qpdf verification in CI, AES fixtures produced by qpdf, "interrupted save" test.
 
-## SUNI-015 — Identité visuelle et ressources Windows (owner : WINDOWS-RELEASE)
-Icône originale (SVG → ICO), manifeste DPI-aware, ressources de version (`winres`/`embed-resource`), signature différée.
+## SUNI-015 — Visual identity and Windows resources (owner: WINDOWS-RELEASE)
+Original icon (SVG → ICO), DPI-aware manifest, version resources (`winres`/`embed-resource`), deferred signing.
 
-## SUNI-016 — QA indépendante (owner : QA-PERFORMANCE)
-Corpus de PDF libres (pdf.js test corpus, licences vérifiées), tests fichiers hostiles (sans pages, xref cassé,
-chemins Unicode, disque plein simulé), premier benchmark (ouverture + rendu page 1) avec matériel noté.
+## SUNI-016 — Independent QA (owner: QA-PERFORMANCE)
+Corpus of free PDFs (pdf.js test corpus, licences checked), hostile file tests (no pages, broken xref,
+Unicode paths, simulated full disk), first benchmark (opening + page 1 rendering) with hardware noted.
 
-## Dette technique connue
-- Réactiver wgpu/DX12 (D010) ; vérifier OpenGL sur ARM64.
-- `-j 2` imposé par la mémoire du poste ; documenter la machine de référence.
-- Option `--lang` de la CLI (D009) si des messages humains deviennent nécessaires.
+## Known technical debt
+- Re-enable wgpu/DX12 (D010); check OpenGL on ARM64.
+- `-j 2` imposed by the machine's memory; document the reference machine.
+- CLI `--lang` option (D009) if human-readable messages become necessary.

@@ -1,16 +1,18 @@
-## Objet / Purpose
+## Purpose
 
-## Comportement avant / après — Behaviour before / after
+## Resulting behavior
 
-## Tests
+## Validation
+
 - [ ] `cargo fmt --all -- --check`
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo test --workspace`
-- [ ] `scripts/check-i18n.ps1` (clés fr-FR et en-US)
+- [ ] `cargo clippy --workspace --all-targets -j 2 -- -D warnings`
+- [ ] `cargo test --workspace -j 2`
+- [ ] `scripts/check-i18n.ps1` (English and French key parity)
 
 ## Documentation
-- [ ] `CHANGELOG.md` (section « Non publié »)
-- [ ] Guides utilisateur (`docs/USER_GUIDE.fr.md`, `docs/USER_GUIDE.en.md`) si le comportement visible change
-- [ ] `docs/KNOWN_ISSUES.md` pour les limites assumées
 
-## Ce qui n'est pas couvert / Not covered
+- [ ] `CHANGELOG.md` and `CHANGELOG.fr.md`
+- [ ] English and French user guides if visible behavior changes
+- [ ] `docs/KNOWN_ISSUES.md` for remaining limits
+
+## Not covered

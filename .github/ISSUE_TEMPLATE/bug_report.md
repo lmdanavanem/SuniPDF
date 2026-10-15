@@ -1,22 +1,21 @@
 ---
-name: Rapport de bogue / Bug report
-about: Un comportement incorrect de SuniPDF
+name: Bug report
+about: Report incorrect behavior in SuniPDF
 labels: bug
 ---
 
-**Version de SuniPDF / SuniPDF version** (À propos, ou `sunipdf-cli --version`) :
+**SuniPDF version** (About, or `sunipdf-cli --version`):
 
-**Windows** (édition, version, échelle d'affichage) :
+**Windows version and display scaling**:
 
-**Étapes pour reproduire / Steps to reproduce**
+**Steps to reproduce**
 1.
 2.
 
-**Comportement attendu / Expected behaviour**
+**Expected behavior**
 
-**Comportement observé / Observed behaviour**
+**Observed behavior**
 
-**Fichier PDF** : si possible, joignez un fichier minimal qui reproduit le problème (jamais de document
-confidentiel). / If possible attach a minimal file reproducing the problem (never a confidential document).
+**Sample PDF**: attach a minimal reproduction if possible. Never attach confidential documents.
 
-**Journal / Log** : `set RUST_LOG=debug` puis lancer `sunipdf.exe` depuis une console, coller la sortie.
+**Log**: launch `sunipdf.exe` from a console with `RUST_LOG=debug` and attach the relevant output.

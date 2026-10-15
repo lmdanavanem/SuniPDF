@@ -7,104 +7,80 @@
   </picture>
 </p>
 
-**Lecteur et éditeur PDF natif pour Windows 10/11, libre, hors ligne, bilingue français / anglais.**
-*Free native PDF reader and editor for Windows 10/11, offline, French / English.* — [English summary below](#english)
+**Free native PDF reader and editor for Windows 10/11. Private local processing, English and French.**
 
-Créé par **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Navanem](https://navanem.com/projets/sunipdf/) ·
-Licence MIT ou Apache-2.0, au choix.
+[Français](README.fr.md) · Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Navanem](https://navanem.com/projets/sunipdf/)
 
 [![Release](https://img.shields.io/github/v/release/lmdanavanem/SuniPDF)](https://github.com/lmdanavanem/SuniPDF/releases)
 [![CI](https://github.com/lmdanavanem/SuniPDF/actions/workflows/ci.yml/badge.svg)](https://github.com/lmdanavanem/SuniPDF/actions/workflows/ci.yml)
-![Licence](https://img.shields.io/badge/licence-MIT%20ou%20Apache--2.0-blue)
+![License](https://img.shields.io/badge/license-MIT%20or%20Apache--2.0-blue)
 
-## Pourquoi SuniPDF
-- **Vos fichiers restent chez vous** : aucune connexion, aucun compte, aucune télémétrie, aucun traitement dans le cloud.
-- **Natif et léger** : Rust, interface egui, moteur de rendu PDFium ; un exécutable, un ZIP portable ou un MSI.
-- **Complet** : lecture, annotation, édition du contenu, organisation des pages, formulaires, signature visuelle,
-  tampons, conversions, protection, ligne de commande scriptable.
-- **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.md`), jamais annoncé comme terminé.
+## Why SuniPDF
 
-## Fonctionnalités
-| Domaine | Détail |
+- **Your PDFs stay on your computer.** No account, telemetry or cloud processing. Update checks contact GitHub for release information and can be disabled.
+- **Native Windows application.** Rust, egui and PDFium, distributed as a portable ZIP or MSI installer.
+- **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
+- **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
+
+## Features
+
+| Area | Features |
 |---|---|
-| Lire | Onglets, défilement continu ou page unique, rendu en tuiles au zoom profond, miniatures, recherche, signets, thème clair / sombre |
-| Commenter | Surligner, souligner, barrer, notes, panneau des commentaires |
-| Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, copier-coller entre pages et onglets, panneau Objets, recadrage et redimensionnement des pages |
-| Organiser | Pivoter, supprimer, insérer, réordonner (glisser-déposer), combiner, diviser, extraire, pages vierges |
-| Remplir et signer | Formulaires AcroForm (remplir, panneau, aplatir, import / export JSON), signature manuscrite ou image, paraphe, date (signature visuelle, non certifiée) |
-| Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
-| Convertir | Images → PDF, PDF → images PNG, optimisation sans perte |
-| Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés |
-| Automatiser | `sunipdf-cli` : 42 commandes à sortie JSON et codes de retour stables |
+| Read | Tabs, continuous or single-page view, tiled rendering at high zoom, thumbnails, search, bookmarks, light/dark themes |
+| Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
+| Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, clipboard across tabs, Objects panel, page crop and resize |
+| Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages |
+| Fill and sign | AcroForm filling, flattening and JSON import/export; handwritten/image signatures, initials and date (visual signatures, not digital certificates) |
+| Stamp | Text watermarks and page numbering |
+| Convert | Images to PDF, PDF to PNG, lossless optimization |
+| Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
+| Automate | `sunipdf-cli`: 42 commands with JSON output and stable exit codes |
 
-Détail fait / planifié : `docs/FEATURE_MATRIX.md`, `docs/PROJECT_STATUS.md`, `docs/ROADMAP.md` ; nouveautés : `CHANGELOG.md`.
+[Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-## Captures d'écran
-| Accueil (thème sombre) | Accueil (thème clair) |
+## Screenshots
+
+| Dark home screen | Light home screen |
 |---|---|
-| ![Accueil, thème sombre](docs/screenshots/home-dark.png) | ![Accueil, thème clair](docs/screenshots/home-light.png) |
+| ![Dark home screen](docs/screenshots/home-dark.png) | ![Light home screen](docs/screenshots/home-light.png) |
 
-| Modifier un PDF : sélection et style d'un objet | Organiser les pages : grille de miniatures |
+| Edit PDF objects | Organize pages |
 |---|---|
-| ![Modifier un PDF](docs/screenshots/edit-objects.png) | ![Organiser les pages](docs/screenshots/organize-pages.png) |
+| ![Object editing](docs/screenshots/edit-objects.png) | ![Page organization](docs/screenshots/organize-pages.png) |
 
-<p align="center"><img src="docs/screenshots/about.png" width="720" alt="Boîte À propos"></p>
+## Install and update
 
-## Installation
-Page [Releases](https://github.com/lmdanavanem/SuniPDF/releases) : **MSI x64** (installation classique) ou
-**ZIP portable x64** (décompresser, lancer `sunipdf.exe`), avec empreintes SHA256. Un ZIP ARM64 est compilé en
-intégration continue mais n'a pas encore été exécuté sur du matériel ARM64. Aucun redistribuable Visual C++ n'est requis.
+Download from [GitHub Releases](https://github.com/lmdanavanem/SuniPDF/releases): **Windows x64 MSI** or **portable ZIP**.
+An ARM64 portable ZIP is built in CI but has not been run on ARM64 hardware. SHA256 checksums are provided.
+No Visual C++ redistributable is required.
 
-Guides : [`docs/USER_GUIDE.fr.md`](docs/USER_GUIDE.fr.md) · [`docs/USER_GUIDE.en.md`](docs/USER_GUIDE.en.md).
+From version 0.8.2, SuniPDF checks for updates at startup and shows a download/install button. You decide when to close your documents and install.
+Installed x64 copies use the MSI; portable copies update their own folder with a backup.
+Older versions need one manual upgrade to obtain this feature. Automatic checks can be disabled in About; manual checks remain available.
 
-## Compiler
-Prérequis : [Rust stable](https://rustup.rs) et les **Build Tools pour Visual Studio** (charge « Développement Desktop en C++ »).
+[English user guide](docs/USER_GUIDE.en.md) · [French user guide](docs/USER_GUIDE.fr.md)
+
+## Build
+
+Install [stable Rust](https://rustup.rs) and the **Visual Studio Build Tools** with the Desktop development with C++ workload.
+
 ```powershell
 git clone https://github.com/lmdanavanem/SuniPDF.git
 cd SuniPDF
-.\scripts\fetch-pdfium.ps1              # binaires PDFium (bblanchon/pdfium-binaries), empreinte vérifiée
-cargo test --workspace -j 2              # moteur, interface, CLI, i18n
-cargo run -p sunipdf-desktop -- fichier.pdf
-cargo run -p sunipdf-cli -- info fichier.pdf
-.\scripts\package-portable.ps1 -Arch x64 # ZIP portable + SHA256
-.\scripts\package-msi.ps1 -Arch x64      # MSI (WiX 3.14, téléchargé automatiquement)
-```
-Notes d'ingénierie (patrons de code, pièges, vérification visuelle) : `docs/ENGINEERING_NOTES.md`.
-Contribuer : `CONTRIBUTING.md` · Sécurité : `SECURITY.md`.
-
-## Structure
-```
-apps/sunipdf-desktop   application (egui/eframe)      crates/sunipdf-core   moteur (PDFium, lopdf)
-apps/sunipdf-cli       CLI JSON                       crates/sunipdf-i18n   traductions fr-FR / en-US
-assets/i18n            catalogues                     docs/                 architecture, guides, décisions
-packaging/wix          installateur MSI               scripts/              outils PowerShell / Python
+.\scripts\fetch-pdfium.ps1
+cargo test --workspace -j 2
+cargo run -p sunipdf-desktop -- document.pdf
+cargo run -p sunipdf-cli -- info document.pdf
+.\scripts\package-portable.ps1 -Arch x64
+.\scripts\package-msi.ps1 -Arch x64
 ```
 
-## Licence et remerciements
-Code SuniPDF : [MIT](LICENSE-MIT) ou [Apache-2.0](LICENSE-APACHE), au choix. Composants tiers et leurs licences :
-`docs/THIRD_PARTY_NOTICES.md`. SuniPDF s'appuie sur [PDFium](https://pdfium.googlesource.com/pdfium/) via
-[pdfium-render](https://github.com/ajrcarey/pdfium-render), [lopdf](https://github.com/J-F-Liu/lopdf),
-[egui / eframe](https://github.com/emilk/egui) et les polices système Segoe UI. SuniPDF n'est affilié ni à Adobe,
-ni à Google ou Foxit (PDFium).
+[Engineering notes](docs/ENGINEERING_NOTES.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Documentation](docs/README.md)
 
----
+## License and acknowledgements
 
-## English
-SuniPDF is a free, native PDF reader and editor for Windows 10/11 written in Rust (egui interface, PDFium
-rendering engine). It works entirely offline, with no account and no telemetry, and the user interface is
-available in French and English.
-
-Features: tabs and continuous view with tiled rendering, search, bookmarks and thumbnails; highlight,
-underline, strike-out, note, ink, free text, shape and link annotations with reply threads; content editing (text with standard or embedded system fonts,
-images, shapes, selection, move, resize, rotate, opacity, clipboard across pages and tabs, objects panel,
-page crop and resize); page organisation (rotate, delete, insert, reorder, combine, split, extract);
-AcroForm filling and flattening with JSON import/export; handwritten or image signatures, initials and date
-(visual signature, not certified); text watermarks and page numbers; images to PDF, PDF to PNG, lossless
-optimisation; AES-128/256 protection with permissions, metadata cleanup; a 42-command JSON CLI.
-
-Screenshots: see the [Captures d'écran](#captures-décran) section above (home screen in dark and light themes,
-object editing, page organisation, About box).
-
-Install from the [Releases](https://github.com/lmdanavanem/SuniPDF/releases) page (MSI or portable ZIP, x64).
-Build with stable Rust and the Visual Studio Build Tools, then `scripts\fetch-pdfium.ps1` and `cargo test --workspace`.
-Dual-licensed under MIT or Apache-2.0. Created by Emanuel DE ALMEIDA ([@lmdanavanem](https://github.com/lmdanavanem)).
+SuniPDF is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your choice.
+[Third-party notices](docs/THIRD_PARTY_NOTICES.md) accompany each distribution.
+Built with [PDFium](https://pdfium.googlesource.com/pdfium/), [pdfium-render](https://github.com/ajrcarey/pdfium-render),
+[lopdf](https://github.com/J-F-Liu/lopdf) and [egui/eframe](https://github.com/emilk/egui).
+SuniPDF is not affiliated with Adobe, Google or Foxit.
