@@ -34,14 +34,14 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | Notes, surlignage, souligné, barré **Faits** ; formes, encre, zones de texte planifiés (P3) |
-| Fils de réponses, statut des commentaires | Déclaré | Panneau Commentaires **Fait** (liste, suppression) ; fils et statuts planifiés (P3) |
+| Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | **Fait** (D067–D076) : notes, surlignage, souligné, barré ; **encre** à main levée (lissée), **zone de texte libre** (Helvetica WinAnsi), **rectangle, ellipse, ligne, flèche** en vraies annotations PDF (apparence `/AP` explicite, rendues par les autres lecteurs), couleur, épaisseur, fond, opacité ; sélection, déplacement, redimensionnement (annotations de SuniPDF), recoloration, suppression ; pages tournées et rognées justes ; document chiffré conservé chiffré ; CLI `annotate` / `annotations` |
+| Fils de réponses, statut des commentaires | Déclaré | **Fait dans SuniPDF** : panneau Commentaires en fils (réponses, statut Accepté / Refusé / Annulé / Terminé, auteur, date, suppression du fil), écrits selon ISO 32000-1 ; **compatibilité Acrobat / Foxit non vérifiée** ; CLI `reply` / `review-state` |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement de groupe planifiés |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
-| Liens | Déclaré | Planifié (P3) |
+| Liens | Déclaré | **Fait** : création (aller à une page, adresse `http` / `https` / `mailto`), clic sur un lien interne (saut de page), **adresse externe seulement après confirmation** montrant l'adresse complète ; actions Launch / JavaScript jamais exécutées ; destinations nommées non résolues ; CLI `annotate --kind link` |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | Planifié (P3) |
 

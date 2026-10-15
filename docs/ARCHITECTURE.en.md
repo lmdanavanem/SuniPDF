@@ -29,12 +29,13 @@ SuniPDF/
 │   │                         editor.rs (selection, handles, rotation, object clipboard, object bar), sign.rs
 │   │                         (visual signature: pad, import, local library, placement, date), inline_text.rs
 │   │                         (text on the page, font picker), objects.rs (Objects panel), pagesetup.rs (crop,
-│   │                         resize, blank page), view.rs (continuous / single-page view: virtualised layout,
+│   │                         resize, blank page), annot_adv.rs (ink, free text, shapes, links, annotation selection, reply threads), view.rs (continuous / single-page view: virtualised layout,
 │   │                         wanted tiles, texture pool, anchored zoom)
 │   └── sunipdf-cli/          `sunipdf-cli` binary (clap) — JSON output, stable error codes
 ├── crates/
 │   ├── sunipdf-core/         Engine, Document, RenderedPage, EngineError; tiles.rs (tile geometry), cache.rs (LRU
-│   │                         pages + tiles); edit.rs (objects), geometry.rs (display space),
+│   │                         pages + tiles); edit.rs (objects), geometry.rs (display space), annot_write.rs / appearance.rs / links.rs
+│   │                         (advanced annotations: lopdf writes with an explicit `/AP`, PDFium renders and reads back),
 │   │                         clipboard.rs (copy/paste of objects), fonts.rs (system fonts), boxes.rs (page boxes),
 │   │                         signature_image.rs (visual signature: rasterised strokes, background removal, cropping, PNG; no PDFium);
 │   │                         tests/fixtures/*.pdf (including boxes.pdf: rotated and cropped pages)

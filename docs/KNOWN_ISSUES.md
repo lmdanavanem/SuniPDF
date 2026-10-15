@@ -214,3 +214,24 @@ A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté e
      pas d'activation d'un widget de la page par Espace ou Entrée) ; **Narrateur Windows non testé** (noms
      AccessKit posés : `a11y.forms.*`) ; la page reste une image pour un lecteur d'écran, seuls les rectangles
      de champs et le panneau lui sont exposés.
+A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **texte libre en Helvetica WinAnsi**
+    seulement (accents latins, € et ponctuation courante ; tout autre caractère s'affiche « ? » dans l'apparence,
+    `/Contents` garde le texte exact ; pas de gras, d'italique, de texte riche `/RC`, de CJK ni de droite à gauche) et
+    largeur de renvoi à la ligne calculée avec la table Helvetica (marge de 2 %) ; **un trait d'encre = une annotation**
+    et chaque opération (trait, déplacement, style) coûte un aller-retour complet instantané + lopdf + rechargement :
+    imperceptible sur un PDF courant, de l'ordre de la seconde sur un fichier de dizaines de Mo ; **fils de réponses et
+    statuts** écrits selon ISO 32000-1 mais **jamais testés dans Acrobat, Foxit ni Chrome** (réponses sans icône :
+    apparence vide + `F 4`), pas de modèle d'état « Marked » ; **lecture détaillée** des annotations (panneau,
+    sélection) demandée à la demande et par page, qui relit tout le document ; un lien existant ne change pas de cible
+    (supprimer puis recréer), destinations nommées non résolues, destination `/XYZ` réduite à la page, actions
+    Launch / JavaScript / GoToR jamais exécutées ; **redimensionnement et style réservés aux annotations de SuniPDF**
+    (`/NM` préfixé) : celles d'un autre producteur se déplacent, se commentent, se suppriment (surlignages et notes se
+    recolorent aussi) ; pas de gomme, de polygone, de nuage, de tampon, de pièce jointe, de bordure pointillée ;
+    plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt, zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
+    sélection d'une annotation de SuniPDF (cadre, quatre poignées, barre flottante) puis déplacement et
+    redimensionnement à la souris, déplacement d'une annotation d'un autre producteur (cadre sans poignées), boîtes de
+    dialogue (zone de texte, lien, confirmation d'adresse), panneau Commentaires avec fil, thèmes clair et sombre ;
+    **non rejoués en capture** : la zone de texte posée après sa boîte, la modification par double-clic, les flèches du
+    clavier, le redimensionnement d'une encre, d'une ligne ou d'une zone de texte (tous couverts par les tests moteur et
+    les tests purs de `annot_adv.rs`) ; `qpdf --check` non
+    exécuté sur les sorties (qpdf absent de ce poste, A4).

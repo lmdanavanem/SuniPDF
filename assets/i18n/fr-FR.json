@@ -172,7 +172,7 @@
   "shortcut.comments": "F7",
   "comments.title": "Commentaires",
   "comments.page": "Page {page}",
-  "comments.empty": "Aucune annotation sur cette page. Sélectionnez un outil dans la palette puis tracez sur la page.",
+  "comments.empty": "Aucune annotation sur cette page. Choisissez un outil de la barre Commenter, puis tracez sur la page.",
   "comments.delete": "Supprimer l'annotation",
   "comments.kind.highlight": "Surlignage",
   "comments.kind.underline": "Soulignement",

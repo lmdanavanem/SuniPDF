@@ -172,7 +172,7 @@
   "shortcut.comments": "F7",
   "comments.title": "Comments",
   "comments.page": "Page {page}",
-  "comments.empty": "No annotations on this page. Pick a tool in the palette and drag on the page.",
+  "comments.empty": "No annotations on this page. Pick a tool in the Comment bar, then draw on the page.",
   "comments.delete": "Delete annotation",
   "comments.kind.highlight": "Highlight",
   "comments.kind.underline": "Underline",

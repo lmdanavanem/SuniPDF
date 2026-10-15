@@ -36,14 +36,14 @@ phase; **Out of scope**. Update this column only with real results.
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | Notes, highlight, underline, strikethrough **Done**; shapes, ink, text boxes planned (P3) |
-| Reply threads, comment status | Declared | Comments panel **Done** (list, deletion); threads and statuses planned (P3) |
+| Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Done** (D067–D076): notes, highlight, underline, strikethrough; freehand **ink** (smoothed), **free text box** (Helvetica WinAnsi), **rectangle, ellipse, line, arrow** as real PDF annotations (explicit `/AP` appearance, rendered by other readers), colour, width, fill, opacity; select, move, resize (SuniPDF annotations), recolour, delete; rotated and cropped pages correct; encrypted document stays encrypted; CLI `annotate` / `annotations` |
+| Reply threads, comment status | Declared | **Done in SuniPDF**: Comments panel as threads (replies, status Accepted / Rejected / Cancelled / Completed, author, date, thread deletion), written according to ISO 32000-1; **Acrobat / Foxit compatibility not verified**; CLI `reply` / `review-state` |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
 | Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
 | Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing planned |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
-| Links | Declared | Planned (P3) |
+| Links | Declared | **Done**: creation (go to a page, `http` / `https` / `mailto` address), click on an internal link (page jump), **external address only after a confirmation** showing the full address; Launch / JavaScript actions never executed; named destinations not resolved; CLI `annotate --kind link` |
 | Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
 | Custom stamps | Not documented | Planned (P3) |
 

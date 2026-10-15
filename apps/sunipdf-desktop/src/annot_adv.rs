@@ -911,7 +911,11 @@ impl SuniApp {
         if tool == Tool::Ink {
             let adv = &self.annotate.adv;
             if drag.is_some() && adv.ink.len() > 1 {
-                let pts: Vec<egui::Pos2> = adv.ink.iter().map(|p| pt(*p)).collect();
+                // Même lissage que l'annotation écrite : l'aperçu est ce qu'on obtiendra.
+                let pts: Vec<egui::Pos2> = sunipdf_core::smooth_polyline(&adv.ink, 4)
+                    .iter()
+                    .map(|p| pt(*p))
+                    .collect();
                 painter.add(egui::epaint::PathShape::line(pts, stroke));
             }
         }

@@ -35,7 +35,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
 | Convertir | Images → PDF, PDF → images PNG, optimisation sans perte |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés |
-| Automatiser | `sunipdf-cli` : 36 commandes à sortie JSON et codes de retour stables |
+| Automatiser | `sunipdf-cli` : 41 commandes à sortie JSON et codes de retour stables |
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.md`, `docs/PROJECT_STATUS.md`, `docs/ROADMAP.md` ; nouveautés : `CHANGELOG.md`.
 
@@ -84,12 +84,12 @@ rendering engine). It works entirely offline, with no account and no telemetry, 
 available in French and English.
 
 Features: tabs and continuous view with tiled rendering, search, bookmarks and thumbnails; highlight,
-underline, strike-out and note annotations; content editing (text with standard or embedded system fonts,
+underline, strike-out, note, ink, free text, shape and link annotations with reply threads; content editing (text with standard or embedded system fonts,
 images, shapes, selection, move, resize, rotate, opacity, clipboard across pages and tabs, objects panel,
 page crop and resize); page organisation (rotate, delete, insert, reorder, combine, split, extract);
 AcroForm filling and flattening with JSON import/export; handwritten or image signatures, initials and date
 (visual signature, not certified); text watermarks and page numbers; images to PDF, PDF to PNG, lossless
-optimisation; AES-128/256 protection with permissions, metadata cleanup; a 36-command JSON CLI.
+optimisation; AES-128/256 protection with permissions, metadata cleanup; a 41-command JSON CLI.
 
 Install from the [Releases](https://github.com/lmdanavanem/SuniPDF/releases) page (MSI or portable ZIP, x64).
 Build with stable Rust and the Visual Studio Build Tools, then `scripts\fetch-pdfium.ps1` and `cargo test --workspace`.

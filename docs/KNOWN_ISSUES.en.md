@@ -216,3 +216,23 @@ A38. **AcroForm forms (forms slice, D061–D066)**: **XFA** detected and read (f
      no activation of a page widget with Space or Enter); **Windows Narrator untested** (AccessKit names
      set: `a11y.forms.*`); the page remains an image for a screen reader, only the field rectangles
      and the panel are exposed to it.
+A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free text in Helvetica WinAnsi** only
+    (Latin accents, € and common punctuation; any other character shows as "?" in the appearance, `/Contents` keeps
+    the exact text; no bold, italic, rich text `/RC`, CJK or right-to-left) and the wrapping width is computed with the
+    Helvetica table (2 % margin); **one ink stroke = one annotation** and every operation (stroke, move, style)
+    costs a full snapshot + lopdf + reload round trip: imperceptible on an ordinary PDF, about a second on a file of
+    tens of MB; **reply threads and statuses** written according to ISO 32000-1 but **never tested in Acrobat, Foxit
+    or Chrome** (replies without icon: empty appearance + `F 4`), no "Marked" state model; **detailed reading** of
+    annotations (panel, selection) is requested on demand, per page, and re-reads the whole document; an existing
+    link does not change target (delete then recreate), named destinations are not resolved, `/XYZ` destination
+    reduced to the page, Launch / JavaScript / GoToR actions are never executed; **resizing and styling reserved for
+    SuniPDF's own annotations** (prefixed `/NM`): those from another producer can be moved, commented and deleted
+    (highlights and notes can also be recoloured); no eraser, polygon, cloud, stamp, attachment, dashed border; caps:
+    64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,
+    selection of a SuniPDF annotation (frame, four handles, floating bar) then moving and resizing with the mouse,
+    moving another producer's annotation (frame without handles), dialogs (text box, link, address confirmation),
+    Comments panel with a thread, light and dark themes; **not replayed in screenshots**: the text box placed after
+    its dialog, editing by double-click, keyboard arrows, resizing an ink stroke, a line or a text box (all covered by
+    the engine tests and the pure tests of `annot_adv.rs`); `qpdf --check`
+    not run on the outputs (qpdf absent from this
+    machine, A4).

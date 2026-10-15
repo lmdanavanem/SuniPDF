@@ -93,8 +93,18 @@ Remaining (see `KNOWN_ISSUES.md` A7, A8, A18–A22):
 - reading the opacity of an existing image (PDFium workaround: read the stream's ExtGState with lopdf).
 Acceptance: each operation covered by an engine test with verified rendering.
 
-## SUNI-021b — Advanced annotations (owner: PDF-EDITOR)
-Free drawing (ink), free text box (FreeText), moving/resizing existing annotations, reply threads.
+## SUNI-021b — Advanced annotations: delivered, what remains (owner: PDF-EDITOR)
+Delivered (D067–D076): ink, free text box, rectangle, ellipse, line, arrow, clickable links, select / move / resize /
+recolour / delete, reply threads and statuses, remembered author, CLI `annotations` / `annotate` / `reply` /
+`review-state` / `annotation-delete`. What remains:
+- **verify interoperability** of replies and statuses, ink, free text and shape appearances in Acrobat, Foxit and
+  Chrome (not available on the development machine); `qpdf --check` of the outputs (SUNI-025);
+- grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
+  time; eraser;
+- polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
+- change the target of an existing link, resolve named destinations, honour `/XYZ` (position and zoom);
+- lighter round trip for big files (write the annotation without reloading the whole document);
+- free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 
 ## SUNI-025 — Lossy compression and qpdf verification (owner: OCR-CONVERSION + QA)
 Image resampling (PDFium: image objects → DynamicImage → JPEG re-encoding), qpdf verification in CI, AES fixtures produced by qpdf, "interrupted save" test.

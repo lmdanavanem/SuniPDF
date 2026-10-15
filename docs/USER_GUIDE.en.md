@@ -31,7 +31,7 @@ Without an open document, a tool that needs one first asks for a file, then star
 - **Leave tool**: button on the right of the bar, **Esc**, clicking the active tool again in the panel, or the
   back arrow (which also reopens the panel). Esc first closes what is closer: an open menu or drop-down
   list, then the search bar, then the selected object, then the tool (one Esc, one effect).
-- Single-letter shortcuts open the matching tool: H, U, X, N open **Add comments**; E, T, I, R, O, L open
+- Single-letter shortcuts open the matching tool: H, U, X, N, A, D, F open **Add comments**; E, T, I, R, O, L open
   **Edit a PDF**; S opens the **Sign** dialog; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo and Redo.
@@ -72,10 +72,34 @@ scrolls without loading everything.
 
 ## Annotating
 
-The **Add comments** tool offers: select text (V), highlight (H), underline (U), strikethrough (X),
-note (N), the Comments panel and copying the selected text. Drag a rectangle over text to apply a markup; click the page with the note
-tool to type a comment. The **Comments** panel (F7) lists the annotations of the current page and lets you
-delete them. Every annotation can be undone (Ctrl+Z).
+The **Add comments** tool brings two families together. Text markup: select text (V), highlight (H), underline (U),
+strikethrough (X), note (N); drag a rectangle over text to apply a markup, click the page with the note tool to type a
+comment. **Advanced annotations**, real PDF annotations (not page content: other readers show them too):
+
+| Tool | Gesture |
+|---|---|
+| **Select an annotation** (A) | Click an annotation: frame, handles, floating bar. Drag = move; handles = resize; arrow keys = nudge (Shift: ×10); Delete = remove; double-click or the "Edit the text" button = change its text or comment; Esc = deselect |
+| **Freehand drawing** (D) | Drag on the page: smoothed stroke (one stroke = one annotation, a click = a dot); colour, width and opacity in the floating bar |
+| **Free text box** (F) | Click (default box) or drag (chosen box), then type in the dialog: size, colour, background, border. The box grows downwards if the text is taller. Helvetica font: characters outside the Latin alphabet show as "?", the exact text stays in the annotation |
+| **Rectangle, Ellipse, Line or arrow** (annotations) | Drag; colour, width, fill (rectangle and ellipse), opacity, "Arrow" checkbox |
+| **Link** | Draw an area (at least 6 points) then choose "Go to a page" or "Open a web address" (`http`, `https` or `mailto` only) |
+
+An annotation created by SuniPDF can be resized and restyled ("Apply to annotation" button: the bar's colours are
+applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can
+also be recoloured) but is never rewritten, so nothing of its fidelity is lost. A locked annotation cannot be changed.
+
+**Clickable links.** With the reading cursor, the pointer turns into a hand over a link. An internal link takes you
+to the page; an external link first opens a **confirmation dialog that shows the full address** (Open in browser,
+Copy address, Cancel): nothing opens without your agreement, and only `http`, `https` and `mailto` addresses are
+accepted. Actions that launch a program or a script are never run.
+
+The **Comments** panel (F7) groups the page's annotations into **threads**: author, date, text, review status (None,
+Accepted, Rejected, Cancelled, Completed), indented replies. **Reply** adds a reply with no icon on the page, the
+status menu changes the thread's state, the bin deletes the annotation and its replies, a click on a card's title
+selects it on the page. The **Author** field (remembered in your preferences, empty by default) is written into the
+annotations, replies and statuses created afterwards. Threads and statuses follow the PDF standard but their display
+in Acrobat or Foxit has not been verified. Every annotation can be undone (Ctrl+Z); a password-protected document
+stays protected after annotating, and rotated or cropped pages are respected.
 
 ## Editing content
 
@@ -252,7 +276,8 @@ the colour of its tool; entries such as "Edit a PDF" or "Add comments" open the 
 
 `sunipdf-cli.exe --help` lists the commands: `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
-`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, and for
+`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, for
+annotations: `annotations` (JSON list: index, subtype, rectangle in displayed-page points, text, author, style, link, thread), `annotate` (`--kind ink|square|circle|line|arrow|freetext|link`, `--rect left,bottom,right,top`, repeatable `--stroke "x,y x,y …"`, `--text`, `--color`, `--fill`, `--width`, `--opacity`, `--goto-page` or `--url`, `--author`), `reply`, `review-state` (`none|accepted|rejected|cancelled|completed`) and `annotation-delete` (`--thread`), and for
 content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--font-name "Arial"` or
 `--font-file` for an embedded system font; `\n` for a new line), `set-opacity`, `rotate-object` (free angle),
 `copy-objects` (to another page, `--into` for another document), `replace-image`, `crop` (`--unit mm`,

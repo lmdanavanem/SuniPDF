@@ -91,8 +91,19 @@ Reste (voir `KNOWN_ISSUES.md` A7, A8, A18–A22) :
 - lecture de l'opacité d'une image existante (contournement PDFium : lire l'ExtGState du flux avec lopdf).
 Acceptation : chaque opération couverte par un test moteur avec rendu vérifié.
 
-## SUNI-021b — Annotations avancées (owner : PDF-EDITOR)
-Dessin libre (ink), zone de texte libre (FreeText), déplacement/redimensionnement des annotations existantes, fils de réponses.
+## SUNI-021b — Annotations avancées : livré, reste (owner : PDF-EDITOR)
+Livré (D067–D076) : encre, zone de texte libre, rectangle, ellipse, ligne, flèche, liens cliquables, sélection /
+déplacement / redimensionnement / recoloration / suppression, fils de réponses et statuts, auteur mémorisé, CLI
+`annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
+- **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
+  Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; `qpdf --check` des sorties (SUNI-025) ;
+- regroupement des traits d'encre (une annotation pour N traits, validée à l'inactivité) avec écriture garantie à
+  l'enregistrement et à la fermeture ; gomme ;
+- polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
+  incorporée) ;
+- modifier la cible d'un lien existant, résoudre les destinations nommées, respecter `/XYZ` (position et zoom) ;
+- aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
+- zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
 
 ## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
 Rééchantillonnage des images (PDFium : objets image → DynamicImage → réencodage JPEG), vérification qpdf en CI, fixtures AES produites par qpdf, test « sauvegarde interrompue ».

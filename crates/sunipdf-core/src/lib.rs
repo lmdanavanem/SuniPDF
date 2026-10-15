@@ -33,6 +33,7 @@ pub use annot::{AnnotationInfo, MarkupKind, TextSelection, ANNOTATION_KINDS};
 pub use annot_write::{
     thread_status, AnnotDetail, AnnotShape, AnnotStyle, FreeTextStyle, LinkTarget, ReviewStatus,
 };
+pub use appearance::smooth_polyline;
 pub use boxes::{PageMargins, ResizeMode};
 pub use cache::{cache_key, tile_key, RenderCache};
 pub use clipboard::ObjectClip;

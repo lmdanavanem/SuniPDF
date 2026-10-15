@@ -34,7 +34,7 @@ fichier puis démarre.
   ou la flèche de retour (qui rouvre aussi le panneau). Échap ferme d'abord ce qui est plus proche : un menu
   ou une liste déroulante ouverts, puis la recherche, puis l'objet sélectionné, puis l'outil (un Échap, un
   seul effet).
-- Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N ouvrent **Commenter** ; E, T, I, R, O, L
+- Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N, A, D, F ouvrent **Commenter** ; E, T, I, R, O, L
   ouvrent **Modifier** ; S ouvre la boîte **Signer** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
 - Chaque onglet garde son outil actif.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
@@ -76,10 +76,37 @@ pages s'ouvre et défile sans tout charger.
 
 ## Annoter
 
-L'outil **Commenter** propose : sélectionner du texte (V), surligner (H), souligner (U), barrer (X),
-note (N), le panneau Commentaires et la copie du texte sélectionné. Tracez un rectangle sur le texte pour appliquer un marquage ; cliquez sur la page avec
-l'outil note pour saisir un commentaire. Le panneau **Commentaires** (F7) liste les annotations de la page
-et permet de les supprimer. Toute annotation est annulable (Ctrl+Z).
+L'outil **Commenter** réunit deux familles. Le marquage du texte : sélectionner du texte (V), surligner (H),
+souligner (U), barrer (X), note (N) ; tracez un rectangle sur le texte pour appliquer un marquage, cliquez sur la
+page avec l'outil note pour saisir un commentaire. Les **annotations avancées**, de vraies annotations PDF (pas
+du contenu de page : les autres lecteurs les affichent aussi) :
+
+| Outil | Geste |
+|---|---|
+| **Sélectionner une annotation** (A) | Clic sur une annotation : cadre, poignées, barre flottante. Glisser = déplacer ; poignées = redimensionner ; flèches = décaler (Maj : ×10) ; Suppr = supprimer ; double-clic ou bouton « Modifier le texte » = changer son texte ou son commentaire ; Échap = désélectionner |
+| **Dessin à main levée** (D) | Glisser sur la page : trait lissé (un trait = une annotation, un clic = un point) ; couleur, épaisseur et opacité dans la barre flottante |
+| **Zone de texte libre** (F) | Clic (boîte par défaut) ou glissement (boîte choisie), puis saisie dans la boîte de dialogue : taille, couleur, fond, bordure. La boîte grandit vers le bas si le texte est plus haut. Police Helvetica : les caractères hors alphabet latin s'affichent « ? », le texte exact reste dans l'annotation |
+| **Rectangle, Ellipse, Ligne ou flèche** (annotations) | Glisser ; couleur, épaisseur, fond (rectangle et ellipse), opacité, case « Flèche » |
+| **Lien** | Tracer une zone (au moins 6 points) puis choisir « Aller à une page » ou « Ouvrir une adresse web » (`http`, `https` ou `mailto` seulement) |
+
+Une annotation créée par SuniPDF se redimensionne et se restyle (bouton « Appliquer à l'annotation » : les couleurs de
+la barre lui sont appliquées) ; celle d'un autre logiciel se déplace, se commente et se supprime (un surlignage ou une
+note se recolore aussi) mais n'est jamais réécrite, pour ne rien perdre de sa fidélité. Une annotation verrouillée
+ne se modifie pas.
+
+**Liens cliquables.** Avec le curseur de lecture, le pointeur devient une main au-dessus d'un lien. Un lien
+interne amène à la page ; un lien externe ouvre d'abord une **boîte de confirmation qui montre l'adresse
+complète** (Ouvrir dans le navigateur, Copier l'adresse, Annuler) : rien ne s'ouvre sans votre accord, et seules les
+adresses `http`, `https` et `mailto` sont acceptées. Les actions de lancement de programme ou de script ne sont
+jamais exécutées.
+
+Le panneau **Commentaires** (F7) groupe les annotations de la page en **fils** : auteur, date, texte, statut de
+relecture (Aucun, Accepté, Refusé, Annulé, Terminé), réponses en retrait. **Répondre** ajoute une réponse sans icône
+sur la page, le menu de statut change l'état du fil, la corbeille supprime l'annotation et ses réponses, un clic sur
+le titre d'une carte la sélectionne sur la page. Le champ **Auteur** (mémorisé dans vos préférences, vide par défaut)
+est écrit dans les annotations, réponses et statuts créés ensuite. Fils et statuts suivent la norme PDF mais leur
+affichage dans Acrobat ou Foxit n'a pas été vérifié. Toute annotation est annulable (Ctrl+Z) ; un document protégé
+par mot de passe le reste après annotation, et les pages pivotées ou recadrées sont respectées.
 
 ## Éditer le contenu
 
@@ -272,7 +299,8 @@ commande porte la couleur de son outil ; les entrées « Modifier un PDF », « 
 
 `sunipdf-cli.exe --help` liste les commandes : `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
-`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, et pour
+`properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, pour
+les annotations : `annotations` (liste JSON : indice, sous-type, rectangle en points de page affichée, texte, auteur, style, lien, fil), `annotate` (`--kind ink|square|circle|line|arrow|freetext|link`, `--rect gauche,bas,droite,haut`, `--stroke "x,y x,y …"` répétable, `--text`, `--color`, `--fill`, `--width`, `--opacity`, `--goto-page` ou `--url`, `--author`), `reply`, `review-state` (`none|accepted|rejected|cancelled|completed`) et `annotation-delete` (`--thread`), et pour
 l'édition du contenu : `objects` (objets d'une page, index à partir de 0), `add-text` (`--font-name "Arial"` ou
 `--font-file` pour une police système incorporée ; `\n` pour passer à la ligne), `set-opacity`, `rotate-object`
 (angle libre), `copy-objects` (vers une autre page, `--into` pour un autre document), `replace-image`, `crop`

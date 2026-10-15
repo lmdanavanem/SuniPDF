@@ -159,8 +159,23 @@ sortie) ; tester sur `tests/fixtures/boxes.pdf` (pages pivotées 90/180/270 et r
   pixels par image et s'arrête avec le dernier rafraîchissement). `dialog::show` applique les deux, et réserve
   10 px à la barre flottante du thème quand le corps déborde (`scroll.floating_allocated_width`, avec
   `set_width(available_width())` dans la zone) : sans cela la barre recouvre le bord droit du contenu.
+- Un cadre (`Frame`) imbriqué dans une rangée `ui.horizontal` qui contient `ui.set_width(ui.available_width())`
+  fait grandir un panneau d'une image à l'autre jusqu'à la largeur de la fenêtre : indenter une carte avec
+  `Frame::outer_margin`, pas avec `horizontal` + `add_space`. Un `TextEdit` dans un panneau se borne par
+  `available_width()`.
 - `consume_key(COMMAND, k)` accepte aussi Ctrl+Maj+k : les tables `FIELD_SHORTCUTS` / `SHORTCUTS` d'`app.rs`
   lisent la variante avec Maj d'abord (invariant testé) ; tout nouveau raccourci va dans ces tables.
+
+### Annotations (lopdf écrit, PDFium rend)
+- Une annotation avancée s'écrit par `annot_write.rs` : `edit_pdf` (instantané → `security::load` → lopdf →
+  `security::save` → `restore`) puis un flux `/AP` explicite ; jamais par les setters d'annotation de
+  `pdfium-render` (pas de cercle ni de ligne, repli de couleur qui transtype un handle d'annotation en objet de page).
+  Les apparences sont dessinées en coordonnées **locales d'affichage** avec `/Matrix` = partie linéaire de la rotation
+  de la page : texte droit sur une page `/Rotate`.
+- Les indices d'annotation sont ceux de `/Annots` (= `FPDFPage_GetAnnot(i)`) : jamais `iter()` de `pdfium-render`
+  (s'arrête à la première entrée illisible), jamais `page.links()` (doublons), jamais `lopdf::get_page_annotations`
+  (saute les entrées invalides). Seules les annotations `/NM SuniPDF-…` voient leur apparence régénérée.
+- Une adresse externe ne s'ouvre qu'après `is_safe_external_uri` **et** la boîte de confirmation (`link_action`).
 
 ## 5. Vérification visuelle
 
@@ -174,7 +189,12 @@ ancré sous le pointeur), capture
 la fenêtre puis ferme l'application. Depuis la vue continue, les pages sont empilées et la première page est
 centrée horizontalement : repérer le texte sur une capture sans `-Drag` avant de rejouer un glissement. Un seul lancement à la fois : le script prend le premier plan et
 déplace la souris. Journal : `$env:SUNIPDF_LOG = "fichier.log"` et `$env:RUST_LOG = "debug"`.
-Les préférences sont dans `%APPDATA%\SuniPDF\settings.json` : restaurer le fichier si un test le modifie.
+Glissements : les coordonnées de `-Drag` / `-Wheel` sont celles de la fenêtre en **pixels de capture divisés par
+1,5** (Windows à 150 %) ; la barre d'un outil décale la page de 72 px ; la **première pression** part de la position
+périmée du centre de la fenêtre (faire un glissement d'échauffement dans le fond gris) ; un **clic** est un
+glissement de longueur nulle (`x,y,x,y`) ; une boîte de dialogue ouverte avale les glissements suivants ; une
+capture de 335 × 39 px est une fenêtre réduite par un clic parasite (relancer). Les journaux `log::debug!` de
+`annot_adv` donnent les coordonnées PDF d'un début de geste pour étalonner. Les préférences sont dans `%APPDATA%\SuniPDF\settings.json` : restaurer le fichier si un test le modifie.
 Signature visuelle : `SUNIPDF_SIGNATURES_DIR` remplace `%APPDATA%\SuniPDF\signatures` (ne pas polluer le vrai
 profil pendant une capture) et `SUNIPDF_PICK_FILE` donne le chemin que « Choisir une image… » renvoie à la place
 du sélecteur natif, qui ne se pilote pas. Une boîte dont la hauteur dépend de son contenu (cartes de la

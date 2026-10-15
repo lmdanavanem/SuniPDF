@@ -7,7 +7,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-(nothing yet)
+### Added
+- **Advanced annotations** (Add comments tool): freehand drawing (smoothed stroke), free text box, rectangle,
+  ellipse, line and arrow, all as **real PDF annotations** (explicit appearance: other readers show them);
+  selecting an existing annotation to move, resize, recolour, edit the text of or delete it (shortcuts A, D, F);
+  floating bar (colour, width, fill, opacity, arrow, text size).
+- **Clickable links**: creation (page or `http` / `https` / `mailto` address), click on an internal link, and for an
+  external address a **confirmation dialog that shows the full address** before the browser opens; launch or script
+  actions are never run.
+- **Reply threads and review statuses** in the Comments panel (indented replies, status Accepted / Rejected /
+  Cancelled / Completed, remembered author, date, thread deletion), written according to the PDF standard (display
+  in Acrobat / Foxit not verified).
+- CLI: `annotations`, `annotate` (`ink`, `square`, `circle`, `line`, `arrow`, `freetext`, `link`), `reply`,
+  `review-state`, `annotation-delete` (41 commands).
+- Fixture `annotated.pdf` (12 annotations from several producers); 40 more tests (207 in total).
+
+### Changed
+- Annotations are written by lopdf with their own appearance: rotated or cropped pages are right (free text upright
+  on screen), a password-protected document stays protected.
+- Annotation enumeration no longer stops at the first unreadable entry (indices aligned with `/Annots`).
 
 ## [0.5.0] — 2026-10-15
 

@@ -221,7 +221,37 @@ pub(crate) fn circle_ap(w: f32, h: f32, s: &AnnotStyle) -> Ap {
     ap(w, h, c, s)
 }
 
-/// Traits en coordonnées locales ; un trait d'un seul point donne un point rond (`1 J`).
+/// Milieu de deux points.
+fn mid(a: (f32, f32), b: (f32, f32)) -> (f32, f32) {
+    ((a.0 + b.0) / 2.0, (a.1 + b.1) / 2.0)
+}
+
+/// Trait lissé : courbes passant par les milieux des segments, chaque sommet servant de point de
+/// contrôle (courbe quadratique écrite en cubique) ; premier et dernier points exacts.
+/// `n` points d'échantillonnage par courbe pour l'aperçu à l'écran.
+pub fn smooth_polyline(points: &[(f32, f32)], n: usize) -> Vec<(f32, f32)> {
+    if points.len() < 3 {
+        return points.to_vec();
+    }
+    let mut out = vec![points[0]];
+    let mut cur = points[0];
+    for i in 1..points.len() - 1 {
+        let (ctrl, end) = (points[i], mid(points[i], points[i + 1]));
+        for s in 1..=n {
+            let t = s as f32 / n as f32;
+            let u = 1.0 - t;
+            out.push((
+                u * u * cur.0 + 2.0 * u * t * ctrl.0 + t * t * end.0,
+                u * u * cur.1 + 2.0 * u * t * ctrl.1 + t * t * end.1,
+            ));
+        }
+        cur = end;
+    }
+    out.push(points[points.len() - 1]);
+    out
+}
+
+/// Traits en coordonnées locales, lissés ; un trait d'un seul point donne un point rond (`1 J`).
 pub(crate) fn ink_ap(w: f32, h: f32, strokes: &[Vec<(f32, f32)>], s: &AnnotStyle) -> Ap {
     let mut c = header(s, false);
     c.push_str("1 J 1 j ");
@@ -230,11 +260,40 @@ pub(crate) fn ink_ap(w: f32, h: f32, strokes: &[Vec<(f32, f32)>], s: &AnnotStyle
             continue;
         };
         c.push_str(&format!("{} {} m ", fmt_num(first.0), fmt_num(first.1)));
-        if stroke.len() == 1 {
-            c.push_str(&format!("{} {} l ", fmt_num(first.0), fmt_num(first.1)));
-        }
-        for p in &stroke[1..] {
-            c.push_str(&format!("{} {} l ", fmt_num(p.0), fmt_num(p.1)));
+        match stroke.len() {
+            1 => c.push_str(&format!("{} {} l ", fmt_num(first.0), fmt_num(first.1))),
+            2 => c.push_str(&format!(
+                "{} {} l ",
+                fmt_num(stroke[1].0),
+                fmt_num(stroke[1].1)
+            )),
+            len => {
+                let mut cur = *first;
+                for i in 1..len - 1 {
+                    let (ctrl, end) = (stroke[i], mid(stroke[i], stroke[i + 1]));
+                    // Quadratique (cur, ctrl, end) → cubique : points à 2/3 vers le contrôle.
+                    let c1 = (
+                        cur.0 + 2.0 / 3.0 * (ctrl.0 - cur.0),
+                        cur.1 + 2.0 / 3.0 * (ctrl.1 - cur.1),
+                    );
+                    let c2 = (
+                        end.0 + 2.0 / 3.0 * (ctrl.0 - end.0),
+                        end.1 + 2.0 / 3.0 * (ctrl.1 - end.1),
+                    );
+                    c.push_str(&format!(
+                        "{} {} {} {} {} {} c ",
+                        fmt_num(c1.0),
+                        fmt_num(c1.1),
+                        fmt_num(c2.0),
+                        fmt_num(c2.1),
+                        fmt_num(end.0),
+                        fmt_num(end.1)
+                    ));
+                    cur = end;
+                }
+                let last = stroke[len - 1];
+                c.push_str(&format!("{} {} l ", fmt_num(last.0), fmt_num(last.1)));
+            }
         }
         c.push_str("S ");
     }
@@ -453,6 +512,18 @@ mod tests {
     }
 
     #[test]
+    fn smoothing_keeps_the_ends_and_stays_inside_the_hull() {
+        let pts = [(0.0, 0.0), (10.0, 10.0), (20.0, 0.0)];
+        let s = smooth_polyline(&pts, 4);
+        assert_eq!((s[0], *s.last().unwrap()), (pts[0], pts[2]));
+        assert_eq!(s.len(), 6);
+        assert!(s
+            .iter()
+            .all(|p| p.1 <= 10.0 && p.1 >= 0.0 && p.0 >= 0.0 && p.0 <= 20.0));
+        assert_eq!(smooth_polyline(&pts[..2], 4), pts[..2].to_vec());
+    }
+
+    #[test]
     fn shape_streams_use_the_expected_operators() {
         let sq = text(&square_ap(100.0, 50.0, &style()));
         assert!(sq.contains(" re S Q") && !sq.contains(" rg "), "{sq}");
@@ -487,6 +558,23 @@ mod tests {
         assert_eq!(arrow.matches(" l ").count(), 3);
         let dot = text(&ink_ap(5.0, 5.0, &[vec![(2.0, 2.0)]], &style()));
         assert!(dot.contains("2 2 m 2 2 l S"), "{dot}");
+        let two = text(&ink_ap(5.0, 5.0, &[vec![(0.0, 0.0), (4.0, 4.0)]], &style()));
+        assert!(
+            two.contains("0 0 m 4 4 l S") && !two.contains(" c "),
+            "{two}"
+        );
+        // Trois points ou plus : courbes lissées, extrémités exactes.
+        let curve = text(&ink_ap(
+            20.0,
+            20.0,
+            &[vec![(0.0, 0.0), (10.0, 10.0), (20.0, 0.0), (30.0, 10.0)]],
+            &style(),
+        ));
+        assert_eq!(curve.matches(" c ").count(), 2, "{curve}");
+        assert!(
+            curve.contains("0 0 m") && curve.contains("30 10 l S"),
+            "{curve}"
+        );
     }
 
     #[test]

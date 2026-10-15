@@ -161,8 +161,21 @@ output); test on `tests/fixtures/boxes.pdf` (pages rotated 90/180/270 and croppe
   pixels per frame and stops with the last repaint). `dialog::show` applies both, and reserves
   10 px for the theme's floating bar when the body overflows (`scroll.floating_allocated_width`, with
   `set_width(available_width())` inside the area): without that the bar covers the right edge of the content.
+- A `Frame` nested in a `ui.horizontal` row that contains `ui.set_width(ui.available_width())` makes a panel grow
+  from one frame to the next up to the window width: indent a card with `Frame::outer_margin`, not with
+  `horizontal` + `add_space`. A `TextEdit` in a panel is bounded by `available_width()`.
 - `consume_key(COMMAND, k)` also accepts Ctrl+Shift+k: the `FIELD_SHORTCUTS` / `SHORTCUTS` tables of `app.rs`
   read the Shift variant first (tested invariant); every new shortcut goes into these tables.
+
+### Annotations (lopdf writes, PDFium renders)
+- An advanced annotation is written by `annot_write.rs`: `edit_pdf` (snapshot → `security::load` → lopdf →
+  `security::save` → `restore`) then an explicit `/AP` stream; never through `pdfium-render`'s annotation setters
+  (no circle or line, colour fallback that casts an annotation handle to a page object). Appearances are drawn in
+  **local display coordinates** with `/Matrix` = linear part of the page rotation: upright text on a `/Rotate` page.
+- Annotation indices are those of `/Annots` (= `FPDFPage_GetAnnot(i)`): never `pdfium-render`'s `iter()` (stops at
+  the first unreadable entry), never `page.links()` (duplicates), never `lopdf::get_page_annotations` (skips
+  invalid entries). Only `/NM SuniPDF-…` annotations have their appearance regenerated.
+- An external address only opens after `is_safe_external_uri` **and** the confirmation dialog (`link_action`).
 
 ## 5. Visual verification
 
@@ -176,7 +189,11 @@ anchored under the pointer), captures
 the window and then closes the application. Since the continuous view, pages are stacked and the first page is
 centred horizontally: locate the text on a capture without `-Drag` before replaying a drag. One launch at a time: the script takes the foreground and
 moves the mouse. Log: `$env:SUNIPDF_LOG = "file.log"` and `$env:RUST_LOG = "debug"`.
-Preferences are in `%APPDATA%\SuniPDF\settings.json`: restore the file if a test modifies it.
+Drags: the `-Drag` / `-Wheel` coordinates are window coordinates in **capture pixels divided by 1.5** (Windows at
+150 %); a tool bar shifts the page by 72 px; the **first press** starts from the stale position of the window centre
+(do a warm-up drag on the grey background); a **click** is a zero-length drag (`x,y,x,y`); an open dialog swallows the
+following drags; a 335 × 39 px capture is a window minimised by a stray click (run again). The `log::debug!` lines of
+`annot_adv` give the PDF coordinates of a gesture start, to calibrate. Preferences are in `%APPDATA%\SuniPDF\settings.json`: restore the file if a test modifies it.
 Visual signature: `SUNIPDF_SIGNATURES_DIR` replaces `%APPDATA%\SuniPDF\signatures` (do not pollute the real
 profile during a capture) and `SUNIPDF_PICK_FILE` gives the path that "Choose an image…" returns instead
 of the native picker, which cannot be driven. A dialog whose height depends on its content (library

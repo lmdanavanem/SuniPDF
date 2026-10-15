@@ -5,7 +5,26 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-(rien pour l'instant)
+### Ajouté
+- **Annotations avancées** (outil Commenter) : dessin à main levée (trait lissé), zone de texte libre, rectangle,
+  ellipse, ligne et flèche, tous en **vraies annotations PDF** (apparence explicite : les autres lecteurs les
+  affichent) ; sélection d'une annotation existante pour la déplacer, la redimensionner, la recolorer, modifier son
+  texte ou la supprimer (raccourcis A, D, F) ; barre flottante (couleur, épaisseur, fond, opacité, flèche, taille du
+  texte).
+- **Liens cliquables** : création (page ou adresse `http` / `https` / `mailto`), clic sur un lien interne, et pour une
+  adresse externe une **boîte de confirmation qui montre l'adresse complète** avant d'ouvrir le navigateur ; les
+  actions de lancement ou de script ne sont jamais exécutées.
+- **Fils de réponses et statuts de relecture** dans le panneau Commentaires (réponses en retrait, statut Accepté /
+  Refusé / Annulé / Terminé, auteur mémorisé, date, suppression du fil), écrits selon la norme PDF (affichage dans
+  Acrobat / Foxit non vérifié).
+- CLI : `annotations`, `annotate` (`ink`, `square`, `circle`, `line`, `arrow`, `freetext`, `link`), `reply`,
+  `review-state`, `annotation-delete` (41 commandes).
+- Fixture `annotated.pdf` (12 annotations de plusieurs producteurs) ; 40 tests de plus (207 au total).
+
+### Modifié
+- Les annotations s'écrivent par lopdf avec leur propre apparence : pages pivotées ou recadrées justes (texte libre
+  droit à l'écran), document protégé par mot de passe conservé protégé.
+- L'énumération des annotations ne s'arrête plus à la première entrée illisible (indices alignés sur `/Annots`).
 
 ## [0.5.0] — 2026-10-15
 
