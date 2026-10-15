@@ -53,7 +53,7 @@ affiché ; Office→PDF via convertisseur installé (LibreOffice/Word) détecté
 
 ## Phase 5 — Sécurité et productivité — **partiellement livrée**
 Fait : chiffrement AES-128/256 + permissions, retrait de protection, nettoyage des métadonnées, CLI complète
-(20 commandes JSON), commandes de démarrage pour l'automatisation.
+(33 commandes JSON), commandes de démarrage pour l'automatisation.
 Reste : caviardage, signatures, comparaison, MCP, intégration Explorateur, profils.
 
 ### Détail initial

@@ -182,6 +182,9 @@ A36. **Signatures enregistrées en clair** : PNG dans `%APPDATA%\SuniPDF\signatu
 A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la pression du stylet), polyligne brute
      sans lissage ; suppression du fond par **seuil de luminance global** à rampe douce (une photo très inégalement
      éclairée demanderait un seuil adaptatif : juger sur l'aperçu, baisser ou monter le seuil, ou préférer un PNG
-     transparent) ; images importées réduites à 1600 px de côté ; pas de signature **tapée** (police manuscrite :
-     dépend de l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic
-     page par page).
+     transparent) ; images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
+     l'en-tête, même borne de 512 Mio pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
+     à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
+     caractère, chiffres Helvetica), non mesurée ; pas de signature **tapée** (police manuscrite : dépend de
+     l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
+     page).

@@ -14,16 +14,34 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   bleue, épaisseur, annuler le dernier trait, effacer), **import d'une image** (PNG transparent tel quel, ou
   photo sur fond clair dont le fond est retiré par un seuil réglable avec aperçu, décodage hors thread
   d'interface), **bibliothèque locale** (`%APPDATA%\SuniPDF\signatures`, PNG en clair, enregistrement
-  facultatif, suppression en deux clics, vignettes sur papier blanc dans les deux thèmes).
+  facultatif, suppression en deux clics, vignettes sur papier blanc dans les deux thèmes, décodée elle aussi
+  par le thread moteur).
 - Placement : fantôme sous le pointeur, clic pour poser (centré, maintenu dans la page), Maj+clic pour poser
   plusieurs fois, Échap pour annuler ; l'élément posé est un **objet image à masque alpha** (le contenu reste
   visible entre les traits) ou un objet texte (date), aussitôt sélectionné : poignées, déplacement, rotation,
   dupliquer, supprimer, Ctrl+Z, modifiable par F2 pour la date.
 - Moteur : `Document::add_image_data` (image décodée, alpha conservé par `/SMask`), module
-  `signature_image` (traits tramés anti-crénelés, fond retiré, rognage, lecture bornée, PNG atomique).
+  `signature_image` (traits tramés anti-crénelés, fond retiré, rognage, lecture bornée à 16 384 px de côté et
+  512 Mio décodés, refusée avant tout décodage, PNG atomique).
 - CLI : `add-image <FILE> --image <IMG> --x --y [--width] [--remove-background <seuil>] --out` (réponse avec
-  `"digital_signature": false`), 21 commandes.
+  `"digital_signature": false`), 33 commandes.
 - Automatisation : `SUNIPDF_SIGNATURES_DIR`, `SUNIPDF_PICK_FILE`.
+
+### Corrigé (revue de sign-image)
+- **Mémoire** : une image dont le décodage dépasserait 512 Mio (un PNG de 2 Mo annonçant 16 384² pixels en
+  RGBA16 donnait 2 Gio) est refusée à la lecture de l'en-tête, sans rien allouer ; la même borne vaut
+  désormais pour Insérer une image, Remplacer l'image et Images → PDF (décodeur borné unique dans le moteur).
+- La carte **Remplir et signer** décrit ce qui existe (signer, parapher, dater) et non plus un remplissage de
+  formulaire qui n'est pas livré.
+- La **date** posée près du bord droit ou haut reste dans la page (largeur estimée, 0,556 em par caractère).
+- Bibliothèque des signatures décodée par le thread moteur (plus sur le thread d'interface) ; après une
+  suppression, la signature suivante au-delà du plafond de 12 apparaît aussitôt ; libellé « Recliquer pour
+  supprimer » qui tient dans la carte (et rien ne déborde plus de la carte) ; pastilles d'encre sur disque
+  blanc, lisibles en thème sombre ; Maj+clic ne montre plus de poignées sur l'objet posé pendant que le mode
+  de placement continue ; nom accessible « Paraphe enregistré n » pour les paraphes ; le journal ne contient
+  plus que le nom du fichier image, jamais son chemin complet.
+- Test CLI de bout en bout `add-image` (fond retiré, rognage, hauteur, rendu relu au pixel, `already_exists`,
+  image vide) ; le nombre de commandes CLI annoncé dans la documentation (21) est corrigé : 33.
 
 ### Corrigé (tranche review-fixes : constats des revues adverses)
 - **Sécurité** : AES-128 refuse un mot de passe contenant des caractères hors Latin-1 imprimable

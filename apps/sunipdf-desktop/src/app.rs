@@ -1123,8 +1123,8 @@ impl SuniApp {
                 self.cancel_placing();
                 self.leave_workspace();
             }
-            Command::SignDocument => self.open_sign_dialog(ctx, crate::sign::SignKind::Signature),
-            Command::SignInitials => self.open_sign_dialog(ctx, crate::sign::SignKind::Initials),
+            Command::SignDocument => self.open_sign_dialog(crate::sign::SignKind::Signature),
+            Command::SignInitials => self.open_sign_dialog(crate::sign::SignKind::Initials),
             Command::InsertDate => self.start_placing_date(),
             Command::CombineFiles => self.tool_combine(),
             Command::SplitDocument => {

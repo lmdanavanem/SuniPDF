@@ -28,13 +28,26 @@ fn reader(path: &Path) -> Result<ImageReader<std::io::BufReader<std::fs::File>>,
 }
 
 /// Décode une image en appliquant son orientation EXIF (photos de téléphone en portrait) :
-/// chargeur unique des images insérées, remplacées ou converties en pages.
+/// chargeur unique des images insérées, remplacées ou converties en pages. Allocation bornée
+/// à 512 Mio (`image::Limits::default`), dimensions libres.
 pub(crate) fn load_image(path: &Path) -> Result<DynamicImage, EngineError> {
-    let mut decoder = reader(path)?
-        .into_decoder()
-        .map_err(|e| image_err(path, e))?;
+    decode(path, image::Limits::default())
+}
+
+/// Décodage borné d'un fichier choisi par l'utilisateur (frontière de confiance). `into_decoder`
+/// applique les limites de dimensions mais, contrairement à `ImageReader::decode`, ne réserve pas
+/// l'allocation de l'image décodée (`max_alloc`) : la réservation se fait ici, avant tout
+/// décodage, pour qu'un PNG de 2 Mo annonçant 16 384² pixels en RGBA16 (2 Gio) soit refusé sans
+/// rien allouer. L'orientation EXIF est appliquée.
+pub(crate) fn decode(path: &Path, limits: image::Limits) -> Result<DynamicImage, EngineError> {
+    let err = |e| image_err(path, e);
+    let mut reader = reader(path)?;
+    reader.limits(limits.clone());
+    let mut decoder = reader.into_decoder().map_err(err)?;
+    let mut limits = limits;
+    limits.reserve(decoder.total_bytes()).map_err(err)?;
     let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
-    let mut img = DynamicImage::from_decoder(decoder).map_err(|e| image_err(path, e))?;
+    let mut img = DynamicImage::from_decoder(decoder).map_err(err)?;
     img.apply_orientation(orientation);
     Ok(img)
 }

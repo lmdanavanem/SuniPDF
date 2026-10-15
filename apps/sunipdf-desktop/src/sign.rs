@@ -275,41 +275,54 @@ fn ink(blue: bool) -> [u8; 3] {
     }
 }
 
+/// Point d'ancrage (bas-gauche) d'un texte posé, maintenu dans la page.
+fn text_anchor(pt: (f32, f32), text: &str, size_pt: f32, page: (f32, f32)) -> (f32, f32) {
+    // ponytail: largeur estimée à 0,556 em par caractère (chiffres Helvetica), sans mesure de
+    // police ; une vraie mesure demanderait un aller-retour par le thread moteur.
+    let w = text.chars().count() as f32 * 0.556 * size_pt;
+    (
+        pt.0.clamp(0.0, (page.0 - w).max(0.0)),
+        pt.1.clamp(0.0, (page.1 - size_pt).max(0.0)),
+    )
+}
+
+/// Journal sans chemin complet (donnée personnelle) : le nom du fichier seulement.
+fn warn_unreadable(what: &str, path: &Path, e: &EngineError) {
+    let full = format!("{}: ", path.display());
+    let msg = e.to_string();
+    let msg = msg.strip_prefix(&full).unwrap_or(&msg);
+    log::warn!("{what} ({}) : {msg}", crate::app::file_name(path));
+}
+
 impl SuniApp {
-    pub fn open_sign_dialog(&mut self, ctx: &egui::Context, kind: SignKind) {
+    pub fn open_sign_dialog(&mut self, kind: SignKind) {
         self.cancel_placing();
         let st = &mut self.sign;
         st.open = Some(kind);
         st.error = None;
         st.confirm_delete = None;
         st.drawing = false;
+        self.refresh_library();
+    }
+
+    /// Aligne le cache sur le dossier : les fichiers disparus sont retirés, les nouveaux sont
+    /// décodés par le thread moteur (`Request::LoadImage`, reçus dans `on_image_loaded`). Tout
+    /// fichier `signature-<ms>.png` déposé dans le dossier est un fichier étranger : mêmes bornes
+    /// que l'import, jamais décodé sur le thread d'interface.
+    fn refresh_library(&mut self) {
         let Some(dir) = signatures_dir() else { return };
         let listed = list_saved(&dir);
-        st.saved
+        self.sign
+            .saved
             .retain(|s| listed.iter().any(|(p, _)| *p == s.path));
-        for (path, kind) in listed {
-            if st.saved.iter().any(|s| s.path == path) {
-                continue;
-            }
-            // Fichiers écrits par SuniPDF, bornés en taille : décodage sur place, à l'ouverture.
-            match sig::load(&path, MAX_SIDE) {
-                Ok(img) => {
-                    let image = DynamicImage::ImageRgba8(img);
-                    let thumb = texture(ctx, "sign-saved", &thumb_of(&image));
-                    st.saved.push(SavedSignature {
-                        path,
-                        kind,
-                        image: Arc::new(image),
-                        thumb,
-                    });
-                }
-                Err(e) => log::warn!(
-                    "signature enregistrée illisible ({}) : {e}",
-                    crate::app::file_name(&path)
-                ),
+        for (path, _) in listed {
+            if !self.sign.saved.iter().any(|s| s.path == path) {
+                self.worker.send(Request::LoadImage {
+                    path,
+                    max_side: MAX_SIDE,
+                });
             }
         }
-        st.saved.sort_by(|a, b| b.path.cmp(&a.path));
     }
 
     pub fn sign_dialog(&mut self, ctx: &egui::Context) {
@@ -415,7 +428,10 @@ impl SuniApp {
                                     true,
                                     tr_args(
                                         lang,
-                                        "a11y.signature_saved",
+                                        match kind {
+                                            SignKind::Signature => "a11y.signature_saved",
+                                            SignKind::Initials => "a11y.initials_saved",
+                                        },
                                         &[("n", &(n + 1).to_string())],
                                     ),
                                 )
@@ -432,7 +448,8 @@ impl SuniApp {
                                 .on_hover_text(tr(lang, "signature.saved.delete"))
                                 .on_hover_cursor(CursorIcon::PointingHand);
                             let confirming = st.confirm_delete.as_ref() == Some(&s.path);
-                            let painter = ui.painter();
+                            // Rien ne déborde de la carte (libellé de confirmation long).
+                            let painter = ui.painter().with_clip_rect(rect);
                             let hot = resp.hovered() || resp.has_focus();
                             // Papier blanc dans les deux thèmes : de l'encre noire sur fond sombre
                             // serait illisible.
@@ -566,6 +583,8 @@ impl SuniApp {
                 }
                 self.sign.saved.retain(|s| s.path != path);
                 self.sign.confirm_delete = None;
+                // La 13e signature, au-delà du plafond, prend la place libérée.
+                self.refresh_library();
             }
             Some(Act::PickImage) => {
                 // `SUNIPDF_PICK_FILE` remplace le sélecteur (captures et automatisation, comme
@@ -698,6 +717,8 @@ impl SuniApp {
         }
     }
 
+    /// Image décodée par le thread moteur : l'import en attente, sinon un fichier de la
+    /// bibliothèque demandé par `refresh_library`.
     pub fn on_image_loaded(
         &mut self,
         ctx: &egui::Context,
@@ -705,36 +726,59 @@ impl SuniApp {
         result: Result<image::RgbaImage, EngineError>,
     ) {
         let st = &mut self.sign;
-        if st.import_pending.as_ref() != Some(&path) {
+        if st.import_pending.as_ref() == Some(&path) {
+            st.import_pending = None;
+            match result {
+                Ok(source) => {
+                    let small = if source.width() > PREVIEW_W {
+                        DynamicImage::ImageRgba8(source.clone())
+                            .thumbnail(PREVIEW_W, PREVIEW_W)
+                            .into_rgba8()
+                    } else {
+                        source.clone()
+                    };
+                    // Un PNG déjà transparent est pris tel quel ; une photo a besoin du seuil.
+                    let has_alpha = source.pixels().any(|p| p[3] < 255);
+                    st.import = Some(Import {
+                        source,
+                        small,
+                        remove_bg: !has_alpha,
+                        threshold: 200,
+                        preview: None,
+                    });
+                    st.error = None;
+                }
+                Err(e) => {
+                    warn_unreadable("image de signature illisible", &path, &e);
+                    st.error = Some("signature.error.image");
+                }
+            }
+            ctx.request_repaint();
             return;
         }
-        st.import_pending = None;
-        match result {
-            Ok(source) => {
-                let small = if source.width() > PREVIEW_W {
-                    DynamicImage::ImageRgba8(source.clone())
-                        .thumbnail(PREVIEW_W, PREVIEW_W)
-                        .into_rgba8()
-                } else {
-                    source.clone()
-                };
-                // Un PNG déjà transparent est pris tel quel ; une photo a besoin du seuil.
-                let has_alpha = source.pixels().any(|p| p[3] < 255);
-                st.import = Some(Import {
-                    source,
-                    small,
-                    remove_bg: !has_alpha,
-                    threshold: 200,
-                    preview: None,
-                });
-                st.error = None;
-            }
-            Err(e) => {
-                log::warn!("image de signature illisible : {e}");
-                st.error = Some("signature.error.image");
-            }
+        let kind = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .and_then(SignKind::from_file_name);
+        let Some(kind) = kind else { return };
+        if st.saved.iter().any(|s| s.path == path) {
+            return;
         }
-        ctx.request_repaint();
+        match result {
+            Ok(img) => {
+                let image = DynamicImage::ImageRgba8(img);
+                let thumb = texture(ctx, "sign-saved", &thumb_of(&image));
+                st.saved.push(SavedSignature {
+                    path,
+                    kind,
+                    image: Arc::new(image),
+                    thumb,
+                });
+                st.saved.sort_by(|a, b| b.path.cmp(&a.path));
+                ctx.request_repaint();
+            }
+            Err(e) => warn_unreadable("signature enregistrée illisible", &path, &e),
+        }
     }
 
     fn start_placing(&mut self, p: Placing, hint_key: &str) {
@@ -770,8 +814,9 @@ impl SuniApp {
             return;
         };
         let hint = if keep { self.status_msg.clone() } else { None };
-        // Le dernier objet de la page est resélectionné à la réponse du moteur.
-        self.edit.reselect_many = Some((page, Pick::Last(1)));
+        // Sans Maj, le dernier objet de la page est resélectionné à la réponse du moteur ; avec
+        // Maj le mode de placement continue, sans poignées sur l'objet posé.
+        self.edit.reselect_many = (!keep).then_some((page, Pick::Last(1)));
         // `DocumentChanged` remplace le message d'état par celui-ci (conservé avec Maj).
         self.edit.pending_status = hint;
         match placing {
@@ -791,12 +836,14 @@ impl SuniApp {
                 }));
             }
             Placing::Text(text) => {
+                let style = TextStyle::default();
+                let (x, y) = text_anchor(pt, &text, style.size_pt, (size.width_pt, size.height_pt));
                 self.worker.send(Request::Edit(EditOp::AddText {
                     page,
-                    x: pt.0,
-                    y: pt.1,
+                    x,
+                    y,
                     text,
-                    style: TextStyle::default(),
+                    style,
                 }));
             }
         }
@@ -848,12 +895,13 @@ impl SuniApp {
                 );
             }
             Placing::Text(text) => {
-                let size = TextStyle::default().size_pt * k;
+                let size_pt = TextStyle::default().size_pt;
+                let (x, y) = text_anchor(pt, text, size_pt, (page_rect.width() / k, page_h_pt));
                 painter.text(
-                    to_screen(pt.0, pt.1),
+                    to_screen(x, y),
                     Align2::LEFT_BOTTOM,
                     text,
-                    FontId::proportional(size),
+                    FontId::proportional(size_pt * k),
                     Color32::from_black_alpha(170),
                 );
             }
@@ -968,11 +1016,14 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
                 .on_hover_text(tr(lang, key))
                 .on_hover_cursor(CursorIcon::PointingHand);
             let c = ink(blue);
+            // Encre sur papier blanc : lisible aussi en thème sombre.
             ui.painter()
-                .circle_filled(r.center(), 8.0, Color32::from_rgb(c[0], c[1], c[2]));
+                .circle(r.center(), 9.5, Color32::WHITE, Stroke::new(1.0, p.border));
+            ui.painter()
+                .circle_filled(r.center(), 6.5, Color32::from_rgb(c[0], c[1], c[2]));
             if selected || resp.has_focus() {
                 ui.painter()
-                    .circle_stroke(r.center(), 11.0, Stroke::new(2.0, p.accent));
+                    .circle_stroke(r.center(), 11.5, Stroke::new(2.0, p.accent));
             }
             if resp.clicked() {
                 st.pen_blue = blue;
@@ -1162,6 +1213,21 @@ mod tests {
         );
         assert_eq!(SignKind::from_file_name(&n), Some(SignKind::Initials));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn text_anchor_keeps_date_in_page() {
+        let page = (612.0, 792.0);
+        let date = "15/10/2026";
+        assert_eq!(
+            text_anchor((100.0, 500.0), date, 12.0, page),
+            (100.0, 500.0)
+        );
+        // Bord droit : reculé de la largeur estimée ; bord haut : descendu d'un corps.
+        let (x, y) = text_anchor((605.0, 790.0), date, 12.0, page);
+        assert!(x + 10.0 * 0.556 * 12.0 <= 612.0 && x < 605.0, "x {x}");
+        assert_eq!(y, 780.0);
+        assert_eq!(text_anchor((-5.0, -5.0), date, 12.0, page), (0.0, 0.0));
     }
 
     #[test]

@@ -6,8 +6,7 @@
 //! document. La signature numérique (certificat) est une autre fonction, non livrée.
 
 use crate::{write_atomic, EngineError};
-use image::metadata::Orientation;
-use image::{DynamicImage, ImageDecoder, RgbaImage};
+use image::RgbaImage;
 use std::path::Path;
 
 /// Côté maximal accepté au décodage d'un fichier choisi par l'utilisateur.
@@ -104,19 +103,14 @@ pub fn trim(img: &RgbaImage, padding: u32) -> Option<RgbaImage> {
     Some(image::imageops::crop_imm(img, x, y, w, h).to_image())
 }
 
-/// Décode une image choisie par l'utilisateur (format deviné d'après le contenu, dimensions et
-/// allocation bornées, orientation EXIF appliquée) et la réduit si un côté dépasse `max_side`.
+/// Décode une image choisie par l'utilisateur (format deviné d'après le contenu, 16 384 px de
+/// côté et 512 Mio d'allocation au plus, refusés avant tout décodage, orientation EXIF appliquée)
+/// et la réduit si un côté dépasse `max_side`.
 pub fn load(path: &Path, max_side: u32) -> Result<RgbaImage, EngineError> {
-    let err = |e| crate::convert::image_err(path, e);
-    let mut reader = image::ImageReader::open(path)?.with_guessed_format()?;
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(MAX_DECODE_SIDE);
     limits.max_image_height = Some(MAX_DECODE_SIDE);
-    reader.limits(limits);
-    let mut decoder = reader.into_decoder().map_err(err)?;
-    let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
-    let mut img = DynamicImage::from_decoder(decoder).map_err(err)?;
-    img.apply_orientation(orientation);
+    let mut img = crate::convert::decode(path, limits)?;
     if img.width().max(img.height()) > max_side {
         // `thumbnail` agrandirait une petite image : réduction seulement.
         img = img.thumbnail(max_side, max_side);
@@ -237,6 +231,66 @@ mod tests {
             (40, 20),
             "jamais agrandie"
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// PNG réduit à son en-tête (IHDR, IDAT vide, IEND, CRC corrects) : dimensions et
+    /// profondeur annoncées, aucune donnée d'image.
+    fn png_header(width: u32, height: u32, bit_depth: u8, color_type: u8) -> Vec<u8> {
+        fn crc(bytes: &[u8]) -> u32 {
+            let mut c = 0xFFFF_FFFFu32;
+            for &b in bytes {
+                c ^= u32::from(b);
+                for _ in 0..8 {
+                    c = if c & 1 == 1 {
+                        0xEDB8_8320 ^ (c >> 1)
+                    } else {
+                        c >> 1
+                    };
+                }
+            }
+            !c
+        }
+        let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+        let mut ihdr = b"IHDR".to_vec();
+        ihdr.extend_from_slice(&width.to_be_bytes());
+        ihdr.extend_from_slice(&height.to_be_bytes());
+        ihdr.extend_from_slice(&[bit_depth, color_type, 0, 0, 0]);
+        for chunk in [ihdr.as_slice(), b"IDAT", b"IEND"] {
+            png.extend_from_slice(&(chunk.len() as u32 - 4).to_be_bytes());
+            png.extend_from_slice(chunk);
+            png.extend_from_slice(&crc(chunk).to_be_bytes());
+        }
+        png
+    }
+
+    #[test]
+    fn load_refuses_oversized_images_before_decoding() {
+        let dir = std::env::temp_dir().join(format!("sunipdf-sig-big-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let refused = |name: &str, bytes: Vec<u8>| {
+            let path = dir.join(name);
+            std::fs::write(&path, bytes).unwrap();
+            match load(&path, 1600) {
+                Err(EngineError::Other(m)) => assert!(m.contains("limit"), "{name} : {m}"),
+                other => panic!("{name} : {:?}", other.map(|i| i.dimensions())),
+            }
+        };
+        // Pire cas sous la borne de dimensions : 16 384² en RGBA16 = 2 Gio décodés pour un
+        // fichier de 33 octets. L'en-tête seul suffit au verdict : rien n'est alloué.
+        refused("huge16.png", png_header(16_384, 16_384, 16, 6));
+        // Le cas mesuré par la revue : 12 000² en RGBA8 = 549 Mio.
+        refused("huge8.png", png_header(12_000, 12_000, 8, 6));
+        // Au-delà de 16 384 px de côté, même petite en octets.
+        refused("wide.png", png_header(20_000, 8, 8, 0));
+        // Le même en-tête à une taille raisonnable passe les bornes et échoue plus loin, au
+        // décodage (fichier tronqué) : le refus ci-dessus vient bien des bornes.
+        let small = dir.join("small.png");
+        std::fs::write(&small, png_header(8, 8, 8, 6)).unwrap();
+        match load(&small, 1600) {
+            Err(e) => assert!(!e.to_string().contains("limit"), "{e}"),
+            Ok(i) => panic!("décodé {:?}", i.dimensions()),
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 
