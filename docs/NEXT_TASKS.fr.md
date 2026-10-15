@@ -13,14 +13,29 @@ restent livrés. Le français reste disponible. La 0.8.3 termine les quatre corr
 | P2 | Refuser les tampons et modèles de numérotation multilignes | CR/LF refusés avant mutation, même sans page sélectionnée |
 | P2 | Refuser l'opacité non prise en charge du texte libre dans la CLI | Seule l'opacité 1 est acceptée ; opacité non finie refusée ; sortie préservée |
 
-Fonctions suivantes envisagées : sauvegarde automatique/récupération, impression, OCR, création de champs,
-signature numérique, double page et sélection de texte enrichie. Elles ne sont pas livrées dans la 0.8.3.
+## Prochain backlog de développement (ordre proposé)
+Ces fonctions sont prévues et ne sont pas incluses dans la 0.8.3.
+
+| Ordre | Chantier | Critère de validation |
+|---|---|---|
+| 1 | Sauvegarde automatique et récupération | Restaurer les modifications après arrêt forcé ; original intact ; données protégées chiffrées ; aucun mot de passe enregistré |
+| 2 | Impression Windows | Imprimer les modifications courantes, plages et orientation ; progression/annulation ; sortie Print to PDF rouverte et contrôlée |
+| 3 | Sélection de texte enrichie | Sélection de mots, ordre de lecture, sélection entre pages et défilement au bord ; copie exacte sur pages pivotées |
+| 4 | Vue double page/livre | Navigation et zoom sur tailles mixtes ; dernière page impaire ; cache de rendu borné |
+| 5 | Création de champs | Texte et cases à cocher avec noms uniques sur pages pivotées ; remplir, enregistrer, rouvrir et annuler |
+| 6 | OCR local FR/EN | Texte recherchable/copiable sans modifier l'aspect ; langues disponibles, progression, annulation et undo |
+| 7 | Signatures numériques | Vérification d'intégrité, copie signée avec certificat, avertissement avant modification et limites de confiance explicites |
+
+Qualité restante : validation des sorties avec `qpdf`, corpus réel/fuzzing, mesures de performance reproductibles
+et signature du code lorsqu'un certificat sera disponible. Le choix du moteur OCR reste à réconcilier avec
+les anciens plans avant implémentation ; ce backlog ne fixe pas de moteur.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
 2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.
 3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
 4. Valider une mise à jour complète MSI et portable, avec annulation et documents modifiés.
+5. Vérifier le Narrateur Windows et la navigation clavier dans l'interface réelle.
 
 ## Hub d'outils : contrat pour les tranches suivantes (tool-hub livré, D021)
 Les onglets `ToolTab` et les cartes `home.card.*` n'existent plus : les plans de `docs/plans/` qui les citent
@@ -76,8 +91,8 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A35–A37, décisions D054–D060
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
   ombre portée ; pression du stylet si egui l'expose un jour.
 
-Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit
-qui se chevauche sous ~650 px de haut (`KNOWN_ISSUES.fr.md` A15) ; validation visuelle finale par l'utilisateur.
+Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ;
+validation visuelle finale par l'utilisateur. Le chevauchement du rail droit en fenêtre basse est déjà corrigé (A15).
 
 ## Après review-fixes (constats des revues adverses du 14/10, tranche livrée)
 Les 39 constats de `docs/plans/review-fixes.md` sont corrigés ou déjà couverts (tests moteur et application).
@@ -137,7 +152,8 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 Rééchantillonnage des images (PDFium : objets image → DynamicImage → réencodage JPEG), vérification qpdf en CI, fixtures AES produites par qpdf, test « sauvegarde interrompue ».
 
 ## SUNI-015 — Identité visuelle et ressources Windows (owner : WINDOWS-RELEASE)
-Icône originale (SVG → ICO), manifeste DPI-aware, ressources de version (`winres`/`embed-resource`), signature différée.
+Livrés : icône originale (SVG → ICO), manifeste DPI-aware et ressources de version.
+Reste : signature du code des exécutables/MSI lorsqu'un certificat sera disponible.
 
 ## SUNI-016 — QA indépendante (owner : QA-PERFORMANCE)
 Corpus de PDF libres (pdf.js test corpus, licences vérifiées), tests fichiers hostiles (sans pages, xref cassé,

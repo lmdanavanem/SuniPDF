@@ -13,7 +13,7 @@ phase; **Out of scope**. Update this column only with real results.
 | Feature | Expected | SuniPDF | Note |
 |---|---|---|---|
 | Open a PDF, display a page | Declared | **Done** | PDFium; tests `crates/sunipdf-core/tests/engine.rs` |
-| Password-protected documents | Declared (all revisions) | **Done** | 40-bit RC4 tested; AES by PDFium, to be covered by a fixture (P2) |
+| Password-protected documents | Declared (all revisions) | **Done** | RC4, AES-128 and AES-256 covered by engine/protection tests and reopened by PDFium |
 | Page navigation previous/next/go to | Declared | **Done** (UI) | Keyboard + toolbar |
 | Zoom, fit width/page, actual size | Declared | **Done** (UI) | Rendering at physical resolution (DPI); Ctrl + wheel anchored under the pointer, 10 to 3200% |
 | Rendering off the UI thread | Declared | **Done** | Single engine thread, wanted-tile list replaced as a block, anti-staleness epochs |
@@ -30,7 +30,7 @@ phase; **Out of scope**. Update this column only with real results.
 | Windows printing | Declared (limited fidelity) | Planned (P5) | Windows API (`sunipdf-platform`) |
 | Crash recovery, autosave | Declared | Planned (P3) | |
 | Light/dark themes | Declared | **Done** | Design system `theme.rs`, toggle in the tab bar |
-| Translatable interface | Declared (EN, JA + 22 catalogues) | **Done** (fr-FR default, en-US) | Hot switching, persisted preference |
+| Translatable interface | Declared (EN, JA + 22 catalogues) | **Done** (en-US default, fr-FR available) | Hot switching, existing preferences preserved |
 
 ## B. Editing and annotation
 

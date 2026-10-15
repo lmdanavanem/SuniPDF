@@ -13,7 +13,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Fonction | Attendu | SuniPDF | Note |
 |---|---|---|---|
 | Ouvrir un PDF, afficher une page | Déclaré | **Fait** | PDFium ; tests `crates/sunipdf-core/tests/engine.rs` |
-| Documents protégés par mot de passe | Déclaré (toutes révisions) | **Fait** | RC4 40 bits testé ; AES par PDFium, à couvrir par fixture (P2) |
+| Documents protégés par mot de passe | Déclaré (toutes révisions) | **Fait** | RC4, AES-128 et AES-256 couverts par les tests moteur/protection et rouverts par PDFium |
 | Navigation page/précédente/suivante/aller à | Déclaré | **Fait** (UI) | Clavier + barre d'outils |
 | Zoom, ajuster largeur/page, taille réelle | Déclaré | **Fait** (UI) | Rendu à la résolution physique (DPI) ; Ctrl + molette ancré sous le pointeur, 10 à 3200 % |
 | Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, liste de tuiles voulues remplacée en bloc, époques anti-obsolescence |
@@ -30,7 +30,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Impression Windows | Déclaré (fidélité limitée) | Planifié (P5) | API Windows (`sunipdf-platform`) |
 | Récupération après plantage, autosave | Déclaré | Planifié (P3) | |
 | Thèmes clair/sombre | Déclaré | **Fait** | Design system `theme.rs`, bascule dans la barre d'onglets |
-| Interface traduisible | Déclaré (EN, JA + 22 catalogues) | **Fait** (fr-FR défaut, en-US) | Changement à chaud, préférence persistée |
+| Interface traduisible | Déclaré (EN, JA + 22 catalogues) | **Fait** (en-US par défaut, fr-FR disponible) | Changement à chaud, préférences existantes conservées |
 
 ## B. Édition et annotation
 

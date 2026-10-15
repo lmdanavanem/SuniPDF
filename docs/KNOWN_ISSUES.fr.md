@@ -87,13 +87,13 @@ A24. **Presse-papiers d'objets et presse-papiers système** : Ctrl+V ne colle le
      d'objets vit en mémoire le temps de la session (perdu à la fermeture de l'application).
 A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
     `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).
-A10. **Résultat de la CI GitHub non vérifié par l'agent** : dépôt privé, ni `gh` ni jeton sur ce poste. Les
-     workflows `ci.yml` et `release.yml` sont déclenchés par les push et les tags ; leur état se lit dans l'onglet
-     Actions.
-A11. **Hub « Tous les outils » : 10 outils par tâche sur 14.** Numériser et OCR, Caviarder, Préparer un
+A10. **CI GitHub vérifiée pour la 0.8.3** : CI x64 et build ARM64 réussis. La seconde compilation x64 de release
+     a été annulée ; le MSI provient des binaires CI vérifiés. Six fichiers publics et leurs SHA256 contrôlés.
+     L'installation réelle et l'exécution sur matériel ARM64 restent à valider.
+A11. **Hub « Tous les outils » : 11 outils par tâche sur 14.** Numériser et OCR, Préparer un
      formulaire (création de champs) et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
      (entrée `None` dans `workspace::TABLE`), pas grisés. Exporter, Créer, Combiner et Compresser n'ont pas de
-     barre (une seule commande chacun, boîte de dialogue directe).
+     barre (une seule commande chacun, boîte de dialogue directe). Caviarder est livré.
 A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
      dans les dépendances. Les tests couvrent les données (table, registre, contraste des glyphes), la bascule
      d'outil, la géométrie des lignes, l'arbre AccessKit et l'anneau de focus (passe egui sans fenêtre) ; le

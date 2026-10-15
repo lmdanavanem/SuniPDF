@@ -87,13 +87,13 @@ A24. **Object clipboard and system clipboard**: Ctrl+V only pastes objects if th
      clipboard lives in memory for the session (lost when the application closes).
 A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same process after
     `FPDF_DestroyLibrary`; the tests share a single engine that is never destroyed (`tests/engine.rs`).
-A10. **GitHub CI result not verified locally**: private repository, neither `gh` nor a token on this machine. The
-     `ci.yml` and `release.yml` workflows are triggered by pushes and tags; their state can be read in the
-     Actions tab.
-A11. **"All tools" hub: 10 task tools out of 14.** Scan & OCR, Redact a PDF, Prepare a
+A10. **GitHub CI verified for 0.8.3**: x64 CI and the ARM64 build passed. The duplicate x64 release build was
+     cancelled; the MSI was packaged from verified CI binaries. Six public release files and their SHA256
+     checksums were verified. Real installation and ARM64 hardware execution remain unverified.
+A11. **"All tools" hub: 11 task tools out of 14.** Scan & OCR, Prepare a
      form (field creation) and Use a certificate have no real function: they are absent
      (`None` entry in `workspace::TABLE`), not greyed out. Export, Create, Combine and Compress have no
-     bar (a single command each, direct dialog).
+     bar (a single command each, direct dialog). Redact a PDF is delivered.
 A12. **Hub interface verified without automated pixel rendering**: no software renderer nor `egui_kittest`
      in the dependencies. The tests cover the data (table, registry, glyph contrast), tool
      switching, row geometry, the AccessKit tree and the focus ring (egui pass without a window); the

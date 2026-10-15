@@ -13,14 +13,29 @@ French remains available. Version 0.8.3 completes the four remaining corrections
 | P2 | Reject multiline stamps and page-number templates | CR/LF refused before mutation, including empty page selections |
 | P2 | Reject unsupported free-text opacity in the CLI | Only opacity 1 accepted; non-finite annotation opacity rejected; output preserved |
 
-Next feature candidates: autosave/crash recovery, printing, OCR, form-field creation, digital signatures,
-two-page view and richer text selection. These are planned work, not release 0.8.3 features.
+## Next development backlog (proposed order)
+These features are planned and are not included in 0.8.3.
+
+| Order | Work | Acceptance |
+|---|---|---|
+| 1 | Autosave and crash recovery | Recover unsaved edits after a forced stop; original unchanged; protected recovery data encrypted; no passwords stored |
+| 2 | Windows printing | Print current edits, page ranges and orientation; progress/cancellation; Print to PDF output reopened and checked |
+| 3 | Richer text selection | Word selection, reading order, selection across pages and edge scrolling; exact copied text on rotated pages |
+| 4 | Two-page/book view | Navigation and zoom on mixed page sizes; odd final page; bounded render cache |
+| 5 | Form-field creation | Text and checkbox fields with unique names on rotated pages; fill, save, reopen and undo |
+| 6 | Local FR/EN OCR | Searchable/copyable text without changing the page appearance; available languages, progress, cancellation and undo |
+| 7 | Digital signatures | Integrity verification, signed copy with a certificate, warning before edits and clear trust limits |
+
+Quality work remains: `qpdf` output validation, a real PDF corpus/fuzzing, reproducible performance measurements
+and code signing when a certificate is available. The OCR backend must be reconciled with the older plans
+before implementation; this backlog does not commit to a particular engine.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
 2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL rendering.
 3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
 4. Validate a complete installed-MSI and portable update, including cancellation and unsaved documents.
+5. Check Windows Narrator and keyboard navigation in the real interface.
 
 ## Tool hub: contract for the next slices (tool-hub delivered, D021)
 The `ToolTab` tabs and the `home.card.*` cards no longer exist: the plans in `docs/plans/` that cite them
@@ -75,8 +90,8 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060)
 - stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
   cast shadow; pen pressure if egui ever exposes it.
 
-Rest of the hub (non-blocking): keyboard focus placed on the active row when the panel opens (F9); right rail
-overlapping below ~650 px high (`KNOWN_ISSUES.md` A15); final visual validation by the user.
+Rest of the hub (non-blocking): keyboard focus placed on the active row when the panel opens (F9);
+final visual validation by the user. The short-window right-rail overlap is already fixed (A15).
 
 ## After review-fixes (findings of the 14/10 adversarial reviews, slice delivered)
 The 39 findings of `docs/plans/review-fixes.md` are fixed or already covered (engine and application tests).
@@ -135,7 +150,8 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 Image resampling (PDFium: image objects → DynamicImage → JPEG re-encoding), qpdf verification in CI, AES fixtures produced by qpdf, "interrupted save" test.
 
 ## SUNI-015 — Visual identity and Windows resources (owner: WINDOWS-RELEASE)
-Original icon (SVG → ICO), DPI-aware manifest, version resources (`winres`/`embed-resource`), deferred signing.
+Delivered: original icon (SVG → ICO), DPI-aware manifest and version resources.
+Remaining: executable/MSI code signing when a certificate is available.
 
 ## SUNI-016 — Independent QA (owner: QA-PERFORMANCE)
 Corpus of free PDFs (pdf.js test corpus, licences checked), hostile file tests (no pages, broken xref,
