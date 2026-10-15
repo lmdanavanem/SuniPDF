@@ -3,6 +3,7 @@
 //! (`SetWanted`) et rendue une tuile à la fois entre deux requêtes, journal d'annulation par
 //! instantanés (octets PDF) pour toutes les modifications de pages.
 
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
@@ -505,6 +506,7 @@ pub enum Request {
     Save {
         path: PathBuf,
     },
+    FinishMutation,
     Close,
 }
 
@@ -603,14 +605,31 @@ pub enum Response {
     },
     /// Bilan d'un caviardage réussi (suivi de `DocumentChanged`).
     Redacted(RedactReport),
+    MutationFinished,
 }
 
 pub struct Worker {
     tx: Sender<Request>,
     rx: Receiver<Response>,
+    pending_mutations: Cell<usize>,
 }
 
 impl Worker {
+    #[cfg(test)]
+    pub(crate) fn test_channels() -> (Self, Receiver<Request>, Sender<Response>) {
+        let (tx, requests) = mpsc::channel();
+        let (responses, rx) = mpsc::channel();
+        (
+            Self {
+                tx,
+                rx,
+                pending_mutations: Cell::new(0),
+            },
+            requests,
+            responses,
+        )
+    }
+
     pub fn spawn(ctx: egui::Context) -> Self {
         let (tx, worker_rx) = mpsc::channel::<Request>();
         let (worker_tx, rx) = mpsc::channel::<Response>();
@@ -618,12 +637,39 @@ impl Worker {
             .name("sunipdf-engine".into())
             .spawn(move || run(worker_rx, worker_tx, ctx))
             .expect("thread moteur");
-        Self { tx, rx }
+        Self {
+            tx,
+            rx,
+            pending_mutations: Cell::new(0),
+        }
     }
 
     pub fn send(&self, request: Request) {
-        // Si le thread est mort, l'UI le constatera via EngineFailed déjà reçu.
-        let _ = self.tx.send(request);
+        let mutation = matches!(
+            &request,
+            Request::Edit(_)
+                | Request::Undo
+                | Request::Redo
+                | Request::Redact { .. }
+                | Request::TextInRect { .. }
+                | Request::FormInfo
+                | Request::CopyObjects { cut: true, .. }
+                | Request::Save { .. }
+        );
+        if self.tx.send(request).is_ok() && mutation {
+            self.pending_mutations.set(self.pending_mutations.get() + 1);
+            // La borne FIFO est acquittée même si l'opération ne change rien ou échoue.
+            let _ = self.tx.send(Request::FinishMutation);
+        }
+    }
+
+    pub fn has_pending_mutations(&self) -> bool {
+        self.pending_mutations.get() != 0
+    }
+
+    pub fn finish_mutation(&self) {
+        self.pending_mutations
+            .set(self.pending_mutations.get().saturating_sub(1));
     }
 
     pub fn poll(&self) -> TryIter<'_, Response> {
@@ -1573,6 +1619,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Err(e) => Response::SaveFailed(e),
                 }
             }
+            Request::FinishMutation => Response::MutationFinished,
             Request::Close => {
                 state.document = None;
                 state.invalidate();

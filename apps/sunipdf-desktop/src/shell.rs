@@ -359,7 +359,15 @@ impl SuniApp {
             for (i, tab) in self.tabs.tabs.iter().enumerate() {
                 let is_active = active == Some(i);
                 let name = file_name(&tab.path);
-                let dirty = if is_active { self.dirty } else { tab.dirty };
+                let dirty = if is_active {
+                    self.has_unsaved_changes()
+                } else {
+                    tab.dirty
+                        || tab
+                            .ui
+                            .as_ref()
+                            .is_some_and(|ui| ui.forms.has_unsaved_input())
+                };
                 let title = if dirty { format!("{name} •") } else { name };
                 let fill = if is_active {
                     p.surface
@@ -528,7 +536,10 @@ impl SuniApp {
             let mut run = None;
             for (command, enabled) in [
                 (Command::OpenDocument, true),
-                (Command::Save, has_doc && self.dirty && !self.saving),
+                (
+                    Command::Save,
+                    has_doc && self.has_unsaved_changes() && !self.saving,
+                ),
                 (Command::Undo, has_doc && self.can_undo),
                 (Command::Redo, has_doc && self.can_redo),
             ] {

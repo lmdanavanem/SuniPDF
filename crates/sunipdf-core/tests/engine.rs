@@ -375,6 +375,168 @@ fn insert_move_and_snapshot_restore() {
 }
 
 #[test]
+fn move_page_preserves_bookmark_and_link_destinations() {
+    let engine = engine();
+    let dir = temp_dir("move-destinations");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    for (page, target) in [(0, 1), (1, 0)] {
+        doc.add_link_annotation(
+            page,
+            rect(20.0, 20.0, 100.0, 40.0),
+            &LinkTarget::Page(target),
+        )
+        .unwrap();
+    }
+    for (from, to, first, second) in [(0, 1, 1, 0), (1, 0, 0, 1)] {
+        doc.move_page(from, to).unwrap();
+        let check = |doc: &sunipdf_core::Document<'_>| {
+            let bookmarks = doc.bookmarks();
+            assert_eq!(bookmarks.len(), 3);
+            assert_eq!(bookmarks[0].page, Some(first), "Premiere page");
+            assert_eq!(bookmarks[1].page, Some(first), "Rectangle bleu");
+            assert_eq!(bookmarks[2].page, Some(second), "Deuxieme page");
+            assert_eq!(
+                doc.page_links(first).unwrap()[0].target,
+                LinkTarget::Page(second)
+            );
+            assert_eq!(
+                doc.page_links(second).unwrap()[0].target,
+                LinkTarget::Page(first)
+            );
+            assert!(doc.page_text(first).unwrap().contains("page 1"));
+            assert!(doc.page_text(second).unwrap().contains("page 2"));
+        };
+        check(&doc);
+        let out = dir.join("moved.pdf");
+        doc.save_as(&out).unwrap();
+        check(&engine.open(&out, None).unwrap());
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn move_page_preserves_inherited_geometry_and_resources() {
+    use lopdf::{dictionary, Object};
+    let engine = engine();
+    let mut pdf = lopdf::Document::load(fixture("boxes.pdf")).unwrap();
+    let root = pdf
+        .catalog()
+        .unwrap()
+        .get(b"Pages")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    let pages: Vec<_> = pdf.get_pages().into_values().collect();
+    let mut parents = Vec::new();
+    for id in pages {
+        let mut parent = dictionary! {
+            "Type" => "Pages", "Parent" => root,
+            "Kids" => vec![Object::Reference(id)], "Count" => 1,
+        };
+        let page = pdf.get_dictionary_mut(id).unwrap();
+        for key in [b"MediaBox".as_slice(), b"CropBox", b"Resources", b"Rotate"] {
+            if let Some(value) = page.remove(key) {
+                parent.set(key, value);
+            }
+        }
+        let parent_id = pdf.add_object(parent);
+        pdf.get_dictionary_mut(id).unwrap().set("Parent", parent_id);
+        parents.push(Object::Reference(parent_id));
+    }
+    pdf.get_dictionary_mut(root).unwrap().set("Kids", parents);
+    let mut bytes = Vec::new();
+    pdf.save_to(&mut bytes).unwrap();
+    let mut doc = engine
+        .open_bytes(bytes, None, &fixture("boxes.pdf"))
+        .unwrap();
+    let before: Vec<_> = (0..doc.page_count())
+        .map(|p| {
+            (
+                doc.page_geometry(p).unwrap(),
+                doc.render_page(p, 1.0).unwrap(),
+            )
+        })
+        .collect();
+    for (from, to, order) in [(0, 3, [1, 2, 3, 0]), (3, 1, [1, 0, 2, 3])] {
+        doc.move_page(from, to).unwrap();
+        for (page, original) in order.into_iter().enumerate() {
+            assert_eq!(doc.page_geometry(page).unwrap(), before[original].0);
+            assert_eq!(
+                doc.render_page(page, 1.0).unwrap().rgba,
+                before[original].1.rgba
+            );
+        }
+    }
+}
+
+#[test]
+fn move_page_keeps_form_widgets_editable_and_encrypted() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = temp_dir("move-form");
+    for encrypted in [false, true] {
+        let input = std::fs::read(fixture("acroform.pdf")).unwrap();
+        let (bytes, password) = if encrypted {
+            let bytes = security::protect(
+                &input,
+                None,
+                &Protection {
+                    user_password: "secret".into(),
+                    owner_password: "owner".into(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            (bytes, Some("secret"))
+        } else {
+            (input, None)
+        };
+        let path = dir.join(format!("form-{encrypted}.pdf"));
+        let mut doc = engine.open_bytes(bytes, password, &path).unwrap();
+        doc.insert_blank_pages(1, 1, 595.0, 842.0).unwrap();
+        doc.fill_form(&[("nom".into(), text("Jean Dupont"))], FillMode::Strict)
+            .unwrap();
+        for (from, to, name) in [(0, 1, "DEPLACEMENT"), (1, 0, "RETOUR")] {
+            let before = doc.render_page(from, 1.0).unwrap();
+            let mut expected = doc.form_info().unwrap();
+            for field in &mut expected.fields {
+                for widget in &mut field.widgets {
+                    widget.page = to;
+                }
+            }
+            doc.move_page(from, to).unwrap();
+            assert_eq!(doc.form_info().unwrap(), expected, "encrypted={encrypted}");
+            assert_eq!(doc.render_page(to, 1.0).unwrap().rgba, before.rgba);
+            doc.fill_form(&[("nom".into(), text(name))], FillMode::Strict)
+                .unwrap();
+            expected
+                .fields
+                .iter_mut()
+                .find(|f| f.name == "nom")
+                .unwrap()
+                .value = text(name);
+            assert_eq!(doc.form_info().unwrap(), expected);
+            let filled = doc.render_page(to, 1.0).unwrap();
+            assert_ne!(filled.rgba, before.rgba, "the visible widget must change");
+            assert!(dark_in(&filled, NOM) > 300);
+            assert_eq!(doc.properties().encrypted, encrypted);
+            doc.save_as(&path).unwrap();
+            if encrypted {
+                assert!(matches!(
+                    engine.open(&path, None),
+                    Err(EngineError::PasswordRequired)
+                ));
+            }
+            let reopened = engine.open(&path, password).unwrap();
+            assert_eq!(reopened.form_info().unwrap(), expected);
+            assert_eq!(reopened.render_page(to, 1.0).unwrap().rgba, filled.rgba);
+            assert_eq!(reopened.properties().encrypted, encrypted);
+        }
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
 fn text_selection_and_annotations_round_trip() {
     use sunipdf_core::{MarkupKind, PointRect};
     let engine = engine();

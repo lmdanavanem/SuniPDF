@@ -126,15 +126,17 @@ A29. **Extraire / diviser un document protégé** : les fichiers produits ne son
      pages dans un document neuf) ; l'interface et la CLI (`encryption_removed`) le disent, et Protéger
      s'applique ensuite au fichier créé (D046). Rechiffrement automatique en feuille de route.
 A30b. **AES-256 et mots de passe** : le mot de passe est normalisé SASLprep avant chiffrement (espaces spéciaux
-    ramenés à l'espace, ligatures décomposées, caractères de contrôle refusés) ; SuniPDF applique la même
-    normalisation à l'ouverture, un autre lecteur peut exiger la forme simple (par exemple « pass word » pour
-    une saisie avec espace insécable).
+    ramenés à l'espace, ligatures décomposées), puis limité à un préfixe UTF-8 valide de 127 octets. SuniPDF
+    applique la même transformation à l'ouverture ; un autre lecteur peut exiger cette forme effective
+    (par exemple « pass word » pour une saisie avec espace insécable). Depuis 0.8.0, un mot de passe d'ouverture
+    devenu vide est refusé ; les restrictions exigent des mots de passe effectifs distincts.
 A30. **AES-128 et mots de passe** : seul le Latin-1 imprimable est accepté (0x20–0x7E, 0xA1–0xFF sauf 0xAD ;
      lettres accentuées comprises). Les symboles propres à PDFDocEncoding hors Latin-1 (€, œ, Œ, ligatures,
      tirets et guillemets typographiques…) sont refusés (`password_not_latin1`) bien que lopdf les code : PDFium
      reçoit le mot de passe en UTF-8 et ne réessaie qu'en Latin-1, SuniPDF ne rouvrirait donc pas le fichier
      (vérifié par `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choisir AES-256 pour ces
-     mots de passe.
+     mots de passe. AES-128 utilise les 32 premiers octets encodés, complétés selon le format PDF ; depuis 0.8.0,
+     la différence propriétaire/utilisateur est vérifiée sur ces octets effectifs.
 A31. **Images → PDF** : les JPEG sont incorporés tels quels sauf pour les orientations EXIF 5 et 7 (rotation +
      miroir), décodées ; PNG, TIFF, BMP, GIF et WebP sont décodés en mémoire et stockés en pixels compressés
      (Flate), donc plus lourds que l'original. Un très grand lot de PNG reste limité par la mémoire du poste.

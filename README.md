@@ -35,7 +35,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
 | Convertir | Images → PDF, PDF → images PNG, optimisation sans perte |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés |
-| Automatiser | `sunipdf-cli` : 41 commandes à sortie JSON et codes de retour stables |
+| Automatiser | `sunipdf-cli` : 42 commandes à sortie JSON et codes de retour stables |
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.md`, `docs/PROJECT_STATUS.md`, `docs/ROADMAP.md` ; nouveautés : `CHANGELOG.md`.
 
@@ -63,7 +63,7 @@ Prérequis : [Rust stable](https://rustup.rs) et les **Build Tools pour Visual S
 git clone https://github.com/lmdanavanem/SuniPDF.git
 cd SuniPDF
 .\scripts\fetch-pdfium.ps1              # binaires PDFium (bblanchon/pdfium-binaries), empreinte vérifiée
-cargo test --workspace                   # 160+ tests (moteur, interface, CLI, i18n)
+cargo test --workspace -j 2              # moteur, interface, CLI, i18n
 cargo run -p sunipdf-desktop -- fichier.pdf
 cargo run -p sunipdf-cli -- info fichier.pdf
 .\scripts\package-portable.ps1 -Arch x64 # ZIP portable + SHA256
@@ -100,7 +100,7 @@ images, shapes, selection, move, resize, rotate, opacity, clipboard across pages
 page crop and resize); page organisation (rotate, delete, insert, reorder, combine, split, extract);
 AcroForm filling and flattening with JSON import/export; handwritten or image signatures, initials and date
 (visual signature, not certified); text watermarks and page numbers; images to PDF, PDF to PNG, lossless
-optimisation; AES-128/256 protection with permissions, metadata cleanup; a 41-command JSON CLI.
+optimisation; AES-128/256 protection with permissions, metadata cleanup; a 42-command JSON CLI.
 
 Screenshots: see the [Captures d'écran](#captures-décran) section above (home screen in dark and light themes,
 object editing, page organisation, About box).

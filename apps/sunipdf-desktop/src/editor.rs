@@ -862,10 +862,16 @@ impl SuniApp {
 
     /// Réponse `ObjectSelected` (un objet ou aucun).
     pub fn on_object_selected(&mut self, page: usize, info: Option<ObjectInfo>) {
+        if self.document.is_none() || self.tabs.resuming.is_some() || self.opening.is_some() {
+            return;
+        }
         self.set_selection(page, info.into_iter().collect());
     }
 
     pub fn on_objects_selected(&mut self, page: usize, infos: Vec<ObjectInfo>, mode: PickMode) {
+        if self.document.is_none() || self.tabs.resuming.is_some() || self.opening.is_some() {
+            return;
+        }
         let current = match &self.edit.selection {
             Some(s) if s.page == page => s.objects.clone(),
             _ => Vec::new(),

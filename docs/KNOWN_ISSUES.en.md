@@ -128,15 +128,17 @@ A29. **Extracting / splitting a protected document**: the produced files are not
      pages into a new document); the interface and the CLI (`encryption_removed`) say so, and Protect
      then applies to the created file (D046). Automatic re-encryption on the roadmap.
 A30b. **AES-256 and passwords**: the password is SASLprep-normalized before encryption (special spaces
-    mapped to the space, ligatures decomposed, control characters refused); SuniPDF applies the same
-    normalization on opening, another reader may require the plain form (for example "pass word" for
-    an entry with a non-breaking space).
+    mapped to spaces, ligatures decomposed), then limited to a valid UTF-8 prefix of 127 bytes. SuniPDF applies
+    the same transformation on opening; another reader may require this effective form (for example
+    "pass word" for an entry with a non-breaking space). Since 0.8.0, an opening password that becomes empty is
+    rejected; restrictions require distinct effective passwords.
 A30. **AES-128 and passwords**: only printable Latin-1 is accepted (0x20–0x7E, 0xA1–0xFF except 0xAD;
      accented letters included). PDFDocEncoding-specific symbols outside Latin-1 (€, œ, Œ, ligatures,
      typographic dashes and quotes…) are refused (`password_not_latin1`) although lopdf encodes them: PDFium
      receives the password in UTF-8 and only retries in Latin-1, so SuniPDF would not reopen the file
      (verified by `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choose AES-256 for these
-     passwords.
+     passwords. AES-128 uses the first 32 encoded bytes, padded according to the PDF format; since 0.8.0,
+     owner/user differences are checked on these effective bytes.
 A31. **Images → PDF**: JPEGs are embedded as is except for EXIF orientations 5 and 7 (rotation +
      mirror), which are decoded; PNG, TIFF, BMP, GIF and WebP are decoded in memory and stored as compressed pixels
      (Flate), hence heavier than the original. A very large batch of PNGs remains limited by the machine's memory.

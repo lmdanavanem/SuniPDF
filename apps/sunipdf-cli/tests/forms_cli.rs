@@ -40,6 +40,47 @@ fn value_of<'a>(info: &'a serde_json::Value, name: &str) -> &'a serde_json::Valu
 }
 
 #[test]
+fn form_fields_never_discloses_a_stored_password() {
+    let dir = std::env::temp_dir().join(format!("sunipdf-cli-secret-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("secret.pdf");
+    let objects = [
+        "<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] >> >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [4 0 R] >>",
+        "<< /Type /Annot /Subtype /Widget /P 3 0 R /FT /Tx /Ff 8192 /T (secret) /V (saved-password-7421) /Rect [20 20 200 40] >>",
+    ];
+    let mut pdf = String::from("%PDF-1.4\n");
+    let mut offsets = Vec::new();
+    for (i, object) in objects.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.push_str(&format!("{} 0 obj\n{object}\nendobj\n", i + 1));
+    }
+    let xref = pdf.len();
+    pdf.push_str("xref\n0 5\n0000000000 65535 f \n");
+    for offset in offsets {
+        pdf.push_str(&format!("{offset:010} 00000 n \n"));
+    }
+    pdf.push_str(&format!(
+        "trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n"
+    ));
+    std::fs::write(&path, pdf).unwrap();
+    let output = cli().arg("form-fields").arg(&path).output().unwrap();
+    let info = stdout_json(&output);
+    assert_eq!(info["fields"][0]["password"], true);
+    assert!(value_of(&info, "secret").is_null());
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("saved-password-7421"));
+    let output = cli()
+        .arg("form-fields")
+        .arg(&path)
+        .arg("--values-only")
+        .output()
+        .unwrap();
+    assert!(stdout_json(&output).get("secret").is_none());
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn form_fields_fill_form_and_flatten_round_trip() {
     let dir = std::env::temp_dir().join(format!("sunipdf-cli-forms-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

@@ -1,5 +1,12 @@
 # Prochaines tâches (ordre conseillé)
 
+## Après la version 0.8.0
+Les six priorités de l'audit sont corrigées. Restent à traiter :
+- refuser les coordonnées non finies lors de l'ajout de texte ;
+- refuser ou prendre en charge les tampons multilignes ;
+- refuser ou prendre en charge l'opacité des annotations de texte libre dans la CLI ;
+- borner les miniatures conservées dans la grille Organiser comme dans le panneau latéral.
+
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
 2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.

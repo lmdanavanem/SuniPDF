@@ -5,6 +5,21 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.8.0] — 2026-10-15
+
+Six corrections prioritaires, 26 tests de régression ajoutés (248 tests réussis, 2 mesures ignorées).
+
+### Corrigé
+- Protection : vérification des mots de passe après normalisation et application des limites AES-128 / AES-256 ;
+  refus d'un mot de passe d'ouverture devenu vide et des mots de passe propriétaire/utilisateur équivalents.
+- Formulaires : Ctrl+S prend en compte les brouillons du panneau ; une saisie invalide reste éditable et bloque
+  l'enregistrement. Les saisies en cours sont prises en compte à la fermeture.
+- Onglets : les réponses de sélection d'un ancien document ne peuvent plus viser les objets du nouvel onglet.
+- Fermeture : les modifications en attente du moteur sont traitées avant de décider d'enregistrer ou de fermer.
+- Déplacement des pages : conservation des champs de formulaire, signets, liens internes et attributs hérités ;
+  le document reste chiffré quand il l'était déjà.
+- CLI `form-fields` : les valeurs des champs mot de passe sont masquées aussi dans le listing complet.
+
 ## [0.7.0] — 2026-10-15
 
 Caviardage irréversible (outil « Caviarder un PDF », CLI `redact`, 42 commandes, 222 tests).

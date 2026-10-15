@@ -2,12 +2,17 @@
 
 *English translation of [`NEXT_TASKS.md`](NEXT_TASKS.md); the French version is the reference.*
 
+## After version 0.8.0
+The six audit priorities are fixed. Remaining work:
+- reject non-finite coordinates when adding text;
+- reject or support multiline stamps;
+- reject or support free-text annotation opacity in the CLI;
+- bound cached thumbnails in the Organize grid as in the sidebar.
+
 ## To be done by the user (outside the automated scope)
-1. Run `scripts\start.ps1 -Pdf <un vrai PDF>` and validate the new interface (home screen, tools panel, right rail, Ctrl+K palette, dark theme, FR/EN). Say what still strays from the target.
-2. ~~Install the Build Tools~~ done on 13/10 in the evening.
-3. Push to GitHub to run the CI (`ci.yml`) then create a `v0.1.0` tag for `release.yml` (portable x64/ARM64, x64 MSI).
-4. In an administrator session: `winget install WiXToolset.WiXToolset` to build the MSI locally (`scripts\package-msi.ps1`).
-5. `rustup target add aarch64-pc-windows-msvc` then `scripts\package-portable.ps1 -Arch arm64` to check the ARM64 compilation.
+1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
+2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL rendering.
+3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
 
 ## Tool hub: contract for the next slices (tool-hub delivered, D021)
 The `ToolTab` tabs and the `home.card.*` cards no longer exist: the plans in `docs/plans/` that cite them

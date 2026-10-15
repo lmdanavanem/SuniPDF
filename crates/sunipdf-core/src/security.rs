@@ -65,20 +65,41 @@ impl Protection {
 
     /// Vérifications partagées par l'interface (avant d'envoyer) et par [`protect`].
     pub fn validate(&self) -> Result<(), ProtectionProblem> {
-        if self.user_password.is_empty() && self.owner_password.is_empty() {
-            return Err(ProtectionProblem::NoPassword);
-        }
-        if self.restricts()
-            && (self.owner_password.is_empty() || self.owner_password == self.user_password)
-        {
-            return Err(ProtectionProblem::OwnerNeeded);
-        }
         if !self.aes256
             && [&self.user_password, &self.owner_password]
                 .iter()
                 .any(|s| !s.chars().all(pdf_doc_encodable))
         {
             return Err(ProtectionProblem::NotLatin1);
+        }
+        let effective = |password: &str| {
+            if self.aes256 {
+                normalized_password(password).into_bytes()
+            } else {
+                password
+                    .chars()
+                    .take(32)
+                    .map(|c| c as u8)
+                    .collect::<Vec<_>>()
+            }
+        };
+        let mut user = effective(&self.user_password);
+        let mut owner = effective(&self.owner_password);
+        if user.is_empty() && (!self.user_password.is_empty() || owner.is_empty()) {
+            return Err(ProtectionProblem::NoPassword);
+        }
+        let owner_empty = owner.is_empty();
+        if !self.aes256 {
+            const PADDING: [u8; 32] = [
+                0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA,
+                0x01, 0x08, 0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE,
+                0x64, 0x53, 0x69, 0x7A,
+            ];
+            user.extend_from_slice(&PADDING[..32 - user.len()]);
+            owner.extend_from_slice(&PADDING[..32 - owner.len()]);
+        }
+        if self.restricts() && (owner_empty || owner == user) {
+            return Err(ProtectionProblem::OwnerNeeded);
         }
         Ok(())
     }
@@ -142,9 +163,30 @@ pub(crate) fn load(input: &[u8], password: Option<&str>) -> Result<lopdf::Docume
     if !doc.is_encrypted() {
         return Ok(doc);
     }
+    let aes256 = doc
+        .get_encrypted()
+        .and_then(|d| d.get(b"R"))
+        .and_then(Object::as_i64)
+        .is_ok_and(|r| r >= 5);
     // Le lecteur déchiffre pendant l'analyse quand le mot de passe est fourni d'emblée.
-    let options = lopdf::LoadOptions::with_password(password.unwrap_or(""));
-    let doc = lopdf::Document::load_mem_with_options(input, options).map_err(|e| match e {
+    let raw = password.unwrap_or("");
+    let options = lopdf::LoadOptions::with_password(raw);
+    let mut result = lopdf::Document::load_mem_with_options(input, options);
+    if aes256
+        && matches!(
+            result,
+            Err(lopdf::Error::InvalidPassword | lopdf::Error::Decryption(_))
+        )
+    {
+        let norm = normalized_password(raw);
+        if norm != raw {
+            result = lopdf::Document::load_mem_with_options(
+                input,
+                lopdf::LoadOptions::with_password(&norm),
+            );
+        }
+    }
+    let doc = result.map_err(|e| match e {
         lopdf::Error::InvalidPassword | lopdf::Error::Decryption(_) => {
             EngineError::PasswordRequired
         }
@@ -189,11 +231,17 @@ fn permissions(p: &Protection) -> Permissions {
 
 /// Forme normalisée (SASLprep, RFC 4013) d'un mot de passe AES-256 : c'est elle que lopdf chiffre
 /// (révision 6) et donc celle que PDFium doit recevoir à l'ouverture. Espaces spéciaux et
-/// ligatures sont ramenés à leur forme simple ; un mot de passe déjà simple est inchangé.
+/// ligatures sont ramenés à leur forme simple ; le préfixe UTF-8 valide est limité à 127 octets.
 pub fn normalized_password(password: &str) -> String {
-    stringprep::saslprep(password)
+    let mut password = stringprep::saslprep(password)
         .map(|c| c.into_owned())
-        .unwrap_or_else(|_| password.to_string())
+        .unwrap_or_else(|_| password.to_string());
+    let mut end = password.len().min(127);
+    while !password.is_char_boundary(end) {
+        end -= 1;
+    }
+    password.truncate(end);
+    password
 }
 
 /// Chiffre un PDF (AES-128 ou AES-256) avec mots de passe et permissions.
@@ -213,11 +261,17 @@ pub fn protect(
         let s = |v: &[u8]| Object::String(v.to_vec(), lopdf::StringFormat::Hexadecimal);
         doc.trailer.set("ID", Object::Array(vec![s(&id), s(&id)]));
     }
-    let owner = if p.owner_password.is_empty() {
-        p.user_password.as_str()
+    let user = if p.aes256 {
+        normalized_password(&p.user_password)
     } else {
-        p.owner_password.as_str()
+        p.user_password.clone()
     };
+    let owner = if p.aes256 {
+        normalized_password(&p.owner_password)
+    } else {
+        p.owner_password.clone()
+    };
+    let owner = if owner.is_empty() { &user } else { &owner };
     let mut filters: BTreeMap<Vec<u8>, Arc<dyn CryptFilter>> = BTreeMap::new();
     let key: Vec<u8>;
     let version = if p.aes256 {
@@ -232,7 +286,7 @@ pub fn protect(
             stream_filter: b"StdCF".to_vec(),
             string_filter: b"StdCF".to_vec(),
             owner_password: owner,
-            user_password: &p.user_password,
+            user_password: &user,
             permissions: permissions(p),
         }
     } else {
@@ -244,7 +298,7 @@ pub fn protect(
             stream_filter: b"StdCF".to_vec(),
             string_filter: b"StdCF".to_vec(),
             owner_password: owner,
-            user_password: &p.user_password,
+            user_password: &user,
             permissions: permissions(p),
         }
     };
@@ -284,7 +338,11 @@ fn owner_password_matches(
         .map_err(|e| EngineError::Other(format!("lopdf: {e}")))?;
     let id = probe.add_object(Object::Dictionary(dict));
     probe.trailer.set("Encrypt", Object::Reference(id));
-    Ok(probe.authenticate_owner_password(password).is_ok())
+    Ok(probe.authenticate_owner_password(password).is_ok()
+        || (state.revision() >= 5
+            && probe
+                .authenticate_owner_password(&normalized_password(password))
+                .is_ok()))
 }
 
 fn info_dict(doc: &mut lopdf::Document) -> Result<&mut Dictionary, EngineError> {

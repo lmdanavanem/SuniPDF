@@ -91,6 +91,7 @@ impl SuniApp {
     }
 
     pub fn put_tab(&mut self, t: TabState) {
+        self.edit.reset_for_tab();
         let bookmarks_open = self.docinfo.bookmarks_open;
         let comments_open = self.annotate.comments_open;
         let forms_open = self.forms.panel_open;
@@ -130,6 +131,9 @@ impl SuniApp {
 
     /// Suspend le document actif dans un onglet (nouvel onglet ou onglet existant).
     pub fn suspend_active(&mut self) {
+        if self.navigation_blocked() {
+            return;
+        }
         let Some(doc) = &self.document else { return };
         let path = doc.info.path.clone();
         let dirty = self.dirty;
@@ -162,6 +166,7 @@ impl SuniApp {
         if index >= self.tabs.tabs.len()
             || self.tabs.active == Some(index)
             || !matches!(self.engine, EngineState::Ready)
+            || self.navigation_blocked()
         {
             return;
         }
@@ -233,7 +238,7 @@ impl SuniApp {
         self.worker.send(Request::Bookmarks);
         if self.tabs.quit_pending {
             self.tabs.quit_pending = false;
-            if self.dirty {
+            if self.has_unsaved_changes() {
                 self.request_quit_prompt();
             } else {
                 self.execute(ctx, sunipdf_core::Command::Quit);
@@ -287,7 +292,10 @@ impl SuniApp {
             .tabs
             .iter()
             .enumerate()
-            .find(|(i, t)| Some(*i) != self.tabs.active && t.dirty)
+            .find(|(i, t)| {
+                Some(*i) != self.tabs.active
+                    && (t.dirty || t.ui.as_ref().is_some_and(|ui| ui.forms.has_unsaved_input()))
+            })
             .map(|(i, _)| i)
     }
 

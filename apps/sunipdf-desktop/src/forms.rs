@@ -67,6 +67,16 @@ pub struct FormsState {
 }
 
 impl FormsState {
+    pub fn has_unsaved_input(&self) -> bool {
+        !self.drafts.is_empty()
+            || self.editing.as_ref().is_some_and(|e| {
+                self.info
+                    .as_ref()
+                    .and_then(|i| i.field(&e.field))
+                    .is_none_or(|f| f.value != FieldValue::Text(e.text.clone()))
+            })
+    }
+
     /// Nouveau document : tout repart, sauf l'ouverture du panneau.
     pub fn reset_for_document(&mut self) {
         let panel_open = self.panel_open;
@@ -155,6 +165,32 @@ fn ordered_choice(f: &FormField, wanted: &[String]) -> FieldValue {
 }
 
 impl SuniApp {
+    /// Valide toutes les saisies avant d'en envoyer une ; une erreur garde les textes intacts.
+    pub fn commit_form_input(&mut self) -> bool {
+        let mut drafts = self.forms.drafts.clone();
+        if let Some(e) = &self.forms.editing {
+            drafts.insert(e.field.clone(), e.text.clone());
+        }
+        let mut values = Vec::new();
+        for (name, text) in &drafts {
+            let value = FieldValue::Text(text.clone());
+            let field = self.forms.info.as_ref().and_then(|i| i.field(name));
+            if field.is_none_or(|f| f.validate(&value).is_err()) {
+                self.error = Some("error.form_value_invalid");
+                return false;
+            }
+            if field.is_some_and(|f| f.value != value) {
+                values.push((name.clone(), value));
+            }
+        }
+        self.forms.editing = None;
+        self.forms.drafts = drafts;
+        if !values.is_empty() {
+            self.commit_many(values);
+        }
+        true
+    }
+
     /// Outil « Remplir le formulaire » : champs surlignés, panneau ouvert ; sans champ AcroForm,
     /// un message d'état seulement (pas d'outil qui ne ferait rien).
     pub fn enter_fill_tool(&mut self) {
@@ -200,6 +236,8 @@ impl SuniApp {
         }
         let wanted = f.panel_open
             || self.annotate.tool == Tool::FillForm
+            || !f.drafts.is_empty()
+            || f.editing.is_some()
             || f.pending_import.is_some()
             || f.pending_clear;
         if wanted && (f.stale || f.info.is_none()) && !f.requested {
@@ -434,6 +472,18 @@ impl SuniApp {
     /// le ferme ; renvoie l'éditeur fermé. Appelé par Entrée, Tab, un clic ailleurs, la sortie
     /// du widget de la zone visible et l'enregistrement (Ctrl+S).
     pub fn commit_editor(&mut self) -> Option<InPlace> {
+        let e = self.forms.editing.as_ref()?;
+        let value = FieldValue::Text(e.text.clone());
+        if self
+            .forms
+            .info
+            .as_ref()
+            .and_then(|i| i.field(&e.field))
+            .is_none_or(|f| f.validate(&value).is_err())
+        {
+            self.error = Some("error.form_value_invalid");
+            return None;
+        }
         let e = self.forms.editing.take()?;
         let current = self
             .forms
@@ -442,6 +492,7 @@ impl SuniApp {
             .and_then(|i| i.field(&e.field))
             .map(|f| f.value.clone());
         if current != Some(FieldValue::Text(e.text.clone())) {
+            self.forms.drafts.insert(e.field.clone(), e.text.clone());
             self.commit_form(e.field.clone(), FieldValue::Text(e.text.clone()));
         }
         Some(e)
@@ -458,6 +509,9 @@ impl SuniApp {
         page: usize,
         page_h_pt: f32,
     ) {
+        if self.forms.info.is_none() {
+            return;
+        }
         let lang = self.lang();
         let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
         let Some(e) = self.forms.editing.as_ref().filter(|e| e.page == page) else {
@@ -557,8 +611,7 @@ impl SuniApp {
         if escape {
             self.forms.editing = None;
         } else if enter || tab || commit_click {
-            let e = self.commit_editor().expect("éditeur");
-            if tab {
+            if let Some(e) = self.commit_editor().filter(|_| tab) {
                 self.open_next_field(&e.field, e.widget, shift);
             }
         }
@@ -1214,7 +1267,6 @@ fn field_card(
                         } else {
                             let value = FieldValue::Text(text.clone());
                             if f.validate(&value).is_ok() {
-                                drafts.remove(&f.name);
                                 commits.push((f.name.clone(), value));
                             } else {
                                 *error = true;

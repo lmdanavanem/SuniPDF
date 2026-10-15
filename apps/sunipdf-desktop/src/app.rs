@@ -217,9 +217,12 @@ pub struct SuniApp {
     pub find: FindState,
     pub dirty: bool,
     pub saving: bool,
+    pending_save: Option<PathBuf>,
+    saving_drafts: HashMap<String, String>,
     allow_close: bool,
     unsaved_prompt: Option<PendingAction>,
     after_save: Option<PendingAction>,
+    deferred_close: Option<PendingAction>,
     pub status_msg: Option<String>,
     pub has_icons: bool,
     /// Textures de marque (symbole, logos clair et sombre), chargées au premier usage.
@@ -319,9 +322,12 @@ impl SuniApp {
             },
             dirty: false,
             saving: false,
+            pending_save: None,
+            saving_drafts: HashMap::new(),
             allow_close: false,
             unsaved_prompt: None,
             after_save: None,
+            deferred_close: None,
             status_msg: None,
         }
     }
@@ -350,7 +356,7 @@ impl SuniApp {
             self.pending_files.push(path);
             return;
         }
-        if self.tabs.resuming.is_some() || self.opening.is_some() {
+        if self.navigation_blocked() || self.tabs.resuming.is_some() || self.opening.is_some() {
             // Une ouverture ou un changement d'onglet est déjà en cours.
             return;
         }
@@ -387,6 +393,8 @@ impl SuniApp {
         self.can_redo = false;
         self.dirty = false;
         self.saving = false;
+        self.pending_save = None;
+        self.saving_drafts.clear();
         self.status_msg = None;
         if announce {
             self.error = None;
@@ -579,6 +587,9 @@ impl SuniApp {
                     pages_unchanged,
                     modified,
                 }) => {
+                    if self.document.is_none() {
+                        continue;
+                    }
                     self.can_undo = can_undo;
                     self.can_redo = can_redo;
                     let count = info.page_count();
@@ -697,6 +708,9 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    self.pending_save = None;
+                    self.saving = false;
+                    self.after_save = None;
                     log::warn!("opération impossible : {e}");
                     self.error = Some(error_key(&e));
                     self.redact_failed();
@@ -707,6 +721,7 @@ impl SuniApp {
                     self.edit.pending_copy = None;
                     // Valeur de champ refusée par le moteur : la valeur locale optimiste est
                     // fausse, le modèle est relu.
+                    self.forms.info = None;
                     self.forms.stale = true;
                     if matches!(
                         e,
@@ -723,6 +738,10 @@ impl SuniApp {
                 Response::Saved { path } => {
                     self.saving = false;
                     self.dirty = false;
+                    self.forms
+                        .drafts
+                        .retain(|name, text| self.saving_drafts.get(name) != Some(text));
+                    self.saving_drafts.clear();
                     self.status_msg = Some(tr_args(
                         self.lang(),
                         "status.saved",
@@ -733,11 +752,12 @@ impl SuniApp {
                     }
                     self.update_title(ctx);
                     if let Some(action) = self.after_save.take() {
-                        self.run_pending(ctx, action);
+                        self.deferred_close = Some(action);
                     }
                 }
                 Response::SaveFailed(e) => {
                     self.saving = false;
+                    self.saving_drafts.clear();
                     self.after_save = None;
                     log::error!("enregistrement impossible : {e}");
                     self.error = Some("error.save_failed");
@@ -753,15 +773,44 @@ impl SuniApp {
                         self.go_to_match(0);
                     }
                 }
+                Response::MutationFinished => self.worker.finish_mutation(),
             }
         }
+        self.flush_pending_save();
+        if !self.close_must_wait() {
+            if let Some(action) = self.deferred_close.take() {
+                self.execute(
+                    ctx,
+                    match action {
+                        PendingAction::Close => Command::CloseDocument,
+                        PendingAction::Quit => Command::Quit,
+                    },
+                );
+            }
+        }
+    }
+
+    pub fn has_unsaved_changes(&self) -> bool {
+        self.dirty || self.forms.has_unsaved_input()
+    }
+
+    pub(crate) fn navigation_blocked(&self) -> bool {
+        self.saving || self.after_save.is_some() || self.deferred_close.is_some()
+    }
+
+    fn close_must_wait(&self) -> bool {
+        self.worker.has_pending_mutations()
+            || self.saving
+            || self.opening.is_some()
+            || self.tabs.suspending.is_some()
+            || self.tabs.resuming.is_some()
     }
 
     pub fn update_title(&self, ctx: &egui::Context) {
         let title = match &self.document {
             Some(doc) => tr_args(
                 self.lang(),
-                if self.dirty {
+                if self.has_unsaved_changes() {
                     "app.title_modified"
                 } else {
                     "app.title_with_document"
@@ -1020,6 +1069,14 @@ impl SuniApp {
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
+        if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            self.deferred_close = Some(if command == Command::CloseDocument {
+                PendingAction::Close
+            } else {
+                PendingAction::Quit
+            });
+            return;
+        }
         if command.info().needs_document && self.document.is_none() {
             // L'outil reste utilisable, il commence par ouvrir un fichier.
             self.after_open = Some(command);
@@ -1029,7 +1086,7 @@ impl SuniApp {
         match command {
             Command::OpenDocument => self.open_file_dialog(),
             Command::CloseDocument => {
-                if self.dirty {
+                if self.has_unsaved_changes() {
                     self.unsaved_prompt = Some(PendingAction::Close);
                 } else {
                     self.close_document(true);
@@ -1037,7 +1094,7 @@ impl SuniApp {
                 }
             }
             Command::Quit => {
-                if self.dirty {
+                if self.has_unsaved_changes() {
                     self.unsaved_prompt = Some(PendingAction::Quit);
                 } else if let Some(i) = self.any_background_dirty() {
                     self.tabs.quit_pending = true;
@@ -1731,29 +1788,14 @@ impl SuniApp {
             }
             Some(UnsavedChoice::Discard) => {
                 self.unsaved_prompt = None;
-                self.dirty = false;
-                self.run_pending(ctx, action);
+                self.close_document(true);
+                self.update_title(ctx);
+                if matches!(action, PendingAction::Quit) {
+                    self.execute(ctx, Command::Quit);
+                }
             }
             Some(UnsavedChoice::Cancel) => self.unsaved_prompt = None,
             None => {}
-        }
-    }
-
-    fn run_pending(&mut self, ctx: &egui::Context, action: PendingAction) {
-        match action {
-            PendingAction::Close => {
-                self.close_document(true);
-                self.update_title(ctx);
-            }
-            PendingAction::Quit => {
-                if let Some(i) = self.any_background_dirty() {
-                    self.tabs.quit_pending = true;
-                    self.switch_to(i);
-                } else {
-                    self.allow_close = true;
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                }
-            }
         }
     }
 
@@ -1765,12 +1807,18 @@ impl SuniApp {
     }
 
     pub(crate) fn save_document(&mut self, ask_path: bool) {
+        if self.saving {
+            return;
+        }
         // Zones de caviardage non appliquées : le fichier contiendrait encore le contenu marqué.
         // Garde ici (et non dans `execute`) : la boîte « non enregistré » appelle cette fonction.
         if self.redact_blocks_save(ask_path) {
             return;
         }
-        self.commit_editor();
+        if !self.commit_form_input() {
+            self.after_save = None;
+            return;
+        }
         let Some(doc) = &self.document else { return };
         let mut path = doc.info.path.clone();
         if ask_path {
@@ -1794,7 +1842,26 @@ impl SuniApp {
             }
         }
         self.saving = true;
-        self.worker.send(Request::Save { path });
+        self.pending_save = Some(path);
+        self.flush_pending_save();
+    }
+
+    fn flush_pending_save(&mut self) {
+        if self.pending_save.is_none() || self.worker.has_pending_mutations() {
+            return;
+        }
+        if !self.commit_form_input() {
+            self.pending_save = None;
+            self.saving = false;
+            self.after_save = None;
+            return;
+        }
+        if !self.worker.has_pending_mutations() {
+            self.saving_drafts = self.forms.drafts.clone();
+            if let Some(path) = self.pending_save.take() {
+                self.worker.send(Request::Save { path });
+            }
+        }
     }
 
     fn password_dialog(&mut self, ctx: &egui::Context) {
@@ -2107,13 +2174,15 @@ impl eframe::App for SuniApp {
             ctx.request_repaint();
         }
         if ctx.input(|i| i.viewport().close_requested())
-            && (self.dirty || self.any_background_dirty().is_some())
+            && (self.has_unsaved_changes()
+                || self.any_background_dirty().is_some()
+                || self.close_must_wait())
             && !self.allow_close
         {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             // Même logique que Quitter : invite pour le document actif s'il est modifié, sinon
             // reprise de l'onglet modifié en arrière-plan (jamais d'écriture d'un document intact).
-            if self.unsaved_prompt.is_none() && self.tabs.resuming.is_none() {
+            if self.unsaved_prompt.is_none() {
                 self.execute(&ctx, Command::Quit);
             }
         }
@@ -2196,6 +2265,694 @@ pub fn error_key(e: &EngineError) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_app() -> (
+        SuniApp,
+        std::sync::mpsc::Receiver<Request>,
+        std::sync::mpsc::Sender<Response>,
+    ) {
+        let (worker, requests, responses) = Worker::test_channels();
+        let mut app = SuniApp {
+            settings: Settings::default(),
+            worker,
+            engine: EngineState::Ready,
+            document: None,
+            opening: None,
+            zoom: Zoom::FitWidth,
+            effective_zoom: 1.0,
+            view: crate::view::ViewState::new(true),
+            page_input: "1".into(),
+            error: None,
+            password_prompt: None,
+            show_about: false,
+            pending_files: vec![],
+            thumbnails: HashMap::new(),
+            thumbs_pending: HashSet::new(),
+            thumb_px: 0,
+            find: FindState::default(),
+            dirty: false,
+            saving: false,
+            allow_close: false,
+            pending_save: None,
+            saving_drafts: HashMap::new(),
+            deferred_close: None,
+            unsaved_prompt: None,
+            after_save: None,
+            status_msg: None,
+            has_icons: false,
+            brand: None,
+            after_open: None,
+            show_tools: false,
+            focus_last_frame: false,
+            palette: PaletteState {
+                open: false,
+                query: String::new(),
+                selected: 0,
+                focus_requested: false,
+            },
+            organize: Default::default(),
+            annotate: Default::default(),
+            docinfo: Default::default(),
+            tools: Default::default(),
+            tabs: Default::default(),
+            edit: Default::default(),
+            pagesetup: Default::default(),
+            sign: Default::default(),
+            forms: Default::default(),
+            can_undo: false,
+            can_redo: false,
+            startup_commands: vec![],
+        };
+        app.document = Some(OpenDocument {
+            info: test_info("test/first.pdf"),
+            page: 0,
+        });
+        app.register_opened_tab(PathBuf::from("test/first.pdf"));
+        (app, requests, responses)
+    }
+
+    fn test_info(path: &str) -> DocumentInfo {
+        DocumentInfo {
+            path: PathBuf::from(path),
+            title: None,
+            page_sizes: vec![sunipdf_core::PageSize {
+                width_pt: 612.0,
+                height_pt: 792.0,
+            }],
+            form: sunipdf_core::FormKind::AcroForm,
+        }
+    }
+
+    fn form_draft(app: &mut SuniApp, text: &str) {
+        app.forms.info = Some(sunipdf_core::FormInfo {
+            kind: sunipdf_core::FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![sunipdf_core::FormField {
+                name: "Name".into(),
+                kind: sunipdf_core::FieldKind::Text,
+                value: sunipdf_core::FieldValue::Text("Old".into()),
+                tooltip: None,
+                read_only: false,
+                required: false,
+                multiline: false,
+                password: false,
+                comb: false,
+                max_len: Some(10),
+                multi_select: false,
+                editable: false,
+                no_toggle_off: false,
+                options: vec![],
+                widgets: vec![],
+            }],
+        });
+        app.forms.drafts.insert("Name".into(), text.into());
+    }
+
+    #[test]
+    fn panel_draft_ctrl_s_sends_new_value_before_save() {
+        let (mut app, requests, responses) = test_app();
+        form_draft(&mut app, "New");
+        let ctx = egui::Context::default();
+        let mut text = String::new();
+        let mut out = ctx.run_ui(Default::default(), |ui| {
+            ui.text_edit_singleline(&mut text).request_focus();
+        });
+        out.textures_delta.clear();
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: Key::S,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::COMMAND,
+                }],
+                ..Default::default()
+            },
+            |_| app.handle_input(&ctx),
+        );
+        out.textures_delta.clear();
+        let first = requests.try_recv().expect("form value before save");
+        assert!(matches!(first, Request::Edit(EditOp::FillForm { values })
+            if values == vec![("Name".into(), sunipdf_core::FieldValue::Text("New".into()))]));
+        assert!(
+            !requests
+                .try_iter()
+                .any(|r| matches!(r, Request::Save { .. })),
+            "save waits for the form edit"
+        );
+        responses.send(changed("test/first.pdf", true)).unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+    }
+
+    #[test]
+    fn invalid_panel_draft_blocks_save_without_losing_text() {
+        let (mut app, requests, _) = test_app();
+        form_draft(&mut app, "Too long to fit");
+        app.save_document(false);
+        assert!(
+            requests.try_recv().is_err(),
+            "invalid draft must not save old value"
+        );
+        assert_eq!(
+            app.forms.drafts.get("Name").map(String::as_str),
+            Some("Too long to fit")
+        );
+        assert_eq!(app.error, Some("error.form_value_invalid"));
+    }
+
+    #[test]
+    fn closing_panel_draft_keeps_document_for_unsaved_prompt() {
+        let (mut app, requests, _) = test_app();
+        form_draft(&mut app, "New");
+        app.execute(&egui::Context::default(), Command::CloseDocument);
+        assert!(app.document.is_some(), "typed value must survive closing");
+        assert!(matches!(app.unsaved_prompt, Some(PendingAction::Close)));
+        assert!(!requests.try_iter().any(|r| matches!(r, Request::Close)));
+    }
+
+    #[test]
+    fn closing_waits_for_requested_rotation() {
+        let (mut app, requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Command::RotateClockwise);
+        app.execute(&ctx, Command::CloseDocument);
+        assert!(matches!(
+            requests.try_recv(),
+            Ok(Request::Edit(EditOp::Rotate { .. }))
+        ));
+        assert!(
+            !requests.try_iter().any(|r| matches!(r, Request::Close)),
+            "rotation has not finished"
+        );
+        assert!(app.document.is_some());
+        responses.send(changed("test/first.pdf", true)).unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(matches!(app.unsaved_prompt, Some(PendingAction::Close)));
+        assert!(app.document.is_some());
+    }
+
+    #[test]
+    fn quitting_waits_for_requested_rotation() {
+        let (mut app, _requests, _responses) = test_app();
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(Default::default(), |_| {
+            app.execute(&ctx, Command::RotateClockwise);
+            app.execute(&ctx, Command::Quit);
+        });
+        out.textures_delta.clear();
+        assert!(
+            !out.viewport_output
+                .values()
+                .any(|v| v.commands.contains(&egui::ViewportCommand::Close)),
+            "quitting must wait for the rotation result"
+        );
+    }
+
+    #[test]
+    fn old_selection_during_tab_switch_cannot_delete_from_resumed_document() {
+        for multiple in [false, true] {
+            let (mut app, requests, responses) = test_app();
+            let mut second_ui = app.take_tab();
+            second_ui.document.as_mut().unwrap().info = test_info("test/second.pdf");
+            app.document = Some(OpenDocument {
+                info: test_info("test/first.pdf"),
+                page: 0,
+            });
+            app.tabs.tabs.push(crate::tabs::Tab {
+                path: PathBuf::from("test/second.pdf"),
+                dirty: false,
+                ui: Some(second_ui),
+                doc: Some(crate::worker::SuspendedDoc {
+                    bytes: vec![],
+                    password: None,
+                    path: PathBuf::from("test/second.pdf"),
+                    undo: vec![],
+                    redo: vec![],
+                    save_point: Some(0),
+                    modified: false,
+                }),
+            });
+            let ctx = egui::Context::default();
+            app.switch_to(1);
+            let object = sunipdf_core::ObjectInfo {
+                index: 0,
+                kind: sunipdf_core::ObjectKind::Text,
+                bounds: sunipdf_core::PointRect {
+                    left: 10.0,
+                    bottom: 10.0,
+                    right: 100.0,
+                    top: 30.0,
+                },
+                quad: [(10.0, 10.0), (100.0, 10.0), (100.0, 30.0), (10.0, 30.0)],
+                angle_deg: 0.0,
+                opacity: Some(1.0),
+                text: Some("First document".into()),
+                font_size: 12.0,
+                font_name: None,
+                fill_rgb: Some((0, 0, 0)),
+                stroke_rgb: None,
+                stroke_width: 0.0,
+            };
+            responses
+                .send(if multiple {
+                    Response::ObjectsSelected {
+                        page: 0,
+                        infos: vec![object],
+                        mode: crate::worker::PickMode::Replace,
+                    }
+                } else {
+                    Response::ObjectSelected {
+                        page: 0,
+                        info: Some(object),
+                    }
+                })
+                .unwrap();
+            app.handle_responses(&ctx);
+            responses
+                .send(Response::Resumed(DocState {
+                    info: test_info("test/second.pdf"),
+                    can_undo: false,
+                    can_redo: false,
+                    modified: false,
+                    pages_unchanged: false,
+                }))
+                .unwrap();
+            app.handle_responses(&ctx);
+            app.execute(&ctx, Command::DeleteObject);
+            assert!(
+                !requests
+                    .try_iter()
+                    .any(|r| matches!(r, Request::Edit(EditOp::DeleteObjects { .. }))),
+                "old object indices must not edit second.pdf"
+            );
+        }
+    }
+
+    fn changed(path: &str, modified: bool) -> Response {
+        Response::DocumentChanged(DocState {
+            info: test_info(path),
+            can_undo: true,
+            can_redo: false,
+            modified,
+            pages_unchanged: false,
+        })
+    }
+
+    #[test]
+    fn failed_form_commit_cancels_waiting_save_and_preserves_draft() {
+        let (mut app, requests, responses) = test_app();
+        form_draft(&mut app, "New");
+        app.save_document(false);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Edit(EditOp::FillForm { .. }))));
+        responses
+            .send(Response::OperationFailed(EngineError::FormValueInvalid(
+                "Name".into(),
+            )))
+            .unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&egui::Context::default());
+        assert!(!requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+        assert_eq!(
+            app.forms.drafts.get("Name").map(String::as_str),
+            Some("New")
+        );
+        assert!(!app.saving);
+        app.save_document(false);
+        assert!(
+            !requests
+                .try_iter()
+                .any(|r| matches!(r, Request::Save { .. })),
+            "retry must wait for the real form values after a failed optimistic update"
+        );
+    }
+
+    #[test]
+    fn failed_edit_releases_waiting_close_without_hanging() {
+        let (mut app, requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Command::RotateClockwise);
+        app.execute(&ctx, Command::CloseDocument);
+        responses
+            .send(Response::OperationFailed(EngineError::InvalidFormat))
+            .unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(requests.try_iter().any(|r| matches!(r, Request::Close)));
+        assert!(app.document.is_none());
+    }
+
+    #[test]
+    fn save_failure_keeps_document_and_cancels_close_after_save() {
+        let (mut app, requests, responses) = test_app();
+        app.dirty = true;
+        app.after_save = Some(PendingAction::Close);
+        app.save_document(false);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+        responses
+            .send(Response::SaveFailed(EngineError::InvalidFormat))
+            .unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&egui::Context::default());
+        assert!(app.document.is_some());
+        assert!(!requests.try_iter().any(|r| matches!(r, Request::Close)));
+        assert!(app.after_save.is_none());
+    }
+
+    #[test]
+    fn window_close_with_panel_draft_is_cancelled() {
+        let (mut app, _requests, _responses) = test_app();
+        form_draft(&mut app, "New");
+        let ctx = egui::Context::default();
+        app.has_icons = crate::icons::install(&ctx);
+        theme::apply(&ctx, app.settings.dark_theme);
+        let mut input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 780.0),
+            )),
+            ..Default::default()
+        };
+        input
+            .viewports
+            .entry(egui::ViewportId::ROOT)
+            .or_default()
+            .events
+            .push(egui::ViewportEvent::Close);
+        let mut frame = eframe::Frame::_new_kittest();
+        let mut out = ctx.run_ui(input, |ui| eframe::App::ui(&mut app, ui, &mut frame));
+        out.textures_delta.clear();
+        assert!(out
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
+        assert!(app.document.is_some());
+        assert_eq!(
+            app.forms.drafts.get("Name").map(String::as_str),
+            Some("New")
+        );
+    }
+
+    #[test]
+    fn quitting_discard_closes_only_the_confirmed_tab() {
+        let (mut app, requests, _responses) = test_app();
+        let mut second_ui = app.take_tab();
+        second_ui.document.as_mut().unwrap().info = test_info("test/second.pdf");
+        second_ui.dirty = true;
+        app.document = Some(OpenDocument {
+            info: test_info("test/first.pdf"),
+            page: 0,
+        });
+        app.dirty = true;
+        app.tabs.tabs.push(crate::tabs::Tab {
+            path: PathBuf::from("test/second.pdf"),
+            dirty: true,
+            ui: Some(second_ui),
+            doc: Some(crate::worker::SuspendedDoc {
+                bytes: vec![],
+                password: None,
+                path: PathBuf::from("test/second.pdf"),
+                undo: vec![],
+                redo: vec![],
+                save_point: None,
+                modified: true,
+            }),
+        });
+        let ctx = egui::Context::default();
+        app.has_icons = crate::icons::install(&ctx);
+        ctx.enable_accesskit();
+        app.execute(&ctx, Command::Quit);
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 780.0),
+            )),
+            ..Default::default()
+        };
+        let mut target = None;
+        for _ in 0..2 {
+            let mut out = ctx.run_ui(input.clone(), |_| app.unsaved_dialog(&ctx));
+            if let Some(tree) = &out.platform_output.accesskit_update {
+                if let Some(bounds) = tree
+                    .nodes
+                    .iter()
+                    .map(|(_, node)| node)
+                    .find(|node| node.label() == Some(app.t("dialog.unsaved.discard")))
+                    .and_then(|node| node.bounds())
+                {
+                    target = Some(egui::pos2(
+                        ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                        ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                    ));
+                }
+            }
+            out.textures_delta.clear();
+        }
+        let pos = target.expect("discard button bounds");
+        for pressed in [true, false] {
+            let mut input = input.clone();
+            input.events = vec![
+                egui::Event::PointerMoved(pos),
+                egui::Event::PointerButton {
+                    pos,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: Modifiers::NONE,
+                },
+            ];
+            let mut out = ctx.run_ui(input, |_| app.unsaved_dialog(&ctx));
+            out.textures_delta.clear();
+        }
+        assert!(
+            requests.try_iter().any(|r| matches!(r, Request::Close)),
+            "discard must drop the confirmed document, not suspend its modified snapshot"
+        );
+        assert_eq!(app.tabs.tabs.len(), 1);
+        assert_eq!(app.tabs.tabs[0].path, PathBuf::from("test/second.pdf"));
+    }
+
+    #[test]
+    fn repeated_save_before_completion_cannot_save_resumed_tab_over_first_file() {
+        let (mut app, requests, responses) = test_app();
+        let mut second_ui = app.take_tab();
+        second_ui.document.as_mut().unwrap().info = test_info("test/second.pdf");
+        app.document = Some(OpenDocument {
+            info: test_info("test/first.pdf"),
+            page: 0,
+        });
+        app.tabs.tabs.push(crate::tabs::Tab {
+            path: PathBuf::from("test/second.pdf"),
+            dirty: false,
+            ui: Some(second_ui),
+            doc: Some(crate::worker::SuspendedDoc {
+                bytes: vec![],
+                password: None,
+                path: PathBuf::from("test/second.pdf"),
+                undo: vec![],
+                redo: vec![],
+                save_point: Some(0),
+                modified: false,
+            }),
+        });
+        let ctx = egui::Context::default();
+        form_draft(&mut app, "Old");
+        app.save_document(false);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+        app.forms.drafts.insert("Name".into(), "Next".into());
+        app.save_document(false);
+        let duplicate_commit = requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Edit(EditOp::FillForm { .. })));
+        responses
+            .send(Response::Saved {
+                path: PathBuf::from("test/first.pdf"),
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        app.switch_to(1);
+        responses.send(Response::MutationFinished).unwrap();
+        if duplicate_commit {
+            responses.send(changed("test/first.pdf", true)).unwrap();
+            responses.send(Response::MutationFinished).unwrap();
+        }
+        responses
+            .send(Response::Suspended(crate::worker::SuspendedDoc {
+                bytes: vec![],
+                password: None,
+                path: PathBuf::from("test/first.pdf"),
+                undo: vec![],
+                redo: vec![],
+                save_point: Some(0),
+                modified: duplicate_commit,
+            }))
+            .unwrap();
+        app.handle_responses(&ctx);
+        responses
+            .send(Response::Resumed(DocState {
+                info: test_info("test/second.pdf"),
+                can_undo: false,
+                can_redo: false,
+                modified: false,
+                pages_unchanged: false,
+            }))
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(
+            !requests
+                .try_iter()
+                .any(|r| matches!(r, Request::Save { .. })),
+            "a repeated Save must not write second.pdf into first.pdf"
+        );
+        assert_eq!(
+            app.tabs.tabs[0]
+                .ui
+                .as_ref()
+                .unwrap()
+                .forms
+                .drafts
+                .get("Name")
+                .map(String::as_str),
+            Some("Next")
+        );
+    }
+
+    #[test]
+    fn failed_operation_keeps_inline_form_text_during_model_reload() {
+        let (mut app, _requests, responses) = test_app();
+        form_draft(&mut app, "Old");
+        app.forms.drafts.clear();
+        let rect = sunipdf_core::PointRect {
+            left: 10.0,
+            bottom: 700.0,
+            right: 200.0,
+            top: 730.0,
+        };
+        app.forms.info.as_mut().unwrap().fields[0]
+            .widgets
+            .push(sunipdf_core::FieldWidget {
+                page: 0,
+                rect,
+                display: rect,
+                on_state: None,
+            });
+        app.forms.editing = Some(crate::forms::InPlace {
+            page: 0,
+            field: "Name".into(),
+            widget: 0,
+            text: "Unsaved".into(),
+            multiline: false,
+            max_len: Some(10),
+            focus: true,
+            armed: true,
+        });
+        let ctx = egui::Context::default();
+        responses
+            .send(Response::OperationFailed(EngineError::InvalidFormat))
+            .unwrap();
+        app.handle_responses(&ctx);
+        let view = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 780.0));
+        let mut out = ctx.run_ui(Default::default(), |_| {
+            app.forms_editor(&ctx, view, view, 0, 792.0)
+        });
+        out.textures_delta.clear();
+        assert_eq!(
+            app.forms.editing.as_ref().map(|e| e.text.as_str()),
+            Some("Unsaved"),
+            "missing model during reload must not discard the active editor"
+        );
+    }
+
+    #[test]
+    fn cancelling_close_prompt_allows_opening_another_document() {
+        let (mut app, requests, _responses) = test_app();
+        form_draft(&mut app, "New");
+        let ctx = egui::Context::default();
+        app.has_icons = crate::icons::install(&ctx);
+        app.execute(&ctx, Command::CloseDocument);
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |_| app.unsaved_dialog(&ctx),
+        );
+        out.textures_delta.clear();
+        app.open_path(PathBuf::from("test/second.pdf"), None);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Open { path, .. }
+            if path == Path::new("test/second.pdf"))));
+        assert_eq!(
+            app.tabs.tabs[0]
+                .ui
+                .as_ref()
+                .unwrap()
+                .forms
+                .drafts
+                .get("Name")
+                .map(String::as_str),
+            Some("New")
+        );
+    }
+
+    #[test]
+    fn quitting_waits_for_edited_background_tab_to_finish_suspending() {
+        let (mut app, _requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Command::RotateClockwise);
+        app.suspend_active();
+        app.execute(&ctx, Command::Quit);
+        responses.send(changed("test/first.pdf", true)).unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(
+            !app.allow_close,
+            "the edited tab has not reached its suspended state"
+        );
+        responses
+            .send(Response::Suspended(crate::worker::SuspendedDoc {
+                bytes: vec![],
+                password: None,
+                path: PathBuf::from("test/first.pdf"),
+                undo: vec![],
+                redo: vec![],
+                save_point: None,
+                modified: true,
+            }))
+            .unwrap();
+        app.handle_responses(&ctx);
+        responses
+            .send(Response::Resumed(DocState {
+                info: test_info("test/first.pdf"),
+                can_undo: true,
+                can_redo: false,
+                modified: true,
+                pages_unchanged: false,
+            }))
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(matches!(app.unsaved_prompt, Some(PendingAction::Quit)));
+        assert!(app.document.is_some());
+    }
 
     #[test]
     fn every_error_key_exists_in_both_catalogs() {

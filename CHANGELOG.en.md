@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-10-15
+
+Six priority fixes, 26 regression tests added (248 tests passed, 2 measurements ignored).
+
+### Fixed
+- Protection: validate passwords after normalization and AES-128 / AES-256 length limits; reject an opening
+  password that becomes empty and equivalent owner/user passwords.
+- Forms: Ctrl+S includes panel drafts; invalid input stays editable and blocks saving. Closing also takes
+  unfinished input into account.
+- Tabs: selection responses from the previous document cannot target objects in the new tab.
+- Closing: pending engine mutations finish before deciding whether to save or close.
+- Moving pages preserves form fields, bookmarks, internal links and inherited page attributes; encrypted
+  documents remain encrypted.
+- CLI `form-fields`: password values are hidden in the full listing as well.
+
 ## [0.7.0] — 2026-10-15
 
 Irreversible redaction (“Redact a PDF” tool, `redact` CLI command, 42 commands, 222 tests).

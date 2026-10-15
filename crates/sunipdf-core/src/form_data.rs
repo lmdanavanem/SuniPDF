@@ -44,7 +44,7 @@ pub fn info_to_json(info: &FormInfo) -> Value {
         "fields": info.fields.iter().map(|f| json!({
             "name": f.name,
             "type": f.kind.id(),
-            "value": value_to_json(f),
+            "value": if f.password { Value::Null } else { value_to_json(f) },
             "read_only": f.read_only,
             "required": f.required,
             "tooltip": f.tooltip,

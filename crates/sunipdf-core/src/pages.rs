@@ -269,19 +269,60 @@ impl Document<'_> {
         if from == to {
             return Ok(());
         }
-        // ponytail: copie via un document temporaire (FPDF_MovePages n'est pas exposé par pdfium-render).
-        let mut temp = self.pdfium.create_new_pdf()?;
-        let from_index =
-            PdfPageIndex::try_from(from).map_err(|_| EngineError::PageOutOfRange(from))?;
-        temp.pages_mut()
-            .copy_page_from_document(&self.inner, from_index, 0)?;
-        self.inner.pages().get(from_index)?.delete()?;
-        let to_index = PdfPageIndex::try_from(to).map_err(|_| EngineError::PageOutOfRange(to))?;
-        self.inner
-            .pages_mut()
-            .copy_page_from_document(&temp, 0, to_index)?;
-        self.refresh_page_sizes()?;
-        Ok(())
+        let mut pdf = crate::security::load(&self.snapshot()?, self.password())?;
+        let mut pages: Vec<_> = pdf.get_pages().into_values().collect();
+        if pages.len() != count {
+            return Err(EngineError::InvalidFormat);
+        }
+        let root = pdf
+            .catalog()
+            .and_then(|c| c.get(b"Pages"))
+            .and_then(lopdf::Object::as_reference)
+            .map_err(crate::security::lopdf_err)?;
+        // Aplatir l'arbre exige de conserver les attributs hérités avant de changer /Parent.
+        for &page_id in &pages {
+            let mut inherited = lopdf::Dictionary::new();
+            let mut node = Some(page_id);
+            let mut seen = std::collections::BTreeSet::new();
+            while let Some(id) = node {
+                if !seen.insert(id) {
+                    return Err(EngineError::InvalidFormat);
+                }
+                let dict = pdf.get_dictionary(id).map_err(crate::security::lopdf_err)?;
+                for key in [b"Resources".as_slice(), b"MediaBox", b"CropBox", b"Rotate"] {
+                    if !inherited.has(key) {
+                        if let Ok(value) = dict.get(key) {
+                            inherited.set(key, value.clone());
+                        }
+                    }
+                }
+                node = match dict.get(b"Parent") {
+                    Ok(parent) => Some(parent.as_reference().map_err(crate::security::lopdf_err)?),
+                    Err(_) => None,
+                };
+            }
+            let page = pdf
+                .get_dictionary_mut(page_id)
+                .map_err(crate::security::lopdf_err)?;
+            for (key, value) in inherited {
+                page.set(key, value);
+            }
+            page.set("Parent", root);
+        }
+        let moved = pages.remove(from);
+        pages.insert(to, moved);
+        let tree = pdf
+            .get_dictionary_mut(root)
+            .map_err(crate::security::lopdf_err)?;
+        tree.set(
+            "Kids",
+            pages
+                .into_iter()
+                .map(lopdf::Object::Reference)
+                .collect::<Vec<_>>(),
+        );
+        tree.set("Count", count as i64);
+        self.restore(crate::security::save(pdf)?)
     }
 
     /// Instantané complet du document (octets PDF), base de l'annulation.
