@@ -161,6 +161,9 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::NONE, Key::R, Command::ToolRectangle),
     (Modifiers::NONE, Key::O, Command::ToolEllipse),
     (Modifiers::NONE, Key::L, Command::ToolLine),
+    (Modifiers::NONE, Key::A, Command::ToolSelectAnnot),
+    (Modifiers::NONE, Key::D, Command::ToolInk),
+    (Modifiers::NONE, Key::F, Command::ToolFreeText),
     (Modifiers::NONE, Key::Delete, Command::DeleteObject),
     (Modifiers::NONE, Key::F2, Command::EditObjectText),
     (Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront),
@@ -393,6 +396,7 @@ impl SuniApp {
                 // Une sélection ou un texte en cours sur une page qui n'est plus affichée : Suppr ou
                 // les flèches agiraient à l'aveugle, et l'éditeur invisible garderait le clavier.
                 self.edit.selection = None;
+                self.annotate.adv.selected = None;
                 if self
                     .edit
                     .text_prompt
@@ -502,6 +506,8 @@ impl SuniApp {
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
                     self.edit.reset_for_tab();
+                    self.annotate.adv = Default::default();
+                    self.annotate.annotations_page = None;
                     self.view.reset();
                     self.forms.reset_for_document();
                     // Première page en haut, centrée si le document mêle des tailles de page.
@@ -585,6 +591,12 @@ impl SuniApp {
                     self.find.matches.clear();
                     self.annotate.selection = None;
                     self.annotate.annotations_page = None;
+                    // Indices d'annotation et zones de lien : relus ; la sélection est reprise par
+                    // `on_annotations` si une modification l'attend (`adv.reselect`).
+                    self.annotate.adv.selected = None;
+                    self.annotate.adv.drag = None;
+                    self.annotate.adv.ink.clear();
+                    self.annotate.adv.links_page = None;
                     // La liste d'objets en cache (panneau, prise directe) est périmée.
                     self.edit.objects_page = None;
                     // Les champs du formulaire aussi (valeur saisie, annulation, aplatissement).
@@ -633,14 +645,12 @@ impl SuniApp {
                         None => self.annotate.selection = Some((page, selection)),
                     }
                 }
-                Response::Annotations { page, mut list } => {
-                    if self.annotate.annotations_page == Some(page) {
-                        // Les widgets de formulaire ont leur panneau ; « supprimer » ici
-                        // détruirait un champ.
-                        list.retain(|a| a.kind != "widget");
-                        self.annotate.annotations = list;
-                    }
-                }
+                Response::Annotations {
+                    page,
+                    list,
+                    details,
+                } => self.on_annotations(page, list, details),
+                Response::Links { page, list } => self.on_links(page, list),
                 Response::FormInfo(info) => self.on_form_info(info),
                 Response::BatchDone(result) => self.on_batch_done(result),
                 Response::ObjectSelected { page, info } => self.on_object_selected(page, info),
@@ -853,6 +863,8 @@ impl SuniApp {
         let esc = crate::workspace::take_escape(ctx, self.esc_state(ctx));
         if esc == Some(Esc::Deselect) {
             self.edit.selection = None;
+            self.annotate.adv.selected = None;
+            self.annotate.adv.drag = None;
         }
         let object_tool = self.annotate.tool == crate::annotate::Tool::SelectObject;
         if object_tool && self.edit.selection.is_some() {
@@ -873,6 +885,27 @@ impl SuniApp {
             });
             if nudge != (0.0, 0.0) {
                 self.nudge_selected(nudge.0 * step, nudge.1 * step);
+            }
+        }
+        if self.annotate.tool == crate::annotate::Tool::SelectAnnot
+            && self.annotate.adv.selected.is_some()
+        {
+            let step = if self.edit.shift { 10.0 } else { 1.0 };
+            let mut nudge = (0.0f32, 0.0f32);
+            ctx.input_mut(|i| {
+                for (k, d) in [
+                    (Key::ArrowLeft, (-1.0, 0.0)),
+                    (Key::ArrowRight, (1.0, 0.0)),
+                    (Key::ArrowUp, (0.0, 1.0)),
+                    (Key::ArrowDown, (0.0, -1.0)),
+                ] {
+                    if i.consume_key(Modifiers::NONE, k) || i.consume_key(Modifiers::SHIFT, k) {
+                        nudge = d;
+                    }
+                }
+            });
+            if nudge != (0.0, 0.0) {
+                self.nudge_annot(nudge.0 * step, nudge.1 * step);
             }
         }
         let continuous = self.view.mode == ViewMode::Continuous;
@@ -954,6 +987,7 @@ impl SuniApp {
             || self.edit.text_prompt.is_some()
             || self.sign.open.is_some()
             || self.forms.flatten_open
+            || self.annotate.adv.dialog_open()
     }
 
     /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
@@ -1096,7 +1130,13 @@ impl SuniApp {
                 }
             }
             Command::CopyText => self.copy_selection(ctx),
-            Command::DeleteObject => self.delete_selected_object(),
+            Command::DeleteObject => {
+                if self.annotate.adv.selected.is_some() {
+                    self.delete_selected_annot();
+                } else {
+                    self.delete_selected_object();
+                }
+            }
             Command::DuplicateObject => self.duplicate_selected(),
             Command::RotateObjectLeft => self.rotate_selected(-90.0),
             Command::RotateObjectRight => self.rotate_selected(90.0),
@@ -1125,7 +1165,14 @@ impl SuniApp {
             | Command::ToolAddImage
             | Command::ToolRectangle
             | Command::ToolEllipse
-            | Command::ToolLine => {
+            | Command::ToolLine
+            | Command::ToolSelectAnnot
+            | Command::ToolFreeText
+            | Command::ToolInk
+            | Command::ToolAnnotRect
+            | Command::ToolAnnotEllipse
+            | Command::ToolAnnotLine
+            | Command::ToolLink => {
                 self.cancel_placing();
                 self.annotate.tool =
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
@@ -1133,6 +1180,13 @@ impl SuniApp {
                 if !matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit.selection = None;
                 }
+                if self.annotate.tool != crate::annotate::Tool::SelectAnnot {
+                    self.annotate.adv.selected = None;
+                }
+                self.annotate.adv.ink.clear();
+                self.annotate.adv.drag = None;
+                // Les annotations de la page survolée sont relues pour l'outil de sélection.
+                self.annotate.annotations_page = None;
                 // Raccourci, palette ou menu : la barre de l'outil propriétaire suit.
                 crate::workspace::follow(
                     &mut self.annotate,
@@ -1826,17 +1880,17 @@ impl SuniApp {
                     ui.vertical(|ui| {
                         ui.spacing_mut().item_spacing.y = 3.0;
                         ui.label(crate::icons::semibold("SuniPDF", 26.0).color(p.text));
-                        ui.label(
-                            egui::RichText::new(tr_args(
-                                lang,
-                                "about.version",
-                                &[("version", env!("CARGO_PKG_VERSION"))],
-                            ))
-                            .size(13.0)
-                            .color(p.text_muted),
-                        );
-                        ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
-                    });
+                    }
+                    ui.label(
+                        egui::RichText::new(tr_args(
+                            lang,
+                            "about.version",
+                            &[("version", env!("CARGO_PKG_VERSION"))],
+                        ))
+                        .size(13.0)
+                        .color(p.text_muted),
+                    );
+                    ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
                 });
                 ui.add_space(10.0);
                 egui::Frame::new()
@@ -2058,6 +2112,7 @@ impl eframe::App for SuniApp {
         self.text_prompt_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
+        self.adv_dialogs(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
         self.command_palette(&ctx);
@@ -2165,7 +2220,8 @@ mod tests {
             include_str!("inline_text.rs"),
             include_str!("pagesetup.rs"),
             include_str!("sign.rs"),
-            include_str!("forms.rs")
+            include_str!("forms.rs"),
+            include_str!("annot_adv.rs")
         );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {

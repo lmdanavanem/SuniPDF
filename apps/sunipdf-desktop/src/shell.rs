@@ -233,6 +233,13 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::FlattenForm => (glyph::COMBINE, "⧉"),
         Command::ExportFormData => (glyph::SAVE_AS, "⤴"),
         Command::ImportFormData => (glyph::IMPORT, "⤵"),
+        Command::ToolSelectAnnot => (glyph::SELECT_ANNOT, "↖"),
+        Command::ToolFreeText => (glyph::FREE_TEXT, "T"),
+        Command::ToolInk => (glyph::INK, "✎"),
+        Command::ToolAnnotRect => (glyph::RECT, "▭"),
+        Command::ToolAnnotEllipse => (glyph::ELLIPSE, "◯"),
+        Command::ToolAnnotLine => (glyph::LINE, "╱"),
+        Command::ToolLink => (glyph::LINK, "🔗"),
     }
 }
 

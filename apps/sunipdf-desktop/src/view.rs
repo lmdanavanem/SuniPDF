@@ -89,7 +89,7 @@ pub struct ViewState {
     sent: Vec<TileJob>,
     failed: HashSet<TileJob>,
     missing_visible: usize,
-    hover_page: Option<usize>,
+    pub(crate) hover_page: Option<usize>,
     /// La miniature de la page courante doit être ramenée dans le panneau.
     pub follow_thumb: bool,
     /// (décalage, hauteur) du panneau des miniatures à l'image précédente.
@@ -742,7 +742,6 @@ impl SuniApp {
         self.view.pool.begin_frame();
         self.view.missing_visible = 0;
         self.edit.page_view = None;
-        self.refresh_annotations_if_needed();
         self.refresh_forms_if_needed();
 
         // 1. Zoom (molette ancrée sur le pointeur), plafonné.
@@ -828,6 +827,8 @@ impl SuniApp {
             _ => self.document.as_ref().map_or(current, |d| d.page),
         };
         self.refresh_objects_if_needed(objects_page);
+        // Après la zone : la page survolée de cette image est connue (sélection d'annotation, liens).
+        self.refresh_annotations_if_needed();
         self.flush_wanted(
             ctx,
             &PlanInput {
@@ -847,6 +848,7 @@ impl SuniApp {
             self.handle_page_event(page, ev, shift);
         }
         self.object_bar(ctx, doc_rect);
+        self.annot_bar(ctx, doc_rect);
     }
 
     /// Ombre, tuiles (ou replis), surcouches et interactions d'une page ; identique en continu et
@@ -877,7 +879,13 @@ impl SuniApp {
         self.paint_matches(&painter, s.rect, s.page, h);
         self.paint_selection(&painter, s.rect, s.page, h);
         self.paint_object_selection(&painter, s.rect, s.page, h);
-        let on_selection = self.edit.selection.as_ref().map(|sel| sel.page);
+        self.paint_annot_adv(&painter, s.rect, s.page, h);
+        let on_selection = self
+            .edit
+            .selection
+            .as_ref()
+            .map(|sel| sel.page)
+            .or_else(|| self.annotate.adv.selected.as_ref().map(|(page, _)| *page));
         if on_selection.map_or(s.current, |p| p == s.page) {
             self.edit.page_view = Some((s.page, s.rect, h));
         }
@@ -1246,6 +1254,7 @@ impl SuniApp {
         match ev {
             DragEvent::Start(pt) => {
                 self.edit_drag_start(page, pt);
+                self.adv_drag_start(page, pt);
                 self.annotate.drag = Some(crate::annotate::Drag {
                     page,
                     start: pt,
@@ -1258,6 +1267,7 @@ impl SuniApp {
                     d.current = pt;
                     let d = *d;
                     self.edit_drag_moved(&d);
+                    self.adv_drag_moved(&d);
                 }
             }
             DragEvent::Stop => {
@@ -1278,12 +1288,14 @@ impl SuniApp {
                         });
                     }
                     crate::annotate::Tool::SelectObject => self.edit_click(page, pt),
-                    _ => {}
+                    _ => self.adv_click(page, pt),
                 }
             }
             DragEvent::DoubleClick(pt) => {
                 if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit_double_click(page, pt);
+                } else {
+                    self.adv_double_click(page, pt);
                 }
             }
         }

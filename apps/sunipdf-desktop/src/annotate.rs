@@ -2,12 +2,12 @@
 //! sont dans la barre contextuelle de `workspace.rs`).
 
 use crate::app::{SuniApp, SCREEN_PER_PDF_POINT};
-use crate::icons::{self, glyph};
+use crate::icons::glyph;
 use crate::theme;
 use crate::worker::{EditOp, Request};
-use egui::{Align, Button, Frame, Key, Layout, RichText, Stroke};
+use egui::{Key, Stroke};
 use sunipdf_core::{AnnotationInfo, Command, MarkupKind, PointRect, TextSelection};
-use sunipdf_i18n::{tr, tr_args};
+use sunipdf_i18n::tr;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Tool {
@@ -25,10 +25,18 @@ pub enum Tool {
     Line,
     /// Remplir un formulaire : champs surlignés et saisie en place (`forms.rs`).
     FillForm,
+    /// Annotations avancées (`annot_adv.rs`) : vraies annotations PDF.
+    Ink,
+    FreeText,
+    AnnotRect,
+    AnnotEllipse,
+    AnnotLine,
+    AddLink,
+    SelectAnnot,
 }
 
 impl Tool {
-    pub const ALL: [Tool; 12] = [
+    pub const ALL: [Tool; 19] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Underline,
@@ -41,6 +49,13 @@ impl Tool {
         Tool::Ellipse,
         Tool::Line,
         Tool::FillForm,
+        Tool::Ink,
+        Tool::FreeText,
+        Tool::AnnotRect,
+        Tool::AnnotEllipse,
+        Tool::AnnotLine,
+        Tool::AddLink,
+        Tool::SelectAnnot,
     ];
 
     pub fn command(self) -> Command {
@@ -57,6 +72,13 @@ impl Tool {
             Tool::Ellipse => Command::ToolEllipse,
             Tool::Line => Command::ToolLine,
             Tool::FillForm => Command::ToolFillForm,
+            Tool::Ink => Command::ToolInk,
+            Tool::FreeText => Command::ToolFreeText,
+            Tool::AnnotRect => Command::ToolAnnotRect,
+            Tool::AnnotEllipse => Command::ToolAnnotEllipse,
+            Tool::AnnotLine => Command::ToolAnnotLine,
+            Tool::AddLink => Command::ToolLink,
+            Tool::SelectAnnot => Command::ToolSelectAnnot,
         }
     }
 
@@ -104,6 +126,8 @@ pub struct AnnotateState {
     /// Outil actif du hub. Ici pour suivre l'onglet (`take_tab` / `put_tab` échangent `annotate`)
     /// et se vider à la fermeture du document.
     pub workspace: Option<crate::workspace::Workspace>,
+    /// Annotations avancées : tracé, sélection, boîtes de dialogue, liens (`annot_adv.rs`).
+    pub adv: crate::annot_adv::AnnotAdvState,
 }
 
 /// Point écran → point PDF.
@@ -140,6 +164,7 @@ impl SuniApp {
         if let Some(drag) = &self.annotate.drag {
             if drag.page == page_index
                 && !self.annotate.tool.is_edit()
+                && !self.annotate.tool.is_adv()
                 && self.annotate.tool != Tool::FillForm
             {
                 painter.rect_stroke(
@@ -180,6 +205,13 @@ impl SuniApp {
             | Tool::Line => self.edit_drag_finished(drag),
             // Un glissement ne sélectionne rien : les champs se cliquent.
             Tool::FillForm => {}
+            Tool::Ink
+            | Tool::FreeText
+            | Tool::AnnotRect
+            | Tool::AnnotEllipse
+            | Tool::AnnotLine
+            | Tool::AddLink
+            | Tool::SelectAnnot => self.adv_drag_finished(drag),
             _ => {
                 // Outils de texte : la sélection revient par TextSelected, puis l'annotation est créée.
                 if !tiny {
@@ -256,110 +288,11 @@ impl SuniApp {
             self.annotate.note_prompt = None;
         }
     }
-
-    /// Demande la liste des annotations de la page courante si elle n'est pas à jour.
-    pub fn refresh_annotations_if_needed(&mut self) {
-        if !self.annotate.comments_open {
-            return;
-        }
-        let Some(doc) = &self.document else { return };
-        if self.annotate.annotations_page != Some(doc.page) {
-            self.annotate.annotations_page = Some(doc.page);
-            self.annotate.annotations.clear();
-            self.worker.send(Request::Annotations { page: doc.page });
-        }
-    }
-
-    pub fn comments_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
-        let Some(doc) = &self.document else { return };
-        let page = doc.page;
-        ui.add_space(6.0);
-        ui.horizontal(|ui| {
-            ui.add_space(4.0);
-            ui.label(icons::semibold(tr(lang, "comments.title"), 15.0));
-            ui.label(
-                RichText::new(self.annotate.annotations.len().to_string())
-                    .color(p.text_muted)
-                    .size(13.0),
-            );
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui
-                    .add(
-                        Button::new(icons::icon(self.has_icons, glyph::CLOSE, "✕", 14.0))
-                            .frame(false),
-                    )
-                    .on_hover_text(tr(lang, "tools.close"))
-                    .clicked()
-                {
-                    self.execute(ctx, Command::ToggleComments);
-                }
-            });
-        });
-        ui.separator();
-        ui.label(
-            RichText::new(tr_args(
-                lang,
-                "comments.page",
-                &[("page", &(page + 1).to_string())],
-            ))
-            .size(12.0)
-            .color(p.text_muted),
-        );
-        ui.add_space(4.0);
-        if self.annotate.annotations.is_empty() {
-            ui.label(RichText::new(tr(lang, "comments.empty")).color(p.text_muted));
-        }
-        let mut delete = None;
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                for a in &self.annotate.annotations {
-                    Frame::new()
-                        .fill(p.surface)
-                        .stroke(Stroke::new(1.0, p.border))
-                        .corner_radius(8)
-                        .inner_margin(10)
-                        .show(ui, |ui| {
-                            ui.set_width(ui.available_width());
-                            ui.horizontal(|ui| {
-                                ui.label(icons::semibold(annotation_label(lang, a.kind), 13.0));
-                                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                    if ui
-                                        .add(
-                                            Button::new(icons::icon(
-                                                self.has_icons,
-                                                glyph::DELETE,
-                                                "🗑",
-                                                14.0,
-                                            ))
-                                            .frame(false),
-                                        )
-                                        .on_hover_text(tr(lang, "comments.delete"))
-                                        .clicked()
-                                    {
-                                        delete = Some(a.index);
-                                    }
-                                });
-                            });
-                            if let Some(c) = &a.contents {
-                                ui.label(RichText::new(c).size(13.0));
-                            }
-                        });
-                    ui.add_space(6.0);
-                }
-            });
-        if let Some(index) = delete {
-            self.worker
-                .send(Request::Edit(EditOp::DeleteAnnotation { page, index }));
-        }
-    }
 }
 
 /// Libellé traduit d'un sous-type d'annotation (identifiants stables du moteur, jamais un nom
 /// de variante de bibliothèque ; sous-type inconnu → « Autre annotation »).
-fn annotation_label(lang: sunipdf_i18n::Language, kind: &str) -> String {
+pub(crate) fn annotation_label(lang: sunipdf_i18n::Language, kind: &str) -> String {
     let id = if sunipdf_core::ANNOTATION_KINDS.contains(&kind) {
         kind
     } else {

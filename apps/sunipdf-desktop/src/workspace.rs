@@ -178,6 +178,15 @@ pub static TABLE: [WsInfo; 14] = [
                 C::ToolStrikeOut,
                 C::ToolNote,
             ],
+            &[
+                C::ToolSelectAnnot,
+                C::ToolInk,
+                C::ToolFreeText,
+                C::ToolAnnotRect,
+                C::ToolAnnotEllipse,
+                C::ToolAnnotLine,
+                C::ToolLink,
+            ],
             &[C::ToggleComments, C::CopyText],
         ],
     },
@@ -307,6 +316,9 @@ pub fn switch(
         a.tool = Tool::Select;
         a.drag = None;
         e.selection = None;
+        a.adv.selected = None;
+        a.adv.ink.clear();
+        a.adv.drag = None;
     }
 }
 
@@ -510,7 +522,7 @@ impl SuniApp {
             popup_open: egui::Popup::is_any_open(ctx),
             focus_last_frame: self.focus_last_frame,
             find_open: self.find.open,
-            object_selected: self.edit.selection.is_some(),
+            object_selected: self.edit.selection.is_some() || self.annotate.adv.selected.is_some(),
             in_workspace: self.annotate.workspace.is_some(),
         }
     }
@@ -533,10 +545,12 @@ impl SuniApp {
             .as_ref()
             .and_then(crate::editor::Selection::single);
         match c {
+            Command::DeleteObject => {
+                self.edit.selection.is_some() || self.annotate.adv.selected.is_some()
+            }
             Command::DuplicateObject
             | Command::BringToFront
             | Command::SendToBack
-            | Command::DeleteObject
             | Command::CopyObjects
             | Command::CutObjects => self.edit.selection.is_some(),
             Command::RotateObjectLeft | Command::RotateObjectRight => single.is_some(),

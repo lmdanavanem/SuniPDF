@@ -91,6 +91,13 @@ pub mod glyph {
     pub const FORM: &str = "\u{E9D5}";
     /// « MultiSelect » : panneau des champs du formulaire.
     pub const FORM_LIST: &str = "\u{E762}";
+    /// Stylo qui trace : dessin à main levée.
+    pub const INK: &str = "\u{EC87}";
+    /// « Font » en petit : zone de texte libre.
+    pub const FREE_TEXT: &str = "\u{E8E9}";
+    pub const LINK: &str = "\u{E71B}";
+    /// Pointeur et main : sélectionner une annotation.
+    pub const SELECT_ANNOT: &str = "\u{E7C9}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

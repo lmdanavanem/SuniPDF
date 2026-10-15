@@ -15,6 +15,8 @@ pub struct Settings {
     pub continuous_view: bool,
     /// Fichiers récents, le plus récent en premier.
     pub recent: Vec<String>,
+    /// Auteur écrit dans les annotations, réponses et statuts (vide : aucun nom écrit).
+    pub author: String,
 }
 
 impl Default for Settings {
@@ -26,6 +28,7 @@ impl Default for Settings {
             show_tools: true,
             continuous_view: true,
             recent: Vec::new(),
+            author: String::new(),
         }
     }
 }

@@ -8,11 +8,11 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
-    form_data, security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError,
-    FieldValue, FillMode, FormInfo, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle,
-    PageMargins, PointRect, Properties, Protection, RectMode, RenderCache, RenderedPage,
-    ResizeMode, ShapeKind, ShapeStyle, Stamp, SystemFont, TextMatch, TextSelection, TextStyle,
-    TileJob, ZOrder,
+    form_data, security, AnnotDetail, AnnotShape, AnnotStyle, AnnotationInfo, Bookmark, Document,
+    DocumentInfo, Engine, EngineError, FieldValue, FillMode, FormInfo, FreeTextStyle, LinkInfo,
+    LinkTarget, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle, PageMargins, PointRect,
+    Properties, Protection, RectMode, RenderCache, RenderedPage, ResizeMode, ReviewStatus,
+    ShapeKind, ShapeStyle, Stamp, SystemFont, TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -271,6 +271,75 @@ pub enum EditOp {
     FlattenForm {
         pages: Option<Vec<usize>>,
     },
+    /// Annotations avancées (vraies annotations PDF, écrites par lopdf : `annot_write.rs`).
+    AddInk {
+        page: usize,
+        strokes: Vec<Vec<(f32, f32)>>,
+        style: AnnotStyle,
+        author: Option<String>,
+    },
+    AddAnnotShape {
+        page: usize,
+        shape: AnnotShape,
+        rect: PointRect,
+        style: AnnotStyle,
+        author: Option<String>,
+    },
+    AddFreeText {
+        page: usize,
+        rect: PointRect,
+        text: String,
+        style: FreeTextStyle,
+        author: Option<String>,
+    },
+    AddLink {
+        page: usize,
+        rect: PointRect,
+        target: LinkTarget,
+    },
+    MoveAnnotation {
+        page: usize,
+        index: usize,
+        dx: f32,
+        dy: f32,
+    },
+    ResizeAnnotation {
+        page: usize,
+        index: usize,
+        rect: PointRect,
+    },
+    StyleAnnotation {
+        page: usize,
+        index: usize,
+        style: AnnotStyle,
+    },
+    SetAnnotationText {
+        page: usize,
+        index: usize,
+        text: String,
+    },
+    UpdateFreeText {
+        page: usize,
+        index: usize,
+        text: String,
+        style: FreeTextStyle,
+    },
+    DeleteAnnotationThread {
+        page: usize,
+        index: usize,
+    },
+    Reply {
+        page: usize,
+        parent: usize,
+        text: String,
+        author: Option<String>,
+    },
+    SetReviewStatus {
+        page: usize,
+        parent: usize,
+        status: ReviewStatus,
+        author: Option<String>,
+    },
 }
 
 impl EditOp {
@@ -365,7 +434,14 @@ pub enum Request {
         page: usize,
         rect: PointRect,
     },
+    /// Annotations d'une page : liste rapide PDFium et, si `detailed` et si la page porte autre chose
+    /// que des liens, fenêtres et champs, lecture détaillée (droits, fils de réponses).
     Annotations {
+        page: usize,
+        detailed: bool,
+    },
+    /// Zones de lien de la page (cliquables dans la vue).
+    Links {
         page: usize,
     },
     /// Champs du formulaire du document actif (`FormInfo::default()` s'il n'en a pas).
@@ -466,6 +542,11 @@ pub enum Response {
     Annotations {
         page: usize,
         list: Vec<AnnotationInfo>,
+        details: Option<Vec<AnnotDetail>>,
+    },
+    Links {
+        page: usize,
+        list: Vec<LinkInfo>,
     },
     FormInfo(FormInfo),
     Properties(Properties),
@@ -820,6 +901,73 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         } => doc.add_markup(page, kind, &rects, rgb),
         EditOp::Note { page, x, y, text } => doc.add_note(page, x, y, &text),
         EditOp::DeleteAnnotation { page, index } => doc.delete_annotation(page, index),
+        EditOp::AddInk {
+            page,
+            strokes,
+            style,
+            author,
+        } => doc
+            .add_ink_annotation(page, &strokes, &style, author.as_deref())
+            .map(|_| ()),
+        EditOp::AddAnnotShape {
+            page,
+            shape,
+            rect,
+            style,
+            author,
+        } => doc
+            .add_shape_annotation(page, shape, rect, &style, author.as_deref())
+            .map(|_| ()),
+        EditOp::AddFreeText {
+            page,
+            rect,
+            text,
+            style,
+            author,
+        } => doc
+            .add_free_text_annotation(page, rect, &text, &style, author.as_deref())
+            .map(|_| ()),
+        EditOp::AddLink { page, rect, target } => {
+            doc.add_link_annotation(page, rect, &target).map(|_| ())
+        }
+        EditOp::MoveAnnotation {
+            page,
+            index,
+            dx,
+            dy,
+        } => doc.move_annotation(page, index, dx, dy),
+        EditOp::ResizeAnnotation { page, index, rect } => doc.resize_annotation(page, index, rect),
+        EditOp::StyleAnnotation { page, index, style } => {
+            doc.set_annotation_style(page, index, &style)
+        }
+        EditOp::SetAnnotationText { page, index, text } => {
+            doc.set_annotation_contents(page, index, &text)
+        }
+        EditOp::UpdateFreeText {
+            page,
+            index,
+            text,
+            style,
+        } => doc.update_free_text(page, index, &text, &style),
+        EditOp::DeleteAnnotationThread { page, index } => {
+            doc.delete_annotation_thread(page, index).map(|_| ())
+        }
+        EditOp::Reply {
+            page,
+            parent,
+            text,
+            author,
+        } => doc
+            .add_reply(page, parent, &text, author.as_deref())
+            .map(|_| ()),
+        EditOp::SetReviewStatus {
+            page,
+            parent,
+            status,
+            author,
+        } => doc
+            .set_review_status(page, parent, status, author.as_deref())
+            .map(|_| ()),
         EditOp::AddText {
             page,
             x,
@@ -1292,10 +1440,27 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &state.document else { continue };
                 Response::Bookmarks(doc.bookmarks())
             }
-            Request::Annotations { page } => {
+            Request::Annotations { page, detailed } => {
                 let Some(doc) = &state.document else { continue };
                 let list = doc.annotations(page).unwrap_or_default();
-                Response::Annotations { page, list }
+                // La lecture détaillée relit tout le document : seulement si la page porte autre
+                // chose que des fenêtres contextuelles et des champs de formulaire.
+                let details = (detailed
+                    && list.iter().any(|a| !matches!(a.kind, "popup" | "widget")))
+                .then(|| doc.annotation_details(page).ok())
+                .flatten();
+                Response::Annotations {
+                    page,
+                    list,
+                    details,
+                }
+            }
+            Request::Links { page } => {
+                let Some(doc) = &state.document else { continue };
+                Response::Links {
+                    page,
+                    list: doc.page_links(page).unwrap_or_default(),
+                }
             }
             Request::FormInfo => {
                 let Some(doc) = &state.document else { continue };

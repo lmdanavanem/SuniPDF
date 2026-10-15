@@ -95,6 +95,14 @@ pub enum Command {
     FlattenForm,
     ExportFormData,
     ImportFormData,
+    /// Annotations avancées (vraies annotations PDF) : sélection, texte libre, encre, formes, lien.
+    ToolSelectAnnot,
+    ToolFreeText,
+    ToolInk,
+    ToolAnnotRect,
+    ToolAnnotEllipse,
+    ToolAnnotLine,
+    ToolLink,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -796,6 +804,62 @@ pub const REGISTRY: &[CommandInfo] = &[
         None,
         true,
         Forms
+    ),
+    cmd!(
+        ToolSelectAnnot,
+        "tool.select_annot",
+        "menu.edit.tool_select_annot",
+        Some("shortcut.tool_select_annot"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolInk,
+        "tool.ink",
+        "menu.edit.tool_ink",
+        Some("shortcut.tool_ink"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolFreeText,
+        "tool.free_text",
+        "menu.edit.tool_free_text",
+        Some("shortcut.tool_free_text"),
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolAnnotRect,
+        "tool.annot_rect",
+        "menu.edit.tool_annot_rect",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolAnnotEllipse,
+        "tool.annot_ellipse",
+        "menu.edit.tool_annot_ellipse",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolAnnotLine,
+        "tool.annot_line",
+        "menu.edit.tool_annot_line",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        ToolLink,
+        "tool.link",
+        "menu.edit.tool_link",
+        None,
+        true,
+        Edit
     ),
     cmd!(
         HubFillSign,

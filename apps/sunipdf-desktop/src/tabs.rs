@@ -111,6 +111,9 @@ impl SuniApp {
         self.status_msg = t.status_msg;
         self.organize = t.organize;
         self.annotate = t.annotate;
+        // Le moteur a rechargé le document : indices et zones de lien relus.
+        self.annotate.adv.invalidate();
+        self.annotate.annotations_page = None;
         self.docinfo = t.docinfo;
         self.docinfo.bookmarks_open = bookmarks_open;
         self.annotate.comments_open = comments_open;

@@ -16,9 +16,9 @@ use sunipdf_core::{
 use sunipdf_i18n::{tr, tr_args};
 
 /// Tolérance de prise des poignées, en pixels écran.
-const HANDLE_PX: f32 = 10.0;
+pub(crate) const HANDLE_PX: f32 = 10.0;
 /// Les poignées sont dessinées à cette distance (pixels) hors des limites de l'objet.
-const HANDLE_OFFSET_PX: f32 = 3.0;
+pub(crate) const HANDLE_OFFSET_PX: f32 = 3.0;
 /// Distance (pixels) entre le cadre et la poignée de rotation.
 const ROTATE_GAP_PX: f32 = 24.0;
 
@@ -58,7 +58,7 @@ pub enum Corner {
 }
 
 impl Corner {
-    const ALL: [Corner; 4] = [
+    pub const ALL: [Corner; 4] = [
         Corner::BottomLeft,
         Corner::BottomRight,
         Corner::TopLeft,
@@ -66,7 +66,7 @@ impl Corner {
     ];
 
     /// Position de la poignée (points), `off` points hors des limites.
-    fn point(self, b: &PointRect, off: f32) -> (f32, f32) {
+    pub fn point(self, b: &PointRect, off: f32) -> (f32, f32) {
         match self {
             Corner::BottomLeft => (b.left - off, b.bottom - off),
             Corner::BottomRight => (b.right + off, b.bottom - off),
@@ -75,7 +75,7 @@ impl Corner {
         }
     }
 
-    fn cursor(self) -> CursorIcon {
+    pub fn cursor(self) -> CursorIcon {
         match self {
             Corner::BottomLeft | Corner::TopRight => CursorIcon::ResizeNeSw,
             Corner::BottomRight | Corner::TopLeft => CursorIcon::ResizeNwSe,
@@ -193,6 +193,14 @@ pub struct EditState {
     pub opacity_dirty: bool,
     /// Champ « Angle » de la barre d'objet.
     pub angle_field: f32,
+    /// Annotations avancées (réglages globaux, comme les couleurs de forme) : flèche au bout d'une
+    /// ligne, taille, fond et bordure des zones de texte libre.
+    pub arrow: bool,
+    pub free_text_size: f32,
+    /// Couleur du texte (noir par défaut), distincte de la couleur de trait des autres outils.
+    pub free_text_rgb: [u8; 3],
+    pub free_text_fill: bool,
+    pub free_text_border: f32,
     /// Presse-papiers d'objets : global (un onglet copie, un autre colle).
     pub clip: Option<ClipInfo>,
     /// Copie en vol : (objets à supprimer si c'est un « couper », page et chemin d'origine).
@@ -237,6 +245,11 @@ impl Default for EditState {
             opacity_pct: 100.0,
             opacity_dirty: false,
             angle_field: 0.0,
+            arrow: false,
+            free_text_size: 12.0,
+            free_text_rgb: [0, 0, 0],
+            free_text_fill: false,
+            free_text_border: 0.0,
             clip: None,
             pending_copy: None,
             pending_status: None,
@@ -456,7 +469,7 @@ impl SuniApp {
         self.edit.selection.as_ref().filter(|s| s.page == page)
     }
 
-    fn zoom_k(&self) -> f32 {
+    pub(crate) fn zoom_k(&self) -> f32 {
         self.effective_zoom * SCREEN_PER_PDF_POINT
     }
 
@@ -496,6 +509,9 @@ impl SuniApp {
     pub fn page_cursor(&self, page: usize, pt: Option<(f32, f32)>) -> CursorIcon {
         if self.sign.placing.is_some() {
             return CursorIcon::Crosshair;
+        }
+        if let Some(cursor) = self.adv_cursor(page, pt) {
+            return cursor;
         }
         match self.annotate.tool {
             Tool::Note
