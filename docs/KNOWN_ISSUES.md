@@ -191,4 +191,5 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
      caractère, chiffres Helvetica), non mesurée ; pas de signature **tapée** (police manuscrite : dépend de
      l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
-     page).
+     page) ; bibliothèque pleine : la barre de défilement flottante du corps de la boîte (cadre commun `dialog.rs`,
+     2 px, 6 px au survol) se superpose au bord droit de l'encadré et du pavé.

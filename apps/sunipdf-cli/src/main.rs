@@ -1005,6 +1005,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 img = sig::trim(&sig::remove_background(&img, t), 4).ok_or_else(|| {
                     EngineError::Other("image is empty after background removal".into())
                 })?;
+            } else if sig::is_blank(&img) {
+                // A fully transparent image would place an invisible object.
+                return Err(EngineError::Other("image is fully transparent".into()));
             }
             let (w, h) = img.dimensions();
             doc.add_image_data(p, &image::DynamicImage::ImageRgba8(img), x, y, width)?;

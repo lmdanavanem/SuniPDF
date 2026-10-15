@@ -47,6 +47,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   plus que le nom du fichier image, jamais son chemin complet.
 - Test CLI de bout en bout `add-image` (fond retiré, rognage, hauteur, rendu relu au pixel, `already_exists`,
   image vide) ; le nombre de commandes CLI annoncé dans la documentation (21) est corrigé : 33.
+- CLI `add-image` : une image entièrement transparente sans `--remove-background` est refusée (`image is fully
+  transparent`) au lieu de poser un objet invisible.
 
 ### Corrigé (tranche review-fixes : constats des revues adverses)
 - **Sécurité** : AES-128 refuse un mot de passe contenant des caractères hors Latin-1 imprimable

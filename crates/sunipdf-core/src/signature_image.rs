@@ -84,6 +84,12 @@ pub fn remove_background(img: &RgbaImage, threshold: u8) -> RgbaImage {
     out
 }
 
+/// Vrai si aucun pixel n'est visible (même seuil que `trim`) : poser l'image donnerait un objet
+/// invisible.
+pub fn is_blank(img: &RgbaImage) -> bool {
+    img.pixels().all(|p| p[3] <= EMPTY_ALPHA)
+}
+
 /// Rogne à la boîte englobante des pixels visibles, plus `padding` (borné à l'image) ; `None` si
 /// l'image est vide.
 pub fn trim(img: &RgbaImage, padding: u32) -> Option<RgbaImage> {
@@ -204,6 +210,13 @@ mod tests {
         let t = trim(&img, 100).unwrap();
         assert_eq!(t.dimensions(), (50, 30));
         assert!(trim(&RgbaImage::new(8, 8), 2).is_none());
+        assert!(!is_blank(&img));
+        assert!(is_blank(&RgbaImage::new(8, 8)));
+        assert!(is_blank(&RgbaImage::from_pixel(
+            4,
+            4,
+            image::Rgba([0, 0, 0, EMPTY_ALPHA])
+        )));
     }
 
     #[test]

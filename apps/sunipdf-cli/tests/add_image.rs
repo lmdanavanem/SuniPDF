@@ -122,5 +122,27 @@ fn add_image_removes_background_trims_and_renders() {
         "{e}"
     );
     assert!(!out2.exists());
+
+    // PNG entièrement transparent sans --remove-background : objet invisible refusé.
+    let clear = dir.join("clear.png");
+    image::RgbaImage::new(50, 50).save(&clear).unwrap();
+    let out3 = dir.join("out3.pdf");
+    let o = cli()
+        .arg("add-image")
+        .arg(fixture())
+        .arg("--image")
+        .arg(&clear)
+        .args(["--x", "10", "--y", "10", "--out"])
+        .arg(&out3)
+        .output()
+        .unwrap();
+    assert_eq!(o.status.code(), Some(1));
+    let e = stderr_json(&o);
+    assert_eq!(e["error"], "other");
+    assert!(
+        e["message"].as_str().unwrap().contains("fully transparent"),
+        "{e}"
+    );
+    assert!(!out3.exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
