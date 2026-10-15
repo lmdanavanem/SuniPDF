@@ -2,19 +2,19 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## After version 0.8.2
-Delivered: the six audit priorities, working tab close buttons, verified in-app updates, and English as the
-default interface and primary documentation language. French remains available.
+## Version 0.8.3: P1/P2 backlog completed
+The six earlier audit priorities, tab close buttons, in-app updates and English by default remain delivered.
+French remains available. Version 0.8.3 completes the four remaining corrections:
 
-| Priority | Remaining correction | Acceptance |
+| Priority | Correction | Regression coverage |
 |---|---|---|
-| P1 | Reject non-finite coordinates when adding text | NaN/infinity rejected before reaching the engine; no output modified |
-| P1 | Bound cached thumbnails in the Organize grid | Memory stays bounded when browsing a large document |
-| P2 | Reject or support multiline stamps | No silent loss of line breaks |
-| P2 | Reject or support free-text annotation opacity in the CLI | Requested opacity is applied or explicitly rejected |
+| P1 | Reject non-finite coordinates when adding text | NaN/infinity rejected before PDF mutation; existing output preserved |
+| P1 | Bound thumbnails in the Organize grid | Texture and pending-request caps on a 5,000-page document; stale results discarded |
+| P2 | Reject multiline stamps and page-number templates | CR/LF refused before mutation, including empty page selections |
+| P2 | Reject unsupported free-text opacity in the CLI | Only opacity 1 accepted; non-finite annotation opacity rejected; output preserved |
 
 Next feature candidates: autosave/crash recovery, printing, OCR, form-field creation, digital signatures,
-two-page view and richer text selection. These are planned work, not release 0.8.2 features.
+two-page view and richer text selection. These are planned work, not release 0.8.3 features.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.

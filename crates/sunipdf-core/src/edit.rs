@@ -446,6 +446,9 @@ impl Document<'_> {
         text: &str,
         style: &TextStyle,
     ) -> Result<usize, EngineError> {
+        if !x.is_finite() || !y.is_finite() {
+            return Err(EngineError::Other("invalid text coordinates".into()));
+        }
         if text.trim().is_empty() {
             return Err(EngineError::Other("empty text".into()));
         }

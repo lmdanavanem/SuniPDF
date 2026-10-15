@@ -3433,7 +3433,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sunipdf-cli"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "clap",
  "image",
@@ -3443,7 +3443,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-core"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "getrandom 0.3.4",
  "image",
@@ -3457,7 +3457,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-desktop"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "chrono",
  "eframe",
@@ -3479,7 +3479,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-i18n"
-version = "0.8.2"
+version = "0.8.3"
 dependencies = [
  "serde_json",
 ]

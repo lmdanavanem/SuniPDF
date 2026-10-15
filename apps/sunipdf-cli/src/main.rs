@@ -78,7 +78,7 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
-    /// Stamp text on pages (watermark): {n} = page number, {total} = page count.
+    /// Stamp a single line of text (watermark): {n} = page number, {total} = page count.
     Stamp {
         file: PathBuf,
         #[arg(long)]
@@ -104,7 +104,7 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
-    /// Add page numbers: --template uses {n} and {total} (default "{n} / {total}").
+    /// Add single-line page numbers: --template uses {n} and {total} (default "{n} / {total}").
     PageNumbers {
         file: PathBuf,
         #[arg(long, default_value = "{n} / {total}")]
@@ -584,6 +584,7 @@ enum Command {
         /// Line width in points (free text: border; default 2, free text 0).
         #[arg(long)]
         width: Option<f32>,
+        /// Opacity (0 to 1); free-text annotations only support 1.
         #[arg(long, default_value_t = 1.0)]
         opacity: f32,
         /// Link to a page (1-based).
@@ -701,6 +702,16 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
     }
     if let Command::Rotate { degrees, .. } = &cli.command {
         quarter_turn(*degrees)?;
+    }
+    if let Command::Annotate { kind, opacity, .. } = &cli.command {
+        if !opacity.is_finite() {
+            return Err(EngineError::Other("opacity must be finite".into()));
+        }
+        if kind == "freetext" && *opacity != 1.0 {
+            return Err(EngineError::Other(
+                "free-text annotations only support --opacity 1".into(),
+            ));
+        }
     }
     let engine = Engine::new()?;
     match cli.command {

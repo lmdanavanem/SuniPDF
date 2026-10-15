@@ -1,4 +1,4 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.8.2)
+# État du projet — mis à jour le 2026-10-16 (version 0.8.3)
 
 [English](PROJECT_STATUS.md)
 
@@ -54,7 +54,7 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 ## Dernière exécution (2026-10-16, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
-| `cargo test --workspace --locked -j 2` | 265/265 OK, 3 ignorés (2 mesures et 1 contrôle réseau réel) : core 57 unitaires + 82 intégration + 7 protection, application 96, i18n 6, CLI 10 unitaires + 1 `add_image` + 3 `annotations_cli` + 2 `forms_cli` + 1 `redact_cli` |
+| `cargo test --workspace --locked -j 2` | 276/276 OK, 3 ignorés (2 mesures et 1 contrôle réseau réel) : core 57 unitaires + 84 intégration + 7 protection, application 102, i18n 6, CLI 10 unitaires + 1 `add_image` + 6 `annotations_cli` + 2 `forms_cli` + 1 `redact_cli` |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 avertissement |
 | `cargo fmt --all -- --check` | OK |
 | `scripts\check-i18n.ps1` | OK : 726 clés bilingues (fr-FR / en-US identiques) |
@@ -71,6 +71,9 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 Double page et rotation de vue, sélection de texte sur plusieurs pages, sous-ensemble des polices incorporées (polices entières seulement), collage d'objets éditable, rotation/redimensionnement de groupe, création de champs de formulaire et FDF/XFDF (formulaires XFA en lecture seule), OCR, conversions Office, signatures numériques, impression, validation sur matériel ARM64 et benchmarks plus complets.
 
 ## Journal
+- 2026-10-16 : version 0.8.3, quatre corrections P1/P2 terminées : coordonnées de texte finies, textures et
+  demandes de miniatures bornées dans Organiser/le panneau avec gestion des résultats périmés et des échecs,
+  tampons et modèles de numérotation sur une ligne, refus explicite de l'opacité non prise en charge du texte libre CLI.
 - 2026-10-16 : version 0.8.2, notifications au démarrage, téléchargement vérifié et installation explicite
   après confirmation de fermeture. Anglais par défaut et documentation principale anglaise ; français et
   préférences existantes conservés. Retour arrière des mises à niveau MSI.

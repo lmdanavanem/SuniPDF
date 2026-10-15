@@ -228,6 +228,7 @@ the text tool (**T**) of Edit a PDF.
 size, colour, bold, angle, opacity and position (centre or one of six edges). **Number Pages…** adds a
 number from a template: `{n}` is the page number, `{total}` the page count (for example
 `Page {n} / {total}`). Each stamp is a page object: select, move, delete and undo it like any other.
+Stamp text and page-number templates must fit on one line; CR/LF line breaks are rejected.
 
 ## Organizing pages
 
@@ -320,6 +321,9 @@ existing output file (6). No command overwrites an existing file without `--over
 writes PNG (`--region x,y,w,h`: an area in pixels of the page rendered at `--scale`, for scales where the
 whole page would exceed 16,384 px); `rotate` accepts 90, 180, 270 or -90. Coordinates (`search`, `objects`, `add-text`…) are in
 points, origin at the bottom-left of the page **as displayed** (after rotation and cropping).
+`add-text` requires finite `--x` and `--y` coordinates. CLI `annotate --kind freetext` accepts
+only `--opacity 1`; other annotation opacity values must be finite. Invalid values are rejected
+before saving, including when `--overwrite` is supplied.
 
 ## Current limits
 

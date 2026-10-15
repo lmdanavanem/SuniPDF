@@ -98,6 +98,11 @@ impl Document<'_> {
         pages: Option<&[usize]>,
         stamp: &Stamp,
     ) -> Result<usize, EngineError> {
+        if stamp.text.contains('\n') || stamp.text.contains('\r') {
+            return Err(EngineError::Other(
+                "stamp text must be a single line".into(),
+            ));
+        }
         if stamp.text.trim().is_empty() {
             return Err(EngineError::Other("empty stamp text".into()));
         }

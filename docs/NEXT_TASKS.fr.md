@@ -2,19 +2,19 @@
 
 [English](NEXT_TASKS.md)
 
-## Après la version 0.8.2
-Livrés : six priorités de l'audit, croix des onglets fonctionnelle, mises à jour intégrées vérifiées et anglais
-par défaut dans l'interface et la documentation principale. Le français reste disponible.
+## Version 0.8.3 : backlog P1/P2 terminé
+Les six priorités précédentes de l'audit, les croix des onglets, les mises à jour intégrées et l'anglais par défaut
+restent livrés. Le français reste disponible. La 0.8.3 termine les quatre corrections restantes :
 
-| Priorité | Correction restante | Critère de validation |
+| Priorité | Correction | Couverture de régression |
 |---|---|---|
-| P1 | Refuser les coordonnées non finies lors de l'ajout de texte | NaN/infini refusés avant le moteur ; aucune sortie modifiée |
-| P1 | Borner le cache de miniatures de la grille Organiser | Mémoire bornée lors du parcours d'un document volumineux |
-| P2 | Refuser ou gérer les tampons multilignes | Aucun saut de ligne perdu silencieusement |
-| P2 | Refuser ou gérer l'opacité du texte libre dans la CLI | Opacité appliquée ou refus explicite |
+| P1 | Refuser les coordonnées non finies lors de l'ajout de texte | NaN/infini refusés avant mutation ; sortie existante préservée |
+| P1 | Borner les miniatures de la grille Organiser | Plafonds des textures et demandes sur 5 000 pages ; résultats périmés écartés |
+| P2 | Refuser les tampons et modèles de numérotation multilignes | CR/LF refusés avant mutation, même sans page sélectionnée |
+| P2 | Refuser l'opacité non prise en charge du texte libre dans la CLI | Seule l'opacité 1 est acceptée ; opacité non finie refusée ; sortie préservée |
 
 Fonctions suivantes envisagées : sauvegarde automatique/récupération, impression, OCR, création de champs,
-signature numérique, double page et sélection de texte enrichie. Elles ne sont pas livrées dans la 0.8.2.
+signature numérique, double page et sélection de texte enrichie. Elles ne sont pas livrées dans la 0.8.3.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.

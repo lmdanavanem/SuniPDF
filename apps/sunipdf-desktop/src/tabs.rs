@@ -59,6 +59,7 @@ impl SuniApp {
         // Textures libérées (GPU des onglets inactifs), époque suivante : tuiles en vol ignorées.
         self.view.reset();
         self.thumbs_pending.clear();
+        self.thumbs_failed.clear();
         // La sélection d'objet désigne un index du document actif : elle ne doit jamais
         // survivre à un changement de document (Suppr agirait sur l'autre onglet).
         self.edit.reset_for_tab();
@@ -106,6 +107,7 @@ impl SuniApp {
         self.page_input = t.page_input;
         self.thumbnails = t.thumbnails;
         self.thumbs_pending.clear();
+        self.thumbs_failed.clear();
         self.thumb_px = t.thumb_px;
         self.find = t.find;
         self.dirty = t.dirty;

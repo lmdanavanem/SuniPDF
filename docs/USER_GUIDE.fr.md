@@ -246,6 +246,7 @@ courante : taille, couleur, gras, angle, opacité et position (centre ou l'un de
 pages…** ajoute un numéro selon un modèle : `{n}` est le numéro de la page, `{total}` le nombre de pages
 (par exemple `Page {n} / {total}`). Chaque tampon est un objet de la page : il se sélectionne, se déplace, se
 supprime et s'annule comme les autres.
+Les textes de tampon et modèles de numérotation tiennent sur une seule ligne ; les sauts CR/LF sont refusés.
 
 ## Organiser les pages
 
@@ -345,6 +346,9 @@ sans l'option `--overwrite`. `render` écrit toujours du PNG (`--region x,y,l,h`
 rendue à `--scale`, pour les échelles où la page entière dépasserait 16 384 px) ; `rotate` accepte 90, 180, 270 ou -90. Les
 coordonnées (`search`, `objects`, `add-text`…) sont en points, origine en bas à gauche de la page **telle
 qu'affichée** (après rotation et recadrage).
+`add-text` exige des coordonnées `--x` et `--y` finies. La CLI `annotate --kind freetext` accepte
+uniquement `--opacity 1` ; les autres opacités d'annotation doivent être finies. Les valeurs invalides
+sont refusées avant l'enregistrement, y compris avec `--overwrite`.
 
 ## Limites actuelles
 

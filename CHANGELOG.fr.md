@@ -7,6 +7,16 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.8.3] — 2026-10-16
+
+### Corrigé
+- L'ajout de texte refuse les coordonnées NaN et infinies avant de modifier le document.
+- Organiser les pages borne les textures des miniatures et les rendus en attente sur les gros documents ;
+  les résultats périmés sont écartés et les échecs de miniature ne bloquent pas la file.
+- Les tampons et modèles de numérotation refusent explicitement les sauts de ligne.
+- La CLI refuse les opacités non prises en charge pour le texte libre ; l'opacité d'une annotation doit être finie.
+  Les commandes refusées laissent les fichiers de sortie existants intacts.
+
 ## [0.8.2] — 2026-10-16
 
 ### Ajouté

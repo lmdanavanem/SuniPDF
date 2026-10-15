@@ -172,7 +172,10 @@ A27. **Very long documents**: positions in `f32`; the zoom is capped so that the
      <= 8,000,000 logical px ("Maximum zoom reached for this document" message). A 5000-page Letter
      document is thus limited to about 150%.
 A28. **View memory**: bounded but notable. Page textures 192 MiB (excluding screen textures), engine
-     cache 256 MiB (tiles and thumbnails), 256 thumbnails at most. Measured in a debug build, 500 pages,
+     cache 256 MiB (tiles and thumbnails), 256 thumbnail textures at most in both the sidebar and Organize
+     grid. Pending thumbnail requests also have a 256-entry cap; stale results are discarded.
+     These caps are regression-tested on a 5,000-page grid. The following measurement predates 0.8.3 and
+     covers the reading view: measured in a debug build, 500 pages,
      300 "Page Down" then End then 300 "Page Up": private memory stable around 810-830 MB (WorkingSet
      438 MB) after 175 MB at opening; no growth beyond (NVIDIA OpenGL driver, system copies of the
      textures included). Caps as constants (`view.rs`, `worker.rs`), no user setting.

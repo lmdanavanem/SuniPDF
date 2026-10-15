@@ -109,6 +109,8 @@ fn annotate_list_reply_status_and_delete_round_trip() {
             "Bonjour tout le monde, voici un texte qui passe à la ligne",
             "--size",
             "14",
+            "--opacity",
+            "1",
         ],
     );
     let e = step(
@@ -165,6 +167,7 @@ fn annotate_list_reply_status_and_delete_round_trip() {
     );
     assert_eq!(list[1]["arrow"], true);
     assert_eq!(list[3]["font_size"], 14.0);
+    assert_eq!(list[3]["opacity"], 1.0);
     assert!(list[3]["rect"][3].as_f64().unwrap() == 520.0);
     assert!(list[3]["contents"].as_str().unwrap().starts_with("Bonjour"));
     assert_eq!(list[4]["link"], serde_json::json!({ "page": 2 }));
@@ -359,4 +362,97 @@ fn foreign_annotations_are_listed_with_their_thread() {
     );
     assert_eq!(list[10]["link"], serde_json::json!({ "unsupported": true }));
     assert!(list.iter().all(|a| a["ours"] == false));
+}
+
+fn rejects_without_writing(command: &str, args: &[&str], message: &str, name: &str) {
+    let dir =
+        std::env::temp_dir().join(format!("sunipdf-cli-invalid-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let base = fixture("two-pages.pdf");
+    let original = std::fs::read(&base).unwrap();
+    for overwrite in [false, true] {
+        let out = dir.join(if overwrite { "existing.pdf" } else { "new.pdf" });
+        if overwrite {
+            std::fs::write(&out, &original).unwrap();
+        }
+        let input = if overwrite { &out } else { &base };
+        let mut c = cli();
+        c.arg(command).arg(input).args(args).arg("--out").arg(&out);
+        if overwrite {
+            c.arg("--overwrite");
+        }
+        let result = c.output().unwrap();
+        assert_eq!(
+            result.status.code(),
+            Some(1),
+            "{command} {args:?}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        let error = stderr_json(&result);
+        assert_eq!(error["error"], "other", "{command} {args:?}");
+        assert!(
+            error["message"].as_str().unwrap().contains(message),
+            "{error}"
+        );
+        assert!(result.stdout.is_empty());
+        if overwrite {
+            assert_eq!(
+                std::fs::read(&out).unwrap(),
+                original,
+                "rejection must preserve an existing input/output PDF"
+            );
+        } else {
+            assert!(!out.exists(), "rejection must not create an output PDF");
+        }
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn free_text_rejects_unsupported_opacity_without_writing_output() {
+    rejects_without_writing(
+        "annotate",
+        &[
+            "--kind",
+            "freetext",
+            "--rect",
+            "10,10,160,40",
+            "--text",
+            "Rejected",
+            "--opacity",
+            "0.5",
+        ],
+        "free-text annotations only support --opacity 1",
+        "freetext-opacity",
+    );
+}
+
+#[test]
+fn annotation_opacity_rejects_nonfinite_values_without_writing_output() {
+    for value in ["NaN", "inf", "-inf"] {
+        let opacity = format!("--opacity={value}");
+        rejects_without_writing(
+            "annotate",
+            &["--kind", "square", "--rect", "10,10,160,40", &opacity],
+            "opacity must be finite",
+            "nonfinite-opacity",
+        );
+    }
+}
+
+#[test]
+fn nonfinite_text_coordinates_and_multiline_stamps_preserve_output() {
+    rejects_without_writing(
+        "add-text",
+        &["--x", "NaN", "--y", "72", "--text", "Rejected"],
+        "invalid text coordinates",
+        "nonfinite-text",
+    );
+    rejects_without_writing(
+        "stamp",
+        &["--text", "Line one\nLine two"],
+        "stamp text must be a single line",
+        "multiline-stamp",
+    );
 }

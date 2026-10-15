@@ -543,6 +543,10 @@ pub enum Response {
         page: usize,
         image: Arc<RenderedPage>,
     },
+    ThumbnailFailed {
+        page: usize,
+        width_px: u32,
+    },
     SearchResults {
         generation: u64,
         matches: Vec<TextMatch>,
@@ -1367,16 +1371,19 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 continue;
             }
             Request::Thumbnail { page, width_px } => {
-                let Some(doc) = &state.document else { continue };
-                let Ok(size) = doc.page_size(page) else {
-                    continue;
-                };
-                let scale = width_px.max(1) as f32 / size.width_pt;
-                match state.render_cached(page, scale) {
+                let image = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| doc.page_size(page))
+                    .and_then(|size| {
+                        state.render_cached(page, width_px.max(1) as f32 / size.width_pt)
+                    });
+                match image {
                     Ok(image) => Response::Thumbnail { page, image },
                     Err(e) => {
                         log::warn!("miniature page {page} impossible : {e}");
-                        continue;
+                        Response::ThumbnailFailed { page, width_px }
                     }
                 }
             }
@@ -1649,6 +1656,38 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
 mod tests {
     use super::*;
     use sunipdf_core::PixelRect;
+
+    #[test]
+    fn organize_thumbnail_failures_are_acknowledged_by_the_engine_worker() {
+        let worker = Worker::spawn(egui::Context::default());
+        let timeout = std::time::Duration::from_secs(10);
+        match worker
+            .rx
+            .recv_timeout(timeout)
+            .expect("engine startup response")
+        {
+            Response::EngineReady => {}
+            Response::EngineFailed(error) => panic!("engine startup failed: {error}"),
+            _ => panic!("unexpected startup response"),
+        }
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(
+            worker.rx.recv_timeout(timeout).unwrap(),
+            Response::Opened(_)
+        ));
+        for (page, width_px) in [(usize::MAX, 144), (0, u32::MAX)] {
+            worker.send(Request::Thumbnail { page, width_px });
+            assert!(matches!(
+                worker.rx.recv_timeout(timeout).expect("failed thumbnails must release their request quota"),
+                Response::ThumbnailFailed { page: failed_page, width_px: failed_width }
+                    if failed_page == page && failed_width == width_px
+            ));
+        }
+    }
 
     fn job(page: usize) -> TileJob {
         TileJob {

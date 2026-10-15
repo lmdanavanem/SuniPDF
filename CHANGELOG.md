@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.8.3] — 2026-10-16
+
+### Fixed
+- Adding text rejects NaN and infinite coordinates before changing the document.
+- Organize pages bounds thumbnail textures and queued renders while browsing large documents;
+  outdated results are discarded and failed thumbnails do not block the queue.
+- Stamps and page-number templates explicitly reject line breaks.
+- CLI free-text annotations reject unsupported opacity values; annotation opacity must be finite.
+  Rejected commands leave existing output files untouched.
+
 ## [0.8.2] — 2026-10-16
 
 ### Added

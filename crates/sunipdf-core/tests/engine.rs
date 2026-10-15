@@ -1185,6 +1185,60 @@ fn edit_rotate_duplicate_reorder() {
     assert!(doc.reorder_object(0, 999, true).is_err());
 }
 
+fn assert_same_pdf_contents(before: &[u8], after: &[u8]) {
+    let mut before = lopdf::Document::load_mem(before).unwrap();
+    let mut after = lopdf::Document::load_mem(after).unwrap();
+    // PDFium may regenerate the trailer ID when serializing an unchanged document.
+    before.trailer.remove(b"ID");
+    after.trailer.remove(b"ID");
+    assert_eq!(after.objects, before.objects);
+    assert_eq!(after.trailer, before.trailer);
+}
+
+#[test]
+fn add_text_rejects_non_finite_coordinates_without_mutation() {
+    use sunipdf_core::TextStyle;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.snapshot().unwrap();
+    for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        for (x, y) in [(bad, 40.0), (40.0, bad)] {
+            assert!(
+                matches!(
+                    doc.add_text(0, x, y, "Invalid coordinates", &TextStyle::default()),
+                    Err(EngineError::Other(message)) if message == "invalid text coordinates"
+                ),
+                "non-finite coordinates must be rejected: ({x}, {y})"
+            );
+            assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+        }
+    }
+}
+
+#[test]
+fn stamps_reject_line_breaks_without_mutation() {
+    use sunipdf_core::Stamp;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.snapshot().unwrap();
+    for text in ["First\nSecond", "First\r\nSecond", "First\rSecond", "\n"] {
+        let stamp = Stamp {
+            text: text.into(),
+            ..Default::default()
+        };
+        for pages in [None, Some([].as_slice())] {
+            assert!(
+                matches!(
+                    doc.stamp_pages(pages, &stamp),
+                    Err(EngineError::Other(message)) if message == "stamp text must be a single line"
+                ),
+                "line breaks must be rejected even without selected pages: {text:?}"
+            );
+            assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+        }
+    }
+}
+
 #[test]
 fn stamp_watermark_and_page_numbers() {
     use sunipdf_core::{Stamp, StampPosition, TextStyle};

@@ -84,7 +84,7 @@ impl SuniApp {
         if px != self.thumb_px {
             self.thumb_px = px;
             self.thumbnails.clear();
-            self.thumbs_pending.clear();
+            self.thumbs_failed.clear();
         }
         let max_ratio = sizes
             .iter()
@@ -105,6 +105,9 @@ impl SuniApp {
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show_rows(ui, cell_h + gap, rows, |ui, row_range| {
+                self.retain_thumbnail_window(
+                    row_range.start * columns..(row_range.end * columns).min(count),
+                );
                 for row in row_range {
                     ui.horizontal(|ui| {
                         ui.add_space(gap);
@@ -115,11 +118,7 @@ impl SuniApp {
                             }
                             let ratio = sizes[page].height_pt / sizes[page].width_pt;
                             let img_size = egui::vec2(CELL_W, CELL_W * ratio);
-                            if !self.thumbnails.contains_key(&page)
-                                && self.thumbs_pending.insert(page)
-                            {
-                                self.worker.send(Request::Thumbnail { page, width_px: px });
-                            }
+                            self.request_thumbnail(page, px);
                             let selected = self.organize.selected.contains(&page);
                             let (cell_rect, resp) = ui.allocate_exact_size(
                                 egui::vec2(CELL_W + 16.0, cell_h),

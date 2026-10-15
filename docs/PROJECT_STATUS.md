@@ -1,4 +1,4 @@
-# Project status - updated 2026-10-16 (version 0.8.2)
+# Project status - updated 2026-10-16 (version 0.8.3)
 
 [Français](PROJECT_STATUS.fr.md)
 
@@ -54,7 +54,7 @@ Rule: a ticked box = code present **and** command executed with a result observe
 ## Last run (2026-10-16, **MSVC** target, `-j 2`)
 | Command | Result |
 |---|---|
-| `cargo test --workspace --locked -j 2` | 265/265 passed, 3 ignored (2 measurements and 1 live network check): core 57 unit + 82 integration + 7 protection, application 96, i18n 6, CLI 10 unit + 1 `add_image` + 3 `annotations_cli` + 2 `forms_cli` + 1 `redact_cli` |
+| `cargo test --workspace --locked -j 2` | 276/276 passed, 3 ignored (2 measurements and 1 live network check): core 57 unit + 84 integration + 7 protection, application 102, i18n 6, CLI 10 unit + 1 `add_image` + 6 `annotations_cli` + 2 `forms_cli` + 1 `redact_cli` |
 | `cargo clippy --workspace --all-targets -- -D warnings` | 0 warnings |
 | `cargo fmt --all -- --check` | OK |
 | `scripts\check-i18n.ps1` | OK: 726 bilingual keys (fr-FR / en-US identical) |
@@ -71,6 +71,9 @@ Rule: a ticked box = code present **and** command executed with a result observe
 Two-page view and view rotation, text selection across several pages, subsetting of embedded fonts (whole fonts only), editable object pasting, group rotation/resizing, form field creation and FDF/XFDF (XFA forms read-only), OCR, Office conversions, digital signatures, printing, ARM64 hardware validation and broader benchmarks.
 
 ## Log
+- 2026-10-16: version 0.8.3 completes the four P1/P2 backlog fixes: finite text coordinates, bounded
+  Organize/sidebar thumbnail textures and requests with stale/failure handling, single-line stamps and
+  page-number templates, and explicit CLI rejection of unsupported free-text opacity.
 - 2026-10-16: version 0.8.2 adds startup notifications, verified downloads and explicit installation after
   document-close confirmations. English is the default interface and primary documentation language;
   French and existing preferences are retained. MSI upgrades support rollback.

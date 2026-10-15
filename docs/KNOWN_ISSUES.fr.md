@@ -172,7 +172,10 @@ A27. **Très longs documents** : positions en `f32` ; le zoom est plafonné pour
      <= 8 000 000 px logiques (message « Zoom maximal atteint pour ce document »). Un document de 5000 pages
      Lettre est ainsi limité à environ 150 %.
 A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (hors textures de l'écran), cache du
-     moteur 256 Mio (tuiles et miniatures), 256 miniatures au plus. Mesuré en build de débogage, 500 pages,
+     moteur 256 Mio (tuiles et miniatures), 256 textures de miniatures au plus dans le panneau et la grille
+     Organiser. Les demandes de miniatures en attente sont aussi plafonnées à 256 ; les résultats périmés
+     sont écartés. Tests de régression sur une grille de 5 000 pages. La mesure suivante est antérieure
+     à la 0.8.3 et concerne la lecture : build de débogage, 500 pages,
      300 « Page suiv. » puis Fin puis 300 « Page préc. » : mémoire privée stable vers 810-830 Mo (WorkingSet
      438 Mo) après 175 Mo à l'ouverture ; pas de croissance au-delà (pilote OpenGL NVIDIA, copies système des
      textures comprises). Plafonds en constantes (`view.rs`, `worker.rs`), pas de réglage utilisateur.

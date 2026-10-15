@@ -213,7 +213,10 @@ pub struct SuniApp {
     /// Fichiers à ouvrir dès que le moteur est prêt (arguments de ligne de commande), un onglet chacun.
     pending_files: Vec<PathBuf>,
     pub thumbnails: HashMap<usize, egui::TextureHandle>,
+    /// Requests remain registered across viewport and width changes until acknowledged.
     pub thumbs_pending: HashSet<usize>,
+    pub thumbs_failed: HashSet<usize>,
+    thumb_window: std::ops::Range<usize>,
     pub thumb_px: u32,
     pub find: FindState,
     pub dirty: bool,
@@ -313,6 +316,8 @@ impl SuniApp {
             pending_files: initial_files,
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
+            thumbs_failed: HashSet::new(),
+            thumb_window: 0..0,
             thumb_px: 0,
             find: FindState {
                 open: false,
@@ -387,6 +392,7 @@ impl SuniApp {
         self.page_input.clear();
         self.thumbnails.clear();
         self.thumbs_pending.clear();
+        self.thumbs_failed.clear();
         self.close_find();
         self.organize = Default::default();
         self.annotate = Default::default();
@@ -531,6 +537,7 @@ impl SuniApp {
                     // Rien du document précédent ne doit apparaître dans le nouveau.
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
+                    self.thumbs_failed.clear();
                     self.edit.reset_for_tab();
                     self.annotate.adv = Default::default();
                     self.annotate.annotations_page = None;
@@ -577,8 +584,11 @@ impl SuniApp {
                     self.on_tile_failed(epoch, job, error)
                 }
                 Response::Thumbnail { page, image } => {
-                    self.thumbs_pending.remove(&page);
-                    if image.width == self.thumb_px {
+                    if self.thumbs_pending.remove(&page)
+                        && image.width == self.thumb_px
+                        && self.thumb_window.contains(&page)
+                        && self.document.is_some()
+                    {
                         let color = egui::ColorImage::from_rgba_unmultiplied(
                             [image.width as usize, image.height as usize],
                             &image.rgba,
@@ -589,6 +599,15 @@ impl SuniApp {
                             egui::TextureOptions::LINEAR,
                         );
                         self.thumbnails.insert(page, handle);
+                    }
+                }
+                Response::ThumbnailFailed { page, width_px } => {
+                    if self.thumbs_pending.remove(&page)
+                        && width_px == self.thumb_px
+                        && self.thumb_window.contains(&page)
+                        && self.document.is_some()
+                    {
+                        self.thumbs_failed.insert(page);
                     }
                 }
                 Response::DocumentChanged(DocState {
@@ -616,6 +635,7 @@ impl SuniApp {
                     }
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
+                    self.thumbs_failed.clear();
                     self.find.searched = None;
                     self.find.matches.clear();
                     self.annotate.selection = None;
@@ -1587,6 +1607,27 @@ impl SuniApp {
         self.document_view(ctx, ui);
     }
 
+    pub(crate) fn retain_thumbnail_window(&mut self, visible: std::ops::Range<usize>) {
+        let margin = crate::view::THUMB_KEEP.saturating_sub(visible.len()) / 2;
+        let start = visible.start.saturating_sub(margin);
+        self.thumb_window = start..start.saturating_add(crate::view::THUMB_KEEP);
+        self.thumbnails
+            .retain(|page, _| self.thumb_window.contains(page));
+        self.thumbs_failed
+            .retain(|page| self.thumb_window.contains(page));
+    }
+
+    pub(crate) fn request_thumbnail(&mut self, page: usize, width_px: u32) {
+        if self.thumbs_pending.len() < crate::view::THUMB_KEEP
+            && self.thumb_window.contains(&page)
+            && !self.thumbnails.contains_key(&page)
+            && !self.thumbs_failed.contains(&page)
+            && self.thumbs_pending.insert(page)
+        {
+            self.worker.send(Request::Thumbnail { page, width_px });
+        }
+    }
+
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
     fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
@@ -1602,11 +1643,7 @@ impl SuniApp {
         if px != self.thumb_px {
             self.thumb_px = px;
             self.thumbnails.clear();
-            self.thumbs_pending.clear();
-        }
-        if self.thumbnails.len() > crate::view::THUMB_KEEP {
-            // Long document parcouru : seules les miniatures proches de la page courante restent.
-            self.thumbnails.retain(|p, _| p.abs_diff(current) <= 100);
+            self.thumbs_failed.clear();
         }
         let max_ratio = doc
             .info
@@ -1634,12 +1671,11 @@ impl SuniApp {
             }
         }
         let out = area.show_rows(ui, row_h, count, |ui, rows| {
+            self.retain_thumbnail_window(rows.clone());
             for page in rows {
                 let ratio = sizes[page].height_pt / sizes[page].width_pt;
                 let size = egui::vec2(thumb_w, thumb_w * ratio);
-                if !self.thumbnails.contains_key(&page) && self.thumbs_pending.insert(page) {
-                    self.worker.send(Request::Thumbnail { page, width_px: px });
-                }
+                self.request_thumbnail(page, px);
                 ui.vertical_centered(|ui| {
                     let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
                     resp.dnd_set_drag_payload(page);
@@ -2454,6 +2490,8 @@ mod tests {
             pending_files: vec![],
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
+            thumbs_failed: HashSet::new(),
+            thumb_window: 0..0,
             thumb_px: 0,
             find: FindState::default(),
             dirty: false,
@@ -2511,6 +2549,255 @@ mod tests {
             }],
             form: sunipdf_core::FormKind::AcroForm,
         }
+    }
+
+    fn organize_frame(app: &mut SuniApp, ctx: &egui::Context, offset: f32) {
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(900.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                let id = ui.make_persistent_id(egui::IdSalt::new("scroll_area"));
+                let mut state = egui::scroll_area::State::load(ctx, id).unwrap_or_default();
+                state.offset.y = offset;
+                state.store(ctx, id);
+                app.organize_grid(ctx, ui);
+            },
+        );
+        out.textures_delta.clear();
+    }
+
+    fn sidebar_frame(app: &mut SuniApp, ctx: &egui::Context) {
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(320.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |ui| app.thumbnails_panel(ctx, ui),
+        );
+        out.textures_delta.clear();
+    }
+
+    fn thumbnail_jobs(requests: &std::sync::mpsc::Receiver<Request>) -> Vec<(usize, u32)> {
+        requests
+            .try_iter()
+            .filter_map(|request| match request {
+                Request::Thumbnail { page, width_px } => Some((page, width_px)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn deliver_thumbnails(responses: &std::sync::mpsc::Sender<Response>, jobs: &[(usize, u32)]) {
+        for &(page, width) in jobs {
+            responses
+                .send(Response::Thumbnail {
+                    page,
+                    image: std::sync::Arc::new(sunipdf_core::RenderedPage {
+                        page_index: page,
+                        width,
+                        height: 1,
+                        rgba: vec![255; width as usize * 4],
+                    }),
+                })
+                .unwrap();
+        }
+    }
+
+    #[test]
+    fn organize_browsing_large_document_keeps_thumbnail_textures_bounded() {
+        let (mut app, requests, responses) = test_app();
+        let sizes = &mut app.document.as_mut().unwrap().info.page_sizes;
+        sizes.resize(5000, sizes[0]);
+        app.organize.active = true;
+        let ctx = egui::Context::default();
+        let mut furthest_page = 0;
+        for step in 0..80 {
+            organize_frame(&mut app, &ctx, step as f32 * 1500.0);
+            let jobs = thumbnail_jobs(&requests);
+            assert!(
+                jobs.len() < 100,
+                "only virtualized rows should request thumbnails"
+            );
+            furthest_page = furthest_page.max(jobs.iter().map(|job| job.0).max().unwrap_or(0));
+            deliver_thumbnails(&responses, &jobs);
+            app.handle_responses(&ctx);
+            assert!(
+                app.thumbnails.len() <= crate::view::THUMB_KEEP,
+                "scrolling must not retain every previously visited page thumbnail"
+            );
+            assert!(jobs.iter().all(|job| app.thumbnails.contains_key(&job.0)));
+        }
+        assert!(
+            furthest_page > 1000,
+            "the test must browse beyond the cache window"
+        );
+        assert_eq!(app.document.as_ref().unwrap().page, 0);
+    }
+
+    #[test]
+    fn organize_fast_scroll_keeps_pending_thumbnail_requests_bounded() {
+        let (mut app, requests, responses) = test_app();
+        let sizes = &mut app.document.as_mut().unwrap().info.page_sizes;
+        sizes.resize(5000, sizes[0]);
+        app.organize.active = true;
+        let ctx = egui::Context::default();
+        let mut jobs = Vec::new();
+        for step in 0..80 {
+            organize_frame(&mut app, &ctx, step as f32 * 1500.0);
+            jobs.extend(thumbnail_jobs(&requests));
+        }
+        assert!(
+            jobs.len() <= crate::view::THUMB_KEEP,
+            "fast scrolling must not enqueue the whole document before the worker responds"
+        );
+        assert!(app.thumbs_pending.len() <= crate::view::THUMB_KEEP);
+        deliver_thumbnails(&responses, &jobs);
+        app.handle_responses(&ctx);
+        assert!(app.thumbs_pending.is_empty());
+        organize_frame(&mut app, &ctx, 118_500.0);
+        let visible_jobs = thumbnail_jobs(&requests);
+        assert!(!visible_jobs.is_empty());
+        assert!(visible_jobs.iter().all(|job| job.0 > 1000));
+    }
+
+    #[test]
+    fn organize_discards_thumbnail_responses_from_a_previous_scroll_window() {
+        let (mut app, requests, responses) = test_app();
+        let sizes = &mut app.document.as_mut().unwrap().info.page_sizes;
+        sizes.resize(5000, sizes[0]);
+        app.organize.active = true;
+        let ctx = egui::Context::default();
+        organize_frame(&mut app, &ctx, 0.0);
+        let old_jobs = thumbnail_jobs(&requests);
+        assert!(!old_jobs.is_empty());
+        organize_frame(&mut app, &ctx, 100_000.0);
+        let visible_jobs = thumbnail_jobs(&requests);
+        assert!(!visible_jobs.is_empty());
+        assert!(visible_jobs.iter().all(|job| job.0 > 1000));
+        deliver_thumbnails(&responses, &old_jobs);
+        app.handle_responses(&ctx);
+        assert!(
+            app.thumbnails.is_empty(),
+            "late responses outside the current cache window must not allocate textures"
+        );
+        deliver_thumbnails(&responses, &visible_jobs);
+        app.handle_responses(&ctx);
+        assert!(!visible_jobs.is_empty());
+        assert!(visible_jobs
+            .iter()
+            .all(|job| app.thumbnails.contains_key(&job.0)));
+    }
+
+    #[test]
+    fn organize_failed_thumbnails_release_quota_without_retries_each_frame() {
+        let (mut app, requests, responses) = test_app();
+        let sizes = &mut app.document.as_mut().unwrap().info.page_sizes;
+        sizes.resize(5000, sizes[0]);
+        app.organize.active = true;
+        let ctx = egui::Context::default();
+        let mut jobs = Vec::new();
+        for step in 0..80 {
+            organize_frame(&mut app, &ctx, step as f32 * 1500.0);
+            jobs.extend(thumbnail_jobs(&requests));
+        }
+        assert_eq!(jobs.len(), crate::view::THUMB_KEEP);
+        for (page, width_px) in jobs {
+            responses
+                .send(Response::ThumbnailFailed { page, width_px })
+                .unwrap();
+        }
+        app.handle_responses(&ctx);
+        assert!(app.thumbs_pending.is_empty());
+        organize_frame(&mut app, &ctx, 118_500.0);
+        let visible_jobs = thumbnail_jobs(&requests);
+        assert!(!visible_jobs.is_empty());
+        assert!(visible_jobs.iter().all(|job| job.0 > 1000));
+        for (page, width_px) in visible_jobs {
+            responses
+                .send(Response::ThumbnailFailed { page, width_px })
+                .unwrap();
+        }
+        app.handle_responses(&ctx);
+        assert!(app.thumbs_pending.is_empty());
+        assert!(!app.thumbs_failed.is_empty());
+        for _ in 0..5 {
+            organize_frame(&mut app, &ctx, 118_500.0);
+            assert!(
+                thumbnail_jobs(&requests).is_empty(),
+                "failed pages must not spin on every frame"
+            );
+        }
+        app.go_to_page(4999);
+        assert_eq!(app.document.as_ref().unwrap().page, 4999);
+        organize_frame(&mut app, &ctx, 0.0);
+        assert!(app.thumbs_failed.is_empty());
+        organize_frame(&mut app, &ctx, 118_500.0);
+        assert!(
+            !thumbnail_jobs(&requests).is_empty(),
+            "leaving the failed window should allow an explicit revisit"
+        );
+    }
+
+    #[test]
+    fn organize_sidebar_width_changes_bound_requests_and_tab_reset_allows_retry() {
+        let (mut app, requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        crate::icons::install(&ctx);
+        organize_frame(&mut app, &ctx, 0.0);
+        let old_jobs = thumbnail_jobs(&requests);
+        assert_eq!(old_jobs.len(), 1);
+        let old_width = old_jobs[0].1;
+        for _ in 0..20 {
+            sidebar_frame(&mut app, &ctx);
+            organize_frame(&mut app, &ctx, 0.0);
+        }
+        sidebar_frame(&mut app, &ctx);
+        assert_ne!(app.thumb_px, old_width);
+        assert!(
+            thumbnail_jobs(&requests).is_empty(),
+            "the same page must wait for its old-width result"
+        );
+        deliver_thumbnails(&responses, &old_jobs);
+        app.handle_responses(&ctx);
+        assert!(app.thumbnails.is_empty());
+        assert!(app.thumbs_pending.is_empty());
+        sidebar_frame(&mut app, &ctx);
+        let jobs = thumbnail_jobs(&requests);
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].1, app.thumb_px);
+        responses
+            .send(Response::ThumbnailFailed {
+                page: jobs[0].0,
+                width_px: jobs[0].1,
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        sidebar_frame(&mut app, &ctx);
+        assert!(thumbnail_jobs(&requests).is_empty());
+        let tab = app.take_tab();
+        app.put_tab(tab);
+        sidebar_frame(&mut app, &ctx);
+        let jobs = thumbnail_jobs(&requests);
+        assert_eq!(
+            jobs.len(),
+            1,
+            "a resumed document must retry its previous thumbnail failure"
+        );
+        deliver_thumbnails(&responses, &jobs);
+        app.handle_responses(&ctx);
+        assert!(app.thumbnails.contains_key(&0));
+        app.execute(&ctx, Command::CloseDocument);
+        assert!(app.thumbnails.is_empty());
+        assert!(app.thumbs_pending.is_empty());
+        assert!(app.thumbs_failed.is_empty());
     }
 
     fn cancel_unsaved_prompt(app: &mut SuniApp, ctx: &egui::Context) {
