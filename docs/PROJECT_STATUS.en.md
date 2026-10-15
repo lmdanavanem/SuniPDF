@@ -1,4 +1,4 @@
-# Project status - updated 2026-10-15 (version 0.5.0)
+# Project status - updated 2026-10-15 (version 0.6.0)
 
 *English translation of [`PROJECT_STATUS.md`](PROJECT_STATUS.md); the French version is the reference.*
 

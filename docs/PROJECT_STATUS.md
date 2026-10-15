@@ -1,4 +1,4 @@
-# État du projet — mis à jour le 2026-10-15 (version 0.5.0)
+# État du projet — mis à jour le 2026-10-15 (version 0.6.0)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).

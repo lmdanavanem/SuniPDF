@@ -1903,7 +1903,7 @@ impl SuniApp {
                     ui.label(egui::RichText::new("-").size(13.5));
                     ui.hyperlink_to(
                         egui::RichText::new(tr(lang, "about.website")).size(13.5),
-                        "https://www.navanem.com",
+                        "https://navanem.com/projets/sunipdf/",
                     );
                 });
             },

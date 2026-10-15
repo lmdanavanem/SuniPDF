@@ -10,7 +10,7 @@
 **Lecteur et éditeur PDF natif pour Windows 10/11, libre, hors ligne, bilingue français / anglais.**
 *Free native PDF reader and editor for Windows 10/11, offline, French / English.* — [English summary below](#english)
 
-Créé par **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Navanem](https://www.navanem.com) ·
+Créé par **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Navanem](https://navanem.com/projets/sunipdf/) ·
 Licence MIT ou Apache-2.0, au choix.
 
 [![Release](https://img.shields.io/github/v/release/lmdanavanem/SuniPDF)](https://github.com/lmdanavanem/SuniPDF/releases)

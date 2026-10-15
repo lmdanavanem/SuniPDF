@@ -318,7 +318,7 @@
   "shortcut.send_to_back": "Ctrl+[",
   "about.subtitle": "Native PDF reader and editor for Windows",
   "about.credit": "Created by Emanuel DE ALMEIDA - Navanem",
-  "about.website": "www.navanem.com",
+  "about.website": "navanem.com/projets/sunipdf",
   "about.privacy": "Your documents stay on your computer: no connection, no telemetry.",
   "about.license": "SuniPDF code under MIT or Apache-2.0. Third-party components: see THIRD_PARTY_NOTICES.",
   "dialog.unsaved.subtitle": "Changes will be lost if you do not save them.",

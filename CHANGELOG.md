@@ -5,6 +5,18 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.6.0] — 2026-10-15
+
+Annotations avancées, nouvelle identité visuelle et préparation de la publication en source ouverte.
+
+### Ajouté (projet)
+- Préparation de la publication en source ouverte : licences MIT / Apache-2.0, `CONTRIBUTING.md`, `SECURITY.md`,
+  `CODE_OF_CONDUCT.md`, modèles d'issues et de pull request, README bilingue, traductions anglaises de tous les
+  documents de `docs/` et du journal des versions (`docs/README.md` sert d'index).
+- Nouveau logo (variantes claire et sombre) : symbole dans la barre d'onglets, logo complet sur l'accueil et dans
+  la boîte À propos, icône `.ico` régénérée par `scripts/make_icon.py`.
+- Site du projet : https://navanem.com/projets/sunipdf/ (lien dans À propos, `Cargo.toml`, README).
+
 ### Ajouté
 - **Annotations avancées** (outil Commenter) : dessin à main levée (trait lissé), zone de texte libre, rectangle,
   ellipse, ligne et flèche, tous en **vraies annotations PDF** (apparence explicite : les autres lecteurs les
