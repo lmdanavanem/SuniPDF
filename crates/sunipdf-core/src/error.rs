@@ -30,6 +30,13 @@ pub enum EngineError {
     PasswordNotLatin1,
     #[error("font cannot be embedded (licence, format or size)")]
     FontNotEmbeddable,
+    #[error("form field not found: {0}")]
+    FormFieldNotFound(String),
+    /// Lecture seule, type de valeur, longueur, option inconnue (nom du champ puis raison, en anglais).
+    #[error("invalid form value: {0}")]
+    FormValueInvalid(String),
+    #[error("XFA forms are not supported")]
+    FormXfa,
     #[error("engine error: {0}")]
     Other(String),
 }
@@ -50,6 +57,9 @@ impl EngineError {
             Self::MissingGlyphs(_) => "missing_glyphs",
             Self::PasswordNotLatin1 => "password_not_latin1",
             Self::FontNotEmbeddable => "font_not_embeddable",
+            Self::FormFieldNotFound(_) => "form_field_not_found",
+            Self::FormValueInvalid(_) => "form_value_invalid",
+            Self::FormXfa => "form_xfa",
             Self::Other(_) => "other",
         }
     }

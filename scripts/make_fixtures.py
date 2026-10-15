@@ -123,6 +123,120 @@ def many_pages(path, n=120):
     objs[1] = f"<< /Type /Pages /Kids [{' '.join(kids)}] /Count {n} >>".encode()
     open(path, "wb").write(build(objs))
 
+def acroform(path, with_ap=True, xfa=False):
+    """Formulaire AcroForm d'une page (612x792) : texte, multiligne, lecture seule, case à cocher, groupe de
+    boutons radio, liste déroulante (export/affichage), liste à choix multiple, champs hiérarchiques,
+    champ à deux widgets, signature, bouton. with_ap=False : aucun flux d'apparence pour les champs texte/choix/case
+    (PDFium les génère). xfa=True : ajoute /XFA à l'AcroForm."""
+    objs = []
+
+    def add(body):
+        objs.append(body)
+        return len(objs)  # numéro d'objet (1-based)
+
+    def ref(n):
+        return b"%d 0 R" % n
+
+    def form_xobject(content, w, h):
+        return (b"<< /Type /XObject /Subtype /Form /BBox [0 0 %d %d] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length %d >>\nstream\n"
+                % (w, h, len(content))) + content + b"\nendstream"
+
+    def ap_text(w, h, text=b""):
+        body = (b"/Tx BMC q BT /Helv 12 Tf 0 g 2 4 Td (%s) Tj ET Q EMC" % text) if text else b"/Tx BMC EMC"
+        return form_xobject(body, w, h)
+
+    add(b"")  # 1 catalogue (rempli à la fin)
+    add(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")  # 2
+    add(b"")  # 3 page (remplie à la fin)
+    labels = [(700, "Nom"), (670, "Ville (accents)"), (640, "Commentaire"), (560, "Reference (lecture seule)"),
+              (530, "Accepte les conditions"), (500, "Paiement"), (440, "Pays"), (380, "Langues"),
+              (300, "Rue"), (270, "Code postal"), (240, "Telephone"), (200, "Signature")]
+    content = b"".join(b"BT /F1 11 Tf 40 %d Td (%s) Tj ET\n" % (y + 4, t.encode("latin-1")) for y, t in labels)
+    add(stream(content))  # 4
+    add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")  # 5 police des libellés
+    add(b"")  # 6 AcroForm (rempli à la fin)
+    add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")  # 7 /Helv
+    add(b"<< /Type /Font /Subtype /Type1 /BaseFont /ZapfDingbats >>")  # 8 /ZaDb
+    fields, annots = [], []
+
+    def new_widget(rect, extra, ap=None, flags=4):
+        x1, y1, x2, y2 = rect
+        body = b"<< /Type /Annot /Subtype /Widget /P 3 0 R /F %d /Rect [%d %d %d %d] %s" % (flags, x1, y1, x2, y2, extra)
+        if ap is not None and with_ap:
+            body += b" /AP << /N %s >>" % ap
+        n = add(body + b" >>")
+        annots.append(n)
+        return n
+
+    def apref(w, h, text=b""):
+        return ref(add(ap_text(w, h, text))) if with_ap else None
+
+    def apdict(w, h):
+        return b"/AP << /N %s >>" % ref(add(ap_text(w, h))) if with_ap else b""
+
+    BOX = b"/MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g)"
+    # --- champs texte fusionnés avec leur widget ---
+    fields.append(new_widget((150, 696, 410, 716), b"/FT /Tx /T (nom) /TU (Nom et prenom) " + BOX, apref(260, 20)))
+    # « ville » : widget SANS indicateur d'impression (/F 0) -> piège de l'aplatissement PDFium (mode impression)
+    fields.append(new_widget((150, 666, 410, 686), b"/FT /Tx /T (ville) /V (\\311lodie M\\374ller) " + BOX,
+                             apref(260, 20, b"\\311lodie M\\374ller"), flags=0))
+    fields.append(new_widget((150, 590, 510, 650), b"/FT /Tx /Ff 4096 /T (commentaire) " + BOX, apref(360, 60)))
+    fields.append(new_widget((200, 556, 410, 576), b"/FT /Tx /Ff 1 /T (ref) /V (REF-42) " + BOX, apref(210, 20, b"REF-42")))
+    # --- case à cocher : AP/N = << /Yes /Off >> ---
+    on = add(form_xobject(b"q 0 g 2 2 m 12 12 l 12 2 m 2 12 l S Q", 14, 14))
+    off = add(form_xobject(b"", 14, 14))
+    fields.append(new_widget((200, 526, 214, 540),
+                             b"/FT /Btn /T (accepte) /V /Off /AS /Off /MK << /BC [0 0 0] /CA (8) >> /DA (/ZaDb 0 Tf 0 g)",
+                             b"<< /Yes %s /Off %s >>" % (ref(on), ref(off))))
+    # --- groupe de boutons radio : champ parent (V = état actif du bouton choisi) + 3 widgets ---
+    parent = add(b"")
+    kids = []
+    for name, y in [("carte", 496), ("virement", 476), ("especes", 456)]:
+        a_on = add(form_xobject(b"q 0 g 3 3 8 8 re f Q", 14, 14))
+        a_off = add(form_xobject(b"", 14, 14))
+        k = add(b"<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent %s /Rect [200 %d 214 %d] /AS %s /MK << /BC [0 0 0] /CA (l) >> /DA (/ZaDb 0 Tf 0 g) /AP << /N << /%s %s /Off %s >> >> >>"
+                % (ref(parent), y, y + 14, b"/virement" if name == "virement" else b"/Off", name.encode(), ref(a_on), ref(a_off)))
+        kids.append(k)
+        annots.append(k)
+    objs[parent - 1] = b"<< /FT /Btn /Ff 49152 /T (paiement) /V /virement /Kids [%s] >>" % b" ".join(ref(k) for k in kids)
+    fields.append(parent)
+    # --- liste déroulante : /Opt en paires [export affichage] ---
+    fields.append(new_widget((150, 436, 350, 456),
+                             b"/FT /Ch /Ff 131072 /T (pays) /Opt [[(FR) (France)] [(BE) (Belgique)] [(CA) (Canada)]] /V (BE) " + BOX,
+                             apref(200, 20, b"Belgique")))
+    # --- liste à choix multiple ---
+    fields.append(new_widget((150, 350, 350, 410),
+                             b"/FT /Ch /Ff 2097152 /T (langues) /Opt [(Fran\\347ais) (Anglais) (Allemand)] /V [(Anglais)] /I [1] " + BOX,
+                             apref(200, 60)))
+    # --- champs hiérarchiques adresse.rue et adresse.code (MaxLen 5) ---
+    addr = add(b"")
+    k1 = add(b"<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent %s /FT /Tx /T (rue) /Rect [150 296 410 316] %s %s >>"
+             % (ref(addr), BOX, apdict(260, 20)))
+    k2 = add(b"<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent %s /FT /Tx /T (code) /MaxLen 5 /Rect [150 266 250 286] %s %s >>"
+             % (ref(addr), BOX, apdict(100, 20)))
+    objs[addr - 1] = b"<< /T (adresse) /Kids [%s %s] >>" % (ref(k1), ref(k2))
+    annots += [k1, k2]
+    fields.append(addr)
+    # --- un champ à deux widgets (même valeur affichée deux fois) ---
+    tel = add(b"")
+    w1 = add(b"<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent %s /Rect [150 236 300 256] %s %s >>" % (ref(tel), BOX, apdict(150, 20)))
+    w2 = add(b"<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent %s /Rect [320 236 470 256] %s %s >>" % (ref(tel), BOX, apdict(150, 20)))
+    objs[tel - 1] = b"<< /FT /Tx /T (telephone) /Kids [%s %s] >>" % (ref(w1), ref(w2))
+    annots += [w1, w2]
+    fields.append(tel)
+    # --- signature (non remplissable ici) et bouton-poussoir ---
+    fields.append(new_widget((150, 190, 350, 230), b"/FT /Sig /T (signature)"))
+    fields.append(new_widget((400, 190, 500, 214),
+                             b"/FT /Btn /Ff 65536 /T (envoyer) /MK << /BC [0 0 0] /BG [0.8 0.8 0.8] /CA (Envoyer) >> /DA (/Helv 12 Tf 0 g)"))
+    acro = b"<< /Fields [%s] /DA (/Helv 0 Tf 0 g) /DR << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >>" % b" ".join(ref(f) for f in fields)
+    if xfa:
+        acro += b" /XFA [(preamble) 4 0 R]"
+    objs[5] = acro + b" >>"
+    objs[0] = b"<< /Type /Catalog /Pages 2 0 R /AcroForm 6 0 R >>"
+    objs[2] = (b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> /Annots [%s] >>"
+               % b" ".join(ref(a) for a in annots))
+    open(path, "wb").write(build(objs))
+
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--many":
         # Fichier long à la demande (non versionné) : --many 500 %TEMP%\many-500.pdf
@@ -134,4 +248,7 @@ if __name__ == "__main__":
     encrypted(os.path.join(out, "encrypted-rc4.pdf"))
     boxes(os.path.join(out, "boxes.pdf"))
     many_pages(os.path.join(out, "many-pages.pdf"), 120)
+    acroform(os.path.join(out, "acroform.pdf"))
+    acroform(os.path.join(out, "acroform-noap.pdf"), with_ap=False)
+    acroform(os.path.join(out, "acroform-xfa.pdf"), xfa=True)
     print("ok")

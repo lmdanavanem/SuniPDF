@@ -5,7 +5,9 @@ use clap::{Parser, Subcommand};
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use sunipdf_core::{Engine, EngineError, Stamp, StampPosition, TextStyle};
+use sunipdf_core::{
+    form_data, Engine, EngineError, FillMode, ImportPlan, Stamp, StampPosition, TextStyle,
+};
 
 #[derive(Parser)]
 #[command(
@@ -471,6 +473,56 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// List the AcroForm fields (name, type, value, options, widgets with 1-based pages) as JSON.
+    FormFields {
+        file: PathBuf,
+        /// Print only the {name: value} object (the format accepted by `fill-form --values`).
+        #[arg(long)]
+        values_only: bool,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Fill fields from a JSON object (--values FILE, "-" = stdin) and/or --set NAME=VALUE
+    /// (repeatable; checkbox: true/false, list box: choices separated by ";"). Strict by default:
+    /// an unknown field or a rejected value fails before anything is written.
+    FillForm {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        values: Option<PathBuf>,
+        #[arg(long = "set", value_name = "NAME=VALUE")]
+        set: Vec<String>,
+        /// Skip unknown fields and rejected values instead of failing (they are reported).
+        #[arg(long)]
+        ignore_unknown: bool,
+        /// Flatten the whole document after filling (fields become page content).
+        #[arg(long)]
+        flatten: bool,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Flatten form fields and annotations into the page content ("all" or "1,3-5"); flattening
+    /// every page also removes the form from the document.
+    Flatten {
+        file: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+}
+
+/// `NAME=VALUE` coupé au premier `=` (la valeur peut en contenir).
+fn split_set(spec: &str) -> Result<(&str, &str), EngineError> {
+    match spec.split_once('=') {
+        Some((name, value)) if !name.trim().is_empty() => Ok((name.trim(), value)),
+        _ => Err(EngineError::Other(format!(
+            "expected NAME=VALUE, got {spec:?}"
+        ))),
+    }
 }
 
 /// "x,y,w,h" → région en pixels.
@@ -1149,6 +1201,103 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "page_pixels": page_pixels.map(|(w, h)| [w, h]),
             }))
         }
+        Command::FormFields {
+            file,
+            values_only,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let info = doc.form_info()?;
+            Ok(if values_only {
+                form_data::values_to_json(&info)
+            } else {
+                form_data::info_to_json(&info)
+            })
+        }
+        Command::FillForm {
+            file,
+            out,
+            values,
+            set,
+            ignore_unknown,
+            flatten,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let info = doc.form_info()?;
+            let mut plan = ImportPlan::default();
+            if let Some(path) = values {
+                let text = if path.as_os_str() == "-" {
+                    let mut s = String::new();
+                    std::io::Read::read_to_string(&mut std::io::stdin(), &mut s)?;
+                    s
+                } else {
+                    std::fs::read_to_string(&path)?
+                };
+                let json: serde_json::Value = serde_json::from_str(&text)
+                    .map_err(|e| EngineError::FormValueInvalid(format!("invalid JSON: {e}")))?;
+                plan = form_data::plan_from_json(&info, &json)?;
+            }
+            for spec in &set {
+                let (name, value) = split_set(spec)?;
+                match info.field(name) {
+                    Some(f) => match f.coerce_text(value) {
+                        Ok(v) => plan.values.push((name.to_string(), v)),
+                        Err(e) if ignore_unknown => {
+                            plan.skipped_invalid.push((name.to_string(), e.to_string()))
+                        }
+                        Err(e) => return Err(e),
+                    },
+                    None => plan.skipped_unknown.push(name.to_string()),
+                }
+            }
+            if !ignore_unknown {
+                if let Some(n) = plan.skipped_unknown.first() {
+                    return Err(EngineError::FormFieldNotFound(n.clone()));
+                }
+                if let Some((n, reason)) = plan.skipped_invalid.first() {
+                    return Err(EngineError::FormValueInvalid(format!("{n}: {reason}")));
+                }
+            }
+            let mode = if ignore_unknown {
+                FillMode::Lenient
+            } else {
+                FillMode::Strict
+            };
+            let report = doc.fill_form(&plan.values, mode)?;
+            if flatten {
+                doc.flatten(None)?;
+            }
+            doc.save_as(&out)?;
+            let mut unknown = plan.skipped_unknown;
+            unknown.extend(report.skipped_unknown);
+            let invalid: Vec<serde_json::Value> = plan
+                .skipped_invalid
+                .into_iter()
+                .chain(report.skipped_invalid)
+                .map(|(field, reason)| serde_json::json!({ "field": field, "reason": reason }))
+                .collect();
+            Ok(serde_json::json!({
+                "out": out,
+                "applied": report.applied.len(),
+                "skipped": { "unknown": unknown, "invalid": invalid },
+                "flattened": flatten,
+                "page_count": doc.page_count(),
+            }))
+        }
+        Command::Flatten {
+            file,
+            pages,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
+            let all = pages.trim().eq_ignore_ascii_case("all");
+            let n = doc.flatten(if all { None } else { Some(&selection) })?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "annotations": n, "pages": selection.len() }))
+        }
     }
 }
 
@@ -1178,6 +1327,8 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Crop { out, .. }
         | Command::ResizePages { out, .. }
         | Command::InsertBlank { out, .. }
+        | Command::FillForm { out, .. }
+        | Command::Flatten { out, .. }
         | Command::Render { out, .. } => Some(out.as_path()),
         _ => None,
     }
@@ -1350,6 +1501,15 @@ mod tests {
             assert!(quarter_turn(bad).is_err(), "{bad}");
         }
         assert_eq!(unique(vec![2, 0, 1, 2, 1]), vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn set_specs_split_at_the_first_equals_sign() {
+        assert_eq!(split_set("nom=Jean").unwrap(), ("nom", "Jean"));
+        assert_eq!(split_set("a=b=c").unwrap(), ("a", "b=c"));
+        assert_eq!(split_set("vide=").unwrap(), ("vide", ""));
+        assert!(split_set("sans").is_err());
+        assert!(split_set("=x").is_err());
     }
 
     #[test]

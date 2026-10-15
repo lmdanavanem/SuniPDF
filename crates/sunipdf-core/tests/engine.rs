@@ -3432,3 +3432,631 @@ fn aes256_passwords_normalized_by_lopdf_still_open_as_typed() {
     assert_eq!(security::normalized_password("Été 2026"), "Été 2026");
     let _ = std::fs::remove_dir_all(dir);
 }
+
+// ----- Formulaires AcroForm (tranche forms) ------------------------------------------------------
+
+use sunipdf_core::{form_data, FieldKind, FieldValue, FillMode, FormKind};
+
+/// Pixels sombres (R, V et B < 100) dans un rectangle d'affichage, rendu à l'échelle 1.
+fn dark_in(img: &RenderedPage, r: PointRect) -> usize {
+    let (w, h) = (img.width as usize, img.height as usize);
+    let mut n = 0;
+    for y in 0..h {
+        let y_pt = (h - y) as f32 - 0.5;
+        if y_pt < r.bottom || y_pt > r.top {
+            continue;
+        }
+        for x in 0..w {
+            let x_pt = x as f32 + 0.5;
+            if x_pt < r.left || x_pt > r.right {
+                continue;
+            }
+            let i = (y * w + x) * 4;
+            if img.rgba[i] < 100 && img.rgba[i + 1] < 100 && img.rgba[i + 2] < 100 {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+fn yellow_count(img: &RenderedPage) -> usize {
+    img.rgba
+        .chunks(4)
+        .filter(|p| p[0] > 200 && p[1] > 180 && p[2] < 120)
+        .count()
+}
+
+/// Contenu des flux d'apparence `/AP /N` des widgets du champ `field` (nom propre ou nom du
+/// parent), relu avec lopdf dans les octets enregistrés : preuve que l'apparence est dans le fichier.
+fn ap_bytes(bytes: &[u8], field: &str) -> Vec<u8> {
+    let d = lopdf::Document::load_mem(bytes).unwrap();
+    let name_of = |dict: &lopdf::Dictionary| -> Option<String> {
+        dict.get(b"T")
+            .ok()
+            .and_then(|t| lopdf::decode_text_string(t).ok())
+    };
+    let mut out = Vec::new();
+    for obj in d.objects.values() {
+        let Ok(dict) = obj.as_dict() else { continue };
+        if !dict
+            .get(b"Subtype")
+            .ok()
+            .and_then(|s| s.as_name().ok())
+            .is_some_and(|s| s == b"Widget")
+        {
+            continue;
+        }
+        let parent_name = dict
+            .get(b"Parent")
+            .ok()
+            .and_then(|p| d.dereference(p).ok())
+            .and_then(|(_, p)| p.as_dict().ok())
+            .and_then(name_of);
+        if name_of(dict).as_deref() != Some(field) && parent_name.as_deref() != Some(field) {
+            continue;
+        }
+        let Some(stream) = dict
+            .get(b"AP")
+            .ok()
+            .and_then(|ap| d.dereference(ap).ok())
+            .and_then(|(_, ap)| ap.as_dict().ok())
+            .and_then(|ap| ap.get(b"N").ok())
+            .and_then(|n| d.dereference(n).ok())
+            .and_then(|(_, n)| n.as_stream().ok())
+        else {
+            continue;
+        };
+        out.extend(stream.decompressed_content().unwrap_or_default());
+        out.push(b'\n');
+    }
+    out
+}
+
+fn text(s: &str) -> FieldValue {
+    FieldValue::Text(s.into())
+}
+
+fn choice(v: &[&str]) -> FieldValue {
+    FieldValue::Choice(v.iter().map(|s| s.to_string()).collect())
+}
+
+const NOM: PointRect = PointRect {
+    left: 150.0,
+    bottom: 696.0,
+    right: 410.0,
+    top: 716.0,
+};
+const VILLE: PointRect = PointRect {
+    left: 150.0,
+    bottom: 666.0,
+    right: 410.0,
+    top: 686.0,
+};
+const CASE: PointRect = PointRect {
+    left: 200.0,
+    bottom: 526.0,
+    right: 214.0,
+    top: 540.0,
+};
+const CARTE: PointRect = PointRect {
+    left: 200.0,
+    bottom: 496.0,
+    right: 214.0,
+    top: 510.0,
+};
+const VIREMENT: PointRect = PointRect {
+    left: 200.0,
+    bottom: 476.0,
+    right: 214.0,
+    top: 490.0,
+};
+
+#[test]
+fn form_lists_fields_types_values_and_widgets() {
+    let engine = engine();
+    let doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    assert_eq!(doc.form_kind(), FormKind::AcroForm);
+    assert_eq!(doc.info().form, FormKind::AcroForm);
+    let info = doc.form_info().unwrap();
+    assert_eq!(info.kind, FormKind::AcroForm);
+    assert!(!info.has_scripts);
+    let names: Vec<&str> = info.fields.iter().map(|f| f.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "nom",
+            "ville",
+            "commentaire",
+            "ref",
+            "accepte",
+            "paiement",
+            "pays",
+            "langues",
+            "adresse.rue",
+            "adresse.code",
+            "telephone",
+            "signature",
+            "envoyer"
+        ]
+    );
+    let f = |n: &str| info.field(n).unwrap();
+    assert_eq!(f("nom").kind, FieldKind::Text);
+    assert_eq!(f("nom").tooltip.as_deref(), Some("Nom et prenom"));
+    assert_eq!(f("nom").value, text(""));
+    assert_eq!(f("nom").widgets.len(), 1);
+    assert_eq!(f("nom").widgets[0].rect, NOM);
+    assert_eq!(f("nom").widgets[0].display, NOM, "page non pivotée");
+    assert_eq!(f("nom").widgets[0].page, 0);
+    assert_eq!(f("ville").value, text("Élodie Müller"), "PDFDocEncoding");
+    assert!(f("ref").read_only);
+    assert_eq!(f("ref").value, text("REF-42"));
+    assert!(f("commentaire").multiline);
+    assert_eq!(f("adresse.code").max_len, Some(5));
+    assert_eq!(f("adresse.rue").kind, FieldKind::Text);
+    let radio = f("paiement");
+    assert_eq!(radio.kind, FieldKind::Radio);
+    assert_eq!(radio.widgets.len(), 3);
+    assert!(radio.no_toggle_off);
+    assert_eq!(
+        radio
+            .options
+            .iter()
+            .map(|o| o.value.as_str())
+            .collect::<Vec<_>>(),
+        ["carte", "virement", "especes"]
+    );
+    assert_eq!(radio.value, choice(&["virement"]));
+    assert_eq!(radio.widgets[0].on_state.as_deref(), Some("carte"));
+    assert_eq!(f("telephone").widgets.len(), 2);
+    let pays = f("pays");
+    assert_eq!(pays.kind, FieldKind::Combo);
+    assert_eq!(pays.value, choice(&["BE"]));
+    assert_eq!(pays.options[0].value, "FR");
+    assert_eq!(pays.options[0].label, "France");
+    assert_eq!(pays.label_of("BE"), "Belgique");
+    let langues = f("langues");
+    assert_eq!(langues.kind, FieldKind::List);
+    assert!(langues.multi_select);
+    assert_eq!(langues.value, choice(&["Anglais"]));
+    assert_eq!(langues.options[0].label, "Français");
+    assert_eq!(f("accepte").kind, FieldKind::Checkbox);
+    assert_eq!(f("accepte").value, FieldValue::Bool(false));
+    assert_eq!(f("accepte").widgets[0].on_state.as_deref(), Some("Yes"));
+    assert_eq!(f("signature").kind, FieldKind::Signature);
+    assert_eq!(f("signature").value, FieldValue::None);
+    assert_eq!(f("envoyer").kind, FieldKind::PushButton);
+    // Sans AcroForm : rien à analyser.
+    let plain = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    assert_eq!(plain.form_kind(), FormKind::None);
+    assert_eq!(plain.info().form, FormKind::None);
+    assert_eq!(
+        plain.form_info().unwrap(),
+        sunipdf_core::FormInfo::default()
+    );
+}
+
+#[test]
+fn form_fill_roundtrip_values_and_pixels() {
+    let engine = engine();
+    let dir = temp_dir("forms-fill");
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    let before = doc.render_page(0, 1.0).unwrap();
+    assert_eq!(dark_in(&before, NOM), 0, "apparence vide d'origine");
+    assert_eq!(dark_in(&before, CASE), 0);
+    assert_eq!(dark_in(&before, CARTE), 0);
+    assert!(dark_in(&before, VIREMENT) >= 30, "radio choisi dessiné");
+    let values = vec![
+        ("nom".to_string(), text("Jean Dupont")),
+        ("ville".to_string(), text("Zoë")),
+        ("commentaire".to_string(), text("ligne 1\nligne 2")),
+        ("accepte".to_string(), FieldValue::Bool(true)),
+        ("paiement".to_string(), choice(&["carte"])),
+        ("pays".to_string(), choice(&["Canada"])),
+        ("langues".to_string(), choice(&["Français", "Allemand"])),
+        ("telephone".to_string(), text("0102030405")),
+        ("adresse.rue".to_string(), text("1 rue X")),
+    ];
+    let report = doc.fill_form(&values, FillMode::Strict).unwrap();
+    assert_eq!(report.applied.len(), 9);
+    assert!(report.skipped_unknown.is_empty() && report.skipped_invalid.is_empty());
+    let check = |doc: &sunipdf_core::Document<'_>| {
+        let info = doc.form_info().unwrap();
+        let f = |n: &str| info.field(n).unwrap();
+        assert_eq!(f("nom").value, text("Jean Dupont"));
+        assert_eq!(f("ville").value, text("Zoë"));
+        assert_eq!(f("commentaire").value, text("ligne 1\nligne 2"));
+        assert_eq!(f("accepte").value, FieldValue::Bool(true));
+        assert_eq!(f("paiement").value, choice(&["carte"]));
+        assert_eq!(f("pays").value, choice(&["CA"]), "libellé → export");
+        assert_eq!(f("langues").value, choice(&["Français", "Allemand"]));
+        assert_eq!(f("telephone").value, text("0102030405"));
+        assert_eq!(f("telephone").widgets.len(), 2);
+        assert_eq!(f("adresse.rue").value, text("1 rue X"));
+        assert_eq!(f("ref").value, text("REF-42"), "intact");
+        let img = doc.render_page(0, 1.0).unwrap();
+        assert!(dark_in(&img, NOM) > 300, "texte et bordure régénérés");
+        assert!(dark_in(&img, CASE) > 10, "coche");
+        assert!(dark_in(&img, CARTE) > 30, "radio carte");
+        assert_eq!(dark_in(&img, VIREMENT), 0, "radio virement décoché");
+        // Les deux widgets du téléphone affichent la valeur.
+        assert!(dark_in(&img, rect(150.0, 236.0, 300.0, 256.0)) > 100);
+        assert!(dark_in(&img, rect(320.0, 236.0, 470.0, 256.0)) > 100);
+        dark_in(&img, NOM)
+    };
+    let n1 = check(&doc);
+    // Aller-retour par instantané, puis par fichier.
+    let snapshot = doc.snapshot().unwrap();
+    let again = engine
+        .open_bytes(snapshot, None, &fixture("acroform.pdf"))
+        .unwrap();
+    assert_eq!(check(&again), n1);
+    let out = dir.join("filled.pdf");
+    doc.save_as(&out).unwrap();
+    let reopened = engine.open(&out, None).unwrap();
+    assert_eq!(check(&reopened), n1);
+    assert_eq!(reopened.info().form, FormKind::AcroForm);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn form_fill_errors_are_typed_and_atomic() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    let strict = |doc: &mut sunipdf_core::Document<'_>, name: &str, v: FieldValue| {
+        doc.fill_form(&[(name.to_string(), v)], FillMode::Strict)
+            .map(|_| ())
+    };
+    assert!(matches!(
+        strict(&mut doc, "zzz", text("x")),
+        Err(EngineError::FormFieldNotFound(n)) if n == "zzz"
+    ));
+    let invalid = |r: Result<(), EngineError>, what: &str| match r {
+        Err(EngineError::FormValueInvalid(m)) => {
+            assert!(m.starts_with(what), "{m}");
+            assert_eq!(
+                EngineError::FormValueInvalid(m).code(),
+                "form_value_invalid"
+            );
+        }
+        other => panic!("{what} : {other:?}"),
+    };
+    invalid(strict(&mut doc, "ref", text("x")), "ref");
+    invalid(strict(&mut doc, "nom", FieldValue::Bool(true)), "nom");
+    invalid(strict(&mut doc, "nom", text("a\nb")), "nom");
+    invalid(strict(&mut doc, "pays", choice(&["XX"])), "pays");
+    invalid(strict(&mut doc, "pays", choice(&["FR", "BE"])), "pays");
+    invalid(
+        strict(&mut doc, "adresse.code", text("123456")),
+        "adresse.code",
+    );
+    invalid(strict(&mut doc, "signature", text("x")), "signature");
+    invalid(strict(&mut doc, "envoyer", FieldValue::None), "envoyer");
+    invalid(strict(&mut doc, "paiement", choice(&[])), "paiement");
+    invalid(
+        strict(&mut doc, "langues", choice(&["Anglais", "Zoulou"])),
+        "langues",
+    );
+    strict(&mut doc, "commentaire", text("a\nb")).unwrap();
+    strict(&mut doc, "adresse.code", text("75001")).unwrap();
+    // Atomicité : une entrée inconnue en mode strict n'applique rien.
+    let both = vec![
+        ("nom".to_string(), text("A")),
+        ("zzz".to_string(), text("B")),
+    ];
+    assert!(doc.fill_form(&both, FillMode::Strict).is_err());
+    assert_eq!(
+        doc.form_info().unwrap().field("nom").unwrap().value,
+        text("")
+    );
+    let report = doc.fill_form(&both, FillMode::Lenient).unwrap();
+    assert_eq!(report.applied, vec!["nom"]);
+    assert_eq!(report.skipped_unknown, vec!["zzz"]);
+    assert_eq!(
+        doc.form_info().unwrap().field("nom").unwrap().value,
+        text("A")
+    );
+    let report = doc
+        .fill_form(&[("ref".to_string(), text("x"))], FillMode::Lenient)
+        .unwrap();
+    assert!(report.applied.is_empty());
+    assert_eq!(report.skipped_invalid[0].0, "ref");
+}
+
+#[test]
+fn form_appearance_is_materialized_in_saved_bytes() {
+    let engine = engine();
+    // Sans aucun flux d'apparence : PDFium les génère et l'instantané les contient.
+    let mut doc = engine.open(&fixture("acroform-noap.pdf"), None).unwrap();
+    let before = doc.render_page(0, 1.0).unwrap();
+    assert!(
+        dark_in(&before, VILLE) > 300,
+        "valeur d'origine dessinée sans /AP"
+    );
+    doc.fill_form(
+        &[("nom".to_string(), text("Jean Dupont"))],
+        FillMode::Strict,
+    )
+    .unwrap();
+    let ap = ap_bytes(&doc.snapshot().unwrap(), "nom");
+    assert!(
+        ap.windows(16).any(|w| w == b"(Jean Dupont) Tj"),
+        "{}",
+        String::from_utf8_lossy(&ap)
+    );
+    // Apparence existante remplacée (accents en WinAnsi), liste déroulante par libellé.
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    doc.fill_form(
+        &[
+            ("ville".to_string(), text("Élodie Müller")),
+            ("pays".to_string(), choice(&["CA"])),
+        ],
+        FillMode::Strict,
+    )
+    .unwrap();
+    let bytes = doc.snapshot().unwrap();
+    let ville = ap_bytes(&bytes, "ville");
+    assert!(
+        ville.windows(7).any(|w| w == b"lodie M") && ville.windows(2).any(|w| w == b"Tj"),
+        "{}",
+        String::from_utf8_lossy(&ville)
+    );
+    let pays = ap_bytes(&bytes, "pays");
+    assert!(
+        pays.windows(8).any(|w| w == b"(Canada)"),
+        "{}",
+        String::from_utf8_lossy(&pays)
+    );
+}
+
+#[test]
+fn flatten_keeps_content_and_removes_widgets() {
+    use sunipdf_core::MarkupKind;
+    let engine = engine();
+    let dir = temp_dir("forms-flatten");
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    doc.fill_form(
+        &[("nom".to_string(), text("Jean Dupont"))],
+        FillMode::Strict,
+    )
+    .unwrap();
+    // Surlignage créé par PDFium (indicateur /F 0) sur le libellé « Reference (lecture seule) ».
+    let sel = doc
+        .text_in_rect(0, rect(38.0, 560.0, 199.0, 578.0))
+        .unwrap();
+    assert!(sel.text.starts_with("Reference"), "{sel:?}");
+    doc.add_markup(0, MarkupKind::Highlight, &sel.rects, (255, 230, 0))
+        .unwrap();
+    let before = doc.render_page(0, 1.0).unwrap();
+    let ville_before = dark_in(&before, VILLE);
+    assert!(ville_before > 100, "{ville_before}");
+    assert!(yellow_count(&before) > 300);
+    let n = doc.flatten(None).unwrap();
+    assert!(n >= 17, "{n} annotations traitées");
+    assert!(doc.annotations(0).unwrap().is_empty());
+    assert_eq!(doc.form_kind(), FormKind::None);
+    assert_eq!(doc.info().form, FormKind::None);
+    assert!(doc.form_info().unwrap().fields.is_empty());
+    let after = doc.render_page(0, 1.0).unwrap();
+    // Widget sans indicateur Print (ville), champ rempli, surlignage : tous dessinés.
+    assert!(dark_in(&after, VILLE) > 100, "{}", dark_in(&after, VILLE));
+    assert!(dark_in(&after, NOM) > 300);
+    assert!(yellow_count(&after) > 300);
+    assert!(dark_in(&after, VIREMENT) >= 30, "radio choisi conservé");
+    let out = dir.join("flat.pdf");
+    doc.save_as(&out).unwrap();
+    let reopened = engine.open(&out, None).unwrap();
+    assert_eq!(reopened.form_kind(), FormKind::None);
+    assert!(reopened.annotations(0).unwrap().is_empty());
+    let img = reopened.render_page(0, 1.0).unwrap();
+    assert!(dark_in(&img, NOM) > 300 && yellow_count(&img) > 300);
+    assert_eq!(doc.flatten(None).unwrap(), 0, "plus rien à aplatir");
+    // Sans flux d'apparence et sans rendu préalable : rien ne disparaît.
+    let mut noap = engine.open(&fixture("acroform-noap.pdf"), None).unwrap();
+    noap.flatten(None).unwrap();
+    let img = noap.render_page(0, 1.0).unwrap();
+    assert!(dark_in(&img, VILLE) > 300);
+    // Aplatissement partiel (document de trois pages) : la page aplatie perd ses widgets, le
+    // formulaire reste ; toutes les pages d'un coup retirent /AcroForm.
+    let mut partial = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    partial
+        .insert_pages_from(&fixture("two-pages.pdf"), None, &[], 1)
+        .unwrap();
+    assert_eq!(partial.page_count(), 3);
+    partial.flatten(Some(&[0])).unwrap();
+    assert_eq!(partial.form_kind(), FormKind::AcroForm);
+    let info = partial.form_info().unwrap();
+    assert_eq!(info.fields.len(), 13);
+    assert!(info.fields.iter().all(|f| f.widgets.is_empty()));
+    assert!(matches!(
+        partial.flatten(Some(&[7])),
+        Err(EngineError::PageOutOfRange(7))
+    ));
+    partial.flatten(Some(&[1, 2])).unwrap();
+    assert_eq!(
+        partial.form_kind(),
+        FormKind::AcroForm,
+        "pages 2 et 3 seulement"
+    );
+    partial.flatten(None).unwrap();
+    assert_eq!(partial.form_kind(), FormKind::None);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn form_xfa_is_reported_and_blocks_write() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("acroform-xfa.pdf"), None).unwrap();
+    assert_eq!(doc.form_kind(), FormKind::Xfa);
+    assert_eq!(doc.info().form, FormKind::Xfa);
+    let info = doc.form_info().unwrap();
+    assert_eq!(info.kind, FormKind::Xfa);
+    assert_eq!(info.fields.len(), 13, "champs AcroForm lisibles");
+    let err = doc
+        .fill_form(&[("nom".to_string(), text("x"))], FillMode::Strict)
+        .unwrap_err();
+    assert!(matches!(err, EngineError::FormXfa));
+    assert_eq!(err.code(), "form_xfa");
+    assert!(matches!(doc.flatten(None), Err(EngineError::FormXfa)));
+    assert!(matches!(doc.clear_form(), Err(EngineError::FormXfa)));
+}
+
+#[test]
+fn form_fill_keeps_encryption() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = temp_dir("forms-encrypted");
+    let input = std::fs::read(fixture("acroform.pdf")).unwrap();
+    let bytes = security::protect(
+        &input,
+        None,
+        &Protection {
+            user_password: "secret".into(),
+            owner_password: "owner".into(),
+            aes256: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let path = dir.join("form-aes.pdf");
+    std::fs::write(&path, bytes).unwrap();
+    let mut doc = engine.open(&path, Some("secret")).unwrap();
+    assert!(doc.properties().encrypted);
+    assert_eq!(doc.form_info().unwrap().fields.len(), 13);
+    doc.fill_form(
+        &[
+            ("nom".to_string(), text("Chiffré")),
+            ("accepte".to_string(), FieldValue::Bool(true)),
+        ],
+        FillMode::Strict,
+    )
+    .unwrap();
+    assert!(doc.properties().encrypted, "le document reste chiffré");
+    let out = dir.join("filled-aes.pdf");
+    doc.save_as(&out).unwrap();
+    assert!(matches!(
+        engine.open(&out, None),
+        Err(EngineError::PasswordRequired)
+    ));
+    let reopened = engine.open(&out, Some("secret")).unwrap();
+    let info = reopened.form_info().unwrap();
+    assert_eq!(info.field("nom").unwrap().value, text("Chiffré"));
+    assert_eq!(info.field("accepte").unwrap().value, FieldValue::Bool(true));
+    let img = reopened.render_page(0, 1.0).unwrap();
+    assert!(dark_in(&img, NOM) > 300 && dark_in(&img, CASE) > 10);
+    // Aplatir un document chiffré : toujours chiffré, sans champ.
+    let mut flat = engine.open(&out, Some("secret")).unwrap();
+    flat.flatten(None).unwrap();
+    assert_eq!(flat.form_kind(), FormKind::None);
+    assert!(flat.properties().encrypted);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn form_display_rect_follows_page_rotation() {
+    use sunipdf_core::Rotation;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    let expect = [
+        (Rotation::R90, rect(696.0, 202.0, 716.0, 462.0)),
+        (Rotation::R180, rect(202.0, 76.0, 462.0, 96.0)),
+        (Rotation::R270, rect(76.0, 150.0, 96.0, 410.0)),
+        (Rotation::R0, NOM),
+    ];
+    for (rotation, display) in expect {
+        doc.set_page_rotation(0, rotation).unwrap();
+        let info = doc.form_info().unwrap();
+        let w = info.field("nom").unwrap().widgets[0].clone();
+        assert_eq!(w.rect, NOM, "{rotation:?} : /Rect inchangé");
+        assert!(
+            near(w.display, display, 0.01),
+            "{rotation:?} : {:?}",
+            w.display
+        );
+        let size = doc.page_size(0).unwrap();
+        assert!(w.display.right <= size.width_pt && w.display.top <= size.height_pt);
+        // La valeur saisie se dessine bien dans le rectangle affiché.
+        doc.fill_form(&[("nom".to_string(), text("Pivot"))], FillMode::Strict)
+            .unwrap();
+        let img = doc.render_page(0, 1.0).unwrap();
+        assert!(dark_in(&img, w.display) > 100, "{rotation:?}");
+    }
+}
+
+#[test]
+fn form_json_export_import_roundtrip() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    let info = doc.form_info().unwrap();
+    let v = form_data::values_to_json(&info);
+    assert_eq!(v["ville"], "Élodie Müller");
+    assert_eq!(v["accepte"], false);
+    assert_eq!(v["paiement"], "virement");
+    assert_eq!(v["pays"], "BE");
+    assert_eq!(v["langues"], serde_json::json!(["Anglais"]));
+    assert_eq!(v["nom"], "");
+    assert!(v.get("signature").is_none() && v.get("envoyer").is_none());
+    let plan = form_data::plan_from_json(
+        &info,
+        &serde_json::json!({
+            "nom": "Zoé", "accepte": "oui", "paiement": "carte", "pays": "Canada",
+            "langues": ["Allemand"], "inconnu": 1, "ref": "x", "adresse.code": "123456"
+        }),
+    )
+    .unwrap();
+    assert_eq!(plan.values.len(), 5);
+    assert_eq!(plan.skipped_unknown, vec!["inconnu"]);
+    let mut invalid: Vec<&str> = plan
+        .skipped_invalid
+        .iter()
+        .map(|(n, _)| n.as_str())
+        .collect();
+    invalid.sort_unstable();
+    assert_eq!(invalid, vec!["adresse.code", "ref"]);
+    let report = doc.fill_form(&plan.values, FillMode::Strict).unwrap();
+    assert_eq!(report.applied.len(), 5);
+    let v = form_data::values_to_json(&doc.form_info().unwrap());
+    assert_eq!(v["nom"], "Zoé");
+    assert_eq!(v["accepte"], true);
+    assert_eq!(v["paiement"], "carte");
+    assert_eq!(v["pays"], "CA");
+    assert_eq!(v["langues"], serde_json::json!(["Allemand"]));
+    let full = form_data::info_to_json(&info);
+    assert_eq!(full["kind"], "acroform");
+    assert_eq!(full["count"], 13);
+    assert_eq!(full["fields"][0]["widgets"][0]["page"], 1);
+    assert_eq!(
+        full["fields"][0]["widgets"][0]["rect"],
+        serde_json::json!([150.0, 696.0, 410.0, 716.0])
+    );
+}
+
+#[test]
+fn form_clear_resets_editable_fields() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
+    doc.fill_form(
+        &[
+            ("nom".to_string(), text("Jean")),
+            ("accepte".to_string(), FieldValue::Bool(true)),
+        ],
+        FillMode::Strict,
+    )
+    .unwrap();
+    // nom, ville, accepte, pays, langues changent ; commentaire, adresse.* et telephone sont déjà
+    // vides ; ref est en lecture seule ; paiement garde toujours un choix.
+    assert_eq!(doc.clear_form().unwrap(), 5);
+    let info = doc.form_info().unwrap();
+    let f = |n: &str| &info.field(n).unwrap().value;
+    assert_eq!(*f("nom"), text(""));
+    assert_eq!(*f("ville"), text(""));
+    assert_eq!(*f("accepte"), FieldValue::Bool(false));
+    assert_eq!(*f("pays"), choice(&[]));
+    assert_eq!(*f("langues"), choice(&[]));
+    assert_eq!(*f("ref"), text("REF-42"));
+    assert_eq!(*f("paiement"), choice(&["virement"]));
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert_eq!(dark_in(&img, CASE), 0);
+    assert!(dark_in(&img, VIREMENT) >= 30);
+    assert_eq!(doc.clear_form().unwrap(), 0, "déjà vide");
+}

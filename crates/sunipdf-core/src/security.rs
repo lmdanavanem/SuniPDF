@@ -130,7 +130,7 @@ pub struct Bookmark {
     pub depth: usize,
 }
 
-fn lopdf_err(e: lopdf::Error) -> EngineError {
+pub(crate) fn lopdf_err(e: lopdf::Error) -> EngineError {
     EngineError::Other(format!("lopdf: {e}"))
 }
 

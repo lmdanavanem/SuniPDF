@@ -2049,6 +2049,9 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::MissingGlyphs(_) => "error.missing_glyphs",
         EngineError::FontNotEmbeddable => "error.font_not_embeddable",
         EngineError::PasswordNotLatin1 => "error.password_not_latin1",
+        EngineError::FormFieldNotFound(_) => "error.form_field_not_found",
+        EngineError::FormValueInvalid(_) => "error.form_value_invalid",
+        EngineError::FormXfa => "error.form_xfa",
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -2072,6 +2075,9 @@ mod tests {
             EngineError::MissingGlyphs(String::new()),
             EngineError::FontNotEmbeddable,
             EngineError::PasswordNotLatin1,
+            EngineError::FormFieldNotFound(String::new()),
+            EngineError::FormValueInvalid(String::new()),
+            EngineError::FormXfa,
             EngineError::Other(String::new()),
         ];
         for e in errors {

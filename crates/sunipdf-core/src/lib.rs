@@ -16,6 +16,8 @@ pub mod convert;
 pub mod edit;
 mod error;
 pub mod fonts;
+pub mod form_data;
+pub mod forms;
 pub mod geometry;
 pub mod pages;
 pub mod security;
@@ -36,6 +38,11 @@ pub use edit::{
 };
 pub use error::EngineError;
 pub use fonts::SystemFont;
+pub use form_data::ImportPlan;
+pub use forms::{
+    FieldKind, FieldOption, FieldValue, FieldWidget, FillMode, FillReport, FormField, FormInfo,
+    FormKind,
+};
 pub use geometry::PageGeometry;
 pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection, ProtectionProblem};
@@ -71,6 +78,8 @@ pub struct DocumentInfo {
     pub path: PathBuf,
     pub title: Option<String>,
     pub page_sizes: Vec<PageSize>,
+    /// Formulaire du document (`None` pour la plupart des PDF) ; mis à jour à chaque rechargement.
+    pub form: FormKind,
 }
 
 impl DocumentInfo {
@@ -223,6 +232,7 @@ impl Engine {
             .get(PdfDocumentMetadataTagType::Title)
             .map(|t| t.value().to_string())
             .filter(|s| !s.trim().is_empty());
+        let form = forms::kind_of(&inner);
         Ok(Document {
             inner,
             pdfium: &self.pdfium,
@@ -232,6 +242,7 @@ impl Engine {
                 path: path.to_path_buf(),
                 title,
                 page_sizes,
+                form,
             },
         })
     }

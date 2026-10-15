@@ -333,6 +333,7 @@ impl Document<'_> {
     }
 
     pub(crate) fn refresh_page_sizes(&mut self) -> Result<(), EngineError> {
+        self.info.form = crate::forms::kind_of(&self.inner);
         self.info.page_sizes = self
             .inner
             .pages()

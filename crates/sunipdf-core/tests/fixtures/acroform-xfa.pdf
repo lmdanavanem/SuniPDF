@@ -1,0 +1,259 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R /AcroForm 6 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> /Annots [10 0 R 12 0 R 14 0 R 16 0 R 19 0 R 23 0 R 26 0 R 29 0 R 31 0 R 33 0 R 36 0 R 38 0 R 41 0 R 43 0 R 44 0 R 45 0 R] >>
+endobj
+4 0 obj
+<< /Length 511 >>
+stream
+BT /F1 11 Tf 40 704 Td (Nom) Tj ET
+BT /F1 11 Tf 40 674 Td (Ville (accents)) Tj ET
+BT /F1 11 Tf 40 644 Td (Commentaire) Tj ET
+BT /F1 11 Tf 40 564 Td (Reference (lecture seule)) Tj ET
+BT /F1 11 Tf 40 534 Td (Accepte les conditions) Tj ET
+BT /F1 11 Tf 40 504 Td (Paiement) Tj ET
+BT /F1 11 Tf 40 444 Td (Pays) Tj ET
+BT /F1 11 Tf 40 384 Td (Langues) Tj ET
+BT /F1 11 Tf 40 304 Td (Rue) Tj ET
+BT /F1 11 Tf 40 274 Td (Code postal) Tj ET
+BT /F1 11 Tf 40 244 Td (Telephone) Tj ET
+BT /F1 11 Tf 40 204 Td (Signature) Tj ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Fields [10 0 R 12 0 R 14 0 R 16 0 R 19 0 R 20 0 R 31 0 R 33 0 R 34 0 R 39 0 R 44 0 R 45 0 R] /DA (/Helv 0 Tf 0 g) /DR << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /XFA [(preamble) 4 0 R] >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /ZapfDingbats >>
+endobj
+9 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 260 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+10 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [150 696 410 716] /FT /Tx /T (nom) /TU (Nom et prenom) /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 9 0 R >> >>
+endobj
+11 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 260 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 69 >>
+stream
+/Tx BMC q BT /Helv 12 Tf 0 g 2 4 Td (\311lodie M\374ller) Tj ET Q EMC
+endstream
+endobj
+12 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 0 /Rect [150 666 410 686] /FT /Tx /T (ville) /V (\311lodie M\374ller) /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 11 0 R >> >>
+endobj
+13 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 360 60] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+14 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [150 590 510 650] /FT /Tx /Ff 4096 /T (commentaire) /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 13 0 R >> >>
+endobj
+15 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 210 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 56 >>
+stream
+/Tx BMC q BT /Helv 12 Tf 0 g 2 4 Td (REF-42) Tj ET Q EMC
+endstream
+endobj
+16 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [200 556 410 576] /FT /Tx /Ff 1 /T (ref) /V (REF-42) /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 15 0 R >> >>
+endobj
+17 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 37 >>
+stream
+q 0 g 2 2 m 12 12 l 12 2 m 2 12 l S Q
+endstream
+endobj
+18 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 0 >>
+stream
+
+endstream
+endobj
+19 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [200 526 214 540] /FT /Btn /T (accepte) /V /Off /AS /Off /MK << /BC [0 0 0] /CA (8) >> /DA (/ZaDb 0 Tf 0 g) /AP << /N << /Yes 17 0 R /Off 18 0 R >> >> >>
+endobj
+20 0 obj
+<< /FT /Btn /Ff 49152 /T (paiement) /V /virement /Kids [23 0 R 26 0 R 29 0 R] >>
+endobj
+21 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 20 >>
+stream
+q 0 g 3 3 8 8 re f Q
+endstream
+endobj
+22 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 0 >>
+stream
+
+endstream
+endobj
+23 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 20 0 R /Rect [200 496 214 510] /AS /Off /MK << /BC [0 0 0] /CA (l) >> /DA (/ZaDb 0 Tf 0 g) /AP << /N << /carte 21 0 R /Off 22 0 R >> >> >>
+endobj
+24 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 20 >>
+stream
+q 0 g 3 3 8 8 re f Q
+endstream
+endobj
+25 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 0 >>
+stream
+
+endstream
+endobj
+26 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 20 0 R /Rect [200 476 214 490] /AS /virement /MK << /BC [0 0 0] /CA (l) >> /DA (/ZaDb 0 Tf 0 g) /AP << /N << /virement 24 0 R /Off 25 0 R >> >> >>
+endobj
+27 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 20 >>
+stream
+q 0 g 3 3 8 8 re f Q
+endstream
+endobj
+28 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 14 14] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 0 >>
+stream
+
+endstream
+endobj
+29 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 20 0 R /Rect [200 456 214 470] /AS /Off /MK << /BC [0 0 0] /CA (l) >> /DA (/ZaDb 0 Tf 0 g) /AP << /N << /especes 27 0 R /Off 28 0 R >> >> >>
+endobj
+30 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 200 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 58 >>
+stream
+/Tx BMC q BT /Helv 12 Tf 0 g 2 4 Td (Belgique) Tj ET Q EMC
+endstream
+endobj
+31 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [150 436 350 456] /FT /Ch /Ff 131072 /T (pays) /Opt [[(FR) (France)] [(BE) (Belgique)] [(CA) (Canada)]] /V (BE) /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 30 0 R >> >>
+endobj
+32 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 200 60] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+33 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [150 350 350 410] /FT /Ch /Ff 2097152 /T (langues) /Opt [(Fran\347ais) (Anglais) (Allemand)] /V [(Anglais)] /I [1] /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 32 0 R >> >>
+endobj
+34 0 obj
+<< /T (adresse) /Kids [36 0 R 38 0 R] >>
+endobj
+35 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 260 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+36 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 34 0 R /FT /Tx /T (rue) /Rect [150 296 410 316] /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 35 0 R >> >>
+endobj
+37 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 100 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+38 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 34 0 R /FT /Tx /T (code) /MaxLen 5 /Rect [150 266 250 286] /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 37 0 R >> >>
+endobj
+39 0 obj
+<< /FT /Tx /T (telephone) /Kids [41 0 R 43 0 R] >>
+endobj
+40 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 150 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+41 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 39 0 R /Rect [150 236 300 256] /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 40 0 R >> >>
+endobj
+42 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 150 20] /Resources << /Font << /Helv 7 0 R /ZaDb 8 0 R >> >> /Length 11 >>
+stream
+/Tx BMC EMC
+endstream
+endobj
+43 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Parent 39 0 R /Rect [320 236 470 256] /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 42 0 R >> >>
+endobj
+44 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [150 190 350 230] /FT /Sig /T (signature) >>
+endobj
+45 0 obj
+<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [400 190 500 214] /FT /Btn /Ff 65536 /T (envoyer) /MK << /BC [0 0 0] /BG [0.8 0.8 0.8] /CA (Envoyer) >> /DA (/Helv 12 Tf 0 g) >>
+endobj
+xref
+0 46
+0000000000 65535 f 
+0000000015 00000 n 
+0000000080 00000 n 
+0000000137 00000 n 
+0000000385 00000 n 
+0000000947 00000 n 
+0000001017 00000 n 
+0000001223 00000 n 
+0000001320 00000 n 
+0000001393 00000 n 
+0000001556 00000 n 
+0000001764 00000 n 
+0000001986 00000 n 
+0000002202 00000 n 
+0000002366 00000 n 
+0000002572 00000 n 
+0000002781 00000 n 
+0000002988 00000 n 
+0000003177 00000 n 
+0000003328 00000 n 
+0000003551 00000 n 
+0000003648 00000 n 
+0000003820 00000 n 
+0000003971 00000 n 
+0000004181 00000 n 
+0000004353 00000 n 
+0000004504 00000 n 
+0000004722 00000 n 
+0000004894 00000 n 
+0000005045 00000 n 
+0000005257 00000 n 
+0000005468 00000 n 
+0000005734 00000 n 
+0000005898 00000 n 
+0000006167 00000 n 
+0000006224 00000 n 
+0000006388 00000 n 
+0000006592 00000 n 
+0000006756 00000 n 
+0000006971 00000 n 
+0000007038 00000 n 
+0000007202 00000 n 
+0000007389 00000 n 
+0000007553 00000 n 
+0000007740 00000 n 
+0000007854 00000 n 
+trailer
+<< /Size 46 /Root 1 0 R  >>
+startxref
+8052
+%%EOF
