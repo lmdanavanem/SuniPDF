@@ -1,68 +1,63 @@
-"""Génère l'icône originale SuniPDF (Pillow) : assets/icon/sunipdf.ico + PNG 16…512.
+"""Dérive l'icône et les logos SuniPDF depuis les logos sources (Pillow).
 
-Dessin : carré arrondi bleu nuit → bleu, feuille blanche au coin replié, bande cyan en « S » stylisé.
-Aucune ressource tierce. Usage : python -I scripts/make_icon.py assets/icon
+Sources : assets/logo/sunipdf-logo-light.png (texte sombre, thème clair) et
+assets/logo/sunipdf-logo-dark.png (texte clair, thème sombre), 1254 × 1254, fond transparent.
+Produits :
+  assets/icon/sunipdf.ico + sunipdf-{16,24,32,48,64,128,256,512}.png : le symbole seul (page et ruban),
+  recadré au carré, pour l'exécutable, la fenêtre, le MSI et la barre des tâches ;
+  assets/logo/sunipdf-wordmark-{light,dark}.png : logo complet réduit (512 px) pour l'interface et le README.
+Usage : python -I scripts/make_icon.py assets/icon
 """
 import os
 import sys
 
-from PIL import Image, ImageDraw
+from PIL import Image
 
-NAVY = (17, 24, 39, 255)
-BLUE = (37, 99, 235, 255)
-CYAN = (6, 182, 212, 255)
-WHITE = (255, 255, 255, 255)
-PAPER = (248, 250, 252, 255)
+SIZES = [16, 24, 32, 48, 64, 128, 256, 512]
 
 
-def draw_icon(size: int) -> Image.Image:
-    s = size * 8  # supersampling ×8 pour un anticrénelage propre
-    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    r = s * 0.22
-    # Fond : dégradé vertical navy → bleu, masqué par un carré arrondi.
-    grad = Image.new("RGBA", (s, s))
-    gd = ImageDraw.Draw(grad)
-    for y in range(s):
-        t = y / s
-        c = tuple(int(NAVY[i] * (1 - t) + BLUE[i] * t) for i in range(3)) + (255,)
-        gd.line([(0, y), (s, y)], fill=c)
-    mask = Image.new("L", (s, s), 0)
-    ImageDraw.Draw(mask).rounded_rectangle([0, 0, s - 1, s - 1], radius=r, fill=255)
-    img.paste(grad, (0, 0), mask)
-    # Feuille blanche avec coin replié.
-    m = s * 0.22
-    left, top, right, bottom = m, m * 0.8, s - m, s - m * 0.8
-    fold = (right - left) * 0.28
-    d.polygon(
-        [(left, top), (right - fold, top), (right, top + fold), (right, bottom), (left, bottom)],
-        fill=PAPER,
-    )
-    d.polygon([(right - fold, top), (right - fold, top + fold), (right, top + fold)], fill=(203, 213, 225, 255))
-    # « S » stylisé : deux arcs cyan épais.
-    w = int(s * 0.075)
-    cx = (left + right) / 2
-    cy = (top + bottom) / 2 + s * 0.02
-    rad = (right - left) * 0.19
-    d.arc([cx - rad, cy - 2 * rad, cx + rad, cy], start=20, end=270, fill=CYAN, width=w)
-    d.arc([cx - rad, cy, cx + rad, cy + 2 * rad], start=200, end=90, fill=CYAN, width=w)
-    return img.resize((size, size), Image.LANCZOS)
+def symbol(logo: Image.Image) -> Image.Image:
+    """Symbole seul : partie haute du logo (au-dessus du mot), recadrée au carré avec une marge."""
+    w, h = logo.size
+    top = logo.crop((0, 0, w, int(h * 0.66)))
+    box = top.split()[3].getbbox()
+    if box is None:
+        raise SystemExit("logo vide")
+    left, up, right, down = box
+    side = max(right - left, down - up)
+    margin = int(side * 0.04)
+    side += 2 * margin
+    cx, cy = (left + right) // 2, (up + down) // 2
+    sq = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    sq.paste(top.crop((cx - side // 2, cy - side // 2, cx + side // 2, cy + side // 2)), (0, 0))
+    return sq
 
 
 def main(out_dir: str) -> None:
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    logo_dir = os.path.join(root, "assets", "logo")
+    light = Image.open(os.path.join(logo_dir, "sunipdf-logo-light.png")).convert("RGBA")
+    dark = Image.open(os.path.join(logo_dir, "sunipdf-logo-dark.png")).convert("RGBA")
     os.makedirs(out_dir, exist_ok=True)
-    sizes = [16, 24, 32, 48, 64, 128, 256, 512]
-    images = {n: draw_icon(n) for n in sizes}
-    for n, im in images.items():
-        im.save(os.path.join(out_dir, f"sunipdf-{n}.png"))
-    base = images[256]
-    base.save(
+    sym = symbol(light)
+    pngs = []
+    for size in SIZES:
+        im = sym.resize((size, size), Image.LANCZOS)
+        path = os.path.join(out_dir, f"sunipdf-{size}.png")
+        im.save(path, optimize=True)
+        pngs.append(im)
+    pngs[-1].save(
         os.path.join(out_dir, "sunipdf.ico"),
         format="ICO",
-        sizes=[(n, n) for n in sizes if n <= 256],
-        append_images=[images[n] for n in sizes if n <= 256 and n != 256],
+        sizes=[(s, s) for s in SIZES if s <= 256],
+        append_images=pngs[:-1],
     )
-    print("ok", os.path.join(out_dir, "sunipdf.ico"))
+    for name, logo in (("light", light), ("dark", dark)):
+        box = logo.split()[3].getbbox()
+        cropped = logo.crop(box)
+        cropped.thumbnail((512, 512), Image.LANCZOS)
+        cropped.save(os.path.join(logo_dir, f"sunipdf-wordmark-{name}.png"), optimize=True)
+    print(f"OK : {out_dir} (ico + {len(SIZES)} PNG), logos {logo_dir}")
 
 
 if __name__ == "__main__":

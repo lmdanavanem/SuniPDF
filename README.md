@@ -1,5 +1,12 @@
 # SuniPDF
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/sunipdf-wordmark-dark.png">
+    <img src="assets/logo/sunipdf-wordmark-light.png" width="240" alt="SuniPDF">
+  </picture>
+</p>
+
 **Lecteur et éditeur PDF natif pour Windows 10/11, libre, hors ligne, bilingue français / anglais.**
 *Free native PDF reader and editor for Windows 10/11, offline, French / English.* — [English summary below](#english)
 
