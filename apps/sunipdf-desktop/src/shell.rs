@@ -328,8 +328,13 @@ impl SuniApp {
     pub fn tab_strip(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         let p = self.pal();
+        let symbol = self.brand_symbol(ctx, 22.0);
         ui.horizontal(|ui| {
             ui.add_space(4.0);
+            if let Some(img) = symbol {
+                ui.add(img).on_hover_text("SuniPDF");
+                ui.add_space(2.0);
+            }
             let home_selected = self.document.is_none();
             let home = ui
                 .add(
@@ -660,6 +665,7 @@ impl SuniApp {
     pub fn home(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         let p = self.pal();
+        let wordmark = self.brand_wordmark(ctx, 64.0);
         let mut run: Option<Command> = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
@@ -669,7 +675,13 @@ impl SuniApp {
                     .show(ui, |ui| {
                         // `set_max_width` peut élargir : borner à la largeur réellement disponible.
                         ui.set_max_width(ui.available_width().min(1100.0));
-                        ui.label(icons::semibold(tr(lang, "home.welcome"), 28.0));
+                        ui.horizontal(|ui| {
+                            if let Some(img) = wordmark.clone() {
+                                ui.add(img);
+                                ui.add_space(14.0);
+                            }
+                            ui.label(icons::semibold(tr(lang, "home.welcome"), 28.0));
+                        });
                         ui.add_space(2.0);
                         ui.label(
                             RichText::new(tr(lang, "home.tagline"))

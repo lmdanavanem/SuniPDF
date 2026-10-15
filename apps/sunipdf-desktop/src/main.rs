@@ -3,6 +3,7 @@
 mod annot_adv;
 mod annotate;
 mod app;
+mod brand;
 mod dialog;
 mod docinfo;
 mod editor;

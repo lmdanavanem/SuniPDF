@@ -216,7 +216,8 @@ pub struct SuniApp {
     after_save: Option<PendingAction>,
     pub status_msg: Option<String>,
     pub has_icons: bool,
-    pub logo: Option<egui::TextureHandle>,
+    /// Textures de marque (symbole, logos clair et sombre), chargées au premier usage.
+    pub brand: Option<crate::brand::Brand>,
     /// Commande demandée sans document : exécutée dès qu'un fichier est ouvert.
     pub after_open: Option<Command>,
     pub show_tools: bool,
@@ -251,7 +252,7 @@ impl SuniApp {
         cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
         Self {
             has_icons,
-            logo: None,
+            brand: None,
             after_open: None,
             show_tools: settings.show_tools,
             focus_last_frame: false,
@@ -1841,19 +1842,7 @@ impl SuniApp {
         }
         let lang = self.lang();
         let p = theme::palette(self.settings.dark_theme);
-        if self.logo.is_none() {
-            let png = include_bytes!("../../../assets/icon/sunipdf-128.png");
-            if let Ok(img) = image::load_from_memory(png) {
-                let rgba = img.to_rgba8();
-                let size = [rgba.width() as usize, rgba.height() as usize];
-                self.logo = Some(ctx.load_texture(
-                    "logo",
-                    egui::ColorImage::from_rgba_unmultiplied(size, rgba.as_raw()),
-                    egui::TextureOptions::LINEAR,
-                ));
-            }
-        }
-        let logo = self.logo.clone();
+        let logo = self.brand_wordmark(ctx, 150.0);
         let mut close = false;
         let spec = dialog::Spec::new(
             "about",
@@ -1868,29 +1857,23 @@ impl SuniApp {
             ctx,
             spec,
             |ui| {
-                ui.horizontal(|ui| {
-                    if let Some(tex) = &logo {
-                        ui.add(
-                            egui::Image::new(tex)
-                                .fit_to_exact_size(egui::vec2(72.0, 72.0))
-                                .corner_radius(14),
-                        );
-                    }
-                    ui.add_space(10.0);
-                    ui.vertical(|ui| {
-                        ui.spacing_mut().item_spacing.y = 3.0;
+                ui.vertical_centered(|ui| {
+                    ui.spacing_mut().item_spacing.y = 4.0;
+                    if let Some(img) = logo.clone() {
+                        ui.add(img);
+                    } else {
                         ui.label(crate::icons::semibold("SuniPDF", 26.0).color(p.text));
-                        ui.label(
-                            egui::RichText::new(tr_args(
-                                lang,
-                                "about.version",
-                                &[("version", env!("CARGO_PKG_VERSION"))],
-                            ))
-                            .size(13.0)
-                            .color(p.text_muted),
-                        );
-                        ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
-                    });
+                    }
+                    ui.label(
+                        egui::RichText::new(tr_args(
+                            lang,
+                            "about.version",
+                            &[("version", env!("CARGO_PKG_VERSION"))],
+                        ))
+                        .size(13.0)
+                        .color(p.text_muted),
+                    );
+                    ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
                 });
                 ui.add_space(10.0);
                 egui::Frame::new()
