@@ -4183,3 +4183,907 @@ fn form_clear_resets_editable_fields() {
     assert!(dark_in(&img, VIREMENT) >= 30);
     assert_eq!(doc.clear_form().unwrap(), 0, "déjà vide");
 }
+
+// ----- Annotations avancées (encre, texte libre, formes, liens, relecture) -----
+
+use sunipdf_core::{
+    thread_status, AnnotShape, AnnotStyle, Document as CoreDocument, FreeTextStyle, LinkTarget,
+    ReviewStatus,
+};
+
+fn astyle(rgb: (u8, u8, u8), width: f32) -> AnnotStyle {
+    AnnotStyle {
+        rgb,
+        fill_rgb: None,
+        width_pt: width,
+        opacity: 1.0,
+    }
+}
+
+fn count(img: &RenderedPage, pred: impl Fn([u8; 3]) -> bool) -> usize {
+    img.rgba
+        .chunks(4)
+        .filter(|p| pred([p[0], p[1], p[2]]))
+        .count()
+}
+
+/// Pixels qui vérifient `pred` dans le rectangle d'affichage `r` (rendu à l'échelle 1).
+fn count_in(img: &RenderedPage, r: PointRect, pred: impl Fn([u8; 3]) -> bool) -> usize {
+    let mut n = 0;
+    for y in r.bottom.floor() as i32..r.top.ceil() as i32 {
+        for x in r.left.floor() as i32..r.right.ceil() as i32 {
+            if pred(px(img, x as f32 + 0.5, y as f32 + 0.5)) {
+                n += 1;
+            }
+        }
+    }
+    n
+}
+
+fn is_green(p: [u8; 3]) -> bool {
+    p[1] > 150 && p[0] < 100 && p[2] < 100
+}
+
+fn is_yellowish(p: [u8; 3]) -> bool {
+    p[0] > 200 && p[1] > 180 && p[2] < 120
+}
+
+fn is_magenta(p: [u8; 3]) -> bool {
+    p[0] > 200 && p[1] < 60 && p[2] > 200
+}
+
+/// Dictionnaires bruts de `/Annots` de la page 1, lus par lopdf dans un instantané.
+fn raw_annots(doc: &CoreDocument<'_>) -> Vec<lopdf::Dictionary> {
+    let pdf = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    let page = *pdf.get_pages().get(&1).unwrap();
+    let annots = pdf.get_dictionary(page).unwrap().get(b"Annots").unwrap();
+    let list = pdf
+        .dereference(annots)
+        .unwrap()
+        .1
+        .as_array()
+        .unwrap()
+        .clone();
+    list.iter()
+        .map(|e| {
+            pdf.dereference(e)
+                .unwrap()
+                .1
+                .as_dict()
+                .cloned()
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
+#[test]
+fn ink_annotation_round_trip() {
+    let engine = engine();
+    let dir = temp_dir("ink");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let strokes = vec![
+        vec![(100.0, 100.0), (150.0, 160.0), (200.0, 100.0)],
+        vec![(100.0, 200.0), (200.0, 200.0)],
+    ];
+    let i = doc
+        .add_ink_annotation(0, &strokes, &astyle((0, 0, 255), 4.0), Some("Alice"))
+        .unwrap();
+    assert_eq!(i, 0);
+    let list = doc.annotations(0).unwrap();
+    assert_eq!((list.len(), list[0].kind), (1, "ink"));
+    // Boîte des points ± (demi-épaisseur + 0,5).
+    assert!(
+        near(list[0].rect, rect(97.5, 97.5, 202.5, 202.5), 0.6),
+        "{:?}",
+        list[0].rect
+    );
+    let d = doc.annotation_details(0).unwrap();
+    assert!(d[0].ours && d[0].can_move && d[0].can_resize && d[0].can_restyle);
+    assert_eq!(d[0].author.as_deref(), Some("Alice"));
+    assert_eq!(d[0].subtype, "Ink");
+    assert!(d[0].modified.as_deref().unwrap().starts_with("D:20"));
+
+    let img = doc.render_page(0, 1.0).unwrap();
+    let blue_page = count(&img, is_blue);
+    // Le rectangle bleu de la page (72..272 × 500..650) compte aussi : on compte hors de lui.
+    let in_box = count_in(&img, rect(94.0, 94.0, 206.0, 206.0), is_blue);
+    assert!(in_box > 300, "trait rendu : {in_box} pixels");
+    let seen = pixel_box_below(&img, 300.0, is_blue).unwrap();
+    assert!(
+        near(seen, rect(98.0, 98.0, 202.0, 202.0), 3.0),
+        "pixels bleus {seen:?}"
+    );
+    assert!(blue_page > in_box);
+
+    // lopdf relit /InkList : deux tracés ; le premier garde ses trois sommets.
+    let raw = raw_annots(&doc);
+    let ink = raw[0].get(b"InkList").unwrap().as_array().unwrap();
+    assert_eq!(ink.len(), 2);
+    assert_eq!(ink[0].as_array().unwrap().len(), 6);
+
+    let out = dir.join("ink.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    let img2 = again.render_page(0, 1.0).unwrap();
+    let in_box2 = count_in(&img2, rect(94.0, 94.0, 206.0, 206.0), is_blue);
+    assert!(
+        (in_box2 as f32 - in_box as f32).abs() <= in_box as f32 * 0.02,
+        "{in_box} → {in_box2}"
+    );
+    assert!(again.annotation_details(0).unwrap()[0].ours);
+
+    // Erreurs : rien à tracer, trait démesuré, épaisseur hors bornes. Un point isolé est un point.
+    let s = astyle((0, 0, 255), 4.0);
+    assert!(doc.add_ink_annotation(0, &[], &s, None).is_err());
+    assert!(doc.add_ink_annotation(0, &[vec![]], &s, None).is_err());
+    assert!(doc
+        .add_ink_annotation(0, &[vec![(f32::NAN, 1.0), (2.0, f32::NAN)]], &s, None)
+        .is_err());
+    assert!(doc
+        .add_ink_annotation(0, &strokes, &astyle((0, 0, 255), 80.0), None)
+        .is_err());
+    let many: Vec<Vec<(f32, f32)>> = (0..65).map(|_| strokes[0].clone()).collect();
+    assert!(doc.add_ink_annotation(0, &many, &s, None).is_err());
+    assert!(matches!(
+        doc.add_ink_annotation(7, &strokes, &s, None),
+        Err(EngineError::PageOutOfRange(7))
+    ));
+    assert_eq!(doc.annotations(0).unwrap().len(), 1, "échecs sans effet");
+    doc.add_ink_annotation(0, &[vec![(300.0, 300.0)]], &s, None)
+        .unwrap();
+    let dot = doc.render_page(0, 1.0).unwrap();
+    assert!(count_in(&dot, rect(296.0, 296.0, 304.0, 304.0), is_blue) > 6);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn shape_annotations_render() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    // Rectangle jaune à moitié opaque, trait bleu.
+    let mut filled = astyle((0, 0, 255), 2.0);
+    filled.fill_rgb = Some((255, 255, 0));
+    filled.opacity = 0.5;
+    doc.add_shape_annotation(
+        0,
+        AnnotShape::Square,
+        rect(100.0, 100.0, 200.0, 200.0),
+        &filled,
+        None,
+    )
+    .unwrap();
+    // Ellipse sans fond : centre blanc, anneau rouge.
+    doc.add_shape_annotation(
+        0,
+        AnnotShape::Circle,
+        rect(250.0, 100.0, 350.0, 200.0),
+        &astyle((255, 0, 0), 4.0),
+        None,
+    )
+    .unwrap();
+    // Ligne puis flèche de même longueur.
+    let blue = astyle((0, 0, 255), 3.0);
+    doc.add_shape_annotation(
+        0,
+        AnnotShape::Line,
+        rect(100.0, 300.0, 300.0, 300.0),
+        &blue,
+        None,
+    )
+    .unwrap();
+    doc.add_shape_annotation(
+        0,
+        AnnotShape::Arrow,
+        rect(100.0, 400.0, 300.0, 400.0),
+        &blue,
+        None,
+    )
+    .unwrap();
+    let img = doc.render_page(0, 1.0).unwrap();
+    let c = px(&img, 150.0, 150.0);
+    assert!(
+        c[0] > 240 && c[1] > 240 && (90..170).contains(&c[2]),
+        "fond jaune à 50 % sur blanc : {c:?}"
+    );
+    assert_eq!(
+        px(&img, 300.0, 150.0),
+        [255, 255, 255],
+        "centre de l'ellipse"
+    );
+    assert!(
+        is_red(px(&img, 347.0, 150.0)),
+        "anneau {:?}",
+        px(&img, 347.0, 150.0)
+    );
+    let tip = |y: f32| rect(280.0, y - 10.0, 300.0, y + 10.0);
+    let (line_tip, arrow_tip) = (
+        count_in(&img, tip(300.0), is_blue),
+        count_in(&img, tip(400.0), is_blue),
+    );
+    assert!(
+        arrow_tip as f32 > line_tip as f32 * 1.4,
+        "pointe : {arrow_tip} contre {line_tip}"
+    );
+    let tail = count_in(&img, rect(100.0, 390.0, 120.0, 410.0), is_blue);
+    assert!(arrow_tip > tail, "la pointe est du côté de l'extrémité");
+    let details = doc.annotation_details(0).unwrap();
+    assert_eq!(
+        details
+            .iter()
+            .map(|d| d.subtype.as_str())
+            .collect::<Vec<_>>(),
+        ["Square", "Circle", "Line", "Line"]
+    );
+    assert!(!details[2].arrow && details[3].arrow);
+    assert_eq!(details[0].fill_rgb, Some((255, 255, 0)));
+    assert!((details[0].opacity - 0.5).abs() < 1e-3);
+    // Erreurs.
+    assert!(doc
+        .add_shape_annotation(
+            0,
+            AnnotShape::Line,
+            rect(50.0, 50.0, 50.2, 50.2),
+            &blue,
+            None
+        )
+        .is_err());
+    assert!(doc
+        .add_shape_annotation(
+            0,
+            AnnotShape::Square,
+            rect(50.0, 50.0, 51.0, 80.0),
+            &blue,
+            None
+        )
+        .is_err());
+    assert_eq!(doc.annotations(0).unwrap().len(), 4);
+}
+
+#[test]
+fn free_text_wraps_grows_and_keeps_the_exact_text() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore";
+    let style = FreeTextStyle::default();
+    let r = rect(300.0, 300.0, 450.0, 320.0);
+    doc.add_free_text_annotation(0, r, text, &style, Some("Bob"))
+        .unwrap();
+    let d = &doc.annotation_details(0).unwrap()[0];
+    assert_eq!(d.subtype, "FreeText");
+    assert!(d.rect.top - d.rect.bottom > 20.0, "grandit : {:?}", d.rect);
+    assert!(
+        (d.rect.top - 320.0).abs() < 0.01,
+        "vers le bas : {:?}",
+        d.rect
+    );
+    assert_eq!((d.rect.left, d.rect.right), (300.0, 450.0));
+    assert_eq!(d.contents.as_deref(), Some(text));
+    assert_eq!((d.font_size, d.rgb), (Some(12.0), Some((0, 0, 0))));
+    let img = doc.render_page(0, 1.0).unwrap();
+    // Au moins trois bandes de lignes de pixels sombres.
+    let mut bands = 0;
+    let mut inside = false;
+    for y in 0..792 {
+        let dark = (300..450).any(|x| is_dark(px(&img, x as f32 + 0.5, y as f32 + 0.5)));
+        if dark && !inside {
+            bands += 1;
+        }
+        inside = dark;
+    }
+    assert!(bands >= 3, "{bands} lignes de texte");
+    let seen = pixel_box_below(&img, 400.0, is_dark).unwrap();
+    assert!(
+        seen.left >= 299.0
+            && seen.right <= 451.0
+            && seen.top <= 321.5
+            && seen.bottom >= d.rect.bottom - 1.5,
+        "texte dans la boîte : {seen:?} / {:?}",
+        d.rect
+    );
+
+    // Accents et caractères hors WinAnsi : le contenu garde le texte exact.
+    for t in ["Élève à l'école — ça va ?", "Coché ✓ et 日本"] {
+        doc.add_free_text_annotation(0, rect(100.0, 100.0, 300.0, 130.0), t, &style, None)
+            .unwrap();
+        let all = doc.annotation_details(0).unwrap();
+        assert_eq!(all.last().unwrap().contents.as_deref(), Some(t));
+    }
+    // Erreurs.
+    for (rc, t) in [
+        (r, "   "),
+        (r, ""),
+        (rect(0.0, 0.0, 10.0, 30.0), "trop étroit"),
+    ] {
+        assert!(doc
+            .add_free_text_annotation(0, rc, t, &style, None)
+            .is_err());
+    }
+    let mut bad = style.clone();
+    bad.size_pt = 1.0;
+    assert!(doc.add_free_text_annotation(0, r, "x", &bad, None).is_err());
+}
+
+#[test]
+fn annotations_land_where_displayed_on_rotated_and_cropped_pages() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    // Texte de référence sur une page droite (région vierge de two-pages.pdf).
+    let tr = rect(100.0, 300.0, 260.0, 330.0);
+    let tstyle = FreeTextStyle {
+        fill_rgb: Some((255, 255, 200)),
+        ..Default::default()
+    };
+    let mut flat = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    flat.add_free_text_annotation(0, tr, "Upright 123 abc", &tstyle, None)
+        .unwrap();
+    let reference = flat.render_page(0, 1.0).unwrap();
+    let mut magenta_fill = astyle((255, 0, 255), 0.0);
+    magenta_fill.fill_rgb = Some((255, 0, 255));
+    for p in 0..4 {
+        let target = rect(200.0, 150.0, 260.0, 200.0);
+        doc.add_shape_annotation(p, AnnotShape::Square, target, &magenta_fill, None)
+            .unwrap();
+        doc.add_shape_annotation(
+            p,
+            AnnotShape::Arrow,
+            rect(300.0, 250.0, 400.0, 250.0),
+            &astyle((0, 0, 255), 3.0),
+            None,
+        )
+        .unwrap();
+        doc.add_free_text_annotation(p, tr, "Upright 123 abc", &tstyle, None)
+            .unwrap();
+        let img = doc.render_page(p, 1.0).unwrap();
+        let seen = pixel_box(&img, is_magenta).expect("carré magenta");
+        assert!(near(seen, target, 1.5), "page {p} : {seen:?} ≠ {target:?}");
+        let details = doc.annotation_details(p).unwrap();
+        assert!(near(details[0].rect, target, 0.01), "page {p}");
+        // Pointe de la flèche à droite à l'écran, quelle que soit la rotation de la page.
+        let head = count_in(&img, rect(380.0, 238.0, 402.0, 262.0), is_blue);
+        let tail = count_in(&img, rect(298.0, 238.0, 320.0, 262.0), is_blue);
+        assert!(
+            head as f32 > tail as f32 * 1.4,
+            "page {p} : pointe {head}, queue {tail}"
+        );
+        // Le texte libre est droit à l'écran : même rendu que sur une page non tournée.
+        let mut diff = 0usize;
+        let mut total = 0usize;
+        for y in 300..330 {
+            for x in 100..260 {
+                let (a, b) = (
+                    px(&img, x as f32 + 0.5, y as f32 + 0.5),
+                    px(&reference, x as f32 + 0.5, y as f32 + 0.5),
+                );
+                total += 1;
+                if !close3(a, b, 60) {
+                    diff += 1;
+                }
+            }
+        }
+        assert!(
+            diff * 100 < total * 3,
+            "page {p} : texte différent du rendu droit ({diff}/{total})"
+        );
+    }
+}
+
+#[test]
+fn link_annotations_and_safety() {
+    let engine = engine();
+    let dir = temp_dir("links");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let blue = astyle((0, 0, 255), 2.0);
+    let sq = |doc: &mut CoreDocument<'_>, x: f32| {
+        doc.add_shape_annotation(
+            0,
+            AnnotShape::Square,
+            rect(x, 20.0, x + 30.0, 50.0),
+            &blue,
+            None,
+        )
+        .unwrap();
+    };
+    sq(&mut doc, 20.0);
+    let page_link = rect(72.0, 600.0, 200.0, 630.0);
+    let url_link = rect(300.0, 600.0, 400.0, 630.0);
+    assert_eq!(
+        doc.add_link_annotation(0, page_link, &LinkTarget::Page(1))
+            .unwrap(),
+        1
+    );
+    sq(&mut doc, 80.0);
+    doc.add_link_annotation(0, url_link, &LinkTarget::Uri("https://example.org".into()))
+        .unwrap();
+    let links = doc.page_links(0).unwrap();
+    assert_eq!(links.len(), 2, "pas de doublons : {links:?}");
+    assert_eq!((links[0].index, links[1].index), (1, 3));
+    assert_eq!(links[0].target, LinkTarget::Page(1));
+    assert_eq!(
+        links[1].target,
+        LinkTarget::Uri("https://example.org".into())
+    );
+    assert!(near(links[0].rect, page_link, 0.01) && near(links[1].rect, url_link, 0.01));
+    // Les mêmes liens vus par lopdf.
+    let d = doc.annotation_details(0).unwrap();
+    assert_eq!(d[1].link, Some(LinkTarget::Page(1)));
+    assert_eq!(d[3].link, links.last().map(|l| l.target.clone()));
+    // Refus : page absente, adresses dangereuses, cible non prise en charge, zone trop petite.
+    assert!(matches!(
+        doc.add_link_annotation(0, page_link, &LinkTarget::Page(9)),
+        Err(EngineError::PageOutOfRange(9))
+    ));
+    for bad in [
+        "file:///C:/Windows/System32/calc.exe",
+        "javascript:alert(1)",
+        "C:\\Windows\\calc.exe",
+        "ms-msdt:id",
+    ] {
+        assert!(
+            doc.add_link_annotation(0, page_link, &LinkTarget::Uri(bad.into()))
+                .is_err(),
+            "{bad}"
+        );
+    }
+    assert!(doc
+        .add_link_annotation(0, page_link, &LinkTarget::Unsupported)
+        .is_err());
+    assert!(doc
+        .add_link_annotation(0, rect(1.0, 1.0, 2.0, 2.0), &LinkTarget::Page(0))
+        .is_err());
+    assert_eq!(doc.annotations(0).unwrap().len(), 4);
+    // Après enregistrement et ouverture.
+    let out = dir.join("links.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    assert_eq!(again.page_links(0).unwrap(), links);
+    // Page tournée et rognée : la zone revient où on l'a posée.
+    let mut boxes = engine.open(&fixture("boxes.pdf"), None).unwrap();
+    for p in [0, 2, 3] {
+        let r = rect(10.0, 20.0, 70.0, 50.0);
+        boxes
+            .add_link_annotation(p, r, &LinkTarget::Page(0))
+            .unwrap();
+        let l = boxes.page_links(p).unwrap();
+        assert!(near(l[0].rect, r, 0.01), "page {p} : {:?}", l[0].rect);
+        assert_eq!(l[0].target, LinkTarget::Page(0));
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn annotated_fixture_is_read_faithfully() {
+    let engine = engine();
+    let doc = engine.open(&fixture("annotated.pdf"), None).unwrap();
+    let d = doc.annotation_details(0).unwrap();
+    let subtypes: Vec<&str> = d.iter().map(|d| d.subtype.as_str()).collect();
+    assert_eq!(
+        subtypes,
+        [
+            "Square",
+            "Ink",
+            "FreeText",
+            "Highlight",
+            "Text",
+            "Text",
+            "Text",
+            "Link",
+            "Square",
+            "Link",
+            "Link",
+            "Popup"
+        ]
+    );
+    assert!(d.iter().all(|d| !d.ours && !d.locked && !d.hidden));
+    assert_eq!(
+        (d[5].parent, d[6].parent, d[4].parent),
+        (Some(4), Some(4), None)
+    );
+    assert_eq!(d[6].status, Some(ReviewStatus::Accepted));
+    assert_eq!(d[5].status, None);
+    assert_eq!(thread_status(&d, 4), ReviewStatus::Accepted);
+    assert_eq!(d[4].replies, 2);
+    assert_eq!(d[5].contents.as_deref(), Some("Réponse de Bob"));
+    assert_eq!(d[5].author.as_deref(), Some("Bob"));
+    assert_eq!(d[0].author.as_deref(), Some("Alice"));
+    assert_eq!(d[0].contents.as_deref(), Some("Cadre rouge"));
+    assert_eq!(d[0].rgb, Some((255, 0, 0)));
+    assert!(near(d[0].rect, rect(100.0, 500.0, 200.0, 560.0), 0.01));
+    assert_eq!(d[2].font_size, Some(12.0));
+    assert_eq!(
+        d[7].link,
+        Some(LinkTarget::Uri("https://example.com".into()))
+    );
+    assert_eq!(d[9].link, Some(LinkTarget::Page(1)));
+    assert_eq!(d[10].link, Some(LinkTarget::Unsupported));
+    // Droits : déplacer oui, redimensionner et restyler non (autre producteur) ; surlignage
+    // recolorable mais pas déplaçable.
+    assert!(d[0].can_move && !d[0].can_resize && !d[0].can_restyle && d[0].can_edit_text);
+    assert!(!d[2].can_edit_text && d[3].can_restyle && !d[3].can_move);
+    assert!(!d[11].can_move && !d[11].can_edit_text);
+    // La lecture PDFium (liste rapide et liens) voit la même chose, sans doublon.
+    assert_eq!(doc.annotations(0).unwrap().len(), 12);
+    let links = doc.page_links(0).unwrap();
+    assert_eq!(
+        links.iter().map(|l| l.index).collect::<Vec<_>>(),
+        [7, 9, 10]
+    );
+    assert_eq!(
+        links[0].target,
+        LinkTarget::Uri("https://example.com".into())
+    );
+    assert_eq!(links[1].target, LinkTarget::Page(1));
+    assert_eq!(links[2].target, LinkTarget::Unsupported);
+    assert!(doc.annotation_details(1).unwrap().is_empty());
+}
+
+#[test]
+fn existing_annotations_move_restyle_and_delete_without_touching_the_others() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("annotated.pdf"), None).unwrap();
+    let before = doc.annotation_details(0).unwrap();
+    let img0 = doc.render_page(0, 1.0).unwrap();
+    let red0 = pixel_box(&img0, is_red).unwrap();
+
+    // (a) Déplacement du carré d'Acrobat (+30, −20) : /Rect et rendu suivent, le reste est intact.
+    doc.move_annotation(0, 0, 30.0, -20.0).unwrap();
+    let after = doc.annotation_details(0).unwrap();
+    assert!(near(after[0].rect, rect(130.0, 480.0, 230.0, 540.0), 0.01));
+    let red1 = pixel_box(&doc.render_page(0, 1.0).unwrap(), is_red).unwrap();
+    assert!(
+        near(
+            red1,
+            rect(
+                red0.left + 30.0,
+                red0.bottom - 20.0,
+                red0.right + 30.0,
+                red0.top - 20.0
+            ),
+            1.5
+        ),
+        "{red0:?} → {red1:?}"
+    );
+    for i in 1..before.len() {
+        let (mut a, mut b) = (before[i].clone(), after[i].clone());
+        (a.modified, b.modified) = (None, None);
+        assert_eq!(a, b, "annotation {i} intacte");
+    }
+    // L'encre : tous ses points suivent.
+    doc.move_annotation(0, 1, 30.0, 0.0).unwrap();
+    let ink = &raw_annots(&doc)[1];
+    let first = ink.get(b"InkList").unwrap().as_array().unwrap()[0]
+        .as_array()
+        .unwrap()[0]
+        .as_float()
+        .unwrap();
+    assert!((first - 140.0).abs() < 0.01, "{first}");
+    // Non déplaçables : surlignage (ancré au texte), fenêtre contextuelle, indice absent.
+    for i in [3usize, 11, 99] {
+        assert!(doc.move_annotation(0, i, 5.0, 5.0).is_err(), "{i}");
+    }
+
+    // (b) Redimensionner ou restyler une annotation étrangère est refusé (apparence intacte).
+    let r = rect(100.0, 100.0, 200.0, 200.0);
+    assert!(doc.resize_annotation(0, 0, r).is_err());
+    assert!(doc
+        .set_annotation_style(0, 2, &astyle((0, 0, 255), 1.0))
+        .is_err());
+    assert!(doc
+        .update_free_text(0, 2, "x", &FreeTextStyle::default())
+        .is_err());
+    assert!(doc.set_annotation_contents(0, 2, "x").is_err());
+
+    // (c) Recolorer le surlignage jaune en vert : l'apparence est régénérée et mémorisée.
+    let title = rect(72.0, 694.0, 250.0, 724.0);
+    let yellow_before = count_in(&doc.render_page(0, 1.0).unwrap(), title, is_yellowish);
+    assert!(yellow_before > 500, "{yellow_before}");
+    doc.set_annotation_style(0, 3, &astyle((0, 200, 0), 1.0))
+        .unwrap();
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert_eq!(count_in(&img, title, is_yellowish), 0);
+    assert!(count_in(&img, title, is_green) > 500);
+    assert!(
+        raw_annots(&doc)[3].get(b"AP").is_ok(),
+        "apparence mémorisée"
+    );
+    assert_eq!(doc.annotations(0).unwrap().len(), 12);
+
+    // (d) Commentaire d'une annotation.
+    doc.set_annotation_contents(0, 0, "Vérifié ✓ à 100 %")
+        .unwrap();
+    assert_eq!(
+        doc.annotation_details(0).unwrap()[0].contents.as_deref(),
+        Some("Vérifié ✓ à 100 %")
+    );
+    doc.set_annotation_contents(0, 0, "").unwrap();
+    assert_eq!(doc.annotation_details(0).unwrap()[0].contents, None);
+
+    // (e) Supprimer le fil de la note : note, réponse, état et fenêtre contextuelle partent.
+    assert_eq!(doc.delete_annotation_thread(0, 4).unwrap(), 4);
+    let left = doc.annotation_details(0).unwrap();
+    assert_eq!(left.len(), 8);
+    assert_eq!(
+        left.iter().map(|d| d.subtype.as_str()).collect::<Vec<_>>(),
+        [
+            "Square",
+            "Ink",
+            "FreeText",
+            "Highlight",
+            "Link",
+            "Square",
+            "Link",
+            "Link"
+        ]
+    );
+    assert!(doc.delete_annotation_thread(0, 40).is_err());
+
+    // (f) Annotations de SuniPDF : redimensionner régénère l'apparence, le style la recolore.
+    let mut red = astyle((255, 0, 0), 3.0);
+    red.fill_rgb = Some((255, 0, 0));
+    let i = doc
+        .add_shape_annotation(
+            0,
+            AnnotShape::Square,
+            rect(300.0, 100.0, 380.0, 160.0),
+            &red,
+            None,
+        )
+        .unwrap();
+    let nr = rect(400.0, 300.0, 520.0, 340.0);
+    doc.resize_annotation(0, i, nr).unwrap();
+    assert!(near(doc.annotation_details(0).unwrap()[i].rect, nr, 0.01));
+    let img = doc.render_page(0, 1.0).unwrap();
+    let seen = pixel_box_below(&img, 350.0, is_red).unwrap();
+    assert!(
+        seen.right >= nr.right - 1.5 && seen.top <= nr.top + 1.5 && seen.left >= 300.0,
+        "{seen:?}"
+    );
+    assert_eq!(count_in(&img, rect(300.0, 100.0, 380.0, 160.0), is_red), 0);
+    let mut blue = red.clone();
+    blue.rgb = (0, 0, 255);
+    blue.fill_rgb = Some((0, 0, 255));
+    doc.set_annotation_style(0, i, &blue).unwrap();
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(count_in(&img, nr, is_blue) > 4000);
+    assert!(too_small(&mut doc, i));
+
+    // Texte libre : modifier le texte et la couleur.
+    let t = doc
+        .add_free_text_annotation(
+            0,
+            rect(100.0, 100.0, 300.0, 130.0),
+            "Avant",
+            &FreeTextStyle::default(),
+            None,
+        )
+        .unwrap();
+    let style = FreeTextStyle {
+        size_pt: 18.0,
+        rgb: (0, 0, 255),
+        fill_rgb: Some((255, 255, 0)),
+        border_pt: 1.0,
+    };
+    doc.update_free_text(0, t, "Après", &style).unwrap();
+    let d = &doc.annotation_details(0).unwrap()[t];
+    assert_eq!(d.contents.as_deref(), Some("Après"));
+    assert_eq!(
+        (d.font_size, d.rgb, d.fill_rgb, d.width_pt),
+        (
+            Some(18.0),
+            Some((0, 0, 255)),
+            Some((255, 255, 0)),
+            Some(1.0)
+        )
+    );
+    doc.set_annotation_contents(0, t, "Encore").unwrap();
+    assert_eq!(
+        doc.annotation_details(0).unwrap()[t].contents.as_deref(),
+        Some("Encore")
+    );
+    // L'encre de SuniPDF se redimensionne : la boîte suit.
+    let ink = doc
+        .add_ink_annotation(
+            0,
+            &[vec![(500.0, 100.0), (540.0, 160.0), (580.0, 100.0)]],
+            &astyle((255, 0, 0), 2.0),
+            None,
+        )
+        .unwrap();
+    let target = rect(450.0, 80.0, 600.0, 200.0);
+    doc.resize_annotation(0, ink, target).unwrap();
+    assert!(near(
+        doc.annotation_details(0).unwrap()[ink].rect,
+        target,
+        0.01
+    ));
+}
+
+/// Un redimensionnement sous 4 pt est refusé.
+fn too_small(doc: &mut CoreDocument<'_>, i: usize) -> bool {
+    doc.resize_annotation(0, i, rect(10.0, 10.0, 12.0, 12.0))
+        .is_err()
+}
+
+#[test]
+fn replies_and_status_are_invisible_and_threaded() {
+    let engine = engine();
+    let dir = temp_dir("replies");
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.add_note(0, 300.0, 600.0, "Relire").unwrap();
+    let alone = doc.render_page(0, 1.0).unwrap();
+    let r1 = doc.add_reply(0, 0, "D'accord", Some("Bob")).unwrap();
+    let r2 = doc.add_reply(0, r1, "Merci é", None).unwrap();
+    doc.set_review_status(0, 0, ReviewStatus::Accepted, Some("Bob"))
+        .unwrap();
+    doc.set_review_status(0, 0, ReviewStatus::Rejected, Some("Bob"))
+        .unwrap();
+    let with = doc.render_page(0, 1.0).unwrap();
+    assert!(
+        with.rgba == alone.rgba,
+        "réponses et états sans trace sur la page"
+    );
+    let d = doc.annotation_details(0).unwrap();
+    assert_eq!(d.len(), 5);
+    assert_eq!((d[r1].parent, d[r2].parent), (Some(0), Some(r1)));
+    assert_eq!(d[r1].author.as_deref(), Some("Bob"));
+    assert_eq!(d[r2].contents.as_deref(), Some("Merci é"));
+    assert_eq!(d[3].status, Some(ReviewStatus::Accepted));
+    assert_eq!(thread_status(&d, 0), ReviewStatus::Rejected);
+    assert_eq!(d[0].replies, 4);
+    // Le fil survit à l'enregistrement.
+    let out = dir.join("thread.pdf");
+    doc.save_as(&out).unwrap();
+    let again = engine.open(&out, None).unwrap();
+    let d2 = again.annotation_details(0).unwrap();
+    assert_eq!(thread_status(&d2, 0), ReviewStatus::Rejected);
+    assert!(again.render_page(0, 1.0).unwrap().rgba == alone.rgba);
+    // Erreurs : texte vide, parent inexistant ou fenêtre contextuelle.
+    assert!(doc.add_reply(0, 0, "  ", None).is_err());
+    assert!(doc.add_reply(0, 42, "x", None).is_err());
+    assert!(doc
+        .set_review_status(0, 42, ReviewStatus::None, None)
+        .is_err());
+    // Supprimer le fil emporte tout.
+    assert_eq!(doc.delete_annotation_thread(0, 0).unwrap(), 5);
+    assert!(doc.annotations(0).unwrap().is_empty());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn annotation_edits_keep_the_protection_of_encrypted_documents() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let dir = temp_dir("enc-annot");
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    let protected = security::protect(
+        &input,
+        None,
+        &Protection {
+            user_password: "u".into(),
+            owner_password: "o".into(),
+            allow_copy: false,
+            aes256: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let path = dir.join("protected.pdf");
+    std::fs::write(&path, &protected).unwrap();
+    let mut doc = engine.open(&path, Some("u")).unwrap();
+    let s = astyle((255, 0, 0), 2.0);
+    doc.add_ink_annotation(0, &[vec![(100.0, 100.0), (200.0, 150.0)]], &s, Some("Zoé"))
+        .unwrap();
+    doc.add_shape_annotation(
+        0,
+        AnnotShape::Circle,
+        rect(50.0, 50.0, 90.0, 90.0),
+        &s,
+        None,
+    )
+    .unwrap();
+    doc.add_free_text_annotation(
+        0,
+        rect(300.0, 300.0, 450.0, 330.0),
+        "Texte protégé",
+        &FreeTextStyle::default(),
+        None,
+    )
+    .unwrap();
+    doc.add_link_annotation(0, rect(10.0, 10.0, 40.0, 30.0), &LinkTarget::Page(1))
+        .unwrap();
+    doc.move_annotation(0, 0, 5.0, 5.0).unwrap();
+    doc.add_reply(0, 2, "Réponse", None).unwrap();
+    let snap = doc.snapshot().unwrap();
+    assert!(
+        snap.windows(8).any(|w| w == b"/Encrypt"),
+        "le document reste chiffré en mémoire"
+    );
+    let out = dir.join("out.pdf");
+    doc.save_as(&out).unwrap();
+    assert!(matches!(
+        engine.open(&out, None),
+        Err(EngineError::PasswordRequired)
+    ));
+    let again = engine.open(&out, Some("u")).unwrap();
+    let props = again.properties();
+    assert!(props.encrypted && !props.can_copy, "{props:?}");
+    assert_eq!(again.annotations(0).unwrap().len(), 5);
+    assert_eq!(
+        again.annotation_details(0).unwrap()[2].contents.as_deref(),
+        Some("Texte protégé")
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn annotation_edits_work_on_the_rc4_fixture() {
+    let engine = engine();
+    let mut doc = engine
+        .open(&fixture("encrypted-rc4.pdf"), Some("secret"))
+        .unwrap();
+    let before = doc.annotations(0).unwrap().len();
+    doc.add_shape_annotation(
+        0,
+        AnnotShape::Square,
+        rect(100.0, 100.0, 150.0, 150.0),
+        &astyle((255, 0, 0), 2.0),
+        None,
+    )
+    .unwrap();
+    assert_eq!(doc.annotations(0).unwrap().len(), before + 1);
+    assert!(doc.snapshot().unwrap().windows(8).any(|w| w == b"/Encrypt"));
+    // PDFium sait toujours ajouter une note sur ce document.
+    doc.add_note(0, 200.0, 200.0, "ok").unwrap();
+}
+
+#[test]
+fn annotation_snapshot_undo() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let snap = doc.snapshot().unwrap();
+    doc.add_ink_annotation(
+        0,
+        &[vec![(100.0, 100.0), (200.0, 200.0)]],
+        &astyle((255, 0, 0), 2.0),
+        None,
+    )
+    .unwrap();
+    doc.add_reply(0, 0, "x", None).unwrap();
+    assert_eq!(doc.annotations(0).unwrap().len(), 2);
+    doc.restore(snap).unwrap();
+    assert!(doc.annotations(0).unwrap().is_empty());
+}
+
+#[test]
+fn entries_of_annots_keep_their_indices_when_one_is_unreadable() {
+    let engine = engine();
+    let dir = temp_dir("null-annot");
+    let mut pdf =
+        lopdf::Document::load_mem(&std::fs::read(fixture("annotated.pdf")).unwrap()).unwrap();
+    let page = *pdf.get_pages().get(&1).unwrap();
+    let dict = pdf.get_dictionary_mut(page).unwrap();
+    let annots = dict.get_mut(b"Annots").unwrap().as_array_mut().unwrap();
+    annots.insert(1, lopdf::Object::Null);
+    let path = dir.join("null.pdf");
+    pdf.save(&path).unwrap();
+    let mut doc = engine.open(&path, None).unwrap();
+    let list = doc.annotations(0).unwrap();
+    assert_eq!(list.len(), 13);
+    assert_eq!((list[1].kind, list[2].kind), ("other", "ink"));
+    let d = doc.annotation_details(0).unwrap();
+    assert_eq!(d.len(), 13);
+    assert_eq!(
+        (d[1].subtype.as_str(), d[2].subtype.as_str()),
+        ("Unknown", "Ink")
+    );
+    assert!(!d[1].can_move && !d[1].can_edit_text);
+    assert!(doc.move_annotation(0, 1, 1.0, 1.0).is_err());
+    doc.move_annotation(0, 2, 5.0, 5.0).unwrap();
+    assert_eq!(doc.annotation_details(0).unwrap().len(), 13);
+    // Les liens gardent leur indice d'annotation.
+    let links = doc.page_links(0).unwrap();
+    assert_eq!(
+        links.iter().map(|l| l.index).collect::<Vec<_>>(),
+        [8, 10, 11]
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

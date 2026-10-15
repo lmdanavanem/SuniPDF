@@ -8,6 +8,8 @@
 //! de parallélisme). L'application de bureau les confine dans un thread de travail.
 
 pub mod annot;
+pub mod annot_write;
+mod appearance;
 pub mod boxes;
 pub mod cache;
 pub mod clipboard;
@@ -19,6 +21,7 @@ pub mod fonts;
 pub mod form_data;
 pub mod forms;
 pub mod geometry;
+pub mod links;
 pub mod pages;
 pub mod security;
 pub mod signature_image;
@@ -27,6 +30,9 @@ pub mod text;
 pub mod tiles;
 
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection, ANNOTATION_KINDS};
+pub use annot_write::{
+    thread_status, AnnotDetail, AnnotShape, AnnotStyle, FreeTextStyle, LinkTarget, ReviewStatus,
+};
 pub use boxes::{PageMargins, ResizeMode};
 pub use cache::{cache_key, tile_key, RenderCache};
 pub use clipboard::ObjectClip;
@@ -44,6 +50,7 @@ pub use forms::{
     FormKind,
 };
 pub use geometry::PageGeometry;
+pub use links::{is_safe_external_uri, LinkInfo};
 pub use pages::{write_atomic, Rotation};
 pub use security::{Bookmark, Metadata, Properties, Protection, ProtectionProblem};
 pub use stamp::{Stamp, StampPosition};

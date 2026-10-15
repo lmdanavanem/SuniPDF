@@ -1,0 +1,122 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R >> >> /Annots [8 0 R 9 0 R 10 0 R 11 0 R 12 0 R 13 0 R 14 0 R 15 0 R 16 0 R 17 0 R 18 0 R 19 0 R] >>
+endobj
+4 0 obj
+<< /Length 46 >>
+stream
+BT /F1 24 Tf 72 700 Td (SuniPDF page 1) Tj ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Contents 6 0 R /Resources << /Font << /F1 7 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 46 >>
+stream
+BT /F1 24 Tf 72 400 Td (SuniPDF page 2) Tj ET
+
+endstream
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Type /Annot /Subtype /Square /Rect [100 500 200 560] /C [1 0 0] /T (Alice) /Contents (Cadre rouge) /F 4 /AP << /N 20 0 R >> >>
+endobj
+9 0 obj
+<< /Type /Annot /Subtype /Ink /Rect [105 395 195 455] /InkList [[110 400 150 450 190 400]] /C [0 0 1] /F 4 /AP << /N 21 0 R >> >>
+endobj
+10 0 obj
+<< /Type /Annot /Subtype /FreeText /Rect [300 400 460 440] /DA (/Helv 12 Tf 0 0 0 rg) /Contents (Texte libre) /F 4 /AP << /N 22 0 R >> >>
+endobj
+11 0 obj
+<< /Type /Annot /Subtype /Highlight /Rect [72 694 250 724] /QuadPoints [72 724 250 724 72 694 250 694] /C [1 1 0] /F 4 >>
+endobj
+12 0 obj
+<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /Contents (Note parent) /T (Alice) /Name /Note /C [1 0.8 0] /F 4 /Popup 19 0 R >>
+endobj
+13 0 obj
+<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /IRT 12 0 R /RT /R /T (Bob) /Contents <FEFF005200E90070006F006E0073006500200064006500200042006F0062> /F 4 /AP << /N 23 0 R >> >>
+endobj
+14 0 obj
+<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /IRT 12 0 R /RT /R /T (Carol) /StateModel (Review) /State (Accepted) /F 4 /AP << /N 23 0 R >> >>
+endobj
+15 0 obj
+<< /Type /Annot /Subtype /Link /Rect [72 700 300 730] /Border [0 0 0] /A << /S /URI /URI (https://example.com) >> >>
+endobj
+16 0 obj
+<< /Type /Annot /Subtype /Square /Rect [250 500 300 540] /C [0 0.6 0] /F 4 >>
+endobj
+17 0 obj
+<< /Type /Annot /Subtype /Link /Rect [100 300 200 330] /Border [0 0 0] /Dest [5 0 R /Fit] >>
+endobj
+18 0 obj
+<< /Type /Annot /Subtype /Link /Rect [100 250 200 280] /Border [0 0 0] /A << /S /Launch /F (calc.exe) >> >>
+endobj
+19 0 obj
+<< /Type /Annot /Subtype /Popup /Rect [450 600 550 700] /Parent 12 0 R /Open false >>
+endobj
+20 0 obj
+<< /Type /XObject /Subtype /Form /BBox [100 500 200 560]  /Length 31 >>
+stream
+1 0 0 RG 2 w 101 501 98 58 re S
+endstream
+endobj
+21 0 obj
+<< /Type /XObject /Subtype /Form /BBox [105 395 195 455]  /Length 44 >>
+stream
+0 0 1 RG 2 w 110 400 m 150 450 l 190 400 l S
+endstream
+endobj
+22 0 obj
+<< /Type /XObject /Subtype /Form /BBox [300 400 460 440] /Resources << /Font << /Helv 7 0 R >> >> /Length 54 >>
+stream
+BT /Helv 12 Tf 0 0 0 rg 302 420 Td (Texte libre) Tj ET
+endstream
+endobj
+23 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 1 1]  /Length 0 >>
+stream
+
+endstream
+endobj
+xref
+0 24
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000127 00000 n 
+0000000345 00000 n 
+0000000441 00000 n 
+0000000567 00000 n 
+0000000663 00000 n 
+0000000760 00000 n 
+0000000906 00000 n 
+0000001051 00000 n 
+0000001205 00000 n 
+0000001343 00000 n 
+0000001496 00000 n 
+0000001696 00000 n 
+0000001864 00000 n 
+0000001997 00000 n 
+0000002091 00000 n 
+0000002200 00000 n 
+0000002324 00000 n 
+0000002426 00000 n 
+0000002563 00000 n 
+0000002713 00000 n 
+0000002913 00000 n 
+trailer
+<< /Size 24 /Root 1 0 R  >>
+startxref
+3010
+%%EOF

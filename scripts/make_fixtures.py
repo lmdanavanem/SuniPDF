@@ -105,6 +105,50 @@ def boxes(path):
         objs.append(stream(content))
     open(path, "wb").write(build(objs))
 
+def annotated(path):
+    """Annotations de plusieurs producteurs (indices 0..11 de la page 1, dans cet ordre) :
+    0 Square (Acrobat, /AP, /T Alice) · 1 Ink (/AP) · 2 FreeText (/AP) · 3 Highlight (sans /AP) ·
+    4 Text note (/Popup 19) · 5 Text réponse (IRT 4, /T Bob, UTF-16BE) · 6 Text état (IRT 4, Review/Accepted) ·
+    7 Link URI · 8 Square sans /AP (entre deux liens) · 9 Link /Dest page 2 · 10 Link Launch · 11 Popup (parent 4).
+    Page 2 : 792x612. Aucune annotation n'a de /NM SuniPDF."""
+    reply = "Réponse de Bob".encode("utf-16-be").hex().upper().encode()
+    c1 = b"BT /F1 24 Tf 72 700 Td (SuniPDF page 1) Tj ET\n"
+    c2 = b"BT /F1 24 Tf 72 400 Td (SuniPDF page 2) Tj ET\n"
+    def form(bbox, content, font=False):
+        res = b"/Resources << /Font << /Helv 7 0 R >> >>" if font else b""
+        return (b"<< /Type /XObject /Subtype /Form /BBox [" + bbox + b"] " + res + b" /Length "
+                + str(len(content)).encode() + b" >>\nstream\n" + content + b"\nendstream")
+    annots = [
+        b"<< /Type /Annot /Subtype /Square /Rect [100 500 200 560] /C [1 0 0] /T (Alice) /Contents (Cadre rouge) /F 4 /AP << /N 20 0 R >> >>",
+        b"<< /Type /Annot /Subtype /Ink /Rect [105 395 195 455] /InkList [[110 400 150 450 190 400]] /C [0 0 1] /F 4 /AP << /N 21 0 R >> >>",
+        b"<< /Type /Annot /Subtype /FreeText /Rect [300 400 460 440] /DA (/Helv 12 Tf 0 0 0 rg) /Contents (Texte libre) /F 4 /AP << /N 22 0 R >> >>",
+        b"<< /Type /Annot /Subtype /Highlight /Rect [72 694 250 724] /QuadPoints [72 724 250 724 72 694 250 694] /C [1 1 0] /F 4 >>",
+        b"<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /Contents (Note parent) /T (Alice) /Name /Note /C [1 0.8 0] /F 4 /Popup 19 0 R >>",
+        b"<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /IRT 12 0 R /RT /R /T (Bob) /Contents <FEFF" + reply + b"> /F 4 /AP << /N 23 0 R >> >>",
+        b"<< /Type /Annot /Subtype /Text /Rect [400 700 420 720] /IRT 12 0 R /RT /R /T (Carol) /StateModel (Review) /State (Accepted) /F 4 /AP << /N 23 0 R >> >>",
+        b"<< /Type /Annot /Subtype /Link /Rect [72 700 300 730] /Border [0 0 0] /A << /S /URI /URI (https://example.com) >> >>",
+        b"<< /Type /Annot /Subtype /Square /Rect [250 500 300 540] /C [0 0.6 0] /F 4 >>",
+        b"<< /Type /Annot /Subtype /Link /Rect [100 300 200 330] /Border [0 0 0] /Dest [5 0 R /Fit] >>",
+        b"<< /Type /Annot /Subtype /Link /Rect [100 250 200 280] /Border [0 0 0] /A << /S /Launch /F (calc.exe) >> >>",
+        b"<< /Type /Annot /Subtype /Popup /Rect [450 600 550 700] /Parent 12 0 R /Open false >>",
+    ]
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 7 0 R >> >> /Annots ["
+        + b" ".join(f"{8 + i} 0 R".encode() for i in range(12)) + b"] >>",
+        stream(c1),
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 792 612] /Contents 6 0 R /Resources << /Font << /F1 7 0 R >> >> >>",
+        stream(c2),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ] + annots + [
+        form(b"100 500 200 560", b"1 0 0 RG 2 w 101 501 98 58 re S"),
+        form(b"105 395 195 455", b"0 0 1 RG 2 w 110 400 m 150 450 l 190 400 l S"),
+        form(b"300 400 460 440", b"BT /Helv 12 Tf 0 0 0 rg 302 420 Td (Texte libre) Tj ET", font=True),
+        form(b"0 0 1 1", b""),
+    ]
+    open(path, "wb").write(build(objs))
+
 def many_pages(path, n=120):
     """Document long pour la vue continue : Lettre, paysage (i % 10 == 9), A5 (i % 25 == 24),
     carré de couleur ((i*37)%256, (i*91)%256, (i*53)%256) en x 36..156, y 36..116 pt, texte « Page N »."""
@@ -258,6 +302,7 @@ if __name__ == "__main__":
     encrypted(os.path.join(out, "encrypted-rc4.pdf"))
     boxes(os.path.join(out, "boxes.pdf"))
     many_pages(os.path.join(out, "many-pages.pdf"), 120)
+    annotated(os.path.join(out, "annotated.pdf"))
     acroform(os.path.join(out, "acroform.pdf"))
     acroform(os.path.join(out, "acroform-noap.pdf"), with_ap=False)
     acroform(os.path.join(out, "acroform-xfa.pdf"), xfa=True)

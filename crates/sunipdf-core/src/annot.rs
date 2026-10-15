@@ -234,11 +234,28 @@ impl Document<'_> {
         Ok(())
     }
 
+    /// Annotations de la page, une ligne par entrée de `/Annots` (l'indice est celui de PDFium) :
+    /// une entrée illisible donne `kind = "other"` au lieu d'interrompre la liste.
     pub fn annotations(&self, page_index: usize) -> Result<Vec<AnnotationInfo>, EngineError> {
         let page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;
+        let annotations = page.annotations();
         let mut out = Vec::new();
-        for (index, a) in page.annotations().iter().enumerate() {
+        for index in 0..annotations.len() {
+            let Ok(a) = annotations.get(index) else {
+                out.push(AnnotationInfo {
+                    index,
+                    kind: "other",
+                    contents: None,
+                    rect: PointRect {
+                        left: 0.0,
+                        bottom: 0.0,
+                        right: 0.0,
+                        top: 0.0,
+                    },
+                });
+                continue;
+            };
             let rect = a
                 .bounds()
                 .map(|r| geo.rect_to_display(from_pdf_rect(r)))
