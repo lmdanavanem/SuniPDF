@@ -35,7 +35,7 @@ Critère : opérations de bout en bout testées (fichier produit vérifié par q
 ## Phase 3 — Édition professionnelle — **partiellement livrée**
 Fait : notes, surlignage/soulignement/barré, commentaires (panneau), métadonnées, propriétés, palette de commandes.
 Fait (SUNI-031 à 033) : ajout de texte/images, formes, modification/déplacement/redimensionnement/rotation 90°/duplication/ordre Z/suppression d'objets existants, couleurs, polices standard, tampons, filigranes, numéros de page, dialogues unifiés.
-Fait (tool-hub, SUNI-040) : hub « Tous les outils » (9 outils réels sur 14, barre contextuelle par outil, menu Outils, cartes d'accueil), finition du chrome ; les 5 outils restants apparaîtront avec leur fonction (OCR, caviardage, formulaires, signature, certificat).
+Fait (tool-hub, SUNI-040) : hub « Tous les outils », barres contextuelles, menu Outils et cartes d'accueil. Outils restants : OCR, création de champs et certificats numériques.
 Fait (SUNI-031c) : rotation libre, opacité, sélection multiple et déplacement groupé, couper/copier/coller d'objets entre pages et onglets, panneau Objets, texte saisi sur la page, polices TrueType du système incorporées, remplacement d'image, pages vierges, recadrage, redimensionnement des pages, pages pivotées et rognées corrigées.
 Fait (sign-image) : signature manuscrite **visuelle** (image à masque alpha dessinée, importée avec fond retiré, ou reprise de la bibliothèque locale), paraphe, date du jour, outil « Remplir et signer » (moitié « signer » ; jamais présentée comme certifiée), CLI `add-image`.
 Fait (forms) : formulaires AcroForm — lister, remplir (texte, case, radio, listes ; valeurs écrites par lopdf, apparences régénérées par PDFium), effacer, aplatir, export/import JSON, panneau accessible, outil sur la page ; XFA en lecture seule ; CLI `form-fields` / `fill-form` / `flatten`.
@@ -57,8 +57,8 @@ affiché ; Office→PDF via convertisseur installé (LibreOffice/Word) détecté
 
 ## Phase 5 — Sécurité et productivité — **partiellement livrée**
 Fait : chiffrement AES-128/256 + permissions, retrait de protection, nettoyage des métadonnées, CLI complète
-(33 commandes JSON), commandes de démarrage pour l'automatisation.
-Reste : caviardage, signatures, comparaison, MCP, intégration Explorateur, profils.
+CLI JSON, commandes de démarrage et caviardage irréversible avec contrôles d'extraction et de rendu.
+Reste : signatures numériques, comparaison, MCP, intégration Explorateur et profils.
 
 ### Détail initial
 Chiffrement AES-256 et permissions à l'écriture (vérifiés qpdf) ; caviardage irréversible avec test
@@ -68,7 +68,9 @@ CLI complète ; MCP opt-in confiné ; intégration Explorateur ; profils de conv
 ## Phase 6 — Qualité et distribution — **partiellement livrée**
 Fait : ZIP portable x64 + SHA256, MSI x64 construit localement (WiX 3.14 autonome) + workflow `release.yml` (x64, ARM64,
 signature optionnelle) déclenché par les tags `v*`, ressources Windows, guides utilisateur FR/EN, notices tierces.
-Reste : résultat de la CI à confirmer, ARM64 compilé, corpus et fuzzing, benchmarks publiés.
+Fait (0.8.2) : notifications de mise à jour, installation explicite, anglais principal, CI x64 et compilation
+ARM64 réussies, fichiers publics avec empreintes SHA256 vérifiées.
+Reste : validation d'installation/mise à jour complète, matériel ARM64, corpus/fuzzing et benchmarks publiés.
 
 ### Détail initial
 Corpus de non-régression + fuzzing ; benchmarks publiés avec matériel ; audit sécurité et licences ;

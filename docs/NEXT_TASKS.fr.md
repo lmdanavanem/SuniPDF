@@ -2,17 +2,25 @@
 
 [English](NEXT_TASKS.md)
 
-## Après la version 0.8.0
-Les six priorités de l'audit sont corrigées. Restent à traiter :
-- refuser les coordonnées non finies lors de l'ajout de texte ;
-- refuser ou prendre en charge les tampons multilignes ;
-- refuser ou prendre en charge l'opacité des annotations de texte libre dans la CLI ;
-- borner les miniatures conservées dans la grille Organiser comme dans le panneau latéral.
+## Après la version 0.8.2
+Livrés : six priorités de l'audit, croix des onglets fonctionnelle, mises à jour intégrées vérifiées et anglais
+par défaut dans l'interface et la documentation principale. Le français reste disponible.
+
+| Priorité | Correction restante | Critère de validation |
+|---|---|---|
+| P1 | Refuser les coordonnées non finies lors de l'ajout de texte | NaN/infini refusés avant le moteur ; aucune sortie modifiée |
+| P1 | Borner le cache de miniatures de la grille Organiser | Mémoire bornée lors du parcours d'un document volumineux |
+| P2 | Refuser ou gérer les tampons multilignes | Aucun saut de ligne perdu silencieusement |
+| P2 | Refuser ou gérer l'opacité du texte libre dans la CLI | Opacité appliquée ou refus explicite |
+
+Fonctions suivantes envisagées : sauvegarde automatique/récupération, impression, OCR, création de champs,
+signature numérique, double page et sélection de texte enrichie. Elles ne sont pas livrées dans la 0.8.2.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
 2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.
 3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
+4. Valider une mise à jour complète MSI et portable, avec annulation et documents modifiés.
 
 ## Hub d'outils : contrat pour les tranches suivantes (tool-hub livré, D021)
 Les onglets `ToolTab` et les cartes `home.card.*` n'existent plus : les plans de `docs/plans/` qui les citent

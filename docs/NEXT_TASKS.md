@@ -2,17 +2,25 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## After version 0.8.0
-The six audit priorities are fixed. Remaining work:
-- reject non-finite coordinates when adding text;
-- reject or support multiline stamps;
-- reject or support free-text annotation opacity in the CLI;
-- bound cached thumbnails in the Organize grid as in the sidebar.
+## After version 0.8.2
+Delivered: the six audit priorities, working tab close buttons, verified in-app updates, and English as the
+default interface and primary documentation language. French remains available.
+
+| Priority | Remaining correction | Acceptance |
+|---|---|---|
+| P1 | Reject non-finite coordinates when adding text | NaN/infinity rejected before reaching the engine; no output modified |
+| P1 | Bound cached thumbnails in the Organize grid | Memory stays bounded when browsing a large document |
+| P2 | Reject or support multiline stamps | No silent loss of line breaks |
+| P2 | Reject or support free-text annotation opacity in the CLI | Requested opacity is applied or explicitly rejected |
+
+Next feature candidates: autosave/crash recovery, printing, OCR, form-field creation, digital signatures,
+two-page view and richer text selection. These are planned work, not release 0.8.2 features.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
 2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL rendering.
 3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
+4. Validate a complete installed-MSI and portable update, including cancellation and unsaved documents.
 
 ## Tool hub: contract for the next slices (tool-hub delivered, D021)
 The `ToolTab` tabs and the `home.card.*` cards no longer exist: the plans in `docs/plans/` that cite them
