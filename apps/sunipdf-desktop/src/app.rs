@@ -971,7 +971,7 @@ impl SuniApp {
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
         if command.info().needs_document && self.document.is_none() {
-            // Façon PDFCraft : l'outil reste utilisable, il commence par ouvrir un fichier.
+            // L'outil reste utilisable, il commence par ouvrir un fichier.
             self.after_open = Some(command);
             self.open_file_dialog();
             return;

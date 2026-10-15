@@ -5,7 +5,7 @@ use egui::{Color32, CornerRadius, Stroke, Visuals};
 pub const BLUE: Color32 = Color32::from_rgb(0x25, 0x63, 0xEB);
 pub const ERROR: Color32 = Color32::from_rgb(0xDC, 0x26, 0x26);
 pub const SUCCESS: Color32 = Color32::from_rgb(0x16, 0xA3, 0x4A);
-/// Couleurs de catégories d'outils (façon PDFCraft) : fichier, pages, annotation, édition,
+/// Couleurs de catégories d'outils : fichier, pages, annotation, édition,
 /// conversion, sécurité, navigation.
 pub const CAT_FILE: Color32 = Color32::from_rgb(0x25, 0x63, 0xEB);
 pub const CAT_PAGES: Color32 = Color32::from_rgb(0xF5, 0x9E, 0x0B);

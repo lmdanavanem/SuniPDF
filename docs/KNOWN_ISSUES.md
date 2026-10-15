@@ -88,7 +88,7 @@ A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans
 A10. **Résultat de la CI GitHub non vérifié par l'agent** : dépôt privé, ni `gh` ni jeton sur ce poste. Les
      workflows `ci.yml` et `release.yml` sont déclenchés par les push et les tags ; leur état se lit dans l'onglet
      Actions.
-A11. **Hub « Tous les outils » : 10 outils sur les 14 de PDFCraft.** Numériser et OCR, Caviarder, Préparer un
+A11. **Hub « Tous les outils » : 10 outils par tâche sur 14.** Numériser et OCR, Caviarder, Préparer un
      formulaire (création de champs) et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
      (entrée `None` dans `workspace::TABLE`), pas grisés. Exporter, Créer, Combiner et Compresser n'ont pas de
      barre (une seule commande chacun, boîte de dialogue directe).

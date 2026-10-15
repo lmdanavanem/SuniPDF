@@ -4,8 +4,8 @@ Chaque phase a un critère de sortie vérifiable par des commandes réelles. Une
 que si ses critères fondamentaux sont atteints et consignés dans `PROJECT_STATUS.md`.
 
 ## Phase 0 — Audit et planification — **terminée (2026-10-13)**
-Livrables : `PDFCRAFT_AUDIT.md`, `FEATURE_MATRIX.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `ROADMAP.md`,
-`AGENT_STRATEGY.md`, `I18N.md`, `DECISIONS.md`, 12 agents.
+Livrables : `FEATURE_MATRIX.md`, `ARCHITECTURE.md`, `TECH_STACK.md`, `ROADMAP.md`,
+`I18N.md`, `DECISIONS.md`.
 
 ## Phase 1 — Fondations — **terminée (2026-10-14)**
 - [x] Workspace Rust compilable, application Windows démarrable (cible MSVC ; repli GNU documenté).
@@ -33,7 +33,7 @@ Critère : opérations de bout en bout testées (fichier produit vérifié par q
 ## Phase 3 — Édition professionnelle — **partiellement livrée**
 Fait : notes, surlignage/soulignement/barré, commentaires (panneau), métadonnées, propriétés, palette de commandes.
 Fait (SUNI-031 à 033) : ajout de texte/images, formes, modification/déplacement/redimensionnement/rotation 90°/duplication/ordre Z/suppression d'objets existants, couleurs, polices standard, tampons, filigranes, numéros de page, dialogues unifiés.
-Fait (tool-hub, SUNI-040) : hub « Tous les outils » façon PDFCraft (9 outils réels sur 14, barre contextuelle par outil, menu Outils, cartes d'accueil), finition du chrome ; les 5 outils restants apparaîtront avec leur fonction (OCR, caviardage, formulaires, signature, certificat).
+Fait (tool-hub, SUNI-040) : hub « Tous les outils » (9 outils réels sur 14, barre contextuelle par outil, menu Outils, cartes d'accueil), finition du chrome ; les 5 outils restants apparaîtront avec leur fonction (OCR, caviardage, formulaires, signature, certificat).
 Fait (SUNI-031c) : rotation libre, opacité, sélection multiple et déplacement groupé, couper/copier/coller d'objets entre pages et onglets, panneau Objets, texte saisi sur la page, polices TrueType du système incorporées, remplacement d'image, pages vierges, recadrage, redimensionnement des pages, pages pivotées et rognées corrigées.
 Fait (sign-image) : signature manuscrite **visuelle** (image à masque alpha dessinée, importée avec fond retiré, ou reprise de la bibliothèque locale), paraphe, date du jour, outil « Remplir et signer » (moitié « signer » ; jamais présentée comme certifiée), CLI `add-image`.
 Fait (forms) : formulaires AcroForm — lister, remplir (texte, case, radio, listes ; valeurs écrites par lopdf, apparences régénérées par PDFium), effacer, aplatir, export/import JSON, panneau accessible, outil sur la page ; XFA en lecture seule ; CLI `form-fields` / `fill-form` / `flatten`.

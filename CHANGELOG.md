@@ -147,7 +147,7 @@ formulaires AcroForm (moitié « remplir »), chiffrement AES-256 et mots de pas
 
 ## [0.4.0] — 2026-10-14
 
-Vague 1 du backlog, livrée par tranches avec revue indépendante : hub « Tous les outils » façon PDFCraft,
+Vague 1 du backlog, livrée par tranches avec revue indépendante : hub « Tous les outils »,
 édition avancée du contenu, vue continue, puis correctifs de la revue adverse et distribution durcie.
 
 
@@ -230,9 +230,9 @@ Vague 1 du backlog, livrée par tranches avec revue indépendante : hub « Tous 
 - La CLI débordait de sa pile en compilation de débogage ; elle tourne sur un fil de 16 Mio.
 
 ### Ajouté
-- **Hub « Tous les outils »** façon PDFCraft : le panneau de gauche (F9) liste les outils par tâche avec une
+- **Hub « Tous les outils »** : le panneau de gauche (F9) liste les outils par tâche avec une
   pastille colorée par outil (Exporter, Modifier, Créer, Combiner, Organiser, Commenter, Protéger,
-  Compresser, Ajouter un tampon) ; les cinq outils PDFCraft sans fonction réelle dans SuniPDF ne sont pas
+  Compresser, Ajouter un tampon) ; les cinq outils sans fonction réelle dans SuniPDF ne sont pas
   affichés. Les outils Modifier, Organiser, Commenter, Protéger et Tampon ouvrent une **barre d'outil**
   contextuelle (boutons groupés, libellés selon la largeur, actions grisées sans sélection, « Quitter
   l'outil » ou Échap) ; les autres ouvrent directement leur boîte de dialogue. Menu **Outils**, entrées
@@ -313,7 +313,7 @@ Vague 1 du backlog, livrée par tranches avec revue indépendante : hub « Tous 
   Propriétés, Protéger.
 - **À propos** : logo, version, confidentialité, licences, crédit « Créé par Emanuel DE ALMEIDA -
   Navanem - www.navanem.com » (lien).
-- **Panneau d'outils et accueil façon PDFCraft** : icônes colorées par catégorie (fichier, pages,
+- **Panneau d'outils et accueil** : icônes colorées par catégorie (fichier, pages,
   annotation, édition, conversion, sécurité), rangées avec surlignage, cartes à pastilles colorées et
   ombre. Les outils restent actifs sans document : ils ouvrent d'abord un fichier puis s'exécutent.
 - **Édition** : rotation d'objet (±90°), duplication (Ctrl+Maj+D), premier plan (Ctrl+]) et

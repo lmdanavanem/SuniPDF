@@ -1,6 +1,6 @@
-# Matrice fonctionnelle PDFCraft / SuniPDF
+# Matrice fonctionnelle : attendu d'un éditeur PDF complet / SuniPDF
 
-Statuts PDFCraft d'après son README et ROADMAP (2026-10-13) : **Déclaré** = annoncé par le projet,
+Colonne « Attendu » : capacité attendue d'un éditeur PDF complet (**Déclaré** = courante dans les éditeurs du marché,
 **Partiel** = annoncé comme incomplet par le projet, **Absent** = annoncé manquant. Non vérifié par exécution.
 
 Statuts SuniPDF : **Fait** = implémenté **et** couvert par des tests exécutés ; **En cours** ; **Planifié (Pn)** = phase
@@ -8,7 +8,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## A. Lecture
 
-| Fonction | PDFCraft | SuniPDF | Note |
+| Fonction | Attendu | SuniPDF | Note |
 |---|---|---|---|
 | Ouvrir un PDF, afficher une page | Déclaré | **Fait** | PDFium ; tests `crates/sunipdf-core/tests/engine.rs` |
 | Documents protégés par mot de passe | Déclaré (toutes révisions) | **Fait** | RC4 40 bits testé ; AES par PDFium, à couvrir par fixture (P2) |
@@ -32,7 +32,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## B. Édition et annotation
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | Notes, surlignage, souligné, barré **Faits** ; formes, encre, zones de texte planifiés (P3) |
 | Fils de réponses, statut des commentaires | Déclaré | Panneau Commentaires **Fait** (liste, suppression) ; fils et statuts planifiés (P3) |
@@ -47,7 +47,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## C. Organisation
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI `insert-blank` pour les pages vierges) |
 | Recadrer les pages (CropBox) | Déclaré | **Fait** (dialogue en mm avec aperçu, rétablissement, CLI `crop`) ; masque seulement, pas de caviardage ; recadrage à la souris planifié |
@@ -62,7 +62,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## D. Conversion et OCR
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | PDF → images | Déclaré (CLI render) | **Fait** (UI export PNG 150 ppp, CLI `render`, `export-images`) |
 | PDF → texte | Déclaré | **Fait** (CLI `text`) |
@@ -75,7 +75,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## E. Sécurité et signatures
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Ouvrir chiffré, honorer les permissions | Déclaré | **Fait** (ouverture ; permissions affichées dans les propriétés) |
 | Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; vérification qpdf à ajouter |
@@ -87,7 +87,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## F. Formulaires et accessibilité
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
 | Créer des champs | Non documenté | Planifié (feuille de route : lopdf seul, D066) ; « Préparer un formulaire » absent du hub |
@@ -97,7 +97,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## G. Automatisation et intégration
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | CLI JSON | Déclaré | **Fait** (lecture, pages, sécurité, conversion, tampons et édition du contenu : `objects`, `add-text`, `set-opacity`, `rotate-object`, `copy-objects`, `replace-image`, `crop`, `resize-pages`, `insert-blank`, `fonts`) ; extension P5 |
 | Registre de commandes commun UI/CLI | Déclaré (tool table) | **Fait** (`sunipdf-cli commands`) |
@@ -109,7 +109,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 ## H. Distribution
 
-| Fonction | PDFCraft | SuniPDF |
+| Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Windows x64 | Déclaré (MSI, zip) | Planifié (P6) ; CI écrite, non exécutée |
 | Windows ARM64 | Déclaré (workflow dédié) | Planifié (P6) ; binaires PDFium ARM64 disponibles |

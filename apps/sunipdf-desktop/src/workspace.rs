@@ -1,4 +1,4 @@
-//! Hub « Tous les outils » : regroupe les commandes du registre par tâche (liste façon PDFCraft),
+//! Hub « Tous les outils » : regroupe les commandes du registre par tâche (liste),
 //! bascule d'outil (fonctions pures, testables sans fenêtre) et barre contextuelle de l'outil actif.
 //! Le dessin des lignes du panneau et des cartes d'accueil est dans `shell.rs`.
 
@@ -12,7 +12,7 @@ use egui::Color32;
 use sunipdf_core::Command;
 use sunipdf_i18n::tr;
 
-/// Ordre = ordre de la liste « All tools » de PDFCraft ; `TABLE[w as usize].ws == w` (testé).
+/// Ordre des outils tel qu'affiché ; `TABLE[w as usize].ws == w` (testé).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Workspace {
     Export,

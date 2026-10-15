@@ -1,7 +1,7 @@
 # Notes d'ingénierie (à lire avant de modifier le code)
 
 Ce document rassemble ce qu'il faut savoir pour livrer une tranche verticale sans casser le dépôt :
-commandes, garde-fous, patrons de code et pièges déjà rencontrés. Il complète `CLAUDE.md` et
+commandes, garde-fous, patrons de code et pièges déjà rencontrés. Il complète `CONTRIBUTING.md` et
 `docs/ARCHITECTURE.md`.
 
 ## 1. Environnement et commandes

@@ -20,7 +20,7 @@ sur **+ Ouvrir** dans la barre d'onglets.
 ## Tous les outils
 
 Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
-outils par tâche, comme PDFCraft : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
+outils par tâche : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
 des fichiers, Organiser les pages, Commenter, Protéger un PDF, Compresser un PDF, Ajouter un tampon. Le menu **Outils** et
 la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
 fichier puis démarre.
@@ -39,7 +39,7 @@ fichier puis démarre.
 - Chaque onglet garde son outil actif.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
 
-Les outils PDFCraft qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, caviardage, préparation de
+Les outils qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, caviardage, préparation de
 formulaire — création de champs —, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité.
 Remplir et signer couvre le remplissage des formulaires AcroForm et la signature visuelle.
 

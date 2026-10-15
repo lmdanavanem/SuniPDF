@@ -41,7 +41,6 @@ SuniPDF/
 ├── third_party/pdfium/       binaires PDFium (ignorés par git, scripts/fetch-pdfium.ps1)
 ├── scripts/                  dev-env.ps1, fetch-pdfium.ps1, start.ps1, check-i18n.ps1, make_fixtures.py, dev-screenshot.ps1 (capture de la fenêtre)
 ├── docs/                     cette documentation
-└── .claude/agents/           12 sous-agents
 ```
 
 ## Flux « ouvrir → afficher → naviguer → fermer »

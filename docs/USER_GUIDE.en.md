@@ -19,7 +19,7 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 ## All tools
 
 The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
-task, like PDFCraft: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Add
+task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Add
 comments, Protect a PDF, Compress a PDF, Add a stamp. The **Tools** menu and the Ctrl+K palette give the same access.
 Without an open document, a tool that needs one first asks for a file, then starts.
 
@@ -36,7 +36,7 @@ Without an open document, a tool that needs one first asks for a file, then star
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo and Redo.
 
-PDFCraft tools that have no real feature in SuniPDF yet (OCR, redaction, form preparation — creating fields —,
+Tools that have no real feature in SuniPDF yet (OCR, redaction, form preparation — creating fields —,
 certificate) are not shown: they will come with their feature. Fill & Sign covers filling AcroForm forms and the
 visual signature.
 

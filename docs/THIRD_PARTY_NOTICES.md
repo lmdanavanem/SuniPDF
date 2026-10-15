@@ -1,7 +1,7 @@
 # Notices tierces
 
-À livrer avec chaque distribution (MSI, ZIP). Aucune marque, logo ni ressource graphique de PDFCraft/ArtCraft
-n'est utilisée. Aucun code de PDFCraft n'a été copié à ce jour.
+À livrer avec chaque distribution (MSI, ZIP). Aucune marque, logo ni ressource graphique d'un autre lecteur PDF
+n'est utilisée ; aucun code d'un autre lecteur n'a été copié.
 
 | Composant | Licence | Fichier de licence livré |
 |---|---|---|
@@ -13,4 +13,4 @@ n'est utilisée. Aucun code de PDFCraft n'a été copié à ce jour.
 | egui / eframe et polices par défaut (Ubuntu Light : Ubuntu Font Licence 1.0 ; Hack : MIT/Bitstream Vera ; Noto Emoji : OFL-1.1 ; emoji-icon-font : MIT) | voir colonne | généré par `cargo about` (P6) |
 | Autres crates Rust | MIT / Apache-2.0 | `cargo about generate` (P6) |
 
-Interdits : modèles OCR `ocrs` (CC-BY-SA-4.0) ; icônes/polices non vérifiées ; captures d'écran de PDFCraft.
+Interdits : modèles OCR `ocrs` (CC-BY-SA-4.0) ; icônes/polices non vérifiées ; captures d'écran d'applications tierces.
