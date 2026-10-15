@@ -11,8 +11,9 @@ use sunipdf_core::{
     form_data, security, AnnotDetail, AnnotShape, AnnotStyle, AnnotationInfo, Bookmark, Document,
     DocumentInfo, Engine, EngineError, FieldValue, FillMode, FormInfo, FreeTextStyle, LinkInfo,
     LinkTarget, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle, PageMargins, PointRect,
-    Properties, Protection, RectMode, RenderCache, RenderedPage, ResizeMode, ReviewStatus,
-    ShapeKind, ShapeStyle, Stamp, SystemFont, TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
+    Properties, Protection, RectMode, RedactMark, RedactOptions, RedactReport, RenderCache,
+    RenderedPage, ResizeMode, ReviewStatus, ShapeKind, ShapeStyle, Stamp, SystemFont, TextMatch,
+    TextSelection, TextStyle, TileJob, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -434,6 +435,18 @@ pub enum Request {
         page: usize,
         rect: PointRect,
     },
+    /// Zones de caviardage pour chaque occurrence d'un texte (espace d'affichage). `verify` :
+    /// contrôle après application (les occurrences restantes sont signalées, pas ajoutées).
+    RedactSearch {
+        query: String,
+        match_case: bool,
+        verify: bool,
+    },
+    /// Caviardage irréversible des zones (annulable : instantané) ; `Redacted` puis `DocumentChanged`.
+    Redact {
+        marks: Vec<RedactMark>,
+        options: RedactOptions,
+    },
     /// Annotations d'une page : liste rapide PDFium et, si `detailed` et si la page porte autre chose
     /// que des liens, fenêtres et champs, lecture détaillée (droits, fils de réponses).
     Annotations {
@@ -583,6 +596,13 @@ pub enum Response {
         path: PathBuf,
     },
     SaveFailed(EngineError),
+    RedactMatches {
+        query: String,
+        verify: bool,
+        marks: Vec<RedactMark>,
+    },
+    /// Bilan d'un caviardage réussi (suivi de `DocumentChanged`).
+    Redacted(RedactReport),
 }
 
 pub struct Worker {
@@ -738,6 +758,37 @@ impl State<'_> {
                 }
                 self.last_nudge = None;
                 Response::OperationFailed(e)
+            }
+        }
+    }
+
+    /// Caviardage sous instantané (même règle que `edit`) : en cas d'échec, l'état d'avant est
+    /// rechargé ; jamais d'écriture de fichier ici.
+    fn redact(
+        &mut self,
+        marks: &[RedactMark],
+        options: &RedactOptions,
+    ) -> Result<(RedactReport, DocState), EngineError> {
+        let doc = self
+            .document
+            .as_mut()
+            .ok_or_else(|| EngineError::Other("no document".into()))?;
+        let snapshot = Snapshot {
+            bytes: doc.snapshot()?,
+            password: doc.password().map(str::to_owned),
+        };
+        match doc.redact(marks, options) {
+            Ok(report) => {
+                self.push_undo(snapshot);
+                self.last_nudge = None;
+                self.invalidate();
+                Ok((report, self.doc_state().expect("document ouvert")))
+            }
+            Err(e) => {
+                if let Err(restore) = doc.restore_with_password(snapshot.bytes, snapshot.password) {
+                    log::error!("restauration impossible après échec : {restore}");
+                }
+                Err(e)
             }
         }
     }
@@ -1299,6 +1350,33 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
             }
             Request::Edit(op) => state.edit(op),
+            Request::Redact { marks, options } => match state.redact(&marks, &options) {
+                Ok((report, doc_state)) => {
+                    if tx.send(Response::Redacted(report)).is_err() {
+                        break;
+                    }
+                    Response::DocumentChanged(doc_state)
+                }
+                Err(e) => Response::OperationFailed(e),
+            },
+            Request::RedactSearch {
+                query,
+                match_case,
+                verify,
+            } => {
+                let Some(doc) = &state.document else { continue };
+                let marks = doc
+                    .redact_marks_for_text(&query, match_case)
+                    .unwrap_or_else(|e| {
+                        log::warn!("recherche à caviarder impossible : {e}");
+                        Vec::new()
+                    });
+                Response::RedactMatches {
+                    query,
+                    verify,
+                    marks,
+                }
+            }
             Request::TextInRect { page, rect } => {
                 let Some(doc) = &state.document else { continue };
                 match doc.text_in_rect(page, rect) {

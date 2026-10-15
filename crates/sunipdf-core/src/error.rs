@@ -37,6 +37,9 @@ pub enum EngineError {
     FormValueInvalid(String),
     #[error("XFA forms are not supported")]
     FormXfa,
+    /// Caviardage : flux de contenu non décodable strictement, ou texte encore extractible sous une zone.
+    #[error("redaction could not be verified; the document was left unchanged")]
+    RedactionIncomplete,
     #[error("engine error: {0}")]
     Other(String),
 }
@@ -60,6 +63,7 @@ impl EngineError {
             Self::FormFieldNotFound(_) => "form_field_not_found",
             Self::FormValueInvalid(_) => "form_value_invalid",
             Self::FormXfa => "form_xfa",
+            Self::RedactionIncomplete => "redaction_incomplete",
             Self::Other(_) => "other",
         }
     }

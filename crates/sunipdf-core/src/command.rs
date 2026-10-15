@@ -103,6 +103,12 @@ pub enum Command {
     ToolAnnotEllipse,
     ToolAnnotLine,
     ToolLink,
+    /// Caviardage irréversible : marquer des zones, marquer un texte, effacer les marques, appliquer.
+    ToolRedact,
+    RedactSearch,
+    RedactClear,
+    RedactApply,
+    HubRedact,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -510,6 +516,38 @@ pub const REGISTRY: &[CommandInfo] = &[
         Security
     ),
     cmd!(
+        ToolRedact,
+        "tool.redact",
+        "menu.security.redact",
+        Some("shortcut.tool_redact"),
+        true,
+        Security
+    ),
+    cmd!(
+        RedactSearch,
+        "security.redact_search",
+        "menu.security.redact_search",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        RedactClear,
+        "security.redact_clear",
+        "menu.security.redact_clear",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        RedactApply,
+        "security.redact_apply",
+        "menu.security.redact_apply",
+        Some("shortcut.redact_apply"),
+        true,
+        Security
+    ),
+    cmd!(
         CreateFromImages,
         "convert.images_to_pdf",
         "menu.file.create_images",
@@ -896,6 +934,14 @@ pub const REGISTRY: &[CommandInfo] = &[
     ),
     cmd!(HubStamp, "hub.stamp", "hub.stamp.name", None, true, Tools),
     cmd!(
+        HubRedact,
+        "hub.redact",
+        "hub.redact.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
         HubLeave,
         "hub.leave",
         "hub.leave",
@@ -954,7 +1000,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 7);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 7);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 8);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 6);
     }
 

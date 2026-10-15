@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-10-15
+
+Irreversible redaction (“Redact a PDF” tool, `redact` CLI command, 42 commands, 222 tests).
+
+### Added
+- **Irreversible redaction** ("Redact a PDF" hub tool): draw areas (B key), or mark every occurrence of a text,
+  remove an area with a click, then **Apply** (Ctrl+Shift+B, confirmation). Text, images, drawings, annotations and
+  fields under the areas are **removed from the document**, not covered; the rest of each affected element is kept
+  as an image. The engine reads the result back and refuses (`redaction_incomplete`, nothing changed) if extractable
+  text remains under an area. Options: convert redacted pages entirely to images, remove hidden information
+  (metadata, tags; checked by default). The file is rewritten without earlier revisions; a protected document stays
+  protected; undo with Ctrl+Z. Saving with unapplied areas asks for confirmation. Limits: `docs/KNOWN_ISSUES.en.md` A40.
+- CLI: `sunipdf-cli redact file.pdf --out output.pdf [--rect PAGE:L,B,R,T]… [--text TEXT]… [--match-case]
+  [--rasterize] [--keep-hidden-data] [--dpi N]` (JSON output, `redaction_incomplete` error with nothing written).
+
 ## [0.6.0] — 2026-10-15
 
 Advanced annotations, new visual identity and open-source release preparation.

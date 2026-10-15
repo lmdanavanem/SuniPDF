@@ -81,7 +81,7 @@ phase; **Out of scope**. Update this column only with real results.
 |---|---|---|
 | Open encrypted, honour permissions | Declared | **Done** (opening; permissions shown in the properties) |
 | Add/change password, AES-256 | Declared | **Done** (AES-128/256, permissions; AES-128 limited to Latin-1 passwords, typed refusal; accessibility always granted) through `lopdf`, re-read by PDFium; qpdf verification to add |
-| Irreversible redaction | Declared (redact crate) | Planned (P5) with a data absence test |
+| Irreversible redaction | Declared (redact crate) | **Done** (hub Redact tool: areas drawn with the mouse, text marking, confirmation, save guard; CLI `redact`): objects removed + blacked-out image patch, annotations / fields / metadata / earlier revisions removed, verification by reading back; absence proven by tests (extraction, decompressed bytes, pixels, rotated pages, encrypted document); limits `KNOWN_ISSUES.en.md` A40 |
 | Metadata cleanup | Declared | **Done** (Info, XMP of the catalog, pages and images, `/PieceInfo`; modified properties regenerate the XMP) |
 | Handwritten signature (image) | Declared | **Done** (sign-image): drawn on the pad, imported (transparent PNG or photo with the light background removed by threshold) or reused from the local library (`%APPDATA%\SuniPDF\signatures`, plain PNG, optional saving), initials, today's date; alpha-masked image object, editable and undoable; CLI `add-image`; **visual, never presented as certified** (permanent box, `digital_signature: false`) |
 | CMS/PKCS#12 digital signature, timestamping | Declared | Planned (P5) |
@@ -106,7 +106,7 @@ phase; **Out of scope**. Update this column only with real results.
 | Local MCP server, confined to `--root` | Declared | Planned (P5, opt-in) |
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
-| "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for 10 tools out of 14 (Export, Fill & Sign (fill and sign), Edit, Create, Combine, Organize, Comment, Protect, Compress, Stamp): F9 panel, home cards, Tools menu, palette, tool bar with Esc; OCR, Redact, Form, Certificate planned (absent as long as their feature does not exist) |
+| "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for 11 tools out of 14 (Export, Fill & Sign (fill and sign), Edit, Create, Combine, Organize, Comment, Protect, Redact, Compress, Stamp): F9 panel, home cards, Tools menu, palette, tool bar with Esc; OCR, Form, Certificate planned (absent as long as their feature does not exist) |
 | Local workflows, conversion profiles | Absent | Planned (P5) |
 
 ## H. Distribution

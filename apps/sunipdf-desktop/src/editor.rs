@@ -519,7 +519,8 @@ impl SuniApp {
             | Tool::AddImage
             | Tool::Rectangle
             | Tool::Ellipse
-            | Tool::Line => CursorIcon::Crosshair,
+            | Tool::Line
+            | Tool::Redact => CursorIcon::Crosshair,
             Tool::SelectObject => match (self.edit.drag_mode, pt) {
                 (Some(DragMode::Resize(c)), _) => c.cursor(),
                 (Some(DragMode::Move | DragMode::Rotate { .. }), _) => CursorIcon::Grabbing,

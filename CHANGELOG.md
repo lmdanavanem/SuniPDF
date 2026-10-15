@@ -5,6 +5,22 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.7.0] — 2026-10-15
+
+Caviardage irréversible (outil « Caviarder un PDF », CLI `redact`, 42 commandes, 222 tests).
+
+### Ajouté
+- **Caviardage irréversible** (outil « Caviarder un PDF » du hub) : tracer des zones (touche B), ou marquer toutes
+  les occurrences d'un texte, retirer une zone d'un clic, puis **Appliquer** (Ctrl+Maj+B, confirmation). Le texte,
+  les images, les tracés, les annotations et les champs situés sous les zones sont **supprimés du document**, pas
+  masqués ; le reste de chaque élément touché est conservé en image. Le moteur relit le résultat et refuse
+  (`redaction_incomplete`, rien n'est modifié) s'il reste du texte extractible sous une zone. Options : convertir
+  les pages caviardées entièrement en image, supprimer les informations cachées (métadonnées, balisage, cochée par
+  défaut). Le fichier est réécrit sans révision antérieure ; un document protégé reste protégé ; annulable par Ctrl+Z.
+  Enregistrer avec des zones non appliquées demande confirmation. Limites : `docs/KNOWN_ISSUES.md` A40.
+- CLI : `sunipdf-cli redact fichier.pdf --out sortie.pdf [--rect PAGE:G,B,D,H]… [--text TEXTE]… [--match-case]
+  [--rasterize] [--keep-hidden-data] [--dpi N]` (sortie JSON, erreur `redaction_incomplete` sans écriture).
+
 ## [0.6.0] — 2026-10-15
 
 Annotations avancées, nouvelle identité visuelle et préparation de la publication en source ouverte.

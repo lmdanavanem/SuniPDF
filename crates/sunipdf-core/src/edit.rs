@@ -142,7 +142,7 @@ fn not_found(index: usize) -> EngineError {
 }
 
 /// Cadre orienté d'un objet, espace d'affichage.
-fn display_quad(object: &PdfPageObject<'_>, geo: &PageGeometry) -> [(f32, f32); 4] {
+pub(crate) fn display_quad(object: &PdfPageObject<'_>, geo: &PageGeometry) -> [(f32, f32); 4] {
     match object.bounds() {
         Ok(q) => [
             (q.x1().value, q.y1().value),
@@ -155,7 +155,7 @@ fn display_quad(object: &PdfPageObject<'_>, geo: &PageGeometry) -> [(f32, f32); 
     }
 }
 
-fn quad_bounds(q: &[(f32, f32); 4]) -> PointRect {
+pub(crate) fn quad_bounds(q: &[(f32, f32); 4]) -> PointRect {
     q.iter().fold(
         PointRect {
             left: f32::MAX,

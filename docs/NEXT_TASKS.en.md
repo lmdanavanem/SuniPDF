@@ -21,9 +21,21 @@ To make a tool visible, a slice does exactly this:
 4. the names, descriptions and colours of the 14 tools already exist (`hub.*.name`, `hub.*.desc`).
 The `every_registry_command_has_a_home` test fails if a command has neither a tool nor a place in the system list;
 `bar_icons_are_distinct` fails if an icon repeats within a bar or reuses that of a quick access button.
-Tools still absent: Scan & OCR, Redact a PDF, Prepare a form (field creation), Use a
+Tools still absent: Scan & OCR, Prepare a form (field creation), Use a
 certificate. "Fill & Sign" is complete: "sign" half (sign-image slice) and "fill" half
 (forms slice, Fill form group / panel / Clear / Flatten / Export / Import).
+
+## After redaction (irreversible redaction, slice delivered)
+Remaining, not blocking (see `KNOWN_ISSUES.en.md` A40, decisions D077–D082):
+- `qpdf --check` of the outputs and a run on a real corpus (scans with an OCR layer, heavily tagged PDFs, nested
+  form XObjects, Type 3 fonts); measurement on a page with tens of thousands of objects (quadratic
+  `prune_objects`: own reachability with a `BTreeSet` if slow);
+- fine text splitting (keep the unredacted part of a line selectable): requires recreating fragments with the
+  original font, out of reach of `pdfium-render` 0.9.4;
+- fill colour and overlay text ("REDACTED"), persistent `/Redact` marks (no creator in `pdfium-render`);
+- cleaning of bookmarks, attachments, JavaScript and named destinations (separate "Sanitise" tool);
+- removal of a font subset that became unused; "before / after" page preview;
+- `docs/SECURITY_MODEL.md` (A/B/C method, guarantees, assumptions); screenshot S3 (after applying) not replayed.
 
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):

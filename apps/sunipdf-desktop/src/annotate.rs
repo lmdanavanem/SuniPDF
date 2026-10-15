@@ -33,10 +33,12 @@ pub enum Tool {
     AnnotLine,
     AddLink,
     SelectAnnot,
+    /// Caviardage : tracer des zones (`redact.rs`).
+    Redact,
 }
 
 impl Tool {
-    pub const ALL: [Tool; 19] = [
+    pub const ALL: [Tool; 20] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Underline,
@@ -56,6 +58,7 @@ impl Tool {
         Tool::AnnotLine,
         Tool::AddLink,
         Tool::SelectAnnot,
+        Tool::Redact,
     ];
 
     pub fn command(self) -> Command {
@@ -79,6 +82,7 @@ impl Tool {
             Tool::AnnotLine => Command::ToolAnnotLine,
             Tool::AddLink => Command::ToolLink,
             Tool::SelectAnnot => Command::ToolSelectAnnot,
+            Tool::Redact => Command::ToolRedact,
         }
     }
 
@@ -128,6 +132,8 @@ pub struct AnnotateState {
     pub workspace: Option<crate::workspace::Workspace>,
     /// Annotations avancées : tracé, sélection, boîtes de dialogue, liens (`annot_adv.rs`).
     pub adv: crate::annot_adv::AnnotAdvState,
+    /// Zones de caviardage non appliquées et boîtes de l'outil (suivent l'onglet comme `workspace`).
+    pub redact: crate::redact::RedactState,
 }
 
 /// Point écran → point PDF.
@@ -166,6 +172,7 @@ impl SuniApp {
                 && !self.annotate.tool.is_edit()
                 && !self.annotate.tool.is_adv()
                 && self.annotate.tool != Tool::FillForm
+                && self.annotate.tool != Tool::Redact
             {
                 painter.rect_stroke(
                     to_screen(&drag.rect()),
@@ -212,6 +219,7 @@ impl SuniApp {
             | Tool::AnnotLine
             | Tool::AddLink
             | Tool::SelectAnnot => self.adv_drag_finished(drag),
+            Tool::Redact => self.redact_drag_finished(drag),
             _ => {
                 // Outils de texte : la sélection revient par TextSelected, puis l'annotation est créée.
                 if !tiny {

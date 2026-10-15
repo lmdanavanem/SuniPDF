@@ -55,6 +55,8 @@ pub mod glyph {
     pub const FONT: &str = "\u{E8D2}";
     pub const RENAME: &str = "\u{E8AC}";
     pub const RECT: &str = "\u{E739}";
+    /// Carré plein (« CheckboxFill ») : zone à caviarder.
+    pub const REDACT: &str = "\u{E73B}";
     pub const ELLIPSE: &str = "\u{EA3A}";
     pub const LINE: &str = "\u{E738}";
     pub const DUPLICATE: &str = "\u{E8C8}";

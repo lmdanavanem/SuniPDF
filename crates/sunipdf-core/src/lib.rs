@@ -23,6 +23,7 @@ pub mod forms;
 pub mod geometry;
 pub mod links;
 pub mod pages;
+pub mod redact;
 pub mod security;
 pub mod signature_image;
 pub mod stamp;
@@ -53,6 +54,7 @@ pub use forms::{
 pub use geometry::PageGeometry;
 pub use links::{is_safe_external_uri, LinkInfo};
 pub use pages::{write_atomic, Rotation};
+pub use redact::{RedactMark, RedactOptions, RedactReport};
 pub use security::{Bookmark, Metadata, Properties, Protection, ProtectionProblem};
 pub use stamp::{Stamp, StampPosition};
 pub use text::{PointRect, TextMatch};

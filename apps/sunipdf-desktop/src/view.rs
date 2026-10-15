@@ -880,6 +880,7 @@ impl SuniApp {
         self.paint_selection(&painter, s.rect, s.page, h);
         self.paint_object_selection(&painter, s.rect, s.page, h);
         self.paint_annot_adv(&painter, s.rect, s.page, h);
+        self.paint_redact_marks(&painter, s.rect, s.page, h);
         let on_selection = self
             .edit
             .selection
@@ -1288,6 +1289,7 @@ impl SuniApp {
                         });
                     }
                     crate::annotate::Tool::SelectObject => self.edit_click(page, pt),
+                    crate::annotate::Tool::Redact => self.redact_click(page, pt),
                     _ => self.adv_click(page, pt),
                 }
             }

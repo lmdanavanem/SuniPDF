@@ -291,6 +291,71 @@ def acroform(path, with_ap=True, xfa=False, links=False):
                % b" ".join(ref(a) for a in annots))
     open(path, "wb").write(build(objs))
 
+def stream_with(dict_body, content):
+    return b"<< " + dict_body + b" /Length " + str(len(content)).encode() + b" >>\nstream\n" + content + b"\nendstream"
+
+def redact_fixture(path):
+    """Caviardage (612x792) : texte secret ligne y=680 (x ~110..236), rectangle rouge (72..272, 500..560),
+    image 64x64 (350..478, 480..608, bande marquee en haut y ~552..600), texte invisible (360, 590),
+    note + popup, lien, deux champs, vignette /Thumb, /PieceInfo, /Info, arbre de structure, objet orphelin."""
+    content = (b"BT /F1 12 Tf 72 720 Td (Public header line) Tj ET\n"
+               b"BT /F1 12 Tf 72 680 Td (Name: SECRET-ALPHA-7731 end of line) Tj ET\n"
+               b"BT /F1 12 Tf 72 640 Td (Keep this paragraph KEEPME-42) Tj ET\n"
+               b"1 0 0 rg 72 500 200 60 re f\n"
+               b"q 128 0 0 128 350 480 cm /Im1 Do Q\n"
+               b"BT 3 Tr /F1 10 Tf 360 590 Td (HIDDEN-OCR-5512) Tj ET\n")
+    # Image 64x64 RVB brute : lignes 4..27 = marqueur ASCII (moitie haute), le reste vert uni.
+    marker = b"IMGSECRET-9F3A--"                      # 16 octets ; 12 x 16 = 192 = 64 pixels x 3
+    rows = [bytes([0, 160, 0]) * 64 for _ in range(64)]
+    for r in range(4, 28):
+        rows[r] = marker * 12
+    thumb = b"THUMB-SECRET-01!" * 4                    # 64 octets = 8 x 8 en niveaux de gris
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [10 0 R 11 0 R] /DA (/Helv 10 Tf 0 g)"
+        b" /DR << /Font << /Helv 5 0 R >> >> >> /StructTreeRoot 14 0 R /MarkInfo << /Marked true >> >>",   # 1
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",                                                      # 2
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R"
+        b" /Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> >>"
+        b" /Annots [7 0 R 8 0 R 9 0 R 10 0 R 11 0 R] /Thumb 12 0 R"
+        b" /PieceInfo << /SuniTest << /Private (PIECE-SECRET-02) >> >> >>",                                # 3
+        stream(content),                                                                                   # 4
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",                                         # 5
+        stream_with(b"/Type /XObject /Subtype /Image /Width 64 /Height 64 /ColorSpace /DeviceRGB"
+                    b" /BitsPerComponent 8", b"".join(rows)),                                             # 6
+        b"<< /Type /Annot /Subtype /Text /Rect [150 676 170 696] /Contents (NOTE-SECRET-88) /Popup 8 0 R >>",  # 7
+        b"<< /Type /Annot /Subtype /Popup /Rect [400 700 580 780] /Parent 7 0 R /Open false >>",           # 8
+        b"<< /Type /Annot /Subtype /Link /Rect [72 716 200 732] /Border [0 0 0]"
+        b" /A << /S /URI /URI (https://example.invalid/KEEP-LINK) >> >>",                                  # 9
+        b"<< /Type /Annot /Subtype /Widget /FT /Tx /T (ssn) /V (FIELD-SECRET-314)"
+        b" /Rect [72 440 272 460] /P 3 0 R /F 4 /DA (/Helv 10 Tf 0 g) >>",                                 # 10
+        b"<< /Type /Annot /Subtype /Widget /FT /Tx /T (city) /V (KEEP-FIELD-9)"
+        b" /Rect [300 440 500 460] /P 3 0 R /F 4 /DA (/Helv 10 Tf 0 g) >>",                                # 11
+        stream_with(b"/Width 8 /Height 8 /ColorSpace /DeviceGray /BitsPerComponent 8", thumb),             # 12
+        b"<< /Title (Redaction fixture) /Subject (META-SECRET-55) >>",                                     # 13
+        b"<< /Type /StructTreeRoot /K 15 0 R >>",                                                          # 14
+        b"<< /Type /StructElem /S /Figure /P 14 0 R /Pg 3 0 R /Alt (ALT-SECRET-66) >>",                    # 15
+        stream(b"% ORPHAN-SECRET-77\n"),                                                                   # 16 : orphelin
+    ]
+    open(path, "wb").write(build(objs, trailer_extra=b"/Info 13 0 R"))
+
+def incremental_fixture(path):
+    """Mise a jour incrementale : la revision precedente du flux contient OLDREV-SECRET-01."""
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        stream(b"BT /F1 12 Tf 72 700 Td (OLDREV-SECRET-01) Tj ET\n"),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    data = bytearray(build(objs))
+    prev = int(data[data.rfind(b"startxref") + 9:data.rfind(b"%%EOF")].strip())
+    offset = len(data)
+    data += b"4 0 obj\n" + stream(b"BT /F1 12 Tf 72 700 Td (Current revision) Tj ET\n") + b"\nendobj\n"
+    xref = len(data)
+    data += b"xref\n4 1\n" + f"{offset:010d} 00000 n \n".encode()
+    data += f"trailer\n<< /Size 6 /Root 1 0 R /Prev {prev} >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    open(path, "wb").write(bytes(data))
+
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--many":
         # Fichier long à la demande (non versionné) : --many 500 %TEMP%\many-500.pdf
@@ -307,4 +372,6 @@ if __name__ == "__main__":
     acroform(os.path.join(out, "acroform-noap.pdf"), with_ap=False)
     acroform(os.path.join(out, "acroform-xfa.pdf"), xfa=True)
     acroform(os.path.join(out, "acroform-links.pdf"), links=True)
+    redact_fixture(os.path.join(out, "redact.pdf"))
+    incremental_fixture(os.path.join(out, "redact-incremental.pdf"))
     print("ok")

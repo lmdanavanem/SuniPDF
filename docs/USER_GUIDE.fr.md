@@ -39,7 +39,7 @@ fichier puis démarre.
 - Chaque onglet garde son outil actif.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
 
-Les outils qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, caviardage, préparation de
+Les outils qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, préparation de
 formulaire — création de champs —, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité.
 Remplir et signer couvre le remplissage des formulaires AcroForm et la signature visuelle.
 
@@ -282,6 +282,18 @@ supprime et s'annule comme les autres.
   jour le XMP.
 - **Propriétés du document** (Ctrl+D) : titre, auteur, sujet, mots-clés modifiables ; version, taille,
   chiffrement et permissions en lecture.
+- **Caviarder un PDF** (touche B) : tracez des rectangles sur ce qui doit disparaître, ou **Caviarder un
+  texte…** pour marquer toutes les occurrences d'un texte ; un clic sur une zone la retire, **Effacer les zones**
+  les retire toutes. Rien n'est supprimé tant que vous n'avez pas choisi **Appliquer le caviardage…**
+  (Ctrl+Maj+B, puis le bouton rouge ou Ctrl+Entrée). Le texte, les images, les tracés, les annotations et les
+  champs situés sous les zones sont alors **supprimés du document** (pas seulement masqués) ; ce qui dépasse
+  d'une zone reste visible sous forme d'image. SuniPDF vérifie ensuite qu'aucun texte n'est encore extractible
+  sous les zones, sinon rien n'est modifié : cochez alors « Convertir entièrement les pages caviardées en
+  image ». Ctrl+Z annule tant que le document est ouvert ; le fichier n'est modifié qu'à l'enregistrement (un
+  enregistrement avec des zones non appliquées demande confirmation). Limites : le texte d'une image numérisée
+  sans OCR ne se trouve pas par recherche, les signets et pièces jointes ne sont pas modifiés, une signature
+  numérique devient invalide (détail : `docs/KNOWN_ISSUES.md` A40). En ligne de commande :
+  `sunipdf-cli redact entree.pdf --text "Jean Dupont" --rect "1:72,500,272,560" --out caviarde.pdf`.
 
 ## Enregistrer
 

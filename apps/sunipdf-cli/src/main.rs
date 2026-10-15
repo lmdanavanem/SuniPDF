@@ -213,6 +213,34 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Irreversibly redact rectangles and/or every occurrence of a text, then save to --out.
+    /// Content under the areas is removed from the file, not covered. Nothing is written if the
+    /// result cannot be verified (error "redaction_incomplete").
+    Redact {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        /// Area "PAGE:LEFT,BOTTOM,RIGHT,TOP" (1-based page, points, origin bottom-left of the page
+        /// as displayed, the coordinates printed by `search`). Repeatable.
+        #[arg(long = "rect")]
+        rects: Vec<String>,
+        /// Redact every occurrence of this text. Repeatable.
+        #[arg(long = "text")]
+        texts: Vec<String>,
+        #[arg(long)]
+        match_case: bool,
+        /// Replace every redacted page by an image of itself (no text left on these pages).
+        #[arg(long)]
+        rasterize: bool,
+        /// Keep metadata and the structure tree (removed by default).
+        #[arg(long)]
+        keep_hidden_data: bool,
+        /// Resolution of the image patches and rasterized pages (72 to 600).
+        #[arg(long, default_value_t = 200.0)]
+        dpi: f32,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Build a PDF from image files (one page per image).
     Images2pdf {
         #[arg(required = true)]
@@ -940,6 +968,51 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             sunipdf_core::write_atomic(&out, &bytes)?;
             Ok(serde_json::json!({ "out": out }))
         }
+        Command::Redact {
+            file,
+            out,
+            rects,
+            texts,
+            match_case,
+            rasterize,
+            keep_hidden_data,
+            dpi,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let mut marks = rects
+                .iter()
+                .map(|s| parse_rect_spec(s))
+                .collect::<Result<Vec<_>, _>>()?;
+            for t in &texts {
+                marks.extend(doc.redact_marks_for_text(t, match_case)?);
+            }
+            if marks.is_empty() {
+                return Err(EngineError::Other(
+                    "nothing to redact: no rectangle given and no occurrence found".into(),
+                ));
+            }
+            let options = sunipdf_core::RedactOptions {
+                rasterize_pages: rasterize,
+                clean_hidden_data: !keep_hidden_data,
+                raster_dpi: dpi,
+            };
+            let r = doc.redact(&marks, &options)?;
+            let mut remaining = 0;
+            for t in &texts {
+                remaining += doc.search(t, match_case)?.len();
+            }
+            if remaining > 0 {
+                return Err(EngineError::RedactionIncomplete);
+            }
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({
+                "out": out, "marks": r.marks, "pages": r.pages, "objects_removed": r.objects_removed,
+                "annotations_removed": r.annotations_removed, "fields_removed": r.fields_removed,
+                "pages_rasterized": r.pages_rasterized, "hidden_data_cleaned": r.hidden_data_cleaned,
+                "remaining_matches": remaining,
+            }))
+        }
         Command::Images2pdf { images, out, dpi } => {
             let pages = engine.images_to_pdf(&images, &out, dpi)?;
             Ok(serde_json::json!({ "out": out, "page_count": pages }))
@@ -1585,6 +1658,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Unprotect { out, .. }
         | Command::SetMetadata { out, .. }
         | Command::StripMetadata { out, .. }
+        | Command::Redact { out, .. }
         | Command::Images2pdf { out, .. }
         | Command::Optimize { out, .. }
         | Command::AddText { out, .. }
@@ -1700,6 +1774,33 @@ fn parse_pages(spec: &str, count: usize) -> Result<Vec<usize>, EngineError> {
     Ok(out)
 }
 
+/// "PAGE:LEFT,BOTTOM,RIGHT,TOP" (page en base 1, points d'affichage) → zone de caviardage.
+fn parse_rect_spec(spec: &str) -> Result<sunipdf_core::RedactMark, EngineError> {
+    let bad = || {
+        EngineError::Other(format!(
+            "invalid rectangle: {spec:?} (expected PAGE:L,B,R,T)"
+        ))
+    };
+    let (page, coords) = spec.split_once(':').ok_or_else(bad)?;
+    let page: usize = page.trim().parse().map_err(|_| bad())?;
+    let v = coords
+        .split(',')
+        .map(|c| c.trim().parse::<f32>().map_err(|_| bad()))
+        .collect::<Result<Vec<_>, _>>()?;
+    if page == 0 || v.len() != 4 || !v.iter().all(|x| x.is_finite()) {
+        return Err(bad());
+    }
+    Ok(sunipdf_core::RedactMark {
+        page: page - 1,
+        rect: sunipdf_core::PointRect {
+            left: v[0],
+            bottom: v[1],
+            right: v[2],
+            top: v[3],
+        },
+    })
+}
+
 fn main() -> ExitCode {
     // Pile de 1 Mio du fil principal sous Windows : l'analyse clap et `run` (un `match` de 30
     // sous-commandes riches en `json!`) la dépassent en compilation de débogage. Un fil dédié de
@@ -1746,6 +1847,26 @@ fn cli_main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_rect_specifications() {
+        let m = parse_rect_spec("2: 72, 500.5,272,560").unwrap();
+        assert_eq!(m.page, 1);
+        assert_eq!(
+            (m.rect.left, m.rect.bottom, m.rect.right, m.rect.top),
+            (72.0, 500.5, 272.0, 560.0)
+        );
+        for bad in [
+            "0:1,2,3,4",
+            "1:1,2,3",
+            "1,2,3,4",
+            "x:1,2,3,4",
+            "1:1,2,3,NaN",
+            "1:a,2,3,4",
+        ] {
+            assert!(parse_rect_spec(bad).is_err(), "{bad}");
+        }
+    }
 
     #[test]
     fn parses_page_specifications() {

@@ -217,8 +217,13 @@ pub static TABLE: [WsInfo; 14] = [
         desc_key: "hub.redact.desc",
         icon: (glyph::ERASE, "⌫"),
         color: Color32::from_rgb(0x47, 0x55, 0x69),
-        entry: None,
-        groups: &[],
+        // Zones marquées (souris ou recherche), effacées ou appliquées : suppression réelle et
+        // vérifiée par le moteur (`sunipdf-core::redact`).
+        entry: Some(Entry::Mode(C::HubRedact)),
+        groups: &[
+            &[C::ToolRedact, C::RedactSearch],
+            &[C::RedactClear, C::RedactApply],
+        ],
     },
     WsInfo {
         ws: Workspace::Compress,
@@ -555,6 +560,9 @@ impl SuniApp {
             | Command::CutObjects => self.edit.selection.is_some(),
             Command::RotateObjectLeft | Command::RotateObjectRight => single.is_some(),
             Command::PasteObjects => self.edit.clip.is_some(),
+            Command::RedactClear | Command::RedactApply => {
+                !self.annotate.redact.marks.is_empty() && !self.annotate.redact.applying
+            }
             Command::EditObjectText => {
                 single.is_some_and(|i| i.kind == sunipdf_core::ObjectKind::Text)
             }
@@ -838,6 +846,7 @@ mod tests {
         C::HubComment,
         C::HubProtect,
         C::HubStamp,
+        C::HubRedact,
         C::HubLeave,
     ];
 

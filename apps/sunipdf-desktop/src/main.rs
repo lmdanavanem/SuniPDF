@@ -13,6 +13,7 @@ mod inline_text;
 mod objects;
 mod organize;
 mod pagesetup;
+mod redact;
 mod settings;
 mod shell;
 mod sign;

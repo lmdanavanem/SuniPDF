@@ -36,7 +36,7 @@ Without an open document, a tool that needs one first asks for a file, then star
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo and Redo.
 
-Tools that have no real feature in SuniPDF yet (OCR, redaction, form preparation — creating fields —,
+Tools that have no real feature in SuniPDF yet (OCR, form preparation — creating fields —,
 certificate) are not shown: they will come with their feature. Fill & Sign covers filling AcroForm forms and the
 visual signature.
 
@@ -260,6 +260,17 @@ number from a template: `{n}` is the page number, `{total}` the page count (for 
   application private data (`PieceInfo`). Editing the properties also updates the XMP.
 - **Document properties** (Ctrl+D): editable title, author, subject, keywords; version, size, encryption
   and permissions read-only.
+- **Redact a PDF** (B key): draw rectangles over what must disappear, or use **Find Text to Redact…** to mark
+  every occurrence of a text; a click on an area removes it, **Clear Areas** removes them all. Nothing is deleted
+  until you choose **Apply Redactions…** (Ctrl+Shift+B, then the red button or Ctrl+Enter). Text, images,
+  drawings, annotations and fields under the areas are then **removed from the document** (not just covered);
+  whatever extends beyond an area stays visible as an image. SuniPDF then checks that no text can still be
+  extracted under the areas, otherwise nothing is changed: check "Convert redacted pages entirely to images" in
+  that case. Ctrl+Z undoes while the document is open; the file only changes when you save (saving with
+  unapplied areas asks for confirmation). Limits: text inside a scanned image without OCR cannot be found by
+  searching, bookmarks and attachments are not changed, a digital signature becomes invalid (details:
+  `docs/KNOWN_ISSUES.en.md` A40). From the command line:
+  `sunipdf-cli redact input.pdf --text "John Smith" --rect "1:72,500,272,560" --out redacted.pdf`.
 
 ## Saving
 

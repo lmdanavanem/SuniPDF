@@ -1,11 +1,9 @@
 # Prochaines tâches (ordre conseillé)
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
-1. Lancer `scripts\start.ps1 -Pdf <un vrai PDF>` et valider la nouvelle interface (accueil, panneau d'outils, rail droit, palette Ctrl+K, thème sombre, FR/EN). Dire ce qui s'éloigne encore de la cible.
-2. ~~Installer les Build Tools~~ fait le 13/10 au soir.
-3. Pousser sur GitHub pour exécuter la CI (`ci.yml`) puis créer un tag `v0.1.0` pour `release.yml` (portable x64/ARM64, MSI x64).
-4. En session administrateur : `winget install WiXToolset.WiXToolset` pour construire le MSI localement (`scripts\package-msi.ps1`).
-5. `rustup target add aarch64-pc-windows-msvc` puis `scripts\package-portable.ps1 -Arch arm64` pour vérifier la compilation ARM64.
+1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
+2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.
+3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
 
 ## Hub d'outils : contrat pour les tranches suivantes (tool-hub livré, D021)
 Les onglets `ToolTab` et les cartes `home.card.*` n'existent plus : les plans de `docs/plans/` qui les citent
@@ -19,9 +17,22 @@ Pour rendre un outil visible, une tranche fait exactement :
 4. les noms, descriptions et couleurs des 14 outils existent déjà (`hub.*.name`, `hub.*.desc`).
 Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système ;
 `bar_icons_are_distinct` échoue si une icône se répète dans une barre ou reprend celle d'un bouton d'accès rapide.
-Outils encore absents : Numériser et OCR, Caviarder, Préparer un formulaire (création de champs), Utiliser un
+Outils encore absents : Numériser et OCR, Préparer un formulaire (création de champs), Utiliser un
 certificat. « Remplir et signer » est complet : moitié « signer » (tranche sign-image) et moitié « remplir »
 (tranche forms, groupe Remplir le formulaire / panneau / Effacer / Aplatir / Exporter / Importer).
+
+## Après redaction (caviardage irréversible, tranche livrée)
+Reste, non bloquant (voir `KNOWN_ISSUES.md` A40, décisions D077–D082) :
+- `qpdf --check` des sorties et essai sur un corpus réel (numérisations avec couche OCR, PDF balisés lourds,
+  formulaires XObject imbriqués, polices Type 3) ; mesure sur une page de plusieurs dizaines de milliers d'objets
+  (`prune_objects` quadratique : accessibilité maison par `BTreeSet` si lent) ;
+- découpe fine du texte (garder sélectionnable la partie non caviardée d'une ligne) : demande de recréer des
+  fragments avec la police d'origine, hors de portée de `pdfium-render` 0.9.4 ;
+- couleur de remplissage et texte en surimpression (« CAVIARDÉ »), marques `/Redact` persistantes (pas de créateur
+  dans `pdfium-render`) ;
+- nettoyage des signets, pièces jointes, JavaScript et destinations nommées (outil « Assainir » séparé) ;
+- suppression d'un sous-ensemble de police devenu inutile ; aperçu « avant / après » de la page ;
+- `docs/SECURITY_MODEL.md` (méthode A/B/C, garanties, hypothèses) ; capture S3 (après application) non rejouée.
 
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.md` A38, décisions D061–D066) :

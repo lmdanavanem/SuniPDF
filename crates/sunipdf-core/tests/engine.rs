@@ -5087,3 +5087,403 @@ fn entries_of_annots_keep_their_indices_when_one_is_unreadable() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+// --- Caviardage ------------------------------------------------------------------------------
+
+fn find_bytes(hay: &[u8], needle: &[u8]) -> bool {
+    !needle.is_empty() && hay.windows(needle.len()).any(|w| w == needle)
+}
+
+fn count_occurrences(hay: &[u8], needle: &[u8]) -> usize {
+    hay.windows(needle.len()).filter(|w| *w == needle).count()
+}
+
+/// Cherche `needle` dans les octets bruts, puis dans chaque objet relu par lopdf : chaînes (y compris
+/// hexadécimales, décodées par l'analyseur), noms, flux décompressés et chaînes affichées par les
+/// opérateurs de texte (`Tj`, `TJ`, `'`, `"`, concaténées dans l'ordre du flux). ASCII et UTF-16BE.
+/// `password` : document chiffré (lopdf le déchiffre au chargement).
+fn pdf_contains_pw(bytes: &[u8], needle: &str, password: Option<&str>) -> bool {
+    use lopdf::Object;
+    let ascii = needle.as_bytes().to_vec();
+    let utf16: Vec<u8> = needle
+        .encode_utf16()
+        .flat_map(|u| u.to_be_bytes())
+        .collect();
+    let has = |hay: &[u8]| find_bytes(hay, &ascii) || find_bytes(hay, &utf16);
+    if has(bytes) {
+        return true;
+    }
+    let doc = match password {
+        Some(pw) => {
+            lopdf::Document::load_mem_with_options(bytes, lopdf::LoadOptions::with_password(pw))
+        }
+        None => lopdf::Document::load_mem(bytes),
+    }
+    .expect("lopdf relit le fichier");
+    fn visit(o: &Object, has: &dyn Fn(&[u8]) -> bool) -> bool {
+        match o {
+            Object::String(s, _) => has(s),
+            Object::Name(n) => has(n),
+            Object::Array(a) => a.iter().any(|x| visit(x, has)),
+            Object::Dictionary(d) => d.iter().any(|(k, v)| has(k) || visit(v, has)),
+            Object::Stream(s) => {
+                if s.dict.iter().any(|(k, v)| has(k) || visit(v, has)) {
+                    return true;
+                }
+                let data = s
+                    .decompressed_content()
+                    .unwrap_or_else(|_| s.content.clone());
+                if has(&data) {
+                    return true;
+                }
+                let Ok(content) = lopdf::content::Content::decode(&data) else {
+                    return false;
+                };
+                let mut shown = Vec::new();
+                for op in &content.operations {
+                    if matches!(op.operator.as_str(), "Tj" | "TJ" | "'" | "\"") {
+                        for operand in &op.operands {
+                            match operand {
+                                Object::String(s, _) => shown.extend_from_slice(s),
+                                Object::Array(a) => {
+                                    for x in a {
+                                        if let Object::String(s, _) = x {
+                                            shown.extend_from_slice(s);
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                has(&shown)
+            }
+            _ => false,
+        }
+    }
+    doc.objects.values().any(|o| visit(o, &has)) || visit(&Object::Dictionary(doc.trailer), &has)
+}
+
+fn pdf_contains(bytes: &[u8], needle: &str) -> bool {
+    pdf_contains_pw(bytes, needle, None)
+}
+
+const REDACT_MARKERS: [&str; 10] = [
+    "SECRET-ALPHA-7731",
+    "HIDDEN-OCR-5512",
+    "IMGSECRET-9F3A",
+    "NOTE-SECRET-88",
+    "FIELD-SECRET-314",
+    "THUMB-SECRET-01",
+    "PIECE-SECRET-02",
+    "ORPHAN-SECRET-77",
+    "META-SECRET-55",
+    "ALT-SECRET-66",
+];
+
+fn mark(page: usize, l: f32, b: f32, r: f32, t: f32) -> sunipdf_core::RedactMark {
+    sunipdf_core::RedactMark {
+        page,
+        rect: rect(l, b, r, t),
+    }
+}
+
+#[test]
+fn redaction_removes_text_from_extraction_bytes_and_pixels() {
+    use sunipdf_core::{RedactOptions, ShapeKind, ShapeStyle};
+    let engine = engine();
+    let dir = temp_dir("redact-t1");
+    let input = std::fs::read(fixture("redact.pdf")).unwrap();
+    // 1. Contrôles positifs : chaque marqueur est bien trouvé dans la fixture.
+    for m in REDACT_MARKERS {
+        assert!(pdf_contains(&input, m), "fixture sans {m}");
+    }
+    // 2. Contrôle du détecteur : un flux régénéré par PDFium contient encore le secret, et le
+    //    détecteur le voit.
+    let mut doc = engine.open(&fixture("redact.pdf"), None).unwrap();
+    doc.add_shape(
+        0,
+        ShapeKind::Rectangle,
+        rect(500.0, 50.0, 550.0, 80.0),
+        &ShapeStyle::default(),
+    )
+    .unwrap();
+    assert!(pdf_contains(&doc.snapshot().unwrap(), "SECRET-ALPHA-7731"));
+    drop(doc);
+
+    // 3. Caviardage du secret.
+    let mut doc = engine.open(&fixture("redact.pdf"), None).unwrap();
+    let marks = doc
+        .redact_marks_for_text("SECRET-ALPHA-7731", true)
+        .unwrap();
+    assert_eq!(marks.len(), 1);
+    assert_eq!(marks[0].page, 0);
+    let zone = marks[0].rect;
+    let report = doc.redact(&marks, &RedactOptions::default()).unwrap();
+    assert_eq!(report.pages, 1);
+    assert!(report.objects_removed >= 1, "{report:?}");
+    assert_eq!(report.annotations_removed, 2, "note et son popup");
+    assert_eq!(report.pages_rasterized, 0);
+    assert!(report.hidden_data_cleaned);
+
+    // 4. Extraction.
+    let check_text = |doc: &sunipdf_core::Document<'_>| {
+        let text = doc.page_text(0).unwrap();
+        assert!(!text.contains("SECRET-ALPHA"), "{text}");
+        assert!(text.contains("Public header line") && text.contains("KEEPME-42"));
+        assert!(doc.search("SECRET-ALPHA", false).unwrap().is_empty());
+    };
+    check_text(&doc);
+
+    // 5. Pixels : zone noire, « Name: » conservé en image, le reste blanc.
+    let img = doc.render_page(0, 1.0).unwrap();
+    let mut y = zone.bottom + 2.0;
+    while y < zone.top - 2.0 {
+        let mut x = zone.left + 2.0;
+        while x < zone.right - 2.0 {
+            assert!(close3(px(&img, x, y), [0, 0, 0], 10), "({x}, {y})");
+            x += 1.0;
+        }
+        y += 1.0;
+    }
+    let name_dark = (72..105)
+        .flat_map(|x| (680..690).map(move |y| (x, y)))
+        .filter(|&(x, y)| is_dark(px(&img, x as f32, y as f32)))
+        .count();
+    assert!(
+        name_dark > 20,
+        "« Name: » visible ({name_dark} pixels sombres)"
+    );
+    assert!(close3(px(&img, 400.0, 100.0), [255, 255, 255], 2));
+
+    // 6. Octets, dans l'instantané et dans le fichier enregistré.
+    let out = dir.join("redacted.pdf");
+    doc.save_as(&out).unwrap();
+    let saved = std::fs::read(&out).unwrap();
+    for bytes in [doc.snapshot().unwrap(), saved.clone()] {
+        for gone in [
+            "SECRET-ALPHA-7731",
+            "NOTE-SECRET-88",
+            "THUMB-SECRET-01",
+            "PIECE-SECRET-02",
+            "ORPHAN-SECRET-77",
+            "META-SECRET-55",
+            "ALT-SECRET-66",
+        ] {
+            assert!(!pdf_contains(&bytes, gone), "{gone} encore présent");
+        }
+        for kept in [
+            "KEEP-LINK",
+            "KEEP-FIELD-9",
+            "FIELD-SECRET-314",
+            "IMGSECRET-9F3A",
+        ] {
+            assert!(
+                pdf_contains(&bytes, kept),
+                "{kept} non marqué : doit rester"
+            );
+        }
+        assert_eq!(count_occurrences(&bytes, b"%%EOF"), 1);
+    }
+    // 7. Réouverture du fichier.
+    drop(doc);
+    let doc = engine.open(&out, None).unwrap();
+    check_text(&doc);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn redaction_blacks_out_image_path_and_hidden_text() {
+    use sunipdf_core::{ObjectKind, RedactOptions};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("redact.pdf"), None).unwrap();
+    let marks = [
+        mark(0, 350.0, 544.0, 478.0, 608.0),
+        mark(0, 72.0, 500.0, 172.0, 560.0),
+    ];
+    let report = doc.redact(&marks, &RedactOptions::default()).unwrap();
+    assert!(report.objects_removed >= 3, "{report:?}");
+    assert!(!doc.page_text(0).unwrap().contains("HIDDEN-OCR-5512"));
+    assert!(
+        !doc.page_objects(0)
+            .unwrap()
+            .iter()
+            .any(|o| o.kind == ObjectKind::Path
+                && near(o.bounds, rect(72.0, 500.0, 272.0, 560.0), 3.0)),
+        "le rectangle rouge n'est plus un tracé"
+    );
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(
+        close3(px(&img, 414.0, 576.0), [0, 0, 0], 24),
+        "moitié haute de l'image noire"
+    );
+    let g = px(&img, 414.0, 512.0);
+    assert!(
+        g[1] > 120 && g[0] < 80 && g[2] < 80,
+        "moitié basse verte : {g:?}"
+    );
+    assert!(close3(px(&img, 120.0, 530.0), [0, 0, 0], 4));
+    assert!(is_red(px(&img, 220.0, 530.0)));
+    let bytes = doc.snapshot().unwrap();
+    assert!(!pdf_contains(&bytes, "IMGSECRET-9F3A"));
+    assert!(!pdf_contains(&bytes, "HIDDEN-OCR-5512"));
+    assert!(pdf_contains(&bytes, "KEEPME-42"));
+}
+
+#[test]
+fn redaction_removes_form_field_under_mark() {
+    use sunipdf_core::RedactOptions;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("redact.pdf"), None).unwrap();
+    let options = RedactOptions {
+        clean_hidden_data: false,
+        ..Default::default()
+    };
+    let report = doc
+        .redact(&[mark(0, 72.0, 440.0, 272.0, 460.0)], &options)
+        .unwrap();
+    assert_eq!(report.fields_removed, 1);
+    assert!(!report.hidden_data_cleaned);
+    let bytes = doc.snapshot().unwrap();
+    assert!(!pdf_contains(&bytes, "FIELD-SECRET-314"));
+    assert!(pdf_contains(&bytes, "KEEP-FIELD-9"));
+    assert!(
+        pdf_contains(&bytes, "META-SECRET-55"),
+        "métadonnées conservées sans l'option"
+    );
+    assert!(!doc
+        .annotations(0)
+        .unwrap()
+        .iter()
+        .any(|a| a.kind == "widget" && a.rect.bottom < 465.0 && a.rect.left < 280.0));
+}
+
+#[test]
+fn redaction_rasterize_mode_leaves_only_pixels() {
+    use sunipdf_core::{ObjectKind, RedactOptions};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("redact.pdf"), None).unwrap();
+    let options = RedactOptions {
+        rasterize_pages: true,
+        ..Default::default()
+    };
+    let report = doc
+        .redact(&[mark(0, 500.0, 100.0, 520.0, 120.0)], &options)
+        .unwrap();
+    assert_eq!(report.pages_rasterized, 1);
+    assert!(doc.page_text(0).unwrap().trim().is_empty());
+    let objects = doc.page_objects(0).unwrap();
+    assert_eq!(objects.len(), 1);
+    assert_eq!(objects[0].kind, ObjectKind::Image);
+    assert!(doc.annotations(0).unwrap().is_empty());
+    let bytes = doc.snapshot().unwrap();
+    for m in REDACT_MARKERS.iter().chain(&["KEEP-LINK", "KEEP-FIELD-9"]) {
+        assert!(!pdf_contains(&bytes, m), "{m}");
+    }
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert!(close3(px(&img, 510.0, 110.0), [0, 0, 0], 4));
+    assert!(is_red(px(&img, 172.0, 530.0)));
+}
+
+#[test]
+fn redaction_respects_page_rotation() {
+    use sunipdf_core::{RedactOptions, Rotation};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.set_page_rotation(0, Rotation::R90).unwrap();
+    let marks = doc.redact_marks_for_text("SuniPDF page 1", true).unwrap();
+    assert_eq!(marks.len(), 1);
+    let d = marks[0].rect;
+    doc.redact(&marks, &RedactOptions::default()).unwrap();
+    assert_eq!(doc.page_rotation(0).unwrap(), Rotation::R90);
+    assert!(!doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+    let img = doc.render_page(0, 1.0).unwrap();
+    assert_eq!((img.width, img.height), (792, 612));
+    let (cx, cy) = center(d);
+    assert!(
+        close3(px(&img, cx, cy), [0, 0, 0], 4),
+        "centre de la zone noir"
+    );
+    // Rectangle bleu (utilisateur 72..272 × 500..650) : affichage x 500..650, y 340..540.
+    assert!(is_blue(px(&img, 575.0, 440.0)));
+    assert!(!pdf_contains(&doc.snapshot().unwrap(), "SuniPDF page 1"));
+    assert!(pdf_contains(&doc.snapshot().unwrap(), "SuniPDF page 2"));
+}
+
+#[test]
+fn redaction_drops_previous_revisions() {
+    use sunipdf_core::RedactOptions;
+    let engine = engine();
+    let dir = temp_dir("redact-t6");
+    let input = std::fs::read(fixture("redact-incremental.pdf")).unwrap();
+    assert!(find_bytes(&input, b"OLDREV-SECRET-01"));
+    assert_eq!(count_occurrences(&input, b"%%EOF"), 2);
+    let mut doc = engine
+        .open(&fixture("redact-incremental.pdf"), None)
+        .unwrap();
+    assert_eq!(doc.page_text(0).unwrap().trim(), "Current revision");
+    doc.redact(
+        &[mark(0, 400.0, 100.0, 420.0, 120.0)],
+        &RedactOptions::default(),
+    )
+    .unwrap();
+    let out = dir.join("out.pdf");
+    doc.save_as(&out).unwrap();
+    let saved = std::fs::read(&out).unwrap();
+    assert!(!pdf_contains(&saved, "OLDREV-SECRET-01"));
+    assert_eq!(count_occurrences(&saved, b"%%EOF"), 1);
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn redaction_of_encrypted_document_and_errors() {
+    use sunipdf_core::{security, Protection, RedactOptions};
+    let engine = engine();
+    let dir = temp_dir("redact-t7");
+    let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    let p = Protection {
+        user_password: "user".into(),
+        owner_password: "owner".into(),
+        ..Default::default()
+    };
+    let protected = dir.join("protected.pdf");
+    std::fs::write(&protected, security::protect(&input, None, &p).unwrap()).unwrap();
+    let mut doc = engine.open(&protected, Some("user")).unwrap();
+    let marks = doc.redact_marks_for_text("SuniPDF page 1", true).unwrap();
+    doc.redact(&marks, &RedactOptions::default()).unwrap();
+    assert!(doc.is_encrypted(), "la protection est conservée");
+    let out = dir.join("out.pdf");
+    doc.save_as(&out).unwrap();
+    drop(doc);
+    assert!(matches!(
+        engine.open(&out, None),
+        Err(EngineError::PasswordRequired)
+    ));
+    let doc = engine.open(&out, Some("user")).unwrap();
+    assert!(!doc.page_text(0).unwrap().contains("SuniPDF page 1"));
+    let saved = std::fs::read(&out).unwrap();
+    assert!(!pdf_contains_pw(&saved, "SuniPDF page 1", Some("user")));
+    assert!(pdf_contains_pw(&saved, "SuniPDF page 2", Some("user")));
+    drop(doc);
+
+    // Erreurs : rien n'est modifié.
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.page_text(0).unwrap();
+    let o = RedactOptions::default();
+    assert!(doc.redact(&[], &o).is_err());
+    assert!(matches!(
+        doc.redact(&[mark(9, 0.0, 0.0, 10.0, 10.0)], &o),
+        Err(EngineError::PageOutOfRange(9))
+    ));
+    assert!(doc.redact(&[mark(0, 10.0, 10.0, 10.0, 50.0)], &o).is_err());
+    assert!(doc
+        .redact(&[mark(0, f32::NAN, 10.0, 20.0, 50.0)], &o)
+        .is_err());
+    assert_eq!(doc.page_text(0).unwrap(), before);
+    assert_eq!(
+        EngineError::RedactionIncomplete.code(),
+        "redaction_incomplete"
+    );
+    let _ = std::fs::remove_dir_all(dir);
+}

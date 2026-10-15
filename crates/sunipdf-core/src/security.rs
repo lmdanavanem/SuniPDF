@@ -398,6 +398,13 @@ pub fn set_metadata(
 /// pages et des images) et données privées /PieceInfo.
 pub fn strip_metadata(input: &[u8], password: Option<&str>) -> Result<Vec<u8>, EngineError> {
     let mut doc = load(input, password)?;
+    strip_metadata_in(&mut doc);
+    doc.prune_objects();
+    save(doc)
+}
+
+/// Corps de [`strip_metadata`], partagé avec le caviardage (sans ramasse-miettes ni écriture).
+pub(crate) fn strip_metadata_in(doc: &mut lopdf::Document) {
     if let Ok(id) = doc.trailer.get(b"Info").and_then(Object::as_reference) {
         doc.delete_object(id);
     }
@@ -411,8 +418,6 @@ pub fn strip_metadata(input: &[u8], password: Option<&str>) -> Result<Vec<u8>, E
         dict.remove(b"Metadata");
         dict.remove(b"PieceInfo");
     }
-    doc.prune_objects();
-    save(doc)
 }
 
 impl Document<'_> {

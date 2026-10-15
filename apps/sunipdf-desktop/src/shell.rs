@@ -210,9 +210,14 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         | Command::HubOrganize
         | Command::HubComment
         | Command::HubProtect
-        | Command::HubStamp => {
+        | Command::HubStamp
+        | Command::HubRedact => {
             Workspace::from_command(command).map_or((glyph::ALL_APPS, "▤"), |w| w.info().icon)
         }
+        Command::ToolRedact => (glyph::REDACT, "█"),
+        Command::RedactSearch => (glyph::FIND, "🔍"),
+        Command::RedactClear => (glyph::DELETE, "🗑"),
+        Command::RedactApply => (glyph::SHIELD, "◇"),
         Command::SignDocument => (glyph::SIGN, "✍"),
         Command::SignInitials => (glyph::EDIT_DOC, "✎"),
         Command::InsertDate => (glyph::CALENDAR, "📅"),

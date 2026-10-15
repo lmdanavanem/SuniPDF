@@ -235,3 +235,35 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     clavier, le redimensionnement d'une encre, d'une ligne ou d'une zone de texte (tous couverts par les tests moteur et
     les tests purs de `annot_adv.rs`) ; `qpdf --check` non
     exécuté sur les sorties (qpdf absent de ce poste, A4).
+A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone est **supprimé** (objets retirés, fichier
+    réécrit sans révision antérieure, vérifié par relecture), mais avec ces limites :
+    1. **Granularité** : un objet texte touché par une zone quitte la couche texte en entier ; ce qui dépasse de la
+       zone reste visible sous forme d'image (vignette à 200 ppp), ni sélectionnable ni trouvable. Idem pour une
+       image ou un tracé partiellement couvert.
+    2. **Texte d'une image numérisée sans OCR** : invisible pour « Caviarder un texte… » (il faut tracer la zone). Une
+       couche OCR décalée par rapport à l'image peut échapper à une zone tracée : l'option « Convertir entièrement
+       les pages caviardées en image » la supprime dans tous les cas.
+    3. **Polices incorporées** : si la police du texte caviardé sert encore ailleurs, son sous-ensemble de glyphes
+       reste dans le fichier (il révèle des caractères utilisés, ni leur ordre ni leur position).
+    4. **Non modifiés** : signets (un titre peut reprendre le texte caviardé), pièces jointes, JavaScript,
+       destinations nommées, contenu des pages non marquées ; une annotation `/Redact` posée par un autre logiciel est
+       traitée comme une annotation ordinaire (retirée seulement si elle est sous une zone).
+    5. **Champs de formulaire** : un champ dont un widget est sous une zone disparaît partout (tous ses widgets,
+       toutes les pages) ; `/XFA` est alors retiré.
+    6. **Balisage d'accessibilité** : supprimé pour tout le document quand « informations cachées » est coché (défaut)
+       ; conservé sinon, avec le risque qu'un texte alternatif décrive le contenu caviardé.
+    7. **Signatures numériques** : toute signature existante devient invalide (réécriture complète).
+    8. **Mémoire et disque** : l'historique d'annulation et les onglets suspendus gardent l'état d'avant en mémoire
+       vive (jamais écrit sur disque par SuniPDF) ; l'ancien fichier remplacé par l'enregistrement atomique n'est pas
+       effacé du support de façon sécurisée.
+    9. **Hypothèse restante** : les limites d'objet de PDFium englobent l'encre de l'objet. Pour le texte, elles sont
+       agrandies de 30 % et contrôlées à l'exécution (texte résiduel sous une zone = erreur, document inchangé) ; pour
+       images et tracés elles sont géométriques.
+    10. **Documents refusés** : un flux de contenu qui ne se décode pas strictement (lopdf) donne
+        `redaction_incomplete` sans rien modifier ; réessayer avec « page en image ».
+    11. **Supprimer un objet avec l'outil Modifier n'est pas un caviardage** : PDFium peut laisser l'objet orphelin ou
+        la ressource dans le fichier ; seul l'outil Caviarder assainit et réécrit le document.
+    12. Les zones sont **effacées à toute modification du document** (rotation, page supprimée, annulation…) ; les
+        zones dessinées n'ont pas de nœud d'accessibilité propre (leur nombre est annoncé dans la barre d'état).
+    13. Non vérifié : `qpdf --check` des sorties (A4), corpus de PDF réels (numérisations, PDF balisés lourds), pages de
+        plusieurs dizaines de milliers d'objets (`prune_objects` de lopdf est quadratique).

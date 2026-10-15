@@ -236,3 +236,34 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     the engine tests and the pure tests of `annot_adv.rs`); `qpdf --check`
     not run on the outputs (qpdf absent from this
     machine, A4).
+A40. **Redaction (redaction slice, D077–D082)**: content under an area is **removed** (objects deleted, file rewritten
+    without any earlier revision, verified by reading it back), with these limits:
+    1. **Granularity**: a text object touched by an area leaves the text layer entirely; what extends beyond the area
+       stays visible as an image (200 dpi patch), neither selectable nor searchable. Same for a partly covered image
+       or drawing.
+    2. **Text in a scanned image without OCR**: invisible to "Find Text to Redact…" (draw the area). An OCR layer
+       offset from the image can escape a drawn area: the "Convert redacted pages entirely to images" option removes
+       it in every case.
+    3. **Embedded fonts**: if the font of the redacted text is still used elsewhere, its glyph subset stays in the file
+       (it reveals characters that were used, not their order or position).
+    4. **Not changed**: bookmarks (a title may repeat the redacted text), attachments, JavaScript, named destinations,
+       content of unmarked pages; a `/Redact` annotation placed by other software is handled as an ordinary
+       annotation (removed only when it lies under an area).
+    5. **Form fields**: a field with a widget under an area disappears everywhere (all its widgets, all pages); `/XFA`
+       is then removed.
+    6. **Accessibility tags**: removed for the whole document when "hidden information" is checked (default); kept
+       otherwise, with the risk that an alternate text describes the redacted content.
+    7. **Digital signatures**: any existing signature becomes invalid (full rewrite).
+    8. **Memory and disk**: the undo history and suspended tabs keep the previous state in RAM (never written to disk
+       by SuniPDF); the old file replaced by the atomic save is not securely wiped from the storage medium.
+    9. **Remaining assumption**: PDFium object bounds enclose the object's ink. For text they are enlarged by 30 % and
+       checked at run time (residual text under an area = error, document unchanged); for images and drawings they
+       are geometric.
+    10. **Refused documents**: a content stream that does not decode strictly (lopdf) gives `redaction_incomplete`
+        without changing anything; retry with "page as image".
+    11. **Deleting an object with the Edit tool is not redaction**: PDFium may leave the object orphaned or the
+        resource in the file; only the Redact tool sanitises and rewrites the document.
+    12. Areas are **cleared whenever the document changes** (rotation, deleted page, undo…); drawn areas have no
+        accessibility node of their own (their count is announced in the status bar).
+    13. Not verified: `qpdf --check` of the outputs (A4), a corpus of real PDFs (scans, heavily tagged PDFs), pages with
+        tens of thousands of objects (lopdf's `prune_objects` is quadratic).

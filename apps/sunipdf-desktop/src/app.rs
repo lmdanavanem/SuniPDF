@@ -66,7 +66,7 @@ impl FindState {
 #[derive(Default)]
 pub struct FindState {
     pub open: bool,
-    query: String,
+    pub(crate) query: String,
     match_case: bool,
     /// Requête dont les résultats sont affichés (évite de relancer à chaque frame).
     searched: Option<(String, bool)>,
@@ -164,6 +164,12 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::NONE, Key::A, Command::ToolSelectAnnot),
     (Modifiers::NONE, Key::D, Command::ToolInk),
     (Modifiers::NONE, Key::F, Command::ToolFreeText),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::B,
+        Command::RedactApply,
+    ),
+    (Modifiers::NONE, Key::B, Command::ToolRedact),
     (Modifiers::NONE, Key::Delete, Command::DeleteObject),
     (Modifiers::NONE, Key::F2, Command::EditObjectText),
     (Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront),
@@ -627,8 +633,15 @@ impl SuniApp {
                     self.status_msg = self.edit.pending_status.take();
                     // Le message de l'opération reste affiché après la resélection.
                     self.edit.hold_status = self.status_msg.is_some();
+                    self.redact_on_document_changed();
                     self.update_title(ctx);
                 }
+                Response::Redacted(report) => self.on_redacted(report),
+                Response::RedactMatches {
+                    query,
+                    verify,
+                    marks,
+                } => self.on_redact_matches(query, verify, marks),
                 // L'intention (surligner, souligner, barrer ou simple sélection) est celle du
                 // glissement, pas celle de l'outil au moment où la réponse arrive.
                 Response::TextSelected { page, selection } => {
@@ -686,6 +699,7 @@ impl SuniApp {
                 Response::OperationFailed(e) => {
                     log::warn!("opération impossible : {e}");
                     self.error = Some(error_key(&e));
+                    self.redact_failed();
                     self.edit.pending_status = None;
                     self.edit.reselect = None;
                     self.edit.reselect_many = None;
@@ -989,6 +1003,7 @@ impl SuniApp {
             || self.sign.open.is_some()
             || self.forms.flatten_open
             || self.annotate.adv.dialog_open()
+            || self.annotate.redact.dialog_open()
     }
 
     /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
@@ -1173,7 +1188,8 @@ impl SuniApp {
             | Command::ToolAnnotRect
             | Command::ToolAnnotEllipse
             | Command::ToolAnnotLine
-            | Command::ToolLink => {
+            | Command::ToolLink
+            | Command::ToolRedact => {
                 self.cancel_placing();
                 self.annotate.tool =
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
@@ -1195,13 +1211,20 @@ impl SuniApp {
                     &mut self.edit,
                     command,
                 );
+                if command == Command::ToolRedact {
+                    self.redact_status();
+                }
+            }
+            Command::RedactSearch | Command::RedactClear | Command::RedactApply => {
+                self.redact_command(ctx, command)
             }
             Command::HubFillSign
             | Command::HubEdit
             | Command::HubOrganize
             | Command::HubComment
             | Command::HubProtect
-            | Command::HubStamp => {
+            | Command::HubStamp
+            | Command::HubRedact => {
                 if let Some(ws) = crate::workspace::Workspace::from_command(command) {
                     self.enter_workspace(ctx, ws);
                 }
@@ -1736,7 +1759,17 @@ impl SuniApp {
 
     /// Enregistre vers le chemin courant, ou demande un chemin (`ask_path`). Une saisie de champ
     /// en cours est validée d'abord (le thread moteur l'applique avant d'enregistrer).
-    fn save_document(&mut self, ask_path: bool) {
+    /// Abandonne l'action prévue après l'enregistrement (fermer, quitter…).
+    pub(crate) fn cancel_after_save(&mut self) {
+        self.after_save = None;
+    }
+
+    pub(crate) fn save_document(&mut self, ask_path: bool) {
+        // Zones de caviardage non appliquées : le fichier contiendrait encore le contenu marqué.
+        // Garde ici (et non dans `execute`) : la boîte « non enregistré » appelle cette fonction.
+        if self.redact_blocks_save(ask_path) {
+            return;
+        }
         self.commit_editor();
         let Some(doc) = &self.document else { return };
         let mut path = doc.info.path.clone();
@@ -2092,6 +2125,7 @@ impl eframe::App for SuniApp {
         self.properties_dialog(&ctx);
         self.protect_dialog(&ctx);
         self.unprotect_dialog(&ctx);
+        self.redact_dialogs(&ctx);
         self.text_prompt_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
@@ -2154,6 +2188,7 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::FormFieldNotFound(_) => "error.form_field_not_found",
         EngineError::FormValueInvalid(_) => "error.form_value_invalid",
         EngineError::FormXfa => "error.form_xfa",
+        EngineError::RedactionIncomplete => "error.redact_incomplete",
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -2180,6 +2215,7 @@ mod tests {
             EngineError::FormFieldNotFound(String::new()),
             EngineError::FormValueInvalid(String::new()),
             EngineError::FormXfa,
+            EngineError::RedactionIncomplete,
             EngineError::Other(String::new()),
         ];
         for e in errors {
@@ -2204,7 +2240,8 @@ mod tests {
             include_str!("pagesetup.rs"),
             include_str!("sign.rs"),
             include_str!("forms.rs"),
-            include_str!("annot_adv.rs")
+            include_str!("annot_adv.rs"),
+            include_str!("redact.rs")
         );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {
