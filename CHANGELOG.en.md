@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-10-15
+
+### Fixed
+- Tabs: the close button receives clicks and closes the document; clicking the title still switches tabs.
+- Closing a background tab activates and closes that document, prompting to save its changes when needed.
+  A tab switch refused during a save does not close any document.
+
 ## [0.8.0] — 2026-10-15
 
 Six priority fixes, 26 regression tests added (248 tests passed, 2 measurements ignored).

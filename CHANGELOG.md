@@ -5,6 +5,13 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.8.1] — 2026-10-15
+
+### Corrigé
+- Onglets : la croix reçoit le clic et ferme le document ; le titre permet toujours de changer d'onglet.
+- La croix d'un onglet en arrière-plan ferme ce document après son activation, en demandant d'enregistrer
+  ses modifications si nécessaire. Une activation refusée pendant un enregistrement ne ferme aucun document.
+
 ## [0.8.0] — 2026-10-15
 
 Six corrections prioritaires, 26 tests de régression ajoutés (248 tests réussis, 2 mesures ignorées).

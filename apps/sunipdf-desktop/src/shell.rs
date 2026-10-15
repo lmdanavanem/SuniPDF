@@ -386,23 +386,36 @@ impl SuniApp {
                     .inner_margin(Margin::symmetric(10, 4))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            ui.label(self.icon(glyph::DOCUMENT, "▤", 14.0).color(if is_active {
-                                p.accent
-                            } else {
-                                p.text_muted
-                            }));
-                            ui.label(RichText::new(title).size(14.0).color(if is_active {
-                                p.text
-                            } else {
-                                p.text_muted
-                            }));
+                            let name = ui.add(
+                                Button::new((
+                                    self.icon(glyph::DOCUMENT, "▤", 14.0).color(if is_active {
+                                        p.accent
+                                    } else {
+                                        p.text_muted
+                                    }),
+                                    RichText::new(&title).size(14.0).color(if is_active {
+                                        p.text
+                                    } else {
+                                        p.text_muted
+                                    }),
+                                ))
+                                .frame(false),
+                            );
+                            name.widget_info(|| {
+                                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &title)
+                            });
+                            if name.clicked() {
+                                name.surrender_focus();
+                                if !is_active {
+                                    switch = Some(i);
+                                }
+                            }
                             if self.icon_button(ui, glyph::CLOSE, "✕", tr(lang, "tabs.close")) {
                                 close = Some(i);
                             }
                         });
                     })
-                    .response
-                    .interact(egui::Sense::click());
+                    .response;
                 if is_active {
                     // Trait d'accent en haut de l'onglet actif.
                     let r = resp.rect.shrink2(egui::vec2(6.0, 0.0));
@@ -412,9 +425,6 @@ impl SuniApp {
                         p.accent,
                     );
                 }
-                if resp.clicked() && !is_active {
-                    switch = Some(i);
-                }
                 if resp.hovered() && !is_active {
                     ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
                 }
@@ -423,10 +433,12 @@ impl SuniApp {
                 if active == Some(i) {
                     self.execute(ctx, Command::CloseDocument);
                 } else {
-                    switch = Some(i);
+                    self.switch_to(i);
+                    if self.tabs.resuming == Some(i) {
+                        self.execute(ctx, Command::CloseDocument);
+                    }
                 }
-            }
-            if let Some(i) = switch {
+            } else if let Some(i) = switch {
                 self.switch_to(i);
             }
             let open =

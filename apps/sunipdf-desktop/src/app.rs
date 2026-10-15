@@ -2343,6 +2343,178 @@ mod tests {
         }
     }
 
+    #[test]
+    fn clicking_active_tab_cross_closes_the_document() {
+        let (mut app, requests, _responses) = test_app();
+        let ctx = egui::Context::default();
+        click_tab_control(&mut app, &ctx, "✕", 0);
+        assert!(
+            requests.try_iter().any(|r| matches!(r, Request::Close)),
+            "the tab cross must deliver the close action"
+        );
+        assert!(app.document.is_none());
+        assert!(app.tabs.tabs.is_empty());
+    }
+
+    fn click_tab_control(app: &mut SuniApp, ctx: &egui::Context, label: &str, index: usize) {
+        crate::icons::install(ctx);
+        ctx.enable_accesskit();
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 780.0),
+            )),
+            ..Default::default()
+        };
+        let mut target = None;
+        for _ in 0..2 {
+            let mut out = ctx.run_ui(input.clone(), |ui| app.tab_strip(ctx, ui));
+            if let Some(tree) = &out.platform_output.accesskit_update {
+                let mut bounds: Vec<_> = tree
+                    .nodes
+                    .iter()
+                    .map(|(_, node)| node)
+                    .filter(|node| node.label() == Some(label))
+                    .filter_map(|node| node.bounds())
+                    .collect();
+                bounds.sort_by(|a, b| a.x0.total_cmp(&b.x0));
+                if let Some(bounds) = bounds.get(index) {
+                    target = Some(egui::pos2(
+                        ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                        ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                    ));
+                }
+            }
+            out.textures_delta.clear();
+        }
+        let pos = target.expect("tab close button bounds");
+        for pressed in [true, false] {
+            let mut input = input.clone();
+            input.events = vec![
+                egui::Event::PointerMoved(pos),
+                egui::Event::PointerButton {
+                    pos,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: Modifiers::NONE,
+                },
+            ];
+            let mut out = ctx.run_ui(input, |ui| app.tab_strip(ctx, ui));
+            out.textures_delta.clear();
+        }
+    }
+
+    #[test]
+    fn clicking_inactive_tab_cross_closes_only_that_tab_or_prompts_for_its_changes() {
+        for dirty in [false, true] {
+            let (mut app, requests, responses) = test_app();
+            add_background_tab(&mut app, dirty);
+            let ctx = egui::Context::default();
+            click_tab_control(&mut app, &ctx, "✕", 1);
+            responses
+                .send(Response::Suspended(crate::worker::SuspendedDoc {
+                    bytes: vec![],
+                    password: None,
+                    path: PathBuf::from("test/first.pdf"),
+                    undo: vec![],
+                    redo: vec![],
+                    save_point: Some(0),
+                    modified: false,
+                }))
+                .unwrap();
+            app.handle_responses(&ctx);
+            responses
+                .send(Response::Resumed(DocState {
+                    info: test_info("test/second.pdf"),
+                    can_undo: dirty,
+                    can_redo: false,
+                    modified: dirty,
+                    pages_unchanged: false,
+                }))
+                .unwrap();
+            app.handle_responses(&ctx);
+            if dirty {
+                assert!(
+                    matches!(app.unsaved_prompt, Some(PendingAction::Close)),
+                    "the inactive tab cross must confirm its own unsaved changes"
+                );
+                assert!(!requests.try_iter().any(|r| matches!(r, Request::Close)));
+            } else {
+                assert!(
+                    requests.try_iter().any(|r| matches!(r, Request::Close)),
+                    "the inactive tab cross must close after resuming the target tab"
+                );
+                assert_eq!(app.tabs.tabs.len(), 1);
+            }
+            assert_eq!(app.tabs.tabs[0].path, PathBuf::from("test/first.pdf"));
+        }
+    }
+
+    fn add_background_tab(app: &mut SuniApp, dirty: bool) {
+        let mut second_ui = app.take_tab();
+        second_ui.document.as_mut().unwrap().info = test_info("test/second.pdf");
+        second_ui.dirty = dirty;
+        app.document = Some(OpenDocument {
+            info: test_info("test/first.pdf"),
+            page: 0,
+        });
+        app.tabs.tabs.push(crate::tabs::Tab {
+            path: PathBuf::from("test/second.pdf"),
+            dirty,
+            ui: Some(second_ui),
+            doc: Some(crate::worker::SuspendedDoc {
+                bytes: vec![],
+                password: None,
+                path: PathBuf::from("test/second.pdf"),
+                undo: vec![],
+                redo: vec![],
+                save_point: Some(0),
+                modified: dirty,
+            }),
+        });
+    }
+
+    #[test]
+    fn clicking_tab_name_still_switches_to_that_document() {
+        let (mut app, requests, _responses) = test_app();
+        add_background_tab(&mut app, false);
+        let ctx = egui::Context::default();
+        let label = file_name(Path::new("test/second.pdf"));
+        click_tab_control(&mut app, &ctx, &label, 0);
+        assert_eq!(app.tabs.resuming, Some(1));
+        assert!(requests.try_iter().any(|r| matches!(r, Request::Suspend)));
+    }
+
+    #[test]
+    fn clicking_inactive_tab_cross_during_save_does_not_close_active_document() {
+        let (mut app, requests, responses) = test_app();
+        add_background_tab(&mut app, false);
+        let ctx = egui::Context::default();
+        app.save_document(false);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::Save { .. })));
+        click_tab_control(&mut app, &ctx, "✕", 1);
+        responses
+            .send(Response::Saved {
+                path: PathBuf::from("test/first.pdf"),
+            })
+            .unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(
+            !requests
+                .try_iter()
+                .any(|r| matches!(r, Request::Close | Request::Suspend | Request::Resume(_))),
+            "a refused tab switch must never close the active document instead"
+        );
+        assert_eq!(app.tabs.active, Some(0));
+        assert_eq!(
+            app.document.as_ref().unwrap().info.path,
+            PathBuf::from("test/first.pdf")
+        );
+    }
+
     fn form_draft(app: &mut SuniApp, text: &str) {
         app.forms.info = Some(sunipdf_core::FormInfo {
             kind: sunipdf_core::FormKind::AcroForm,
