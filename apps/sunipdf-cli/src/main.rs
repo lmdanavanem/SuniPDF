@@ -1,6 +1,8 @@
 //! CLI SuniPDF : sortie JSON orientée automatisation (messages en anglais, codes d'erreur stables).
 //! Même moteur que l'application de bureau : `sunipdf-core`.
 
+mod annot_cmd;
+
 use clap::{Parser, Subcommand};
 use std::io::Write;
 use std::path::PathBuf;
@@ -509,6 +511,107 @@ enum Command {
         file: PathBuf,
         #[arg(long, default_value = "all")]
         pages: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// List the annotations of one page (--page) or of every page as JSON: index (0-based, the
+    /// one the other annotation commands take), subtype, rect (left,bottom,right,top in displayed
+    /// page points), text, author, style, link target, reply thread and review state.
+    Annotations {
+        file: PathBuf,
+        #[arg(long)]
+        page: Option<usize>,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Add a real PDF annotation: ink, square, circle, line, arrow, freetext or link. Coordinates
+    /// are displayed-page points (rotation and crop applied). An encrypted document stays encrypted.
+    Annotate {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// ink, square, circle, line, arrow, freetext or link.
+        #[arg(long)]
+        kind: String,
+        /// left,bottom,right,top (a line or arrow runs from left,bottom to right,top).
+        #[arg(long, allow_negative_numbers = true)]
+        rect: Option<String>,
+        /// Ink stroke as "x,y x,y ..." (repeatable, one stroke each).
+        #[arg(long = "stroke", value_name = "POINTS", allow_negative_numbers = true)]
+        strokes: Vec<String>,
+        /// Text of a free text box.
+        #[arg(long)]
+        text: Option<String>,
+        /// Font size of a free text box.
+        #[arg(long, default_value_t = 12.0)]
+        size: f32,
+        /// Stroke colour (free text: text colour), RRGGBB.
+        #[arg(long)]
+        color: Option<String>,
+        /// Fill colour (free text: background), RRGGBB.
+        #[arg(long)]
+        fill: Option<String>,
+        /// Line width in points (free text: border; default 2, free text 0).
+        #[arg(long)]
+        width: Option<f32>,
+        #[arg(long, default_value_t = 1.0)]
+        opacity: f32,
+        /// Link to a page (1-based).
+        #[arg(long, conflicts_with = "url")]
+        goto_page: Option<usize>,
+        /// Link to http, https or mailto address; anything else is refused.
+        #[arg(long)]
+        url: Option<String>,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Delete an annotation by index; --thread also deletes its replies and review states.
+    AnnotationDelete {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        index: usize,
+        #[arg(long)]
+        thread: bool,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Reply to an annotation (comment thread, no icon on the page).
+    Reply {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        index: usize,
+        #[arg(long)]
+        text: String,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Set the review state of an annotation thread: none, accepted, rejected, cancelled, completed.
+    ReviewState {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        index: usize,
+        #[arg(long)]
+        state: String,
+        #[arg(long)]
+        author: Option<String>,
         #[arg(long)]
         out: PathBuf,
         #[arg(long)]
@@ -1215,6 +1318,172 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 form_data::info_to_json(&info)
             })
         }
+        Command::Annotations {
+            file,
+            page,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let pages: Vec<usize> = match page {
+                Some(n) => vec![page_index(n, doc.page_count())?],
+                None => (0..doc.page_count()).collect(),
+            };
+            let mut out = Vec::new();
+            for p in pages {
+                let list: Vec<_> = doc
+                    .annotation_details(p)?
+                    .iter()
+                    .map(annot_cmd::detail_json)
+                    .collect();
+                out.push(serde_json::json!({ "page": p + 1, "annotations": list }));
+            }
+            Ok(serde_json::json!({ "pages": out }))
+        }
+        Command::Annotate {
+            file,
+            page,
+            kind,
+            rect,
+            strokes,
+            text,
+            size,
+            color,
+            fill,
+            width,
+            opacity,
+            goto_page,
+            url,
+            author,
+            out,
+            password,
+        } => {
+            use sunipdf_core::{AnnotShape, AnnotStyle, FreeTextStyle, LinkTarget};
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let need_rect = || -> Result<sunipdf_core::PointRect, EngineError> {
+                annot_cmd::parse_rect(
+                    rect.as_deref()
+                        .ok_or_else(|| EngineError::Other("--rect is required".into()))?,
+                )
+            };
+            let stroke_rgb = color.as_deref().map(parse_hex_color).transpose()?;
+            let fill_rgb = fill.as_deref().map(parse_hex_color).transpose()?;
+            let style = AnnotStyle {
+                rgb: stroke_rgb.unwrap_or(AnnotStyle::default().rgb),
+                fill_rgb,
+                width_pt: width.unwrap_or(2.0),
+                opacity,
+            };
+            let author = author.as_deref();
+            let index = match kind.as_str() {
+                "ink" => {
+                    let strokes = strokes
+                        .iter()
+                        .map(|s| annot_cmd::parse_stroke(s))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    doc.add_ink_annotation(p, &strokes, &style, author)?
+                }
+                "square" | "circle" | "line" | "arrow" => {
+                    let shape = match kind.as_str() {
+                        "square" => AnnotShape::Square,
+                        "circle" => AnnotShape::Circle,
+                        "line" => AnnotShape::Line,
+                        _ => AnnotShape::Arrow,
+                    };
+                    doc.add_shape_annotation(p, shape, need_rect()?, &style, author)?
+                }
+                "freetext" => {
+                    let text = text
+                        .as_deref()
+                        .ok_or_else(|| EngineError::Other("--text is required".into()))?;
+                    let fts = FreeTextStyle {
+                        size_pt: size,
+                        rgb: stroke_rgb.unwrap_or((0, 0, 0)),
+                        fill_rgb,
+                        border_pt: width.unwrap_or(0.0),
+                    };
+                    doc.add_free_text_annotation(p, need_rect()?, text, &fts, author)?
+                }
+                "link" => {
+                    let target = match (goto_page, url) {
+                        (Some(n), None) => {
+                            LinkTarget::Page(n.checked_sub(1).ok_or_else(page_zero)?)
+                        }
+                        (None, Some(u)) => LinkTarget::Uri(u),
+                        _ => {
+                            return Err(EngineError::Other(
+                                "a link needs --goto-page or --url".into(),
+                            ))
+                        }
+                    };
+                    doc.add_link_annotation(p, need_rect()?, &target)?
+                }
+                other => {
+                    return Err(EngineError::Other(format!(
+                        "unknown annotation kind: {other}"
+                    )))
+                }
+            };
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({
+                "out": out,
+                "page": page,
+                "kind": kind,
+                "index": index,
+                "annotation_count": doc.annotations(p)?.len(),
+            }))
+        }
+        Command::AnnotationDelete {
+            file,
+            page,
+            index,
+            thread,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let deleted = if thread {
+                doc.delete_annotation_thread(p, index)?
+            } else {
+                doc.delete_annotation(p, index)?;
+                1
+            };
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "deleted": deleted }))
+        }
+        Command::Reply {
+            file,
+            page,
+            index,
+            text,
+            author,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let reply = doc.add_reply(p, index, &text, author.as_deref())?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "index": reply }))
+        }
+        Command::ReviewState {
+            file,
+            page,
+            index,
+            state,
+            author,
+            out,
+            password,
+        } => {
+            let status = sunipdf_core::ReviewStatus::from_id(&state)
+                .ok_or_else(|| EngineError::Other(format!("unknown review state: {state}")))?;
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            doc.set_review_status(p, index, status, author.as_deref())?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "state": status.id() }))
+        }
         Command::FillForm {
             file,
             out,
@@ -1329,6 +1598,10 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::InsertBlank { out, .. }
         | Command::FillForm { out, .. }
         | Command::Flatten { out, .. }
+        | Command::Annotate { out, .. }
+        | Command::AnnotationDelete { out, .. }
+        | Command::Reply { out, .. }
+        | Command::ReviewState { out, .. }
         | Command::Render { out, .. } => Some(out.as_path()),
         _ => None,
     }
