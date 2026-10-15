@@ -713,6 +713,9 @@ impl SuniApp {
         if let Some(p) = self.edit.text_prompt.as_ref().filter(|p| p.inline) {
             v.push(p.page);
         }
+        if let Some(e) = &self.forms.editing {
+            v.push(e.page);
+        }
         v
     }
 
@@ -740,6 +743,7 @@ impl SuniApp {
         self.view.missing_visible = 0;
         self.edit.page_view = None;
         self.refresh_annotations_if_needed();
+        self.refresh_forms_if_needed();
 
         // 1. Zoom (molette ancrée sur le pointeur), plafonné.
         self.apply_wheel_zoom(ctx);
@@ -927,6 +931,13 @@ impl SuniApp {
             self.paint_placing(&painter, s.rect, s.page, h, pt);
         }
         interact.on_hover_cursor(self.page_cursor(s.page, hover));
+        // Champs de formulaire : créés après le widget de la page pour avoir la priorité du clic ;
+        // éditeur et liste de choix de cette page par-dessus.
+        if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
+            self.forms_activate(s.page, field, widget);
+        }
+        self.forms_editor(ctx, s.rect, s.page, h);
+        self.forms_popup(ctx, s.rect, s.page, h);
         event.map(|e| (s.page, e))
     }
 

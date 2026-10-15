@@ -227,6 +227,12 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::CropPages => (glyph::CROP, "⌗"),
         Command::ResizePages => (glyph::FIT_PAGE, "▭"),
         Command::InsertBlankPage => (glyph::ADD, "+"),
+        Command::ToolFillForm => (glyph::FORM, "☑"),
+        Command::ToggleForms => (glyph::FORM_LIST, "☰"),
+        Command::ClearForm => (glyph::ERASE, "⌫"),
+        Command::FlattenForm => (glyph::COMBINE, "⧉"),
+        Command::ExportFormData => (glyph::SAVE_AS, "⤴"),
+        Command::ImportFormData => (glyph::IMPORT, "⤵"),
     }
 }
 
@@ -457,6 +463,13 @@ impl SuniApp {
                     self.command_menu(ctx, ui, "menu.edit", Menu::Edit, &[]);
                     self.command_menu(ctx, ui, "menu.view", Menu::View, &[Command::FirstPage]);
                     self.command_menu(ctx, ui, "menu.pages", Menu::Pages, &[]);
+                    self.command_menu(
+                        ctx,
+                        ui,
+                        "menu.forms",
+                        Menu::Forms,
+                        &[Command::ClearForm, Command::ExportFormData],
+                    );
                     self.command_menu(ctx, ui, "menu.convert", Menu::Convert, &[]);
                     self.command_menu(ctx, ui, "menu.security", Menu::Security, &[]);
                     ui.menu_button(tr(lang, "menu.settings"), |ui| {

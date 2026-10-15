@@ -113,7 +113,7 @@ impl SuniApp {
         Some(path)
     }
 
-    fn run_batch(&mut self, op: BatchOp, running_key: &'static str) {
+    pub fn run_batch(&mut self, op: BatchOp, running_key: &'static str) {
         self.tools.running = Some(running_key);
         self.worker.send(Request::Batch(op));
     }
@@ -552,6 +552,13 @@ impl SuniApp {
                         ("after", &crate::docinfo::human_size(lang, after)),
                         ("percent", &format!("{percent:.0}")),
                     ],
+                ));
+            }
+            BatchResult::FormExported { out, count } => {
+                self.status_msg = Some(tr_args(
+                    lang,
+                    "tools.done.form_export",
+                    &[("name", &file_name(&out)), ("count", &count.to_string())],
                 ));
             }
             BatchResult::Failed(e) => {

@@ -94,6 +94,11 @@ const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::COMMAND, Key::O, Command::OpenDocument),
     (Modifiers::COMMAND, Key::S, Command::Save),
     (Modifiers::COMMAND, Key::K, Command::CommandPalette),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::F,
+        Command::ToggleForms,
+    ),
     (Modifiers::COMMAND, Key::F, Command::Find),
 ];
 
@@ -113,6 +118,11 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::NONE, Key::Home, Command::FirstPage),
     (Modifiers::NONE, Key::End, Command::LastPage),
     (Modifiers::NONE, Key::F4, Command::ToggleThumbnails),
+    (
+        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        Key::F,
+        Command::ToggleForms,
+    ),
     (Modifiers::COMMAND, Key::F, Command::Find),
     (
         Modifiers::COMMAND.plus(Modifiers::SHIFT),
@@ -220,6 +230,8 @@ pub struct SuniApp {
     pub pagesetup: crate::pagesetup::PageSetupState,
     /// Signature visuelle : boîte, bibliothèque locale (globale, hors onglet) et placement.
     pub sign: crate::sign::SignState,
+    /// Formulaire AcroForm du document actif : champs lus, panneau, saisie en place.
+    pub forms: crate::forms::FormsState,
     pub can_undo: bool,
     pub can_redo: bool,
     /// Commandes (identifiants du registre) exécutées après la première ouverture : automatisation et captures.
@@ -257,6 +269,7 @@ impl SuniApp {
             edit: Default::default(),
             pagesetup: Default::default(),
             sign: Default::default(),
+            forms: Default::default(),
             can_undo: false,
             can_redo: false,
             startup_commands: std::env::var("SUNIPDF_STARTUP_COMMANDS")
@@ -359,6 +372,7 @@ impl SuniApp {
         let bookmarks_open = self.docinfo.bookmarks_open;
         self.docinfo = Default::default();
         self.docinfo.bookmarks_open = bookmarks_open;
+        self.forms.reset_for_document();
         self.can_undo = false;
         self.can_redo = false;
         self.dirty = false;
@@ -489,6 +503,7 @@ impl SuniApp {
                     self.thumbs_pending.clear();
                     self.edit.reset_for_tab();
                     self.view.reset();
+                    self.forms.reset_for_document();
                     // Première page en haut, centrée si le document mêle des tailles de page.
                     self.view.request(crate::view::ScrollRequest::Page(0));
                     self.document = Some(OpenDocument { info, page: 0 });
@@ -572,6 +587,8 @@ impl SuniApp {
                     self.annotate.annotations_page = None;
                     // La liste d'objets en cache (panneau, prise directe) est périmée.
                     self.edit.objects_page = None;
+                    // Les champs du formulaire aussi (valeur saisie, annulation, aplatissement).
+                    self.forms.stale = true;
                     match (self.edit.reselect_many.take(), self.edit.reselect.take()) {
                         (Some((page, pick)), _) => self.worker.send(Request::Pick {
                             page,
@@ -616,11 +633,15 @@ impl SuniApp {
                         None => self.annotate.selection = Some((page, selection)),
                     }
                 }
-                Response::Annotations { page, list } => {
+                Response::Annotations { page, mut list } => {
                     if self.annotate.annotations_page == Some(page) {
+                        // Les widgets de formulaire ont leur panneau ; « supprimer » ici
+                        // détruirait un champ.
+                        list.retain(|a| a.kind != "widget");
                         self.annotate.annotations = list;
                     }
                 }
+                Response::FormInfo(info) => self.on_form_info(info),
                 Response::BatchDone(result) => self.on_batch_done(result),
                 Response::ObjectSelected { page, info } => self.on_object_selected(page, info),
                 Response::ObjectsSelected { page, infos, mode } => {
@@ -818,6 +839,13 @@ impl SuniApp {
         {
             self.cancel_placing();
         }
+        // Liste de choix ou éditeur de champ sans le clavier : Échap les ferme d'abord.
+        if (self.forms.popup.is_some() || self.forms.editing.is_some())
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.forms.popup = None;
+            self.forms.editing = None;
+        }
         // Un Échap = un effet, le plus proche d'abord (`workspace::EscState::action`).
         let esc = crate::workspace::take_escape(ctx, self.esc_state(ctx));
         if esc == Some(Esc::Deselect) {
@@ -922,6 +950,7 @@ impl SuniApp {
             || self.annotate.note_prompt.is_some()
             || self.edit.text_prompt.is_some()
             || self.sign.open.is_some()
+            || self.forms.flatten_open
     }
 
     /// Ouvre le prochain fichier en attente (chaque fichier devient un onglet).
@@ -1126,6 +1155,23 @@ impl SuniApp {
             Command::SignDocument => self.open_sign_dialog(crate::sign::SignKind::Signature),
             Command::SignInitials => self.open_sign_dialog(crate::sign::SignKind::Initials),
             Command::InsertDate => self.start_placing_date(),
+            Command::ToolFillForm => self.enter_fill_tool(),
+            Command::ToggleForms => {
+                self.forms.panel_open = !self.forms.panel_open;
+                self.forms.stale = true;
+            }
+            Command::ClearForm => {
+                self.forms.editing = None;
+                self.forms.popup = None;
+                self.edit.pending_status = Some(self.t("status.form_cleared").to_string());
+                self.worker.send(Request::Edit(EditOp::ClearForm));
+            }
+            Command::FlattenForm => {
+                self.forms.flatten_all_pages = true;
+                self.forms.flatten_open = true;
+            }
+            Command::ExportFormData => self.tool_export_form(),
+            Command::ImportFormData => self.tool_import_form(),
             Command::CombineFiles => self.tool_combine(),
             Command::SplitDocument => {
                 self.tools.split_every = self.tools.split_every.max(1);
@@ -1919,6 +1965,17 @@ impl eframe::App for SuniApp {
                 )
                 .show(ui, |ui| self.objects_panel(&ctx, ui));
         }
+        if self.document.is_some() && self.forms.panel_open && !self.organize.active {
+            egui::Panel::right("forms")
+                .resizable(true)
+                .default_size(300.0)
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.chrome)
+                        .inner_margin(egui::Margin::symmetric(8, 4)),
+                )
+                .show(ui, |ui| self.forms_panel(&ctx, ui));
+        }
         if self.document.is_some() {
             egui::Panel::right("rail")
                 .resizable(false)
@@ -1951,6 +2008,7 @@ impl eframe::App for SuniApp {
             let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
             egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
                 self.error_banner(ui);
+                self.forms_bar(&ctx, ui);
                 self.document_area(&ctx, ui);
             });
         } else {
@@ -1986,6 +2044,7 @@ impl eframe::App for SuniApp {
         }
         self.unsaved_dialog(&ctx);
         self.split_dialog(&ctx);
+        self.flatten_dialog(&ctx);
         self.stamp_dialog(&ctx);
         self.sign_dialog(&ctx);
         self.properties_dialog(&ctx);
@@ -2100,7 +2159,8 @@ mod tests {
             include_str!("objects.rs"),
             include_str!("inline_text.rs"),
             include_str!("pagesetup.rs"),
-            include_str!("sign.rs")
+            include_str!("sign.rs"),
+            include_str!("forms.rs")
         );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {

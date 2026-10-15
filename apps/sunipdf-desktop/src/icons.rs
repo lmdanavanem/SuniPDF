@@ -87,6 +87,10 @@ pub mod glyph {
     /// « Handwriting » : signature visuelle.
     pub const SIGN: &str = "\u{E929}";
     pub const CALENDAR: &str = "\u{E787}";
+    /// « CheckList » : remplir un formulaire.
+    pub const FORM: &str = "\u{E9D5}";
+    /// « MultiSelect » : panneau des champs du formulaire.
+    pub const FORM_LIST: &str = "\u{E762}";
 }
 
 /// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.

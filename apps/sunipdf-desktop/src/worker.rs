@@ -8,10 +8,11 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
-    security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError, MarkupKind,
-    Metadata, ObjectClip, ObjectInfo, ObjectStyle, PageMargins, PointRect, Properties, Protection,
-    RectMode, RenderCache, RenderedPage, ResizeMode, ShapeKind, ShapeStyle, Stamp, SystemFont,
-    TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
+    form_data, security, AnnotationInfo, Bookmark, Document, DocumentInfo, Engine, EngineError,
+    FieldValue, FillMode, FormInfo, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle,
+    PageMargins, PointRect, Properties, Protection, RectMode, RenderCache, RenderedPage,
+    ResizeMode, ShapeKind, ShapeStyle, Stamp, SystemFont, TextMatch, TextSelection, TextStyle,
+    TileJob, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -42,12 +43,33 @@ pub struct Snapshot {
 
 /// Tâche de fichiers (non annulable : produit de nouveaux fichiers, le document ouvert est intact).
 pub enum BatchOp {
-    Combine { inputs: Vec<PathBuf>, out: PathBuf },
-    Split { every: usize, out_dir: PathBuf },
-    Extract { pages: Vec<usize>, out: PathBuf },
-    CreateFromImages { images: Vec<PathBuf>, out: PathBuf },
-    ExportImages { out_dir: PathBuf, dpi: f32 },
-    Optimize { out: PathBuf },
+    Combine {
+        inputs: Vec<PathBuf>,
+        out: PathBuf,
+    },
+    Split {
+        every: usize,
+        out_dir: PathBuf,
+    },
+    Extract {
+        pages: Vec<usize>,
+        out: PathBuf,
+    },
+    CreateFromImages {
+        images: Vec<PathBuf>,
+        out: PathBuf,
+    },
+    ExportImages {
+        out_dir: PathBuf,
+        dpi: f32,
+    },
+    Optimize {
+        out: PathBuf,
+    },
+    /// Valeurs du formulaire en JSON (`{ nom: valeur }`) ; le document est intact.
+    ExportFormData {
+        out: PathBuf,
+    },
 }
 
 pub enum BatchResult {
@@ -76,6 +98,10 @@ pub enum BatchResult {
         out: PathBuf,
         before: u64,
         after: u64,
+    },
+    FormExported {
+        out: PathBuf,
+        count: usize,
     },
     Failed(EngineError),
 }
@@ -236,6 +262,15 @@ pub enum EditOp {
         pages: Option<Vec<usize>>,
         stamp: Stamp,
     },
+    /// Valeurs de champs (mode strict : tout ou rien).
+    FillForm {
+        values: Vec<(String, FieldValue)>,
+    },
+    ClearForm,
+    /// Champs et annotations intégrés au contenu (`None` = toutes les pages).
+    FlattenForm {
+        pages: Option<Vec<usize>>,
+    },
 }
 
 impl EditOp {
@@ -333,6 +368,8 @@ pub enum Request {
     Annotations {
         page: usize,
     },
+    /// Champs du formulaire du document actif (`FormInfo::default()` s'il n'en a pas).
+    FormInfo,
     Properties,
     Bookmarks,
     ObjectAt {
@@ -430,6 +467,7 @@ pub enum Response {
         page: usize,
         list: Vec<AnnotationInfo>,
     },
+    FormInfo(FormInfo),
     Properties(Properties),
     Bookmarks(Vec<Bookmark>),
     BatchDone(BatchResult),
@@ -906,6 +944,9 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             height_pt,
         } => doc.insert_blank_pages(at, count, width_pt, height_pt),
         EditOp::Stamp { pages, stamp } => doc.stamp_pages(pages.as_deref(), &stamp).map(|_| ()),
+        EditOp::FillForm { values } => doc.fill_form(&values, FillMode::Strict).map(|_| ()),
+        EditOp::ClearForm => doc.clear_form().map(|_| ()),
+        EditOp::FlattenForm { pages } => doc.flatten(pages.as_deref()).map(|_| ()),
         EditOp::Bytes(op) => {
             let current = doc.snapshot()?;
             let password = doc.password().map(str::to_owned);
@@ -993,6 +1034,15 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
                 before: before.len() as u64,
                 after: after.len() as u64,
             })
+        }
+        BatchOp::ExportFormData { out } => {
+            let doc = doc.ok_or(EngineError::Other("no document".into()))?;
+            let values = form_data::values_to_json(&doc.form_info()?);
+            let count = values.as_object().map_or(0, |m| m.len());
+            let text = serde_json::to_string_pretty(&values)
+                .map_err(|e| EngineError::Other(format!("json: {e}")))?;
+            sunipdf_core::write_atomic(&out, text.as_bytes())?;
+            Ok(BatchResult::FormExported { out, count })
         }
     })();
     result.unwrap_or_else(BatchResult::Failed)
@@ -1246,6 +1296,14 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &state.document else { continue };
                 let list = doc.annotations(page).unwrap_or_default();
                 Response::Annotations { page, list }
+            }
+            Request::FormInfo => {
+                let Some(doc) = &state.document else { continue };
+                // Une lecture impossible renvoie un formulaire vide (pas de boucle de relectures).
+                Response::FormInfo(doc.form_info().unwrap_or_else(|e| {
+                    log::warn!("lecture du formulaire impossible : {e}");
+                    FormInfo::default()
+                }))
             }
             Request::Undo => match state.undo_redo(true) {
                 Some(r) => r,

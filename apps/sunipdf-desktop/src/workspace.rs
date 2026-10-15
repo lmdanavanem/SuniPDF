@@ -80,9 +80,20 @@ pub static TABLE: [WsInfo; 14] = [
         desc_key: "hub.fill_sign.desc",
         icon: (glyph::SIGN, "✍"),
         color: Color32::from_rgb(0x63, 0x66, 0xF1),
-        // Moitié « signer » : signature visuelle, paraphe, date (texte : outil Modifier, touche T).
+        // Moitié « remplir » : formulaires AcroForm ; moitié « signer » : signature visuelle,
+        // paraphe, date (texte libre : outil Modifier, touche T).
         entry: Some(Entry::Mode(C::HubFillSign)),
-        groups: &[&[C::SignDocument, C::SignInitials, C::InsertDate]],
+        groups: &[
+            &[
+                C::ToolFillForm,
+                C::ToggleForms,
+                C::ClearForm,
+                C::FlattenForm,
+                C::ExportFormData,
+                C::ImportFormData,
+            ],
+            &[C::SignDocument, C::SignInitials, C::InsertDate],
+        ],
     },
     WsInfo {
         ws: Workspace::Edit,
@@ -509,6 +520,7 @@ impl SuniApp {
             Command::OrganizePages => self.organize.active,
             Command::ToggleComments => self.annotate.comments_open,
             Command::ToggleObjects => self.edit.objects_open,
+            Command::ToggleForms => self.forms.panel_open,
             _ => Tool::from_command(c).is_some_and(|t| t == self.annotate.tool),
         }
     }
@@ -540,6 +552,15 @@ impl SuniApp {
                 .selection
                 .as_ref()
                 .is_some_and(|(_, s)| !s.text.is_empty()),
+            // Sans champ AcroForm, rien à remplir, effacer ni exporter (aplatir vaut aussi pour les
+            // annotations : toujours proposé).
+            Command::ToolFillForm
+            | Command::ClearForm
+            | Command::ExportFormData
+            | Command::ImportFormData => self
+                .document
+                .as_ref()
+                .is_some_and(|d| d.info.form == sunipdf_core::FormKind::AcroForm),
             // Dans la grille, ces actions portent sur la sélection (sinon sur la page courante).
             Command::RotateClockwise
             | Command::RotateCounterClockwise

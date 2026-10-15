@@ -23,10 +23,12 @@ pub enum Tool {
     Rectangle,
     Ellipse,
     Line,
+    /// Remplir un formulaire : champs surlignés et saisie en place (`forms.rs`).
+    FillForm,
 }
 
 impl Tool {
-    pub const ALL: [Tool; 11] = [
+    pub const ALL: [Tool; 12] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Underline,
@@ -38,6 +40,7 @@ impl Tool {
         Tool::Rectangle,
         Tool::Ellipse,
         Tool::Line,
+        Tool::FillForm,
     ];
 
     pub fn command(self) -> Command {
@@ -53,6 +56,7 @@ impl Tool {
             Tool::Rectangle => Command::ToolRectangle,
             Tool::Ellipse => Command::ToolEllipse,
             Tool::Line => Command::ToolLine,
+            Tool::FillForm => Command::ToolFillForm,
         }
     }
 
@@ -134,7 +138,10 @@ impl SuniApp {
             }
         }
         if let Some(drag) = &self.annotate.drag {
-            if drag.page == page_index && !self.annotate.tool.is_edit() {
+            if drag.page == page_index
+                && !self.annotate.tool.is_edit()
+                && self.annotate.tool != Tool::FillForm
+            {
                 painter.rect_stroke(
                     to_screen(&drag.rect()),
                     0.0,
@@ -171,6 +178,8 @@ impl SuniApp {
             | Tool::Rectangle
             | Tool::Ellipse
             | Tool::Line => self.edit_drag_finished(drag),
+            // Un glissement ne sélectionne rien : les champs se cliquent.
+            Tool::FillForm => {}
             _ => {
                 // Outils de texte : la sélection revient par TextSelected, puis l'annotation est créée.
                 if !tiny {

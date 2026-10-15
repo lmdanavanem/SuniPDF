@@ -22,6 +22,7 @@ pub struct TabState {
     pub organize: crate::organize::OrganizeState,
     pub annotate: crate::annotate::AnnotateState,
     pub docinfo: crate::docinfo::DocInfoState,
+    pub forms: crate::forms::FormsState,
     pub can_undo: bool,
     pub can_redo: bool,
 }
@@ -53,6 +54,7 @@ impl SuniApp {
     pub fn take_tab(&mut self) -> TabState {
         let bookmarks_open = self.docinfo.bookmarks_open;
         let comments_open = self.annotate.comments_open;
+        let forms_open = self.forms.panel_open;
         let scroll = self.view.offset;
         // Textures libérées (GPU des onglets inactifs), époque suivante : tuiles en vol ignorées.
         self.view.reset();
@@ -76,6 +78,7 @@ impl SuniApp {
             organize: std::mem::take(&mut self.organize),
             annotate: std::mem::take(&mut self.annotate),
             docinfo: std::mem::take(&mut self.docinfo),
+            forms: std::mem::take(&mut self.forms),
             can_undo: std::mem::replace(&mut self.can_undo, false),
             can_redo: std::mem::replace(&mut self.can_redo, false),
         };
@@ -83,12 +86,14 @@ impl SuniApp {
         state.find.reset_in_flight();
         self.docinfo.bookmarks_open = bookmarks_open;
         self.annotate.comments_open = comments_open;
+        self.forms.panel_open = forms_open;
         state
     }
 
     pub fn put_tab(&mut self, t: TabState) {
         let bookmarks_open = self.docinfo.bookmarks_open;
         let comments_open = self.annotate.comments_open;
+        let forms_open = self.forms.panel_open;
         self.document = t.document;
         self.zoom = t.zoom;
         self.effective_zoom = t.effective_zoom;
@@ -109,6 +114,12 @@ impl SuniApp {
         self.docinfo = t.docinfo;
         self.docinfo.bookmarks_open = bookmarks_open;
         self.annotate.comments_open = comments_open;
+        // Le document a été rechargé par le moteur : les champs sont relus, la réponse en vol
+        // d'un autre onglet est ignorée.
+        self.forms = t.forms;
+        self.forms.panel_open = forms_open;
+        self.forms.stale = true;
+        self.forms.requested = false;
         self.can_undo = t.can_undo;
         self.can_redo = t.can_redo;
         let _ = std::mem::take(&mut self.thumbnails); // miniatures : recalculées (le cache moteur a été vidé)

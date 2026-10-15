@@ -593,7 +593,7 @@
   "dialog.flatten.text": "Entered values, highlights and notes become fixed content and can no longer be edited. You can undo with Ctrl+Z until the document is closed.",
   "dialog.flatten.ok": "Flatten",
   "status.form_updated": "Field “{name}” updated",
-  "status.form_cleared": "{count} field(s) cleared",
+  "status.form_cleared": "Form fields cleared",
   "status.form_flattened": "Form and annotations flattened",
   "status.form_imported": "{applied} value(s) imported, {skipped} skipped",
   "status.form_unsupported_widget": "This field cannot be edited here.",

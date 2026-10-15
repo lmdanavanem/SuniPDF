@@ -88,6 +88,13 @@ pub enum Command {
     SignInitials,
     InsertDate,
     HubFillSign,
+    /// Formulaires AcroForm : outil de remplissage, panneau des champs, effacer, aplatir, JSON.
+    ToolFillForm,
+    ToggleForms,
+    ClearForm,
+    FlattenForm,
+    ExportFormData,
+    ImportFormData,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -96,6 +103,7 @@ pub enum Menu {
     Edit,
     View,
     Pages,
+    Forms,
     Security,
     Convert,
     /// Outils du hub « Tous les outils » (entrer dans un outil, le quitter).
@@ -742,6 +750,54 @@ pub const REGISTRY: &[CommandInfo] = &[
         Edit
     ),
     cmd!(
+        ToolFillForm,
+        "forms.fill",
+        "menu.forms.fill_tool",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        ToggleForms,
+        "view.forms",
+        "menu.forms.panel",
+        Some("shortcut.forms_panel"),
+        true,
+        Forms
+    ),
+    cmd!(
+        ClearForm,
+        "forms.clear",
+        "menu.forms.clear",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        FlattenForm,
+        "forms.flatten",
+        "menu.forms.flatten",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        ExportFormData,
+        "forms.export",
+        "menu.forms.export",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        ImportFormData,
+        "forms.import",
+        "menu.forms.import",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
         HubFillSign,
         "hub.fill_sign",
         "hub.fill_sign.name",
@@ -835,6 +891,7 @@ mod tests {
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 7);
         assert_eq!(Command::in_menu(Menu::Tools).count(), 7);
+        assert_eq!(Command::in_menu(Menu::Forms).count(), 6);
     }
 
     #[test]

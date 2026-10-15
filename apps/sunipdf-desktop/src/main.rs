@@ -5,6 +5,7 @@ mod app;
 mod dialog;
 mod docinfo;
 mod editor;
+mod forms;
 mod icons;
 mod inline_text;
 mod objects;

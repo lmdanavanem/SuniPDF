@@ -526,6 +526,8 @@ impl SuniApp {
                 }
                 _ => CursorIcon::Default,
             },
+            // Les rectangles de champs posent eux-mêmes la main.
+            Tool::FillForm => CursorIcon::Default,
             _ => CursorIcon::Text,
         }
     }
