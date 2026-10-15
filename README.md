@@ -39,6 +39,17 @@ Licence MIT ou Apache-2.0, au choix.
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.md`, `docs/PROJECT_STATUS.md`, `docs/ROADMAP.md` ; nouveautés : `CHANGELOG.md`.
 
+## Captures d'écran
+| Accueil (thème sombre) | Accueil (thème clair) |
+|---|---|
+| ![Accueil, thème sombre](docs/screenshots/home-dark.png) | ![Accueil, thème clair](docs/screenshots/home-light.png) |
+
+| Modifier un PDF : sélection et style d'un objet | Organiser les pages : grille de miniatures |
+|---|---|
+| ![Modifier un PDF](docs/screenshots/edit-objects.png) | ![Organiser les pages](docs/screenshots/organize-pages.png) |
+
+<p align="center"><img src="docs/screenshots/about.png" width="720" alt="Boîte À propos"></p>
+
 ## Installation
 Page [Releases](https://github.com/lmdanavanem/SuniPDF/releases) : **MSI x64** (installation classique) ou
 **ZIP portable x64** (décompresser, lancer `sunipdf.exe`), avec empreintes SHA256. Un ZIP ARM64 est compilé en
@@ -90,6 +101,9 @@ page crop and resize); page organisation (rotate, delete, insert, reorder, combi
 AcroForm filling and flattening with JSON import/export; handwritten or image signatures, initials and date
 (visual signature, not certified); text watermarks and page numbers; images to PDF, PDF to PNG, lossless
 optimisation; AES-128/256 protection with permissions, metadata cleanup; a 41-command JSON CLI.
+
+Screenshots: see the [Captures d'écran](#captures-décran) section above (home screen in dark and light themes,
+object editing, page organisation, About box).
 
 Install from the [Releases](https://github.com/lmdanavanem/SuniPDF/releases) page (MSI or portable ZIP, x64).
 Build with stable Rust and the Visual Studio Build Tools, then `scripts\fetch-pdfium.ps1` and `cargo test --workspace`.
