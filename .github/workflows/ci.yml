@@ -1,4 +1,4 @@
-# CI Windows (cible de référence MSVC). Non encore exécutée : à valider lors du premier push.
+# CI Windows (cible de référence MSVC).
 name: ci
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Tests
         run: cargo test --workspace
-      - name: Paquet portable x64 (même contenu que la release : licences et notices comprises)
+      - name: "Paquet portable x64 (même contenu que la release : licences et notices comprises)"
         run: .\scripts\package-portable.ps1 -Arch x64
       - uses: actions/upload-artifact@v4
         with:
