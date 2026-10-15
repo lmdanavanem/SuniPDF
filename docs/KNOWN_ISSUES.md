@@ -88,8 +88,8 @@ A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans
 A10. **Résultat de la CI GitHub non vérifié par l'agent** : dépôt privé, ni `gh` ni jeton sur ce poste. Les
      workflows `ci.yml` et `release.yml` sont déclenchés par les push et les tags ; leur état se lit dans l'onglet
      Actions.
-A11. **Hub « Tous les outils » : 9 outils sur les 14 de PDFCraft.** Remplir et signer, Numériser et OCR,
-     Caviarder, Préparer un formulaire et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
+A11. **Hub « Tous les outils » : 10 outils sur les 14 de PDFCraft.** Numériser et OCR, Caviarder, Préparer un
+     formulaire (création de champs) et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
      (entrée `None` dans `workspace::TABLE`), pas grisés. Exporter, Créer, Combiner et Compresser n'ont pas de
      barre (une seule commande chacun, boîte de dialogue directe).
 A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
@@ -193,3 +193,20 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
      page) ; bibliothèque pleine : la barre de défilement flottante du corps de la boîte (cadre commun `dialog.rs`,
      2 px, 6 px au survol) se superpose au bord droit de l'encadré et du pavé.
+A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté et lu (champs AcroForm de secours),
+     jamais rempli ni aplati (`form_xfa`) ; **scripts** (`/CO`, `/AA`, `/A` JavaScript) jamais exécutés, signalés
+     par un bandeau, les champs calculés et les formats restent tels quels ; **pas de création de champs**
+     (« Préparer un formulaire » absent du hub) ; **pas de FDF/XFDF** (JSON seulement) ; **un niveau d'annulation
+     par valeur validée** (un formulaire de 40 champs = 40 niveaux ; plafonds 50 niveaux / 512 Mo du journal) ;
+     chaque validation = instantané complet + analyse lopdf + rechargement + rendu minuscule, acceptable sous
+     5 Mo, lent au-delà (mode « Appliquer » groupé en feuille de route) ; polices : un texte hors Latin-1 reçoit de
+     PDFium une police **système non incorporée** (Arial, SimSun…), rendu variable sur une autre machine ;
+     liste déroulante **modifiable** (`/Ff` Edit) : seuls les choix prévus sont proposés dans l'interface (texte
+     libre par la CLI `--set` seulement) ; valeurs d'export `/Opt` des boutons radio ignorées (l'état du
+     widget est la valeur) ; texte riche `/RV` remplacé par du texte simple ; cases à cocher à états multiples
+     simplifiées (un état actif par widget) ; aplatissement partiel : les champs de la page aplatie restent dans
+     le formulaire sans emplacement ; les widgets ne sont cliquables sur la page qu'avec l'outil Remplir (le
+     panneau sert au clavier : Tab / Maj+Tab entre champs texte et listes depuis l'éditeur posé sur la page,
+     pas d'activation d'un widget de la page par Espace ou Entrée) ; **Narrateur Windows non testé** (noms
+     AccessKit posés : `a11y.forms.*`) ; la page reste une image pour un lecteur d'écran, seuls les rectangles
+     de champs et le panneau lui sont exposés.

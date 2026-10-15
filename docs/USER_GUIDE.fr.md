@@ -40,8 +40,8 @@ fichier puis démarre.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
 
 Les outils PDFCraft qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, caviardage, préparation de
-formulaire, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité. Remplir et signer est livré
-pour sa moitié « signer » (signature visuelle) ; les formulaires suivront.
+formulaire — création de champs —, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité.
+Remplir et signer couvre le remplissage des formulaires AcroForm et la signature visuelle.
 
 ## Onglets
 
@@ -133,6 +133,38 @@ groupe de plusieurs objets ne sont pas encore proposés (déplacement seulement)
 ne sont pas proposées ; la police est incorporée entière (pas de sous-ensemble) ; le champ de saisie sur la
 page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
 police d'origine, qui peut ne pas contenir tous les caractères saisis.
+
+## Remplir un formulaire
+
+Quand un PDF contient un formulaire (champs AcroForm), un bandeau « Ce document contient un formulaire à
+remplir » apparaît au-dessus de la page avec le bouton **Remplir le formulaire** (aussi dans l'outil **Remplir
+et signer**, le menu **Formulaires** et la palette). L'outil surligne chaque champ sur la page : bleu pour un
+champ à remplir, **rouge** s'il est obligatoire, gris s'il est en lecture seule ou non modifiable (signature,
+bouton). Les champs restent interactifs en défilement continu, sur toutes les pages visibles.
+
+- **Case à cocher, bouton radio** : un clic bascule l'état ; chaque clic est une étape d'annulation (Ctrl+Z).
+- **Champ texte** : un clic ouvre un éditeur posé sur le champ ; **Entrée** valide (Ctrl+Entrée dans un champ
+  multiligne, où Entrée passe à la ligne), **Échap** annule, **Tab** / **Maj+Tab** valident et passent au champ
+  suivant / précédent (son contenu est sélectionné) ; un clic ailleurs valide aussi. La longueur maximale du
+  champ est respectée.
+- **Liste déroulante, zone de liste** : un clic ouvre la liste des choix (cases à cocher pour une liste à
+  choix multiple ; « (aucun) » vide une liste non obligatoire).
+- La valeur est dessinée par le moteur PDF lui-même (apparence régénérée) : ce que vous voyez est ce que les
+  autres lecteurs afficheront, et ce qui est enregistré avec Ctrl+S.
+
+Le panneau **Champs du formulaire** (Ctrl+Maj+F, bouton de la barre de l'outil) liste les champs de la page
+courante ou de tout le document, avec un contrôle par champ (zone de texte, case, boutons radio, liste) utilisable
+au clavier et par un lecteur d'écran ; un clic sur le nom d'un champ l'amène à l'écran. Il signale les champs
+obligatoires et en lecture seule, un formulaire **XFA** (lu, jamais modifié) et la présence de **scripts** (calculs
+et formats JavaScript : SuniPDF ne les exécute jamais, les champs calculés ne se mettent pas à jour).
+
+Menu **Formulaires** : **Effacer les champs** (textes vidés, cases décochées, listes désélectionnées ; les champs
+en lecture seule et les groupes radio « toujours un choix » sont conservés), **Exporter les valeurs (JSON)…**
+(fichier `{ "nom du champ": valeur }`), **Importer des valeurs (JSON)…** (même format ; les champs inconnus et les
+valeurs refusées sont ignorés et comptés dans le message d'état), **Aplatir le formulaire et les annotations…**
+(toutes les pages ou la page courante : les valeurs, surlignages et notes deviennent du contenu fixe ; annulable
+par Ctrl+Z tant que le document est ouvert ; aplatir toutes les pages retire le formulaire du document). Un
+document protégé par mot de passe se remplit comme les autres et reste protégé.
 
 ## Signer et parapher
 
@@ -243,7 +275,12 @@ l'édition du contenu : `objects` (objets d'une page, index à partir de 0), `ad
 (`--unit mm`, `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`, et `add-image`
 (`--image signature.png --x 100 --y 520 --width 150`, `--remove-background 200` pour une photo sur fond clair :
 une image posée sur la page, par exemple une signature scannée ; la réponse porte `"digital_signature": false`,
-ce n'est jamais une signature numérique).
+ce n'est jamais une signature numérique). Formulaires : `form-fields` (champs, types, valeurs, options,
+widgets avec pages en base 1 ; `--values-only` pour le seul objet `{ nom: valeur }`), `fill-form` (`--values
+fichier.json` ou `-` pour l'entrée standard, `--set nom=valeur` répétable — case : `true`/`false`, zone de liste :
+choix séparés par `;` —, strict par défaut : champ inconnu ou valeur refusée = erreur `form_field_not_found` /
+`form_value_invalid` sans rien écrire, `--ignore-unknown` pour ignorer et compter, `--flatten`) et `flatten`
+(`--pages all` ou `1,3-5` ; toutes les pages = formulaire retiré). Un formulaire XFA renvoie `form_xfa`.
 Les sorties sont en JSON (`extract` et `split` signalent `encryption_removed` quand la source était protégée) ;
 les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
 fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
@@ -257,5 +294,6 @@ qu'affichée** (après rotation et recadrage).
 Pas de double page ni de rotation de la vue ; une sélection de texte reste sur sa page (pas de sélection à
 cheval sur deux pages, pas de défilement automatique en glissant au bord) ; en défilement continu, « Largeur »
 et « Page » ajustent la plus grande page du document. Pas d'OCR, pas de conversion Office, pas de signature
-numérique (la signature manuscrite est une image sans valeur cryptographique), pas de formulaires, pas
-d'impression directe. Voir `docs/ROADMAP.md`.
+numérique (la signature manuscrite est une image sans valeur cryptographique), pas de création de champs de
+formulaire ni de formulaires XFA modifiables (lecture seule ; les scripts des formulaires ne sont jamais
+exécutés), pas d'impression directe. Voir `docs/ROADMAP.md`.

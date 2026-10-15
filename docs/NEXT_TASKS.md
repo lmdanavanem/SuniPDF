@@ -19,9 +19,22 @@ Pour rendre un outil visible, une tranche fait exactement :
 4. les noms, descriptions et couleurs des 14 outils existent déjà (`hub.*.name`, `hub.*.desc`).
 Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système ;
 `bar_icons_are_distinct` échoue si une icône se répète dans une barre ou reprend celle d'un bouton d'accès rapide.
-Outils encore absents : Numériser et OCR, Caviarder, Préparer un formulaire, Utiliser un certificat. « Remplir et
-signer » est livré pour sa moitié « signer » (tranche sign-image) ; la moitié « remplir » (formulaires) s'ajoutera à
-son groupe.
+Outils encore absents : Numériser et OCR, Caviarder, Préparer un formulaire (création de champs), Utiliser un
+certificat. « Remplir et signer » est complet : moitié « signer » (tranche sign-image) et moitié « remplir »
+(tranche forms, groupe Remplir le formulaire / panneau / Effacer / Aplatir / Exporter / Importer).
+
+## Après forms (formulaires AcroForm, tranche livrée)
+Reste, non bloquant (voir `KNOWN_ISSUES.md` A38, décisions D061–D066) :
+- **création de champs** (texte, case à cocher) par lopdf seul : widget sans `/AP` dans `/Annots` et
+  `/AcroForm /Fields`, apparence générée par PDFium (constat V11 de `docs/plans/forms.md` §3.11), outils
+  `ToolAddTextField` / `ToolAddCheckbox` et boîte « Nouveau champ » → passe `Workspace::PrepareForm` à
+  `Entry::Mode` ; tests : nom unique sans `.`, rectangle ≥ 4 pt, pages pivotées (`rect_to_user`), document
+  sans AcroForm ;
+- export XFDF (sans dépendance) puis import XFDF/FDF (lecteur XML à choisir) ;
+- mode « Appliquer » groupé (plusieurs champs, un seul niveau d'annulation et un seul rechargement) ;
+- texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
+  (Espace / Entrée) des rectangles de champs de la page ; vérification Narrateur Windows ;
+- avertir quand le document porte une signature numérique (D056, toute modification l'invalide).
 
 ## Après sign-image (signature visuelle, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.md` A35–A37, décisions D054–D060) :
@@ -30,8 +43,7 @@ Reste, non bloquant (voir `KNOWN_ISSUES.md` A35–A37, décisions D054–D060) :
 - chiffrement DPAPI des signatures enregistrées (ADR à écrire, D055) ;
 - avertir quand le document porte déjà une **signature numérique** (toute modification l'invalide, D056) ;
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
-  ombre portée ; pression du stylet si egui l'expose un jour ;
-- moitié « remplir » : formulaires AcroForm (`FPDF_FORMFILL`), dans le même outil.
+  ombre portée ; pression du stylet si egui l'expose un jour.
 
 Reste du hub (non bloquant) : focus clavier placé sur la ligne active à l'ouverture du panneau (F9) ; rail droit
 qui se chevauche sous ~650 px de haut (`KNOWN_ISSUES.md` A15) ; validation visuelle finale par l'utilisateur.

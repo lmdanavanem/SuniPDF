@@ -36,7 +36,8 @@ Fait (SUNI-031 à 033) : ajout de texte/images, formes, modification/déplacemen
 Fait (tool-hub, SUNI-040) : hub « Tous les outils » façon PDFCraft (9 outils réels sur 14, barre contextuelle par outil, menu Outils, cartes d'accueil), finition du chrome ; les 5 outils restants apparaîtront avec leur fonction (OCR, caviardage, formulaires, signature, certificat).
 Fait (SUNI-031c) : rotation libre, opacité, sélection multiple et déplacement groupé, couper/copier/coller d'objets entre pages et onglets, panneau Objets, texte saisi sur la page, polices TrueType du système incorporées, remplacement d'image, pages vierges, recadrage, redimensionnement des pages, pages pivotées et rognées corrigées.
 Fait (sign-image) : signature manuscrite **visuelle** (image à masque alpha dessinée, importée avec fond retiré, ou reprise de la bibliothèque locale), paraphe, date du jour, outil « Remplir et signer » (moitié « signer » ; jamais présentée comme certifiée), CLI `add-image`.
-Reste : sous-ensemble de polices et `.otf`/`.ttc`, collage éditable, rotation/redimensionnement de groupe, recadrage à la souris (SUNI-031d), formulaires (moitié « remplir »), liens, annotations avancées (encre, texte libre), autosave/récupération (plans dans `docs/plans/`).
+Fait (forms) : formulaires AcroForm — lister, remplir (texte, case, radio, listes ; valeurs écrites par lopdf, apparences régénérées par PDFium), effacer, aplatir, export/import JSON, panneau accessible, outil sur la page ; XFA en lecture seule ; CLI `form-fields` / `fill-form` / `flatten`.
+Reste : sous-ensemble de polices et `.otf`/`.ttc`, collage éditable, rotation/redimensionnement de groupe, recadrage à la souris (SUNI-031d), création de champs de formulaire et FDF/XFDF, liens, annotations avancées (encre, texte libre), autosave/récupération (plans dans `docs/plans/`).
 
 ### Détail initial
 Ajout de texte/images ; modification de texte selon capacités PDFium ; formulaires AcroForm + FDF/XFDF ;

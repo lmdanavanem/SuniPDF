@@ -5,6 +5,29 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Ajouté (formulaires AcroForm, tranche forms)
+- **Remplir et signer** gagne sa moitié « remplir » : outil **Remplir le formulaire** (champs surlignés sur la
+  page — bleu, rouge si obligatoire, gris si lecture seule —, clic = case ou bouton radio basculés, éditeur posé
+  sur le champ texte avec Entrée / Échap / Tab / Maj+Tab et longueur maximale, liste de choix flottante pour les
+  listes déroulantes et zones de liste, à choix multiple par cases), fonctionnel en défilement continu et dans
+  chaque onglet ; bandeau « Ce document contient un formulaire à remplir » à l'ouverture.
+- Panneau **Champs du formulaire** (Ctrl+Maj+F) : un contrôle accessible par champ (zone de texte, case, boutons
+  radio, liste déroulante, zone de liste ; boutons et signatures listés sans action), page courante ou tout le
+  document, bandeaux XFA (lecture seule) et scripts (jamais exécutés), aller au champ par son nom.
+- Menu **Formulaires** : Effacer les champs, Aplatir le formulaire et les annotations… (toutes les pages ou la
+  page courante, boîte de confirmation, annulable), Exporter les valeurs (JSON)…, Importer des valeurs (JSON)…
+  (champs inconnus et valeurs refusées comptés dans le message d'état).
+- Moteur : `Document::form_info` (modèle lopdf : hiérarchie, héritage, états des cases et radios, listes avec
+  valeurs d'export et libellés, rectangles en espace d'affichage), `fill_form` (strict ou tolérant, validation
+  complète avant toute écriture, `/V` `/AS` `/I` écrits par lopdf, apparences régénérées par PDFium et écrites
+  dans le fichier), `clear_form`, `flatten` (indicateur Print posé sur les annotations, apparences générées avant,
+  `/AcroForm` retiré quand toutes les pages sont aplaties), `ensure_appearances`, `DocumentInfo.form`, module
+  `form_data` (JSON) ; un document chiffré se remplit et reste chiffré ; erreurs typées `form_field_not_found`,
+  `form_value_invalid`, `form_xfa`.
+- CLI : `form-fields` (`--values-only`), `fill-form` (`--values`, `--set`, `--ignore-unknown`, `--flatten`),
+  `flatten` (`--pages`), 36 commandes. Fixtures `acroform.pdf`, `acroform-noap.pdf`, `acroform-xfa.pdf`
+  (`scripts/make_fixtures.py`).
+
 ### Corrigé (sécurité, AES-256)
 - Un mot de passe AES-256 contenant un espace spécial ou une ligature (normalisés SASLprep par lopdf au
   chiffrement) ne rouvrait pas le fichier dans SuniPDF : l'ouverture réessaie avec la forme normalisée et le

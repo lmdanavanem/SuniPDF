@@ -36,9 +36,9 @@ Without an open document, a tool that needs one first asks for a file, then star
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo and Redo.
 
-PDFCraft tools that have no real feature in SuniPDF yet (OCR, redaction, form preparation, certificate) are
-not shown: they will come with their feature. Fill & Sign ships its "sign" half (visual signature); forms will
-follow.
+PDFCraft tools that have no real feature in SuniPDF yet (OCR, redaction, form preparation — creating fields —,
+certificate) are not shown: they will come with their feature. Fill & Sign covers filling AcroForm forms and the
+visual signature.
 
 ## Tabs
 
@@ -124,6 +124,37 @@ Limits: a pasted or duplicated group can no longer be edited as text; rotating o
 objects is not offered yet (moving only); `.otf` and `.ttc` fonts are not offered; fonts are embedded whole
 (no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
 keeps its original font, which may not contain every character you type.
+
+## Filling a form
+
+When a PDF contains a form (AcroForm fields), a banner "This document contains a form to fill in" appears above
+the page with the **Fill form** button (also in the **Fill & Sign** tool, the **Forms** menu and the palette). The
+tool highlights every field on the page: blue for a fillable field, **red** when it is required, grey when it is
+read-only or not fillable (signature, push button). Fields stay interactive in continuous scrolling, on every
+visible page.
+
+- **Checkbox, radio button**: one click toggles the state; each click is an undo step (Ctrl+Z).
+- **Text field**: one click opens an editor placed on the field; **Enter** confirms (Ctrl+Enter in a multi-line
+  field, where Enter inserts a line break), **Esc** cancels, **Tab** / **Shift+Tab** confirm and move to the next /
+  previous field (its content is selected); clicking elsewhere confirms too. The field's maximum length is
+  enforced.
+- **Drop-down list, list box**: one click opens the list of choices (checkboxes for a multi-select list;
+  "(none)" clears a list that is not required).
+- The value is drawn by the PDF engine itself (regenerated appearance): what you see is what other readers will
+  show, and what Ctrl+S saves.
+
+The **Form fields** panel (Ctrl+Shift+F, button in the tool bar) lists the fields of the current page or of the
+whole document, with one control per field (text box, checkbox, radio buttons, list) usable with the keyboard and
+a screen reader; clicking a field name brings it on screen. It flags required and read-only fields, an **XFA**
+form (read, never modified) and the presence of **scripts** (JavaScript calculations and formats: SuniPDF never
+runs them, calculated fields are not updated).
+
+**Forms** menu: **Clear fields** (texts emptied, boxes unchecked, lists deselected; read-only fields and "always
+one choice" radio groups are kept), **Export form values (JSON)…** (a `{ "field name": value }` file), **Import
+values into the form (JSON)…** (same format; unknown fields and rejected values are skipped and counted in the
+status message), **Flatten form and annotations…** (all pages or the current page: values, highlights and notes
+become fixed content; undo with Ctrl+Z while the document is open; flattening every page removes the form from
+the document). A password-protected document is filled like any other and stays protected.
 
 ## Signing and initialing
 
@@ -225,7 +256,13 @@ content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--f
 `--reset`), `resize-pages` (`--mode keep|scale`), `insert-blank`, `fonts`, and `add-image`
 (`--image signature.png --x 100 --y 520 --width 150`, `--remove-background 200` for a photo on a light
 background: an image placed on the page, e.g. a scanned signature; the reply carries
-`"digital_signature": false`, it is never a digital signature).
+`"digital_signature": false`, it is never a digital signature). Forms: `form-fields` (fields, types, values,
+options, widgets with 1-based pages; `--values-only` for the bare `{ name: value }` object), `fill-form`
+(`--values file.json` or `-` for standard input, repeatable `--set name=value` — checkbox: `true`/`false`, list
+box: choices separated by `;` —, strict by default: an unknown field or a rejected value is a
+`form_field_not_found` / `form_value_invalid` error and nothing is written, `--ignore-unknown` to skip and count,
+`--flatten`) and `flatten` (`--pages all` or `1,3-5`; every page = the form is removed). An XFA form returns
+`form_xfa`.
 Output is JSON (`extract` and `split` report `encryption_removed` when the source was protected); exit codes
 distinguish password required (3), invalid file (4), unreadable file (5) and
 existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
@@ -238,4 +275,5 @@ points, origin at the bottom-left of the page **as displayed** (after rotation a
 No two-page view or view rotation; a text selection stays on its page (no selection across two pages, no
 auto-scroll when dragging at the edge); in continuous scrolling, "Width" and "Page" fit the largest page of the
 document. No OCR, no Office conversion, no digital signatures (the handwritten signature is an image with no
-cryptographic value), no forms, no direct printing. See `docs/ROADMAP.md`.
+cryptographic value), no creation of form fields and no editable XFA forms (read-only; form scripts are never
+run), no direct printing. See `docs/ROADMAP.md`.

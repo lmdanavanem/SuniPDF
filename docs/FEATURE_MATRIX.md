@@ -89,10 +89,10 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 | Fonction | PDFCraft | SuniPDF |
 |---|---|---|
-| Remplir AcroForm, apparences régénérées | Déclaré | Planifié (P3) via `FPDF_FORMFILL` |
-| Créer des champs | Non documenté | Planifié (P3) |
-| Import/export FDF/XFDF | Déclaré (xfdf) | Planifié (P3) |
-| XFA | Partiel | Hors périmètre |
+| Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
+| Créer des champs | Non documenté | Planifié (feuille de route : lopdf seul, D066) ; « Préparer un formulaire » absent du hub |
+| Import/export FDF/XFDF | Déclaré (xfdf) | **JSON fait** (`{ nom: valeur }`, export par tâche, import validé champ par champ) ; FDF/XFDF non (D064) |
+| XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 
 ## G. Automatisation et intégration
@@ -104,7 +104,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
-| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour 10 outils sur 14 (Exporter, Remplir et signer — moitié « signer » —, Modifier, Créer, Combiner, Organiser, Commenter, Protéger, Compresser, Tampon) : panneau F9, cartes d'accueil, menu Outils, palette, barre d'outil avec Échap ; OCR, Caviarder, Formulaire, Certificat planifiés (absents tant que leur fonction n'existe pas) |
+| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour 10 outils sur 14 (Exporter, Remplir et signer — remplir et signer —, Modifier, Créer, Combiner, Organiser, Commenter, Protéger, Compresser, Tampon) : panneau F9, cartes d'accueil, menu Outils, palette, barre d'outil avec Échap ; OCR, Caviarder, Formulaire, Certificat planifiés (absents tant que leur fonction n'existe pas) |
 | Workflows locaux, profils de conversion | Absent | Planifié (P5) |
 
 ## H. Distribution
