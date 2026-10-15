@@ -12,7 +12,9 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 version = "0.5.0"
 rust-version = "1.85"
-repository = "https://github.com/suniworks/SuniPDF"
+authors = ["Emanuel DE ALMEIDA <https://github.com/lmdanavanem>"]
+repository = "https://github.com/lmdanavanem/SuniPDF"
+homepage = "https://www.navanem.com"
 
 [workspace.dependencies]
 sunipdf-core = { path = "crates/sunipdf-core" }

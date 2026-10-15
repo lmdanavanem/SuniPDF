@@ -3,6 +3,8 @@ name = "sunipdf-i18n"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "Catalogues de traduction fr-FR / en-US de SuniPDF."
 
 [dependencies]

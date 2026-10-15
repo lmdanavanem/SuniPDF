@@ -14,7 +14,7 @@
     <?define ProgramFilesFolder = "ProgramFiles64Folder" ?>
   <?endif ?>
 
-  <Product Id="*" Name="SuniPDF" Language="1036" Codepage="1252" Version="$(var.Version)" Manufacturer="SuniWorks"
+  <Product Id="*" Name="SuniPDF" Language="1036" Codepage="1252" Version="$(var.Version)" Manufacturer="Navanem"
            UpgradeCode="7C3C3E0E-5B6A-4C2B-9F1E-2A0F1D4B9C11">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="$(var.Platform)"
              Description="SuniPDF — lecteur et éditeur PDF pour Windows" Languages="1036" SummaryCodepage="1252" />
@@ -65,7 +65,7 @@
         <Shortcut Id="StartMenuSuniPDF" Name="SuniPDF" Description="Lecteur et éditeur PDF"
                   Target="[INSTALLFOLDER]sunipdf.exe" WorkingDirectory="INSTALLFOLDER" Icon="SuniPDF.ico" />
         <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
-        <RegistryValue Root="HKCU" Key="Software\SuniWorks\SuniPDF" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+        <RegistryValue Root="HKCU" Key="Software\Navanem\SuniPDF" Name="installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </DirectoryRef>
 

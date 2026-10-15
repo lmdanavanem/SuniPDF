@@ -3,6 +3,8 @@ name = "sunipdf-desktop"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "Application de bureau SuniPDF (Windows 10/11)."
 
 [[bin]]

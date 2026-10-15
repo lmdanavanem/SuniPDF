@@ -9,13 +9,13 @@ fn main() {
     res.set_icon("../../assets/icon/sunipdf.ico")
         .set("ProductName", "SuniPDF")
         .set("FileDescription", "SuniPDF — lecteur et éditeur PDF")
-        .set("CompanyName", "SuniWorks")
-        .set("LegalCopyright", "© 2026 SuniWorks. MIT OR Apache-2.0.")
+        .set("CompanyName", "Navanem")
+        .set("LegalCopyright", "© 2026 Emanuel DE ALMEIDA (Navanem). MIT OR Apache-2.0.")
         .set("OriginalFilename", "sunipdf.exe")
         .set_language(0x040C)
         .set_manifest(
             r#"<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity version="0.1.0.0" processorArchitecture="*" name="SuniWorks.SuniPDF" type="win32"/>
+  <assemblyIdentity version="0.1.0.0" processorArchitecture="*" name="Navanem.SuniPDF" type="win32"/>
   <description>SuniPDF</description>
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
