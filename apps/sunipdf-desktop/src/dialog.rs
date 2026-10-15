@@ -144,6 +144,9 @@ pub fn show<R>(
                 })
                 .show(ui, |ui| {
                     ui.set_width(spec.width - 44.0);
+                    // Quand le corps déborde, la barre flottante du thème reçoit une gouttière
+                    // de 10 px au lieu de recouvrir le bord droit du contenu (encadré, pavé).
+                    ui.spacing_mut().scroll.floating_allocated_width = 10.0;
                     // Hauteur fixée aussi par `min_scrolled_height` : la zone ne dépend pas de la
                     // taille mémorisée de la fenêtre surgissante (sinon elle ne grandit que de
                     // quelques pixels par image et s'arrête avec le dernier rafraîchissement).
@@ -151,7 +154,7 @@ pub fn show<R>(
                         .min_scrolled_height(body_max_h)
                         .max_height(body_max_h)
                         .show(ui, |ui| {
-                            ui.set_width(spec.width - 44.0);
+                            ui.set_width(ui.available_width());
                             body(ui)
                         })
                         .inner

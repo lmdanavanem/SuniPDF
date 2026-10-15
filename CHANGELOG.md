@@ -8,8 +8,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 ### Corrigé (revue de la tranche forms)
 - **Aplatir supprimait les liens** (adresses web, renvois vers une page) : `FPDFPage_Flatten` retire tout
   `/Annots` et un lien n'a pas d'apparence. Les liens des pages aplaties sont relevés avant (lopdf) et remis
-  dans `/Annots` après ; le compte d'annotations renvoyé les exclut. Fixture `acroform-links.pdf`, test
-  `flatten_keeps_link_annotations`, texte de la boîte Aplatir et guides mis à jour.
+  dans `/Annots` après, **copiés en profondeur** (PDFium n'enregistre pas l'action `/A` indirecte d'un lien
+  qu'il a supprimé : références inlinées, pages traduites, flux réajoutés) ; le compte d'annotations renvoyé les
+  exclut. Fixture `acroform-links.pdf`, test `flatten_keeps_link_annotations`, texte de la boîte Aplatir et
+  guides mis à jour.
 - L'**éditeur posé sur un champ texte** et la **liste de choix** suivaient leur widget hors de la zone du document
   (dessinés par-dessus la barre d'onglets, clics capturés) : découpés à la zone visible, validés et fermés dès que
   le widget en sort entièrement ; la liste reste dans la zone du document.
@@ -74,6 +76,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 - Automatisation : `SUNIPDF_SIGNATURES_DIR`, `SUNIPDF_PICK_FILE`.
 
 ### Corrigé (revue de sign-image)
+- Cadre commun des boîtes (`dialog.rs`) : quand le corps déborde (bibliothèque de signatures remplie), la barre
+  de défilement flottante reçoit une gouttière de 10 px au lieu de recouvrir le bord droit de l'encadré, du pavé
+  et du bouton Effacer (capture revérifiée).
 - **Mémoire** : une image dont le décodage dépasserait 512 Mio (un PNG de 2 Mo annonçant 16 384² pixels en
   RGBA16 donnait 2 Gio) est refusée à la lecture de l'en-tête, sans rien allouer ; la même borne vaut
   désormais pour Insérer une image, Remplacer l'image et Images → PDF (décodeur borné unique dans le moteur).

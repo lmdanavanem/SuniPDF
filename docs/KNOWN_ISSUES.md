@@ -191,8 +191,8 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
      caractère, chiffres Helvetica), non mesurée ; pas de signature **tapée** (police manuscrite : dépend de
      l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
-     page) ; bibliothèque pleine : la barre de défilement flottante du corps de la boîte (cadre commun `dialog.rs`,
-     2 px, 6 px au survol) se superpose au bord droit de l'encadré et du pavé.
+     page) ; bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
+     (le contenu se resserre d'autant à l'image qui suit l'apparition de la barre).
 A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté et lu (champs AcroForm de secours),
      jamais rempli ni aplati (`form_xfa`) ; **scripts** (`/CO`, `/AA`, `/A` JavaScript) jamais exécutés, signalés
      par un bandeau, les champs calculés et les formats restent tels quels ; **pas de création de champs**
