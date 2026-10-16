@@ -117,7 +117,9 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
 | Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes livrés en 0.10.0 ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
 | Import/export FDF/XFDF | Déclaré | **Fait en 0.10.0** : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
 | Récupération après erreur de lecture des champs | Non documenté | **Livrée en 0.11.0** : erreur/relance explicites préservent brouillons et actions en attente ; tests locaux réussis |
-| Texte libre des listes déroulantes déjà modifiables | Non documenté | **Implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis** : texte libre/choix dans le panneau et sur la page, Appliquer/Abandonner/Enregistrer et annulation ; création du drapeau modifiable hors de cette tranche |
+| Texte libre des listes déroulantes déjà modifiables | Non documenté | **Livré en 0.11.0** : texte libre/choix dans le panneau et sur la page, Appliquer/Abandonner/Enregistrer et annulation ; contrôles locaux, CI, paquets et mises à niveau réussis |
+| Créer des listes déroulantes modifiables | Non documenté | **En développement pour 0.12.0** : case de l'interface et CLI `add-form-field --kind combo --editable` ; choix prédéfinis non vides requis ; validation/publication en attente |
+| Exports radio `/Opt` | Non documenté | **En développement pour 0.12.0** : valeurs d'export distinctes des états des widgets pour remplissage/JSON/XFDF/FDF ; ajout CLI `widgets[].export_value` ; correspondances malformées/dupliquées : champ en lecture seule ; radios sans `/Opt` inchangés ; validation/publication en attente |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 

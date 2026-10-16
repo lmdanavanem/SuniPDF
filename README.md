@@ -52,6 +52,9 @@ Staged package checks include protected owner-opened AES-128/256 copies, page la
 All six public downloads and enhanced public-binary checks passed; the production updater verified the Latest x64
 ZIP without installation. [Project status](docs/PROJECT_STATUS.md) records evidence and hardware/interoperability limits.
 
+In development for 0.12.0: create editable drop-downs and use radio-button `/Opt` export values consistently in
+the app and JSON/XFDF/FDF interchange. Validation and publication are pending; see the [roadmap](docs/ROADMAP.md).
+
 ## Screenshots
 
 | Dark home screen | Light home screen |

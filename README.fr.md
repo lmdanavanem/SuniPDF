@@ -54,6 +54,9 @@ Les paquets préparés passent aussi copies AES-128/256 ouvertes comme propriét
 Six téléchargements publics, contrôles renforcés des binaires et vérification du ZIP Latest x64 par le metteur à jour
 réussis sans installation. Preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
+En développement pour 0.12.0 : création de listes déroulantes modifiables et valeurs d'export `/Opt` des radios
+cohérentes entre interface et échanges JSON/XFDF/FDF. Validation et publication en attente ; voir la [roadmap](docs/ROADMAP.fr.md).
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

@@ -12,6 +12,7 @@ pub struct FormFieldDraft {
     pub rect: PointRect,
     pub options: Vec<FieldOption>,
     pub multi_select: bool,
+    pub editable: bool,
 }
 
 pub struct FormBuilderState {
@@ -23,6 +24,7 @@ pub struct FormBuilderState {
     size: PageSize,
     options: String,
     multi_select: bool,
+    editable: bool,
 }
 impl Default for FormBuilderState {
     fn default() -> Self {
@@ -39,6 +41,7 @@ impl Default for FormBuilderState {
             },
             options: String::new(),
             multi_select: false,
+            editable: false,
             size: PageSize {
                 width_pt: 612.0,
                 height_pt: 792.0,
@@ -54,6 +57,7 @@ impl FormBuilderState {
         self.name.clear();
         self.options = "1\n2".into();
         self.multi_select = false;
+        self.editable = false;
         let width: f32 = if kind == FieldKind::Checkbox {
             20.0
         } else {
@@ -155,6 +159,9 @@ impl FormBuilderState {
                             tr(lang, "form_builder.multi_select"),
                         );
                     }
+                    if self.kind == FieldKind::Combo {
+                        ui.checkbox(&mut self.editable, tr(lang, "form_builder.editable"));
+                    }
                 }
                 ui.label(tr(lang, "form_builder.coordinates"));
                 egui::Grid::new("field-bounds").show(ui, |ui| {
@@ -188,6 +195,7 @@ impl FormBuilderState {
             rect: self.rect,
             options: options.unwrap_or_default(),
             multi_select: self.multi_select,
+            editable: self.kind == FieldKind::Combo && self.editable,
         })
     }
 }
@@ -221,6 +229,135 @@ fn parse_options(text: &str) -> Option<Vec<FieldOption>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn frame(
+        builder: &mut FormBuilderState,
+        ctx: &egui::Context,
+        lang: Language,
+        events: Vec<egui::Event>,
+    ) -> (Option<FormFieldDraft>, egui::FullOutput) {
+        let mut draft = None;
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1280.0, 1000.0),
+                )),
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                if let Some(created) = builder.show(ui.ctx(), lang, false, false) {
+                    draft = Some(created);
+                }
+            },
+        );
+        output.textures_delta.clear();
+        (draft, output)
+    }
+
+    fn text_position(shapes: &[egui::epaint::ClippedShape], text: &str) -> Option<egui::Pos2> {
+        fn find(shape: &egui::Shape, text: &str) -> Option<egui::Pos2> {
+            match shape {
+                egui::Shape::Text(t) if t.galley.text() == text => {
+                    Some(t.pos + t.galley.size() / 2.0)
+                }
+                egui::Shape::Vec(shapes) => shapes.iter().find_map(|s| find(s, text)),
+                _ => None,
+            }
+        }
+        shapes.iter().find_map(|s| find(&s.shape, text))
+    }
+
+    fn click(
+        builder: &mut FormBuilderState,
+        ctx: &egui::Context,
+        lang: Language,
+        position: egui::Pos2,
+    ) -> Option<FormFieldDraft> {
+        frame(
+            builder,
+            ctx,
+            lang,
+            vec![
+                egui::Event::PointerMoved(position),
+                egui::Event::PointerButton {
+                    pos: position,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+        );
+        frame(
+            builder,
+            ctx,
+            lang,
+            vec![egui::Event::PointerButton {
+                pos: position,
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        )
+        .0
+    }
+
+    #[test]
+    fn editable_combo_creation_checkbox_validates_and_reaches_the_draft() {
+        for lang in [Language::English, Language::French] {
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            let mut builder = FormBuilderState::default();
+            builder.open(2, FieldKind::Combo, builder.size);
+            assert!(!builder.editable);
+            builder.options = "FR|France\nBE|Belgique".into();
+            for _ in 0..3 {
+                frame(&mut builder, &ctx, lang, Vec::new());
+            }
+            let (_, output) = frame(&mut builder, &ctx, lang, Vec::new());
+            let toggle = text_position(&output.shapes, tr(lang, "form_builder.editable"))
+                .expect("localized custom-text checkbox is visible");
+            assert!(click(&mut builder, &ctx, lang, toggle).is_none());
+            assert!(builder.editable);
+            let (_, output) = frame(&mut builder, &ctx, lang, Vec::new());
+            let create = text_position(&output.shapes, tr(lang, "form_builder.create")).unwrap();
+            assert!(click(&mut builder, &ctx, lang, create).is_none());
+            assert!(builder.visible, "an empty field name keeps Create disabled");
+            builder.name = "Country".into();
+            frame(&mut builder, &ctx, lang, Vec::new());
+            let draft = click(&mut builder, &ctx, lang, create).unwrap();
+            assert_eq!(draft.page, 2);
+            assert_eq!(draft.name, "Country");
+            assert_eq!(draft.kind, FieldKind::Combo);
+            assert!(draft.editable);
+            assert!(!draft.multi_select);
+            assert_eq!(draft.options, parse_options(&builder.options).unwrap());
+            assert!(!builder.visible);
+
+            for kind in [
+                FieldKind::Text,
+                FieldKind::Checkbox,
+                FieldKind::Radio,
+                FieldKind::List,
+            ] {
+                builder.open(0, kind, builder.size);
+                assert!(
+                    !builder.editable,
+                    "new fields start with custom text disabled"
+                );
+                builder.name = "NewField".into();
+                for _ in 0..3 {
+                    frame(&mut builder, &ctx, lang, Vec::new());
+                }
+                let (_, output) = frame(&mut builder, &ctx, lang, Vec::new());
+                assert!(text_position(&output.shapes, tr(lang, "form_builder.editable")).is_none());
+                let create =
+                    text_position(&output.shapes, tr(lang, "form_builder.create")).unwrap();
+                assert!(!click(&mut builder, &ctx, lang, create).unwrap().editable);
+            }
+        }
+    }
 
     #[test]
     fn choice_options_have_unique_export_values_and_labels() {

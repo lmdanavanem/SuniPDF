@@ -64,6 +64,7 @@ impl SuniApp {
                 rect: field.rect,
                 options: field.options,
                 multi_select: field.multi_select,
+                editable: field.editable,
             }));
             self.forms.panel_open = true;
         }

@@ -81,8 +81,8 @@ impl FieldKind {
     }
 }
 
-/// Valeur d'un champ. Les choix sont des valeurs d'**export** (`/Opt [export libellé]`) ; pour un
-/// groupe radio, le nom d'état actif du bouton choisi.
+/// Valeur d'un champ. Les choix sont des valeurs d'export : `/Opt` si présent, sinon le nom
+/// d'état actif du bouton radio choisi.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum FieldValue {
     #[default]
@@ -109,6 +109,8 @@ pub struct FieldWidget {
     pub display: PointRect,
     /// Case ou bouton radio : nom d'état « coché » (clé de `/AP /N` autre que `Off`).
     pub on_state: Option<String>,
+    /// Radio : valeur d'export du widget (`/Opt`, sinon `on_state`).
+    pub export_value: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -129,7 +131,7 @@ pub struct FormField {
     pub editable: bool,
     /// Radio : une option reste toujours choisie.
     pub no_toggle_off: bool,
-    /// Liste déroulante, zone de liste (`/Opt`) ; radio : un état par bouton.
+    /// Liste déroulante, zone de liste, radio : valeurs d'export et libellés.
     pub options: Vec<FieldOption>,
     /// Vide = champ sans emplacement visible (orphelin après un aplatissement partiel).
     pub widgets: Vec<FieldWidget>,
@@ -281,7 +283,9 @@ impl FormField {
 
 struct RawWidget {
     id: ObjectId,
+    index: usize,
     on_state: Option<String>,
+    export_value: Option<String>,
     /// `/AS` courant.
     as_state: Option<String>,
     page: Option<usize>,
@@ -292,6 +296,7 @@ struct Raw {
     /// Dictionnaire qui porte `/V` (le champ, pas le widget).
     field_id: ObjectId,
     widgets: Vec<RawWidget>,
+    radio_opt: bool,
     view: FormField,
 }
 
@@ -631,26 +636,84 @@ fn terminal(
         log::debug!("champ {name:?} de type inconnu ignoré");
         return None;
     };
+    let kids = get(d, dict, b"Kids").and_then(|o| o.as_array().ok());
+    let widget_indices: HashMap<_, _> = kids
+        .into_iter()
+        .flatten()
+        .enumerate()
+        .filter_map(|(index, o)| o.as_reference().ok().map(|id| (id, index)))
+        .collect();
     let mut widgets = Vec::with_capacity(widget_ids.len());
-    for wid in widget_ids {
+    for (index, wid) in widget_ids.into_iter().enumerate() {
         let wd = d.get_dictionary(wid).ok();
         if wd.is_some_and(|w| has_script(d, w)) {
             ctx.scripts = true;
         }
         widgets.push(RawWidget {
             id: wid,
+            index: widget_indices.get(&wid).copied().unwrap_or(index),
             on_state: wd.and_then(|w| on_state(d, w)),
+            export_value: None,
             as_state: wd.and_then(|w| get(d, w, b"AS")).and_then(name_of),
             page: ctx.pages.get(&wid).copied(),
             rect: wd.and_then(|w| rect_of(d, w)),
         });
     }
     let ff = inh.ff;
+    let radio_opt = kind == FieldKind::Radio && inh.opt.is_some();
+    let mut radio_read_only = false;
+    if kind == FieldKind::Radio {
+        let exports = inh
+            .opt
+            .as_ref()
+            .and_then(|o| deref(d, o))
+            .and_then(|o| o.as_array().ok());
+        let mut seen = HashSet::new();
+        let mut widget_ids = HashSet::new();
+        radio_read_only = radio_opt
+            && (exports.is_none_or(|a| a.len() != widgets.len())
+                || (dict.has(b"Kids") && kids.is_none_or(|a| a.len() != widgets.len()))
+                || widgets.iter().any(|w| !widget_ids.insert(w.id)));
+        for w in &mut widgets {
+            w.export_value = if radio_opt {
+                exports
+                    .and_then(|a| a.get(w.index))
+                    .and_then(|o| deref(d, o))
+                    .filter(|o| matches!(o, Object::String(_, _)))
+                    .and_then(|o| text_of(d, o))
+            } else {
+                w.on_state.clone()
+            };
+            if radio_opt
+                && (d
+                    .get_dictionary(w.id)
+                    .ok()
+                    .and_then(|w| get(d, w, b"AP"))
+                    .and_then(|ap| ap.as_dict().ok())
+                    .and_then(|ap| get(d, ap, b"N"))
+                    .and_then(|n| n.as_dict().ok())
+                    .is_none_or(|n| {
+                        let mut states =
+                            n.iter().map(|(k, _)| k).filter(|k| k.as_slice() != b"Off");
+                        states
+                            .next()
+                            .is_none_or(|k| std::str::from_utf8(k).is_err())
+                            || states.next().is_some()
+                    })
+                    || w.export_value
+                        .as_ref()
+                        .is_none_or(|s| s.is_empty() || s == "Off" || !seen.insert(s.clone())))
+            {
+                // shortcut: scalar radio values cannot identify duplicate/malformed exports; keep this field read-only until widget-specific filling exists.
+                radio_read_only = true;
+            }
+        }
+    }
     let options = match kind {
         FieldKind::Radio => widgets
             .iter()
             .filter_map(|w| {
-                let value = w.on_state.clone()?;
+                let value = w.export_value.clone()?;
                 let label = d
                     .get_dictionary(w.id)
                     .ok()
@@ -699,12 +762,39 @@ fn terminal(
             FieldValue::Bool(on)
         }
         FieldKind::Radio => {
-            let chosen = v.and_then(name_of).filter(|n| n != "Off").or_else(|| {
-                widgets
+            let chosen = if radio_opt {
+                let checked: Vec<_> = widgets
                     .iter()
-                    .filter_map(|w| w.as_state.clone())
-                    .find(|s| s != "Off")
-            });
+                    .filter(|w| w.on_state.is_some() && w.as_state == w.on_state)
+                    .collect();
+                radio_read_only |= checked.len() > 1;
+                checked
+                    .first()
+                    .and_then(|w| w.export_value.clone())
+                    .or_else(|| {
+                        let state = v.and_then(name_of)?;
+                        if let Ok(index) = state.parse::<usize>() {
+                            widgets
+                                .iter()
+                                .find(|w| w.index == index)?
+                                .export_value
+                                .clone()
+                        } else {
+                            let mut matching = widgets
+                                .iter()
+                                .filter(|w| w.on_state.as_deref() == Some(state.as_str()));
+                            let export = matching.next()?.export_value.clone();
+                            matching.next().is_none().then_some(export).flatten()
+                        }
+                    })
+            } else {
+                v.and_then(name_of).filter(|n| n != "Off").or_else(|| {
+                    widgets
+                        .iter()
+                        .filter_map(|w| w.as_state.clone())
+                        .find(|s| s != "Off")
+                })
+            };
             FieldValue::Choice(chosen.into_iter().collect())
         }
         FieldKind::Combo | FieldKind::List => FieldValue::Choice(match v {
@@ -719,7 +809,7 @@ fn terminal(
         kind,
         value,
         tooltip: text(d, dict, b"TU"),
-        read_only: ff & FF_READ_ONLY != 0,
+        read_only: ff & FF_READ_ONLY != 0 || radio_read_only,
         required: ff & FF_REQUIRED != 0,
         multiline: ff & FF_MULTILINE != 0,
         password: ff & FF_PASSWORD != 0,
@@ -734,6 +824,7 @@ fn terminal(
     Some(Raw {
         field_id,
         widgets,
+        radio_opt,
         view,
     })
 }
@@ -812,11 +903,27 @@ fn apply(ld: &mut lopdf::Document, raw: &Raw, value: &FieldValue) -> Result<(), 
         }
         (FieldKind::Radio, FieldValue::Choice(v)) => {
             let chosen = v.first().map(String::as_str);
-            dict_mut(ld, field)?.set("V", name(chosen.unwrap_or("Off")));
-            for w in &raw.widgets {
-                let state = match (chosen, w.on_state.as_deref()) {
-                    (Some(c), Some(s)) if c == s => c,
-                    _ => "Off",
+            let selected = chosen.and_then(|c| {
+                raw.widgets
+                    .iter()
+                    .position(|w| w.export_value.as_deref() == Some(c))
+            });
+            let field_value = if raw.radio_opt {
+                selected.map(|i| raw.widgets[i].index.to_string())
+            } else {
+                chosen.map(str::to_string)
+            };
+            dict_mut(ld, field)?.set("V", name(field_value.as_deref().unwrap_or("Off")));
+            for (index, w) in raw.widgets.iter().enumerate() {
+                let on = if raw.radio_opt {
+                    selected == Some(index)
+                } else {
+                    chosen.is_some() && w.on_state.as_deref() == chosen
+                };
+                let state = if on {
+                    w.on_state.as_deref().unwrap_or("Off")
+                } else {
+                    "Off"
                 };
                 dict_mut(ld, w.id)?.set("AS", name(state));
             }
@@ -903,8 +1010,7 @@ impl Document<'_> {
         self.add_form_field_with_options(page_index, name, kind, rect, &[], false)
     }
 
-    /// Creates a field or a vertically arranged radio group as one edit. Coordinates are display points.
-    #[allow(clippy::too_many_arguments)]
+    /// Creates a field or radio group in display points, with custom combo text disabled.
     pub fn add_form_field_with_options(
         &mut self,
         page_index: usize,
@@ -913,6 +1019,21 @@ impl Document<'_> {
         rect: PointRect,
         options: &[FieldOption],
         multi_select: bool,
+    ) -> Result<(), EngineError> {
+        self.add_form_field_with_flags(page_index, name, kind, rect, options, multi_select, false)
+    }
+
+    /// Creates a field or radio group in display points. Editable text is supported only for combos.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_form_field_with_flags(
+        &mut self,
+        page_index: usize,
+        name: &str,
+        kind: FieldKind,
+        rect: PointRect,
+        options: &[FieldOption],
+        multi_select: bool,
+        editable: bool,
     ) -> Result<(), EngineError> {
         let choice = matches!(kind, FieldKind::Radio | FieldKind::Combo | FieldKind::List);
         if !matches!(
@@ -932,6 +1053,7 @@ impl Document<'_> {
             || options.len() > 1000
             || (!choice && !options.is_empty())
             || (multi_select && kind != FieldKind::List)
+            || (editable && kind != FieldKind::Combo)
             || options.iter().any(|o| {
                 o.value.trim().is_empty()
                     || o.value.len() > 1024
@@ -1053,7 +1175,7 @@ impl Document<'_> {
                 "Ff",
                 match kind {
                     FieldKind::Radio => FF_RADIO,
-                    FieldKind::Combo => FF_COMBO,
+                    FieldKind::Combo => FF_COMBO | if editable { FF_EDIT } else { 0 },
                     _ if multi_select => FF_MULTI_SELECT,
                     _ => 0,
                 } as i64,
@@ -1152,6 +1274,7 @@ impl Document<'_> {
                     rect,
                     display: geo.rect_to_display(rect),
                     on_state: w.on_state,
+                    export_value: w.export_value,
                 });
             }
             fields.push(view);

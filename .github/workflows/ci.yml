@@ -75,6 +75,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.8.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.9.1
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.10.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.11.0
       - name: MSI upgrade regression evidence
         if: always()
         uses: actions/upload-artifact@v4

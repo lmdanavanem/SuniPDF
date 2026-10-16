@@ -56,7 +56,7 @@ indices; named destinations and `/XYZ`, `/Fit`, nonzero `/FitH` for links/bookma
 form-read errors that preserve inputs and require an explicit retry. `/FitH` zero/null and other fit modes fall back
 to page navigation. Also implemented for 0.11.0: free text in existing editable drop-downs through the panel/on-page
 editor, and extraction/split copies retaining source encryption/passwords/permissions with same-source-path refusal.
-The existing permission policy is unchanged; creating editable drop-down flags remains future work.
+The existing permission policy is unchanged; editable drop-down authoring was outside the 0.11.0 scope.
 
 [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
 
@@ -70,6 +70,13 @@ Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six un
 binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
 and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
+## 0.12.0: editable field creation and radio exports (in development)
+
+Create editable drop-downs from Prepare a form or `add-form-field --kind combo --editable`, with predefined choices
+still required. Radio `/Opt` export values are separated from widget appearance states for filling and JSON/XFDF/FDF
+interchange; CLI information adds `widgets[].export_value`. Malformed or duplicate mappings keep the affected
+field read-only; no-`/Opt` radios retain state-name values. Validation and publication are pending (D100–D101).
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -82,7 +89,7 @@ Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views
 search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
 
 Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
-Implemented in current development: page-label reading and precise internal navigation. Remaining: page-label
+Delivered in 0.11.0: page-label reading and precise internal navigation. Remaining: page-label
 authoring/semantic rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
 prove preservation of every link, field, layer or attachment.
 

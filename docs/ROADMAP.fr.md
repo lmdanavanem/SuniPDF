@@ -57,7 +57,7 @@ dans la même page et du zoom ; erreurs de lecture de formulaire préservant les
 `/FitH` zéro/null et les autres modes gardent le saut de page. Aussi implémentés pour 0.11.0 : texte libre des listes
 déroulantes déjà modifiables dans le panneau/sur la page, et copies d'extraction/division conservant chiffrement,
 mots de passe et permissions, avec refus du chemin source. Politique des permissions inchangée ; création du
-drapeau de liste modifiable à venir.
+drapeau de liste modifiable hors du périmètre 0.11.0.
 
 [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem`.
 
@@ -72,6 +72,14 @@ téléchargements publics concordent avec les empreintes API/SHA256/paquets ; co
 binaires publics. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 687 375 octets sans installation.
 Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
+## 0.12.0 : création de listes modifiables et exports radio (en développement)
+
+Créer des listes déroulantes modifiables depuis Préparer un formulaire ou `add-form-field --kind combo --editable`,
+avec choix prédéfinis toujours requis. Les exports radio `/Opt` sont distingués des états d'apparence pour remplir
+et échanger JSON/XFDF/FDF ; informations CLI enrichies de `widgets[].export_value`. Une correspondance malformée ou
+dupliquée garde le champ concerné en lecture seule ; sans `/Opt`, les noms d'état restent les valeurs radio.
+Validation et publication en attente (D100–D101).
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -84,7 +92,7 @@ Livrés : onglets, caches de rendu/miniatures bornés, vues continue/double page
 recherche, signets, fusion/division/extraction/rotation/réorganisation, enregistrement atomique, annulation/rétablissement et annotations.
 
 Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
-Implémentés en développement : lecture des étiquettes et navigation interne précise. Restent : création/recalage
+Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Restent : création/recalage
 sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
 chaque lien, champ, calque ou pièce jointe.
 

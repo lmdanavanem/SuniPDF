@@ -125,6 +125,7 @@ pub enum EditOp {
         rect: PointRect,
         options: Vec<sunipdf_core::FieldOption>,
         multi_select: bool,
+        editable: bool,
     },
     Rotate {
         pages: Vec<usize>,
@@ -1044,7 +1045,10 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             rect,
             options,
             multi_select,
-        } => doc.add_form_field_with_options(page, &name, kind, rect, &options, multi_select),
+            editable,
+        } => {
+            doc.add_form_field_with_flags(page, &name, kind, rect, &options, multi_select, editable)
+        }
         EditOp::ResizeObjects {
             page,
             indices,
@@ -1950,7 +1954,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sunipdf_core::PixelRect;
+    use sunipdf_core::{FieldKind, FieldOption, PixelRect};
 
     #[test]
     fn organize_thumbnail_failures_are_acknowledged_by_the_engine_worker() {
@@ -1992,6 +1996,7 @@ mod tests {
                     if failed_page == page && failed_width == width_px
             ));
         }
+        editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
 
@@ -2007,6 +2012,80 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn editable_combo_creation_and_filling_undo_redo(worker: &Worker) {
+        let form_info = || {
+            worker.send(Request::FormInfo);
+            match next_response(worker) {
+                Response::FormInfo(Ok(info)) => info,
+                _ => panic!("form model response"),
+            }
+        };
+        worker.send(Request::Edit(EditOp::AddFormField {
+            page: 0,
+            name: "Country".into(),
+            kind: FieldKind::Combo,
+            rect: PointRect {
+                left: 36.0,
+                bottom: 36.0,
+                right: 216.0,
+                top: 60.0,
+            },
+            options: vec![FieldOption {
+                value: "FR".into(),
+                label: "France".into(),
+            }],
+            multi_select: false,
+            editable: true,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let info = form_info();
+        let field = info.field("Country").unwrap();
+        assert!(field.editable);
+        assert_eq!(field.kind, FieldKind::Combo);
+        assert_eq!(field.value, FieldValue::Choice(Vec::new()));
+
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(form_info().field("Country").is_none());
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(form_info().field("Country").unwrap().editable);
+
+        let custom = FieldValue::Choice(vec!["Qu\u{e9}bec".into()]);
+        worker.send(Request::Edit(EditOp::FillForm {
+            values: vec![("Country".into(), custom.clone())],
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(form_info().field("Country").unwrap().value, custom);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(
+            form_info().field("Country").unwrap().value,
+            FieldValue::Choice(Vec::new())
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(form_info().field("Country").unwrap().value, custom);
     }
 
     fn encrypted_recovery_after_redaction(worker: &Worker) {

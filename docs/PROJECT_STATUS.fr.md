@@ -1,11 +1,36 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.11.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.12.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.11.0 : navigation, formulaires et copies protégées (publiée en Latest)
+## 0.12.0 : création de formulaires et exports radio (contrôles locaux réussis)
+
+Création de listes déroulantes à saisie libre dans Préparer un formulaire ou avec
+`add-form-field --kind combo --editable`, en conservant des choix prédéfinis. Les API existantes gardent leur
+comportement par défaut. Les valeurs radio `/Opt` restent distinctes des noms d'apparence et servent dans
+l'application, JSON/XFDF et l'import FDF. Les widgets invisibles conservent leurs indices d'origine.
+Les informations CLI ajoutent `widgets[].export_value`.
+
+Un mapping malformé ou ambigu, des références de widgets dupliquées ou des noms d'apparence non UTF-8 rendent
+uniquement le champ radio concerné non modifiable. Un export inchangé, même une chaîne vide ou réservée, peut
+être réimporté. Les tests contrôlent `/V`, `/AS` et les clés d'apparence après une autre modification. PDFium peut
+régénérer une apparence manquante. Les radios sans `/Opt` gardent leur comportement ; la modification du flag
+éditable d'un champ existant reste à réaliser.
+
+Contrôles locaux finaux réussis : **398 tests workspace, aucun échec, sept ignorés par défaut**, formatage,
+Clippy sans avertissement, **859 clés EN/FR correspondantes**, **48 contrôles qpdf indépendants** et les
+**quatre documents NIST/NBS sous licence (744 pages)** en 59,68 secondes. Couverture : création headless EN/FR,
+création/remplissage sur le vrai worker avec Annuler/Rétablir, CLI avec sauvegarde/relecture, pages cadrées/pivotées
+et protégées, ouverture propriétaire AES-128/256 et refus des mappings malformés.
+Les contrôles de mise à jour portable/MSI incluent maintenant les paquets publics 0.11.0 vérifiés indépendamment.
+
+CI Windows, compilation ARM64, paquets, mises à jour portable/MSI réelles et publication restent en attente.
+La release Latest publiée est actuellement la 0.11.0. Dialogues natifs interactifs, matériel ARM64, impression
+physique, Narrator et lecteurs tiers ne sont pas couverts par ces contrôles locaux ; les paquets restent non signés.
+
+## 0.11.0 : navigation, formulaires et copies protégées (publiée en Latest à cette date)
 
 [SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) est stable **Latest** sous `lmdanavanem`,
 release ID `414626617`, avec six fichiers. Tag/source immuable : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.

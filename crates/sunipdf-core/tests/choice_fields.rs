@@ -50,7 +50,7 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
             let mut doc = engine
                 .open_bytes(bytes, password, Path::new("choices.pdf"))
                 .unwrap();
-            for (name, kind, rect, multi) in [
+            for (name, kind, rect, multi, editable) in [
                 (
                     "Language",
                     FieldKind::Radio,
@@ -60,6 +60,7 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
                         right: 140.0,
                         top: 110.0,
                     },
+                    false,
                     false,
                 ),
                 (
@@ -72,6 +73,19 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
                         top: 78.0,
                     },
                     false,
+                    false,
+                ),
+                (
+                    "OtherCountry",
+                    FieldKind::Combo,
+                    PointRect {
+                        left: 170.0,
+                        bottom: 90.0,
+                        right: 270.0,
+                        top: 118.0,
+                    },
+                    false,
+                    true,
                 ),
                 (
                     "Countries",
@@ -83,9 +97,10 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
                         top: 210.0,
                     },
                     true,
+                    false,
                 ),
             ] {
-                doc.add_form_field_with_options(0, name, kind, rect, &options(), multi)
+                doc.add_form_field_with_flags(0, name, kind, rect, &options(), multi, editable)
                     .unwrap();
             }
             let info = doc.form_info().unwrap();
@@ -96,9 +111,20 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
                 (radio.display.left - 40.0).abs() < 0.2 && (radio.display.top - 110.0).abs() < 0.2
             );
             assert!(info.field("Countries").unwrap().multi_select);
+            assert!(!info.field("Country").unwrap().editable);
+            assert!(info.field("OtherCountry").unwrap().editable);
+            assert!(info
+                .field("Country")
+                .unwrap()
+                .validate(&FieldValue::Choice(vec!["Suisse romande".into()]))
+                .is_err());
             let values = vec![
                 ("Language".into(), FieldValue::Choice(vec!["BE".into()])),
                 ("Country".into(), FieldValue::Choice(vec!["FR".into()])),
+                (
+                    "OtherCountry".into(),
+                    FieldValue::Choice(vec!["Suisse romande – été".into()]),
+                ),
                 (
                     "Countries".into(),
                     FieldValue::Choice(vec!["FR".into(), "BE".into()]),
@@ -117,6 +143,7 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
             for (name, value) in &values {
                 assert_eq!(&info.field(name).unwrap().value, value);
             }
+            assert!(info.field("OtherCountry").unwrap().editable);
             let invalid = vec![
                 ("Country".into(), FieldValue::Choice(vec!["BE".into()])),
                 (
@@ -159,8 +186,8 @@ fn invalid_choice_creation_keeps_existing_fields() {
     doc.add_form_field(0, "Existing", FieldKind::Text, rect)
         .unwrap();
     let before = doc.form_info().unwrap();
-    for (kind, choices, multi) in [
-        (FieldKind::Radio, Vec::new(), false),
+    for (kind, choices, multi, editable) in [
+        (FieldKind::Radio, Vec::new(), false, false),
         (
             FieldKind::Radio,
             vec![FieldOption {
@@ -168,17 +195,23 @@ fn invalid_choice_creation_keeps_existing_fields() {
                 label: "Off".into(),
             }],
             false,
+            false,
         ),
         (
             FieldKind::Combo,
             vec![options()[0].clone(), options()[0].clone()],
             false,
+            false,
         ),
-        (FieldKind::Combo, options(), true),
-        (FieldKind::Text, options(), false),
+        (FieldKind::Combo, options(), true, false),
+        (FieldKind::Text, options(), false, false),
+        (FieldKind::Text, Vec::new(), false, true),
+        (FieldKind::Checkbox, Vec::new(), false, true),
+        (FieldKind::Radio, options(), false, true),
+        (FieldKind::List, options(), false, true),
     ] {
         assert!(doc
-            .add_form_field_with_options(0, "Invalid", kind, rect, &choices, multi)
+            .add_form_field_with_flags(0, "Invalid", kind, rect, &choices, multi, editable)
             .is_err());
         assert_eq!(doc.form_info().unwrap(), before);
     }

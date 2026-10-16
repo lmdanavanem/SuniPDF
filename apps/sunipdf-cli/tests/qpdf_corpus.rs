@@ -12,6 +12,9 @@ mod test_identity;
 #[path = "../../../crates/sunipdf-core/tests/fixtures/destinations.rs"]
 mod destinations_fixture;
 
+#[path = "../../../crates/sunipdf-core/tests/fixtures/radio_exports.rs"]
+mod radio_exports;
+
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../crates/sunipdf-core/tests/fixtures")
@@ -260,12 +263,13 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     check(&qpdf, &flat, None);
 
     let mut choices = filled.clone();
-    for (kind, name, rect, multi_select) in [
-        ("radio", "Contact", "40,100,220,180", false),
-        ("combo", "Country", "40,220,220,250", false),
-        ("list", "Languages", "40,290,220,370", true),
+    for (kind, name, rect, multi_select, editable) in [
+        ("radio", "Contact", "40,100,220,180", false, false),
+        ("combo", "Country", "40,220,220,250", false, false),
+        ("combo", "OtherCountry", "40,390,220,420", false, true),
+        ("list", "Languages", "40,290,220,370", true, false),
     ] {
-        let output = temp.path().join(format!("created-{kind}.pdf"));
+        let output = temp.path().join(format!("created-{kind}-{name}.pdf"));
         let mut command = cli(&["add-form-field"], &[&choices]);
         command.args([
             "--kind",
@@ -282,6 +286,9 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         if multi_select {
             command.arg("--multi-select");
         }
+        if editable {
+            command.arg("--editable");
+        }
         command.arg("--out").arg(&output);
         success(command);
         check(&qpdf, &output, None);
@@ -296,6 +303,8 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
             "--set",
             "Country=one",
             "--set",
+            "OtherCountry=Suisse romande – été",
+            "--set",
             "Languages=one;two",
             "--out",
         ])
@@ -305,6 +314,7 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     let values = success(cli(&["form-fields", "--values-only"], &[&choices_filled]));
     assert_eq!(values["Contact"], "two");
     assert_eq!(values["Country"], "one");
+    assert_eq!(values["OtherCountry"], "Suisse romande – été");
     assert_eq!(values["Languages"], serde_json::json!(["one", "two"]));
     let choices_flat = temp.path().join("choices-flattened.pdf");
     let mut command = cli(&["flatten"], &[&choices_filled]);
@@ -312,6 +322,33 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     success(command);
     check(&qpdf, &choices_flat, None);
     assert_eq!(success(cli(&["form-fields"], &[&choices_flat]))["count"], 0);
+
+    let radio = temp.path().join("radio-exports.pdf");
+    std::fs::write(&radio, radio_exports::source(true)).unwrap();
+    check(&qpdf, &radio, None);
+    let radio_filled = temp.path().join("radio-exports-filled.pdf");
+    let selection = format!(
+        "{}={}",
+        radio_exports::FIELD_NAME,
+        radio_exports::EXPORTS[0]
+    );
+    let mut command = cli(&["fill-form"], &[&radio]);
+    command
+        .args(["--set", &selection, "--out"])
+        .arg(&radio_filled);
+    success(command);
+    check(&qpdf, &radio_filled, None);
+    assert_eq!(
+        success(cli(&["form-fields", "--values-only"], &[&radio_filled]))
+            [radio_exports::FIELD_NAME],
+        radio_exports::EXPORTS[0]
+    );
+    let radio_flat = temp.path().join("radio-exports-flattened.pdf");
+    let mut command = cli(&["flatten"], &[&radio_filled]);
+    command.arg("--out").arg(&radio_flat);
+    success(command);
+    check(&qpdf, &radio_flat, None);
+    assert_eq!(success(cli(&["form-fields"], &[&radio_flat]))["count"], 0);
 
     let group_rotated = temp.path().join("group-rotated.pdf");
     let mut command = cli(&["rotate-objects"], &[&original]);

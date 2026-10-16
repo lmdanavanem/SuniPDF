@@ -80,10 +80,19 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   `/FitH` zéro/null et les autres modes gardent le saut de page ; PDFium ne distingue pas FitH null de zéro.
 - Conserver les brouillons et actions de formulaire en cas d'échec de lecture, afficher l'erreur et demander une relance explicite.
 - Saisir du texte libre dans les listes déroulantes déjà modifiables, depuis le panneau et sur la page ; garder les choix,
-  Appliquer/Abandonner, Enregistrer et l'annulation. La création de ce drapeau sur un nouveau champ reste hors de cette tranche.
+  Appliquer/Abandonner, Enregistrer et l'annulation. La création de ce drapeau était hors de la tranche 0.11.0.
 - Conserver chiffrement, mots de passe et permissions d'origine en extrayant/divisant un PDF protégé ; refuser une sortie
   résolue au chemin source. La CLI garde `encryption_removed: false` et ajoute `encrypted` ; la politique existante
   des permissions ne change pas. Contrôles locaux, CI, paquets et régressions de mise à niveau réussis ; preuves dans `PROJECT_STATUS.fr.md`.
+
+## 0.12.0 : création de champs et valeurs d'export radio (en développement)
+
+- Créer des listes déroulantes modifiables par la case de l'interface ou `add-form-field --kind combo --editable` ;
+  conserver choix prédéfinis requis, noms uniques, contrôles de géométrie/protection et annulation.
+- Distinguer valeurs d'export radio `/Opt` et états d'apparence, y compris dans les échanges JSON/XFDF/FDF.
+  Ajouter `widgets[].export_value` aux informations CLI sans modifier `on_state` ; correspondances malformées ou
+  dupliquées : champ concerné en lecture seule. Sans `/Opt`, les radios conservent les noms d'état.
+- Validation et publication en attente ; résultats exécutés dans `PROJECT_STATUS.fr.md` (D100–D101).
 
 ## Travail restant au-delà de ce lot
 
@@ -138,9 +147,9 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 - échanges JSON/XFDF/FDF et panneau Appliquer groupé implémentés en 0.10.0 ; validation dans `PROJECT_STATUS.fr.md` ;
-- Texte libre des listes déroulantes modifiables implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis ; valeurs d'export `/Opt` des radios restantes ; activation clavier
-  (Espace / Entrée) implémentée en 0.10.0 ; vérification Narrateur Windows (noms `labelled_by`
-  posés, non écoutés) ;
+- Texte libre livré en 0.11.0 ; création de listes modifiables et correspondances radio `/Opt` dans le lot 0.12.0
+  en développement ci-dessus. Activation clavier livrée en 0.10.0 ; Narrateur Windows non vérifié
+  (noms `labelled_by` posés, non écoutés).
 - aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
   `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
 

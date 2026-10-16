@@ -50,6 +50,101 @@ fn step(input: &Path, out: &Path, command: &str, args: &[&str]) -> serde_json::V
 }
 
 #[test]
+fn editable_combo_creation_accepts_custom_text_and_rejects_invalid_flag_without_output() {
+    let temp = tempfile::tempdir().unwrap();
+    let input = fixture("boxes.pdf");
+    let original = std::fs::read(&input).unwrap();
+    let args = [
+        "--kind",
+        "combo",
+        "--name",
+        "Country",
+        "--rect",
+        "40,40,220,65",
+        "--page",
+        "3",
+        "--option",
+        "FR=France",
+        "--option",
+        "BE=Belgique",
+    ];
+    let fixed = temp.path().join("fixed.pdf");
+    step(&input, &fixed, "add-form-field", &args);
+    let rejected = temp.path().join("rejected.pdf");
+    failed(
+        cli()
+            .arg("fill-form")
+            .arg(&fixed)
+            .args(["--set", "Country=Suisse romande", "--out"])
+            .arg(&rejected)
+            .output()
+            .unwrap(),
+        &rejected,
+    );
+    for kind in ["text", "checkbox", "radio", "list"] {
+        let invalid = temp.path().join(format!("invalid-{kind}.pdf"));
+        let mut command = cli();
+        command.arg("add-form-field").arg(&input).args([
+            "--kind",
+            kind,
+            "--name",
+            "Invalid",
+            "--rect",
+            "40,40,220,100",
+            "--editable",
+        ]);
+        if matches!(kind, "radio" | "list") {
+            command.args(["--option", "one=First", "--option", "two=Second"]);
+        }
+        failed(
+            command.arg("--out").arg(&invalid).output().unwrap(),
+            &invalid,
+        );
+    }
+    let created = temp.path().join("editable.pdf");
+    let mut args = args.to_vec();
+    args.push("--editable");
+    step(&input, &created, "add-form-field", &args);
+    let info = json(cli().arg("form-fields").arg(&created).output().unwrap());
+    assert_eq!(info["fields"][0]["editable"], true);
+    assert_eq!(info["fields"][0]["widgets"][0]["page"], 3);
+    let filled = temp.path().join("filled.pdf");
+    step(
+        &created,
+        &filled,
+        "fill-form",
+        &["--set", "Country=Suisse romande – été"],
+    );
+    assert_eq!(values(&filled)["Country"], "Suisse romande – été");
+    for format in ["json", "xfdf"] {
+        let export = temp.path().join(format!("values.{format}"));
+        step(&filled, &export, "form-export", &[]);
+        let imported = temp.path().join(format!("imported-{format}.pdf"));
+        json(
+            cli()
+                .arg("fill-form")
+                .arg(&created)
+                .arg("--values")
+                .arg(&export)
+                .arg("--out")
+                .arg(&imported)
+                .output()
+                .unwrap(),
+        );
+        assert_eq!(values(&imported), values(&filled));
+    }
+    let listed = temp.path().join("listed.pdf");
+    step(
+        &filled,
+        &listed,
+        "fill-form",
+        &["--set", "Country=Belgique"],
+    );
+    assert_eq!(values(&listed)["Country"], "BE");
+    assert_eq!(std::fs::read(input).unwrap(), original);
+}
+
+#[test]
 fn compression_reduces_images_and_preserves_text_links_fields_security_and_original() {
     let temp = tempfile::tempdir().unwrap();
     let image = temp.path().join("scan.jpg");

@@ -212,9 +212,14 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      et export FDF non pris en charge. XML DTD/instructions de traitement/éléments inconnus/doublons/taille/profondeur
      excessives refusés ; chemins de document référencés jamais ouverts. Import limité à 16 Mio.
      La 0.11.0 livre le texte libre des combos déjà modifiables dans le panneau/sur la page ; contrôles locaux, CI et paquets réussis.
-     Limites conservées : pas de dessin de champ souris ni de création du drapeau combo modifiable ; état du widget
-     comme valeur radio, pas de correspondance /Opt historique arbitraire ; texte enrichi remplacé par texte simple ;
-     champs mot de passe jamais stockés/exportés. Aplatissement partiel : champs orphelins possibles ; annotations sans
+     En développement pour 0.12.0 : création de listes modifiables (choix prédéfinis requis) et exports radio `/Opt`
+     distincts des états d'apparence. Correspondances malformées/dupliquées : champ concerné en lecture seule ;
+     même règle si `/Kids` brut malformé, références de widget dupliquées ou noms d'apparence non UTF-8. Les valeurs
+     en lecture seule se réimportent inchangées, y compris `Off` littéral ou chaîne vide. Remplir un autre champ
+     préserve `/V` et `/AS` bruts ; PDFium peut régénérer une apparence manquante et retirer la lecture seule déduite
+     une fois le champ valide. Sans `/Opt`, noms d'état conservés. Validation/publication en attente. Modification du drapeau d'un champ existant
+     et dessin souris indisponibles. Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
+     Aplatissement partiel : champs orphelins possibles ; annotations sans
      apparence autres que Link parfois perdues. Apparences Unicode susceptibles d’utiliser une police système non
      embarquée, donc rendu variable ailleurs. Narrateur et lecteurs tiers non vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 

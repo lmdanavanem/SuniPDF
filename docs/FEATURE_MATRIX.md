@@ -116,7 +116,9 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 | Create fields | Not documented | **Done**: numeric text/checkbox creation in Prepare a form; radio/combo/list creation delivered in 0.10.0; unique names, rotated/cropped/encrypted pages, undo; core/CLI tests; CLI `add-form-field` |
 | FDF/XFDF import/export | Declared | **Done in 0.10.0**: JSON/XFDF export, strict bounded JSON/XFDF/FDF value import and grouped panel Apply/Discard with one undo; value-only FDF subset, no scripts/attachments/rich text |
 | Form-read failure recovery | Not documented | **Delivered in 0.11.0**: explicit error/retry preserves drafts and pending actions; local tests passed |
-| Existing editable drop-down free text | Not documented | **Implemented for 0.11.0, published; local, CI, package and upgrade gates passed**: panel/on-page custom text plus listed choices, Apply/Discard/Save and undo; creating an editable flag is outside this slice |
+| Existing editable drop-down free text | Not documented | **Delivered in 0.11.0**: panel/on-page custom text plus listed choices, Apply/Discard/Save and undo; local, CI, package and upgrade gates passed |
+| Create editable drop-downs | Not documented | **In development for 0.12.0**: desktop checkbox and CLI `add-form-field --kind combo --editable`; nonempty predefined choices still required; validation/publication pending |
+| Radio `/Opt` export values | Not documented | **In development for 0.12.0**: separate export values from raw widget states across filling/JSON/XFDF/FDF; additive CLI `widgets[].export_value`; malformed/duplicate mappings keep that field read-only; no-`/Opt` behaviour unchanged; validation/publication pending |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
 

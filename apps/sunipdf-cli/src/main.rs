@@ -43,6 +43,9 @@ enum Command {
         /// Allow several selected choices (list fields only).
         #[arg(long)]
         multi_select: bool,
+        /// Allow custom text in addition to listed choices (combo fields only).
+        #[arg(long)]
+        editable: bool,
         /// Displayed page coordinates: left,bottom,right,top (PDF points).
         #[arg(long, allow_hyphen_values = true)]
         rect: String,
@@ -874,6 +877,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             name,
             options,
             multi_select,
+            editable,
             rect,
             page,
             out,
@@ -901,13 +905,14 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     })
                 })
                 .collect::<Result<Vec<_>, EngineError>>()?;
-            doc.add_form_field_with_options(
+            doc.add_form_field_with_flags(
                 index,
                 &name,
                 field_kind,
                 rect,
                 &options,
                 multi_select,
+                editable,
             )?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({"out":out,"page":page,"name":name,"kind":kind}))

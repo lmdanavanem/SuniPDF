@@ -5,6 +5,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [Unreleased] - planned 0.12.0
+
+Implementation is in development; validation and publication are pending in `docs/PROJECT_STATUS.md`.
+
+### Added
+- Create editable drop-downs in Prepare a form with **Allow custom text in addition to the listed options**, or
+  `add-form-field --kind combo --editable`. A nonempty set of predefined choices is still required.
+
+### Fixed
+- Use radio-button `/Opt` export values for filling, clearing and JSON/XFDF/FDF interchange, while keeping each
+  widget's appearance state separate. CLI field information adds `widgets[].export_value`; `on_state` stays unchanged.
+- Keep the affected radio field read-only if its export mapping is malformed or ambiguous, including duplicate
+  export values. Radio fields without `/Opt` retain their existing state-name values.
+
 ## [0.11.0] - 2026-10-16
 
 Release validation and publication evidence are recorded in `docs/PROJECT_STATUS.md`.

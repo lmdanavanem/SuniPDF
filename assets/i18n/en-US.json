@@ -31,6 +31,7 @@
   "form_builder.options_hint": "One option per line: export value | display label. Export values must be unique.",
   "form_builder.radio_hint": "The rectangle contains the whole group. Buttons are arranged from top to bottom; their labels appear in the fields panel.",
   "form_builder.multi_select": "Allow multiple selections",
+  "form_builder.editable": "Allow custom text in addition to the listed options",
   "pagesetup.crop.drag": "Drag across the preview to keep an area. Cropping hides content; use Redact to remove it.",
   "bar.group_angle": "Rotate group",
   "bar.group_angle_hint": "Clockwise rotation around the selection’s common center; Shift snaps the handle to 15°.",

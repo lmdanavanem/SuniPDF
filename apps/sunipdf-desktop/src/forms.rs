@@ -516,8 +516,20 @@ impl SuniApp {
                     FieldKind::Radio => egui::WidgetInfo::selected(
                         widget_type,
                         fillable,
-                        w.on_state.as_ref().is_some_and(|on| chosen(f).contains(on)),
-                        format!("{}: {}", label, w.on_state.as_deref().unwrap_or("")),
+                        w.export_value
+                            .as_ref()
+                            .or(w.on_state.as_ref())
+                            .is_some_and(|value| chosen(f).contains(value)),
+                        format!(
+                            "{}: {}",
+                            label,
+                            f.label_of(
+                                w.export_value
+                                    .as_deref()
+                                    .or(w.on_state.as_deref())
+                                    .unwrap_or("")
+                            )
+                        ),
                     ),
                     _ => egui::WidgetInfo::labeled(widget_type, fillable, label.clone()),
                 });
@@ -586,7 +598,9 @@ impl SuniApp {
                 self.commit_form(name, FieldValue::Bool(on));
             }
             FieldKind::Radio => {
-                let Some(on) = w.on_state.clone() else { return };
+                let Some(on) = w.export_value.clone().or_else(|| w.on_state.clone()) else {
+                    return;
+                };
                 let already = chosen(&f).first() == Some(&on);
                 let value = if !already {
                     FieldValue::Choice(vec![on])
@@ -1731,6 +1745,7 @@ mod tests {
                     rect: r,
                     display: r,
                     on_state: None,
+                    export_value: None,
                 })
                 .collect(),
         }
@@ -1915,6 +1930,47 @@ mod tests {
             app.forms.staged.is_empty(),
             "only confirmed values remove pending changes"
         );
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn page_radio_uses_export_values_and_preserves_toggle_rules() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let mut radio = field(
+            "Language",
+            FieldKind::Radio,
+            vec![(0, rect(40.0, 50.0, 60.0, 70.0))],
+        );
+        radio.value = FieldValue::Choice(Vec::new());
+        radio.options = vec![sunipdf_core::FieldOption {
+            value: "EN".into(),
+            label: "English".into(),
+        }];
+        radio.widgets[0].on_state = Some("0".into());
+        radio.widgets[0].export_value = Some("EN".into());
+        app.forms.info = Some(FormInfo {
+            kind: FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![radio],
+        });
+        for values in [vec!["EN".into()], Vec::new()] {
+            app.forms_activate(0, 0, 0);
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::Edit(EditOp::FillForm { values: actual })
+                    if actual == vec![("Language".into(), FieldValue::Choice(values))]
+            ));
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.worker.finish_mutation();
+            assert!(requests.try_recv().is_err());
+        }
+        let radio = &mut app.forms.info.as_mut().unwrap().fields[0];
+        radio.value = FieldValue::Choice(vec!["EN".into()]);
+        radio.no_toggle_off = true;
+        app.forms_activate(0, 0, 0);
         assert!(requests.try_recv().is_err());
     }
 

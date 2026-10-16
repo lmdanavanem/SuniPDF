@@ -1,11 +1,33 @@
-# Project status - updated 2026-10-16 (version 0.11.0)
+# Project status - updated 2026-10-16 (version 0.12.0)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.11.0: navigation, forms and protected copies (published as Latest)
+## 0.12.0: form creation and radio export compatibility (local gates passed)
+
+Create editable drop-downs through Prepare a form or `add-form-field --kind combo --editable`, with predefined
+choices and custom text. Existing creation APIs keep their default choice-only behaviour. Radio `/Opt` export
+strings remain distinct from widget appearance names and are used consistently in the app, JSON/XFDF and FDF
+import. Invisible widgets keep their original indices. CLI information adds `widgets[].export_value`.
+
+Malformed or ambiguous mappings, duplicate widget references and non-UTF-8 appearance names make only the
+affected radio field read-only. Exact unchanged exports, including reserved or empty strings, remain safe to
+import. Tests check raw `/V`, `/AS` and appearance keys after unrelated edits. PDFium can regenerate missing
+appearances; no-`/Opt` radios keep their existing behaviour. Changing existing editable flags remains future work.
+
+Final local gates passed: **398 workspace tests, zero failed, seven default ignored**, formatting, Clippy with
+warnings denied, **859 matching EN/FR keys**, **48 independent qpdf checks** and all **four licensed NIST/NBS
+documents (744 pages)** in 59.68 seconds. Tests include headless EN/FR authoring, real worker creation/filling with
+Undo/Redo, CLI save/reopen, cropped/rotated protected pages, owner-opened AES-128/256 and malformed mapping refusal.
+Portable and MSI upgrade gates now include the independently verified 0.11.0 public package baseline.
+
+Windows CI, ARM64 compilation, release packages, actual portable/MSI upgrades and publication remain pending.
+The currently published Latest release is 0.11.0. Native interactive dialogs, ARM64 hardware, physical printing,
+Narrator and third-party readers are not covered by these local gates; packages remain unsigned.
+
+## 0.11.0: navigation, forms and protected copies (published as Latest at that time)
 
 [SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) is stable **Latest** under `lmdanavanem`,
 release ID `414626617`, with six assets. Immutable tag/source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.

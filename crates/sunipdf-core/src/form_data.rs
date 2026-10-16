@@ -60,6 +60,7 @@ pub fn info_to_json(info: &FormInfo) -> Value {
                 "page": w.page + 1,
                 "rect": [w.rect.left, w.rect.bottom, w.rect.right, w.rect.top],
                 "on_state": w.on_state,
+                "export_value": w.export_value,
             })).collect::<Vec<_>>(),
         })).collect::<Vec<_>>(),
     })
@@ -101,6 +102,9 @@ fn json_strings(v: &Value) -> Result<Vec<String>, String> {
 
 /// Valeur JSON → valeur typée selon le champ (`null` = vide ; nombres acceptés comme texte).
 fn json_to_value(f: &FormField, v: &Value) -> Result<FieldValue, String> {
+    if f.read_only && value_to_json(f) == *v {
+        return Ok(f.value.clone());
+    }
     Ok(match f.kind {
         FieldKind::Text => FieldValue::Text(match v {
             Value::Null => String::new(),

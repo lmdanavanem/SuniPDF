@@ -31,6 +31,7 @@
   "form_builder.options_hint": "Une option par ligne : valeur exportée | libellé affiché. Les valeurs doivent être uniques.",
   "form_builder.radio_hint": "Le rectangle contient tout le groupe. Les boutons sont disposés de haut en bas ; leurs libellés figurent dans le panneau des champs.",
   "form_builder.multi_select": "Autoriser plusieurs choix",
+  "form_builder.editable": "Autoriser du texte libre en plus des options proposées",
   "pagesetup.crop.drag": "Glissez sur l’aperçu pour garder une zone. Le recadrage masque le contenu ; utilisez Caviarder pour le supprimer.",
   "bar.group_angle": "Pivoter le groupe",
   "bar.group_angle_hint": "Rotation horaire autour du centre commun de la sélection ; Maj aligne la poignée sur 15°.",

@@ -6,6 +6,8 @@ no document ever leaves your computer.
 This guide covers [SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0), published as Latest
 under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
 
+Sections marked **0.12.0 development** describe the next unpublished version; their validation is pending.
+
 ## Installation
 
 - **Portable**: unzip `SuniPDF-<version>-win-x64-portable.zip` anywhere and run `sunipdf.exe`. Nothing is
@@ -198,7 +200,7 @@ visible page.
   "(none)" clears a list that is not required).
 - **Existing editable drop-down (0.11.0)**: choose **Enter a value…** in the on-page choice popup to type custom text,
   then confirm like a text field. The fields panel also accepts custom text alongside the listed choices, with the
-  same Apply/Discard/Save controls. Ordinary drop-downs remain choice-only; field creation does not offer the editable flag.
+  same Apply/Discard/Save controls. Ordinary drop-downs remain choice-only.
 - The value is drawn by the PDF engine itself (regenerated appearance): what you see is what other readers will
   show, and what Ctrl+S saves.
 
@@ -222,6 +224,11 @@ document is filled like any other and stays protected. Ctrl+S confirms the entry
 **0.11.0:** a failed form read shows an error and a **Retry** button in the fields panel.
 Your pending text and panel changes remain available; a read failure is not treated as an empty form.
 Retry reads the current fields again before applying a waiting import or clear operation. Nothing is retried in a loop.
+
+**0.12.0 development:** radio fields with `/Opt` expose and accept their export values in the panel and
+JSON/XFDF/FDF, even when the PDF widget's checked-state name differs. CLI `form-fields` retains `on_state` and adds
+`widgets[].export_value`. A malformed or ambiguous mapping makes that field read-only; other fields remain fillable.
+Radio fields without `/Opt` keep their existing state-name values.
 
 ## Signing and initialing
 
@@ -374,6 +381,11 @@ Use a unique name without dots/control characters and a displayed-page rectangle
 at least 4 points wide/high. For choices, enter one `export value | display label` per line; export values must be
 unique. List boxes can allow multiple selections. A radio group's rectangle contains vertically arranged buttons;
 labels appear in the fields panel and are not inserted as PDF page text. Creation is undoable and keeps encryption.
+
+**0.12.0 development:** for a drop-down, enable **Allow custom text in addition to the listed options** to accept
+both predefined choices and typed values. Keep at least one predefined choice with a unique, nonempty export value.
+This setting applies only to new drop-downs; changing the flag on an existing field is not offered.
+
 Drawing fields with the mouse and XFA creation are unsupported. FDF import accepts normal xref text/name/array values;
 streams, actions, attachments and rich text are refused. Referenced document locations are never opened.
 
@@ -465,6 +477,9 @@ sunipdf-cli fill-form choices.pdf --values values.xfdf --out filled.pdf
 
 `rotate-objects` and `resize-objects` apply a group transformation; use `--help` for the actual coordinate/scale options.
 `compress-images` always requires a new copy, including with `--overwrite`.
+
+For the **0.12.0 development** CLI, add `--editable` to `add-form-field --kind combo` to allow custom text;
+other field kinds reject this flag. Predefined choices are still required.
 
 ## Current limits
 

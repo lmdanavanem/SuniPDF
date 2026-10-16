@@ -79,10 +79,19 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   `/FitH` zero/null and other fit modes retain page-only navigation; PDFium cannot distinguish FitH null from zero.
 - Preserve form drafts and pending actions when reading fields fails, show the failure and require an explicit retry.
 - Fill existing editable drop-down fields with custom text in the panel and on the page; preserve named choices,
-  Apply/Discard, Save and undo. Creating the editable flag on a new field is outside this slice.
+  Apply/Discard, Save and undo. Creating the editable flag was outside the 0.11.0 slice.
 - Preserve original encryption, passwords and permissions when extracting/splitting protected PDFs; refuse an output
   that resolves to the source path. CLI keeps `encryption_removed: false` and adds `encrypted`; the existing
   document-permission policy is unchanged. Local, CI, package and upgrade regression gates passed; evidence is in `PROJECT_STATUS.md`.
+
+## 0.12.0: form authoring and radio export values (in development)
+
+- Create editable drop-downs through the desktop checkbox or CLI `add-form-field --kind combo --editable`;
+  retain required predefined choices, unique names, existing geometry/protection checks and undo.
+- Map radio `/Opt` export values independently of widget appearance states, including JSON/XFDF/FDF interchange.
+  Add `widgets[].export_value` to CLI information without changing `on_state`; fields with malformed or duplicate
+  export mappings stay read-only. Radios without `/Opt` retain state-name values.
+- Validation and publication are pending; executed results belong in `PROJECT_STATUS.md` (D100–D101).
 
 ## Remaining work beyond this lot
 
@@ -136,10 +145,9 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 - JSON/XFDF/FDF interchange and grouped panel Apply are implemented for 0.10.0; validation is tracked in `PROJECT_STATUS.md`.
-- Editable drop-down free text is implemented for 0.11.0, published; local, CI, package and upgrade gates passed; `/Opt` export values of radio buttons remain;
-  keyboard activation
-  (Space / Enter) of the page's field rectangles is implemented in 0.10.0; Windows Narrator check (`labelled_by` names
-  set, not listened to);
+- Editable drop-down filling shipped in 0.11.0; new editable fields and radio `/Opt` mapping are in the 0.12.0
+  development lot above. Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
+  (`labelled_by` names set, not listened to).
 - flattening: also keep the annotations without an appearance other than links (attachments without
   `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;
 

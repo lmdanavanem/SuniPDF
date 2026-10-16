@@ -6,6 +6,8 @@ compte, aucune télémétrie, aucun document envoyé sur Internet.
 Ce guide couvre [SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
 
+Les passages **Développement 0.12.0** décrivent la prochaine version non publiée ; leur validation est en attente.
+
 ## Installation
 
 - **Portable** : décompressez le fichier `SuniPDF-<version>-win-x64-portable.zip` où vous voulez et lancez
@@ -214,7 +216,7 @@ bouton). Les champs restent interactifs en défilement continu, sur toutes les p
   choix multiple ; « (aucun) » vide une liste non obligatoire).
 - **Liste déroulante déjà modifiable (0.11.0)** : choisissez **Saisir une valeur…** dans la liste sur la page, puis
   confirmez comme un champ texte. Le panneau accepte aussi du texte libre à côté des choix, avec Appliquer/Abandonner/
-  Enregistrer. Une liste ordinaire reste limitée aux choix ; la création de champs ne propose pas le drapeau modifiable.
+  Enregistrer. Une liste ordinaire reste limitée aux choix.
 - La valeur est dessinée par le moteur PDF lui-même (apparence régénérée) : ce que vous voyez est ce que les
   autres lecteurs afficheront, et ce qui est enregistré avec Ctrl+S.
 
@@ -241,6 +243,11 @@ en cours.
 dans le panneau des champs. Vos textes et modifications en attente restent disponibles ; l'échec n'est pas traité
 comme un formulaire vide. Réessayer relit les champs courants avant un import ou un effacement en attente.
 Aucune nouvelle tentative ne tourne en boucle.
+
+**Développement 0.12.0 :** les champs radio avec `/Opt` utilisent leurs valeurs d'export dans le panneau et les
+échanges JSON/XFDF/FDF, même si le nom d'état coché du widget PDF diffère. `form-fields` CLI conserve `on_state` et
+ajoute `widgets[].export_value`. Une correspondance malformée ou ambiguë place ce champ en lecture seule ; les
+autres restent remplissables. Sans `/Opt`, les radios gardent leurs valeurs fondées sur les noms d'état.
 
 ## Signer et parapher
 
@@ -404,6 +411,11 @@ Nom unique sans point/contrôle ; rectangle en points PDF affichés, dans la pag
 Pour les choix, une ligne `valeur exportée | libellé affiché` par option, valeurs uniques. La zone de liste peut autoriser
 plusieurs sélections. Le rectangle radio contient les boutons verticaux ; libellés dans le panneau, pas comme texte ajouté
 à la page PDF. Création annulable, chiffrement conservé. Dessin de champs à la souris et création XFA non pris en charge.
+
+**Développement 0.12.0 :** pour une liste déroulante, cochez **Autoriser du texte libre en plus des options proposées**
+pour accepter les choix et des valeurs saisies. Gardez au moins un choix prédéfini avec une valeur d'export unique
+et non vide. Ce réglage concerne les nouvelles listes ; changer le drapeau d'un champ existant n'est pas proposé.
+
 FDF accepte les valeurs texte/nom/tableau et tables xref ordinaires ; flux/actions/pièces jointes/texte enrichi refusés.
 Les chemins de documents référencés ne sont jamais ouverts.
 
@@ -495,6 +507,9 @@ sunipdf-cli fill-form choix.pdf --values valeurs.xfdf --out rempli.pdf
 
 `rotate-objects` et `resize-objects` transforment un groupe ; `--help` décrit les options effectives.
 `compress-images` exige toujours une nouvelle copie, même avec `--overwrite`.
+
+Dans la CLI **en développement 0.12.0**, ajoutez `--editable` à `add-form-field --kind combo` pour accepter le
+texte libre ; les autres types refusent ce drapeau. Des choix prédéfinis restent requis.
 
 ## Limites actuelles
 

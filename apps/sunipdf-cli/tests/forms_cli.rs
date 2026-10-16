@@ -4,6 +4,9 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+#[path = "../../../crates/sunipdf-core/tests/fixtures/radio_exports.rs"]
+mod radio_exports;
+
 fn cli() -> Command {
     Command::new(env!("CARGO_BIN_EXE_sunipdf-cli"))
 }
@@ -37,6 +40,82 @@ fn value_of<'a>(info: &'a serde_json::Value, name: &str) -> &'a serde_json::Valu
         .find(|f| f["name"] == name)
         .unwrap_or_else(|| panic!("champ {name}"));
     &f["value"]
+}
+
+#[test]
+fn radio_export_values_roundtrip_through_real_cli_and_protected_files() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("radio.pdf");
+    let original = radio_exports::source(true);
+    std::fs::write(&source, &original).unwrap();
+    let info = fields(&source);
+    let radio = info["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["name"] == radio_exports::FIELD_NAME)
+        .unwrap();
+    assert_eq!(radio["value"], radio_exports::EXPORTS[1]);
+    assert_eq!(radio["widgets"][0]["on_state"], "virement");
+    assert_eq!(
+        radio["widgets"][0]["export_value"],
+        radio_exports::EXPORTS[1]
+    );
+    for encryption in ["plain", "aes128", "aes256"] {
+        let input = if encryption == "plain" {
+            source.clone()
+        } else {
+            let protected = temp.path().join(format!("{encryption}.pdf"));
+            let mut protect = cli();
+            protect
+                .arg("protect")
+                .arg(&source)
+                .args([
+                    "--user-password",
+                    "user",
+                    "--owner-password",
+                    "owner",
+                    "--out",
+                ])
+                .arg(&protected);
+            if encryption == "aes128" {
+                protect.arg("--aes128");
+            }
+            stdout_json(&protect.output().unwrap());
+            protected
+        };
+        let filled = temp.path().join(format!("filled-{encryption}.pdf"));
+        let selection = format!(
+            "{}={}",
+            radio_exports::FIELD_NAME,
+            radio_exports::EXPORTS[0]
+        );
+        let mut fill = cli();
+        fill.arg("fill-form")
+            .arg(&input)
+            .args(["--set", &selection, "--out"])
+            .arg(&filled);
+        if encryption != "plain" {
+            fill.args(["--password", "owner"]);
+        }
+        stdout_json(&fill.output().unwrap());
+        for password in if encryption == "plain" {
+            vec![None]
+        } else {
+            vec![Some("user"), Some("owner")]
+        } {
+            let mut read = cli();
+            read.arg("form-fields").arg(&filled).arg("--values-only");
+            if let Some(password) = password {
+                read.args(["--password", password]);
+            }
+            assert_eq!(
+                stdout_json(&read.output().unwrap())[radio_exports::FIELD_NAME],
+                radio_exports::EXPORTS[0]
+            );
+        }
+    }
+    assert_eq!(std::fs::read(source).unwrap(), original);
 }
 
 #[test]

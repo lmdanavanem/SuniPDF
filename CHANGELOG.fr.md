@@ -5,6 +5,20 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [Non publiée] — 0.12.0 prévue
+
+Implémentation en développement ; validation et publication en attente dans `docs/PROJECT_STATUS.fr.md`.
+
+### Ajouts
+- Créer une liste déroulante modifiable dans Préparer un formulaire en cochant **Autoriser du texte libre en plus
+  des options proposées**, ou avec `add-form-field --kind combo --editable`. Des choix prédéfinis non vides restent requis.
+
+### Corrections
+- Utiliser les valeurs d'export `/Opt` des radios pour remplir, effacer et échanger JSON/XFDF/FDF, séparément des
+  états d'apparence. Les informations CLI ajoutent `widgets[].export_value` ; `on_state` reste inchangé.
+- Garder le champ radio concerné en lecture seule si sa correspondance d'export est malformée ou ambiguë, notamment
+  en présence de valeurs dupliquées. Sans `/Opt`, les radios conservent leurs valeurs fondées sur les noms d'état.
+
 ## [0.11.0] — 2026-10-16
 
 Validation et preuves de publication figurent dans `docs/PROJECT_STATUS.fr.md`.

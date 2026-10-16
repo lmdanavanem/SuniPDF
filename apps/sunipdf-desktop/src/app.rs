@@ -4181,6 +4181,7 @@ pub(crate) mod tests {
                 rect,
                 display: rect,
                 on_state: None,
+                export_value: None,
             });
         app.forms.editing = Some(crate::forms::InPlace {
             page: 0,
