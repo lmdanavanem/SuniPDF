@@ -15,6 +15,45 @@ fn fixture(name: &str) -> PathBuf {
         .join(name)
 }
 
+fn write_rgb_seed(path: &Path) {
+    use lopdf::{dictionary, Document, Stream};
+    let mut pdf = Document::with_version("1.7");
+    let pages = pdf.new_object_id();
+    let mut pixels = Vec::with_capacity(512 * 512 * 3);
+    for y in 0..512 {
+        for x in 0..512 {
+            pixels.extend([
+                ((x * 37 + y * 23) % 256) as u8,
+                ((x * 17 + y * 53) % 256) as u8,
+                ((x * 11 + y * 41) % 256) as u8,
+            ]);
+        }
+    }
+    // PDFium's PNG importer adds an SMask; this seed explicitly exercises unmasked RGB.
+    let image = pdf.add_object(Stream::new(
+        dictionary! {
+            "Type"=>"XObject", "Subtype"=>"Image", "Width"=>512, "Height"=>512,
+            "BitsPerComponent"=>8, "ColorSpace"=>"DeviceRGB"
+        },
+        pixels,
+    ));
+    let content = pdf.add_object(Stream::new(
+        dictionary! {},
+        b"q 400 0 0 400 0 0 cm /I Do Q".to_vec(),
+    ));
+    let page = pdf.add_object(dictionary! {
+        "Type"=>"Page", "Parent"=>pages, "MediaBox"=>vec![0.into(),0.into(),400.into(),400.into()],
+        "Resources"=>dictionary! {"XObject"=>dictionary! {"I"=>image}}, "Contents"=>content
+    });
+    pdf.objects.insert(
+        pages,
+        dictionary! {"Type"=>"Pages", "Kids"=>vec![page.into()], "Count"=>1}.into(),
+    );
+    let catalog = pdf.add_object(dictionary! {"Type"=>"Catalog", "Pages"=>pages});
+    pdf.trailer.set("Root", catalog);
+    pdf.save(path).unwrap();
+}
+
 fn bounded(mut command: Command, input: Option<&[u8]>) -> Output {
     let mut child = command
         .stdin(if input.is_some() {
@@ -154,6 +193,75 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     command.arg("--out").arg(&flat);
     success(command);
     check(&qpdf, &flat, None);
+
+    let mut choices = filled.clone();
+    for (kind, name, rect, multi_select) in [
+        ("radio", "Contact", "40,100,220,180", false),
+        ("combo", "Country", "40,220,220,250", false),
+        ("list", "Languages", "40,290,220,370", true),
+    ] {
+        let output = temp.path().join(format!("created-{kind}.pdf"));
+        let mut command = cli(&["add-form-field"], &[&choices]);
+        command.args([
+            "--kind",
+            kind,
+            "--name",
+            name,
+            "--rect",
+            rect,
+            "--option",
+            "one=First choice",
+            "--option",
+            "two=Second choice",
+        ]);
+        if multi_select {
+            command.arg("--multi-select");
+        }
+        command.arg("--out").arg(&output);
+        success(command);
+        check(&qpdf, &output, None);
+        choices = output;
+    }
+    let choices_filled = temp.path().join("choices-filled.pdf");
+    let mut command = cli(&["fill-form"], &[&choices]);
+    command
+        .args([
+            "--set",
+            "Contact=two",
+            "--set",
+            "Country=one",
+            "--set",
+            "Languages=one;two",
+            "--out",
+        ])
+        .arg(&choices_filled);
+    success(command);
+    check(&qpdf, &choices_filled, None);
+    let values = success(cli(&["form-fields", "--values-only"], &[&choices_filled]));
+    assert_eq!(values["Contact"], "two");
+    assert_eq!(values["Country"], "one");
+    assert_eq!(values["Languages"], serde_json::json!(["one", "two"]));
+    let choices_flat = temp.path().join("choices-flattened.pdf");
+    let mut command = cli(&["flatten"], &[&choices_filled]);
+    command.arg("--out").arg(&choices_flat);
+    success(command);
+    check(&qpdf, &choices_flat, None);
+    assert_eq!(success(cli(&["form-fields"], &[&choices_flat]))["count"], 0);
+
+    let group_rotated = temp.path().join("group-rotated.pdf");
+    let mut command = cli(&["rotate-objects"], &[&original]);
+    command
+        .args(["--objects", "0,1", "--degrees", "90", "--out"])
+        .arg(&group_rotated);
+    success(command);
+    check(&qpdf, &group_rotated, None);
+    let group_resized = temp.path().join("group-resized.pdf");
+    let mut command = cli(&["resize-objects"], &[&group_rotated]);
+    command
+        .args(["--objects", "0,1", "--rect", "100,100,400,300", "--out"])
+        .arg(&group_resized);
+    success(command);
+    check(&qpdf, &group_resized, None);
     let redacted = temp.path().join("redacted.pdf");
     let mut command = cli(&["redact"], &[&fixture("redact.pdf")]);
     command
@@ -189,6 +297,20 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     command.args(["--dpi", "144", "--out"]).arg(&scan);
     success(command);
     check(&qpdf, &scan, None);
+    let compression_seed = temp.path().join("compression-seed.pdf");
+    write_rgb_seed(&compression_seed);
+    check(&qpdf, &compression_seed, None);
+    let seed_bytes = std::fs::read(&compression_seed).unwrap();
+    let compressed = temp.path().join("compressed.pdf");
+    let mut command = cli(&["compress-images"], &[&compression_seed]);
+    command
+        .args(["--max-image-side", "128", "--jpeg-quality", "50", "--out"])
+        .arg(&compressed);
+    let report = success(command);
+    assert!(report["images_changed"].as_u64().unwrap() >= 1);
+    assert!(report["after"].as_u64().unwrap() < report["before"].as_u64().unwrap());
+    check(&qpdf, &compressed, None);
+    assert_eq!(std::fs::read(&compression_seed).unwrap(), seed_bytes);
     let ocr = temp.path().join("ocr.pdf");
     let mut command = cli(&["ocr"], &[&scan]);
     command.args(["--language", "eng+fra", "--out"]).arg(&ocr);

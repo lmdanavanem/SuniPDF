@@ -1,5 +1,8 @@
 # Real Windows Installer regression on a disposable, elevated Windows runner.
-param([Parameter(Mandatory)] [string]$MsiPath)
+param(
+    [Parameter(Mandatory)] [string]$MsiPath,
+    [ValidateSet('0.8.0', '0.9.1')] [string]$BaselineVersion = '0.8.0'
+)
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'MSI regression is restricted to disposable GitHub Actions runners.' }
 $root = Split-Path -Parent $PSScriptRoot
@@ -15,12 +18,18 @@ function Get-SuniProducts {
 if (@(Get-SuniProducts).Count) { throw 'An existing SuniPDF installation must not be touched by this test.' }
 $menu = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'SuniPDF'
 if (Test-Path -LiteralPath $menu) { throw 'An existing SuniPDF Start Menu folder must not be touched.' }
-$work = Join-Path $root ('target\msi-upgrade-' + [guid]::NewGuid().ToString('N'))
+$work = Join-Path $root ('target\msi-upgrade-' + $BaselineVersion + '-' + [guid]::NewGuid().ToString('N'))
 $target = Join-Path $work 'application'
 New-Item -ItemType Directory -Path $work | Out-Null
-$old = Join-Path $work 'SuniPDF-0.8.0-win-x64.msi'
-& curl.exe --location --fail --silent --show-error --output $old 'https://github.com/lmdanavanem/SuniPDF/releases/download/v0.8.0/SuniPDF-0.8.0-win-x64.msi'
-if ($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath $old).Hash -ne '3535AF575441F05DB2A718D069FA2007379915C9CED8229CB86E453A3804E9A4') { throw 'Previous release download/hash failed.' }
+$baselines = @{
+    '0.8.0' = @{ hash='3535AF575441F05DB2A718D069FA2007379915C9CED8229CB86E453A3804E9A4'; language='1036'; productCode='{89AB70C1-3F41-4981-93EE-F828176C4FA3}' }
+    '0.9.1' = @{ hash='90F686D7ACEF7251F97D026F2340316D108CA06CC8A687F63D926FF3EAFD3AE5'; language='1033'; productCode='{3E48052E-E69B-4AD2-9761-41EEFEC9A859}' }
+}
+$baseline = $baselines[$BaselineVersion]
+$oldName = "SuniPDF-$BaselineVersion-win-x64.msi"
+$old = Join-Path $work $oldName
+& curl.exe --location --fail --silent --show-error --output $old "https://github.com/lmdanavanem/SuniPDF/releases/download/v$BaselineVersion/$oldName"
+if ($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath $old).Hash -ne $baseline.hash) { throw 'Previous release download/hash failed.' }
 $installer = New-Object -ComObject WindowsInstaller.Installer
 function Read-Property([string]$Path, [string]$Name) {
     $database = $installer.OpenDatabase($Path, 0)
@@ -39,11 +48,15 @@ function Read-Property([string]$Path, [string]$Name) {
 $oldCode = Read-Property $old 'ProductCode'
 $newCode = Read-Property $msi 'ProductCode'
 $version = Read-Property $msi 'ProductVersion'
+$oldVersion = Read-Property $old 'ProductVersion'
 $oldLanguage = Read-Property $old 'ProductLanguage'
 $newLanguage = Read-Property $msi 'ProductLanguage'
-Write-Host "MSI metadata: old=$oldCode ($oldLanguage), new=$newCode ($newLanguage), version=$version"
+Write-Host "MSI metadata: old=$oldCode ($oldVersion, $oldLanguage), new=$newCode ($version, $newLanguage)"
 if ($oldCode -eq $newCode -or $version -notmatch '^\d+\.\d+\.\d+$') { throw 'Upgrade requires distinct products and a valid version.' }
-if ($oldLanguage -ne '1036' -or $newLanguage -ne '1033') { throw 'Expected a French-to-English MSI upgrade.' }
+if ($oldCode -ne $baseline.productCode) { throw 'The baseline MSI ProductCode does not match the published metadata.' }
+if ($oldVersion -ne $BaselineVersion -or [version]$version -le [version]$BaselineVersion) { throw 'The MSI versions do not match the selected baseline and a newer upgrade.' }
+if ($oldLanguage -ne $baseline.language -or $newLanguage -ne '1033') { throw 'The baseline/current MSI languages do not match the published metadata.' }
+if ((Read-Property $old 'UpgradeCode') -ne (Read-Property $msi 'UpgradeCode')) { throw 'The baseline/current MSI UpgradeCode differs.' }
 $sourceHash = (Get-FileHash -LiteralPath $msi).Hash
 function Invoke-Msi([string]$Package, [string]$Label, [switch]$Remove, [switch]$ExpectFailure) {
     $operation = if ($Remove) { '/x' } else { '/i' }
@@ -67,12 +80,17 @@ $sentinel = Join-Path $profile ('upgrade-regression-' + [guid]::NewGuid().ToStri
 [IO.File]::WriteAllText($sentinel, '{"unsaved_document":"must survive upgrade and uninstall"}')
 $sentinelHash = (Get-FileHash -LiteralPath $sentinel).Hash
 $document = Join-Path $target 'user-document.pdf'
+$payloadNames = @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'licenses\tesseract.exe', 'licenses\eng.traineddata', 'licenses\fra.traineddata')
 try {
-    Invoke-Msi $old 'install-0.8.0'
-    Assert-Version '0.8.0' $oldCode
+    Invoke-Msi $old "install-$BaselineVersion"
+    Assert-Version $BaselineVersion $oldCode
     Copy-Item -LiteralPath (Join-Path $root 'crates\sunipdf-core\tests\fixtures\two-pages.pdf') -Destination $document
     $documentHash = (Get-FileHash -LiteralPath $document).Hash
-    $oldExeHash = (Get-FileHash -LiteralPath (Join-Path $target 'sunipdf.exe')).Hash
+    $baselineFiles = @{}
+    foreach ($name in $payloadNames) {
+        $file = Join-Path $target $name
+        $baselineFiles[$name] = if (Test-Path -LiteralPath $file) { (Get-FileHash -LiteralPath $file).Hash } else { $null }
+    }
     # Fail after files are copied, inside the actual major-upgrade transaction.
     $broken = Join-Path $work 'intentional-rollback.msi'
     Copy-Item -LiteralPath $msi -Destination $broken
@@ -97,16 +115,18 @@ try {
     Invoke-Msi $broken 'failed-upgrade-rollback' -ExpectFailure
     $rollbackLog = [IO.File]::ReadAllText((Join-Path $work 'failed-upgrade-rollback.log'))
     if ($rollbackLog -notmatch '(?s)Action ended[^\r\n]*: InstallExecute\. Return value 1\..*Action ended[^\r\n]*: SuniPDFRegressionFailure\. Return value 3\.') { throw 'The injected failure did not occur after the installation script executed.' }
-    Assert-Version '0.8.0' $oldCode
-    if ((Get-FileHash -LiteralPath (Join-Path $target 'sunipdf.exe')).Hash -ne $oldExeHash) { throw 'Rollback did not restore the old executable.' }
-    if ((Get-FileHash -LiteralPath $sentinel).Hash -ne $sentinelHash -or (Get-FileHash -LiteralPath $document).Hash -ne $documentHash) { throw 'Rollback modified user data.' }
-    foreach ($name in @('tesseract.exe', 'eng.traineddata', 'fra.traineddata')) {
-        if (Test-Path -LiteralPath (Join-Path $target "licenses\$name")) { throw "Rollback left a new OCR file: $name" }
+    Assert-Version $BaselineVersion $oldCode
+    foreach ($name in $payloadNames) {
+        $file = Join-Path $target $name
+        if ($baselineFiles[$name]) {
+            if (-not (Test-Path -LiteralPath $file) -or (Get-FileHash -LiteralPath $file).Hash -ne $baselineFiles[$name]) { throw "Rollback did not restore the baseline payload: $name" }
+        } elseif (Test-Path -LiteralPath $file) { throw "Rollback left a newly installed payload: $name" }
     }
+    if ((Get-FileHash -LiteralPath $sentinel).Hash -ne $sentinelHash -or (Get-FileHash -LiteralPath $document).Hash -ne $documentHash) { throw 'Rollback modified user data.' }
     Invoke-Msi $msi 'upgrade-current'
     Assert-Version $version $newCode
     $portable = Join-Path $root "dist\SuniPDF-$version-win-x64-portable"
-    foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'licenses\tesseract.exe', 'licenses\eng.traineddata', 'licenses\fra.traineddata')) {
+    foreach ($name in $payloadNames) {
         if ((Get-FileHash -LiteralPath (Join-Path $target $name)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $portable $name)).Hash) { throw "Installed payload differs: $name" }
     }
     Invoke-Msi $old 'downgrade-rejected' -ExpectFailure
@@ -116,7 +136,7 @@ try {
     if (@(Get-SuniProducts).Count -or (Test-Path -LiteralPath (Join-Path $target 'sunipdf.exe'))) { throw 'Uninstall left an installed product.' }
     if ((Get-FileHash -LiteralPath $sentinel).Hash -ne $sentinelHash -or (Get-FileHash -LiteralPath $document).Hash -ne $documentHash) { throw 'Uninstall modified user data.' }
     if ((Get-FileHash -LiteralPath $msi).Hash -ne $sourceHash) { throw 'Regression modified the release MSI.' }
-    Write-Host "OK: real MSI install, transactional rollback, French-to-English upgrade, downgrade rejection, payload hashes, user-data preservation and uninstall ($version)."
+    Write-Host "OK: real MSI install, transactional rollback, $BaselineVersion-to-$version upgrade ($oldLanguage-to-$newLanguage), downgrade rejection, payload hashes, user-data preservation and uninstall."
 } finally {
     foreach ($product in @(Get-SuniProducts)) {
         if ($product.PSChildName -in @($oldCode, $newCode)) { Invoke-Msi $product.PSChildName 'cleanup' -Remove }

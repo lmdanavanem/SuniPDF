@@ -54,8 +54,7 @@ A6. **Édition du contenu : la modification d'un texte existant réutilise sa po
     (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
     Contournement : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
 A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
-    du système. Restent : **rotation et redimensionnement d'un groupe** de plusieurs objets non proposés
-    (déplacement seulement) ; un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
+    du système. Rotation/redimensionnement groupés implémentés en 0.10.0 avec une annulation ; validation dans `PROJECT_STATUS.fr.md`. Restent : un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
     (le redimensionner le déformerait) ; pivot = centre de la boîte englobante, donc un tracé asymétrique peut
     dériver légèrement à chaque rotation successive.
 A8. **Réordonner (arrière-plan, reculer, avancer) fusionne les flux de contenu de la page** (lopdf) avant de
@@ -70,7 +69,7 @@ A18. **Polices système incorporées en entier** (pas de sous-ensemble) : chaque
      `reg.exe` (repli : dossier des polices) ; un nom non ASCII peut s'afficher mal (page de code OEM). Rendu
      vérifié par PDFium ; compatibilité visuelle des autres lecteurs non vérifiée. qpdf ne valide pas le rendu.
 A19. **Recadrer masque, n'efface pas** : le contenu hors cadre reste dans le fichier (ce n'est pas un
-     caviardage ; dit dans le dialogue). Recadrage à la souris non proposé (marges numériques avec aperçu).
+     caviardage ; dit dans le dialogue). Recadrage souris dans l’aperçu implémenté en 0.10.0 ; marges numériques conservées.
 A20. **Texte sur la page** : le champ de saisie affiche le texte avec la police de l'interface (Segoe UI ou
      monospace pour Courier), pas avec la police du PDF : largeur et retours à la ligne approximatifs pendant la
      saisie. Un texte existant pivoté s'édite dans une boîte de dialogue. Pas d'édition de paragraphes (une ligne
@@ -167,7 +166,7 @@ A25. **Vue continue : limites (SUNI-012b)**.
        la durée d'une tuile (mesurée : 1,2 ms par tuile 1024² sur `many-pages.pdf`, plus pour une page lourde).
      - Recollage des tuiles : les glyphes qui traversent un bord de tuile peuvent différer d'un pixel
        d'anticrénelage du rendu d'un seul tenant (121 pixels sur 1,9 million mesurés, D044).
-     - Double page et Livre utilisent les mêmes plafonds ; rotation de vue non proposée.
+     - Double page et Livre gardent les mêmes plafonds ; rotation de vue/plein écran/historique implémentés en 0.10.0. L’édition revient à une vue droite ; contrôles interactifs distincts.
 A26. **« Ajuster » en défilement continu sur un document de tailles mixtes** : le zoom est commun à toutes les
      pages et ajuste la **plus grande** page (D041) ; une page portrait parmi des pages paysage est donc plus
      étroite que l'écran. En page unique, l'ajustement suit la page courante. En double page/Livre, la plus large
@@ -201,27 +200,23 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
      page) ; bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
      (le contenu se resserre d'autant à l'image qui suit l'apparition de la barre).
-A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté et lu (champs AcroForm de secours),
-     jamais rempli ni aplati (`form_xfa`) ; **scripts** (`/CO`, `/AA`, `/A` JavaScript) jamais exécutés, signalés
-     par un bandeau, les champs calculés et les formats restent tels quels ; **création limitée aux champs texte et cases à cocher**
-     par boîte numérique (4 points minimum, nom unique sans point, pas de dessin à la souris) ; **pas de FDF/XFDF** (JSON seulement) ; **un niveau d'annulation
-     par valeur validée** (un formulaire de 40 champs = 40 niveaux ; plafonds 50 niveaux / 512 Mo du journal) ;
-     chaque validation = instantané complet + analyse lopdf + rechargement + rendu minuscule, acceptable sous
-     5 Mo, lent au-delà (mode « Appliquer » groupé en feuille de route) ; polices : un texte hors Latin-1 reçoit de
-     PDFium une police **système non incorporée** (Arial, SimSun…), rendu variable sur une autre machine ;
-     liste déroulante **modifiable** (`/Ff` Edit) : seuls les choix prévus sont proposés dans l'interface (texte
-     libre par la CLI `--set` seulement) ; valeurs d'export `/Opt` des boutons radio ignorées (l'état du
-     widget est la valeur) ; texte riche `/RV` remplacé par du texte simple ; cases à cocher à états multiples
-     simplifiées (un état actif par widget) ; aplatissement partiel : les champs de la page aplatie restent dans
-     le formulaire sans emplacement ; aplatissement : les **liens** (`/Link`) sont relevés avant et remis dans
-     `/Annots` après (PDFium les supprimerait sans les dessiner), les autres annotations sans apparence
-     (fenêtres `/Popup`, pièces jointes sans `/AP`…) disparaissent avec le contenu dessiné de leur parent ; un
-     lien qui porte un `/AP` est dessiné dans le contenu **et** conservé comme lien (même rendu) ; champ **mot de
-     passe** : listé, jamais rempli ni exporté ; les widgets ne sont cliquables sur la page qu'avec l'outil Remplir (le
-     panneau sert au clavier : Tab / Maj+Tab entre champs texte et listes depuis l'éditeur posé sur la page,
-     pas d'activation d'un widget de la page par Espace ou Entrée) ; **Narrateur Windows non testé** (noms
-     AccessKit posés : `a11y.forms.*`) ; la page reste une image pour un lecteur d'écran, seuls les rectangles
-     de champs et le panneau lui sont exposés.
+A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calculs et actions jamais exécutés.
+     La 0.10.0 implémente création texte/case/radio/listes, export XFDF et import strict borné JSON/XFDF/FDF de valeurs.
+     Chaque champ/valeur est validé avant mutation ; une entrée inconnue/invalide refuse tout l’import de l’interface.
+     Les modifications du panneau restent en attente jusqu’à Appliquer ou Enregistrer, une seule annulation/relecture ;
+     Abandonner revient aux valeurs courantes. La confirmation sur la page reste immédiate. Espace/Entrée activent
+     les widgets focalisés ; les listes reçoivent le focus clavier. Noms uniques sans point/contrôle et rectangles
+     numériques dans la page, dimensions minimales 4 points. Radios verticaux ; libellés dans le panneau, pas en texte PDF.
+     FDF limité aux tables xref ordinaires et valeurs texte/nom/tableau ; flux, actions, pièces jointes, texte enrichi
+     et export FDF non pris en charge. XML DTD/instructions de traitement/éléments inconnus/doublons/taille/profondeur
+     excessives refusés ; chemins de document référencés jamais ouverts. Import limité à 16 Mio.
+     Limites conservées : pas de dessin de champ souris ; texte libre des combos via CLI seulement ; état du widget
+     comme valeur radio, pas de correspondance /Opt historique arbitraire ; texte enrichi remplacé par texte simple ;
+     champs mot de passe jamais stockés/exportés. Aplatissement partiel : champs orphelins possibles ; annotations sans
+     apparence autres que Link parfois perdues. Apparences Unicode susceptibles d’utiliser une police système non
+     embarquée, donc rendu variable ailleurs. Narrateur et lecteurs tiers non vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
+
+
 A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **texte libre en Helvetica WinAnsi**
     seulement (accents latins, € et ponctuation courante ; tout autre caractère s'affiche « ? » dans l'apparence,
     `/Contents` garde le texte exact ; pas de gras, d'italique, de texte riche `/RC`, de CJK ni de droite à gauche) et
@@ -299,3 +294,14 @@ A44. **Signatures numériques** : CMS détaché `adbe.pkcs7.detached`/`ETSI.CAdE
      pas confiance de l’identité : chaîne, révocation, AATL/EUTL, PKCS#11, horodatage fiable et LTV non implémentés.
      L’heure du PDF est déclarative. Les modifications/réécritures peuvent invalider une signature. Interopérabilité
      Acrobat/Foxit et qualification PAdES non établies ; ne pas présenter le résultat comme signature qualifiée.
+
+A45. **Compression des images 0.10.0** : avec perte, images RGB/gris 8 bits prises en charge et limitées à 32 millions
+     de pixels. Graphes des masques, profils, Decode/DecodeParms particuliers et autres images conservés. Si le fichier
+     grossit, restitution exacte des octets source. Aucun poids cible garanti. PDF signés ou restreints refusés ; nouvelle copie.
+A46. **Lots 0.10.0** : compression ou OCR anglais/français séquentiels, 128 PDF et 256 Mio/entrée maximum. Aucun fichier
+     existant remplacé ; copies terminées conservées après erreur/annulation. Pas de demande de mot de passe par fichier ;
+     document qui en nécessite un refusé. Annulation aux points de contrôle ; codec/appel natif actif peut retarder l’arrêt.
+A47. **Sauvegardes/corpus 0.10.0** : erreurs de stockage injectées et arrêt forcé d’une écriture partielle contrôlent
+     la préservation de la source. Ce ne sont pas toutes les pannes physiques/coupures possibles. Quatre PDF NIST publics
+     complètent les fixtures synthétiques, sans prouver une couverture client/hostile/volumineuse universelle.
+     Validation en attente jusqu’aux résultats consignés dans `PROJECT_STATUS.fr.md`.

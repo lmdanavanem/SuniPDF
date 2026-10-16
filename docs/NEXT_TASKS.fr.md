@@ -39,20 +39,30 @@ correspondent aux paquets vérifiés et sont disponibles dans `dist/`.
 Les preuves actuelles des paquets et de publication sont dans `PROJECT_STATUS.fr.md`.
 Ces contrôles ne prouvent pas l'exécution ARM64, les imprimantes physiques, les lecteurs tiers ni l'UX interactive de mise à jour.
 
-## Backlog de développement restant
+## Version 0.10.0 : contrôles locaux P1/P2 réussis, release en attente
 
-1. **P1 — QA indépendante :** corpus réel volumineux/hostile, enregistrements interrompus/disque plein, mises à jour
-   MSI/portable interactives, matériel ARM64, imprimantes physiques, Narrateur et Acrobat/Foxit/Chrome.
-2. **P2 — Prochaine fonction recommandée : compression des images.** L'optimisation sans perte existe déjà. Ajouter
-   résolution/qualité JPEG réglables, taille mesurée avant/après, progression/annulation et Enregistrer sous. Conserver
-   l'original et vérifier texte, liens, champs, transparence et chiffrement après réouverture ; qpdf sans avertissement structurel.
-   Commencer par cette fonction seule avec les contrôles de corpus réel/enregistrement interrompu ci-dessus, sans date engagée.
-3. Rotation de vue seule, puis lecture plein écran et historique ; colonnes complexes non balisées et tactile ensuite.
-4. Créer des champs radio/listes, exporter XFDF puis importer XFDF/FDF, appliquer les valeurs en groupe et widgets clavier.
-5. Recadrage souris et rotation/redimensionnement groupés avant paragraphes, sous-ensembles de polices et CFF/OTF/TTC.
-6. Interface de lots pour compression/OCR/conversions stabilisées ; conversion Office locale avec fidélité mesurée ensuite.
-7. Confiance/révocation des certificats et horodatage fiable/LTV (non implémentés) ; signature du code/MSI si identité
-   fournie. Versions et dates futures demandent un périmètre défini séparément.
+Les six domaines demandés sont implémentés : erreurs de sauvegarde/corpus public, compression des images,
+rotation de vue/plein écran/historique, champs et échanges/groupes/clavier, recadrage souris/transformations groupées,
+lots séquentiels compression/OCR. Limites exactes et résultats exécutés sont dans `PROJECT_STATUS.fr.md`.
+Workspace local : 362 réussis, zéro échec, sept ignorés par défaut ; formatage, Clippy et 853 clés bilingues identiques
+réussis. qpdf valide explicitement 31 PDF synthétiques/générés ; quatre publications NIST/NBS licenciées (744 pages)
+réussissent texte/rendu/extraction/optimisation/compression/préservation source. Les avertissements d'origine sont figés ;
+les réécritures passent sans avertissement. Le writer partagé corrige stockage/bornes xref/offsets de révision périmés.
+CI GitHub, paquets, huit scénarios portables réels, deux bases MSI (0.8.0 et 0.9.1), vérification des téléchargements
+publics et publication restent en attente ; les résultats locaux ne prouvent pas une release publiée.
+
+## Travail restant au-delà de ce lot
+
+1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
+   Acrobat/Foxit/Chrome. Le matériel et les lecteurs réels sont nécessaires ; la CI scriptée ne les remplace pas.
+2. Élargir les quatre fixtures NIST à des PDF clients/hostiles/volumineux licenciés, scans et formulaires complexes ;
+   fuzzing et mesures de performance avec matériel identifié. Toute erreur/annulation doit préserver l’original.
+3. Sous-ensembles de polices/CFF/OTF/TTC, édition de paragraphes et objets collés éditables.
+4. Conversion Office locale et autres lots de conversion, avec fidélité mesurée.
+5. Confiance/révocation des certificats, horodatage fiable/LTV et signature du code/MSI si identité fournie.
+6. Labels de pages, colonnes complexes non balisées, tactile et intégrations facultatives.
+
+Aucune date/version future n’est engagée par cette liste.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
@@ -92,10 +102,9 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
-- export XFDF puis import XFDF/FDF (réutiliser le lecteur XML existant lorsque pertinent) ;
-- mode « Appliquer » groupé (plusieurs champs, un seul niveau d'annulation et un seul rechargement) ;
+- échanges JSON/XFDF/FDF et panneau Appliquer groupé implémentés en 0.10.0 ; validation dans `PROJECT_STATUS.fr.md` ;
 - texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
-  (Espace / Entrée) des rectangles de champs de la page ; vérification Narrateur Windows (noms `labelled_by`
+  (Espace / Entrée) implémentée en 0.10.0 ; vérification Narrateur Windows (noms `labelled_by`
   posés, non écoutés) ;
 - aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
   `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
@@ -125,7 +134,7 @@ Reste, non bloquant :
 Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
 `docs/plans/continuous-view.md`, D038–D045).
 Reste (voir `KNOWN_ISSUES.fr.md` A25–A28) :
-- rotation de la vue ;
+- rotation de vue/plein écran/historique implémentés en 0.10.0 ; validation dans `PROJECT_STATUS.fr.md` ;
 - défilement animé des « aller à » ; pincement tactile à vérifier sur un écran tactile ;
 - si une page lourde fige le défilement : `Document::render_regions` (une page chargée pour 3 à 4 tuiles
   voisines), à n'ajouter qu'après mesure ; plafonds mémoire réglables si un besoin apparaît.
@@ -144,8 +153,8 @@ Reste (voir `KNOWN_ISSUES.fr.md` A7, A8, A18–A22) :
 - sous-ensemble des polices incorporées (crate `subsetter` MIT/Apache + post-traitement lopdf, ADR à écrire) ;
   polices `.otf` (contours CFF) et collections `.ttc` ;
 - collage « natif » éditable (objets recréés un par un au lieu d'un XObject) ; opacité et couleur des groupes ;
-- rotation et redimensionnement d'un groupe de plusieurs objets ; pivot mémorisé pour les tracés asymétriques ;
-- recadrage à la souris ; glisser-déposer dans le panneau Objets ;
+- pivot mémorisé pour les tracés asymétriques (transformations groupées implémentées en 0.10.0) ;
+- glisser-déposer dans le panneau Objets (recadrage souris implémenté en 0.10.0) ;
 - lecture de l'opacité d'une image existante (contournement PDFium : lire l'ExtGState du flux avec lopdf).
 Acceptation : chaque opération couverte par un test moteur avec rendu vérifié.
 

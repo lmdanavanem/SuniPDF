@@ -37,6 +37,7 @@ impl SuniApp {
     }
 
     pub(crate) fn feature_dialogs(&mut self, ctx: &egui::Context) {
+        self.processing_dialog(ctx);
         let lang = self.lang();
         let dark = self.settings.dark_theme;
         let icons = self.has_icons;
@@ -61,6 +62,8 @@ impl SuniApp {
                 name: field.name,
                 kind: field.kind,
                 rect: field.rect,
+                options: field.options,
+                multi_select: field.multi_select,
             }));
             self.forms.panel_open = true;
         }
@@ -105,6 +108,7 @@ impl SuniApp {
             || self.printing.busy
             || self.ocr.busy
             || self.certificate.busy
+            || self.processing.busy
             || !self.recovery.due()
         {
             return;

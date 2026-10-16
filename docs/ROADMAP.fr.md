@@ -31,6 +31,20 @@ Contrôles du workspace (322 tests), qpdf indépendant (22 PDF/trois entrées ma
 sur runner réussis. Les six fichiers publics ont été téléchargés et correspondent aux contenus/empreintes vérifiés.
 L’UX interactive de mise à jour et le matériel réel restent des vérifications distinctes.
 
+## 0.10.0 : lot P1/P2 demandé, implémentation terminée et validation en attente
+
+| Domaine | Périmètre inclus |
+|---|---|
+| P1 sauvegardes/corpus | Remplacement atomique, régressions interruption/disque plein/échec, processus d’écriture partielle arrêté et quatre documents NIST publics figés |
+| P2 compression | Rééchantillonnage/JPEG, tailles avant/après, progression/annulation, nouvelles copies et conservation prudente des images non prises en charge |
+| P2 lecture | Rotation de vue, plein écran, historique borné par onglet et édition en vue droite |
+| P2 formulaires | Création radio/liste déroulante/zone de liste, export XFDF, import de valeurs JSON/XFDF/FDF borné, Appliquer/Abandonner groupés et widgets clavier |
+| P2 édition | Recadrage souris dans l’aperçu et rotation/redimensionnement groupés, une annulation |
+| P2 lots | Compression/OCR local séquentiels, entrées bornées, annulation, erreurs individuelles et aucun écrasement |
+
+Workspace complet, CI, paquets et publication restent à valider dans `PROJECT_STATUS.fr.md`. Matériel, dialogues
+natifs interactifs, Narrateur, lecteurs tiers et couverture client/hostile restent indépendants.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -42,7 +56,8 @@ Les jalons et décisions historiques restent dans `DECISIONS.fr.md` et `PROJECT_
 Livrés : onglets, caches de rendu/miniatures bornés, vues continue/double page/Livre, sélection logique entre pages,
 recherche, signets, fusion/division/extraction/rotation/réorganisation, enregistrement atomique, annulation/rétablissement et annotations.
 
-Restent : rotation de vue seule, historique de navigation, labels de pages, lecture plein écran et ordre voulu des
+Implémentés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
+Restent : labels de pages et ordre voulu des
 colonnes complexes non balisées. qpdf ne prouve pas la préservation de chaque lien, champ, calque ou pièce jointe.
 
 ## Phase 3 : édition professionnelle — partiellement livrée
@@ -51,8 +66,8 @@ Livrés : texte/images/formes, transformations d’objets, déplacement groupé 
 tampons/filigranes/numérotation, commentaires, métadonnées, signatures visuelles, remplissage/aplatissement AcroForm,
 création de champs texte/case et sauvegarde/récupération.
 
-Restent : sous-ensembles de polices et CFF/OTF/TTC ; paragraphes ; collage éditable ; rotation/redimensionnement groupés ;
-recadrage à la souris ; autres types de champs et FDF/XFDF ; activation clavier des widgets sur page.
+Implémentés en 0.10.0 : transformations groupées, recadrage souris, champs radio/listes, échanges FDF/XFDF de valeurs et clavier.
+Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
 ## Phase 4 : conversion et OCR — partiellement livrée
@@ -60,7 +75,7 @@ Critère : rendu, enregistrement et réouverture couverts pour chaque opération
 Livrés : images ↔ PDF, PDF → texte/PNG, optimisation sans perte, lots CLI et OCR anglais/français local embarqué.
 
 Restent : Office → PDF via convertisseur local détecté, PDF → Word/Excel/PowerPoint avec limites de fidélité mesurées
-et explicites, rééchantillonnage/compression avec perte, interface de lots et profils réutilisables.
+et explicites, profils réutilisables. Compression des images et lots compression/OCR implémentés en 0.10.0.
 
 ## Phase 5 : sécurité et productivité — partiellement livrée
 
@@ -77,24 +92,17 @@ La signature du code/MSI demande une identité appropriée fournie.
 Base livrée : releases x64 portable/MSI et ARM64 portable, SHA256, notification au démarrage avec installation explicite,
 guides FR/EN, notices tierces et workflows de compilation GitHub.
 
-Restent : corpus PDF réel/hostile/volumineux avec fixtures licenciées, enregistrements interrompus/disque plein, fuzzing,
+Implémentés en 0.10.0 : quatre documents NIST publics et scénarios d’enregistrement interrompu/disque plein/échec.
+Restent : corpus client/hostile/volumineux plus large, fuzzing,
 benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteurs tiers, parcours interactifs de mise à
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Ordre recommandé après 0.9.1
+## Suite après le lot 0.10.0
 
-| Priorité | Travail | Preuve de sortie |
-|---|---|---|
-| P1 | Corpus réel et scénarios de sécurité des données | Fixtures reproductibles, contrôles des sorties et aucune perte de l’original |
-| P1 | UX de mise à jour MSI/portable, Narrateur, imprimantes et lecteurs | Résultats consignés sur les vrais parcours Windows/lecteurs/matériels |
-| P1 | Exécution ARM64 et mesures de performance | Machine/pilotes et mesures reproductibles d’ouverture/rendu/mémoire |
-| P2, prochaine fonction | Rééchantillonnage/compression JPEG des images | Taille mesurée, annulation, source préservée, réouverture/rendu/qpdf et contrôles sémantiques |
-| P2 | Rotation de vue, plein écran et historique | Zoom/sélection/navigation corrects en vue continue et double page |
-| P2 | Polices, paragraphes/groupes et recadrage souris | Enregistrer/réouvrir/rendre sur pages normales, pivotées et recadrées |
-| P2 | Types de champs, XFDF/FDF et widgets clavier | Régressions d’échange, de clavier et d’accessibilité |
-| P2 | Comparaison, lots et conversion Office locale | Travaux bornés, annulation, fidélité et source préservée |
-| Plus tard | Services de confiance, horodatage/LTV, MCP et intégrations optionnelles | Modèle de confiance, périmètre et sécurité explicitement validés |
+1. Consigner tous les critères de release dans `PROJECT_STATUS.fr.md` avant publication.
+2. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
+3. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.
+4. Définir séparément polices/paragraphes, conversion Office locale et services de confiance.
 
-Prochain lot fonctionnel recommandé : compression des images avec corpus réel et enregistrements interrompus/disque plein.
-Aucune date ni version future n’est engagée par ce backlog. L’IA optionnelle reste désactivée par défaut.
+Aucune date/version suivante n’est engagée. L’IA facultative reste désactivée par défaut.

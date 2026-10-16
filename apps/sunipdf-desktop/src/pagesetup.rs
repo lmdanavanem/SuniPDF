@@ -32,9 +32,43 @@ pub fn pt_to_mm(pt: f32) -> f32 {
 
 /// Taille (mm) restante après recadrage, `None` si la zone est trop petite.
 pub fn crop_result_mm(page_mm: (f32, f32), f: &CropForm) -> Option<(f32, f32)> {
+    if [page_mm.0, page_mm.1, f.left, f.right, f.top, f.bottom]
+        .iter()
+        .any(|v| !v.is_finite() || *v < 0.0)
+    {
+        return None;
+    }
     let w = page_mm.0 - f.left - f.right;
     let h = page_mm.1 - f.top - f.bottom;
     (mm_to_pt(w) >= MIN_SIDE_PT && mm_to_pt(h) >= MIN_SIDE_PT).then_some((w, h))
+}
+
+fn crop_from_drag(
+    page_mm: (f32, f32),
+    preview: egui::Rect,
+    start: egui::Pos2,
+    end: egui::Pos2,
+) -> Option<CropForm> {
+    if !preview.is_positive()
+        || !preview.is_finite()
+        || !start.is_finite()
+        || !end.is_finite()
+        || !preview.contains(start)
+        || !page_mm.0.is_finite()
+        || !page_mm.1.is_finite()
+        || page_mm.0 <= 0.0
+        || page_mm.1 <= 0.0
+    {
+        return None;
+    }
+    let keep = egui::Rect::from_two_pos(start, end.clamp(preview.min, preview.max));
+    Some(CropForm {
+        left: (keep.left() - preview.left()) / preview.width() * page_mm.0,
+        right: (preview.right() - keep.right()) / preview.width() * page_mm.0,
+        top: (keep.top() - preview.top()) / preview.height() * page_mm.1,
+        bottom: (preview.bottom() - keep.bottom()) / preview.height() * page_mm.1,
+        all: false,
+    })
 }
 
 #[derive(Clone, Default)]
@@ -127,13 +161,22 @@ fn crop_preview(
     ui: &mut egui::Ui,
     texture: Option<egui::TextureId>,
     page_mm: (f32, f32),
-    f: &CropForm,
+    f: &mut CropForm,
 ) {
-    let max = egui::vec2(220.0, 190.0);
+    let max = egui::vec2(300.0, 330.0);
     let s = (max.x / page_mm.0).min(max.y / page_mm.1);
     let size = egui::vec2(page_mm.0 * s, page_mm.1 * s);
     ui.vertical_centered(|ui| {
-        let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+        let (rect, response) = ui.allocate_exact_size(size, egui::Sense::drag());
+        let response = response.on_hover_cursor(egui::CursorIcon::Crosshair);
+        if response.dragged() || response.drag_stopped() {
+            let origin = ui.input(|i| i.pointer.press_origin());
+            if let (Some(start), Some(end)) = (origin, response.interact_pointer_pos()) {
+                if let Some(crop) = crop_from_drag(page_mm, rect, start, end) {
+                    *f = CropForm { all: f.all, ..crop };
+                }
+            }
+        }
         let painter = ui.painter();
         painter.rect_filled(
             rect.translate(egui::vec2(2.0, 2.0)),
@@ -254,8 +297,9 @@ impl SuniApp {
                 let spec = dialog::Spec::new("crop", tr(lang, "pagesetup.crop.title"), dark, icons)
                     .subtitle(tr(lang, "pagesetup.crop.subtitle"))
                     .icon(glyph::CROP, "⌗")
-                    .width(480.0);
-                let result = crop_result_mm(page_mm, f);
+                    .width(560.0);
+                let valid = std::cell::Cell::new(crop_result_mm(page_mm, f).is_some());
+                let mut crop = f.clone();
                 dialog::show(
                     ctx,
                     spec,
@@ -263,18 +307,24 @@ impl SuniApp {
                         ui.horizontal_top(|ui| {
                             ui.vertical(|ui| {
                                 for (key, v, max) in [
-                                    ("pagesetup.crop.left", &mut f.left, page_mm.0),
-                                    ("pagesetup.crop.right", &mut f.right, page_mm.0),
-                                    ("pagesetup.crop.top", &mut f.top, page_mm.1),
-                                    ("pagesetup.crop.bottom", &mut f.bottom, page_mm.1),
+                                    ("pagesetup.crop.left", &mut crop.left, page_mm.0),
+                                    ("pagesetup.crop.right", &mut crop.right, page_mm.0),
+                                    ("pagesetup.crop.top", &mut crop.top, page_mm.1),
+                                    ("pagesetup.crop.bottom", &mut crop.bottom, page_mm.1),
                                 ] {
                                     dialog::field_label(ui, tr(lang, key));
                                     mm(ui, v, max);
                                 }
                             });
                             ui.add_space(12.0);
-                            crop_preview(ui, texture, page_mm, f);
+                            ui.vertical(|ui| {
+                                ui.set_max_width(300.0);
+                                ui.label(tr(lang, "pagesetup.crop.drag"));
+                                crop_preview(ui, texture, page_mm, &mut crop);
+                            });
                         });
+                        let result = crop_result_mm(page_mm, &crop);
+                        valid.set(result.is_some());
                         match result {
                             Some((w, h)) => ui.label(
                                 RichText::new(tr_args(
@@ -292,11 +342,11 @@ impl SuniApp {
                                 ui.colored_label(error, tr(lang, "pagesetup.crop.too_small"))
                             }
                         };
-                        scope(ui, &mut f.all);
+                        scope(ui, &mut crop.all);
                     },
                     |ui| {
                         let (enter, esc) = enter_esc(ui);
-                        if result.is_some()
+                        if valid.get()
                             && (dialog::primary(ui, tr(lang, "pagesetup.crop.ok")) || enter)
                         {
                             submit = true;
@@ -309,6 +359,7 @@ impl SuniApp {
                         }
                     },
                 );
+                *f = crop;
             }
             PageDialog::Resize(f) => {
                 let spec = dialog::Spec::new(
@@ -558,5 +609,60 @@ mod tests {
             None,
             "moins de 18 pt"
         );
+    }
+
+    #[test]
+    fn mouse_crop_maps_displayed_preview_and_clamps_without_losing_reverse_drags() {
+        let preview = egui::Rect::from_min_size(egui::pos2(20.0, 30.0), egui::vec2(210.0, 297.0));
+        let f = crop_from_drag(
+            (210.0, 297.0),
+            preview,
+            egui::pos2(210.0, 300.0),
+            egui::pos2(30.0, 50.0),
+        )
+        .unwrap();
+        assert!((f.left - 10.0).abs() < 0.001);
+        assert!((f.top - 20.0).abs() < 0.001);
+        assert!((f.right - 20.0).abs() < 0.001);
+        assert!((f.bottom - 27.0).abs() < 0.001);
+        assert_eq!(crop_result_mm((210.0, 297.0), &f), Some((180.0, 250.0)));
+        let f = crop_from_drag(
+            (297.0, 210.0),
+            preview,
+            preview.min,
+            preview.max + egui::vec2(20.0, 30.0),
+        )
+        .unwrap();
+        assert_eq!(crop_result_mm((297.0, 210.0), &f), Some((297.0, 210.0)));
+        let tiny = crop_from_drag(
+            (210.0, 297.0),
+            preview,
+            preview.min,
+            preview.min + egui::vec2(1.0, 1.0),
+        )
+        .unwrap();
+        assert!(crop_result_mm((210.0, 297.0), &tiny).is_none());
+        assert!(crop_from_drag(
+            (210.0, 297.0),
+            preview,
+            egui::pos2(f32::NAN, 50.0),
+            preview.max
+        )
+        .is_none());
+        assert!(crop_from_drag(
+            (210.0, 297.0),
+            preview,
+            preview.min - egui::vec2(1.0, 0.0),
+            preview.max
+        )
+        .is_none());
+        assert!(crop_result_mm(
+            (210.0, 297.0),
+            &CropForm {
+                left: f32::NAN,
+                ..CropForm::default()
+            }
+        )
+        .is_none());
     }
 }

@@ -141,6 +141,24 @@ fn not_found(index: usize) -> EngineError {
     EngineError::Other(format!("object {index} not found"))
 }
 
+/// Conjugate an affine display-space transform into the PDF page's user space.
+fn user_transform(geo: &PageGeometry, m: [f32; 6]) -> [f32; 6] {
+    let linear = |x: f32, y: f32| geo.vec_to_user(m[0] * x + m[2] * y, m[1] * x + m[3] * y);
+    let (x, y) = geo.vec_to_display(1.0, 0.0);
+    let (a, b) = linear(x, y);
+    let (x, y) = geo.vec_to_display(0.0, 1.0);
+    let (c, d) = linear(x, y);
+    let (x, y) = geo.to_display(0.0, 0.0);
+    let (e, f) = geo.to_user(m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]);
+    [a, b, c, d, e, f]
+}
+
+fn finite_bounds(b: PointRect) -> bool {
+    [b.left, b.bottom, b.right, b.top]
+        .iter()
+        .all(|v| v.is_finite())
+}
+
 /// Cadre orienté d'un objet, espace d'affichage.
 pub(crate) fn display_quad(object: &PdfPageObject<'_>, geo: &PageGeometry) -> [(f32, f32); 4] {
     match object.bounds() {
@@ -594,34 +612,103 @@ impl Document<'_> {
         index: usize,
         bounds: PointRect,
     ) -> Result<(), EngineError> {
-        let geo = self.page_geometry(page_index)?;
-        let info = self.object_info(page_index, index)?;
-        let current = geo.rect_to_user(info.bounds);
-        let target = geo.rect_to_user(bounds);
-        let (old_w, old_h) = (current.right - current.left, current.top - current.bottom);
-        let (new_w, new_h) = (target.right - target.left, target.top - target.bottom);
-        if !(old_w > 0.0 && old_h > 0.0 && new_w > 0.0 && new_h > 0.0) {
+        if !finite_bounds(bounds) || bounds.right <= bounds.left || bounds.top <= bounds.bottom {
             return Err(EngineError::Other("invalid object size".into()));
         }
-        let (mut sx, mut sy) = (new_w / old_w, new_h / old_h);
+        let info = self.object_info(page_index, index)?;
+        let mut bounds = bounds;
         if tilted(info.angle_deg) {
-            sx = sx.min(sy);
-            sy = sx;
+            let w = info.bounds.right - info.bounds.left;
+            let h = info.bounds.top - info.bounds.bottom;
+            let s = ((bounds.right - bounds.left) / w).min((bounds.top - bounds.bottom) / h);
+            bounds.right = bounds.left + s * w;
+            bounds.top = bounds.bottom + s * h;
+        }
+        self.resize_objects(page_index, &[index], bounds)
+    }
+
+    /// Resize the selection's common display bounding box, preserving relative placement.
+    pub fn resize_objects(
+        &mut self,
+        page_index: usize,
+        indices: &[usize],
+        bounds: PointRect,
+    ) -> Result<(), EngineError> {
+        if !finite_bounds(bounds) || bounds.right <= bounds.left || bounds.top <= bounds.bottom {
+            return Err(EngineError::Other("invalid object size".into()));
+        }
+        let (geo, indices, current) = self.transform_selection(page_index, indices)?;
+        if current.right <= current.left || current.top <= current.bottom {
+            return Err(EngineError::Other("invalid object size".into()));
+        }
+        let sx = (bounds.right - bounds.left) / (current.right - current.left);
+        let sy = (bounds.top - bounds.bottom) / (current.top - current.bottom);
+        let m = user_transform(
+            &geo,
+            [
+                sx,
+                0.0,
+                0.0,
+                sy,
+                bounds.left - sx * current.left,
+                bounds.bottom - sy * current.bottom,
+            ],
+        );
+        self.apply_object_transform(page_index, &indices, m)
+    }
+
+    fn transform_selection(
+        &self,
+        page_index: usize,
+        indices: &[usize],
+    ) -> Result<(PageGeometry, Vec<usize>, PointRect), EngineError> {
+        let page = self.page_handle(page_index)?;
+        let geo = geometry_of(&page)?;
+        let indices = checked_indices(indices, page.objects().len())?;
+        let mut bounds = PointRect {
+            left: f32::MAX,
+            bottom: f32::MAX,
+            right: f32::MIN,
+            top: f32::MIN,
+        };
+        for &index in &indices {
+            let object = page.objects().get(index as PdfPageObjectIndex)?;
+            object.bounds()?;
+            let b = quad_bounds(&display_quad(&object, &geo));
+            if !finite_bounds(b) {
+                return Err(EngineError::Other("invalid object bounds".into()));
+            }
+            bounds.left = bounds.left.min(b.left);
+            bounds.bottom = bounds.bottom.min(b.bottom);
+            bounds.right = bounds.right.max(b.right);
+            bounds.top = bounds.top.max(b.top);
+        }
+        Ok((geo, indices, bounds))
+    }
+
+    fn apply_object_transform(
+        &mut self,
+        page_index: usize,
+        indices: &[usize],
+        m: [f32; 6],
+    ) -> Result<(), EngineError> {
+        let determinant = m[0] * m[3] - m[1] * m[2];
+        if m.iter().any(|v| !v.is_finite()) || !determinant.is_finite() || determinant == 0.0 {
+            return Err(EngineError::Other("invalid object transform".into()));
         }
         let mut page = self.page_handle(page_index)?;
-        let mut object = page
-            .objects()
-            .get(index as PdfPageObjectIndex)
-            .map_err(|_| not_found(index))?;
-        object.translate(
-            PdfPoints::new(-current.left),
-            PdfPoints::new(-current.bottom),
-        )?;
-        object.scale(sx, sy)?;
-        object.translate(PdfPoints::new(target.left), PdfPoints::new(target.bottom))?;
-        drop(object);
-        page.regenerate_content()?;
-        Ok(())
+        let strategy = page.content_regeneration_strategy();
+        page.set_content_regeneration_strategy(PdfPageContentRegenerationStrategy::Manual);
+        let result = (|| {
+            for &index in indices {
+                let mut object = page.objects().get(index as PdfPageObjectIndex)?;
+                object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
+            }
+            page.regenerate_content()?;
+            Ok(())
+        })();
+        page.set_content_regeneration_strategy(strategy);
+        result
     }
 
     /// Change couleurs, épaisseur et opacité d'un objet (texte : couleur de remplissage).
@@ -702,32 +789,40 @@ impl Document<'_> {
     }
 
     /// Fait pivoter un objet autour du centre de ses limites (degrés, sens horaire à l'écran).
-    // ponytail: pivot = centre de la boîte englobante ; un tracé asymétrique peut dériver d'un
-    // petit écart à chaque rotation successive. Pivot mémorisé côté UI si cela gêne.
     pub fn rotate_object(
         &mut self,
         page_index: usize,
         index: usize,
         degrees: f32,
     ) -> Result<(), EngineError> {
+        self.rotate_objects(page_index, &[index], degrees)
+    }
+
+    /// Rotate a selection around one common display-space center (clockwise degrees).
+    pub fn rotate_objects(
+        &mut self,
+        page_index: usize,
+        indices: &[usize],
+        degrees: f32,
+    ) -> Result<(), EngineError> {
         if !degrees.is_finite() {
             return Err(EngineError::Other("invalid angle".into()));
         }
-        let geo = self.page_geometry(page_index)?;
-        let b = self.object_info(page_index, index)?.bounds;
-        // Une rotation horaire à l'écran est une rotation horaire en espace utilisateur.
-        let (cx, cy) = geo.to_user((b.left + b.right) / 2.0, (b.bottom + b.top) / 2.0);
-        let mut page = self.page_handle(page_index)?;
-        let mut object = page
-            .objects()
-            .get(index as PdfPageObjectIndex)
-            .map_err(|_| not_found(index))?;
-        object.translate(PdfPoints::new(-cx), PdfPoints::new(-cy))?;
-        object.rotate_clockwise_degrees(degrees)?;
-        object.translate(PdfPoints::new(cx), PdfPoints::new(cy))?;
-        drop(object);
-        page.regenerate_content()?;
-        Ok(())
+        let (geo, indices, b) = self.transform_selection(page_index, indices)?;
+        let (cx, cy) = ((b.left + b.right) / 2.0, (b.bottom + b.top) / 2.0);
+        let (sin, cos) = degrees.rem_euclid(360.0).to_radians().sin_cos();
+        let m = user_transform(
+            &geo,
+            [
+                cos,
+                -sin,
+                sin,
+                cos,
+                cx - cos * cx - sin * cy,
+                cy + sin * cx - cos * cy,
+            ],
+        );
+        self.apply_object_transform(page_index, &indices, m)
     }
 
     /// Duplique un objet (groupe décalé de 12 pt) ; renvoie l'index de la copie. L'original ne

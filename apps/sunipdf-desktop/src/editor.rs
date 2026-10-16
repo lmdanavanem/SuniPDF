@@ -117,6 +117,16 @@ impl Selection {
     pub fn union_bounds(&self) -> PointRect {
         union(self.objects.iter().map(|o| o.bounds))
     }
+
+    fn handle_info(&self) -> Option<ObjectInfo> {
+        let mut info = self.objects.first()?.clone();
+        if self.objects.len() > 1 {
+            info.kind = ObjectKind::Form;
+            info.bounds = self.union_bounds();
+            info.angle_deg = 0.0;
+        }
+        Some(info)
+    }
 }
 
 fn union(mut it: impl Iterator<Item = PointRect>) -> PointRect {
@@ -337,6 +347,13 @@ fn center(b: &PointRect) -> (f32, f32) {
     ((b.left + b.right) / 2.0, (b.bottom + b.top) / 2.0)
 }
 
+fn scale_point(from: PointRect, to: PointRect, p: (f32, f32)) -> (f32, f32) {
+    (
+        to.left + (p.0 - from.left) * (to.right - to.left) / (from.right - from.left),
+        to.bottom + (p.1 - from.bottom) * (to.top - to.bottom) / (from.top - from.bottom),
+    )
+}
+
 /// Angle horaire (degrés) du vecteur centre → point, mesuré depuis le haut (Y vers le haut).
 pub fn pointer_angle(c: (f32, f32), p: (f32, f32)) -> f32 {
     (p.0 - c.0).atan2(p.1 - c.1).to_degrees()
@@ -483,7 +500,7 @@ impl SuniApp {
     }
 
     fn corner_at(&self, page: usize, pt: (f32, f32)) -> Option<Corner> {
-        let info = self.selected_on(page).filter(|i| resizable(i))?;
+        let info = self.selection_on(page)?.handle_info().filter(resizable)?;
         let k = self.zoom_k();
         let (tol, off) = (HANDLE_PX / k, HANDLE_OFFSET_PX / k);
         Corner::ALL.into_iter().find(|c| {
@@ -494,10 +511,12 @@ impl SuniApp {
 
     fn on_rotate_handle(&self, page: usize, pt: (f32, f32)) -> bool {
         let k = self.zoom_k();
-        self.selected_on(page).is_some_and(|info| {
-            let h = rotate_handle(info, k);
-            ((h.0 - pt.0).powi(2) + (h.1 - pt.1).powi(2)).sqrt() <= HANDLE_PX / k
-        })
+        self.selection_on(page)
+            .and_then(Selection::handle_info)
+            .is_some_and(|info| {
+                let h = rotate_handle(&info, k);
+                ((h.0 - pt.0).powi(2) + (h.1 - pt.1).powi(2)).sqrt() <= HANDLE_PX / k
+            })
     }
 
     fn in_selection(&self, page: usize, pt: (f32, f32)) -> bool {
@@ -559,7 +578,7 @@ impl SuniApp {
         self.edit.drag_mode = if self.annotate.tool != Tool::SelectObject {
             None
         } else if self.on_rotate_handle(page, pt) {
-            let c = self.selected_on(page).map(|i| center(&i.bounds));
+            let c = self.selection_on(page).map(|s| center(&s.union_bounds()));
             c.map(|c| DragMode::Rotate { c })
         } else if let Some(c) = self.corner_at(page, pt) {
             Some(DragMode::Resize(c))
@@ -583,9 +602,11 @@ impl SuniApp {
 
     /// Pendant le glissement : angle affiché dans la barre d'état.
     pub fn edit_drag_moved(&mut self, drag: &Drag) {
-        if let (Some(DragMode::Rotate { c }), Some(info)) =
-            (self.edit.drag_mode, self.selected_on(drag.page))
-        {
+        if let (Some(DragMode::Rotate { c }), Some(info)) = (
+            self.edit.drag_mode,
+            self.selection_on(drag.page)
+                .and_then(Selection::handle_info),
+        ) {
             let angle = norm180(info.angle_deg + self.rotate_delta(c, info.angle_deg, drag));
             self.status_msg = Some(tr_args(
                 self.lang(),
@@ -606,7 +627,8 @@ impl SuniApp {
 
     /// Limites de l'objet sélectionné pendant un redimensionnement (aperçu).
     fn preview_bounds(&self, drag: &Drag) -> Option<PointRect> {
-        let info = self.selected_on(drag.page)?;
+        let selection = self.selection_on(drag.page)?;
+        let info = selection.handle_info()?;
         let (dx, dy) = (drag.current.0 - drag.start.0, drag.current.1 - drag.start.1);
         let mut b = info.bounds;
         let DragMode::Resize(c) = self.edit.drag_mode? else {
@@ -635,7 +657,8 @@ impl SuniApp {
             info.bounds.right - info.bounds.left,
             info.bounds.top - info.bounds.bottom,
         );
-        let lock = (info.kind == ObjectKind::Image) != self.edit.shift;
+        let lock =
+            (selection.objects.len() > 1 || info.kind == ObjectKind::Image) != self.edit.shift;
         if lock && w > 0.0 && h > 0.0 {
             let nh = (b.right - b.left).abs() * h / w;
             match c {
@@ -736,11 +759,11 @@ impl SuniApp {
                         }));
                     }
                     (Some(DragMode::Resize(_)), Some((page, indices))) if !tiny => {
-                        if let (Some(bounds), [index]) = (bounds, indices.as_slice()) {
-                            self.edit.reselect = Some((page, *index));
-                            self.worker.send(Request::Edit(EditOp::ResizeObject {
+                        if let Some(bounds) = bounds {
+                            self.edit.reselect_many = Some((page, Pick::Indices(indices.clone())));
+                            self.worker.send(Request::Edit(EditOp::ResizeObjects {
                                 page,
-                                index: *index,
+                                indices,
                                 bounds,
                             }));
                         }
@@ -749,11 +772,11 @@ impl SuniApp {
                         let base = self.selected_on(page).map_or(0.0, |i| i.angle_deg);
                         let delta = self.rotate_delta(c, base, &drag);
                         self.status_msg = None;
-                        if let ([index], true) = (indices.as_slice(), delta.abs() > 0.25) {
-                            self.edit.reselect = Some((page, *index));
-                            self.worker.send(Request::Edit(EditOp::RotateObject {
+                        if delta.abs() > 0.25 {
+                            self.edit.reselect_many = Some((page, Pick::Indices(indices.clone())));
+                            self.worker.send(Request::Edit(EditOp::RotateObjects {
                                 page,
-                                index: *index,
+                                indices,
                                 degrees: delta,
                             }));
                         }
@@ -919,7 +942,11 @@ impl SuniApp {
             self.edit.opacity_pct = (o * 100.0).round();
         }
         self.edit.opacity_dirty = false;
-        self.edit.angle_field = first.angle_deg.round();
+        self.edit.angle_field = if objects.len() == 1 {
+            first.angle_deg.round()
+        } else {
+            0.0
+        };
         self.edit.selection = Some(Selection { page, objects });
     }
 
@@ -940,16 +967,11 @@ impl SuniApp {
     }
 
     pub fn rotate_selected(&mut self, degrees: f32) {
-        if let Some((page, info)) = self
-            .edit
-            .selection
-            .as_ref()
-            .and_then(|s| s.single().map(|i| (s.page, i.index)))
-        {
-            self.edit.reselect = Some((page, info));
-            self.worker.send(Request::Edit(EditOp::RotateObject {
+        if let Some((page, indices)) = self.selection_ref() {
+            self.edit.reselect_many = Some((page, Pick::Indices(indices.clone())));
+            self.worker.send(Request::Edit(EditOp::RotateObjects {
                 page,
-                index: info,
+                indices,
                 degrees,
             }));
         }
@@ -1186,21 +1208,18 @@ impl SuniApp {
             _ => (0.0, 0.0),
         };
         let single = sel.single();
+        let base_angle = single.map_or(0.0, |o| o.angle_deg);
+        let selection_bounds = sel.union_bounds();
         let outline = Stroke::new(1.5, accent);
         for o in &sel.objects {
             let mut f = frame(o).map(|p| (p.0 + dx, p.1 + dy));
             if let (Some(DragMode::Rotate { c }), Some(d)) = (mode, drag) {
-                let delta = self.rotate_delta(c, o.angle_deg, &d);
+                let delta = self.rotate_delta(c, base_angle, &d);
                 f = f.map(|p| rotate_point(c, p, delta));
             }
             if let (Some(DragMode::Resize(_)), Some(d)) = (mode, drag) {
                 if let Some(b) = self.preview_bounds(&d) {
-                    f = [
-                        (b.left, b.bottom),
-                        (b.right, b.bottom),
-                        (b.right, b.top),
-                        (b.left, b.top),
-                    ];
+                    f = f.map(|p| scale_point(selection_bounds, b, p));
                 }
             }
             let screen: Vec<egui::Pos2> = f.iter().map(|p| pt(*p)).collect();
@@ -1224,23 +1243,29 @@ impl SuniApp {
         }
         if single.is_none() {
             // Groupe : cadre englobant en pointillés.
-            let mut u = sel.union_bounds();
+            let mut u = drag
+                .and_then(|d| self.preview_bounds(&d))
+                .unwrap_or(selection_bounds);
             u.left += dx;
             u.right += dx;
             u.bottom += dy;
             u.top += dy;
-            let r = to_screen(&u).expand(4.0);
-            let corners = [
-                r.left_top(),
-                r.right_top(),
-                r.right_bottom(),
-                r.left_bottom(),
-                r.left_top(),
+            let mut corners = [
+                (u.left, u.top),
+                (u.right, u.top),
+                (u.right, u.bottom),
+                (u.left, u.bottom),
+                (u.left, u.top),
             ];
+            if let (Some(DragMode::Rotate { c }), Some(d)) = (mode, drag) {
+                corners = corners.map(|p| rotate_point(c, p, self.rotate_delta(c, 0.0, &d)));
+            }
+            let corners = corners.map(pt);
             painter.extend(egui::Shape::dashed_line(&corners, outline, 6.0, 4.0));
-            return;
         }
-        let Some(info) = single else { return };
+        let Some(info) = sel.handle_info() else {
+            return;
+        };
         if matches!(mode, Some(DragMode::Move | DragMode::Rotate { .. })) {
             return;
         }
@@ -1257,7 +1282,7 @@ impl SuniApp {
         let bounds = drag
             .and_then(|d| self.preview_bounds(&d))
             .unwrap_or(info.bounds);
-        if resizable(info) {
+        if resizable(&info) {
             let off = HANDLE_OFFSET_PX / k;
             for c in Corner::ALL {
                 handle(pt(c.point(&bounds, off)));
@@ -1265,10 +1290,10 @@ impl SuniApp {
         }
         if mode.is_none() {
             // Poignée de rotation : tige depuis le haut du cadre, disque blanc cerclé.
-            let h = pt(rotate_handle(info, k));
-            let a = frame_angle(info).to_radians();
+            let h = pt(rotate_handle(&info, k));
+            let a = frame_angle(&info).to_radians();
             let c = center(&info.bounds);
-            let top = frame(info)
+            let top = frame(&info)
                 .iter()
                 .map(|p| (p.0 - c.0) * a.sin() + (p.1 - c.1) * a.cos())
                 .fold(0.0, f32::max);
@@ -1405,9 +1430,17 @@ impl SuniApp {
                             if o.changed() {
                                 self.edit.opacity_dirty = true;
                             }
-                            if let Some(info) = &single {
+                            if sel.is_some() {
+                                let base = single.as_ref().map_or(0.0, |i| i.angle_deg);
                                 ui.separator();
-                                ui.label(tr(lang, "bar.angle"));
+                                ui.label(tr(
+                                    lang,
+                                    if single.is_some() {
+                                        "bar.angle"
+                                    } else {
+                                        "bar.group_angle"
+                                    },
+                                ));
                                 let a = ui
                                     .add(
                                         egui::DragValue::new(&mut self.edit.angle_field)
@@ -1415,9 +1448,16 @@ impl SuniApp {
                                             .speed(1.0)
                                             .suffix("°"),
                                     )
-                                    .on_hover_text(tr(lang, "bar.angle_hint"));
+                                    .on_hover_text(tr(
+                                        lang,
+                                        if single.is_some() {
+                                            "bar.angle_hint"
+                                        } else {
+                                            "bar.group_angle_hint"
+                                        },
+                                    ));
                                 if (a.drag_stopped() || a.lost_focus())
-                                    && (self.edit.angle_field - info.angle_deg).abs() > 0.05
+                                    && (self.edit.angle_field - base).abs() > 0.05
                                 {
                                     angle_target = Some(self.edit.angle_field);
                                 }
@@ -1463,8 +1503,10 @@ impl SuniApp {
                         });
                     });
             });
-        if let (Some(target), Some(info)) = (angle_target, &single) {
-            self.rotate_selected(norm180(target - info.angle_deg));
+        if let Some(target) = angle_target {
+            self.rotate_selected(norm180(
+                target - single.as_ref().map_or(0.0, |i| i.angle_deg),
+            ));
         }
         if apply {
             if let Some(sel) = &self.edit.selection {
@@ -1720,6 +1762,89 @@ mod tests {
             (h.0 - 5.0).abs() < 1e-4 && h.1 > 10.0 + ROTATE_GAP_PX - 1.0,
             "{h:?}"
         );
+    }
+
+    #[test]
+    fn grouped_handles_use_one_box_and_resize_relative_positions() {
+        let mut left = info(0);
+        left.bounds = PointRect {
+            left: 20.0,
+            bottom: 50.0,
+            right: 40.0,
+            top: 70.0,
+        };
+        left.angle_deg = 30.0;
+        let mut right = info(1);
+        right.bounds = PointRect {
+            left: 80.0,
+            bottom: 60.0,
+            right: 120.0,
+            top: 90.0,
+        };
+        let selection = Selection {
+            page: 0,
+            objects: vec![left, right],
+        };
+        let group = selection.handle_info().unwrap();
+        assert_eq!(
+            group.bounds,
+            PointRect {
+                left: 20.0,
+                bottom: 50.0,
+                right: 120.0,
+                top: 90.0
+            }
+        );
+        assert_eq!(group.angle_deg, 0.0);
+        assert!(resizable(&group));
+        let target = PointRect {
+            left: 100.0,
+            bottom: 200.0,
+            right: 300.0,
+            top: 280.0,
+        };
+        assert_eq!(
+            scale_point(group.bounds, target, (30.0, 60.0)),
+            (120.0, 220.0)
+        );
+        let handle = rotate_handle(&group, 1.0);
+        assert_eq!(handle.0, 70.0);
+        assert!(handle.1 > 90.0);
+    }
+
+    #[test]
+    fn group_rotation_and_resize_submit_one_edit_and_reselect_the_whole_group() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.annotate.tool = Tool::SelectObject;
+        app.set_selection(0, vec![info(2), info(5)]);
+        app.rotate_selected(90.0);
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Edit(EditOp::RotateObjects { page: 0, indices, degrees: 90.0 }) if indices == [2, 5])
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        assert!(requests.try_recv().is_err());
+        assert_eq!(app.edit.reselect_many, Some((0, Pick::Indices(vec![2, 5]))));
+        let b = app.edit.selection.as_ref().unwrap().union_bounds();
+        let start = Corner::TopRight.point(&b, HANDLE_OFFSET_PX / app.zoom_k());
+        app.edit_drag_start(0, start);
+        assert_eq!(app.edit.drag_mode, Some(DragMode::Resize(Corner::TopRight)));
+        app.edit_drag_finished(Drag {
+            page: 0,
+            start,
+            current: (start.0 + 20.0, start.1 + 20.0),
+        });
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Edit(EditOp::ResizeObjects { page: 0, indices, bounds }) if indices == [2, 5] && bounds.right > b.right && bounds.top > b.top)
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        assert!(requests.try_recv().is_err());
+        assert_eq!(app.edit.reselect_many, Some((0, Pick::Indices(vec![2, 5]))));
     }
 
     #[test]

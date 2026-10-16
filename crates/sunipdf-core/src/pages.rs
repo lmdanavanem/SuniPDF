@@ -61,29 +61,26 @@ impl Rotation {
 
 /// Écrit `bytes` dans `path` sans jamais laisser un fichier partiel : `.tmp` voisin puis `rename`.
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    atomic_write_with(path, |file| {
+        use std::io::Write;
+        file.write_all(bytes)
+    })
+}
+
+fn atomic_write_with(
+    path: &Path,
+    write: impl FnOnce(&mut std::fs::File) -> std::io::Result<()>,
+) -> std::io::Result<()> {
     let dir = path.parent().filter(|d| !d.as_os_str().is_empty());
     if let Some(dir) = dir {
         std::fs::create_dir_all(dir)?;
     }
-    let mut tmp_name = path
-        .file_name()
-        .map(|n| n.to_os_string())
-        .unwrap_or_default();
-    tmp_name.push(format!(".{}.tmp", std::process::id()));
-    let tmp = path.with_file_name(tmp_name);
-    let write = || {
-        use std::io::Write;
-        let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(bytes)?;
-        // Données sur le disque avant le renommage : une coupure de courant ne laisse ni fichier
-        // vide ni fichier de zéros à la place de l'original.
-        f.sync_all()
-    };
-    let result = write().and_then(|_| std::fs::rename(&tmp, path));
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
-    }
-    result
+    let mut temporary = tempfile::NamedTempFile::new_in(dir.unwrap_or_else(|| Path::new(".")))?;
+    write(temporary.as_file_mut())?;
+    temporary.as_file().sync_all()?;
+    // Use the platform rename after closing the temporary handle, including an open PDF on Windows.
+    let temporary = temporary.into_temp_path();
+    std::fs::rename(&temporary, path)
 }
 
 /// Atomically publishes a new copy without replacing a file created in the meantime.
@@ -436,5 +433,89 @@ mod tests {
             "aucun .tmp résiduel"
         );
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn interrupted_full_disk_and_failed_publish_keep_the_original() {
+        use std::io::{ErrorKind, Write};
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("original.pdf");
+        std::fs::write(&path, b"original saved bytes").unwrap();
+        for kind in [
+            ErrorKind::StorageFull,
+            ErrorKind::Interrupted,
+            ErrorKind::PermissionDenied,
+        ] {
+            let error = atomic_write_with(&path, |file| {
+                file.write_all(b"partial new revision")?;
+                Err(std::io::Error::new(kind, "injected write failure"))
+            })
+            .unwrap_err();
+            assert_eq!(error.kind(), kind);
+            assert_eq!(std::fs::read(&path).unwrap(), b"original saved bytes");
+            assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        }
+        let blocked = dir.path().join("directory.pdf");
+        std::fs::create_dir(&blocked).unwrap();
+        assert!(write_atomic(&blocked, b"new").is_err());
+        assert!(blocked.is_dir());
+        assert_eq!(std::fs::read(&path).unwrap(), b"original saved bytes");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
+
+    #[test]
+    #[ignore = "Child process used by killed_save_process_preserves_original; requires its isolated test target."]
+    fn atomic_write_crash_child() {
+        use std::io::Write;
+        let path = PathBuf::from(
+            std::env::var_os("SUNIPDF_ATOMIC_TEST_TARGET").expect("isolated child target"),
+        );
+        atomic_write_with(&path, |file| {
+            file.write_all(&vec![42; 1024 * 1024])?;
+            file.sync_all()?;
+            std::fs::write(path.with_extension("ready"), b"partial write ready")?;
+            std::thread::sleep(std::time::Duration::from_secs(60));
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn killed_save_process_preserves_original() {
+        use std::process::{Command, Stdio};
+        use std::time::{Duration, Instant};
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("original.pdf");
+        std::fs::write(&path, b"original complete revision").unwrap();
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "pages::tests::atomic_write_crash_child",
+                "--ignored",
+            ])
+            .env("SUNIPDF_ATOMIC_TEST_TARGET", &path)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !path.with_extension("ready").exists() {
+            if child.try_wait().unwrap().is_some() {
+                panic!("save child exited before partial write");
+            }
+            if Instant::now() > deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!("save child timed out");
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        child.kill().unwrap();
+        child.wait().unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"original complete revision");
+        assert!(
+            std::fs::read_dir(directory.path()).unwrap().count() >= 2,
+            "temporary data never replaced the original"
+        );
     }
 }

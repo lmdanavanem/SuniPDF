@@ -7,6 +7,44 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.10.0] — 2026-10-16
+
+Validation et publication sont suivies dans `docs/PROJECT_STATUS.fr.md` ; le code présent ne prouve pas une release validée.
+Validation locale réussie : 362 tests workspace, Clippy/formatage, 31 PDF qpdf et quatre publications authentiques
+(744 pages). CI GitHub, mises à jour/installeurs empaquetés et publication restent en attente.
+
+### Ajouts
+- Compression réelle des images vers une nouvelle copie : dimension maximale, qualité JPEG, taille avant/après,
+  progression et annulation. Images RGB/gris 8 bits bornées ; masques, profils et décodages particuliers conservés.
+  Sans gain, copie exacte des octets source. PDF signés ou interdisant la modification refusés.
+- Lots séquentiels de compression et d’OCR local FR/EN : 128 PDF maximum, 256 Mio par entrée, résultats individuels,
+  annulation et copies atomiques sans écrasement. Les originaux restent intacts.
+- Rotation de vue par quarts de tour, lecture plein écran et historique de navigation de 256 positions par onglet.
+  L’édition revient à une vue droite ; la rotation de lecture ne modifie jamais les pages du PDF.
+- Création de groupes radio, listes déroulantes et zones de liste à choix simple/multiple. Export XFDF et import
+  JSON/XFDF/FDF des valeurs, validé intégralement avant une seule opération annulable.
+- Boutons Appliquer/Abandonner dans le panneau des champs, activation clavier Espace/Entrée et focus des listes.
+- Recadrage souris dans l’aperçu et rotation/redimensionnement groupés des objets, une annulation par opération.
+- CLI `compress-images`, `form-export`, `rotate-objects` et `resize-objects` ; options de choix dans `add-form-field`
+  et entrées `.json`, `.xfdf`, `.fdf` prises en charge dans `fill-form`.
+
+### Fiabilité
+- Sauvegardes par fichier temporaire voisin, synchronisation du contenu puis remplacement atomique. Régressions
+  d’interruption, disque plein, permission/publication refusée et arrêt forcé d’un processus écrivant une copie partielle.
+- Quatre documents NIST publics, licenciés et figés par empreinte complètent le corpus qpdf synthétique.
+  Ils ne représentent pas tous les PDF clients, hostiles ou volumineux.
+
+### Corrigé
+- Les réécritures PDF retirent les anciens flux d'objets/xref et indices de linéarisation, recalculent la borne des
+  numéros d'objets émis et suppriment les offsets de révision périmés. Les `/Size`/xref invalides de fichiers réels
+  sont corrigés en conservant chiffrement et permissions. Une compression sans gain garde les octets et diagnostics source figés.
+
+### Limites
+- Compression avec perte, gain non garanti. L’interface de lots refuse les PDF demandant un mot de passe.
+- FDF limité aux tables xref ordinaires et valeurs texte/nom/tableau ; flux, actions, pièces jointes, texte enrichi et
+  export FDF non pris en charge. Les libellés radio figurent dans le panneau, pas comme texte ajouté dans la page.
+- Matériel ARM64, imprimantes physiques, Narrateur, parcours interactifs et lecteurs tiers restent des contrôles distincts.
+
 ## [0.9.1] — 2026-10-16
 
 ### Corrigé

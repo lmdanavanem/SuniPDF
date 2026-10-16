@@ -201,6 +201,15 @@ pub(crate) fn load(input: &[u8], password: Option<&str>) -> Result<lopdf::Docume
 /// Enregistre ; un document déchiffré par [`load`] est rechiffré avec la même clé, les mêmes
 /// mots de passe et les mêmes permissions (dictionnaire /Encrypt d'origine).
 pub(crate) fn save(mut doc: lopdf::Document) -> Result<Vec<u8>, EngineError> {
+    // Full rewrites discard old storage/hint objects and revision offsets; size must match emitted objects.
+    doc.objects.retain(|_, object| {
+        !object
+            .type_name()
+            .is_ok_and(|name| matches!(name, b"ObjStm" | b"XRef" | b"Linearized"))
+    });
+    doc.max_id = doc.objects.keys().map(|id| id.0).max().unwrap_or(0);
+    doc.trailer.remove(b"Prev");
+    doc.trailer.remove(b"XRefStm");
     if let Some(state) = doc.encryption_state.take() {
         doc.encrypt(&state).map_err(lopdf_err)?;
     }
@@ -731,6 +740,30 @@ impl Document<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn full_rewrite_resets_stale_xref_size_and_revision_offsets() {
+        let mut pdf = load(include_bytes!("../tests/fixtures/two-pages.pdf"), None).unwrap();
+        pdf.reference_table.cross_reference_type = lopdf::xref::XrefType::CrossReferenceTable;
+        pdf.objects.insert(
+            (9999, 0),
+            lopdf::dictionary! {"Linearized"=>1,"L"=>100,"H"=>vec![0.into(),0.into()]}.into(),
+        );
+        pdf.max_id = 9999;
+        pdf.trailer.set("Prev", 123);
+        pdf.trailer.set("XRefStm", 456);
+        let bytes = save(pdf).unwrap();
+        let reopened = load(&bytes, None).unwrap();
+        assert!(!reopened.trailer.has(b"Prev"));
+        assert!(!reopened.trailer.has(b"XRefStm"));
+        assert_eq!(
+            reopened.trailer.get(b"Size").unwrap().as_i64().unwrap(),
+            i64::from(reopened.objects.keys().map(|id| id.0).max().unwrap() + 1)
+        );
+        assert!(!reopened
+            .objects
+            .values()
+            .any(|object| object.type_name().is_ok_and(|name| name == b"Linearized")));
+    }
 
     #[test]
     fn permissions_map_to_pdf_bits() {

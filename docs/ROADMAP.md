@@ -31,6 +31,20 @@ Workspace checks (322 tests), independent qpdf checks (22 PDFs/three malformed i
 the disposable-runner MSI regression passed. All six public assets were downloaded and matched the verified
 payloads/checksums. Interactive updater UX and real hardware remain separate checks.
 
+## 0.10.0: requested P1/P2 lot, implementation complete and validation pending
+
+| Area | Included scope |
+|---|---|
+| P1 data safety and corpus | Atomic temporary-file replacement, interrupted/full-disk/failure regressions, killed partial-save child and four pinned public NIST documents |
+| P2 compression | Image resampling/JPEG quality, before/after size, progress/cancel, source-preserving new copies and conservative unsupported-image handling |
+| P2 reading | View-only rotation, full screen, bounded per-tab navigation history and upright editing |
+| P2 forms | Radio/combo/list creation, XFDF export, bounded JSON/XFDF/FDF values import, grouped Apply/Discard and keyboard widgets |
+| P2 editing | Mouse crop preview and grouped rotation/resizing with one undo |
+| P2 batches | Sequential compression/offline OCR, bounded inputs, cancellation, per-file errors and no overwriting |
+
+Full workspace, CI, package and public-release gates remain pending in `PROJECT_STATUS.md`. Hardware, native interactive
+flows, Narrator, third-party readers and customer/hostile corpus coverage remain independent work.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -42,7 +56,8 @@ Historical milestones and decisions remain in `DECISIONS.md` and `PROJECT_STATUS
 Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views, logical cross-page selection,
 search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
 
-Remaining: view-only rotation, navigation history, page labels, full-screen reading and intended reading order
+Implemented for 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
+Remaining: page labels and intended reading order
 for complex untagged columns. qpdf structural checks do not prove preservation of every link, field, layer or attachment.
 
 ## Phase 3: professional editing — partially delivered
@@ -51,8 +66,8 @@ Delivered: editable text/images and shapes, object transformations, grouped move
 fonts, stamps/watermarks/numbering, threaded comments, metadata, visual signatures, AcroForm filling/flattening,
 text/checkbox creation and autosave/recovery.
 
-Remaining: font subsetting and CFF/OTF/TTC support; paragraph editing; editable pasted objects; grouped rotation/resizing;
-mouse cropping; more field types and FDF/XFDF interchange; keyboard activation of on-page widgets.
+Implemented for 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
+FDF/XFDF interchange and keyboard page widgets. Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
 ## Phase 4: conversion and OCR — partially delivered
@@ -60,7 +75,7 @@ Acceptance: rendering, saving and reopening covered for each added operation, wi
 Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches and bundled local English/French OCR.
 
 Remaining: Office → PDF through a detected local converter, PDF → Word/Excel/PowerPoint with explicit measured
-fidelity limits, image resampling/lossy compression, batch UI and reusable conversion profiles.
+fidelity limits and reusable conversion profiles. Image compression and sequential compression/OCR batch UI are implemented for 0.10.0.
 
 ## Phase 5: security and productivity — partially delivered
 
@@ -77,24 +92,19 @@ Executable/MSI code signing needs an appropriate supplied identity.
 Delivered baseline: x64 portable/MSI and ARM64 portable releases, SHA256 files, startup update notifications with
 explicit installation, FR/EN guides, third-party notices and GitHub build workflows.
 
-Remaining: real/hostile/large PDF corpus with licensed fixtures, interrupted/full-disk save scenarios, fuzzing,
+Implemented for 0.10.0: four pinned public NIST samples and interrupted/full-disk/failed-save scenarios.
+Remaining: customer/hostile/large corpus expansion, fuzzing,
 published benchmarks with hardware, complete dependency licence inventory, Narrator and third-party reader checks,
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Recommended order after 0.9.1
+## Next work after the 0.10.0 lot
 
-| Priority | Work | Exit evidence |
-|---|---|---|
-| P1 | Real PDF corpus and data-safety scenarios | Reproducible fixtures, output checks and no original-file loss |
-| P1 | Installed/portable updater UX, Narrator, printer and reader compatibility | Recorded outcomes on the actual Windows flows/readers/hardware |
-| P1 | ARM64 runtime and performance baseline | Device/driver details and repeatable opening/rendering/memory measurements |
-| P2, next feature | Image resampling/JPEG compression | Measured size, cancellation, source preservation, reopen/render/qpdf and semantic checks |
-| P2 | View-only rotation, full screen and navigation history | Correct zoom/selection/navigation in continuous and two-page views |
-| P2 | Fonts, paragraph/group editing, mouse cropping | Save/reopen/render checks on normal, rotated and cropped pages |
-| P2 | Field types, XFDF/FDF and keyboard widgets | Interchange and keyboard/accessibility regressions |
-| P2 | Comparison, batch UI and local Office conversion | Bounded jobs, cancellation, output fidelity and source preservation |
-| Later | Trust services, timestamps/LTV, MCP and optional integrations | Explicit trust model, scope and security validation before delivery |
+1. Record the full release gates in `PROJECT_STATUS.md` before publishing 0.10.0.
+2. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
+3. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
+4. Address fonts/paragraph editing, local Office conversion and trust services as separately scoped future work.
 
-Recommended next feature slice: image compression with real-corpus and interrupted/full-disk save checks.
+
+
 No future release date or version is committed by this backlog. Optional AI remains disabled by default.

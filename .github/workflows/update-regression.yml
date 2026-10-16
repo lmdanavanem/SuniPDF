@@ -36,8 +36,6 @@ jobs:
         run: .\scripts\fetch-test-opengl.ps1
       - name: Real portable regression with startup diagnostics
         shell: pwsh
-        env:
-          SUNIPDF_TEST_GITHUB_TOKEN: ${{ github.token }}
         run: .\scripts\test-portable-update.ps1 -Package $env:SUNIPDF_TEST_PACKAGE
       - name: Portable update diagnostics
         if: always()

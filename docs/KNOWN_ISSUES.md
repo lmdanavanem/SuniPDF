@@ -54,8 +54,7 @@ A6. **Content editing: editing an existing text reuses its original font.** If t
     (often an embedded subset) does not contain a typed character, PDFium substitutes or omits it.
     Workaround: delete the object and add a new one (Helvetica, Latin accents supported).
 A7. ~~Rotation in 90° steps, no system font~~ **Resolved (SUNI-031c)**: free rotation and system TrueType
-    fonts. Remaining: **rotation and resizing of a group** of several objects not offered
-    (moving only); an object rotated by an angle that is not a multiple of 90° no longer has corner handles
+    fonts. Group rotation/resizing is implemented for 0.10.0 with a single undo; validation is tracked in `PROJECT_STATUS.md`. Remaining: an object rotated by an angle that is not a multiple of 90° no longer has corner handles
     (resizing it would distort it); pivot = centre of the bounding box, so an asymmetric path may
     drift slightly with each successive rotation.
 A8. **Reordering (send to back, send backward, bring forward) merges the page's content streams** (lopdf) before
@@ -70,7 +69,7 @@ A18. **System fonts embedded whole** (no subsetting): each font adds its size to
      `reg.exe` (fallback: fonts folder); a non-ASCII name may display badly (OEM code page). Rendering
      verified by PDFium; other-reader visual compatibility remains unverified. qpdf does not validate rendering.
 A19. **Crop hides, it does not erase**: the content outside the frame stays in the file (this is not
-     redaction; stated in the dialog). Mouse cropping not offered (numeric margins with preview).
+     redaction; stated in the dialog). Mouse cropping in the preview is implemented for 0.10.0; numeric margins remain available.
 A20. **Text on the page**: the input field shows the text with the interface font (Segoe UI, or
      monospace for Courier), not with the PDF font: approximate width and line breaks while
      typing. An existing rotated text is edited in a dialog. No paragraph editing (one line
@@ -167,7 +166,7 @@ A25. **Continuous view: limits (SUNI-012b)**.
        the duration of one tile (measured: 1.2 ms per 1024² tile on `many-pages.pdf`, more for a heavy page).
      - Tile stitching: glyphs crossing a tile edge may differ by one anti-aliasing pixel
        from the one-piece rendering (121 pixels out of 1.9 million measured, D044).
-     - Two-page/Book views share the existing caps; view rotation is not offered.
+     - Two-page/Book views share the existing caps; view-only rotation/full screen/per-tab history are implemented for 0.10.0. Editing returns to upright view; native interactive coverage remains separate.
 A26. **"Fit" in continuous scrolling on a document of mixed sizes**: the zoom is shared by all the
      pages and fits the **largest** page (D041); a portrait page among landscape pages is therefore
      narrower than the screen. In single page, the fit follows the current page. Two-page/Book fit uses the
@@ -201,27 +200,23 @@ A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pr
      font embedding, A7); initialling every page at once is not offered (Shift+click page by
      page); full library: the dialog body scrolls and its floating bar gets a 10 px gutter
      (the content tightens by as much on the frame following the bar's appearance).
-A38. **AcroForm forms (forms slice, D061–D066)**: **XFA** detected and read (fallback AcroForm fields),
-     never filled or flattened (`form_xfa`); **scripts** (`/CO`, `/AA`, `/A` JavaScript) never run, flagged
-     by a banner, calculated fields and formats stay as they are; **creation is limited to text fields and checkboxes**
-     through a numeric dialog (minimum 4 points, unique name without dots, no mouse drawing); **no FDF/XFDF** (JSON only); **one undo level
-     per confirmed value** (a 40-field form = 40 levels; caps 50 levels / 512 MB of undo journal);
-     each confirmation = full snapshot + lopdf analysis + reload + tiny rendering, acceptable under
-     5 MB, slow beyond (grouped "Apply" mode on the roadmap); fonts: a text outside Latin-1 gets from
-     PDFium a **non-embedded system** font (Arial, SimSun…), variable rendering on another machine;
-     **editable** drop-down list (`/Ff` Edit): only the predefined choices are offered in the interface (free text
-     through the CLI `--set` only); `/Opt` export values of radio buttons ignored (the widget state is
-     the value); rich text `/RV` replaced by plain text; multi-state checkboxes
-     simplified (one active state per widget); partial flattening: the fields of the flattened page stay in
-     the form without a location; flattening: **links** (`/Link`) are collected beforehand and put back into
-     `/Annots` afterwards (PDFium would remove them without drawing them), the other annotations without an appearance
-     (`/Popup` windows, attachments without `/AP`…) disappear along with the drawn content of their parent; a
-     link carrying an `/AP` is drawn into the content **and** kept as a link (same rendering); **password**
-     field: listed, never filled or exported; widgets are only clickable on the page with the Fill tool (the
-     panel serves the keyboard: Tab / Shift+Tab between text fields and lists from the editor placed on the page,
-     no activation of a page widget with Space or Enter); **Windows Narrator untested** (AccessKit names
-     set: `a11y.forms.*`); the page remains an image for a screen reader, only the field rectangles
-     and the panel are exposed to it.
+A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calculations and actions never run.
+     0.10.0 implements text/checkbox/radio/combo/list creation, XFDF export and strict bounded JSON/XFDF/FDF value import.
+     Import validates every field/value before changing anything; unknown or rejected values refuse the whole GUI import.
+     Panel changes remain pending until Apply or Save, then use one undo/reload; Discard restores the current values.
+     On-page confirmation is immediate. Space/Enter activate focused widgets; choice popups receive keyboard focus.
+     Names are unique, without dots/control characters, numeric rectangles stay inside the page (minimum 4 points).
+     Radio buttons are arranged vertically; option labels are exposed in the panel, not inserted as page text.
+     FDF supports normal xref tables and text/name/array values only; streams, actions, attachments, rich text and
+     FDF export are unsupported. XML DTDs, processing instructions, unknown elements, duplicate names and excessive
+     size/depth are refused; referenced document paths are never opened. Input cap: 16 MiB.
+     Existing limits: no mouse-drawn field creation; editable combo free text through CLI only; widget state is the
+     radio value, not arbitrary legacy /Opt mappings; rich text becomes plain text; password fields never stored/exported.
+     Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
+     field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
+     third-party-reader interoperability remain unverified. Current executed evidence belongs in `PROJECT_STATUS.md`.
+
+
 A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free text in Helvetica WinAnsi** only
     (Latin accents, € and common punctuation; any other character shows as "?" in the appearance, `/Contents` keeps
     the exact text; no bold, italic, rich text `/RC`, CJK or right-to-left) and the wrapping width is computed with the
@@ -295,3 +290,16 @@ A44. **Digital signatures**: detached CMS `adbe.pkcs7.detached`/`ETSI.CAdES.deta
      identity trust: chain, revocation, AATL/EUTL, PKCS#11, trusted timestamps and LTV are not implemented. PDF signing time
      is declared by the signer. Editing/rewriting may invalidate signatures. Acrobat/Foxit interoperability and PAdES
      qualification are not established; do not present the result as a qualified signature.
+
+A45. **0.10.0 image compression**: lossy; only supported 8-bit DeviceRGB/DeviceGray images up to 32 million pixels
+     are decoded. Mask/soft-mask resource graphs, profiles, custom Decode/DecodeParms and other unsupported images
+     remain unchanged. If the document would grow, the exact input bytes are returned. Maximum-side/JPEG controls
+     do not guarantee a target file size. Signed or modification-restricted PDFs are refused; output is a new copy.
+A46. **0.10.0 batches**: sequential compression or offline English/French OCR, at most 128 PDFs and 256 MiB/input.
+     Existing outputs are never replaced; completed files remain if a later file fails or cancellation occurs.
+     Password prompts are not provided per batch file; protected files that cannot open without a password are refused.
+     Cancel takes effect at engine checkpoints; a codec or native call already running may delay it.
+A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a killed partial-save child exercise original
+     preservation. They do not simulate every physical disk/power-loss failure. Four public NIST PDFs supplement the
+     synthetic corpus; they do not establish broad customer/hostile/large-file compatibility. Validation is pending
+     until recorded in `PROJECT_STATUS.md`.

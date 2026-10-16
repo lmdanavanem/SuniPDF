@@ -37,6 +37,19 @@ jobs:
         run: .\scripts\fetch-qpdf.ps1 -SelfTest
       - name: Synthetic corpus and generated PDF structural checks
         run: cargo test -p sunipdf-cli --test qpdf_corpus --locked -j 2 -- --ignored --nocapture
+      - name: Real corpus checksum self-test
+        run: .\scripts\fetch-regression-corpus.ps1 -SelfTest
+      - name: Pinned licensed real PDF corpus
+        run: .\scripts\fetch-regression-corpus.ps1
+      - name: Real PDFs and independent output regression
+        run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
+      - name: Real corpus regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-corpus-evidence
+          path: target/regression-corpus-report.json
+          if-no-files-found: ignore
       - name: Update helper checks
         run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: "Portable x64 package (including licenses and notices)"
@@ -46,8 +59,6 @@ jobs:
       - name: Test-only software OpenGL for the isolated application
         run: .\scripts\fetch-test-opengl.ps1
       - name: Real isolated portable upgrades, rollback and close cancellation
-        env:
-          SUNIPDF_TEST_GITHUB_TOKEN: ${{ github.token }}
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence
         if: always()
@@ -59,7 +70,10 @@ jobs:
       - name: MSI x64 package
         run: .\scripts\package-msi.ps1 -Arch x64
       - name: Real MSI installation and upgrade on disposable runner
-        run: .\scripts\test-msi-upgrade.ps1 -MsiPath (Get-ChildItem dist\*.msi | Select-Object -First 1 -ExpandProperty FullName)
+        run: |
+          $msi = Get-ChildItem dist\*.msi | Select-Object -First 1 -ExpandProperty FullName
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.8.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.9.1
       - name: MSI upgrade regression evidence
         if: always()
         uses: actions/upload-artifact@v4

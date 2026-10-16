@@ -189,8 +189,7 @@ survol : repère orange sur la page ; boutons avancer / reculer d'un plan et sup
 
 Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
 
-Limites : un groupe collé ou dupliqué n'est plus éditable comme texte ; rotation et redimensionnement d'un
-groupe de plusieurs objets ne sont pas encore proposés (déplacement seulement) ; les polices `.otf` et `.ttc`
+Limites : un groupe collé ou dupliqué n'est plus éditable comme texte ; rotation/redimensionnement groupés disponibles en 0.10.0 avec une annulation ; les polices `.otf` et `.ttc`
 ne sont pas proposées ; la police est incorporée entière (pas de sous-ensemble) ; le champ de saisie sur la
 page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
 police d'origine, qui peut ne pas contenir tous les caractères saisis.
@@ -203,7 +202,7 @@ et signer**, le menu **Formulaires** et la palette). L'outil surligne chaque cha
 champ à remplir, **rouge** s'il est obligatoire, gris s'il est en lecture seule ou non modifiable (signature,
 bouton). Les champs restent interactifs en défilement continu, sur toutes les pages visibles.
 
-- **Case à cocher, bouton radio** : un clic bascule l'état ; chaque clic est une étape d'annulation (Ctrl+Z).
+- **Case à cocher, bouton radio** : un clic, ou Espace/Entrée sur le widget focalisé, bascule l’état ; chaque clic est une étape d'annulation (Ctrl+Z).
 - **Champ texte** : un clic ouvre un éditeur posé sur le champ ; **Entrée** valide (Ctrl+Entrée dans un champ
   multiligne, où Entrée passe à la ligne), **Échap** annule, **Tab** / **Maj+Tab** valident et passent au champ
   suivant / précédent (son contenu est sélectionné) ; un clic ailleurs valide aussi. La longueur maximale du
@@ -220,10 +219,11 @@ obligatoires et en lecture seule, un formulaire **XFA** (lu, jamais modifié) et
 et formats JavaScript : SuniPDF ne les exécute jamais, les champs calculés ne se mettent pas à jour).
 
 Menu **Formulaires** : **Effacer les champs** (textes vidés, cases décochées, listes désélectionnées ; les champs
-en lecture seule et les groupes radio « toujours un choix » sont conservés), **Exporter les valeurs (JSON)…**
-(fichier `{ "nom du champ": valeur }`), **Importer des valeurs (JSON)…** (même format ; les champs inconnus et les
-valeurs refusées sont ignorés et comptés dans le message d'état ; un fichier exporté se réimporte tel quel, les
-champs en lecture seule y figurent avec leur valeur et ne sont pas réécrits), **Aplatir le formulaire et les
+en lecture seule et les groupes radio « toujours un choix » sont conservés), **Exporter les valeurs…** (`.xfdf` ou `.json`), **Importer des valeurs…** (`.json`, `.xfdf` ou sous-ensemble `.fdf`).
+Un champ inconnu ou une valeur invalide refuse tout l’import de l’interface, sans mutation partielle. Une valeur en lecture
+seule se réimporte inchangée ; les mots de passe ne sont jamais exportés. Le panneau garde les modifications en attente :
+**Appliquer les modifications** les applique en une annulation, **Abandonner** revient aux valeurs courantes et Enregistrer
+applique puis sauvegarde. L’édition sur la page reste immédiate. **Aplatir le formulaire et les
 annotations…** (toutes les pages ou la page courante : les valeurs, surlignages et notes deviennent du contenu
 fixe ; les liens — adresses web, renvois vers une page — n'ont pas d'apparence et sont conservés tels quels ;
 annulable par Ctrl+Z tant que le document est ouvert ; aplatir toutes les pages retire le formulaire du
@@ -292,6 +292,23 @@ Les textes de tampon et modèles de numérotation tiennent sur une seule ligne ;
   tel quel (ancré en haut à gauche), soit mis à l'échelle et centré. Les annotations et liens existants ne
   suivent pas la mise à l'échelle.
 
+## Commandes de lecture
+
+Le menu **Affichage** propose rotation de vue par quarts de tour et plein écran, sans modifier la rotation des pages PDF.
+L’activation d’un outil d’édition revient à une vue droite. Retour/Avance (Alt+Gauche/Alt+Droite) conserve 256 positions
+maximum par onglet, avec page et position de défilement. Cet historique n’est pas du contenu PDF.
+
+## Compression des images et lots
+
+Ouvrez **Compresser un PDF**, choisissez le côté maximal (128..8192 px) et la qualité JPEG (10..100), puis une nouvelle
+copie. Tailles réelles avant/après et annulation sont proposées ; la source reste intacte. Compression avec perte sur
+images RGB/gris bornées ; gain non garanti, masques/profils/décodages particuliers conservés. PDF signés/restreints refusés.
+Aucun fichier existant remplacé.
+
+Choisissez **Traitement par lots**, compression ou OCR anglais/français, 1..128 PDF et un dossier de sortie. Chaque entrée
+est limitée à 256 Mio. Progression/annulation et résultat par fichier ; noms `-compressed` ou `-ocr`. Les copies terminées
+restent après erreur/annulation. Pas de demande de mot de passe par fichier : ceux qui en nécessitent un sont signalés.
+
 ## Convertir
 
 - **Créer un PDF à partir d'images** (PNG, JPEG, BMP, GIF, TIFF, WebP) : une page par image, 150 ppp ;
@@ -349,12 +366,13 @@ interactives du pilote restent à vérifier sur le poste cible.
 
 ## Créer des champs de formulaire
 
-Ouvrez **Préparer un formulaire**, puis **Ajouter un champ texte** ou **Ajouter une case à cocher** sur la page courante.
-Saisissez un nom unique (sans point ni caractère de contrôle) et les limites gauche, bas, droite et haut du rectangle,
-en points PDF après rotation et recadrage. Chaque dimension doit mesurer au moins 4 points et le rectangle doit
-rester dans la page. Validez, puis utilisez Remplir et signer pour remplir le champ enregistré.
-La création s'annule et conserve le chiffrement. Dessin du champ à la souris, création de radios et de listes
-ne sont pas inclus ; la création XFA est refusée.
+Ouvrez **Préparer un formulaire**, puis choisissez texte, case à cocher, groupe radio, liste déroulante ou zone de liste.
+Nom unique sans point/contrôle ; rectangle en points PDF affichés, dans la page et de 4 points minimum par dimension.
+Pour les choix, une ligne `valeur exportée | libellé affiché` par option, valeurs uniques. La zone de liste peut autoriser
+plusieurs sélections. Le rectangle radio contient les boutons verticaux ; libellés dans le panneau, pas comme texte ajouté
+à la page PDF. Création annulable, chiffrement conservé. Dessin de champs à la souris et création XFA non pris en charge.
+FDF accepte les valeurs texte/nom/tableau et tables xref ordinaires ; flux/actions/pièces jointes/texte enrichi refusés.
+Les chemins de documents référencés ne sont jamais ouverts.
 
 ## OCR hors ligne
 
@@ -432,10 +450,22 @@ n'existe. `--reason` et `--location` sont facultatifs. Le JSON indique toujours 
 Même `--overwrite` ne peut pas remplacer le PDF source de la signature. `ocr --language` accepte `eng`, `fra`
 ou `eng+fra` ; `--pages` vaut `all` par défaut. Sans texte ajouté, les octets source sont copiés à l'identique.
 
+Commandes ajoutées en 0.10.0 :
+
+```powershell
+sunipdf-cli compress-images scan.pdf --max-image-side 1800 --jpeg-quality 75 --out scan-compressed.pdf
+sunipdf-cli add-form-field formulaire.pdf --kind combo --name Pays --option FR=France --option BE=Belgique --rect 40,40,220,65 --out choix.pdf
+sunipdf-cli form-export choix.pdf --out valeurs.xfdf
+sunipdf-cli fill-form choix.pdf --values valeurs.xfdf --out rempli.pdf
+```
+
+`rotate-objects` et `resize-objects` transforment un groupe ; `--help` décrit les options effectives.
+`compress-images` exige toujours une nouvelle copie, même avec `--overwrite`.
+
 ## Limites actuelles
 
-Pas de rotation de vue, de conversion Office ni de formulaires XFA modifiables ; leurs scripts ne sont jamais exécutés.
-L'ordre complexe de colonnes n'est pas déduit. La création de champs couvre texte et case à cocher uniquement.
+Conversion Office et formulaires XFA modifiables indisponibles ; leurs scripts ne sont jamais exécutés.
+L'ordre complexe de colonnes n'est pas déduit. Création texte/case/radio/listes disponible ; FDF limité au sous-ensemble de valeurs décrit ci-dessus.
 La précision OCR dépend de la numérisation et de la langue ; le texte existant n'est pas remplacé. Confiance du certificat,
 révocation, horodatage fiable et LTV ne sont pas vérifiés. Imprimante réelle, installation/mise à jour et matériel ARM64
 restent des validations séparées des tests automatisés. Voir `docs/KNOWN_ISSUES.fr.md` et `docs/ROADMAP.fr.md`.

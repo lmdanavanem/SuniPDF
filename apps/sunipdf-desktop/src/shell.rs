@@ -144,6 +144,16 @@ pub fn tool_row(
 /// Icône associée à une commande (glyphe Fluent + repli texte).
 pub fn command_icon(command: Command) -> (&'static str, &'static str) {
     match command {
+        Command::CompressImages => (glyph::PHOTO, "⤓"),
+        Command::ProcessFiles => (glyph::PAGES, "▣"),
+        Command::RotateViewClockwise => (glyph::ROTATE_RIGHT, "↻"),
+        Command::RotateViewCounterClockwise => (glyph::ROTATE_LEFT, "↺"),
+        Command::FullScreenReading => (glyph::FIT_PAGE, "⛶"),
+        Command::HistoryBack => (glyph::CHEVRON_LEFT, "←"),
+        Command::HistoryForward => (glyph::CHEVRON_RIGHT, "→"),
+        Command::ToolAddRadioField => (glyph::ELLIPSE, "◉"),
+        Command::ToolAddComboField => (glyph::CHEVRON_DOWN, "▾"),
+        Command::ToolAddListField => (glyph::FORM_LIST, "☷"),
         Command::OpenDocument => (glyph::FOLDER_OPEN, "📂"),
         Command::CloseDocument => (glyph::CLOSE, "✕"),
         Command::Quit => (glyph::CLOSE, "✕"),
@@ -217,6 +227,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         | Command::HubStamp
         | Command::HubPrepareForm
         | Command::HubOcr
+        | Command::HubCompress
         | Command::HubCertificate
         | Command::HubRedact => {
             Workspace::from_command(command).map_or((glyph::ALL_APPS, "▤"), |w| w.info().icon)

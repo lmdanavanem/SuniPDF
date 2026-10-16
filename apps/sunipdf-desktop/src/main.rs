@@ -18,6 +18,8 @@ mod ocr;
 mod organize;
 mod pagesetup;
 mod printing;
+mod processing;
+mod reading;
 mod recovery;
 mod redact;
 mod settings;

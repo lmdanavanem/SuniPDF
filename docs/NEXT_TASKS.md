@@ -39,20 +39,30 @@ the verified packages and are available in `dist/`.
 Current package/publication evidence is recorded in `PROJECT_STATUS.md`.
 Do not infer ARM64, physical printer, reader interoperability or interactive updater validation from these checks.
 
-## Remaining development backlog
+## Version 0.10.0: local P1/P2 gates passed, release checks pending
 
-1. **P1 — Independent QA:** real hostile/large PDF corpus, interrupted/full-disk saves, interactive installed/portable
-   updates, ARM64 hardware, physical printers, Narrator and Acrobat/Foxit/Chrome interoperability.
-2. **P2 — Recommended next feature: image compression.** Lossless optimisation already exists. Add resolution/JPEG
-   quality controls, measured before/after size, progress/cancellation and Save As. Preserve the original and verify
-   text, links, fields, transparency and encryption after reopening; qpdf must report no structural warnings.
-   Start with this single feature plus the real-corpus/interrupted-save checks above, without committing a release date.
-3. View-only rotation, then full-screen reading and navigation history; complex untagged columns and touch validation follow.
-4. Create radio/list fields, XFDF export then XFDF/FDF import, grouped value application and keyboard widgets.
-5. Mouse cropping and grouped rotation/resizing before paragraph editing, font subsetting and CFF/OTF/TTC support.
-6. Batch UI for established compression/OCR/conversion operations; local Office conversion with measured fidelity limits later.
-7. Certificate trust/revocation and trusted timestamps/LTV (not implemented); executable/MSI code signing when
-   credentials are supplied. Future release numbers/dates require separate scope decisions.
+The requested six-area lot is implemented: atomic-save failures/public corpus, image compression, view rotation/full
+screen/history, new form types and interchange/grouped keyboard controls, mouse crop/group transformations, and
+sequential compression/OCR batches. Exact limits and executed results belong in `PROJECT_STATUS.md`.
+Local workspace: 362 passed, zero failed, seven default ignored; formatting, Clippy and 853 matching bilingual keys
+passed. Explicit qpdf checks passed for 31 synthetic/generated PDFs; four licensed NIST/NBS publications (744 pages)
+passed text/render/extract/optimize/compression/source-preservation checks. Upstream source warnings are pinned;
+rewritten outputs must pass without warnings. The shared writer fixes stale storage/xref bounds/revision offsets.
+GitHub CI, package verification, eight real portable update scenarios, both MSI baselines (0.8.0 and 0.9.1), public
+download verification and publication remain pending; local results do not establish a published release.
+
+## Remaining work beyond this lot
+
+1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
+   dialogs, and Acrobat/Foxit/Chrome. These require the actual hardware or readers and are not covered by scripted CI.
+2. Expand the four public NIST fixtures with licensed customer/hostile/large scans and complex forms; add fuzzing and
+   hardware-recorded performance measurements. Preserve the original on every failed or cancelled operation.
+3. Font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
+4. Local Office conversion and additional batch conversion operations, with measured output fidelity.
+5. Certificate-chain trust/revocation, trusted timestamps/LTV and executable/MSI signing when an identity is supplied.
+6. Page labels, complex untagged-column reading order, touch validation and optional integrations.
+
+No future version/date is committed by this remaining list.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
@@ -91,10 +101,9 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
-- XFDF export then XFDF/FDF import (reuse the existing XML parser where appropriate);
-- grouped "Apply" mode (several fields, a single undo level and a single reload);
+- JSON/XFDF/FDF interchange and grouped panel Apply are implemented for 0.10.0; validation is tracked in `PROJECT_STATUS.md`.
 - free text in an editable drop-down list; `/Opt` export values of radio buttons; keyboard activation
-  (Space / Enter) of the page's field rectangles; Windows Narrator check (`labelled_by` names
+  (Space / Enter) of the page's field rectangles is implemented in 0.10.0; Windows Narrator check (`labelled_by` names
   set, not listened to);
 - flattening: also keep the annotations without an appearance other than links (attachments without
   `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;
@@ -124,7 +133,7 @@ Remaining, non-blocking:
 Done: tabs (SUNI-012a); virtualized continuous view, tiles, anchored zoom, single page as an option (SUNI-012b,
 `docs/plans/continuous-view.md`, D038–D045).
 Remaining (see `KNOWN_ISSUES.md` A25–A28):
-- view rotation;
+- view-only rotation/full-screen/history are implemented in 0.10.0; current validation is in `PROJECT_STATUS.md`;
 - animated scrolling for "go to"; touch pinch to check on a touch screen;
 - if a heavy page freezes scrolling: `Document::render_regions` (one page loaded for 3 to 4 neighbouring
   tiles), to be added only after measurement; adjustable memory caps if a need arises.
@@ -143,8 +152,8 @@ Remaining (see `KNOWN_ISSUES.md` A7, A8, A18–A22):
 - subsetting of embedded fonts (`subsetter` crate MIT/Apache + lopdf post-processing, ADR to write);
   `.otf` fonts (CFF outlines) and `.ttc` collections;
 - "native" editable paste (objects recreated one by one instead of an XObject); opacity and colour of groups;
-- rotation and resizing of a group of several objects; remembered pivot for asymmetric paths;
-- mouse cropping; drag and drop in the Objects panel;
+- remembered pivot for asymmetric paths (group rotation/resizing implemented in 0.10.0);
+- drag and drop in the Objects panel (mouse crop preview implemented in 0.10.0);
 - reading the opacity of an existing image (PDFium workaround: read the stream's ExtGState with lopdf).
 Acceptance: each operation covered by an engine test with verified rendering.
 

@@ -341,7 +341,7 @@ fn get<'a>(d: &'a lopdf::Document, dict: &'a Dictionary, key: &[u8]) -> Option<&
 /// Chaîne texte PDF décodée (PDFDocEncoding, UTF-16BE ou UTF-8 avec BOM) ; un flux est lu tel quel.
 /// La table PDFDocEncoding de lopdf ignore les caractères de contrôle : les sauts de ligne d'un
 /// champ multiligne (`\n`, `\r`, tabulation) sont conservés à part.
-fn text_of(d: &lopdf::Document, o: &Object) -> Option<String> {
+pub(crate) fn text_of(d: &lopdf::Document, o: &Object) -> Option<String> {
     let o = deref(d, o)?;
     let bytes = match o {
         Object::Stream(s) => {
@@ -649,10 +649,14 @@ fn terminal(
     let options = match kind {
         FieldKind::Radio => widgets
             .iter()
-            .filter_map(|w| w.on_state.clone())
-            .map(|s| FieldOption {
-                value: s.clone(),
-                label: s,
+            .filter_map(|w| {
+                let value = w.on_state.clone()?;
+                let label = d
+                    .get_dictionary(w.id)
+                    .ok()
+                    .and_then(|w| text(d, w, b"TU"))
+                    .unwrap_or_else(|| value.clone());
+                Some(FieldOption { value, label })
             })
             .collect(),
         FieldKind::Combo | FieldKind::List => inh
@@ -877,6 +881,16 @@ pub(crate) fn kind_of(doc: &PdfDocument<'_>) -> FormKind {
     }
 }
 
+fn radio_appearance(pdf: &mut lopdf::Document, width: f32, height: f32, checked: bool) -> ObjectId {
+    let side = width.min(height);
+    let mut content = format!("q {side} 0 0 {side} 0 0 cm 1 g 0 G 0.05 w 0.95 0.5 m 0.95 0.7485 0.7485 0.95 0.5 0.95 c 0.2515 0.95 0.05 0.7485 0.05 0.5 c 0.05 0.2515 0.2515 0.05 0.5 0.05 c 0.7485 0.05 0.95 0.2515 0.95 0.5 c B ");
+    if checked {
+        content.push_str("0 g 0.75 0.5 m 0.75 0.638 0.638 0.75 0.5 0.75 c 0.362 0.75 0.25 0.638 0.25 0.5 c 0.25 0.362 0.362 0.25 0.5 0.25 c 0.638 0.25 0.75 0.362 0.75 0.5 c f ");
+    }
+    content.push('Q');
+    pdf.add_object(lopdf::Stream::new(dictionary! { "Type"=>"XObject", "Subtype"=>"Form", "BBox"=>vec![0.into(),0.into(),width.into(),height.into()], "Resources"=>Dictionary::new() }, content.into_bytes()))
+}
+
 impl Document<'_> {
     /// Adds a fillable text field or checkbox in display coordinates, preserving protection.
     pub fn add_form_field(
@@ -886,9 +900,52 @@ impl Document<'_> {
         kind: FieldKind,
         rect: PointRect,
     ) -> Result<(), EngineError> {
-        if !matches!(kind, FieldKind::Text | FieldKind::Checkbox) {
+        self.add_form_field_with_options(page_index, name, kind, rect, &[], false)
+    }
+
+    /// Creates a field or a vertically arranged radio group as one edit. Coordinates are display points.
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_form_field_with_options(
+        &mut self,
+        page_index: usize,
+        name: &str,
+        kind: FieldKind,
+        rect: PointRect,
+        options: &[FieldOption],
+        multi_select: bool,
+    ) -> Result<(), EngineError> {
+        let choice = matches!(kind, FieldKind::Radio | FieldKind::Combo | FieldKind::List);
+        if !matches!(
+            kind,
+            FieldKind::Text
+                | FieldKind::Checkbox
+                | FieldKind::Radio
+                | FieldKind::Combo
+                | FieldKind::List
+        ) {
             return Err(EngineError::FormValueInvalid(
-                "only text fields and checkboxes can be created".into(),
+                "this field type cannot be created".into(),
+            ));
+        }
+        let mut seen = HashSet::new();
+        if (choice && options.is_empty())
+            || options.len() > 1000
+            || (!choice && !options.is_empty())
+            || (multi_select && kind != FieldKind::List)
+            || options.iter().any(|o| {
+                o.value.trim().is_empty()
+                    || o.value.len() > 1024
+                    || o.value.chars().any(char::is_control)
+                    || o.label.len() > 4096
+                    || o.label.chars().any(char::is_control)
+                    || !seen.insert(o.value.as_str())
+                    || (kind == FieldKind::Radio && o.value == "Off")
+            })
+            || (kind == FieldKind::Radio
+                && (rect.top - rect.bottom) / (options.len().max(1) as f32) < 4.0)
+        {
+            return Err(EngineError::FormValueInvalid(
+                "invalid, duplicate or missing field options".into(),
             ));
         }
         if name.trim().is_empty()
@@ -970,16 +1027,41 @@ impl Document<'_> {
         acro.set("DR", dr);
         let user = geometry.rect_to_user(rect);
         let mut widget = lopdf::dictionary! {
-            "Type"=>"Annot", "Subtype"=>"Widget", "FT"=>if kind == FieldKind::Text { "Tx" } else { "Btn" },
+            "Type"=>"Annot", "Subtype"=>"Widget", "FT"=>match kind { FieldKind::Text => "Tx", FieldKind::Combo | FieldKind::List => "Ch", _ => "Btn" },
             "T"=>lopdf::text_string(name), "P"=>page_id, "F"=>4, "Ff"=>0,
             "Rect"=>vec![user.left.into(),user.bottom.into(),user.right.into(),user.top.into()],
             "DA"=>Object::string_literal(format!("/{font_name} 12 Tf 0 g")),
             "MK"=>lopdf::dictionary! { "BC"=>vec![0.into(),0.into(),0.into()], "BG"=>vec![1.into(),1.into(),1.into()] },
             "BS"=>lopdf::dictionary! { "W"=>1,"S"=>"S" },
         };
+        if choice {
+            widget.set(
+                "Opt",
+                Object::Array(
+                    options
+                        .iter()
+                        .map(|o| {
+                            Object::Array(vec![
+                                lopdf::text_string(&o.value),
+                                lopdf::text_string(&o.label),
+                            ])
+                        })
+                        .collect(),
+                ),
+            );
+            widget.set(
+                "Ff",
+                match kind {
+                    FieldKind::Radio => FF_RADIO,
+                    FieldKind::Combo => FF_COMBO,
+                    _ if multi_select => FF_MULTI_SELECT,
+                    _ => 0,
+                } as i64,
+            );
+        }
         if kind == FieldKind::Text {
             widget.set("V", lopdf::text_string(""));
-        } else {
+        } else if kind == FieldKind::Checkbox {
             widget.set("V", Object::Name(b"Off".to_vec()));
             widget.set("AS", Object::Name(b"Off".to_vec()));
             widget
@@ -988,9 +1070,47 @@ impl Document<'_> {
                 .map_err(lopdf_err)?
                 .set("CA", Object::string_literal("4"));
         }
-        let widget_id = pdf.add_object(widget);
-        crate::annot_write::annots_mut(&mut pdf, page_id)?.push(Object::Reference(widget_id));
-        fields.push(Object::Reference(widget_id));
+        if kind == FieldKind::Radio {
+            widget.remove(b"Subtype");
+            widget.remove(b"Rect");
+            widget.remove(b"Opt");
+            widget.set("V", Object::Name(b"Off".to_vec()));
+            let parent_id = pdf.add_object(widget);
+            let mut kids = Vec::new();
+            let row_height = (rect.top - rect.bottom) / options.len() as f32;
+            for (i, option) in options.iter().enumerate() {
+                let top = rect.top - i as f32 * row_height;
+                let side = row_height.min(rect.right - rect.left).min(20.0);
+                let row = geometry.rect_to_user(PointRect {
+                    left: rect.left,
+                    bottom: top - side,
+                    right: rect.left + side,
+                    top,
+                });
+                let off =
+                    radio_appearance(&mut pdf, row.right - row.left, row.top - row.bottom, false);
+                let on =
+                    radio_appearance(&mut pdf, row.right - row.left, row.top - row.bottom, true);
+                let mut appearances = dictionary! { "Off" => off };
+                appearances.set(option.value.as_bytes(), on);
+                let child = pdf.add_object(dictionary! {
+                    "Type"=>"Annot", "Subtype"=>"Widget", "Parent"=>parent_id,
+                    "P"=>page_id, "F"=>4, "TU"=>lopdf::text_string(&option.label),
+                    "Rect"=>vec![row.left.into(),row.bottom.into(),row.right.into(),row.top.into()],
+                    "AS"=>Object::Name(b"Off".to_vec()), "AP"=>dictionary! { "N"=>appearances },
+                });
+                crate::annot_write::annots_mut(&mut pdf, page_id)?.push(Object::Reference(child));
+                kids.push(Object::Reference(child));
+            }
+            pdf.get_dictionary_mut(parent_id)
+                .map_err(lopdf_err)?
+                .set("Kids", kids);
+            fields.push(Object::Reference(parent_id));
+        } else {
+            let widget_id = pdf.add_object(widget);
+            crate::annot_write::annots_mut(&mut pdf, page_id)?.push(Object::Reference(widget_id));
+            fields.push(Object::Reference(widget_id));
+        }
         acro.set("Fields", fields);
         let acro_id = pdf.add_object(acro);
         pdf.catalog_mut()

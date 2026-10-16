@@ -1,11 +1,50 @@
-# Project status - updated 2026-10-16 (version 0.9.1)
+# Project status - updated 2026-10-16 (version 0.10.0)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.9.1 reliability release: published as Latest
+## 0.10.0: requested P1/P2 lot, local validation passed
+
+The six requested backlog areas are implemented: data-safety/corpus checks, real image compression, reading controls,
+form creation/interchange/grouped keyboard editing, mouse cropping/group transformations, and compression/OCR batches.
+The CLI source registers 50 subcommands. English remains the default; French remains available.
+
+The complete local workspace passed: **362 tests, zero failures, seven default ignored**. Formatting, Clippy with
+warnings denied and all 853 matching EN/FR catalogue keys passed. The two independent corpus gates were then
+executed explicitly: **31 synthetic/generated PDFs** passed qpdf, and **four authentic public research PDFs,
+744 pages in total**, passed bounded CLI regression checks. GitHub CI, package/build verification, actual portable/MSI
+updates and publication of 0.10.0 remain **pending**. No package or release outcome is established by these local checks.
+
+| Area | Implemented scope and gate |
+|---|---|
+| Data safety | Neighbouring NamedTempFile, content sync, closed file handle and atomic rename; injected interrupted/full-disk/write/permission failure tests and a killed partial-save child; original must remain readable and unchanged |
+| Independent corpus | Four pinned NIST/NBS publications (66/25/161/492 pages), including a genuine monochrome scan and grayscale photographs; source SHA256/size, text/render, extract, optimize, compression, corrupt-input rejection and unchanged source checks passed |
+| Compression | 8-bit DeviceRGB/DeviceGray, JPEG/raw/Flate decoding, <=32 million pixels/image; maximum side 128..8192 pixels, JPEG quality 10..100; mask resource graphs/profiles/non-default decoding retained; no-gain original-byte copy; signed/restricted documents refused |
+| Batch UI | Sequential 1..128 PDFs, <=256 MiB/input, compression or local FR/EN OCR, item/file progress, cancellation and individual errors; new atomic copies never overwrite sources or existing files |
+| Reading | View rotation without PDF mutation, full screen and 256-entry per-tab history; editing returns to upright view |
+| Forms | Radio/combo/list creation, XFDF export, bounded strict JSON/XFDF/FDF value import, atomic grouped panel Apply/Discard, one undo, page Space/Enter and choice-popup focus |
+| Editing | Mouse crop preview and grouped rotation/resizing, one undo; save/reopen/render and normal/rotated/cropped/AES-256 geometry checks passed |
+
+The real corpus run took 44.3 seconds; the highest observed child working set was 343,621,632 bytes against a
+768 MiB sampled memory guard. Each process is limited to 180 seconds and 2 MiB of captured output. Four photographs
+in the 161-page report were recompressed, reducing 9,791,921 bytes to 9,592,202; the other three compression results
+retained the original bytes. Three upstream originals already have stale Adobe linearization/hint diagnostics:
+their exact qpdf diagnostics are pinned. Rewritten outputs pass without warnings; byte-identical no-gain results
+retain only the pinned original baseline. These source warnings are not counted as clean rewritten output.
+
+Real documents exposed stale storage objects, `/Size` bounds and revision offsets in full lopdf rewrites. The shared
+writer now removes obsolete storage/linearization objects and `/Prev`/`XRefStm`, recalculates the maximum object ID
+and preserves the original encryption key/permissions. Independent qpdf checks and encrypted regression tests passed.
+Atomic-save fault injection, killed partial-write preservation, locked destination handling and headless grouped
+edit/form/reading controls also passed locally. Native GUI interaction and power-loss hardware durability remain separate.
+
+Hardware and interactive limits remain: ARM64 execution, physical printers, Narrator, real native update/save dialogs,
+Acrobat/Foxit compatibility and customer/hostile/very-large corpus coverage. PDF/A identification preservation is not
+conformance certification; certificate-chain trust, revocation and trusted timestamps/LTV remain unimplemented.
+
+## 0.9.1 reliability release: previous publication evidence
 
 [SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) is published as Latest under
 `lmdanavanem`, with six assets and tag/source `c8473ecafe5f88b9dad846677fa610226955b061`.

@@ -1,11 +1,52 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.9.1)
+# État du projet — mis à jour le 2026-10-16 (version 0.10.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Version 0.9.1 de fiabilisation : publiée en Latest
+## Version 0.10.0 : lot P1/P2, validation locale réussie
+
+Les six domaines demandés sont implémentés : sauvegardes/corpus, compression réelle, lecture, formulaires,
+recadrage/transformations groupées et lots compression/OCR. La CLI déclare 50 sous-commandes dans son code source.
+L’anglais reste la langue par défaut et le français reste disponible.
+
+Le workspace local complet réussit : **362 tests, zéro échec, sept ignorés par défaut**. Formatage, Clippy sans
+avertissement et 853 clés EN/FR identiques réussissent. Les deux corpus indépendants ont ensuite été exécutés
+explicitement : **31 PDF synthétiques/générés** validés par qpdf et **quatre publications authentiques, 744 pages**,
+validées par les régressions CLI bornées. CI GitHub, vérification des compilations/paquets, mises à jour portables/MSI
+réelles et publication 0.10.0 restent **en attente**. Ces résultats locaux ne certifient aucun paquet ni release publiée.
+
+| Domaine | Périmètre implémenté et contrôles attendus |
+|---|---|
+| Sauvegardes | NamedTempFile voisin, synchronisation, fermeture du handle puis renommage atomique ; erreurs injectées interruption/disque plein/écriture/permission et arrêt forcé d’une écriture partielle ; original lisible et intact |
+| Corpus indépendant | Quatre publications NIST/NBS figées (66/25/161/492 pages), dont un vrai scan monochrome et des photographies en gris ; SHA256/taille source, texte/rendu, extraction, optimisation, compression, refus d'entrée corrompue et source intacte vérifiés |
+| Compression | DeviceRGB/DeviceGray 8 bits, JPEG/brut/Flate, 32 millions de pixels/image maximum ; côté 128..8192 px, qualité JPEG 10..100 ; graphes des masques/profils/décodages particuliers conservés ; copie exacte sans gain ; PDF signés/restreints refusés |
+| Lots | 1..128 PDF séquentiels, 256 Mio/entrée, compression ou OCR FR/EN local, progression, annulation et erreurs individuelles ; nouvelles copies atomiques sans écrasement |
+| Lecture | Rotation de vue sans mutation PDF, plein écran et historique par onglet de 256 positions ; retour à la vue droite pour éditer |
+| Formulaires | Création radio/liste déroulante/zone de liste, export XFDF, import JSON/XFDF/FDF borné et strict, Appliquer/Abandonner groupés, une annulation, Espace/Entrée et focus des listes |
+| Édition | Recadrage souris dans l’aperçu et rotation/redimensionnement groupés ; une annulation, enregistrement/réouverture/rendu et géométrie normale/pivotée/recadrée/AES-256 vérifiés |
+
+Le corpus réel s'exécute en 44,3 secondes ; le plus haut jeu de travail enfant observé atteint 343 621 632 octets,
+avec une garde mémoire échantillonnée de 768 Mio. Chaque processus est limité à 180 secondes et 2 Mio de sortie
+capturée. Quatre photographies du rapport de 161 pages sont recompressées : 9 791 921 vers 9 592 202 octets ;
+les trois autres compressions conservent exactement la source. Trois originaux contiennent déjà des avertissements
+Adobe de linéarisation/indices : leurs diagnostics qpdf exacts sont figés. Les sorties réécrites passent sans
+avertissement ; les copies exactes sans gain conservent uniquement le diagnostic source figé. Ces avertissements
+d'origine ne sont pas comptés comme des réécritures sans avertissement.
+
+Les documents réels ont révélé des objets de stockage, bornes `/Size` et offsets de révision périmés dans les
+réécritures lopdf. Le writer partagé retire désormais stockage/linéarisation obsolètes et `/Prev`/`XRefStm`, recalcule
+l'identifiant d'objet maximal et conserve clé/permissions de chiffrement. qpdf et les régressions chiffrées réussissent.
+Les injections d'erreur de sauvegarde, processus d'écriture partielle arrêté, destination verrouillée et contrôles
+groupés édition/formulaires/lecture sans interface native réussissent aussi. Interaction GUI et résistance matérielle
+à une coupure d'alimentation restent distinctes.
+
+Restent indépendants : matériel ARM64, imprimantes physiques, Narrateur, dialogues natifs de mise à jour/enregistrement,
+Acrobat/Foxit et corpus client/hostile/très volumineux. Identification PDF/A conservée ne signifie pas conformité
+certifiée. Confiance de chaîne, révocation et horodatage fiable/LTV restent non implémentés.
+
+## Version 0.9.1 : preuves de la publication précédente
 
 [SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) est publiée en Latest sous
 `lmdanavanem`, avec six fichiers et le tag/source `c8473ecafe5f88b9dad846677fa610226955b061`.

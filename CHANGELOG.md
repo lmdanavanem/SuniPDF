@@ -7,6 +7,45 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-16
+
+Validation and publication are tracked in `docs/PROJECT_STATUS.md`; implementation alone is not a passed release gate.
+Local validation passed: 362 workspace tests, Clippy/formatting, 31 qpdf fixtures/outputs and four authentic public
+research documents (744 pages). GitHub CI, packaged updates/installers and publication are still pending.
+
+### Added
+- Image compression to a new copy: maximum image side and JPEG quality, measured before/after sizes, progress and cancellation.
+  Supported 8-bit DeviceRGB/DeviceGray images are resampled; masked/profiled/non-default-decoded images stay untouched.
+  No gain returns the original bytes. Signed documents and documents that forbid modification are refused.
+- Sequential multi-file compression and offline FR/EN OCR: at most 128 PDFs, each at most 256 MiB, individual results,
+  cancellation and atomic non-overwriting output copies. Original documents stay unchanged.
+- View-only quarter-turn rotation, full-screen reading and a bounded 256-entry navigation history per tab.
+  Editing returns to the document's upright view; view rotation never rewrites PDF page rotation.
+- Form creation for radio groups, drop-down lists and single/multiple-selection list boxes. XFDF value export and
+  JSON/XFDF/FDF value import validate the complete import before applying one undoable edit.
+- Grouped form-panel Apply/Discard controls, keyboard Space/Enter activation of page widgets and focused choice popups.
+- Mouse cropping in the page preview and grouped object rotation/resizing, each committed as one undo step.
+- CLI `compress-images`, `form-export`, `rotate-objects` and `resize-objects`; `add-form-field` accepts choice options
+  and `fill-form` accepts `.json`, `.xfdf` and the supported value-only `.fdf` subset.
+
+### Changed
+- Atomic saves use a neighbouring temporary file, flush its contents, then atomically replace the destination.
+  Injected interrupted/full-disk/permission failures and a killed partial-save child have dedicated regression coverage.
+- Independent QA adds four pinned, publicly licensed NIST PDFs, alongside the synthetic qpdf corpus.
+  These public samples do not represent all customer, hostile or large documents.
+
+### Fixed
+- Full PDF rewrites remove obsolete object/xref streams and linearization hints, recalculate the emitted object-number
+  bound and discard stale previous-revision offsets. This prevents invalid `/Size`/xref data on real producer files
+  while preserving encryption and permissions. No-gain compression keeps the original bytes and their pinned diagnostics.
+
+### Limits
+- Image compression is lossy and may yield no reduction. Batch OCR keeps its existing recognition limits; files
+  needing a password are refused by the batch UI rather than silently decrypted.
+- FDF import supports normal cross-reference tables and text/name/array field values; streams, actions, attachments,
+  rich text and FDF export are unsupported. Radio labels are shown in the fields panel, not added as PDF page text.
+- ARM64 execution, physical printers, Narrator and interactive/third-party-reader compatibility remain separate checks.
+
 ## [0.9.1] — 2026-10-16
 
 ### Fixed

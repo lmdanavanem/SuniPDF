@@ -174,8 +174,7 @@ forward / send backward and delete.
 
 Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
 
-Limits: a pasted or duplicated group can no longer be edited as text; rotating or resizing a group of several
-objects is not offered yet (moving only); `.otf` and `.ttc` fonts are not offered; fonts are embedded whole
+Limits: a pasted or duplicated group can no longer be edited as text; group rotation/resizing is available in 0.10.0 with one undo step; `.otf` and `.ttc` fonts are not offered; fonts are embedded whole
 (no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
 keeps its original font, which may not contain every character you type.
 
@@ -187,7 +186,7 @@ tool highlights every field on the page: blue for a fillable field, **red** when
 read-only or not fillable (signature, push button). Fields stay interactive in continuous scrolling, on every
 visible page.
 
-- **Checkbox, radio button**: one click toggles the state; each click is an undo step (Ctrl+Z).
+- **Checkbox, radio button**: click, or focus the widget and press Space/Enter, to toggle the state; each click is an undo step (Ctrl+Z).
 - **Text field**: one click opens an editor placed on the field; **Enter** confirms (Ctrl+Enter in a multi-line
   field, where Enter inserts a line break), **Esc** cancels, **Tab** / **Shift+Tab** confirm and move to the next /
   previous field (its content is selected); clicking elsewhere confirms too. The field's maximum length is
@@ -204,10 +203,11 @@ form (read, never modified) and the presence of **scripts** (JavaScript calculat
 runs them, calculated fields are not updated).
 
 **Forms** menu: **Clear fields** (texts emptied, boxes unchecked, lists deselected; read-only fields and "always
-one choice" radio groups are kept), **Export form values (JSON)…** (a `{ "field name": value }` file), **Import
-values into the form (JSON)…** (same format; unknown fields and rejected values are skipped and counted in the
-status message; an exported file imports back as is, read-only fields are listed with their value and are not
-rewritten), **Flatten form and annotations…** (all pages or the current page: values, highlights and notes
+one choice" radio groups are kept), **Export form values...** (`.xfdf` or `.json`), **Import values into the form...** (`.json`, `.xfdf`, or value-only `.fdf`).
+The complete GUI import is refused if a field is unknown or a value is invalid; no partial import occurs. An exported
+read-only value can be imported unchanged, and passwords are never exported. The fields panel keeps changes pending:
+choose **Apply changes** for one undo step, **Discard pending changes** to return to current values, or Save to apply
+and save together. On-page editing remains immediate. **Flatten form and annotations…** (all pages or the current page: values, highlights and notes
 become fixed content; links — web addresses, jumps to a page — have no appearance and are kept as they are; undo
 with Ctrl+Z while the document is open; flattening every page removes the form from the document). A
 **password** field is neither fillable nor exported (its value must never be stored). A password-protected
@@ -263,11 +263,29 @@ Stamp text and page-number templates must fit on one line; CR/LF line breaks are
 - **Combine PDF files**: pick files in order, then the output file; it opens afterwards.
 - **Insert Blank Page…**: size of the current page, A3, A4, A5, Letter, Legal or custom (portrait or
   landscape), number of pages, before or after the current page or at the end.
-- **Crop Pages…**: left, right, top and bottom margins in millimetres, with a preview on the page render;
+- **Crop Pages…**: left, right, top and bottom margins in millimetres, with a preview on the page render; drag a rectangle in this preview to set the crop, or enter margins;
   current page (or grid selection) or all pages; **Restore original frame** undoes a crop. Cropping **hides**
   the edges: content outside the frame stays in the file (this is not redaction).
 - **Resize Pages…**: size (A3 to Legal or custom, landscape); the content is either kept as is (anchored
   top-left) or scaled and centred. Existing annotations and links do not follow the scaling.
+
+## Reading controls
+
+Use **View** for view-only quarter-turn rotation and full screen. These controls do not alter PDF page rotation;
+starting an editing tool returns to upright view. Back/Forward navigation (Alt+Left/Alt+Right) keeps up to 256 positions
+per tab, including page and scroll anchors. View state/history belongs to each tab and is not PDF content.
+
+## Image compression and batches
+
+Open **Compress a PDF**, choose the maximum image side (128..8192 pixels) and JPEG quality (10..100), then save a
+new compressed copy. The result shows actual before/after bytes; cancellation leaves the source untouched. Compression
+is lossy, supports bounded 8-bit RGB/Gray images and can yield no gain; masks/profiles/custom decoding stay unchanged.
+Signed or modification-restricted PDFs are refused. Existing output files are never replaced.
+
+Choose **Batch processing** for compression or local English/French OCR, select 1..128 PDFs and a destination folder,
+then start. Each input is limited to 256 MiB. Progress/cancellation and an individual result are shown for each file.
+Copies use `-compressed` or `-ocr` names. Completed copies remain when another input fails or cancellation occurs.
+Batch files do not prompt for passwords; files requiring one are reported as errors.
 
 ## Converting
 
@@ -321,12 +339,13 @@ driver dialogs still require checking on the target machine.
 
 ## Creating form fields
 
-Open **Prepare a form**, then choose **Add text field** or **Add checkbox** on the current page.
-Enter a unique field name (no dots or control characters) and the rectangle's left, bottom, right and top
-in PDF points as displayed after rotation and cropping. Both dimensions must be at least 4 points and
-the rectangle must stay inside the page. Confirm, then use Fill & Sign to fill the saved field.
-Creation is undoable and preserves document encryption. Drawing a new field with the mouse, radio buttons
-and choice-list creation are not included; XFA creation is refused.
+Open **Prepare a form** and choose text, checkbox, radio group, drop-down list or list box on the current page.
+Use a unique name without dots/control characters and a displayed-page rectangle in PDF points, inside the page and
+at least 4 points wide/high. For choices, enter one `export value | display label` per line; export values must be
+unique. List boxes can allow multiple selections. A radio group's rectangle contains vertically arranged buttons;
+labels appear in the fields panel and are not inserted as PDF page text. Creation is undoable and keeps encryption.
+Drawing fields with the mouse and XFA creation are unsupported. FDF import accepts normal xref text/name/array values;
+streams, actions, attachments and rich text are refused. Referenced document locations are never opened.
 
 ## Offline OCR
 
@@ -372,7 +391,7 @@ content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--f
 background: an image placed on the page, e.g. a scanned signature; the reply carries
 `"digital_signature": false`, it is never a digital signature). Forms: `form-fields` (fields, types, values,
 options, widgets with 1-based pages; `--values-only` for the bare `{ name: value }` object), `fill-form`
-(`--values file.json` or `-` for standard input, repeatable `--set name=value` — checkbox: `true`/`false`, list
+(`--values file.json|file.xfdf|file.fdf` or `-` for JSON standard input, repeatable `--set name=value` — checkbox: `true`/`false`, list
 box: choices separated by `;` —, strict by default: an unknown field or a rejected value is a
 `form_field_not_found` / `form_value_invalid` error and nothing is written, `--ignore-unknown` to skip and count,
 `--flatten`) and `flatten` (`--pages all` or `1,3-5`; every page = the form is removed). An XFA form returns
@@ -387,7 +406,7 @@ points, origin at the bottom-left of the page **as displayed** (after rotation a
 only `--opacity 1`; other annotation opacity values must be finite. Invalid values are rejected
 before saving, including when `--overwrite` is supplied.
 
-New 0.9.0 commands:
+Commands added in 0.9.0:
 
 ```powershell
 sunipdf-cli add-form-field input.pdf --kind text --name FullName --page 1 --rect 40,40,220,65 --out form.pdf
@@ -404,10 +423,22 @@ Signature JSON always reports `identity_trusted: false`. Even `--overwrite` cann
 `ocr --language` accepts `eng`, `fra` or `eng+fra`; `--pages` defaults to `all`. If no text is added, the output
 copies the source bytes exactly.
 
+Commands added in 0.10.0:
+
+```powershell
+sunipdf-cli compress-images scan.pdf --max-image-side 1800 --jpeg-quality 75 --out scan-compressed.pdf
+sunipdf-cli add-form-field form.pdf --kind combo --name Country --option FR=France --option BE=Belgium --rect 40,40,220,65 --out choices.pdf
+sunipdf-cli form-export choices.pdf --out values.xfdf
+sunipdf-cli fill-form choices.pdf --values values.xfdf --out filled.pdf
+```
+
+`rotate-objects` and `resize-objects` apply a group transformation; use `--help` for the actual coordinate/scale options.
+`compress-images` always requires a new copy, including with `--overwrite`.
+
 ## Current limits
 
-No view rotation, Office conversion or editable XFA forms; form scripts are never run. Complex column reading
-order is not inferred. Field creation supports text and checkbox widgets only. OCR accuracy depends on the scan
+Office conversion and editable XFA forms are unavailable; form scripts are never run. Complex column reading
+order is not inferred. Field creation supports text, checkbox, radio, combo and list widgets; FDF interchange has the value-only limits above. OCR accuracy depends on the scan
 and language; existing text is not replaced. Certificate trust, revocation, trusted timestamps and LTV are unchecked.
 Real printer, installation/update and ARM64 hardware validation remain separate from automated tests.
 See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.

@@ -124,6 +124,8 @@ pub enum EditOp {
         name: String,
         kind: sunipdf_core::FieldKind,
         rect: PointRect,
+        options: Vec<sunipdf_core::FieldOption>,
+        multi_select: bool,
     },
     Rotate {
         pages: Vec<usize>,
@@ -173,10 +175,15 @@ pub enum EditOp {
         size: Option<f32>,
         rgb: Option<(u8, u8, u8)>,
     },
-    ResizeObject {
+    ResizeObjects {
         page: usize,
-        index: usize,
+        indices: Vec<usize>,
         bounds: PointRect,
+    },
+    RotateObjects {
+        page: usize,
+        indices: Vec<usize>,
+        degrees: f32,
     },
     SetObjectStyle {
         page: usize,
@@ -221,11 +228,6 @@ pub enum EditOp {
         kind: ShapeKind,
         rect: PointRect,
         style: ShapeStyle,
-    },
-    RotateObject {
-        page: usize,
-        index: usize,
-        degrees: f32,
     },
     DuplicateObjects {
         page: usize,
@@ -418,6 +420,7 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    ProcessFiles(crate::processing::ProcessingJob),
     Print {
         job: crate::printing::PrintJob,
         cancel: Arc<std::sync::atomic::AtomicBool>,
@@ -563,6 +566,13 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    ProcessingProgress {
+        done: usize,
+        total: usize,
+        item_done: usize,
+        item_total: usize,
+    },
+    ProcessingDone(Vec<crate::processing::FileResult>),
     TaskProgress {
         kind: TaskKind,
         done: usize,
@@ -722,6 +732,7 @@ impl Worker {
                 | Request::Print { .. }
                 | Request::SignCertificate { .. }
                 | Request::Autosave
+                | Request::ProcessFiles(_)
         );
         if self.tx.send(request).is_ok() && mutation {
             self.pending_mutations.set(self.pending_mutations.get() + 1);
@@ -1032,7 +1043,19 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             name,
             kind,
             rect,
-        } => doc.add_form_field(page, &name, kind, rect),
+            options,
+            multi_select,
+        } => doc.add_form_field_with_options(page, &name, kind, rect, &options, multi_select),
+        EditOp::ResizeObjects {
+            page,
+            indices,
+            bounds,
+        } => doc.resize_objects(page, &indices, bounds),
+        EditOp::RotateObjects {
+            page,
+            indices,
+            degrees,
+        } => doc.rotate_objects(page, &indices, degrees),
         EditOp::Rotate {
             pages,
             delta_degrees,
@@ -1173,11 +1196,6 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             }
             Ok(())
         }
-        EditOp::ResizeObject {
-            page,
-            index,
-            bounds,
-        } => doc.resize_object(page, index, bounds),
         EditOp::SetObjectStyle {
             page,
             indices,
@@ -1217,11 +1235,6 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             rect,
             style,
         } => doc.add_shape(page, kind, rect, &style),
-        EditOp::RotateObject {
-            page,
-            index,
-            degrees,
-        } => doc.rotate_object(page, index, degrees),
         EditOp::DuplicateObjects { page, indices } => doc
             .duplicate_objects(page, &indices, 12.0, -12.0)
             .map(|_| ()),
@@ -1360,9 +1373,13 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
             let doc = doc.ok_or(EngineError::Other("no document".into()))?;
             let values = form_data::values_to_json(&doc.form_info()?);
             let count = values.as_object().map_or(0, |m| m.len());
-            let text = serde_json::to_string_pretty(&values)
-                .map_err(|e| EngineError::Other(format!("json: {e}")))?;
-            sunipdf_core::write_atomic(&out, text.as_bytes())?;
+            let bytes = form_data::export_values(
+                &doc.form_info()?,
+                out.extension()
+                    .and_then(|ext| ext.to_str())
+                    .unwrap_or("json"),
+            )?;
+            sunipdf_core::write_atomic(&out, &bytes)?;
             Ok(BatchResult::FormExported { out, count })
         }
     })();
@@ -1461,6 +1478,23 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Some(doc) => Response::DocumentChanged(doc),
                     None => continue,
                 }
+            }
+            Request::ProcessFiles(job) => {
+                let results = crate::processing::run_job(
+                    &engine,
+                    state.document.as_ref(),
+                    job,
+                    |done, total, item_done, item_total| {
+                        let _ = tx.send(Response::ProcessingProgress {
+                            done,
+                            total,
+                            item_done,
+                            item_total,
+                        });
+                        ctx.request_repaint();
+                    },
+                );
+                Response::ProcessingDone(results)
             }
             Request::Print { job, cancel } => {
                 let result = state
@@ -2068,16 +2102,13 @@ mod tests {
         );
         assert_eq!(std::fs::read(&original).unwrap(), bytes);
 
-        // Force the first atomic write to fail while leaving the stale PDF deletable.
+        // Fail recovery metadata publication while keeping the sensitive PDF deletable.
         let failed_slot = session.slot(2, original.clone(), 2);
         failed_slot.save(&bytes).unwrap();
         let stale = failed_slot.base.with_extension("pdf");
-        let blocked = stale.with_file_name(format!(
-            "{}.{}.tmp",
-            stale.file_name().unwrap().to_string_lossy(),
-            std::process::id()
-        ));
-        std::fs::create_dir(blocked).unwrap();
+        let blocked = stale.with_extension("json");
+        std::fs::remove_file(&blocked).unwrap();
+        std::fs::create_dir(&blocked).unwrap();
         worker.send(Request::Open {
             path: original.clone(),
             password: Some("recovery-password".into()),
@@ -2101,7 +2132,11 @@ mod tests {
             !stale.exists(),
             "failed refresh must remove the unredacted recovery PDF"
         );
-        assert!(!stale.with_extension("json").exists());
+        assert!(
+            !blocked.is_file(),
+            "no recoverable metadata may remain after a failed refresh"
+        );
+        std::fs::remove_dir(blocked).unwrap();
         assert_eq!(std::fs::read(original).unwrap(), bytes);
     }
 

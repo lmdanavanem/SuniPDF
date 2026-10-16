@@ -231,8 +231,8 @@ pub static TABLE: [WsInfo; 14] = [
         desc_key: "hub.compress.desc",
         icon: (glyph::OPTIMIZE, "⤓"),
         color: Color32::from_rgb(0xEA, 0x58, 0x0C),
-        entry: Some(Entry::Direct(C::Optimize)),
-        groups: &[&[C::Optimize]],
+        entry: Some(Entry::Mode(C::HubCompress)),
+        groups: &[&[C::CompressImages], &[C::Optimize, C::ProcessFiles]],
     },
     WsInfo {
         ws: Workspace::PrepareForm,
@@ -241,7 +241,13 @@ pub static TABLE: [WsInfo; 14] = [
         icon: (glyph::RECT, "▭"),
         color: Color32::from_rgb(0x65, 0xA3, 0x0D),
         entry: Some(Entry::Mode(C::HubPrepareForm)),
-        groups: &[&[C::ToolAddTextField, C::ToolAddCheckbox]],
+        groups: &[&[
+            C::ToolAddTextField,
+            C::ToolAddCheckbox,
+            C::ToolAddRadioField,
+            C::ToolAddComboField,
+            C::ToolAddListField,
+        ]],
     },
     WsInfo {
         ws: Workspace::Stamp,
@@ -538,6 +544,7 @@ impl SuniApp {
 
     fn command_selected(&self, c: Command) -> bool {
         match c {
+            Command::FullScreenReading => self.reading_full_screen,
             Command::OrganizePages => self.organize.active,
             Command::ToggleComments => self.annotate.comments_open,
             Command::ToggleObjects => self.edit.objects_open,
@@ -562,7 +569,9 @@ impl SuniApp {
             | Command::SendToBack
             | Command::CopyObjects
             | Command::CutObjects => self.edit.selection.is_some(),
-            Command::RotateObjectLeft | Command::RotateObjectRight => single.is_some(),
+            Command::RotateObjectLeft | Command::RotateObjectRight => self.edit.selection.is_some(),
+            Command::HistoryBack => self.view.reading.history.can_back(),
+            Command::HistoryForward => self.view.reading.history.can_forward(),
             Command::PasteObjects => self.edit.clip.is_some(),
             Command::RedactClear | Command::RedactApply => {
                 !self.annotate.redact.marks.is_empty() && !self.annotate.redact.applying
@@ -815,6 +824,11 @@ mod tests {
 
     /// Commandes système, de vue ou de navigation : volontairement hors outils.
     const SYSTEM_COMMANDS: &[Command] = &[
+        C::RotateViewClockwise,
+        C::RotateViewCounterClockwise,
+        C::FullScreenReading,
+        C::HistoryBack,
+        C::HistoryForward,
         C::OpenDocument,
         C::CloseDocument,
         C::Quit,
@@ -854,6 +868,7 @@ mod tests {
     ];
 
     const HUB_COMMANDS: &[Command] = &[
+        C::HubCompress,
         C::HubFillSign,
         C::HubEdit,
         C::HubOrganize,

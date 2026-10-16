@@ -2,7 +2,7 @@
 
 use crate::dialog::{self, Spec};
 use egui::{Button, DragValue};
-use sunipdf_core::{FieldKind, PageSize, PointRect};
+use sunipdf_core::{FieldKind, FieldOption, PageSize, PointRect};
 use sunipdf_i18n::{tr, Language};
 
 pub struct FormFieldDraft {
@@ -10,6 +10,8 @@ pub struct FormFieldDraft {
     pub name: String,
     pub kind: FieldKind,
     pub rect: PointRect,
+    pub options: Vec<FieldOption>,
+    pub multi_select: bool,
 }
 
 pub struct FormBuilderState {
@@ -19,6 +21,8 @@ pub struct FormBuilderState {
     name: String,
     rect: PointRect,
     size: PageSize,
+    options: String,
+    multi_select: bool,
 }
 impl Default for FormBuilderState {
     fn default() -> Self {
@@ -33,6 +37,8 @@ impl Default for FormBuilderState {
                 right: 216.0,
                 top: 60.0,
             },
+            options: String::new(),
+            multi_select: false,
             size: PageSize {
                 width_pt: 612.0,
                 height_pt: 792.0,
@@ -46,12 +52,23 @@ impl FormBuilderState {
         self.kind = kind;
         self.size = size;
         self.name.clear();
-        let width: f32 = if kind == FieldKind::Text { 180.0 } else { 20.0 };
+        self.options = "1\n2".into();
+        self.multi_select = false;
+        let width: f32 = if kind == FieldKind::Checkbox {
+            20.0
+        } else {
+            180.0
+        };
+        let height: f32 = if matches!(kind, FieldKind::Radio | FieldKind::List) {
+            72.0
+        } else {
+            24.0
+        };
         self.rect = PointRect {
             left: size.width_pt.min(36.0) / 2.0,
             bottom: size.height_pt.min(36.0) / 2.0,
             right: (width + 18.0).min(size.width_pt),
-            top: 42.0f32.min(size.height_pt),
+            top: (18.0 + height).min(size.height_pt),
         };
         self.visible = true;
     }
@@ -68,7 +85,20 @@ impl FormBuilderState {
         }
         let mut create = false;
         let mut close = false;
-        let valid = !self.name.trim().is_empty()
+        let choice = matches!(
+            self.kind,
+            FieldKind::Radio | FieldKind::Combo | FieldKind::List
+        );
+        let options = if choice {
+            parse_options(&self.options)
+        } else {
+            Some(Vec::new())
+        };
+        let valid = options.as_ref().is_some_and(|o| {
+            self.kind != FieldKind::Radio
+                || ((self.rect.top - self.rect.bottom) / o.len().max(1) as f32 >= 4.0
+                    && o.iter().all(|o| o.value != "Off"))
+        }) && !self.name.trim().is_empty()
             && self.name.chars().count() <= 256
             && !self.name.chars().any(|c| c == '.' || c.is_control())
             && [
@@ -96,15 +126,36 @@ impl FormBuilderState {
             |ui| {
                 ui.label(tr(
                     lang,
-                    if self.kind == FieldKind::Text {
-                        "form_builder.text"
-                    } else {
-                        "form_builder.checkbox"
+                    match self.kind {
+                        FieldKind::Text => "form_builder.text",
+                        FieldKind::Checkbox => "form_builder.checkbox",
+                        FieldKind::Radio => "form_builder.radio",
+                        FieldKind::Combo => "form_builder.combo",
+                        FieldKind::List => "form_builder.list",
+                        _ => "form_builder.title",
                     },
                 ));
                 ui.label(tr(lang, "form_builder.name"));
                 ui.text_edit_singleline(&mut self.name);
                 ui.label(tr(lang, "form_builder.name_hint"));
+                if choice {
+                    ui.label(tr(lang, "form_builder.options"));
+                    ui.add(
+                        egui::TextEdit::multiline(&mut self.options)
+                            .desired_rows(4)
+                            .desired_width(f32::INFINITY),
+                    );
+                    ui.label(tr(lang, "form_builder.options_hint"));
+                    if self.kind == FieldKind::Radio {
+                        ui.label(tr(lang, "form_builder.radio_hint"));
+                    }
+                    if self.kind == FieldKind::List {
+                        ui.checkbox(
+                            &mut self.multi_select,
+                            tr(lang, "form_builder.multi_select"),
+                        );
+                    }
+                }
                 ui.label(tr(lang, "form_builder.coordinates"));
                 egui::Grid::new("field-bounds").show(ui, |ui| {
                     for (key, v) in [
@@ -135,6 +186,59 @@ impl FormBuilderState {
             name: self.name.clone(),
             kind: self.kind,
             rect: self.rect,
+            options: options.unwrap_or_default(),
+            multi_select: self.multi_select,
         })
+    }
+}
+
+fn parse_options(text: &str) -> Option<Vec<FieldOption>> {
+    let mut seen = std::collections::HashSet::new();
+    let options: Vec<_> = text
+        .lines()
+        .filter(|s| !s.trim().is_empty())
+        .map(|line| {
+            let (value, label) = line.split_once('|').unwrap_or((line, line));
+            FieldOption {
+                value: value.trim().into(),
+                label: label.trim().into(),
+            }
+        })
+        .collect();
+    (!options.is_empty()
+        && options.len() <= 1000
+        && options.iter().all(|o| {
+            !o.value.is_empty()
+                && o.value.len() <= 1024
+                && o.label.len() <= 4096
+                && !o.value.chars().any(char::is_control)
+                && !o.label.chars().any(char::is_control)
+                && seen.insert(&o.value)
+        }))
+    .then_some(options)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn choice_options_have_unique_export_values_and_labels() {
+        assert_eq!(
+            parse_options("FR|France\nBE|Belgique").unwrap(),
+            vec![
+                FieldOption {
+                    value: "FR".into(),
+                    label: "France".into()
+                },
+                FieldOption {
+                    value: "BE".into(),
+                    label: "Belgique".into()
+                }
+            ]
+        );
+        for invalid in ["", "one\none", "|missing"] {
+            assert!(parse_options(invalid).is_none());
+        }
     }
 }

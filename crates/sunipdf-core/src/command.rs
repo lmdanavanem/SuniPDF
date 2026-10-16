@@ -3,6 +3,17 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    HubCompress,
+    CompressImages,
+    ProcessFiles,
+    RotateViewClockwise,
+    RotateViewCounterClockwise,
+    FullScreenReading,
+    HistoryBack,
+    HistoryForward,
+    ToolAddRadioField,
+    ToolAddComboField,
+    ToolAddListField,
     OpenDocument,
     CloseDocument,
     Quit,
@@ -165,6 +176,94 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        HubCompress,
+        "hub.compress",
+        "hub.compress.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        CompressImages,
+        "convert.compress_images",
+        "menu.convert.compress_images",
+        None,
+        true,
+        Convert
+    ),
+    cmd!(
+        ProcessFiles,
+        "convert.process_files",
+        "menu.convert.process_files",
+        None,
+        false,
+        Convert
+    ),
+    cmd!(
+        RotateViewClockwise,
+        "view.rotate_clockwise",
+        "menu.view.rotate_clockwise",
+        None,
+        true,
+        View
+    ),
+    cmd!(
+        RotateViewCounterClockwise,
+        "view.rotate_counterclockwise",
+        "menu.view.rotate_counterclockwise",
+        None,
+        true,
+        View
+    ),
+    cmd!(
+        FullScreenReading,
+        "view.full_screen",
+        "menu.view.full_screen",
+        Some("shortcut.full_screen"),
+        true,
+        View
+    ),
+    cmd!(
+        HistoryBack,
+        "view.history_back",
+        "menu.view.history_back",
+        Some("shortcut.history_back"),
+        true,
+        View
+    ),
+    cmd!(
+        HistoryForward,
+        "view.history_forward",
+        "menu.view.history_forward",
+        Some("shortcut.history_forward"),
+        true,
+        View
+    ),
+    cmd!(
+        ToolAddRadioField,
+        "form.add_radio",
+        "menu.form.add_radio",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        ToolAddComboField,
+        "form.add_combo",
+        "menu.form.add_combo",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        ToolAddListField,
+        "form.add_list",
+        "menu.form.add_list",
+        None,
+        true,
+        Forms
+    ),
     cmd!(
         OpenDocument,
         "file.open",
@@ -1094,8 +1193,8 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 9);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 11);
-        assert_eq!(Command::in_menu(Menu::Forms).count(), 8);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 12);
+        assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
     #[test]

@@ -5,6 +5,7 @@
 //! textures) est pure et testée sans GPU ni PDFium.
 
 use crate::app::{error_key, file_name, SuniApp, Zoom, SCREEN_PER_PDF_POINT};
+use crate::reading::{ReadingState, ViewRotation};
 use crate::worker::Request;
 use egui::{pos2, vec2, Pos2, Rect, Vec2};
 use std::collections::{HashMap, HashSet};
@@ -86,6 +87,7 @@ pub fn lock_still_valid(expected: Option<f32>, actual: f32) -> bool {
 
 pub struct ViewState {
     pub mode: ViewMode,
+    pub reading: ReadingState,
     pub pool: TexturePool<egui::TextureHandle>,
     /// Incrémentée à chaque changement de document (ouverture, onglet, édition) : les tuiles d'une
     /// autre époque sont ignorées.
@@ -118,6 +120,7 @@ impl ViewState {
             } else {
                 ViewMode::Single
             },
+            reading: ReadingState::default(),
             pool: TexturePool::default(),
             epoch: 0,
             pending: None,
@@ -158,10 +161,24 @@ impl ViewState {
         self.wheel_anchor = None;
         self.missing_visible = 0;
         self.thumb_view = None;
+        self.reading = ReadingState::default();
+    }
+
+    pub fn orientation_changed(&mut self, page: usize) {
+        self.pending = Some(ScrollRequest::Page(page));
+        self.nav_lock = Some(NavLock { expected_y: None });
+        self.k_prev = None;
+        self.sent.clear();
+        self.wheel_anchor = None;
+        self.reading.history.invalidate_offsets();
     }
 
     pub fn request(&mut self, r: ScrollRequest) {
         self.pending = Some(r);
+    }
+
+    pub fn navigation_pending(&self) -> bool {
+        self.pending.is_some()
     }
 
     /// Défilement relatif ; les appuis d'une même image s'additionnent.
@@ -225,6 +242,9 @@ impl ViewState {
         if !same_sizes {
             self.pending = Some(ScrollRequest::Page(page));
         }
+        if !pages_unchanged || !same_sizes {
+            self.reading.history.reset();
+        }
     }
 }
 
@@ -240,6 +260,7 @@ pub struct Layout {
     lefts: Vec<f32>,
     rows: Vec<(Range<usize>, f32, f32)>,
     pub content: Vec2,
+    pub rotation: ViewRotation,
 }
 
 impl Layout {
@@ -249,6 +270,7 @@ impl Layout {
         Self::for_mode(window, first, k, viewport, ViewMode::Continuous)
     }
 
+    #[cfg(test)]
     pub fn for_mode(
         window: &[PageSize],
         first: usize,
@@ -256,9 +278,23 @@ impl Layout {
         viewport: Vec2,
         mode: ViewMode,
     ) -> Self {
+        Self::for_rotation(window, first, k, viewport, mode, ViewRotation::Upright)
+    }
+
+    pub fn for_rotation(
+        window: &[PageSize],
+        first: usize,
+        k: f32,
+        viewport: Vec2,
+        mode: ViewMode,
+        rotation: ViewRotation,
+    ) -> Self {
         let sizes: Vec<Vec2> = window
             .iter()
-            .map(|s| vec2(s.width_pt, s.height_pt) * k)
+            .map(|s| {
+                let s = rotation.size(*s);
+                vec2(s.width_pt, s.height_pt) * k
+            })
             .collect();
         let mut tops = vec![0.0; sizes.len()];
         let mut lefts = vec![0.0; sizes.len()];
@@ -309,6 +345,7 @@ impl Layout {
             lefts,
             rows,
             content: vec2(content_w, total.max(viewport.y)),
+            rotation,
         }
     }
 
@@ -546,11 +583,15 @@ pub fn wanted_jobs(input: &PlanInput, skip: &dyn Fn(&TileJob) -> bool) -> Vec<Ti
         let Some(page_px) = tiles::page_pixels(l.page_size_pt(page), scale) else {
             return;
         };
-        let local = area.intersect(rect).translate(-rect.min.to_vec2());
+        let source_size = l.rotation.source_size(rect.size());
+        let local = l.rotation.inverse_rect(
+            area.intersect(rect).translate(-rect.min.to_vec2()),
+            source_size,
+        );
         if !local.is_positive() {
             return;
         }
-        let Some(view) = to_pixels(local, rect.size(), page_px) else {
+        let Some(view) = to_pixels(local, source_size, page_px) else {
             return;
         };
         for region in tiles::plan_tiles(page_px, view, &input.limits) {
@@ -560,7 +601,9 @@ pub fn wanted_jobs(input: &PlanInput, skip: &dyn Fn(&TileJob) -> bool) -> Vec<Ti
                 region,
             };
             if !skip(&job) {
-                let c = tile_screen_rect(rect, page_px, region).center();
+                let source_rect = Rect::from_min_size(rect.min, source_size);
+                let source = tile_screen_rect(source_rect, page_px, region).center() - rect.min;
+                let c = rect.min + l.rotation.point(source.to_pos2(), source_size).to_vec2();
                 out.push((base + c.distance(center), job));
             }
         }
@@ -569,7 +612,8 @@ pub fn wanted_jobs(input: &PlanInput, skip: &dyn Fn(&TileJob) -> bool) -> Vec<Ti
     // Demi-tuile (pixels de la page) en points PDF, puis en points logiques (× k).
     let half_tile_pt = (input.limits.tile_side as f32 / 2.0) / scale.max(f32::EPSILON);
     for page in visible.clone() {
-        let k = l.size(page).x / l.page_size_pt(page).width_pt.max(f32::EPSILON);
+        let k = l.rotation.source_size(l.size(page)).x
+            / l.page_size_pt(page).width_pt.max(f32::EPSILON);
         add(page, vp.expand(half_tile_pt * k), 0.0, &mut out);
     }
     for &page in input.pinned {
@@ -793,6 +837,7 @@ struct Slot<'a> {
     page: usize,
     /// Rectangle écran de la page.
     rect: Rect,
+    rotation: ViewRotation,
     size_pt: PageSize,
     page_px: Option<(u32, u32)>,
     scale_milli: u32,
@@ -806,6 +851,63 @@ struct Slot<'a> {
 fn snapped(r: Rect, ppp: f32) -> Rect {
     let snap = |v: f32| (v * ppp).round() / ppp;
     Rect::from_min_size(pos2(snap(r.min.x), snap(r.min.y)), r.size())
+}
+
+fn paint_rotated_image(
+    painter: &egui::Painter,
+    id: egui::TextureId,
+    rect: Rect,
+    uv: Rect,
+    rotation: ViewRotation,
+    origin: Pos2,
+    source_size: Vec2,
+) {
+    let mut mesh = egui::epaint::Mesh::with_texture(id);
+    mesh.add_rect_with_uv(rect, uv, egui::Color32::WHITE);
+    for vertex in &mut mesh.vertices {
+        vertex.pos = origin
+            + rotation
+                .point((vertex.pos - origin).to_pos2(), source_size)
+                .to_vec2();
+    }
+    painter.add(mesh);
+}
+
+/// Tessellate only document overlays; widgets and text editors remain ordinary egui widgets.
+fn rotate_overlay_shapes(
+    ctx: &egui::Context,
+    painter: &egui::Painter,
+    first: egui::layers::ShapeIdx,
+    rotation: ViewRotation,
+    origin: Pos2,
+    source_size: Vec2,
+) {
+    if rotation == ViewRotation::Upright {
+        return;
+    }
+    let shapes = ctx.graphics_mut(|g| {
+        let list = g.entry(painter.layer_id());
+        let shapes: Vec<_> = list.all_entries().skip(first.0).cloned().collect();
+        let end = list.next_idx().0;
+        for index in first.0..end {
+            list.reset_shape(egui::layers::ShapeIdx(index));
+        }
+        shapes
+    });
+    for clipped in ctx.tessellate(shapes, ctx.pixels_per_point()) {
+        if let egui::epaint::Primitive::Mesh(mut mesh) = clipped.primitive {
+            for vertex in &mut mesh.vertices {
+                vertex.pos = origin
+                    + rotation
+                        .point((vertex.pos - origin).to_pos2(), source_size)
+                        .to_vec2();
+            }
+            let clip = rotation
+                .rect(clipped.clip_rect.translate(-origin.to_vec2()), source_size)
+                .translate(origin.to_vec2());
+            painter.with_clip_rect(clip).add(mesh);
+        }
+    }
 }
 
 impl SuniApp {
@@ -824,6 +926,19 @@ impl SuniApp {
 
     /// Zone document : fenêtre de pages, zoom, défilement, tuiles, interactions.
     pub fn document_view(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.view.reading.rotation != ViewRotation::Upright
+            && (self.annotate.tool != crate::annotate::Tool::Select
+                || self.sign.placing.is_some()
+                || self.edit.text_prompt.is_some()
+                || self.forms.editing.is_some()
+                || self.forms.popup.is_some())
+        {
+            self.view.reading.rotation = ViewRotation::Upright;
+            if let Some(doc) = &self.document {
+                self.view.orientation_changed(doc.page);
+            }
+            self.status_msg = Some(tr(self.lang(), "reading.rotation_reset").to_string());
+        }
         let Some(doc) = &self.document else { return };
         let sizes = doc.info.page_sizes.clone();
         let count = sizes.len();
@@ -833,6 +948,8 @@ impl SuniApp {
         let current = doc.page.min(count - 1);
         let name = file_name(&doc.info.path);
         let mode = self.view.mode;
+        let rotation = self.view.reading.rotation;
+        let display_sizes: Vec<_> = sizes.iter().map(|s| rotation.size(*s)).collect();
         let window = match mode {
             ViewMode::Continuous | ViewMode::TwoPage | ViewMode::Book => 0..count,
             ViewMode::Single => current..current + 1,
@@ -849,22 +966,33 @@ impl SuniApp {
 
         // 1. Zoom (molette ancrée sur le pointeur), plafonné.
         self.apply_wheel_zoom(ctx);
-        let wanted = effective_zoom(self.zoom, mode, &sizes, current, avail);
-        let (z, limited) = clamp_zoom(wanted, &sizes, ppp, mode);
+        let wanted = effective_zoom(self.zoom, mode, &display_sizes, current, avail);
+        let (z, limited) = clamp_zoom(wanted, &display_sizes, ppp, mode);
         if limited && matches!(self.zoom, Zoom::Fixed(_)) {
             self.zoom = Zoom::Fixed(z);
             self.status_msg = Some(tr(self.lang(), "status.zoom_limit").to_string());
         }
         self.effective_zoom = z;
         let k = z * SCREEN_PER_PDF_POINT;
+        if self.view.avail_prev != avail {
+            self.view.reading.history.invalidate_offsets();
+        }
         if self.view.k_prev.is_some_and(|p| (p - k).abs() > 1e-4) {
             self.view.settle_at = Some(now + SETTLE_SECS);
+            self.view.reading.history.invalidate_offsets();
         }
         let scale_milli = tiles::quantize_milli(k * ppp);
         let scale = scale_milli as f32 / 1000.0;
 
         // 2. Mise en page, 3. décalage imposé (requête, ancre de zoom) seulement cette image.
-        let layout = Layout::for_mode(&sizes[window.clone()], window.start, k, avail, mode);
+        let layout = Layout::for_rotation(
+            &sizes[window.clone()],
+            window.start,
+            k,
+            avail,
+            mode,
+            rotation,
+        );
         let forced = self.resolve_scroll(&layout, &sizes[window.clone()], avail, k);
         let pinned = self.pinned_pages();
 
@@ -890,6 +1018,7 @@ impl SuniApp {
                 let slot = Slot {
                     page,
                     rect: snapped(layout.page_rect(page).translate(rect.min.to_vec2()), ppp),
+                    rotation,
                     size_pt,
                     page_px: tiles::page_pixels(size_pt, scale),
                     scale_milli,
@@ -922,6 +1051,12 @@ impl SuniApp {
         }
         if mode != ViewMode::Single && self.view.nav_lock.is_none() {
             self.track_page(layout.dominant(viewport.min.y, viewport.max.y));
+        }
+        if let Some(doc) = &self.document {
+            self.view
+                .reading
+                .history
+                .observe(doc.page, self.view.offset);
         }
         // Outil Sélection d'objet sans panneau Objets : objets de la page survolée (prise directe
         // sur n'importe quelle page visible) ; sinon ceux de la page courante.
@@ -980,11 +1115,28 @@ impl SuniApp {
             self.paint_tiles(ui, &painter, s, page_px, clip);
         }
         let h = s.size_pt.height_pt;
-        self.paint_matches(&painter, s.rect, s.page, h);
-        self.paint_selection(&painter, s.rect, s.page, h);
-        self.paint_object_selection(&painter, s.rect, s.page, h);
-        self.paint_annot_adv(&painter, s.rect, s.page, h);
-        self.paint_redact_marks(&painter, s.rect, s.page, h);
+        let source_size = s.rotation.source_size(s.rect.size());
+        let source_rect = Rect::from_min_size(s.rect.min, source_size);
+        let source_clip = s
+            .rotation
+            .inverse_rect(clip.translate(-s.rect.min.to_vec2()), source_size)
+            .translate(s.rect.min.to_vec2());
+        let mut overlay_painter = painter.clone();
+        overlay_painter.set_clip_rect(source_clip);
+        let first_shape = ctx.graphics_mut(|g| g.entry(painter.layer_id()).next_idx());
+        self.paint_matches(&overlay_painter, source_rect, s.page, h);
+        self.paint_selection(&overlay_painter, source_rect, s.page, h);
+        self.paint_object_selection(&overlay_painter, source_rect, s.page, h);
+        self.paint_annot_adv(&overlay_painter, source_rect, s.page, h);
+        self.paint_redact_marks(&overlay_painter, source_rect, s.page, h);
+        rotate_overlay_shapes(
+            ctx,
+            &painter,
+            first_shape,
+            s.rotation,
+            s.rect.min,
+            source_size,
+        );
         let on_selection = self
             .edit
             .selection
@@ -1012,7 +1164,12 @@ impl SuniApp {
         );
         interact.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &alt));
         let (rect, zoom) = (s.rect, self.effective_zoom);
-        let to_pdf = |pos| crate::annotate::to_pdf(pos, rect, zoom, h);
+        let to_pdf = |pos: Pos2| {
+            let source = s
+                .rotation
+                .inverse_point((pos - rect.min).to_pos2(), source_size);
+            crate::annotate::to_pdf(rect.min + source.to_vec2(), source_rect, zoom, h)
+        };
         let mut event = None;
         if interact.drag_started() {
             // Origine réelle de la pression : le glissement n'est détecté qu'après le seuil.
@@ -1065,8 +1222,12 @@ impl SuniApp {
         page_px: (u32, u32),
         clip: Rect,
     ) {
-        let local = clip.translate(-s.rect.min.to_vec2());
-        let Some(view_px) = to_pixels(local, s.rect.size(), page_px) else {
+        let source_size = s.rotation.source_size(s.rect.size());
+        let source_rect = Rect::from_min_size(s.rect.min, source_size);
+        let local = s
+            .rotation
+            .inverse_rect(clip.translate(-s.rect.min.to_vec2()), source_size);
+        let Some(view_px) = to_pixels(local, source_size, page_px) else {
             return;
         };
         let uv = Rect::from_min_max(Pos2::ZERO, pos2(1.0, 1.0));
@@ -1079,13 +1240,13 @@ impl SuniApp {
                 region,
             };
             match self.view.pool.exact(&job) {
-                Some(h) => exact.push((tile_screen_rect(s.rect, page_px, region), h.id())),
+                Some(h) => exact.push((tile_screen_rect(source_rect, page_px, region), h.id())),
                 None => missing += 1,
             }
         }
         if missing > 0 {
             self.view.missing_visible += missing;
-            let size = s.rect.size();
+            let size = source_size;
             let area = Rect::from_min_max(
                 (local.min.to_vec2() / size).to_pos2(),
                 (local.max.to_vec2() / size).to_pos2(),
@@ -1108,11 +1269,11 @@ impl SuniApp {
                     s.rect.min + n.min.to_vec2() * size,
                     s.rect.min + n.max.to_vec2() * size,
                 );
-                painter.image(id, r, uv, egui::Color32::WHITE);
+                paint_rotated_image(painter, id, r, uv, s.rotation, s.rect.min, source_size);
             }
         }
         for (r, id) in exact {
-            painter.image(id, r, uv, egui::Color32::WHITE);
+            paint_rotated_image(painter, id, r, uv, s.rotation, s.rect.min, source_size);
         }
     }
 
@@ -1158,8 +1319,15 @@ impl SuniApp {
                     y_from_top_pt,
                 } => {
                     let p = page.clamp(layout.first, layout.pages().end - 1);
-                    let x = layout.page_left(p) + x_pt * k;
-                    let y = layout.page_top(p) + y_from_top_pt * k;
+                    let source_size = vec2(
+                        layout.page_size_pt(p).width_pt,
+                        layout.page_size_pt(p).height_pt,
+                    );
+                    let point = layout
+                        .rotation
+                        .point(pos2(x_pt, y_from_top_pt), source_size);
+                    let x = layout.page_left(p) + point.x * k;
+                    let y = layout.page_top(p) + point.y * k;
                     let seen_y = off.y + 0.1 * screen.y..=off.y + 0.85 * screen.y;
                     let seen_x = off.x..=off.x + 0.9 * screen.x;
                     (!(seen_y.contains(&y) && seen_x.contains(&x)))
@@ -1173,7 +1341,14 @@ impl SuniApp {
         if (kp - k).abs() <= 1e-4 || v.first_prev != layout.first || !v.inner.is_positive() {
             return None;
         }
-        let old = Layout::for_mode(window, layout.first, kp, v.avail_prev, v.mode);
+        let old = Layout::for_rotation(
+            window,
+            layout.first,
+            kp,
+            v.avail_prev,
+            v.mode,
+            layout.rotation,
+        );
         let screen = match (v.wheel_anchor, self.zoom) {
             (Some(p), _) => p - v.inner.min,
             (None, Zoom::Fixed(_)) => v.inner.size() / 2.0,
@@ -1280,6 +1455,7 @@ impl SuniApp {
             return;
         }
         self.view.mode = mode;
+        self.view.reading.history.invalidate_offsets();
         self.settings.continuous_view = mode == ViewMode::Continuous;
         self.settings.view_mode = Some(mode.key().to_string());
         self.persist_settings();
@@ -1439,10 +1615,14 @@ impl SuniApp {
             let page = layout.nearest_page(content.to_pos2());
             let rect = layout.page_rect(page);
             let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
+            let source_size = layout.rotation.source_size(rect.size());
+            let source = layout
+                .rotation
+                .inverse_point((content - rect.min.to_vec2()).to_pos2(), source_size);
             self.move_reading(ReadingPoint {
                 page,
-                x: ((content.x - rect.min.x) / k).clamp(0.0, layout.page_size_pt(page).width_pt),
-                y: (layout.page_size_pt(page).height_pt - (content.y - rect.min.y) / k)
+                x: (source.x / k).clamp(0.0, layout.page_size_pt(page).width_pt),
+                y: (layout.page_size_pt(page).height_pt - source.y / k)
                     .clamp(0.0, layout.page_size_pt(page).height_pt),
             });
             let dy = reading_edge_scroll(position, inner, dt);
@@ -1575,6 +1755,157 @@ mod tests {
     }
 
     #[test]
+    fn rotated_layout_and_tiling_keep_source_coordinates_and_bounded_jobs() {
+        let size = PageSize {
+            width_pt: 600.0,
+            height_pt: 800.0,
+        };
+        for mode in [
+            ViewMode::Single,
+            ViewMode::Continuous,
+            ViewMode::TwoPage,
+            ViewMode::Book,
+        ] {
+            for rotation in [
+                ViewRotation::Clockwise,
+                ViewRotation::UpsideDown,
+                ViewRotation::Counterclockwise,
+            ] {
+                let sizes = [size, size, size];
+                let layout =
+                    Layout::for_rotation(&sizes, 0, 8.0, vec2(900.0, 600.0), mode, rotation);
+                assert_eq!(layout.page_size_pt(0), size);
+                let display_size = rotation.size(size);
+                assert_eq!(
+                    layout.size(0),
+                    vec2(display_size.width_pt, display_size.height_pt) * 8.0
+                );
+                let source_size = vec2(4800.0, 6400.0);
+                let source_clip = Rect::from_min_size(pos2(3500.0, 200.0), vec2(300.0, 300.0));
+                let viewport = rotation
+                    .rect(source_clip, source_size)
+                    .translate(layout.page_rect(0).min.to_vec2());
+                let jobs = wanted_jobs(
+                    &PlanInput {
+                        layout: &layout,
+                        scale_milli: 8000,
+                        viewport,
+                        pinned: &[],
+                        limits: TileLimits::default(),
+                    },
+                    &|_| false,
+                );
+                assert!(!jobs.is_empty() && jobs.len() <= MAX_WANTED);
+                assert!(jobs.iter().any(|j| j.page == 0
+                    && j.region.x <= 3500
+                    && j.region.right() > 3500
+                    && j.region.y <= 200
+                    && j.region.bottom() > 200));
+                assert!(jobs
+                    .iter()
+                    .all(|j| j.region.right() <= 4800 && j.region.bottom() <= 6400));
+            }
+        }
+    }
+
+    #[test]
+    fn rotated_tile_mesh_keeps_uvs_and_overlay_clip_in_display_space() {
+        let ctx = egui::Context::default();
+        let source = vec2(600.0, 800.0);
+        let origin = pos2(20.0, 30.0);
+        let rect = Rect::from_min_size(origin + vec2(100.0, 200.0), vec2(60.0, 100.0));
+        let clip = Rect::from_min_size(origin, source);
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let mut painter = ui.painter().clone();
+            painter.set_clip_rect(clip);
+            paint_rotated_image(
+                &painter,
+                egui::TextureId::User(9),
+                rect,
+                Rect::from_min_max(Pos2::ZERO, pos2(1.0, 1.0)),
+                ViewRotation::Clockwise,
+                origin,
+                source,
+            );
+            let first = ctx.graphics_mut(|g| g.entry(painter.layer_id()).next_idx());
+            painter.rect_filled(rect, 0.0, egui::Color32::RED);
+            rotate_overlay_shapes(
+                &ctx,
+                &painter,
+                first,
+                ViewRotation::Clockwise,
+                origin,
+                source,
+            );
+        });
+        out.textures_delta.clear();
+        let tile = out
+            .shapes
+            .iter()
+            .find_map(|s| match &s.shape {
+                egui::Shape::Mesh(mesh) if mesh.texture_id == egui::TextureId::User(9) => {
+                    Some(mesh)
+                }
+                _ => None,
+            })
+            .unwrap();
+        let vertex = tile.vertices.iter().find(|v| v.uv == Pos2::ZERO).unwrap();
+        assert_eq!(vertex.pos, origin + vec2(600.0, 100.0));
+        let overlay = out.shapes.iter().find(|s| matches!(&s.shape, egui::Shape::Mesh(mesh) if mesh.texture_id != egui::TextureId::User(9))).unwrap();
+        assert_eq!(
+            overlay.clip_rect,
+            clip.intersect(Rect::from_min_size(origin, vec2(800.0, 600.0)))
+        );
+        let egui::Shape::Mesh(mesh) = &overlay.shape else {
+            unreachable!()
+        };
+        assert!(mesh
+            .vertices
+            .iter()
+            .all(|v| v.pos.x > origin.x + 499.0 && v.pos.x < origin.x + 601.0));
+    }
+
+    #[test]
+    fn rotated_reading_pointer_maps_back_to_source_pdf_points() {
+        let k = SCREEN_PER_PDF_POINT;
+        let inner = Rect::from_min_size(Pos2::ZERO, vec2(1400.0, 1400.0));
+        for rotation in [
+            ViewRotation::Clockwise,
+            ViewRotation::UpsideDown,
+            ViewRotation::Counterclockwise,
+        ] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.effective_zoom = 1.0;
+            let ctx = egui::Context::default();
+            let layout =
+                Layout::for_rotation(&[letter()], 0, k, inner.size(), ViewMode::Single, rotation);
+            let source = pos2(120.0 * k, (792.0 - 600.0) * k);
+            let position = layout.page_rect(0).min
+                + rotation.point(source, vec2(612.0 * k, 792.0 * k)).to_vec2();
+            let anchor = ReadingPoint {
+                page: 0,
+                x: 50.0,
+                y: 600.0,
+            };
+            app.annotate.reading_drag = Some((anchor, anchor));
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(inner),
+                    events: vec![egui::Event::PointerMoved(position)],
+                    ..Default::default()
+                },
+                |ui| app.reading_pointer(ui.ctx(), &layout, inner),
+            );
+            out.textures_delta.clear();
+            let Request::ReadingSelection { focus, .. } = requests.recv().unwrap() else {
+                panic!("reading focus expected");
+            };
+            assert!((focus.x - 120.0).abs() < 0.001);
+            assert!((focus.y - 600.0).abs() < 0.001);
+        }
+    }
+
+    #[test]
     fn headless_reading_drag_crosses_pages_and_discards_stale_results() {
         use sunipdf_core::annot::{ReadingSelection, TextPosition};
         use sunipdf_core::TextSelection;
@@ -1666,7 +1997,8 @@ mod tests {
         app.on_reading_selected(epoch, generation, Ok(result("Alpha")));
         pointer_frame(&mut app, pos2(250.0, 300.0), false);
         assert!(app.annotate.reading_drag.is_none());
-        let out = ctx.run_ui(egui::RawInput::default(), |ui| app.copy_selection(ui.ctx()));
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| app.copy_selection(ui.ctx()));
+        out.textures_delta.clear();
         assert!(out
             .platform_output
             .commands

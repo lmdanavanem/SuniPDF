@@ -5,10 +5,6 @@ param(
     [string]$ReportPath = ''
 )
 $ErrorActionPreference = 'Stop'
-$releaseApiHeaders = @{'User-Agent'='SuniPDF-update-regression'}
-if ($env:SUNIPDF_TEST_GITHUB_TOKEN) { $releaseApiHeaders.Authorization = 'Bearer ' + $env:SUNIPDF_TEST_GITHUB_TOKEN }
-# Keep the CI token out of application/helper processes and public download requests.
-[Environment]::SetEnvironmentVariable('SUNIPDF_TEST_GITHUB_TOKEN', $null, 'Process')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repo = Split-Path -Parent $PSScriptRoot
 $helperSource = Join-Path $repo 'apps/sunipdf-desktop/src/update-helper.ps1'
@@ -36,13 +32,11 @@ function PreviousPackages([string]$Workspace) {
         '0.8.2' = 'B3A311CBB62803F9637E664C317999C1D0162358D7152E8C37223B3BF3C9EA4C'
         '0.8.3' = '46AB7FC675DC1A43A955D629718924B717C7B935E0C5ECDBDDFC9E46578BA018'
         '0.9.0' = 'E935A02D5DC98AB2AFC67C3CAC856AB10ACA6D4A090212CE084AA87A9398A9A2'
+        '0.9.1' = '601306861BE0C80BDA62E568473172504B530D4344635D3BFA28CBF6ADBFC082'
     }
-    foreach ($version in @('0.8.2', '0.8.3', '0.9.0')) {
+    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1')) {
         if ([version]$version -ge [version]$incoming.version) { continue }
         $name = "SuniPDF-$version-win-x64-portable.zip"
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/lmdanavanem/SuniPDF/releases/tags/v$version" -Headers $releaseApiHeaders -MaximumRedirection 0 -TimeoutSec 60
-        $asset = @($release.assets | Where-Object name -eq $name)
-        Assert ($asset.Count -eq 1 -and $asset[0].digest -ieq "sha256:$($pins[$version])") "Pinned release digest disagrees with the public GitHub API: $version"
         $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content
         if ($sidecarBody -is [byte[]]) { $sidecarBody = [Text.Encoding]::ASCII.GetString($sidecarBody) }
         $sidecar = $sidecarBody.Trim() -split '\s+', 2

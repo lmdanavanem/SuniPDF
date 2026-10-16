@@ -15,6 +15,7 @@ pub mod cache;
 pub mod certificate;
 pub mod clipboard;
 pub mod command;
+pub mod compress;
 pub mod convert;
 pub mod edit;
 mod error;

@@ -13,6 +13,8 @@ pub struct TabState {
     pub effective_zoom: f32,
     /// Décalage de la zone de défilement du document (l'état egui est partagé entre onglets).
     pub scroll: egui::Vec2,
+    pub view_mode: crate::view::ViewMode,
+    pub reading: crate::reading::ReadingState,
     pub page_input: String,
     pub thumbnails: HashMap<usize, egui::TextureHandle>,
     pub thumb_px: u32,
@@ -57,6 +59,8 @@ impl SuniApp {
         let comments_open = self.annotate.comments_open;
         let forms_open = self.forms.panel_open;
         let scroll = self.view.offset;
+        let view_mode = self.view.mode;
+        let reading = std::mem::take(&mut self.view.reading);
         // Textures libérées (GPU des onglets inactifs), époque suivante : tuiles en vol ignorées.
         self.view.reset();
         self.thumbs_pending.clear();
@@ -72,6 +76,8 @@ impl SuniApp {
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),
             effective_zoom: std::mem::replace(&mut self.effective_zoom, 1.0),
             scroll,
+            view_mode,
+            reading,
             page_input: std::mem::take(&mut self.page_input),
             thumbnails: std::mem::take(&mut self.thumbnails),
             thumb_px: std::mem::replace(&mut self.thumb_px, 0),
@@ -102,8 +108,15 @@ impl SuniApp {
         self.zoom = t.zoom;
         self.effective_zoom = t.effective_zoom;
         self.view.reset();
-        self.view
-            .request(crate::view::ScrollRequest::Offset(t.scroll));
+        self.view.reading = t.reading;
+        if self.view.mode == t.view_mode {
+            self.view
+                .request(crate::view::ScrollRequest::Offset(t.scroll));
+        } else {
+            self.view.reading.history.invalidate_offsets();
+            let page = self.document.as_ref().map_or(0, |doc| doc.page);
+            self.view.request(crate::view::ScrollRequest::Page(page));
+        }
         // Le panneau des miniatures est partagé entre onglets : ramener la page de cet onglet.
         self.view.follow_thumb = true;
         self.page_input = t.page_input;
@@ -327,6 +340,63 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn view_rotation_and_history_survive_tab_suspension_without_leaking() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        app.view.reading.rotation = crate::reading::ViewRotation::Counterclockwise;
+        app.view.reading.history.jump(0, egui::vec2(0.0, 42.0), 4);
+        let first = app.take_tab();
+        assert_eq!(
+            app.view.reading.rotation,
+            crate::reading::ViewRotation::Upright
+        );
+        assert!(!app.view.reading.history.can_back());
+        app.view.reading.rotation = crate::reading::ViewRotation::Clockwise;
+        app.put_tab(first);
+        assert_eq!(
+            app.view.reading.rotation,
+            crate::reading::ViewRotation::Counterclockwise
+        );
+        assert!(app.view.reading.history.can_back());
+    }
+
+    #[test]
+    fn shared_view_mode_changes_do_not_restore_old_continuous_offsets() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes = vec![size; 3];
+        app.document.as_mut().unwrap().page = 1;
+        app.zoom = Zoom::Fixed(1.0);
+        app.view.offset = egui::vec2(0.0, 900.0);
+        app.view.reading.history.jump(0, egui::Vec2::ZERO, 1);
+        app.view.reading.history.observe(1, app.view.offset);
+        let previous = app.take_tab();
+        app.view.mode = crate::view::ViewMode::Single;
+        app.put_tab(previous);
+        assert_eq!(app.view.mode, crate::view::ViewMode::Single);
+        assert!(app.view.reading.history.can_back());
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(900.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                let ctx = ui.ctx().clone();
+                app.document_view(&ctx, ui);
+            },
+        );
+        out.textures_delta.clear();
+        assert_eq!(app.document.as_ref().unwrap().page, 1);
+        assert!(
+            app.view.offset.y < 32.0,
+            "old continuous offset must not scroll to the bottom of the single page"
+        );
+    }
 
     #[test]
     fn recovery_ids_survive_tab_reordering_and_removal() {

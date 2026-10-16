@@ -3,6 +3,7 @@
 
 mod annot_cmd;
 mod feature_cmd;
+mod v010_cmd;
 
 use clap::{Parser, Subcommand};
 use std::io::Write;
@@ -29,13 +30,19 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Add a fillable text field or checkbox and save to --out.
+    /// Add a fillable text, checkbox, radio, combo or list field and save to --out.
     AddFormField {
         file: PathBuf,
-        #[arg(long, value_parser = ["text", "checkbox"])]
+        #[arg(long, value_parser = ["text", "checkbox", "radio", "combo", "list"])]
         kind: String,
         #[arg(long)]
         name: String,
+        /// Repeat for radio/combo/list choices: EXPORT_VALUE=DISPLAY_LABEL.
+        #[arg(long = "option", value_name = "VALUE=LABEL")]
+        options: Vec<String>,
+        /// Allow several selected choices (list fields only).
+        #[arg(long)]
+        multi_select: bool,
         /// Displayed page coordinates: left,bottom,right,top (PDF points).
         #[arg(long, allow_hyphen_values = true)]
         rect: String,
@@ -329,6 +336,20 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Reduce supported image dimensions/JPEG quality while keeping page text, links and fields.
+    /// Documents with digital signatures are refused; the original remains untouched.
+    CompressImages {
+        file: PathBuf,
+        #[arg(long, default_value_t = 2000)]
+        max_image_side: u32,
+        #[arg(long, default_value_t = 80)]
+        jpeg_quality: u8,
+        /// New compressed copy; existing files and the input cannot be replaced, even with --overwrite.
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Search text; prints matches (page, rectangles in points, origin bottom-left of the page as
     /// displayed, i.e. after /Rotate and CropBox) as JSON.
     Search {
@@ -409,6 +430,37 @@ enum Command {
         object: usize,
         #[arg(long, allow_negative_numbers = true)]
         degrees: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Rotate objects together (clockwise degrees), preserving their relative positions.
+    RotateObjects {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// 0-based object indices, e.g. "0,2".
+        #[arg(long)]
+        objects: String,
+        #[arg(long, allow_negative_numbers = true)]
+        degrees: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Resize objects together to displayed page bounds, preserving their relative positions.
+    ResizeObjects {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// 0-based object indices, e.g. "0,2".
+        #[arg(long)]
+        objects: String,
+        /// Displayed page coordinates: left,bottom,right,top (PDF points).
+        #[arg(long, allow_hyphen_values = true)]
+        rect: String,
         #[arg(long)]
         out: PathBuf,
         #[arg(long)]
@@ -573,7 +625,15 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
-    /// Fill fields from a JSON object (--values FILE, "-" = stdin) and/or --set NAME=VALUE
+    /// Export non-password field values as JSON or XFDF (selected by output extension).
+    FormExport {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Fill fields from JSON/XFDF/FDF (--values FILE, "-" = JSON stdin) and/or --set NAME=VALUE
     /// (repeatable; checkbox: true/false, list box: choices separated by ";"). Strict by default:
     /// an unknown field or a rejected value fails before anything is written.
     FillForm {
@@ -810,6 +870,8 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             file,
             kind,
             name,
+            options,
+            multi_select,
             rect,
             page,
             out,
@@ -818,12 +880,33 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let rect = annot_cmd::parse_rect(&rect)?;
             let mut doc = engine.open(&file, password.as_deref())?;
             let index = page_index(page, doc.page_count())?;
-            let field_kind = if kind == "checkbox" {
-                sunipdf_core::FieldKind::Checkbox
-            } else {
-                sunipdf_core::FieldKind::Text
+            let field_kind = match kind.as_str() {
+                "checkbox" => sunipdf_core::FieldKind::Checkbox,
+                "radio" => sunipdf_core::FieldKind::Radio,
+                "combo" => sunipdf_core::FieldKind::Combo,
+                "list" => sunipdf_core::FieldKind::List,
+                _ => sunipdf_core::FieldKind::Text,
             };
-            doc.add_form_field(index, &name, field_kind, rect)?;
+            let options = options
+                .iter()
+                .map(|spec| {
+                    let (value, label) = spec.split_once('=').ok_or_else(|| {
+                        EngineError::FormValueInvalid("field options require VALUE=LABEL".into())
+                    })?;
+                    Ok(sunipdf_core::FieldOption {
+                        value: value.to_string(),
+                        label: label.to_string(),
+                    })
+                })
+                .collect::<Result<Vec<_>, EngineError>>()?;
+            doc.add_form_field_with_options(
+                index,
+                &name,
+                field_kind,
+                rect,
+                &options,
+                multi_select,
+            )?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({"out":out,"page":page,"name":name,"kind":kind}))
         }
@@ -1189,6 +1272,22 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "saved_percent": if r.before > 0 { 100.0 * (1.0 - r.after as f64 / r.before as f64) } else { 0.0 } }),
             )
         }
+        Command::CompressImages {
+            file,
+            max_image_side,
+            jpeg_quality,
+            out,
+            password,
+        } => v010_cmd::compress(
+            &engine,
+            &file,
+            &out,
+            password.as_deref(),
+            sunipdf_core::compress::CompressionOptions {
+                max_image_side,
+                jpeg_quality,
+            },
+        ),
         Command::Search {
             file,
             query,
@@ -1326,6 +1425,39 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let angle = doc.object_info(p, object)?.angle_deg;
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "angle": angle }))
+        }
+        Command::RotateObjects {
+            file,
+            page,
+            objects,
+            degrees,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            doc.rotate_objects(p, &indices, degrees)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({"out":out,"objects":indices.len(),"degrees":degrees}))
+        }
+        Command::ResizeObjects {
+            file,
+            page,
+            objects,
+            rect,
+            out,
+            password,
+        } => {
+            let bounds = annot_cmd::parse_rect(&rect)?;
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            doc.resize_objects(p, &indices, bounds)?;
+            doc.save_as(&out)?;
+            Ok(
+                serde_json::json!({"out":out,"objects":indices.len(),"bounds":[bounds.left,bounds.bottom,bounds.right,bounds.top]}),
+            )
         }
         Command::CopyObjects {
             file,
@@ -1542,6 +1674,26 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 form_data::info_to_json(&info)
             })
         }
+        Command::FormExport {
+            file,
+            out,
+            password,
+        } => {
+            let source = std::fs::canonicalize(&file)?;
+            if out.exists() && std::fs::canonicalize(&out)? == source {
+                return Err(EngineError::FormValueInvalid(
+                    "form values cannot replace the input PDF".into(),
+                ));
+            }
+            let doc = engine.open(&file, password.as_deref())?;
+            let info = doc.form_info()?;
+            let extension = out.extension().and_then(|s| s.to_str()).unwrap_or("");
+            let bytes = form_data::export_values(&info, extension)?;
+            sunipdf_core::write_atomic(&out, &bytes)?;
+            Ok(
+                serde_json::json!({"out":out,"fields":form_data::values_to_json(&info).as_object().map_or(0, |v| v.len())}),
+            )
+        }
         Command::Annotations {
             file,
             page,
@@ -1721,16 +1873,12 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let info = doc.form_info()?;
             let mut plan = ImportPlan::default();
             if let Some(path) = values {
-                let text = if path.as_os_str() == "-" {
-                    let mut s = String::new();
-                    std::io::Read::read_to_string(&mut std::io::stdin(), &mut s)?;
-                    s
+                let json = v010_cmd::read_form_values(&path)?;
+                plan = if ignore_unknown {
+                    form_data::plan_from_json(&info, &json)?
                 } else {
-                    std::fs::read_to_string(&path)?
+                    form_data::strict_plan_from_json(&info, &json)?
                 };
-                let json: serde_json::Value = serde_json::from_str(&text)
-                    .map_err(|e| EngineError::FormValueInvalid(format!("invalid JSON: {e}")))?;
-                plan = form_data::plan_from_json(&info, &json)?;
             }
             for spec in &set {
                 let (name, value) = split_set(spec)?;
@@ -1815,9 +1963,12 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Redact { out, .. }
         | Command::Images2pdf { out, .. }
         | Command::Optimize { out, .. }
+        | Command::CompressImages { out, .. }
         | Command::AddText { out, .. }
         | Command::SetOpacity { out, .. }
         | Command::RotateObject { out, .. }
+        | Command::RotateObjects { out, .. }
+        | Command::ResizeObjects { out, .. }
         | Command::CopyObjects { out, .. }
         | Command::ReplaceImage { out, .. }
         | Command::AddImage { out, .. }
@@ -1825,6 +1976,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::ResizePages { out, .. }
         | Command::InsertBlank { out, .. }
         | Command::FillForm { out, .. }
+        | Command::FormExport { out, .. }
         | Command::Flatten { out, .. }
         | Command::Annotate { out, .. }
         | Command::AnnotationDelete { out, .. }
@@ -2002,6 +2154,16 @@ fn cli_main() -> ExitCode {
 mod tests {
     use super::*;
 
+    fn parse_cli<const N: usize>(args: [&'static str; N]) -> Result<Cli, clap::Error> {
+        // Debug clap parsing needs the same stack allocation as the production CLI thread.
+        std::thread::Builder::new()
+            .stack_size(16 * 1024 * 1024)
+            .spawn(move || Cli::try_parse_from(args))
+            .expect("CLI parser thread")
+            .join()
+            .expect("CLI parser result")
+    }
+
     #[test]
     fn parses_rect_specifications() {
         let m = parse_rect_spec("2: 72, 500.5,272,560").unwrap();
@@ -2069,7 +2231,7 @@ mod tests {
         for bad in ["1,2,3", "1,2,3,4,5", "-1,0,1,1", "a,b,c,d", ""] {
             assert!(parse_region(bad).is_err(), "{bad}");
         }
-        let cli = Cli::try_parse_from([
+        let cli = parse_cli([
             "sunipdf-cli",
             "render",
             "a.pdf",
@@ -2085,7 +2247,7 @@ mod tests {
             output_path(&cli.command),
             Some(std::path::Path::new("tile.png"))
         );
-        assert!(Cli::try_parse_from([
+        assert!(parse_cli([
             "sunipdf-cli",
             "render",
             "a.pdf",
@@ -2111,7 +2273,7 @@ mod tests {
             page_index(4, 3),
             Err(EngineError::PageOutOfRange(3))
         ));
-        let cli = Cli::try_parse_from([
+        let cli = parse_cli([
             "sunipdf-cli",
             "crop",
             "a.pdf",
@@ -2128,7 +2290,7 @@ mod tests {
             Some(std::path::Path::new("o.pdf"))
         );
         assert!(
-            Cli::try_parse_from([
+            parse_cli([
                 "sunipdf-cli",
                 "add-text",
                 "a.pdf",
@@ -2152,7 +2314,7 @@ mod tests {
 
     #[test]
     fn negative_angles_parse_and_overwrite_is_global() {
-        let cli = Cli::try_parse_from([
+        let cli = parse_cli([
             "sunipdf-cli",
             "stamp",
             "a.pdf",
@@ -2167,7 +2329,7 @@ mod tests {
         .unwrap();
         assert!(cli.overwrite);
         assert!(matches!(cli.command, Command::Stamp { angle, .. } if angle == -45.0));
-        assert!(Cli::try_parse_from([
+        assert!(parse_cli([
             "sunipdf-cli",
             "rotate",
             "a.pdf",
@@ -2181,7 +2343,7 @@ mod tests {
 
     #[test]
     fn add_image_parses_and_writes_one_file() {
-        let cli = Cli::try_parse_from([
+        let cli = parse_cli([
             "sunipdf-cli",
             "add-image",
             "a.pdf",
@@ -2205,8 +2367,6 @@ mod tests {
             output_path(&cli.command).map(|p| p.to_path_buf()),
             Some(PathBuf::from("o.pdf"))
         );
-        assert!(
-            Cli::try_parse_from(["sunipdf-cli", "add-image", "a.pdf", "--out", "o.pdf"]).is_err()
-        );
+        assert!(parse_cli(["sunipdf-cli", "add-image", "a.pdf", "--out", "o.pdf"]).is_err());
     }
 }

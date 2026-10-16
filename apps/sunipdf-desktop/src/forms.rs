@@ -52,6 +52,7 @@ pub struct FormsState {
     pub requested: bool,
     /// Saisies du panneau non validées, par nom de champ.
     pub drafts: HashMap<String, String>,
+    pub staged: HashMap<String, FieldValue>,
     pub editing: Option<InPlace>,
     pub popup: Option<ChoicePopup>,
     pub bar_dismissed: bool,
@@ -64,11 +65,13 @@ pub struct FormsState {
     pub pending_clear: bool,
     /// Champ mis en évidence sur la page (clic sur son nom dans le panneau).
     pub focus: Option<String>,
+    pub keyboard_focus: Option<(String, usize)>,
 }
 
 impl FormsState {
     pub fn has_unsaved_input(&self) -> bool {
         !self.drafts.is_empty()
+            || !self.staged.is_empty()
             || self.editing.as_ref().is_some_and(|e| {
                 self.info
                     .as_ref()
@@ -171,16 +174,19 @@ impl SuniApp {
         if let Some(e) = &self.forms.editing {
             drafts.insert(e.field.clone(), e.text.clone());
         }
-        let mut values = Vec::new();
+        let mut pending = self.forms.staged.clone();
         for (name, text) in &drafts {
-            let value = FieldValue::Text(text.clone());
-            let field = self.forms.info.as_ref().and_then(|i| i.field(name));
+            pending.insert(name.clone(), FieldValue::Text(text.clone()));
+        }
+        let mut values = Vec::new();
+        for (name, value) in pending {
+            let field = self.forms.info.as_ref().and_then(|i| i.field(&name));
             if field.is_none_or(|f| f.validate(&value).is_err()) {
                 self.error = Some("error.form_value_invalid");
                 return false;
             }
             if field.is_some_and(|f| f.value != value) {
-                values.push((name.clone(), value));
+                values.push((name, value));
             }
         }
         self.forms.editing = None;
@@ -237,6 +243,7 @@ impl SuniApp {
         let wanted = f.panel_open
             || self.annotate.tool == Tool::FillForm
             || !f.drafts.is_empty()
+            || !f.staged.is_empty()
             || f.editing.is_some()
             || f.pending_import.is_some()
             || f.pending_clear;
@@ -256,6 +263,9 @@ impl SuniApp {
             info.field(name)
                 .is_some_and(|f| !matches!(&f.value, FieldValue::Text(t) if t == draft))
         });
+        self.forms
+            .staged
+            .retain(|name, value| info.field(name).is_some_and(|f| f.value != *value));
         self.forms.info = Some(info);
         if let Some(json) = self.forms.pending_import.take() {
             self.apply_import(&json);
@@ -285,26 +295,29 @@ impl SuniApp {
         let Some(info) = &mut self.forms.info else {
             return;
         };
-        let mut accepted = Vec::with_capacity(values.len());
-        for (name, value) in values {
-            let Some(f) = info.fields.iter_mut().find(|f| f.name == name) else {
-                continue;
-            };
-            match f.validate(&value) {
-                Ok(()) => {
-                    f.value = value.clone();
-                    accepted.push((name, value));
-                }
-                Err(reason) => {
-                    log::warn!("valeur refusée pour {name} : {reason}");
-                    self.error = Some("error.form_value_invalid");
-                }
-            }
+        if values
+            .iter()
+            .any(|(name, value)| info.field(name).is_none_or(|f| f.validate(value).is_err()))
+        {
+            self.error = Some("error.form_value_invalid");
+            return;
         }
+        let accepted: Vec<_> = values
+            .into_iter()
+            .filter(|(name, value)| {
+                info.field(name)
+                    .is_some_and(|f| !f.read_only && f.value != *value)
+            })
+            .collect();
         let Some((name, _)) = accepted.last() else {
             return;
         };
         self.edit.pending_status = Some(tr_args(lang, "status.form_updated", &[("name", name)]));
+        for (name, value) in &accepted {
+            if let Some(f) = info.fields.iter_mut().find(|f| f.name == *name) {
+                f.value = value.clone();
+            }
+        }
         self.worker
             .send(Request::Edit(EditOp::FillForm { values: accepted }));
     }
@@ -313,11 +326,30 @@ impl SuniApp {
         self.commit_many(vec![(name, value)]);
     }
 
+    fn stage_form_values(&mut self, values: Vec<(String, FieldValue)>) {
+        let Some(info) = &self.forms.info else { return };
+        if values
+            .iter()
+            .any(|(name, value)| info.field(name).is_none_or(|f| f.validate(value).is_err()))
+        {
+            self.error = Some("error.form_value_invalid");
+            return;
+        }
+        for (name, value) in values {
+            if info.field(&name).is_some_and(|f| f.value == value) {
+                self.forms.staged.remove(&name);
+                self.forms.drafts.remove(&name);
+            } else {
+                self.forms.staged.insert(name, value);
+            }
+        }
+    }
+
     // ----- Page : surcouche et saisie en place --------------------------------------------------
 
     /// Rectangles des widgets de la page (outil Remplir actif) ; renvoie le widget cliqué.
     pub fn forms_overlay(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         painter: &egui::Painter,
         page_rect: egui::Rect,
@@ -333,6 +365,7 @@ impl SuniApp {
         let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
         let clip = ui.clip_rect();
         let mut hit = None;
+        let mut focused = false;
         for (fi, f) in info.fields.iter().enumerate() {
             let fillable = f.fillable() && info.kind != FormKind::Xfa;
             let color = if !fillable {
@@ -375,11 +408,37 @@ impl SuniApp {
                 let resp = ui.interact(
                     r,
                     egui::Id::new(("form-widget", page, fi, wi)),
-                    egui::Sense::click(),
+                    if fillable {
+                        egui::Sense::click()
+                    } else {
+                        egui::Sense::hover()
+                    },
                 );
-                resp.widget_info(|| {
-                    egui::WidgetInfo::labeled(widget_type, fillable, label.clone())
+                resp.widget_info(|| match f.kind {
+                    FieldKind::Checkbox => egui::WidgetInfo::selected(
+                        widget_type,
+                        fillable,
+                        matches!(f.value, FieldValue::Bool(true)),
+                        label.clone(),
+                    ),
+                    FieldKind::Radio => egui::WidgetInfo::selected(
+                        widget_type,
+                        fillable,
+                        w.on_state.as_ref().is_some_and(|on| chosen(f).contains(on)),
+                        format!("{}: {}", label, w.on_state.as_deref().unwrap_or("")),
+                    ),
+                    _ => egui::WidgetInfo::labeled(widget_type, fillable, label.clone()),
                 });
+                if fillable
+                    && self
+                        .forms
+                        .keyboard_focus
+                        .as_ref()
+                        .is_some_and(|(name, widget)| name == &f.name && *widget == wi)
+                {
+                    resp.request_focus();
+                    focused = true;
+                }
                 let hovered = fillable && resp.hovered();
                 painter.rect_filled(
                     r,
@@ -398,13 +457,17 @@ impl SuniApp {
                 if fillable {
                     resp.clone().on_hover_cursor(egui::CursorIcon::PointingHand);
                 }
-                if resp.clicked() {
-                    log::debug!("clic sur le champ {} (widget {wi}, {r:?})", f.name);
+                if fillable && resp.clicked() && !self.dialog_open() {
                     hit = Some((fi, wi));
-                    // Sinon les raccourcis à une lettre restent bloqués (widget focalisé).
-                    resp.surrender_focus();
+                    // Keyboard and accessibility activation retain focus for Space/Enter and Tab.
+                    if resp.clicked_by(egui::PointerButton::Primary) {
+                        resp.surrender_focus();
+                    }
                 }
             }
+        }
+        if focused {
+            self.forms.keyboard_focus = None;
         }
         hit
     }
@@ -639,12 +702,7 @@ impl SuniApp {
             };
             let (f, w) = order[i];
             let target = &info.fields[f];
-            if !target.fillable()
-                || !matches!(
-                    target.kind,
-                    FieldKind::Text | FieldKind::Combo | FieldKind::List
-                )
-            {
+            if !target.fillable() {
                 continue;
             }
             let widget = &target.widgets[w];
@@ -654,8 +712,14 @@ impl SuniApp {
                 .as_ref()
                 .and_then(|d| d.info.page_sizes.get(page))
                 .map_or(0.0, |s| s.height_pt);
+            let name = target.name.clone();
+            let kind = target.kind;
             self.go_to_page_point(page, display.left, (h - display.top).max(0.0));
-            self.forms_activate(page, f, w);
+            if matches!(kind, FieldKind::Checkbox | FieldKind::Radio) {
+                self.forms.keyboard_focus = Some((name, w));
+            } else {
+                self.forms_activate(page, f, w);
+            }
             return;
         }
     }
@@ -698,6 +762,7 @@ impl SuniApp {
         let multi = f.kind == FieldKind::List && f.multi_select;
         let current = chosen(&f);
         let mut new_value: Option<Vec<String>> = None;
+        let mut focused = false;
         let area = egui::Area::new(egui::Id::new(("form-choice", page)))
             .order(egui::Order::Foreground)
             .fixed_pos(r.left_bottom() + egui::vec2(0.0, 2.0))
@@ -711,7 +776,12 @@ impl SuniApp {
                         .show(ui, |ui| {
                             if !multi && !f.required {
                                 let none = tr(lang, "forms.panel.choice_none");
-                                if ui.selectable_label(current.is_empty(), none).clicked() {
+                                let response = ui.selectable_label(current.is_empty(), none);
+                                if !armed {
+                                    response.request_focus();
+                                    focused = true;
+                                }
+                                if response.clicked() {
                                     new_value = Some(Vec::new());
                                 }
                             }
@@ -725,6 +795,10 @@ impl SuniApp {
                                 if multi {
                                     let mut b = on;
                                     let resp = ui.checkbox(&mut b, &o.label);
+                                    if !armed && !focused {
+                                        resp.request_focus();
+                                        focused = true;
+                                    }
                                     resp.widget_info(|| {
                                         egui::WidgetInfo::selected(
                                             egui::WidgetType::Checkbox,
@@ -744,6 +818,10 @@ impl SuniApp {
                                     }
                                 } else {
                                     let resp = ui.selectable_label(on, &o.label);
+                                    if !armed && !focused {
+                                        resp.request_focus();
+                                        focused = true;
+                                    }
                                     resp.widget_info(|| {
                                         egui::WidgetInfo::selected(
                                             egui::WidgetType::SelectableLabel,
@@ -775,9 +853,13 @@ impl SuniApp {
             self.commit_form(f.name.clone(), ordered_choice(&f, &v));
             if !multi {
                 self.forms.popup = None;
+                self.forms.keyboard_focus = Some((field, widget));
             }
         } else if escape || (armed && pressed_outside) {
             self.forms.popup = None;
+            if escape {
+                self.forms.keyboard_focus = Some((field, widget));
+            }
         }
     }
 
@@ -836,6 +918,8 @@ impl SuniApp {
         let mut close = false;
         let mut go: Option<String> = None;
         let mut commits: Vec<(String, FieldValue)> = Vec::new();
+        let pending = self.forms.has_unsaved_input();
+        let (mut apply, mut discard) = (false, false);
         // Le modèle sort de `self` le temps du dessin (brouillons et contrôles empruntent le reste).
         let info = self.forms.info.take();
         ui.add_space(6.0);
@@ -929,6 +1013,15 @@ impl SuniApp {
                             )
                             .wrap(),
                         );
+                        ui.label(tr(lang, "forms.panel.grouped_hint"));
+                        ui.horizontal(|ui| {
+                            apply = ui
+                                .add_enabled(pending, Button::new(tr(lang, "forms.panel.apply")))
+                                .clicked();
+                            discard = ui
+                                .add_enabled(pending, Button::new(tr(lang, "forms.panel.discard")))
+                                .clicked();
+                        });
                     }
                     ui.add_space(4.0);
                     let order = reading_order(info);
@@ -949,6 +1042,7 @@ impl SuniApp {
                     }
                     let scope_all = self.forms.scope_all;
                     let drafts = &mut self.forms.drafts;
+                    let staged = &self.forms.staged;
                     let mut error = false;
                     egui::ScrollArea::vertical()
                         .auto_shrink([false, false])
@@ -957,7 +1051,10 @@ impl SuniApp {
                             rows.sort_by_key(|&(f, _)| info.fields[f].widgets[0].page);
                             // `reading_order` est déjà trié par page : le tri stable garde l'ordre.
                             for (fi, _) in rows {
-                                let f = &info.fields[fi];
+                                let mut f = info.fields[fi].clone();
+                                if let Some(value) = staged.get(&f.name) {
+                                    f.value = value.clone();
+                                }
                                 let page = f.widgets[0].page;
                                 if scope_all && last_page != Some(page) {
                                     last_page = Some(page);
@@ -976,7 +1073,7 @@ impl SuniApp {
                                     ui,
                                     lang,
                                     &p,
-                                    f,
+                                    &f,
                                     editable,
                                     drafts,
                                     &mut commits,
@@ -985,6 +1082,10 @@ impl SuniApp {
                                 );
                             }
                             for fi in orphans {
+                                let mut f = info.fields[fi].clone();
+                                if let Some(value) = staged.get(&f.name) {
+                                    f.value = value.clone();
+                                }
                                 ui.add_space(4.0);
                                 ui.label(
                                     RichText::new(tr(lang, "forms.panel.no_widget"))
@@ -995,7 +1096,7 @@ impl SuniApp {
                                     ui,
                                     lang,
                                     &p,
-                                    &info.fields[fi],
+                                    &f,
                                     editable,
                                     drafts,
                                     &mut commits,
@@ -1033,7 +1134,13 @@ impl SuniApp {
             }
         }
         if !commits.is_empty() {
-            self.commit_many(commits);
+            self.stage_form_values(commits);
+        }
+        if discard {
+            self.forms.staged.clear();
+            self.forms.drafts.clear();
+        } else if apply {
+            self.commit_form_input();
         }
     }
 
@@ -1095,18 +1202,24 @@ impl SuniApp {
         }
     }
 
-    fn json_dialog(&self, title_key: &str) -> rfd::FileDialog {
-        rfd::FileDialog::new()
+    fn form_data_dialog(&self, title_key: &str, importing: bool) -> rfd::FileDialog {
+        let dialog = rfd::FileDialog::new()
             .set_title(self.t(title_key))
-            .add_filter(self.t("forms.filter_json"), &["json"])
+            .add_filter(self.t("forms.filter_xfdf"), &["xfdf"])
+            .add_filter(self.t("forms.filter_json"), &["json"]);
+        if importing {
+            dialog.add_filter(self.t("forms.filter_fdf"), &["fdf"])
+        } else {
+            dialog
+        }
     }
 
     /// Exporter les valeurs : `<document>.json` proposé à côté du PDF.
     pub fn tool_export_form(&mut self) {
         let Some(doc) = &self.document else { return };
-        let suggested = doc.info.path.with_extension("json");
+        let suggested = doc.info.path.with_extension("xfdf");
         let mut dialog = self
-            .json_dialog("forms.save_export")
+            .form_data_dialog("forms.save_export", false)
             .set_file_name(file_name(&suggested));
         if let Some(dir) = suggested.parent().filter(|d| d.is_dir()) {
             dialog = dialog.set_directory(dir);
@@ -1115,7 +1228,7 @@ impl SuniApp {
             return;
         };
         if out.extension().is_none() {
-            out.set_extension("json");
+            out.set_extension("xfdf");
         }
         self.run_batch(BatchOp::ExportFormData { out }, "tools.running.form_export");
     }
@@ -1128,13 +1241,22 @@ impl SuniApp {
             self.status_msg = Some(tr(lang, "forms.panel.empty_doc").to_string());
             return;
         }
-        let Some(path) = self.json_dialog("forms.pick_import").pick_file() else {
+        let Some(path) = self.form_data_dialog("forms.pick_import", true).pick_file() else {
             return;
         };
-        let value = std::fs::read_to_string(&path)
+        let value = (|| {
+            use std::io::Read;
+            let file = std::fs::File::open(&path).ok()?;
+            let mut bytes = Vec::new();
+            file.take(form_data::IMPORT_LIMIT as u64 + 1)
+                .read_to_end(&mut bytes)
+                .ok()?;
+            form_data::parse_values(
+                &bytes,
+                path.extension().and_then(|s| s.to_str()).unwrap_or(""),
+            )
             .ok()
-            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
-            .filter(serde_json::Value::is_object);
+        })();
         match value {
             Some(v) => {
                 self.forms.pending_import = Some(v);
@@ -1147,7 +1269,7 @@ impl SuniApp {
     fn apply_import(&mut self, json: &serde_json::Value) {
         let lang = self.lang();
         let Some(info) = &self.forms.info else { return };
-        let plan = match form_data::plan_from_json(info, json) {
+        let plan = match form_data::strict_plan_from_json(info, json) {
             Ok(plan) => plan,
             Err(_) => {
                 self.error = Some("error.form_import_invalid");
@@ -1528,5 +1650,236 @@ mod tests {
         s.reset_for_document();
         assert!(s.panel_open);
         assert!(!s.scope_all && !s.stale && s.drafts.is_empty());
+    }
+    #[test]
+    fn grouped_form_commit_is_atomic_and_sends_one_undoable_edit() {
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let mut text = field("Text", FieldKind::Text, vec![]);
+        text.value = FieldValue::Text("old".into());
+        let mut choice = field("Choice", FieldKind::Combo, vec![]);
+        choice.options = vec![sunipdf_core::FieldOption {
+            value: "one".into(),
+            label: "One".into(),
+        }];
+        choice.value = FieldValue::Choice(Vec::new());
+        let info = FormInfo {
+            kind: FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![text, choice],
+        };
+        app.forms.info = Some(info.clone());
+        app.commit_many(vec![
+            ("Text".into(), FieldValue::Text("new".into())),
+            ("Choice".into(), FieldValue::Choice(vec!["invalid".into()])),
+        ]);
+        assert_eq!(app.forms.info.as_ref().unwrap(), &info);
+        assert!(requests.try_recv().is_err());
+        app.apply_import(&serde_json::json!({"Text":"new", "missing":"value"}));
+        assert_eq!(app.forms.info.as_ref().unwrap(), &info);
+        assert!(requests.try_recv().is_err());
+        app.forms.drafts.insert("Text".into(), "old".into());
+        app.stage_form_values(vec![("Text".into(), FieldValue::Text("old".into()))]);
+        assert!(!app.forms.has_unsaved_input());
+        app.stage_form_values(vec![
+            ("Text".into(), FieldValue::Text("new".into())),
+            ("Choice".into(), FieldValue::Choice(vec!["one".into()])),
+        ]);
+        assert_eq!(app.forms.info.as_ref().unwrap(), &info);
+        assert!(app.forms.has_unsaved_input());
+        assert!(requests.try_recv().is_err());
+        app.forms.drafts.insert("missing".into(), "invalid".into());
+        assert!(!app.commit_form_input());
+        assert_eq!(app.forms.staged.len(), 2);
+        assert!(requests.try_recv().is_err());
+        app.forms.drafts.clear();
+        assert!(app.commit_form_input());
+        let confirmed = app.forms.info.clone().unwrap();
+        assert_eq!(app.forms.staged.len(), 2);
+        assert!(
+            matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values.len() == 2)
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        assert!(
+            app.commit_form_input(),
+            "the optimistic model prevents duplicate submission"
+        );
+        assert!(requests.try_recv().is_err());
+        responses
+            .send(crate::worker::Response::OperationFailed(
+                sunipdf_core::EngineError::Other("injected form failure".into()),
+            ))
+            .unwrap();
+        responses
+            .send(crate::worker::Response::MutationFinished)
+            .unwrap();
+        app.handle_responses(&egui::Context::default());
+        app.on_form_info(info);
+        assert_eq!(
+            app.forms.staged.len(),
+            2,
+            "failed engine commits keep every pending value"
+        );
+        assert!(app.forms.has_unsaved_input());
+        assert!(app.commit_form_input());
+        assert!(
+            matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values.len() == 2)
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        app.worker.finish_mutation();
+        app.on_form_info(confirmed);
+        assert!(
+            app.forms.staged.is_empty(),
+            "only confirmed values remove pending changes"
+        );
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn page_checkbox_space_and_enter_activate_and_preserve_keyboard_focus() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let mut checkbox = field(
+            "Approved",
+            FieldKind::Checkbox,
+            vec![(0, rect(40.0, 50.0, 60.0, 70.0))],
+        );
+        checkbox.value = FieldValue::Bool(false);
+        app.forms.info = Some(FormInfo {
+            kind: FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![checkbox],
+        });
+        app.annotate.tool = Tool::FillForm;
+        app.effective_zoom = 1.0;
+        let ctx = egui::Context::default();
+        let id = egui::Id::new(("form-widget", 0usize, 0usize, 0usize));
+        let frame = |app: &mut SuniApp, events| {
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(900.0, 1200.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    let painter = ui.painter().clone();
+                    if let Some((f, w)) = app.forms_overlay(
+                        ui,
+                        &painter,
+                        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 1100.0)),
+                        0,
+                        792.0,
+                    ) {
+                        app.forms_activate(0, f, w);
+                    }
+                },
+            );
+            out.textures_delta.clear();
+        };
+        frame(&mut app, Vec::new());
+        ctx.memory_mut(|m| m.request_focus(id));
+        for (key, expected) in [(Key::Space, true), (Key::Enter, false)] {
+            frame(
+                &mut app,
+                vec![egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values == vec![("Approved".into(), FieldValue::Bool(expected))])
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.worker.finish_mutation();
+            assert!(requests.try_recv().is_err());
+            assert!(ctx.memory(|m| m.has_focus(id)));
+            frame(
+                &mut app,
+                vec![egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+        }
+    }
+
+    #[test]
+    fn keyboard_opened_choice_focuses_an_option_and_enter_applies_it_once() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let mut combo = field(
+            "Country",
+            FieldKind::Combo,
+            vec![(0, rect(40.0, 50.0, 200.0, 76.0))],
+        );
+        combo.required = true;
+        combo.value = FieldValue::Choice(Vec::new());
+        combo.options = vec![sunipdf_core::FieldOption {
+            value: "FR".into(),
+            label: "France".into(),
+        }];
+        app.forms.info = Some(FormInfo {
+            kind: FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![combo],
+        });
+        app.effective_zoom = 1.0;
+        app.forms_activate(0, 0, 0);
+        let ctx = egui::Context::default();
+        let frame = |app: &mut SuniApp, events| {
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(900.0, 1200.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |_| {
+                    let bounds =
+                        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 1100.0));
+                    app.forms_popup(&ctx, bounds, bounds, 0, 792.0);
+                },
+            );
+            out.textures_delta.clear();
+        };
+        frame(&mut app, Vec::new());
+        frame(
+            &mut app,
+            vec![egui::Event::Key {
+                key: Key::Enter,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(
+            matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values == vec![("Country".into(), FieldValue::Choice(vec!["FR".into()]))])
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        app.worker.finish_mutation();
+        assert!(requests.try_recv().is_err());
+        assert!(app.forms.popup.is_none());
+        assert_eq!(app.forms.keyboard_focus, Some(("Country".into(), 0)));
     }
 }

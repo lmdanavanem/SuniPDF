@@ -199,6 +199,8 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
 ];
 
 pub struct SuniApp {
+    pub processing: crate::processing::ProcessingState,
+    pub reading_full_screen: bool,
     pub recovery: crate::recovery::RecoveryState,
     pub printing: crate::printing::PrintState,
     pub ocr: crate::ocr::OcrState,
@@ -279,6 +281,8 @@ impl SuniApp {
         let recovery = crate::recovery::RecoveryState::load();
         let recovery_failed = recovery.failed;
         let mut app = Self {
+            processing: Default::default(),
+            reading_full_screen: false,
             recovery,
             printing: Default::default(),
             ocr: Default::default(),
@@ -462,6 +466,13 @@ impl SuniApp {
     }
 
     pub fn go_to_page(&mut self, page: usize) {
+        if let Some(doc) = &self.document {
+            self.view.reading.history.jump(
+                doc.page,
+                self.view.offset,
+                page.min(doc.info.page_count().saturating_sub(1)),
+            );
+        }
         if let Some(doc) = &mut self.document {
             let clamped = page.min(doc.info.page_count().saturating_sub(1));
             if clamped != doc.page {
@@ -555,7 +566,7 @@ impl SuniApp {
 
     // ----- Messages du moteur ---------------------------------------------
 
-    fn handle_responses(&mut self, ctx: &egui::Context) {
+    pub(crate) fn handle_responses(&mut self, ctx: &egui::Context) {
         let responses: Vec<Response> = self.worker.poll().collect();
         for response in responses {
             match response {
@@ -567,6 +578,21 @@ impl SuniApp {
                     self.error = Some(error_key(&e));
                     log::error!("moteur indisponible : {e}");
                     self.engine = EngineState::Failed;
+                }
+                Response::ProcessingProgress {
+                    done,
+                    total,
+                    item_done,
+                    item_total,
+                } => {
+                    self.processing.done = done;
+                    self.processing.total = total;
+                    self.processing.item_done = item_done;
+                    self.processing.item_total = item_total;
+                }
+                Response::ProcessingDone(results) => {
+                    self.processing.busy = false;
+                    self.processing.results = results;
                 }
                 Response::TaskProgress { kind, done, total } => match kind {
                     crate::worker::TaskKind::Print => {
@@ -1104,7 +1130,8 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.saving
+        self.processing.busy
+            || self.saving
             || self.after_save.is_some()
             || self.deferred_close.is_some()
             || self.printing.busy
@@ -1113,7 +1140,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.worker.has_pending_mutations()
+        self.processing.busy
+            || self.worker.has_pending_mutations()
             || self.printing.busy
             || self.ocr.busy
             || self.certificate.busy
@@ -1142,6 +1170,18 @@ impl SuniApp {
     // ----- Entrées ---------------------------------------------------------
 
     fn handle_input(&mut self, ctx: &egui::Context) {
+        if self.document.is_some() && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F11)) {
+            self.execute(ctx, Command::FullScreenReading);
+            return;
+        }
+        if self.reading_full_screen
+            && !self.dialog_open()
+            && !ctx.egui_wants_keyboard_input()
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.set_reading_full_screen(ctx, false);
+            return;
+        }
         if self.dialog_open() {
             return;
         }
@@ -1335,6 +1375,12 @@ impl SuniApp {
                     commands.push(c);
                 }
             }
+            if i.consume_key(Modifiers::ALT, Key::ArrowLeft) {
+                commands.push(Command::HistoryBack);
+            }
+            if i.consume_key(Modifiers::ALT, Key::ArrowRight) {
+                commands.push(Command::HistoryForward);
+            }
             if object_tool && i.consume_key(Modifiers::COMMAND, Key::A) {
                 commands.push(Command::SelectAllObjects);
             }
@@ -1358,7 +1404,9 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.recovery.open
+        self.processing.open
+            || self.processing.busy
+            || self.recovery.open
             || self.printing.busy
             || self.ocr.dialog_open()
             || self.form_builder.visible
@@ -1396,7 +1444,7 @@ impl SuniApp {
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
-        if (self.printing.busy || self.ocr.busy || self.certificate.busy)
+        if (self.processing.busy || self.printing.busy || self.ocr.busy || self.certificate.busy)
             && !matches!(command, Command::Quit | Command::CloseDocument)
         {
             return;
@@ -1405,6 +1453,9 @@ impl SuniApp {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            self.processing
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             self.ocr
                 .cancel
                 .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1425,6 +1476,34 @@ impl SuniApp {
             return;
         }
         match command {
+            Command::CompressImages => self.open_processing(false),
+            Command::ProcessFiles => self.open_processing(true),
+            Command::RotateViewClockwise => self.rotate_reading_view(true),
+            Command::RotateViewCounterClockwise => self.rotate_reading_view(false),
+            Command::HistoryBack => self.navigate_reading_history(true),
+            Command::HistoryForward => self.navigate_reading_history(false),
+            Command::FullScreenReading => {
+                if !self.reading_full_screen {
+                    if self.forms.has_unsaved_input()
+                        || self.edit.text_prompt.is_some()
+                        || self.worker.has_pending_mutations()
+                    {
+                        self.status_msg = Some(self.t("reading.finish_edit").into());
+                        return;
+                    }
+                    self.annotate.tool = crate::annotate::Tool::Select;
+                    self.annotate.drag = None;
+                    self.annotate.adv.drag = None;
+                    self.annotate.adv.selected = None;
+                    self.annotate.adv.ink.clear();
+                    self.edit.selection = None;
+                    self.forms.editing = None;
+                    self.forms.popup = None;
+                    self.cancel_placing();
+                }
+                self.organize.active = false;
+                self.set_reading_full_screen(ctx, !self.reading_full_screen);
+            }
             Command::OpenDocument => self.open_file_dialog(),
             Command::RecoverDocuments => {
                 if let Some(session) = &self.recovery.session {
@@ -1452,12 +1531,18 @@ impl SuniApp {
             Command::OcrDocument => {
                 self.ocr.open = true;
             }
-            Command::ToolAddTextField | Command::ToolAddCheckbox => {
+            Command::ToolAddTextField
+            | Command::ToolAddCheckbox
+            | Command::ToolAddRadioField
+            | Command::ToolAddComboField
+            | Command::ToolAddListField => {
                 if let Some(doc) = &self.document {
-                    let kind = if command == Command::ToolAddTextField {
-                        sunipdf_core::FieldKind::Text
-                    } else {
-                        sunipdf_core::FieldKind::Checkbox
+                    let kind = match command {
+                        Command::ToolAddRadioField => sunipdf_core::FieldKind::Radio,
+                        Command::ToolAddComboField => sunipdf_core::FieldKind::Combo,
+                        Command::ToolAddListField => sunipdf_core::FieldKind::List,
+                        Command::ToolAddCheckbox => sunipdf_core::FieldKind::Checkbox,
+                        _ => sunipdf_core::FieldKind::Text,
                     };
                     self.form_builder
                         .open(doc.page, kind, doc.info.page_sizes[doc.page]);
@@ -1684,6 +1769,7 @@ impl SuniApp {
             | Command::HubStamp
             | Command::HubPrepareForm
             | Command::HubOcr
+            | Command::HubCompress
             | Command::HubCertificate
             | Command::HubRedact => {
                 if let Some(ws) = crate::workspace::Workspace::from_command(command) {
@@ -2564,117 +2650,129 @@ impl eframe::App for SuniApp {
                 .inner_margin(egui::Margin::symmetric(6, 4))
         };
 
-        egui::Panel::top("tabstrip")
-            .frame(chrome(p.chrome))
-            .show(ui, |ui| self.tab_strip(&ctx, ui));
-        egui::Panel::top("toolbar")
-            .frame(
-                egui::Frame::new()
-                    .fill(p.surface)
-                    .stroke(egui::Stroke::new(1.0, p.border))
-                    .inner_margin(egui::Margin::symmetric(6, 6)),
-            )
-            .show(ui, |ui| self.toolbar(&ctx, ui));
-        if matches!(
-            self.updater.phase,
-            UpdatePhase::Available(_) | UpdatePhase::Downloading | UpdatePhase::Ready(_)
-        ) || (self.update_errors_visible
-            && matches!(
-                self.updater.phase,
-                UpdatePhase::Checking | UpdatePhase::Failed(_)
-            ))
-        {
-            egui::Panel::top("update-banner")
-                .frame(chrome(p.surface))
-                .show(ui, |ui| self.update_controls(&ctx, ui));
-        }
-        if self.document.is_some() && self.annotate.workspace.is_some_and(|w| w.is_mode()) {
-            // Hauteur fixe : pas de saut quand les libellés apparaissent ou disparaissent.
-            egui::Panel::top("workspace")
-                .exact_size(48.0)
-                .frame(
-                    egui::Frame::new()
-                        .fill(p.surface)
-                        .stroke(egui::Stroke::new(1.0, p.border)),
-                )
-                .show(ui, |ui| self.workspace_bar(&ctx, ui));
-        }
-        if self.find.open && self.document.is_some() {
-            egui::Panel::top("find")
+        if !self.reading_full_screen {
+            egui::Panel::top("tabstrip")
                 .frame(chrome(p.chrome))
-                .show(ui, |ui| self.find_bar(ui));
-        }
-        egui::Panel::bottom("status")
-            .frame(chrome(p.chrome))
-            .show(ui, |ui| self.status_bar(ui));
-        if self.show_tools {
-            egui::Panel::left("tools")
-                .resizable(true)
-                .default_size(250.0)
+                .show(ui, |ui| self.tab_strip(&ctx, ui));
+            egui::Panel::top("toolbar")
                 .frame(
                     egui::Frame::new()
                         .fill(p.surface)
-                        .inner_margin(egui::Margin::symmetric(8, 4)),
+                        .stroke(egui::Stroke::new(1.0, p.border))
+                        .inner_margin(egui::Margin::symmetric(6, 6)),
                 )
-                .show(ui, |ui| self.tools_panel(&ctx, ui));
-        }
-        if self.document.is_some() && self.docinfo.bookmarks_open && !self.organize.active {
-            egui::Panel::left("bookmarks")
-                .resizable(true)
-                .default_size(220.0)
-                .frame(
-                    egui::Frame::new()
-                        .fill(p.chrome)
-                        .inner_margin(egui::Margin::symmetric(8, 4)),
-                )
-                .show(ui, |ui| self.bookmarks_panel(&ctx, ui));
-        }
-        if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
-            egui::Panel::right("comments")
-                .resizable(true)
-                .default_size(280.0)
-                .frame(
-                    egui::Frame::new()
-                        .fill(p.chrome)
-                        .inner_margin(egui::Margin::symmetric(8, 4)),
-                )
-                .show(ui, |ui| self.comments_panel(&ctx, ui));
-        }
-        if self.document.is_some() && self.edit.objects_open && !self.organize.active {
-            egui::Panel::right("objects")
-                .resizable(true)
-                .default_size(260.0)
-                .frame(
-                    egui::Frame::new()
-                        .fill(p.chrome)
-                        .inner_margin(egui::Margin::symmetric(8, 4)),
-                )
-                .show(ui, |ui| self.objects_panel(&ctx, ui));
-        }
-        if self.document.is_some() && self.forms.panel_open && !self.organize.active {
-            egui::Panel::right("forms")
-                .resizable(true)
-                .default_size(300.0)
-                .frame(
-                    egui::Frame::new()
-                        .fill(p.chrome)
-                        .inner_margin(egui::Margin::symmetric(8, 4)),
-                )
-                .show(ui, |ui| self.forms_panel(&ctx, ui));
-        }
-        if self.document.is_some() {
-            egui::Panel::right("rail")
-                .resizable(false)
-                .default_size(48.0)
-                .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
-                .show(ui, |ui| self.right_rail(&ctx, ui));
-            if self.settings.show_thumbnails && !self.organize.active {
-                egui::Panel::left("thumbnails")
-                    .resizable(true)
-                    .default_size(170.0)
-                    .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
-                    .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
+                .show(ui, |ui| self.toolbar(&ctx, ui));
+            if matches!(
+                self.updater.phase,
+                UpdatePhase::Available(_) | UpdatePhase::Downloading | UpdatePhase::Ready(_)
+            ) || (self.update_errors_visible
+                && matches!(
+                    self.updater.phase,
+                    UpdatePhase::Checking | UpdatePhase::Failed(_)
+                ))
+            {
+                egui::Panel::top("update-banner")
+                    .frame(chrome(p.surface))
+                    .show(ui, |ui| self.update_controls(&ctx, ui));
             }
+            if self.document.is_some() && self.annotate.workspace.is_some_and(|w| w.is_mode()) {
+                // Hauteur fixe : pas de saut quand les libellés apparaissent ou disparaissent.
+                egui::Panel::top("workspace")
+                    .exact_size(48.0)
+                    .frame(
+                        egui::Frame::new()
+                            .fill(p.surface)
+                            .stroke(egui::Stroke::new(1.0, p.border)),
+                    )
+                    .show(ui, |ui| self.workspace_bar(&ctx, ui));
+            }
+            if self.find.open && self.document.is_some() {
+                egui::Panel::top("find")
+                    .frame(chrome(p.chrome))
+                    .show(ui, |ui| self.find_bar(ui));
+            }
+            egui::Panel::bottom("status")
+                .frame(chrome(p.chrome))
+                .show(ui, |ui| self.status_bar(ui));
+            if self.show_tools {
+                egui::Panel::left("tools")
+                    .resizable(true)
+                    .default_size(250.0)
+                    .frame(
+                        egui::Frame::new()
+                            .fill(p.surface)
+                            .inner_margin(egui::Margin::symmetric(8, 4)),
+                    )
+                    .show(ui, |ui| self.tools_panel(&ctx, ui));
+            }
+            if self.document.is_some() && self.docinfo.bookmarks_open && !self.organize.active {
+                egui::Panel::left("bookmarks")
+                    .resizable(true)
+                    .default_size(220.0)
+                    .frame(
+                        egui::Frame::new()
+                            .fill(p.chrome)
+                            .inner_margin(egui::Margin::symmetric(8, 4)),
+                    )
+                    .show(ui, |ui| self.bookmarks_panel(&ctx, ui));
+            }
+            if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
+                egui::Panel::right("comments")
+                    .resizable(true)
+                    .default_size(280.0)
+                    .frame(
+                        egui::Frame::new()
+                            .fill(p.chrome)
+                            .inner_margin(egui::Margin::symmetric(8, 4)),
+                    )
+                    .show(ui, |ui| self.comments_panel(&ctx, ui));
+            }
+            if self.document.is_some() && self.edit.objects_open && !self.organize.active {
+                egui::Panel::right("objects")
+                    .resizable(true)
+                    .default_size(260.0)
+                    .frame(
+                        egui::Frame::new()
+                            .fill(p.chrome)
+                            .inner_margin(egui::Margin::symmetric(8, 4)),
+                    )
+                    .show(ui, |ui| self.objects_panel(&ctx, ui));
+            }
+            if self.document.is_some() && self.forms.panel_open && !self.organize.active {
+                egui::Panel::right("forms")
+                    .resizable(true)
+                    .default_size(300.0)
+                    .frame(
+                        egui::Frame::new()
+                            .fill(p.chrome)
+                            .inner_margin(egui::Margin::symmetric(8, 4)),
+                    )
+                    .show(ui, |ui| self.forms_panel(&ctx, ui));
+            }
+            if self.document.is_some() {
+                egui::Panel::right("rail")
+                    .resizable(false)
+                    .default_size(48.0)
+                    .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
+                    .show(ui, |ui| self.right_rail(&ctx, ui));
+                if self.settings.show_thumbnails && !self.organize.active {
+                    egui::Panel::left("thumbnails")
+                        .resizable(true)
+                        .default_size(170.0)
+                        .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
+                        .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
+                }
+            }
+        }
+        if self.reading_full_screen {
+            egui::Area::new(egui::Id::new("reading_exit"))
+                .anchor(egui::Align2::RIGHT_TOP, [-12.0, 12.0])
+                .order(egui::Order::Foreground)
+                .show(&ctx, |ui| {
+                    if ui.button(self.t("reading.exit")).clicked() {
+                        self.set_reading_full_screen(&ctx, false);
+                    }
+                });
         }
         if self.document.is_some() && self.organize.active {
             let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
@@ -2697,7 +2795,9 @@ impl eframe::App for SuniApp {
                 if self.has_signatures && self.has_unsaved_changes() {
                     ui.colored_label(p.text_muted, self.t("certificate.dirty_warning"));
                 }
-                self.forms_bar(&ctx, ui);
+                if !self.reading_full_screen {
+                    self.forms_bar(&ctx, ui);
+                }
                 self.document_area(&ctx, ui);
             });
         } else {
@@ -2825,6 +2925,8 @@ pub(crate) mod tests {
     ) {
         let (worker, requests, responses) = Worker::test_channels();
         let mut app = SuniApp {
+            processing: Default::default(),
+            reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),
             ocr: Default::default(),
