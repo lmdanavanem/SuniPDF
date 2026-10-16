@@ -1,11 +1,11 @@
-# État du projet — mis à jour le 2026-10-16 (0.20.0 en développement ; 0.19.0 Latest stable)
+# État du projet — mis à jour le 2026-10-16 (0.20.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.20.0 : création et édition FreeText sur la page (en développement)
+## 0.20.0 : création et édition FreeText sur la page (publiée en Latest stable)
 
 Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
 Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
@@ -20,10 +20,10 @@ validation ou du worker : texte saisi conservé pour réessayer. Apparence Helve
 vers le bas au renvoi à la ligne inchangés. Brouillon en mémoire jusqu'à validation, sans récupération après plantage.
 
 Implémentation et relecture indépendante réussies. Workspace local : 468 tests réussis, aucun échec, sept
-ignorés par défaut ; formatage et 912 clés EN/FR correspondantes réussis. Clippy toutes cibles avec avertissements refusés réussi. Les 75
-contrôles qpdf existants, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
-CI/mises à niveau, paquets préparés/publics et metteur à jour de production 0.20.0 restent à valider. **0.19.0
-reste la Latest stable actuelle** ; ses preuves exécutées ci-dessous ne valident pas la 0.20.0.
+ignorés par défaut ; formatage, Clippy toutes cibles sans avertissement et 912 clés EN/FR correspondantes réussis.
+Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
+CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
+et metteur à jour de production réussis. **0.20.0 est publiée en Latest stable** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
 
 Preuves locales 0.20.0 observées : 75 contrôles qpdf réussis. Quatre documents NIST/NBS licenciés
 (744 pages) réussis en 58,260 secondes, pic mémoire enfant échantillonné de 331 800 576 octets ; sources
@@ -32,11 +32,49 @@ huit nouvelles régressions bureau et la régression worker native étendue : cr
 Annuler/Rétablir, enregistrement/réouverture, document protégé et échec. Les cas UI sans fenêtre couvrent
 coordonnées de vrais événements souris, texte long avec Annuler visible, validation explicite, cycle de vie,
 texte conservé après échec et navigation de recherche bloquée. Les tracés rapides de rectangle reprennent
-la position de relâchement. Couverture CI prévue : dix-huit scénarios portables (quatorze mises à niveau et
-quatre gardes) et douze bases MSI/soixante journaux ; ces scénarios de nouvelle version ne sont pas encore
-exécutés. Paquets/téléchargements publics et metteur à jour restent en attente.
+la position de relâchement.
 
-## 0.19.0 : placement à la souris des champs existants (publiée en Latest stable)
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`,
+release `415294715`, le 2026-10-16 à 19:09:50 UTC. Tag/source immuable :
+`54054b101282a7688dde778b24090af6d6e1e6a6`.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950447258) : 32 étapes réussies en 751 secondes,
+dont mêmes contrôles workspace/traductions/qpdf, 18 scénarios portables réels (14 mises à niveau et quatre gardes)
+et 12 bases MSI avec 60 journaux d'installation vérifiés. Corpus de quatre documents/744 pages en 34,172 secondes,
+pic mémoire enfant échantillonné de 320 299 008 octets. Le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950446650/job/117140185977)
+a réussi en 832 secondes, téléversement/post-cache compris ; seul le workflow doublon a ensuite été annulé.
+Artefact ARM64 `12068203388` ; paquets x64 de la CI réussie et cet artefact ARM64 vérifié publiés.
+
+Six fichiers préparés/publics et copies `dist/` conformes aux empreintes API GitHub et fichiers SHA256.
+Contrôles complets renforcés réussis sur paquets préparés et téléchargements publics sans authentification :
+architectures, métadonnées anglaises, sept tailles exactes d'icône, OCR/modèles/licences, contenu MSI/ZIP,
+formulaires, chiffrement, signatures, compression, libellés, liens, formes en tirets, encre groupée,
+OCR français hors ligne et géométrie/style FreeText multiligne. Les cinq relectures FreeText couvrent PDF
+simple et AES-128/AES-256 avec mots de passe utilisateur et propriétaire, qpdf et sources inchangées.
+Conversion indépendante : 35 sous-processus réussis, treize sources inchangées. Le metteur à jour de production
+a téléchargé le ZIP Latest x64 public (19 841 217 octets) et vérifié son SHA256 en 1,33 seconde avec
+l'exécutable de tests workspace déjà validé, sans installation sur l'hôte. Installations et mises à niveau
+portables/MSI réelles réussies séparément sur le runner Windows CI jetable.
+
+| Fichier | Octets | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.20.0-win-x64-portable.zip` | 19841217 | `CBAB56A4FD8AAF15F798B94EDDF88C62785D78C11ED7E26CDC4D81266AD77EAD` |
+| `SuniPDF-0.20.0-win-arm64-portable.zip` | 18429703 | `CD1A32354441EA5B992032FD48C4B209EE4A953D9F4AB46E7CAB06ACD58EE040` |
+| `SuniPDF-0.20.0-win-x64.msi` | 19378176 | `9D87F80B559EA76DBCF92F6EE8867994B72C82AE8AFC690EE6425ECAB6551B75` |
+
+Trois fichiers SHA256 complètent les six fichiers publiés. ProductCode MSI
+`{90AA23B4-8929-4B93-A77B-2995BD483DC3}`, langue 1033. Aucune nouvelle dépendance, type d'annotation ou commande CLI ;
+53 commandes conservées. Paquets non signés. Souris/stylet/tactile natifs, Narrateur, imprimantes physiques,
+matériel ARM64 et lecteurs tiers restent non vérifiés manuellement. Texte FreeText non validé en mémoire,
+sans récupération après plantage ; limites Helvetica WinAnsi, texte simple et agrandissement vers le bas conservées.
+
+La [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) couvre les 117 alertes ouvertes, dont les 115 critiques.
+Aucun secret de production confirmé parmi ces critiques ; 114 sont des données de test et #13 est une
+authentification PDF intentionnelle par mot de passe vide. La trace élevée de pointeur est un faux positif
+analysé ; la déclaration moyenne de permissions du workflow de release reste un durcissement futur, les
+droits par défaut actuels en lecture seule étant vérifiés. Aucune alerte écartée ; ni fuzzing CMS ni garantie
+globale de sécurité revendiqués.
+
+## 0.19.0 : placement à la souris des champs existants (publiée ; Latest à cette date)
 
 Le lot retenu ajoute **Dessiner sur la page** à **Préparer un formulaire** pour texte, case, radio, liste déroulante
 et zone de liste. La boîte numérique se masque pendant le tracé, puis se rouvre avec nom, choix et options conservés.
@@ -52,7 +90,7 @@ Le contrôle qpdf local a réussi 75 vérifications ; autotest du metteur à jou
 Quatre documents NIST/NBS licenciés (744 pages) ont réussi le contrôle local du corpus réel en 76,762 s, avec
 un pic mémoire enfant échantillonné de 331 276 288 octets ; tous les fichiers source sont restés inchangés.
 Formatage (`cargo fmt --all -- --check`) et Clippy toutes cibles avec `-D warnings` réussis.
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release
 `415214602`, le 2026-10-16 à 17:35:42 UTC. Tag/source immuable : `903181fee3bba5794b39714106e5814bca753fb3`.
 La [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) a réussi ses 32 étapes en 844 s,
 dont les mêmes contrôles tests/traductions/qpdf, 17 cas portables (13 mises à niveau et quatre gardes), et onze

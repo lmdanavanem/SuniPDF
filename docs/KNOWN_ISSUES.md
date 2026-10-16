@@ -236,7 +236,7 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      require explicit Create Field/one Undo. Document revision/tab/tool changes cancel stale placement; drawing does
      not edit existing fields. If Single-page navigation hides the original page during a drag, release uses the
      last known rectangle and reopens the numeric dialog; no field is created without explicit Create Field.
-     Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. 0.19.0 is stable Latest.
+     Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. 0.19.0 was stable Latest at publication.
      Rich text becomes plain text; password fields never stored/exported.
      Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
      field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
@@ -294,14 +294,14 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
     Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unfinished ink drafts have no crash recovery.
 
-    **Implemented and locally tested for 0.20.0 (D111):** create/edit FreeText in an anchored multiline page editor with explicit
+    **Published in 0.20.0 (D111):** create/edit FreeText in an anchored multiline page editor with explicit
     Add/Save/Cancel, retaining existing style controls, core validation/protection and one Undo. Original page
     pinned; zoom allowed; conflicting navigation blocked until confirmation/cancellation. Pending operations,
     concurrent drafts and stale document/tab/tool/workspace state are guarded; validation/worker failure
     retains text. The editor draft is memory-only and excluded from crash recovery. Helvetica WinAnsi,
     plain text and downward wrap growth remain the same; no embedded-font/rich-text expansion. Local review,
-    workspace, formatting and i18n passed; Clippy with warnings denied passed; release gates remain pending. 0.19.0 is current stable
-    Latest. Native interaction/reader QA is separate.
+    workspace, formatting, i18n and Clippy passed; CI/upgrade, staged/public packages and production updater
+    verification passed. 0.20.0 is stable Latest. Native interaction/reader QA is separate.
 
     No eraser, polygon, cloud, stamp or attachment; caps:
     64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,

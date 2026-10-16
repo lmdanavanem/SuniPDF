@@ -47,12 +47,13 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release `415214602`,
-source `903181fee3bba5794b39714106e5814bca753fb3`. Validation locale : 460 tests réussis, zéro échec, sept ignorés par défaut ;
-formatage/Clippy sans avertissement, 909 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).
-[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) réussis :
-17 scénarios portables, 11 bases MSI et 55 journaux MSI vérifiés. Six fichiers préparés/publics, empreintes API/SHA256 et contrôles des paquets réussis.
-Copies vérifiées dans `dist/` ; le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 837 875 octets sans installation sur l'hôte.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`, release `415294715`,
+source `54054b101282a7688dde778b24090af6d6e1e6a6`. Validation locale : 468 tests réussis, zéro échec, sept ignorés par défaut ;
+formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950447258) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950446650/job/117140185977) réussis :
+18 scénarios portables, 12 bases MSI et 60 journaux MSI vérifiés. Six fichiers préparés/publics, empreintes API/SHA256 et contrôles des paquets réussis,
+dont FreeText multiligne sur PDF simples/AES-128/AES-256 avec les deux mots de passe et sources inchangées.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 841 217 octets sans installation sur l'hôte.
 Preuves détaillées et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 Depuis **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
@@ -88,10 +89,10 @@ Le lot implémenté ajoute le placement à la souris dans **Préparer un formula
 case, radio, liste déroulante et zone de liste. **Dessiner sur la page** masque temporairement la boîte numérique ;
 tracer un rectangle la rouvre en conservant nom, choix et options. Seul **Créer le champ** modifie le PDF par le parcours
 existant avec annulation. La création numérique reste disponible ; aucun nouveau type, dépendance ou commande CLI.
-Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis. **0.19.0 est la Latest stable**. Voir les
+Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis. **0.19.0 était la Latest stable à sa publication**. Voir les
 [prochaines tâches](docs/NEXT_TASKS.fr.md) et l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-### En développement : 0.20.0
+### Nouveau en 0.20.0
 
 Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
 Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
@@ -106,10 +107,10 @@ validation ou du worker : texte saisi conservé pour réessayer. Apparence Helve
 vers le bas au renvoi à la ligne inchangés. Brouillon en mémoire jusqu'à validation, sans récupération après plantage.
 
 Implémentation et relecture indépendante réussies. Workspace local : 468 tests réussis, aucun échec, sept
-ignorés par défaut ; formatage et 912 clés EN/FR correspondantes réussis. Clippy toutes cibles avec avertissements refusés réussi. Les 75
-contrôles qpdf existants, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
-CI/mises à niveau, paquets préparés/publics et metteur à jour de production 0.20.0 restent à valider. **0.19.0
-reste la Latest stable actuelle** ; ses preuves exécutées ci-dessous ne valident pas la 0.20.0.
+ignorés par défaut ; formatage, Clippy toutes cibles sans avertissement et 912 clés EN/FR correspondantes réussis.
+Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
+CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
+et metteur à jour de production réussis. **0.20.0 est publiée en Latest stable** ; l'[état du projet](docs/PROJECT_STATUS.fr.md) consigne les preuves exécutées.
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

@@ -227,7 +227,7 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.19.0 : placement de champs à la souris (publiée en Latest)
+## 0.19.0 : placement de champs à la souris (publiée ; Latest à cette date)
 
 1. Réutiliser **Préparer un formulaire** et les cinq types existants. **Dessiner sur la page** masque la boîte
    numérique ; le geste rouvre le même brouillon avec nom, choix et options modifiable/sélection multiple conservés.
@@ -239,11 +239,11 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
    et régression étendue création/annulation des cinq types réussis dans le workspace. Revue indépendante, formatage et Clippy réussis.
    Contrôles CI/mises à niveau, paquets préparés/publics et metteur à jour réussis ; six fichiers vérifiés publiés. Résultats exécutés dans l'état du projet.
 
-**0.19.0 est la Latest stable.** D110/A38 définissent le périmètre ; création XFA et édition de la géométrie/des types
+**0.19.0 était la Latest stable à sa publication.** D110/A38 définissent le périmètre ; création XFA et édition de la géométrie/des types
 de champs existants exclues. Souris/stylet/tactile natifs et Narrateur restent distincts.
 Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
-## 0.20.0 : création et édition FreeText sur la page (en développement)
+## 0.20.0 : création et édition FreeText sur la page (publiée en Latest stable)
 
 Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
 Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
@@ -258,10 +258,14 @@ validation ou du worker : texte saisi conservé pour réessayer. Apparence Helve
 vers le bas au renvoi à la ligne inchangés. Brouillon en mémoire jusqu'à validation, sans récupération après plantage.
 
 Implémentation et relecture indépendante réussies. Workspace local : 468 tests réussis, aucun échec, sept
-ignorés par défaut ; formatage et 912 clés EN/FR correspondantes réussis. Clippy toutes cibles avec avertissements refusés réussi. Les 75
-contrôles qpdf existants, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
-CI/mises à niveau, paquets préparés/publics et metteur à jour de production 0.20.0 restent à valider. **0.19.0
-reste la Latest stable actuelle** ; ses preuves exécutées ci-dessous ne valident pas la 0.20.0.
+ignorés par défaut ; formatage, Clippy toutes cibles sans avertissement et 912 clés EN/FR correspondantes réussis.
+Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
+CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
+et metteur à jour de production réussis. **0.20.0 est publiée en Latest stable** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
+
+La [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) couvre les 117 alertes ouvertes, dont les 115 critiques ;
+aucun secret de production confirmé parmi ces critiques. Aucune alerte écartée. La déclaration moyenne de
+permissions du workflow de release reste un durcissement futur ; droits actuels par défaut en lecture seule.
 
 ## Travail restant au-delà de ces lots
 
@@ -385,7 +389,7 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   bordures en tirets des quatre formes livrées en 0.16.0, autres types toujours non pris en charge ;
 - création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
-- création et édition FreeText sur la page implémentées et testées localement pour 0.20.0 (D111) ; Clippy avec avertissements refusés réussi ; publication en attente.
+- création et édition FreeText sur la page livrées en 0.20.0 (D111) ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis.
 
 ## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
 Livrés en 0.10.0 : rééchantillonnage borné des flux image/JPEG, quatre documents NIST publics figés et régressions

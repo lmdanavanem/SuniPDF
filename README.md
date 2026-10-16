@@ -45,12 +45,13 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) under `lmdanavanem`, release `415214602`,
-source `903181fee3bba5794b39714106e5814bca753fb3`. Local validation: 460 passed tests, zero failures, seven default ignored;
-formatting/Clippy with warnings denied, 909 EN/FR keys, 75 qpdf checks, update-helper self-test and four NIST/NBS PDFs (744 pages).
-[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) passed:
-17 portable cases, 11 MSI baselines and 55 verified MSI logs. All six staged/public files, API/SHA256 digests and packaged checks passed.
-Verified copies are in `dist/`; the production updater downloaded and verified the 19,837,875-byte Latest x64 ZIP without installing it on the host.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) under `lmdanavanem`, release `415294715`,
+source `54054b101282a7688dde778b24090af6d6e1e6a6`. Local validation: 468 passed tests, zero failures, seven default ignored;
+formatting/Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks, update-helper self-test and four NIST/NBS PDFs (744 pages).
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950447258) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950446650/job/117140185977) passed:
+18 portable cases, 12 MSI baselines and 60 verified MSI logs. All six staged/public files, API/SHA256 digests and packaged checks passed,
+including multiline FreeText on plain/AES-128/AES-256 PDFs with both passwords and unchanged inputs.
+Verified copies are in `dist/`; the production updater downloaded and verified the 19,841,217-byte Latest x64 ZIP without installing it on the host.
 Detailed evidence and limits are in [Project status](docs/PROJECT_STATUS.md).
 
 Available since **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
@@ -85,10 +86,10 @@ The implemented lot adds mouse placement to **Prepare a form** for the existing 
 drop-down and list-box types. **Draw on page** temporarily hides the numeric dialog; drawing a rectangle
 reopens it with the name, choices and flags retained. Only **Create Field** changes the PDF, through the existing
 undoable creation path. Numeric creation remains available; no new field type, dependency or CLI command.
-Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 is stable Latest**. See
+Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 was stable Latest at publication**. See
 [next tasks](docs/NEXT_TASKS.md) and [project status](docs/PROJECT_STATUS.md).
 
-### In development: 0.20.0
+### New in 0.20.0
 
 The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
 Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
@@ -103,10 +104,10 @@ for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchange
 exists only in memory until confirmation and has no crash recovery.
 
 Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
-default ignored; formatting and 912 matching EN/FR keys passed. All-target Clippy with warnings denied passed. The existing 75-check
-qpdf gate, four-document/744-page real corpus and update-helper self-test passed. CI/upgrade, staged/public
-package and production-updater gates for 0.20.0 are pending. **0.19.0 remains the current stable Latest**;
-its executed evidence below is not a validation claim for 0.20.0.
+default ignored; formatting, all-target Clippy with warnings denied and 912 matching EN/FR keys passed.
+The 75-check qpdf gate, four-document/744-page real corpus and update-helper self-test passed. Windows CI,
+18 portable cases, 12 MSI baselines/60 logs, same-source ARM64, all six staged/public files and the production
+updater passed. **0.20.0 is published as stable Latest**; [Project status](docs/PROJECT_STATUS.md) records the executed evidence.
 
 ## Screenshots
 

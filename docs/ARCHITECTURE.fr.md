@@ -250,7 +250,7 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.19.0 : tracé des rectangles de formulaire (publiée en Latest)
+## 0.19.0 : tracé des rectangles de formulaire (publiée ; Latest à cette date)
 
 `form_builder.rs` du bureau, les interactions de page de `view.rs` et les gardes de document/outil
 d'`app.rs` réutilisent le `FormFieldDraft` numérique, la géométrie affichée et l'opération worker existants (D110).
@@ -264,10 +264,10 @@ la boîte sans écriture. Zoom/navigation conservent le geste, avec finalisation
 si la navigation en page unique masque l'origine. API moteur/CLI et 53 commandes inchangées.
 
 Implémentation, tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis.
-0.19.0 est la Latest stable.
+0.19.0 était la Latest stable à sa publication.
 Souris/stylet/tactile natifs et Narrateur restent distincts. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
-## 0.20.0 : éditeur FreeText sur la page (en développement)
+## 0.20.0 : éditeur FreeText sur la page (publiée en Latest stable)
 
 Le bureau réutilise le placement d'annotation clic/tracé, les coordonnées affichées et l'état de brouillon/style
 FreeText existants (D111). L'éditeur multiligne ancré envoie seulement AddFreeText ou UpdateFreeText existant après
@@ -281,7 +281,7 @@ Le worker existant fournit une étape Annuler, protection, apparence Helvetica W
 le bas au renvoi. Brouillon non validé sans récupération après plantage.
 
 Implémentation/relecture, 468 tests workspace, formatage et 912 clés EN/FR réussis en local.
-Clippy avec avertissements refusés réussi ; contrôles CI/paquets/publication/metteur à jour en attente ; 0.19.0 reste Latest stable. Preuves dans
+Clippy sans avertissement et contrôles CI/paquets/publication/metteur à jour réussis ; 0.20.0 est Latest stable. Preuves dans
 `PROJECT_STATUS.fr.md` ; QA souris/stylet/tactile natifs, Narrateur et lecteurs tiers distincte.
 
 ## Coordonnées (SUNI-031c)

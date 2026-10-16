@@ -246,7 +246,7 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.19.0 form rectangle drawing (published as Latest)
+## 0.19.0 form rectangle drawing (published; Latest at the time)
 
 Desktop `form_builder.rs`, the page interaction in `view.rs` and document/tool lifecycle guards in
 `app.rs` reuse the current numeric `FormFieldDraft`, display-space geometry and worker creation operation (D110).
@@ -260,10 +260,10 @@ the builder without writing. Zoom/navigation retain the gesture, with global pri
 when Single-page navigation hides its original page. Core/CLI APIs and 53 commands remain unchanged.
 
 Implementation, local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed.
-0.19.0 is stable Latest.
+0.19.0 was stable Latest at publication.
 Native mouse/pen/touch and Narrator checks remain separate. Executed evidence belongs in `PROJECT_STATUS.md`.
 
-## 0.20.0 on-page FreeText editor (in development)
+## 0.20.0 on-page FreeText editor (published stable Latest)
 
 The desktop reuses annotation click/draw placement, display-space coordinates and the existing FreeText
 draft/style state (D111). An anchored multiline editor submits only through the existing AddFreeText or
@@ -276,7 +276,7 @@ concurrent drafts; preserve typed text on validation/worker failure. The existin
 protection, Helvetica WinAnsi appearance and downward wrap growth. The unsubmitted draft has no crash recovery.
 
 Local implementation/review, 468 workspace tests, formatting and 912 matching EN/FR keys passed.
-Clippy with warnings denied passed; CI/package/public/updater gates remain pending; 0.19.0 is stable Latest. Executed evidence belongs in
+Clippy with warnings denied and CI/package/public/updater gates passed; 0.20.0 is stable Latest. Executed evidence belongs in
 `PROJECT_STATUS.md`; native mouse/pen/touch, Narrator and third-party-reader QA remain separate.
 
 ## Coordinates (SUNI-031c)

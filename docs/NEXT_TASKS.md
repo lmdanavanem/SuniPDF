@@ -224,7 +224,7 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.19.0: mouse placement of form fields (published as Latest)
+## 0.19.0: mouse placement of form fields (published; Latest at the time)
 
 1. Reuse **Prepare a form** and its five existing types. **Draw on page** hides the numeric dialog;
    a rectangle gesture reopens the same draft with name, choices and editable/multiple-selection flags retained.
@@ -236,11 +236,11 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
    five-type creation/undo regression passed in the workspace suite. Independent review, formatting and Clippy passed.
    CI/upgrade, staged/public package and production updater gates passed; six verified files are published. Executed results belong in status.
 
-**0.19.0 is stable Latest.** D110/A38 define the selected scope; XFA authoring and editing existing field
+**0.19.0 was stable Latest at publication.** D110/A38 define the selected scope; XFA authoring and editing existing field
 geometry/types are not included. Native mouse/pen/touch and Narrator checks remain separate.
 Executed evidence belongs in `PROJECT_STATUS.md`.
 
-## 0.20.0: on-page FreeText creation and editing (in development)
+## 0.20.0: on-page FreeText creation and editing (published stable Latest)
 
 The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
 Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
@@ -255,10 +255,14 @@ for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchange
 exists only in memory until confirmation and has no crash recovery.
 
 Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
-default ignored; formatting and 912 matching EN/FR keys passed. All-target Clippy with warnings denied passed. The existing 75-check
-qpdf gate, four-document/744-page real corpus and update-helper self-test passed. CI/upgrade, staged/public
-package and production-updater gates for 0.20.0 are pending. **0.19.0 remains the current stable Latest**;
-its executed evidence below is not a validation claim for 0.20.0.
+default ignored; formatting, all-target Clippy with warnings denied and 912 matching EN/FR keys passed.
+The 75-check qpdf gate, four-document/744-page real corpus and update-helper self-test passed. Windows CI,
+18 portable cases, 12 MSI baselines/60 logs, same-source ARM64, all six staged/public files and the production
+updater passed. **0.20.0 is published as stable Latest**; [Project status](PROJECT_STATUS.md) records the executed evidence.
+
+The [Code Scanning review](CODE_SCANNING_REVIEW.md) covers all 117 open alerts, including all 115 critical
+alerts; no production secret was confirmed among those critical findings. No alert was dismissed. The medium
+release-workflow permission declaration remains a future hardening item; current repository defaults are read-only.
 
 ## Remaining work beyond these lots
 
@@ -380,7 +384,7 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
   for the four existing shapes are delivered in 0.16.0, while other annotation types remain unsupported;
 - richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);
 - lighter round trip for big files (write the annotation without reloading the whole document);
-- on-page FreeText creation and editing is implemented and locally tested for 0.20.0 (D111); Clippy with warnings denied passed; release gates remain pending.
+- on-page FreeText creation and editing shipped in 0.20.0 (D111); local/CI/upgrade, staged/public package and production updater checks passed.
 
 ## SUNI-025 — Lossy compression and qpdf verification (owner: OCR-CONVERSION + QA)
 Delivered in 0.10.0: bounded image-stream resampling/JPEG re-encoding, four pinned public NIST documents and

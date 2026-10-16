@@ -183,7 +183,7 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.19.0 : placement à la souris des types de formulaire existants (publiée en Latest)
+## 0.19.0 : placement à la souris des types de formulaire existants (publiée ; Latest à cette date)
 
 Ajouter **Dessiner sur la page** au builder numérique, en conservant texte/case/radio/listes déroulantes/zones
 de liste, noms, choix et options. Tracer un rectangle fini borné à une page, d'au moins 4 pt par dimension,
@@ -192,11 +192,11 @@ l'édition worker existante fournit une étape Annuler, validation et chiffremen
 
 Réticule/aperçu, exclusion des widgets et gardes de document/onglet/outil périmés inclus. Création numérique,
 API moteur/CLI et 53 commandes inchangés ; aucune dépendance ni type ajouté. Implémentation et tests locaux
-réussis, avec formatage/Clippy ; contrôles CI/paquets/mise à jour/publication réussis. **0.19.0 est la Latest stable**.
+réussis, avec formatage/Clippy ; contrôles CI/paquets/mise à jour/publication réussis. **0.19.0 était la Latest stable à sa publication**.
 Preuves réelles dans `PROJECT_STATUS.fr.md`.
 Édition de la géométrie existante, création XFA et contrôles matériels natifs restent distincts.
 
-## 0.20.0 : création et édition FreeText sur la page (en développement)
+## 0.20.0 : création et édition FreeText sur la page (publiée en Latest stable)
 
 Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
 Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
@@ -211,10 +211,10 @@ validation ou du worker : texte saisi conservé pour réessayer. Apparence Helve
 vers le bas au renvoi à la ligne inchangés. Brouillon en mémoire jusqu'à validation, sans récupération après plantage.
 
 Implémentation et relecture indépendante réussies. Workspace local : 468 tests réussis, aucun échec, sept
-ignorés par défaut ; formatage et 912 clés EN/FR correspondantes réussis. Clippy toutes cibles avec avertissements refusés réussi. Les 75
-contrôles qpdf existants, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
-CI/mises à niveau, paquets préparés/publics et metteur à jour de production 0.20.0 restent à valider. **0.19.0
-reste la Latest stable actuelle** ; ses preuves exécutées ci-dessous ne valident pas la 0.20.0.
+ignorés par défaut ; formatage, Clippy toutes cibles sans avertissement et 912 clés EN/FR correspondantes réussis.
+Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
+CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
+et metteur à jour de production réussis. **0.20.0 est publiée en Latest stable** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -278,7 +278,11 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite au-delà du lot 0.20.0 retenu
+La [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) couvre les 117 alertes ouvertes, dont les 115 critiques,
+sans secret de production confirmé parmi ces critiques et sans alerte écartée. Déclarer explicitement les permissions
+du workflow de release reste un durcissement futur ; droits du dépôt observés en lecture seule par défaut.
+
+## Suite au-delà du lot 0.20.0 publié
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

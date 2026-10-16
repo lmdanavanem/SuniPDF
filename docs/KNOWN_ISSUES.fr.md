@@ -236,7 +236,7 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      édition de champ existant par le tracé. Si la navigation en page unique masque la page initiale pendant le geste,
      le relâchement conserve le dernier rectangle connu et rouvre la boîte numérique ; aucun champ créé sans
      Créer le champ explicite. Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis.
-     0.19.0 est la Latest stable.
+     0.19.0 était la Latest stable à sa publication.
      Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
      Aplatissement partiel : champs orphelins possibles ; annotations sans
      apparence autres que Link parfois perdues. Apparences Unicode susceptibles d’utiliser une police système non
@@ -297,14 +297,14 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
     Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
 
-    **Implémenté et testé localement pour 0.20.0 (D111) :** création/édition FreeText dans un éditeur de page multiligne ancré avec
+    **Publié en 0.20.0 (D111) :** création/édition FreeText dans un éditeur de page multiligne ancré avec
     Ajouter/Enregistrer/Annuler explicites, réglages existants, validation/protection moteur et une étape Annuler.
     Page d'origine fixée ; zoom disponible ; navigation incompatible bloquée jusqu'à validation/annulation.
     Opérations en attente, brouillons concurrents et document/onglet/outil/espace de travail périmés protégés ;
     erreur de validation/worker : texte conservé. Brouillon en mémoire, exclu de la récupération après plantage.
     Helvetica WinAnsi, texte simple et agrandissement vers le bas inchangés ; aucune extension police incorporée/
-    texte enrichi. Relecture, workspace, formatage et traductions réussis en local ; Clippy avec avertissements refusés réussi ; publication reste
-    en attente. 0.19.0 reste Latest stable. QA native/lecteurs distincte.
+    texte enrichi. Relecture, workspace, formatage, traductions et Clippy réussis en local ; CI/mises à niveau,
+    paquets préparés/publics et metteur à jour de production vérifiés. 0.20.0 est Latest stable. QA native/lecteurs distincte.
 
     Plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt,
     zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,

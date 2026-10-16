@@ -2,14 +2,14 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-**0.20.0 in development:** create/edit FreeText directly on the page, with an anchored multiline editor,
+**0.20.0 published as Latest:** create/edit FreeText directly on the page, with an anchored multiline editor,
 existing style controls and explicit Add/Save/Cancel (D111/A39). Local review, 468 workspace tests,
-formatting and 912 EN/FR keys passed; Clippy with warnings denied passed; release gates remain pending. The 0.19.0 evidence
-below describes the current stable Latest.
+formatting and 912 EN/FR keys passed; Clippy, CI/upgrade, same-source ARM64, staged/public packages and
+the production updater passed. **0.20.0 is stable Latest**; evidence and limits are in `PROJECT_STATUS.md`.
 
-**0.19.0 published as Latest:** mouse-drawn placement for existing form-field types, with numeric review and
+**0.19.0 published; Latest at the time:** mouse-drawn placement for existing form-field types, with numeric review and
 explicit Create (D110/A38). Implementation, local tests, formatting and Clippy passed; release gates passed.
-**0.19.0 is stable Latest**.
+**0.19.0 was stable Latest at publication**.
 
 "Expected" column: capability expected of a full PDF editor (**Declared** = common in the editors on the market,
 **Partial** = announced as incomplete by the project, **Absent** = announced as missing. Not verified by execution.
@@ -140,7 +140,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Done** (D067–D076): notes, highlight, underline, strikethrough; freehand **ink** (smoothed), **free text box** (Helvetica WinAnsi), **rectangle, ellipse, line, arrow** as real PDF annotations (explicit `/AP` appearance, rendered by other readers), colour, width, fill, opacity; select, move, resize (SuniPDF annotations), recolour, delete; rotated and cropped pages correct; encrypted document stays encrypted; CLI `annotate` / `annotations`. **Delivered in 0.16.0**: dashed borders for the four shapes, fixed UI/CLI `[6,3]`, preserved custom `dash_pattern`, malformed-style refusal and bounded regeneration; local/CI/upgrade, staged/public package and production updater checks passed (D107); manual reader checks remain separate |
 | Reply threads, comment status | Declared | **Done in SuniPDF**: Comments panel as threads (replies, status Accepted / Rejected / Cancelled / Completed, author, date, thread deletion), written according to ISO 32000-1; **Acrobat / Foxit compatibility not verified**; CLI `reply` / `review-state` |
 | Group several freehand strokes | Declared | **Delivered in 0.18.0** (D109): page-bound draft, explicit Finish/Cancel, one AddInk/Undo; failure retention, guards and 64-stroke/4,000-points-per-stroke bounds. Local/CI/upgrade, staged/public package and production updater gates passed. No eraser, idle auto-commit or draft crash recovery |
-| On-page FreeText creation and editing | Declared | **Implemented and locally tested for 0.20.0** (D111/A39): existing click/drawn box, anchored multiline editor, size/colour/background/border, explicit Add/Save/Cancel, one existing worker edit/Undo, original-page binding, stale-state/pending guards and failure retention. No rich text or new core/CLI API; local workspace/review/formatting/i18n passed; Clippy with warnings denied passed; release gates pending |
+| On-page FreeText creation and editing | Declared | **Published in 0.20.0** (D111/A39): existing click/drawn box, anchored multiline editor, size/colour/background/border, explicit Add/Save/Cancel, one existing worker edit/Undo, original-page binding, stale-state/pending guards and failure retention. No rich text or new core/CLI API; local/CI/upgrade, staged/public package and production updater gates passed |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
 | Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
@@ -222,6 +222,6 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.19.0 ZIP/MSI published as Latest; seventeen real portable cases and eleven MSI baselines passed (55 MSI logs); six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.20.0 ZIP/MSI published as Latest; eighteen real portable cases and twelve MSI baselines passed (60 MSI logs); six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
 | Windows ARM64 | Declared | **Done**: same-source 0.19.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

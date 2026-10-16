@@ -5,7 +5,7 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [0.20.0] - In development
+## [0.20.0] - 2026-10-16
 
 - Added: create and edit FreeText annotations in an anchored multiline page editor, retaining click/drawn
   rectangles and existing size/colour/background/border controls. Explicit Add/Save/Cancel reuses the current
@@ -16,8 +16,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 - Fixed quick rectangle drags dropping the final pointer position at release; conflicting search destinations
   cannot scroll an active FreeText draft away.
 - Local workspace passed 468 tests, zero failures and seven default ignored; formatting, 912 matching EN/FR keys,
-  75 qpdf checks, the licensed corpus and update-helper checks passed. Clippy with warnings denied passed; CI/publication remain pending.
-  0.19.0 remains stable Latest; actual results belong in `docs/PROJECT_STATUS.md`.
+  75 qpdf checks, the licensed corpus and update-helper checks passed; Clippy with warnings denied passed.
+- Published as stable Latest under `lmdanavanem`; Windows CI, same-source ARM64, 18 portable cases,
+  12 MSI baselines/60 logs, six staged/public files and production updater verification passed.
+  Actual results and limits belong in `docs/PROJECT_STATUS.md`.
 
 ## [0.19.0] - 2026-10-16
 
@@ -28,7 +30,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
   crosshair/preview and no interaction with existing form widgets during drawing.
 - No new field type, dependency or CLI command. Implementation, local tests, formatting and Clippy passed;
   CI/upgrade, staged/public package and production updater checks passed;
-  **0.19.0 is stable Latest**. Executed evidence belongs in `docs/PROJECT_STATUS.md`.
+  **0.19.0 was stable Latest at publication**. Executed evidence belongs in `docs/PROJECT_STATUS.md`.
 
 ## [0.18.0] - 2026-10-16
 

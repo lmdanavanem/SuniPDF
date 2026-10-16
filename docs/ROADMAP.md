@@ -178,7 +178,7 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.19.0: mouse placement of existing form types (published as Latest)
+## 0.19.0: mouse placement of existing form types (published; Latest at the time)
 
 Add **Draw on page** to the current numeric form builder, preserving text/checkbox/radio/drop-down/list-box
 types, names, choices and flags. Draw a finite rectangle clamped to one page, at least 4 pt wide/high, then
@@ -187,10 +187,10 @@ the existing worker edit supplies one Undo step, validation and encryption (D110
 
 Crosshair/preview, widget exclusion and stale document/tab/tool guards are included. Numeric creation,
 core/CLI APIs and 53 commands remain unchanged; no dependency or field type is added. Implementation and local tests
-passed, along with formatting/Clippy; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 is stable Latest**. Actual evidence belongs in
+passed, along with formatting/Clippy; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 was stable Latest at publication**. Actual evidence belongs in
 `PROJECT_STATUS.md`. Existing-field geometry editing, XFA creation and native hardware checks remain separate.
 
-## 0.20.0: on-page FreeText creation and editing (in development)
+## 0.20.0: on-page FreeText creation and editing (published stable Latest)
 
 The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
 Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
@@ -205,10 +205,10 @@ for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchange
 exists only in memory until confirmation and has no crash recovery.
 
 Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
-default ignored; formatting and 912 matching EN/FR keys passed. All-target Clippy with warnings denied passed. The existing 75-check
-qpdf gate, four-document/744-page real corpus and update-helper self-test passed. CI/upgrade, staged/public
-package and production-updater gates for 0.20.0 are pending. **0.19.0 remains the current stable Latest**;
-its executed evidence below is not a validation claim for 0.20.0.
+default ignored; formatting, all-target Clippy with warnings denied and 912 matching EN/FR keys passed.
+The 75-check qpdf gate, four-document/744-page real corpus and update-helper self-test passed. Windows CI,
+18 portable cases, 12 MSI baselines/60 logs, same-source ARM64, all six staged/public files and the production
+updater passed. **0.20.0 is published as stable Latest**; [Project status](PROJECT_STATUS.md) records the executed evidence.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -273,7 +273,11 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Work beyond the selected 0.20.0 lot
+The [Code Scanning review](CODE_SCANNING_REVIEW.md) covers all 117 open alerts, including all 115 critical
+alerts, with no production secret confirmed among those critical findings and no dismissal. Explicit release-workflow
+permissions remain a future hardening item; the observed repository defaults are read-only.
+
+## Work beyond the published 0.20.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

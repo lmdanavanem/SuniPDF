@@ -5,7 +5,7 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.20.0] — En développement
+## [0.20.0] — 2026-10-16
 
 - Ajout : créer et modifier les annotations FreeText dans un éditeur de page multiligne ancré, avec rectangles
   cliqués/tracés et réglages taille/couleur/fond/bordure existants. Ajouter/Enregistrer/Annuler explicites réutilisent
@@ -16,8 +16,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 - Correction des tracés rapides de rectangle qui perdaient la position finale au relâchement ; les destinations
   de recherche incompatibles ne font plus défiler un brouillon FreeText actif.
 - Workspace local : 468 tests réussis, aucun échec et sept ignorés par défaut ; formatage, 912 clés EN/FR,
-  75 contrôles qpdf, corpus licencié et autotest du metteur à jour réussis. Clippy avec avertissements refusés réussi ; CI/publication en attente.
-  0.19.0 reste la Latest stable ; résultats réels dans `docs/PROJECT_STATUS.fr.md`.
+  75 contrôles qpdf, corpus licencié et autotest du metteur à jour réussis ; Clippy sans avertissement réussi.
+- Publiée en Latest stable sous `lmdanavanem` ; CI Windows, ARM64 de même source, 18 scénarios portables,
+  12 bases MSI/60 journaux, six fichiers préparés/publics et metteur à jour de production vérifiés.
+  Résultats et limites dans `docs/PROJECT_STATUS.fr.md`.
 
 ## [0.19.0] — 2026-10-16
 
@@ -28,7 +30,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   réticule/aperçu et aucune interaction avec les widgets existants pendant le tracé.
 - Aucun nouveau type, dépendance ou commande CLI. Implémentation, tests locaux, formatage et Clippy réussis ;
   contrôles CI/paquets/mise à jour/publication réussis ;
-  **0.19.0 est la Latest stable**. Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
+  **0.19.0 était la Latest stable à sa publication**. Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
 
 ## [0.18.0] — 2026-10-16
 
