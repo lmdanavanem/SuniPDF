@@ -111,27 +111,32 @@ Windows CI, same-source ARM64 compilation, twelve portable scenarios, six MSI ba
 files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified the
 19,785,200-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
-## 0.15.0: editing existing link targets (published as Latest)
+## 0.15.0: editing existing link targets (published milestone)
 
 Reuse the annotation link dialog and protected writer to change an existing destination through Edit target,
 double-click or CLI `set-link-target`. Safe web/mail URI or physical-page Fit replaces all previous target/action
 fields, keeping the link's area/style/comments/replies and unrelated document data. Existing detailed/named views
 are explicitly replaced by whole-page Fit; unknown targets never default silently to page 1. ReadOnly/Locked/
 LockedContents and malformed flags are refused; one undo preserves geometry/navigation and stale dialogs close
-on document changes (D106). [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under
-`lmdanavanem`, release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation passed: 429 workspace
+on document changes (D106). [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under
+`lmdanavanem` (Latest at the time), release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation passed: 429 workspace
 tests, formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents (744 pages; 48.891 seconds
 locally). Windows CI, same-source ARM64 compilation, thirteen portable scenarios, seven MSI baselines and six
 staged/public files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified
 the 19,803,226-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
-## 0.16.0: dashed shape annotations (in development)
+## 0.16.0: dashed shape annotations (published as Latest)
 
 Dashed rectangle/ellipse/line/arrow annotations reuse the existing toolbar, CLI and appearance writer. UI and
 `annotate --dashed` choose `[6,3]` points; actual custom patterns remain through ordinary edits unless explicitly
 toggled. Solid defaults, continuous fill and solid arrowheads stay unchanged. Unsupported types, malformed
 SuniPDF border styles and excessive regeneration work are refused (D107). No dependency or command is added;
-the CLI remains at 53 commands. Validation/publication are pending; 0.15.0 stays Latest. See `PROJECT_STATUS.md`.
+the CLI remains at 53 commands. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+under `lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Local validation,
+Windows CI and same-source ARM64 compilation passed: 439 tests, 895 EN/FR keys, 73 qpdf checks, four licensed
+documents/744 pages (53.542 seconds locally), fourteen portable cases and eight MSI baselines. Six staged/public
+files and enhanced checks passed; verified copies are in `dist/`. The production updater verified the
+19,821,719-byte x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -160,7 +165,7 @@ FDF/XFDF interchange and keyboard page widgets.
 Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
 Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
 Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
-In development for 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
+Delivered in 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
@@ -192,7 +197,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.15.0 lot
+## Next work after the 0.16.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

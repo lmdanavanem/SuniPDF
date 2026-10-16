@@ -182,7 +182,7 @@ Published in 0.15.0; local, CI, upgrade, staged/public package and production up
 executed evidence and remaining limits are in `PROJECT_STATUS.md`. External navigation confirmation and
 signed-document rewrite warnings remain unchanged.
 
-## 0.16.0 dashed shape borders (in development)
+## 0.16.0 dashed shape borders (published)
 
 `AnnotStyle::dash_pattern` and annotation details carry the actual vector rather than a boolean. Rectangle,
 ellipse and line/arrow writers emit matching `BS` style/dash-array entries and `/AP` graphics-state dashes at
@@ -197,7 +197,8 @@ patterns; invalid/excessive nonempty patterns omit the stroke instead of falling
 Desktop `annot_adv.rs` keeps the loaded vector through selection and ordinary edits; an actual checkbox toggle
 chooses `[6, 3]` or solid. CLI `annotate --dashed` supplies the same fixed pattern and `annotations` reads back
 `dash_pattern`. Nonempty patterns on unsupported annotation types are errors. Existing worker undo/protection/
-output guards are reused, with no new dependency. Validation is pending in `PROJECT_STATUS.md`.
+output guards are reused, with no new dependency. Published in 0.16.0; local/CI/upgrade, staged/public package
+and production updater checks passed. Source, executed evidence and remaining limits are recorded in `PROJECT_STATUS.md`.
 
 ## Coordinates (SUNI-031c)
 

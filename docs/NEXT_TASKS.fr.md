@@ -141,7 +141,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   inchangés. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64 de 19 785 200 octets
   sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D104–D105).
 
-## 0.15.0 : modifier les destinations de liens existants (publiée en Latest)
+## 0.15.0 : modifier les destinations de liens existants (jalon publié)
 
 - Réutiliser la boîte de lien via Modifier la destination/double-clic, préremplir les destinations nommées/XYZ
   résolues et remplacer explicitement les vues de page par Fit. Cible inconnue : adresse vide, jamais page 1 implicite.
@@ -149,7 +149,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   additionnelles et conservent zone/style/noms/commentaires/réponses, données indépendantes et protection (D106).
 - Respecter ReadOnly/Locked/LockedContents directs/indirects ; drapeaux malformés : édition refusée. Un Annuler conserve
   géométrie/navigation. Éditions/changements d'onglet abandonnent les boîtes périmées ; protections CLI existantes conservées.
-- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem`, release
+- [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem` (Latest à cette date), release
   `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Contrôles locaux réussis : 429 tests workspace (zéro échec,
   sept ignorés par défaut), formatage/Clippy, 894 clés EN/FR, 68 contrôles qpdf et quatre documents licenciés
   (744 pages ; 48,891 s, pic mémoire enfant 328 736 768 octets). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
@@ -159,7 +159,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets
   sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D106).
 
-## 0.16.0 : annotations de formes en tirets (en développement)
+## 0.16.0 : annotations de formes en tirets (publiée en Latest)
 
 - Rectangle/ellipse/ligne/flèche seulement : case Bordure en tirets et CLI `annotate --dashed` utilisent `[6,3]`
   points ; vecteur `dash_pattern` réel conservé lors de sélection/recoloration/déplacement/redimensionnement/
@@ -168,8 +168,16 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
 - Dictionnaire de bordure et apparence explicite cohérents, phase zéro. Refuser les motifs non vides sur types
   non pris en charge et les régénérations de styles SuniPDF malformés/non pris en charge plutôt que les perdre.
   Validation du motif et bornes conservatrices du travail d'apparence empêchent une régénération excessive.
-- Validation/publication en attente ; la 0.15.0 reste Latest. Mises à niveau prévues : quatorze scénarios portables
-  et huit bases MSI, dont 0.15.0 ; aucun succès annoncé pour cette release. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+- Contrôles locaux réussis sur `6cd7843734f3924e87033d8b05539d493ccbcb95` : 439 tests workspace (zéro échec,
+  sept ignorés par défaut), formatage/Clippy, 895 clés EN/FR, 73 contrôles qpdf et quatre documents licenciés
+  (744 pages ; 53,542 s, pic mémoire enfant 331 517 952 octets). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537)
+  et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589) réussis.
+  Les quatorze scénarios portables (dix mises à niveau dont 0.15.0 et quatre protections), huit bases MSI
+  (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0/0.14.0/0.15.0) et 40 journaux MSI ont été vérifiés. Corpus en CI :
+  47,628 s, pic mémoire enfant 321 306 624 octets. [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+  sous `lmdanavanem`, release `414934190`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés réussis ;
+  copies vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 821 719 octets sans
+  installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Travail restant au-delà de ces lots
 
@@ -288,7 +296,7 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 - regroupement des traits d'encre (une annotation pour N traits, validée à l'inactivité) avec écriture garantie à
   l'enregistrement et à la fermeture ; gomme ;
 - polygone, polyligne, nuage, tampon, pièce jointe et texte libre riche (gras, italique, CJK : police incorporée) ;
-  bordures en tirets des quatre formes suivies dans le lot 0.16.0, autres types toujours non pris en charge ;
+  bordures en tirets des quatre formes livrées en 0.16.0, autres types toujours non pris en charge ;
 - création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.

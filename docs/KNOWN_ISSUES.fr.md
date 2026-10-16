@@ -249,7 +249,7 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     Launch / JavaScript / GoToR jamais
     exécutées ; **redimensionnement et style réservés aux annotations de SuniPDF**
     (`/NM` préfixé) : celles d'un autre producteur se déplacent, se commentent, se suppriment (surlignages et notes se
-    recolorent aussi). **0.16.0 en développement** ajoute les tirets uniquement aux annotations rectangle, ellipse,
+    recolorent aussi). **0.16.0 publiée** ajoute les tirets uniquement aux annotations rectangle, ellipse,
     ligne et flèche. UI/CLI choisissent `[6,3]` points ; vecteur réel conservé à la sélection, recoloration,
     déplacement/redimensionnement et annulation sauf changement explicite de case. Phase zéro, remplissage et
     pointes de flèche pleins. Motifs non vides refusés sur encre/texte libre/lien/marquages. `BS` malformé/non pris
@@ -259,8 +259,8 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     Déplacer/Redimensionner/Style désactivés. Commentaire de forme autorisé selon les permissions ordinaires sans
     reconstruire l'apparence ; commentaire de texte libre malformé refusé. Aperçu : motifs sous-pixel valides
     conservés, contour non vide invalide/excessif omis sans repli continu, sous la même borne de travail.
-    Aucun éditeur de motif/phase. Validation en cours dans `PROJECT_STATUS.fr.md` (D107) ;
-    la 0.15.0 reste Latest. Pas de gomme, polygone, nuage, tampon ou pièce jointe ;
+    Aucun éditeur de motif/phase. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de
+    production réussis ; preuves et limites dans `PROJECT_STATUS.fr.md` (D107). Pas de gomme, polygone, nuage, tampon ou pièce jointe ;
     plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt, zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
     sélection d'une annotation de SuniPDF (cadre, quatre poignées, barre flottante) puis déplacement et
     redimensionnement à la souris, déplacement d'une annotation d'un autre producteur (cadre sans poignées), boîtes de

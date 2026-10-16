@@ -114,27 +114,32 @@ CI Windows, compilation ARM64 de même source, douze scénarios portables, six b
 avec contrôles renforcés réussis. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
 de 19 785 200 octets sans installation. Preuves exécutées et limites restantes : `PROJECT_STATUS.fr.md`.
 
-## 0.15.0 : modifier les destinations de liens existants (publiée en Latest)
+## 0.15.0 : modifier les destinations de liens existants (jalon publié)
 
 Réutiliser boîte de lien et writer protégé pour changer une destination via Modifier la destination, double-clic
 ou CLI `set-link-target`. URI web/mail autorisée ou page physique Fit remplace tous les anciens champs de cible/
 actions, en conservant zone/style/commentaires/réponses et données indépendantes. Vue détaillée/nommée explicitement
 remplacée par Fit ; une cible inconnue ne devient jamais silencieusement page 1. ReadOnly/Locked/LockedContents
 et drapeaux malformés refusés ; un Annuler conserve géométrie/navigation, boîtes périmées fermées au changement
-de document (D106). [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous
-`lmdanavanem`, release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation réussie : 429 tests
+de document (D106). [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous
+`lmdanavanem` (Latest à cette date), release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation réussie : 429 tests
 workspace, formatage/Clippy, 894 clés EN/FR, 68 contrôles qpdf et quatre documents licenciés (744 pages ; 48,891 s
 localement). CI Windows, compilation ARM64 de même source, treize scénarios portables, sept bases MSI et six fichiers
 préparés/publics avec contrôles renforcés réussis. Copies vérifiées dans `dist/` ; le metteur à jour de production
 a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation. Preuves exécutées et limites : `PROJECT_STATUS.fr.md`.
 
-## 0.16.0 : annotations de formes en tirets (en développement)
+## 0.16.0 : annotations de formes en tirets (publiée en Latest)
 
 Rectangles/ellipses/lignes/flèches en tirets réutilisent barre, CLI et writer d'apparences. UI et `annotate --dashed`
 choisissent `[6,3]` points ; motifs personnalisés réels conservés lors des éditions ordinaires sauf changement
 explicite de case. Trait continu par défaut, remplissage continu et pointes pleines inchangés. Types non pris en
 charge, styles SuniPDF malformés et travail de régénération excessif refusés (D107). Aucune dépendance ni commande
-ajoutée, toujours 53 commandes CLI. Validation/publication en attente ; la 0.15.0 reste Latest. Voir `PROJECT_STATUS.fr.md`.
+ajoutée, toujours 53 commandes CLI. [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+sous `lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation locale,
+CI Windows et compilation ARM64 de même source réussies : 439 tests, 895 clés EN/FR, 73 contrôles qpdf, quatre
+documents licenciés/744 pages (53,542 s localement), quatorze scénarios portables et huit bases MSI. Six fichiers
+préparés/publics et contrôles renforcés réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a
+vérifié le ZIP x64 de 19 821 719 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -162,7 +167,7 @@ Livrés en 0.10.0 : transformations groupées, recadrage souris, champs radio/li
 Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, avec lecture seule conservatrice si nécessaire.
 Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page courante/toutes/sélection.
 Livré en 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
-En développement pour 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
+Livré en 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
@@ -194,7 +199,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite après le lot 0.15.0
+## Suite après le lot 0.16.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

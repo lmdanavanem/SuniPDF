@@ -5,12 +5,19 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [0.16.0] - Unreleased
+## [0.16.0] - 2026-10-16
 
 Local validation passed: 439 workspace tests (zero failed, seven default ignored), formatting/Clippy,
 895 EN/FR keys, 73 qpdf checks and four licensed documents (744 pages; 53.542 seconds, peak child memory
-331,517,952 bytes). CI, packages and publication remain pending; 0.15.0 stays published Latest.
-Executed evidence belongs in `docs/PROJECT_STATUS.md`.
+331,517,952 bytes). Source: `6cd7843734f3924e87033d8b05539d493ccbcb95`.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537) and the
+[same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589) passed,
+along with all fourteen portable cases (ten upgrades including 0.15.0 and four guards), eight MSI baselines and
+40 verified MSI logs. The CI corpus took 47.628 seconds with peak child memory 321,306,624 bytes.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) under `lmdanavanem`,
+release `414934190`, with six assets. All six staged/public files and enhanced packaged checks passed;
+verified copies are in `dist/`. The production updater downloaded and verified the 19,821,719-byte Latest
+x64 ZIP without installing it on the host. Executed evidence and remaining limits are in `docs/PROJECT_STATUS.md`.
 
 ### Added
 - **Dashed border** for rectangle, ellipse, line and arrow annotations; CLI `annotate --dashed` uses the same
@@ -38,7 +45,7 @@ No new dependency. Native interactive and third-party-reader checks remain separ
 Local source validation passed: 429 workspace tests (zero failed, seven default ignored), formatting/Clippy,
 894 EN/FR keys, 68 qpdf checks and four licensed documents (744 pages; 48.891 seconds, peak child memory
 328,736,768 bytes). Source: `952f8699cac451e7c3004b6d816105d52e41f249`.
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem`, release
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem` (Latest at the time), release
 `414866395`, with six assets. [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488) and the
 [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541) passed,
 along with thirteen portable scenarios and seven MSI baselines. All six staged/public files and enhanced checks

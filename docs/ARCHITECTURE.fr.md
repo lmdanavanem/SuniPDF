@@ -184,7 +184,7 @@ utilise les mêmes API et garde de sortie. Publié en 0.15.0 ; contrôles locaux
 et metteur à jour réussis ; preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md`.
 Confirmation des adresses externes et avertissement de réécriture des documents signés inchangés.
 
-## Bordures en tirets des formes 0.16.0 (en développement)
+## Bordures en tirets des formes 0.16.0 (publiée)
 
 `AnnotStyle::dash_pattern` et les détails d'annotation transportent le vecteur réel plutôt qu'un booléen.
 Rectangle, ellipse et ligne/flèche écrivent un style/tableau `BS` cohérent avec les tirets de l'état graphique
@@ -199,7 +199,8 @@ un motif non vide invalide/excessif omet le contour au lieu d'un repli continu.
 `annot_adv.rs` conserve le vecteur chargé lors de la sélection et des éditions ordinaires ; un changement réel
 de la case choisit `[6, 3]` ou continu. CLI `annotate --dashed` fournit le même motif fixe ; `annotations` relit
 `dash_pattern`. Motif non vide sur un type non pris en charge : erreur. Annulation/protection/gardes de sortie
-existantes réutilisées, sans nouvelle dépendance. Validation en cours dans `PROJECT_STATUS.fr.md`.
+existantes réutilisées, sans nouvelle dépendance. Publiée en 0.16.0 ; contrôles locaux/CI/mises à niveau,
+paquets préparés/publics et metteur à jour de production réussis. Source, preuves et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Coordonnées (SUNI-031c)
 

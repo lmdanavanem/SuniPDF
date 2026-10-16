@@ -27,7 +27,7 @@
 | Area | Features |
 |---|---|
 | Read | Tabs, continuous/single-page/two-page/Book views, page-label authoring/reset and physical `#N` navigation, precise link/bookmark destinations, view rotation, full screen, per-tab position/zoom history, tiled rendering, search and logical cross-page selection |
-| Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links with editable safe destinations, reply threads |
+| Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes with solid/dashed borders, links with editable safe destinations, reply threads |
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages; extraction/split preserve source encryption, passwords and permissions |
 | Fill and sign | AcroForm filling, editable drop-down text, radio `/Opt` export values, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; drawn/typed/imported visual signatures and initials, atomic all/selected-page placement, date |
@@ -45,23 +45,23 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**[0.15.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0)** under `lmdanavanem`.
-429 workspace tests, formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed NIST/NBS documents
-(744 pages; 48.891 seconds locally) passed, alongside final Windows CI, ARM64 compilation, thirteen portable
-scenarios and seven MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks
-passed; verified copies are in `dist/`. The production updater verified the 19,803,226-byte Latest x64 ZIP
+**[0.16.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)** under `lmdanavanem`.
+439 workspace tests, formatting/Clippy, 895 EN/FR keys, 73 qpdf checks and four licensed NIST/NBS documents
+(744 pages; 53.542 seconds locally) passed, alongside final Windows CI, ARM64 compilation, fourteen portable
+scenarios and eight MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks
+passed; verified copies are in `dist/`. The production updater verified the 19,821,719-byte Latest x64 ZIP
 without installation.
 [Project status](docs/PROJECT_STATUS.md) records source, release evidence and hardware/interoperability limits.
 
-New in **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
+Available since **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
 `set-link-target`, preserving its area, appearance and comments. Choose a safe web/mail address or a physical
 page fitted to the window. Locked/read-only links are refused. Page-label authoring and navigation-preserving
 Undo/Redo remain available from 0.14.0; see the [roadmap](docs/ROADMAP.md).
 
-In development for **0.16.0**: dashed borders for rectangle, ellipse, line and arrow annotations through
+New in **0.16.0**: dashed borders for rectangle, ellipse, line and arrow annotations through
 **Dashed border** and CLI `annotate --dashed`. Existing custom dash patterns survive selection, recolouring and
-geometry edits; only toggling the checkbox changes the pattern. Validation is pending; 0.15.0 remains Latest.
-See [Project status](docs/PROJECT_STATUS.md).
+geometry edits; only explicitly toggling the checkbox changes the pattern. Invalid styles are refused rather
+than silently replaced. See [Project status](docs/PROJECT_STATUS.md) for validation and remaining limits.
 
 ## Screenshots
 

@@ -29,7 +29,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Domaine | Détail |
 |---|---|
 | Lire | Onglets, vues continue/page unique/double page/Livre, création/réinitialisation des étiquettes et page physique `#N`, destinations précises des liens/signets, rotation de vue, plein écran, historique de position/zoom, tuiles, recherche et sélection logique entre pages |
-| Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens aux destinations autorisées modifiables, fils de réponses et panneau des commentaires |
+| Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes aux bordures continues/en tirets, liens aux destinations autorisées modifiables, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
 | Remplir et signer | AcroForm, texte libre des listes modifiables, exports radio `/Opt`, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles/paraphes dessinés, saisis ou importés, pose atomique sur toutes les pages/la sélection, date |
@@ -47,22 +47,22 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.15.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0)** sous `lmdanavanem`.
-429 tests du workspace, formatage/Clippy, 894 clés EN/FR, 68 contrôles qpdf et quatre documents NIST/NBS licenciés
-(744 pages ; 48,891 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, treize scénarios portables
-et sept bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies vérifiées
-dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation.
+**[0.16.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)** sous `lmdanavanem`.
+439 tests du workspace, formatage/Clippy, 895 clés EN/FR, 73 contrôles qpdf et quatre documents NIST/NBS licenciés
+(744 pages ; 53,542 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, quatorze scénarios portables
+et huit bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies vérifiées
+dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 821 719 octets sans installation.
 Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-Nouveautés **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
+Depuis **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
 double-clic ou `set-link-target`, en conservant zone, apparence et commentaires. Choisir une adresse web/mail
 autorisée ou une page physique affichée en entier. Liens verrouillés/en lecture seule refusés. Création d'étiquettes
 et navigation conservée par Annuler/Rétablir restent disponibles depuis 0.14.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
 
-En développement pour **0.16.0** : bordures en tirets des annotations rectangle, ellipse, ligne et flèche via
+Nouveautés **0.16.0** : bordures en tirets des annotations rectangle, ellipse, ligne et flèche via
 **Bordure en tirets** et CLI `annotate --dashed`. Les motifs personnalisés restent conservés à la sélection,
-recoloration et modification géométrique ; seul le changement de case remplace le motif. Validation en cours ;
-la 0.15.0 reste Latest. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
+recoloration et modification géométrique ; seul un changement explicite de case remplace le motif. Les styles
+invalides sont refusés sans remplacement silencieux. Validation et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

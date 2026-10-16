@@ -5,12 +5,19 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.16.0] — Non publiée
+## [0.16.0] — 2026-10-16
 
 Validation locale réussie : 439 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy,
 895 clés EN/FR, 73 contrôles qpdf et quatre documents licenciés (744 pages ; 53,542 s, pic mémoire enfant
-331 517 952 octets). CI, paquets et publication en attente ; la 0.15.0 reste Latest publiée.
-Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
+331 517 952 octets). Source : `6cd7843734f3924e87033d8b05539d493ccbcb95`.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537) et
+[job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589) réussis,
+ainsi que les quatorze scénarios portables (dix mises à niveau dont 0.15.0 et quatre protections), huit bases MSI
+et 40 journaux MSI vérifiés. Corpus en CI : 47,628 s, pic mémoire enfant 321 306 624 octets.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) sous `lmdanavanem`,
+release `414934190`, avec six fichiers. Six fichiers préparés/publics et contrôles renforcés des paquets réussis ;
+copies vérifiées dans `dist/`. Le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de
+19 821 719 octets sans installation sur l'hôte. Preuves exécutées et limites dans `docs/PROJECT_STATUS.fr.md`.
 
 ### Ajouts
 - **Bordure en tirets** pour les annotations rectangle, ellipse, ligne et flèche ; CLI `annotate --dashed`
@@ -38,7 +45,7 @@ Aucune nouvelle dépendance. Contrôles natifs interactifs et lecteurs tiers dis
 Validation locale réussie : 429 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy,
 894 clés EN/FR, 68 contrôles qpdf et quatre documents licenciés (744 pages ; 48,891 s, pic mémoire enfant
 328 736 768 octets). Source : `952f8699cac451e7c3004b6d816105d52e41f249`.
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem`, release
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem` (Latest à cette date), release
 `414866395`, avec six fichiers. [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488) et
 [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541) réussis,
 ainsi que treize scénarios portables et sept bases MSI. Six fichiers préparés/publics et contrôles renforcés réussis,

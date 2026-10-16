@@ -1,13 +1,20 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.16.0 en développement)
+# État du projet — mis à jour le 2026-10-16 (version 0.16.0 publiée)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.16.0 : annotations de forme en pointillés (en développement)
+## 0.16.0 : annotations de forme en pointillés (publiée en Latest)
 
-Cette source ajoute un contrôle Pointillés pour les rectangles, ellipses, lignes et flèches, et `annotate --dashed`
+[SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) est stable **Latest** sous
+`lmdanavanem`, release ID `414934190`, avec six fichiers. Tag/source immuable :
+`6cd7843734f3924e87033d8b05539d493ccbcb95`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537)
+et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589)
+ont réussi. Le workflow de release en double a été annulé après le succès complet du job ARM64 ;
+les paquets x64 de la CI principale et l’artefact ARM64 vérifié ont été utilisés. Les anciennes releases restent disponibles.
+
+Cette version ajoute un contrôle Bordure en tirets pour les rectangles, ellipses, lignes et flèches, et `annotate --dashed`
 avec le même motif de 6 points de trait / 3 points d'espace. Le plein reste la valeur par défaut. Le moteur
 conserve le motif réel pour que sélection, recoloration, déplacement, redimensionnement et Annuler/Rétablir
 le préservent ; seul un changement explicite de la case remplace un motif personnalisé. Dictionnaires de contour
@@ -17,16 +24,49 @@ fonds continus. Les types d'annotation non pris en charge refusent un motif non 
 Lecture des motifs et génération des apparences sont bornées ; les styles de contour malformés ou non pris en
 charge des annotations créées par l'app refusent les modifications régénératrices au lieu de devenir pleins.
 Aucune dépendance, commande ou outil ajouté. L'anglais reste la langue par défaut, le français reste disponible.
-La CLI compte toujours 53 commandes. La 0.15.0 reste publiée en Latest.
+La CLI compte toujours 53 commandes.
 
 Validation locale réussie : 439 tests du workspace, aucun échec, sept ignorés par défaut ; formatage, Clippy sans
 avertissement, 895 clés EN/FR concordantes, 73 contrôles qpdf indépendants et quatre documents NIST/NBS sous
 licence (744 pages ; 53,542 secondes, pic mémoire échantillonné du processus enfant 331 517 952 octets).
-CI, paquets et publication restent à valider. Les régressions de mise à jour incluent le ZIP/MSI 0.15.0 vérifiés.
+La CI Windows passe les mêmes contrôles de tests/traductions/qpdf ; son corpus réel termine en 47,628 secondes,
+avec un pic mémoire échantillonné du processus enfant de 321 306 624 octets. Les tests natifs couvrent les motifs
+personnalisés/historiques/par défaut/vides, les bornes numériques et de densité, les pages tournées/recadrées,
+les refus atomiques, les formulaires/liens/contenus/sources inchangés et les deux rôles AES-128/256.
+Les tests du worker réel et les contrôles accessibles EN/FR sans fenêtre couvrent création, sélection,
+conservation du motif personnalisé, style, déplacement, redimensionnement et Annuler/Rétablir. Ces tests
+ne prouvent pas une interaction manuelle avec les dialogues natifs.
 
-## 0.15.0 : modification des destinations de liens existants (publiée en Latest)
+Quatorze scénarios portables réels ont réussi : mises à jour depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0,
+0.12.0, 0.13.0, 0.14.0 et 0.15.0, plus empreinte incorrecte, mauvaise architecture, restauration après
+verrouillage et attente réelle de 120 secondes avec garde contre une mise à jour concurrente. Les huit baselines
+MSI (0.8.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0, 0.14.0, 0.15.0) passent installation, restauration
+transactionnelle, mise à jour, refus du downgrade, contrôles des fichiers/données utilisateur et désinstallation
+sur runners Windows jetables. Les 40 journaux MSI terminent avec le code attendu 0 ou 1603 pour les échecs
+injectés. Les preuves figurent dans le journal principal et les artefacts portable/MSI/corpus téléchargés.
 
-[SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) est stable **Latest** sous
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 821 719 | `F03B7BB283A58414F1F26FD707FE120231B1B9502762B5588F75C97DC4526DD0` |
+| ZIP portable ARM64 | 18 408 941 | `ECD3BE771391105DDC119E8F5A59415349C1B1EE9C1A393773DCDE9EBC67A75E` |
+| MSI x64 | 19 365 888 | `5B4043B271C36C2CBBFBFD3FAA419ED96CB2D151CD32250C43C8DC121FB1328D` |
+
+Les six fichiers préparés passent empreintes, architectures, versions/icônes anglaises, OCR/licences,
+contenu MSI/ZIP et contrôles des fonctions existantes. Les bordures en tirets des paquets couvrent quatre
+formes sur PDF simples et AES-128/256 ouverts en propriétaire, les deux mots de passe, 20 contrôles qpdf
+indépendants, 20 paires de rendus plein/tirets distincts et les empreintes des entrées inchangées.
+Les six téléchargements publics sans authentification concordent avec les empreintes API, les fichiers SHA256
+et les paquets préparés ; les contrôles renforcés passent de nouveau sur ces fichiers. Les copies vérifiées sont
+dans `dist/`. L’updater a téléchargé et vérifié le ZIP x64 Latest de 19 821 719 octets sans installation.
+
+Dialogues natifs interactifs, matériel ARM64, imprimantes physiques, Narrator et lecteurs tiers restent non vérifiés ;
+les paquets ne sont pas signés. Création de polygones/polylignes et bordures avancées de texte libre restent à faire.
+Les réécritures PDF complètes peuvent invalider les signatures numériques ; l’avertissement existant reste présent.
+Les étiquettes de page restent liées aux positions après modification structurelle.
+
+## 0.15.0 : modification des destinations de liens existants (publiée en Latest à cette date)
+
+[SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) était stable **Latest** à cette date sous
 `lmdanavanem`, release ID `414866395`, avec six fichiers. Tag/source immuable :
 `952f8699cac451e7c3004b6d816105d52e41f249`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
 et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541)

@@ -54,13 +54,21 @@ authoring/reset, both passwords, unaffected labels and unchanged text/page PNGs.
 the production updater verified the 19,785,200-byte Latest x64 ZIP without installation. Evidence and remaining
 limits are in `PROJECT_STATUS.md`.
 
-[0.15.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem`,
+[0.15.0 was published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem` (Latest at the time),
 release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation passed: 429 workspace tests
 (zero failed, seven default ignored), formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents
 (744 pages; 48.891 seconds locally), Windows CI and same-source ARM64 compilation, thirteen portable scenarios and
 seven MSI baselines. Six staged/public files and enhanced checks passed, including plain/protected link retargeting,
 both passwords, preserved link identity/area and unchanged page PNGs. Verified copies are in `dist/`; the production
 updater verified the 19,803,226-byte Latest x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
+
+[0.16.0 is published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) under
+`lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation passed:
+439 workspace tests (zero failed, seven default ignored), formatting/Clippy, 895 EN/FR keys, 73 qpdf checks and
+four licensed documents (744 pages; 53.542 seconds locally), Windows CI and same-source ARM64 compilation,
+fourteen portable cases and eight MSI baselines. All six staged/public files and enhanced package checks passed;
+verified copies are in `dist/`. The production updater verified the 19,821,719-byte Latest x64 ZIP without
+installation. Evidence and remaining hardware/interoperability limits are in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -90,7 +98,7 @@ updater verified the 19,803,226-byte Latest x64 ZIP without installation. Eviden
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Done** (D067–D076): notes, highlight, underline, strikethrough; freehand **ink** (smoothed), **free text box** (Helvetica WinAnsi), **rectangle, ellipse, line, arrow** as real PDF annotations (explicit `/AP` appearance, rendered by other readers), colour, width, fill, opacity; select, move, resize (SuniPDF annotations), recolour, delete; rotated and cropped pages correct; encrypted document stays encrypted; CLI `annotate` / `annotations`. **In development for 0.16.0**: dashed borders for the four shapes, fixed UI/CLI `[6,3]`, preserved custom `dash_pattern`, malformed-style refusal and bounded regeneration; validation pending (D107) |
+| Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Done** (D067–D076): notes, highlight, underline, strikethrough; freehand **ink** (smoothed), **free text box** (Helvetica WinAnsi), **rectangle, ellipse, line, arrow** as real PDF annotations (explicit `/AP` appearance, rendered by other readers), colour, width, fill, opacity; select, move, resize (SuniPDF annotations), recolour, delete; rotated and cropped pages correct; encrypted document stays encrypted; CLI `annotate` / `annotations`. **Delivered in 0.16.0**: dashed borders for the four shapes, fixed UI/CLI `[6,3]`, preserved custom `dash_pattern`, malformed-style refusal and bounded regeneration; local/CI/upgrade, staged/public package and production updater checks passed (D107); manual reader checks remain separate |
 | Reply threads, comment status | Declared | **Done in SuniPDF**: Comments panel as threads (replies, status Accepted / Rejected / Cancelled / Completed, author, date, thread deletion), written according to ISO 32000-1; **Acrobat / Foxit compatibility not verified**; CLI `reply` / `review-state` |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
 | Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
@@ -172,6 +180,6 @@ updater verified the 19,803,226-byte Latest x64 ZIP without installation. Eviden
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.15.0 ZIP/MSI published as Latest; thirteen real portable scenarios and seven MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.15.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.16.0 ZIP/MSI published as Latest; fourteen real portable cases and eight MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.16.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

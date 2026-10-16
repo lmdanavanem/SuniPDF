@@ -1,13 +1,20 @@
-# Project status - updated 2026-10-16 (version 0.16.0 in development)
+# Project status - updated 2026-10-16 (version 0.16.0 published)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.16.0: dashed shape annotations (in development)
+## 0.16.0: dashed shape annotations (published as Latest)
 
-This source adds a Dashed control for rectangle, ellipse, line and arrow annotations, and `annotate --dashed`
+[SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) is stable **Latest** under
+`lmdanavanem`, release ID `414934190`, with six assets. Immutable tag/source:
+`6cd7843734f3924e87033d8b05539d493ccbcb95`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537)
+and the same-source [ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589)
+passed. The duplicate release workflow was cancelled after the ARM64 job completed successfully;
+the successful main-CI x64 packages and verified ARM64 artifact were used. Earlier releases remain available.
+
+This release adds a Dashed border control for rectangle, ellipse, line and arrow annotations, and `annotate --dashed`
 with the same 6-point dash / 3-point gap preset. Existing solid defaults remain. The core stores the actual
 dash array so selecting, recolouring, moving, resizing and Undo/Redo preserve it; only an explicit checkbox
 toggle replaces a custom pattern. Border dictionaries and appearance streams use the same pattern and phase 0;
@@ -15,16 +22,45 @@ arrowheads remain solid and fills continuous. Unsupported annotation kinds refus
 
 Pattern parsing and generated appearances are bounded; malformed or unsupported authored border styles refuse
 regenerating edits rather than becoming solid. No new dependency, command or tool is added. English remains
-the default, French remains available. The CLI still has 53 commands. Version 0.15.0 remains published Latest.
+the default, French remains available. The CLI still has 53 commands.
 
 Local validation passed: 439 workspace tests, zero failed, seven default ignored; formatting, Clippy with
 warnings denied, 895 matching EN/FR keys, 73 independent qpdf checks and four licensed NIST/NBS documents
-(744 pages; 53.542 seconds, peak sampled child working set 331,517,952 bytes). CI, package and publication
-gates remain pending. Upgrade regressions include the verified 0.15.0 ZIP/MSI baseline.
+(744 pages; 53.542 seconds, peak sampled child working set 331,517,952 bytes). Windows CI passed the same
+test/translation/qpdf gates; its real corpus completed in 47.628 seconds with a peak sampled child working set
+of 321,306,624 bytes. Native tests cover custom/legacy/default/empty patterns, numeric and density bounds,
+rotated/cropped pages, atomic refusals, unchanged forms/links/content/source and both AES-128/256 opening roles.
+Real-worker and accessible EN/FR headless checks cover creation, selection, custom-pattern preservation,
+restyling, movement, resizing and Undo/Redo. Manual native interaction is not inferred from those tests.
 
-## 0.15.0: editing existing link destinations (published as Latest)
+Fourteen real portable scenarios passed: upgrades from 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0,
+0.13.0, 0.14.0 and 0.15.0, plus bad checksum, wrong architecture, locked-file rollback and the real 120-second
+close-timeout/concurrent-update guard. Eight MSI baselines (0.8.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0,
+0.14.0, 0.15.0) passed installation, transactional rollback, upgrade, downgrade rejection, payload/user-data checks
+and uninstall on disposable Windows runners. All 40 MSI logs have the expected final exit 0 or injected-failure
+1603. Evidence is in the main job log and downloaded portable/MSI/corpus artifacts.
 
-[SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) is stable **Latest** under
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,821,719 | `F03B7BB283A58414F1F26FD707FE120231B1B9502762B5588F75C97DC4526DD0` |
+| ARM64 portable ZIP | 18,408,941 | `ECD3BE771391105DDC119E8F5A59415349C1B1EE9C1A393773DCDE9EBC67A75E` |
+| x64 MSI | 19,365,888 | `5B4043B271C36C2CBBFBFD3FAA419ED96CB2D151CD32250C43C8DC121FB1328D` |
+
+All six staged files passed checksums, architecture, English version/icon resources, OCR/licenses,
+MSI/ZIP payload and existing feature checks. Packaged dashed borders cover four shapes on plain and
+owner-opened AES-128/256 files, both passwords, 20 independent qpdf checks, 20 distinct solid/dashed render
+pairs and unchanged input hashes. All six unauthenticated public downloads match API digests, sidecars and
+staged hashes; the enhanced checks passed again on the public files. Verified copies are in `dist/`.
+The production updater downloaded and verified the Latest 19,821,719-byte x64 ZIP without installation.
+
+Native interactive dialogs, ARM64 hardware, physical printing, Narrator and third-party readers remain unverified;
+packages remain unsigned. Polygon/polyline creation and richer free-text borders remain future work. Full PDF
+rewrites can invalidate digital signatures; the existing save warning applies. Page labels remain positional
+after structural edits.
+
+## 0.15.0: editing existing link destinations (published as Latest at that time)
+
+[SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) was stable **Latest** at that time under
 `lmdanavanem`, release ID `414866395`, with six assets. Immutable tag/source:
 `952f8699cac451e7c3004b6d816105d52e41f249`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
 and the same-source [ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541)

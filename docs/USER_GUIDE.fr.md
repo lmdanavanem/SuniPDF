@@ -3,7 +3,7 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0), publiée en Latest
+Ce guide couvre [SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
 
 ## Installation
@@ -131,7 +131,7 @@ la barre lui sont appliquées) ; celle d'un autre logiciel se déplace, se comme
 note se recolore aussi). Une annotation verrouillée
 ne se modifie pas.
 
-**Formes en tirets — 0.16.0 en développement.** Pour les annotations Rectangle, Ellipse, Ligne ou Flèche,
+**Formes en tirets — disponibles en 0.16.0.** Pour les annotations Rectangle, Ellipse, Ligne ou Flèche,
 choisissez **Bordure en tirets** avant de dessiner. Sur une forme SuniPDF existante modifiable, changez la case
 puis **Appliquer à l'annotation**. Case cochée : tirets de 6 points, espaces de 3 points ; décochée : trait continu.
 Remplissage continu et pointes de flèche pleines. Le motif personnalisé chargé reste conservé à la sélection,
@@ -139,7 +139,7 @@ recoloration, au déplacement/redimensionnement et à l'annulation ; changer la 
 par le motif fixe ou continu. Aucun éditeur de motif personnalisé. Encre, texte libre, liens et marquages ne
 proposent pas les tirets. Style malformé/non pris en charge : édition régénérant l'apparence refusée ; motif trop
 dense ou tracé trop grand également refusable. Enregistrez explicitement pour garder les changements. Ces ajouts
-sont en validation et absents des paquets 0.15.0 publiés ; voir l'[état du projet](PROJECT_STATUS.fr.md).
+sont inclus dans les paquets 0.16.0 publiés ; contrôles exécutés et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 Un tableau de tirets explicitement vide signifie continu. Une bordure malformée désactive Déplacer/Redimensionner/
 Style sur une forme SuniPDF ; son commentaire reste modifiable selon les permissions ordinaires. Le commentaire
@@ -582,7 +582,7 @@ sunipdf-cli set-link-target input.pdf --page 1 --index 0 --url "https://example.
 sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --out page-link.pdf
 ```
 
-**0.16.0 en développement :** ajoutez `--dashed` à `annotate --kind square|circle|line|arrow` pour le motif fixe
+**Disponible en 0.16.0 :** ajoutez `--dashed` à `annotate --kind square|circle|line|arrow` pour le motif fixe
 `[6,3]` points. `annotations` renvoie le tableau réel `dash_pattern`. Sans ce drapeau, comportement continu
 existant inchangé. Drapeau refusé pour les types non pris en charge ; requête invalide : aucune sortie créée ou
 sortie existante préservée, même avec `--overwrite`. La CLI conserve 53 commandes.

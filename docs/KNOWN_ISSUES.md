@@ -248,7 +248,7 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     passed; evidence and remaining limits are in `PROJECT_STATUS.md`. Launch / JavaScript / GoToR
     actions are never executed; **resizing and styling reserved for
     SuniPDF's own annotations** (prefixed `/NM`): those from another producer can be moved, commented and deleted
-    (highlights and notes can also be recoloured). **0.16.0 in development** adds dashed borders only for rectangle,
+    (highlights and notes can also be recoloured). **Published 0.16.0** adds dashed borders only for rectangle,
     ellipse, line and arrow annotations. UI/CLI choose `[6,3]` points; actual custom vectors survive selection,
     recolouring, move/resize and undo unless the checkbox is explicitly toggled. Phase is zero, fill and arrowheads
     stay solid. Nonempty patterns on ink/free text/link/markup are refused. Unsupported/malformed `BS` on a SuniPDF
@@ -258,7 +258,8 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     controls are disabled. Shape comments can keep the existing appearance, subject to normal edit permissions;
     free-text comments with malformed borders remain refused. Preview keeps valid subpixel patterns and omits
     invalid/excessive nonempty strokes rather than showing a solid fallback, under the same work cap.
-    No custom-pattern/phase editor. Validation pending in `PROJECT_STATUS.md` (D107); 0.15.0 remains Latest.
+    No custom-pattern/phase editor. Local/CI/upgrade, staged/public package and production updater checks passed;
+    evidence and remaining limits are in `PROJECT_STATUS.md` (D107).
     No eraser, polygon, cloud, stamp or attachment; caps:
     64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,
     selection of a SuniPDF annotation (frame, four handles, floating bar) then moving and resizing with the mouse,

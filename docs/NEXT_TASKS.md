@@ -140,7 +140,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,785,200-byte Latest x64 ZIP without
   installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D104–D105).
 
-## 0.15.0: editing existing link targets (published as Latest)
+## 0.15.0: editing existing link targets (published milestone)
 
 - Reuse the link dialog through Edit target/double-click, prefill resolved named/XYZ destinations and explicitly
   replace page views with whole-page Fit. Unsupported targets start as an empty address, never implicit page 1.
@@ -148,7 +148,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   together and retain area/style/names/comments/replies, unrelated data and protection (D106).
 - Respect direct/indirect ReadOnly/Locked/LockedContents flags; malformed flags refuse editing. One undo preserves
   geometry/navigation. Edits/tab switches discard stale dialogs. CLI `set-link-target` keeps existing output guards.
-- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem`, release
+- [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem` (Latest at the time), release
   `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Local gates passed: 429 workspace tests (zero failed,
   seven default ignored), formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents (744 pages;
   48.891 seconds, peak child memory 328,736,768 bytes). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
@@ -158,7 +158,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,803,226-byte Latest x64 ZIP without
   installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D106).
 
-## 0.16.0: dashed shape annotations (in development)
+## 0.16.0: dashed shape annotations (published as Latest)
 
 - Rectangle/ellipse/line/arrow only: UI Dashed border and CLI `annotate --dashed` use `[6,3]` points, while the
   actual custom `dash_pattern` survives selection/recolour/move/resize/undo. Only an explicit checkbox toggle
@@ -166,9 +166,16 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 - Match border dictionaries and explicit appearances at phase zero. Reject nonempty patterns on unsupported
   annotation kinds and refuse regenerating malformed/unsupported SuniPDF border styles rather than losing them.
   Pattern validation and conservative appearance-work bounds prevent excessive regeneration.
-- Validation and publication are pending; 0.15.0 remains Latest. Planned upgrade coverage extends to fourteen
-  portable scenarios and eight MSI baselines, including 0.15.0; none is reported passed for this release yet.
-  Executed evidence belongs in `PROJECT_STATUS.md`.
+- Local checks passed on source `6cd7843734f3924e87033d8b05539d493ccbcb95`: 439 workspace tests (zero failed,
+  seven default ignored), formatting/Clippy, 895 EN/FR keys, 73 qpdf checks and four licensed documents (744 pages;
+  53.542 seconds, peak child memory 331,517,952 bytes). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537)
+  and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589)
+  passed. All fourteen portable cases (ten upgrades including 0.15.0 and four guards), eight MSI baselines
+  (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0/0.14.0/0.15.0) and 40 MSI logs passed verification. CI corpus:
+  47.628 seconds, peak child memory 321,306,624 bytes. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+  under `lmdanavanem`, release `414934190`, with six files. All staged/public files and enhanced checks passed;
+  verified copies are in `dist/`. The production updater verified the 19,821,719-byte x64 ZIP without installing
+  it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## Remaining work beyond these lots
 
@@ -286,7 +293,7 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
 - polygon, polyline, cloud, stamp, attachment and rich free text (bold, italic, CJK: embedded font); dashed borders
-  for the four existing shapes are tracked in the 0.16.0 lot, while other annotation types remain unsupported;
+  for the four existing shapes are delivered in 0.16.0, while other annotation types remain unsupported;
 - richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
