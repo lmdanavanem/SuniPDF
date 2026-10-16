@@ -41,6 +41,7 @@ fn main() -> eframe::Result<()> {
         .map(|a| std::path::absolute(&a).unwrap_or_else(|_| a.into()))
         .collect();
     let options = eframe::NativeOptions {
+        renderer: renderer(std::env::var("SUNIPDF_RENDERER").ok().as_deref()),
         viewport: egui::ViewportBuilder::default()
             .with_title("SuniPDF")
             .with_app_id("sunipdf")
@@ -50,11 +51,20 @@ fn main() -> eframe::Result<()> {
             .with_icon(window_icon()),
         ..Default::default()
     };
+    log::info!("Rendering backend: {}", options.renderer);
     eframe::run_native(
         "SuniPDF",
         options,
         Box::new(move |cc| Ok(Box::new(app::SuniApp::new(cc, initial_files)))),
     )
+}
+
+fn renderer(requested: Option<&str>) -> eframe::Renderer {
+    if requested == Some("wgpu") {
+        eframe::Renderer::Wgpu
+    } else {
+        eframe::Renderer::Glow
+    }
 }
 
 /// Icône de fenêtre (PNG 64 px embarqué) ; icône par défaut si le décodage échoue.
@@ -70,5 +80,16 @@ fn window_icon() -> egui::IconData {
             }
         }
         Err(_) => egui::IconData::default(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn renderer_keeps_opengl_default_and_accepts_explicit_wgpu() {
+        assert_eq!(super::renderer(None), eframe::Renderer::Glow);
+        assert_eq!(super::renderer(Some("glow")), eframe::Renderer::Glow);
+        assert_eq!(super::renderer(Some("wgpu")), eframe::Renderer::Wgpu);
+        assert_eq!(super::renderer(Some("invalid")), eframe::Renderer::Glow);
     }
 }
