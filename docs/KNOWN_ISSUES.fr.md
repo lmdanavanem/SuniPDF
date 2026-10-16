@@ -90,9 +90,9 @@ A24. **Presse-papiers d'objets et presse-papiers système** : Ctrl+V ne colle le
 A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
     `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).
 A10. **Validation de distribution** : l'état courant des tests, CI, paquets et releases est consigné dans
-     `PROJECT_STATUS.fr.md`. La 0.9.1 ajoute des régressions portable/restauration et d'installation/mise à niveau MSI
-     sur runners jetables ; leur implémentation seule ne prouve pas leur exécution. Parcours interactifs, matériel ARM64
-     et imprimantes physiques restent des contrôles distincts.
+     `PROJECT_STATUS.fr.md`. La 0.9.1 réussit sept scénarios portables réels de mise à jour/échec/restauration et
+     installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation MSI sur runners jetables,
+     avec conservation des données. Parcours interactifs, matériel ARM64 et imprimantes physiques restent distincts.
 A11. **Hub « Tous les outils » : 14 outils implémentés en 0.9.0.** OCR, création de champs et certificat
      ont désormais de vraies commandes. Couverture automatisée et matérielle dans `PROJECT_STATUS.fr.md`.
 A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`

@@ -21,34 +21,45 @@ et limites matérielles/d'interopérabilité. Les anciens nombres de tests ne so
 Les corrections P1/P2 de la 0.8.3 restent incluses : coordonnées finies, miniatures Organiser bornées,
 tampons sur une ligne et opacité CLI valide. Anglais par défaut ; français disponible.
 
-## Version 0.9.1 : fiabilité en attente de validation/publication
+## Version 0.9.1 : release de fiabilisation publiée
+
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) est publiée en Latest sous `lmdanavanem`.
 
 - Conserver les identifiants PDF/A et le XMP indépendant en modifiant les propriétés standard ; refuser clairement les XML malformés/DTD.
   Cela ne certifie pas la conformité PDF/A.
 - Écrire explicitement la longueur AES-256 à l'enregistrement, y compris après métadonnées/nettoyage/optimisation.
 - Contrôles qpdf figés en CI sur fixtures synthétiques/sorties ; le corpus réel ou hostile reste un travail distinct.
-- Régressions de mise à jour/restauration portable et d'installation/mise à niveau MSI réelle sur runners Windows jetables.
+- Sept scénarios portables réels de mise à niveau/échec/restauration vers 0.9.1 et installation/mise à niveau/rollback transactionnel,
+  refus de downgrade et désinstallation MSI réussis sur runners Windows jetables ; documents/paramètres conservés.
+- Calcul SHA256 .NET fonctionnel quand Windows PowerShell 5 ne charge pas Get-FileHash ; erreurs de relance signalées.
 - Icône Windows dédiée dérivée du visuel fourni par l'auteur et retouché.
 
-L'implémentation est présente ; lire les résultats actuels des tests, CI, paquets et publication dans `PROJECT_STATUS.fr.md`.
+Workspace (322 tests), qpdf (22 PDF/trois entrées malformées) et CI Windows finale réussis ; les six fichiers publics
+correspondent aux paquets vérifiés et sont disponibles dans `dist/`.
+Les preuves actuelles des paquets et de publication sont dans `PROJECT_STATUS.fr.md`.
 Ces contrôles ne prouvent pas l'exécution ARM64, les imprimantes physiques, les lecteurs tiers ni l'UX interactive de mise à jour.
 
 ## Backlog de développement restant
 
 1. **P1 — QA indépendante :** corpus réel volumineux/hostile, enregistrements interrompus/disque plein, mises à jour
    MSI/portable interactives, matériel ARM64, imprimantes physiques, Narrateur et Acrobat/Foxit/Chrome.
-2. Sous-ensembles de polices, CFF/OTF/TTC et édition enrichie des paragraphes/groupes.
-3. Ordre de lecture complexe de colonnes non balisées, rotation de vue et validation tactile.
-4. Autres types de champs, FDF/XFDF et activation clavier des widgets sur page.
-5. Conversion Office avec limites de fidélité explicites et convertisseurs locaux détectés.
-6. Confiance/révocation des certificats et horodatage fiable/LTV (non implémentés) ; signature du code/MSI si identité
+2. **P2 — Prochaine fonction recommandée : compression des images.** L'optimisation sans perte existe déjà. Ajouter
+   résolution/qualité JPEG réglables, taille mesurée avant/après, progression/annulation et Enregistrer sous. Conserver
+   l'original et vérifier texte, liens, champs, transparence et chiffrement après réouverture ; qpdf sans avertissement structurel.
+   Commencer par cette fonction seule avec les contrôles de corpus réel/enregistrement interrompu ci-dessus, sans date engagée.
+3. Rotation de vue seule, puis lecture plein écran et historique ; colonnes complexes non balisées et tactile ensuite.
+4. Créer des champs radio/listes, exporter XFDF puis importer XFDF/FDF, appliquer les valeurs en groupe et widgets clavier.
+5. Recadrage souris et rotation/redimensionnement groupés avant paragraphes, sous-ensembles de polices et CFF/OTF/TTC.
+6. Interface de lots pour compression/OCR/conversions stabilisées ; conversion Office locale avec fidélité mesurée ensuite.
+7. Confiance/révocation des certificats et horodatage fiable/LTV (non implémentés) ; signature du code/MSI si identité
    fournie. Versions et dates futures demandent un périmètre défini séparément.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
 2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.
 3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
-4. Valider une mise à jour complète MSI et portable, avec annulation et documents modifiés.
+4. Valider les boîtes interactives de mise à jour MSI et portable, avec annulation et documents modifiés ;
+   les scénarios scriptés d'installation/mise à niveau/restauration réussissent en CI.
 5. Vérifier le Narrateur Windows et la navigation clavier dans l'interface réelle.
 
 ## Hub d'outils : contrat pour les tranches suivantes (tool-hub livré, D021)

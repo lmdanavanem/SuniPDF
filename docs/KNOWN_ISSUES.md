@@ -90,9 +90,9 @@ A24. **Object clipboard and system clipboard**: Ctrl+V only pastes objects if th
 A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same process after
     `FPDF_DestroyLibrary`; the tests share a single engine that is never destroyed (`tests/engine.rs`).
 A10. **Distribution validation**: current tests, CI, package and release evidence are recorded in `PROJECT_STATUS.md`.
-     Version 0.9.1 adds portable update/rollback and disposable-runner MSI installation/upgrade regressions;
-     implementation alone does not prove execution. Interactive flows, ARM64 hardware and physical printers remain
-     separate checks.
+     Version 0.9.1 passed seven real portable update/failure/rollback scenarios and disposable-runner MSI
+     installation/transactional rollback/upgrade/downgrade rejection/uninstall, preserving user data.
+     Interactive flows, ARM64 hardware and physical printers remain separate checks.
 A11. **All tools: 14 tools implemented for 0.9.0.** OCR, field creation and certificate signatures now have
      real commands. Automated and hardware coverage is recorded in `PROJECT_STATUS.md`.
 A12. **Hub interface verified without automated pixel rendering**: no software renderer nor `egui_kittest`

@@ -14,19 +14,22 @@ See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for the exact scope and [KNOWN_ISSUES
 
 ## 0.9.1: reliability and distribution
 
-Implemented changes, awaiting the validation and publication recorded in `PROJECT_STATUS.md`:
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) under `lmdanavanem`;
+executed validation and package evidence are tracked in `PROJECT_STATUS.md`:
 
 - Preserve PDF/A identification and unrelated XMP properties when editing metadata; reject malformed XML and DTDs.
   Preserving identification does not certify PDF/A conformance.
 - Write the explicit AES-256 encryption key length required by strict readers, including after re-encryption.
 - Add pinned qpdf structural checks for synthetic fixtures and generated output to CI.
   This is independent structural QA, not coverage of a real-world or hostile PDF corpus.
-- Extend portable update/rollback checks and add a real MSI installation/upgrade regression on disposable Windows runners.
+- Seven real portable update/failure/rollback scenarios to 0.9.1 and a real MSI installation/upgrade/transactional rollback,
+  downgrade rejection and uninstall regression passed on disposable Windows runners, preserving user data.
+- Use .NET SHA256 hashing in the helper for Windows PowerShell 5 hosts without Get-FileHash and report restart failures.
 - Derive the Windows icon from the dedicated, retouched author-provided asset (`assets/icon/sunipdf-source.png`).
 
-Release criterion: workspace checks, independent PDF checks, portable helper checks and the disposable-runner MSI
-regression pass; distributed payloads and checksums match the published release. Interactive updater UX and real
-hardware remain separate checks even after automation passes.
+Workspace checks (322 tests), independent qpdf checks (22 PDFs/three malformed inputs), portable helper checks and
+the disposable-runner MSI regression passed. All six public assets were downloaded and matched the verified
+payloads/checksums. Interactive updater UX and real hardware remain separate checks.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -86,9 +89,12 @@ Automated MSI regression covers its scripted scenario only; packaged cross-compi
 | P1 | Real PDF corpus and data-safety scenarios | Reproducible fixtures, output checks and no original-file loss |
 | P1 | Installed/portable updater UX, Narrator, printer and reader compatibility | Recorded outcomes on the actual Windows flows/readers/hardware |
 | P1 | ARM64 runtime and performance baseline | Device/driver details and repeatable opening/rendering/memory measurements |
+| P2, next feature | Image resampling/JPEG compression | Measured size, cancellation, source preservation, reopen/render/qpdf and semantic checks |
+| P2 | View-only rotation, full screen and navigation history | Correct zoom/selection/navigation in continuous and two-page views |
 | P2 | Fonts, paragraph/group editing, mouse cropping | Save/reopen/render checks on normal, rotated and cropped pages |
 | P2 | Field types, XFDF/FDF and keyboard widgets | Interchange and keyboard/accessibility regressions |
 | P2 | Comparison, batch UI and local Office conversion | Bounded jobs, cancellation, output fidelity and source preservation |
 | Later | Trust services, timestamps/LTV, MCP and optional integrations | Explicit trust model, scope and security validation before delivery |
 
+Recommended next feature slice: image compression with real-corpus and interrupted/full-disk save checks.
 No future release date or version is committed by this backlog. Optional AI remains disabled by default.

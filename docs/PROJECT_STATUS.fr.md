@@ -5,21 +5,48 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Version 0.9.1 de fiabilisation : validation en cours
+## Version 0.9.1 de fiabilisation : publiée en Latest
+
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) est publiée en Latest sous
+`lmdanavanem`, avec six fichiers et le tag/source `c8473ecafe5f88b9dad846677fa610226955b061`.
 
 Implémentés : icône agrandie (environ 91 % de largeur visible contre 50 %), conservation du XMP PDF/A/personnalisé,
-refus du XMP malformé, longueur AES-256 explicite, résultat/erreurs de relance de l'updater,
+refus du XMP malformé, longueur AES-256 explicite, résultat/erreurs de relance de l'updater et calcul SHA256 .NET,
 corpus QPDF figé et régressions réelles de mise à jour portable/MSI dans la CI Windows.
 
 Workspace local : 322 tests réussis, zéro échec, cinq ignorés par défaut ; Clippy, formatage et 804 clés bilingues réussis.
 Le contrôle QPDF explicite valide 22 PDF synthétiques/générés et rejette trois entrées malformées. Conservation du XMP,
 flux compressés/chiffrés et tours AES couverts. Windows PowerShell 5 réussit avec Get-FileHash indisponible.
 
-[Régression Windows rapide](https://github.com/lmdanavanem/SuniPDF/actions/runs/38838856238) réussie avec la cible publique
-0.9.0 figée : upgrades/rollback/garde de fermeture réelle 120 secondes sur Windows 2022 et récent ; MSI réel par machine
-0.8.0 vers 0.9.0, installation/rollback transactionnel/upgrade/refus de downgrade/désinstallation avec conservation des données.
-Les tests GUI emploient Mesa logiciel figé sur ces runners. Ses deux DLL restent dans les copies temporaires de test,
-jamais dans les distributions ; le pilote graphique natif reste à valider. Régression des paquets 0.9.1/publication encore en attente.
+[CI finale main x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38839336101) réussie pour la source
+`c8473ecafe5f88b9dad846677fa610226955b061`, avec workspace, Clippy, qpdf et régressions réelles de mise à jour 0.9.1.
+Sept scénarios portables réussis : 0.8.2/0.8.3/0.9.0 vers 0.9.1 avec relance réelle et contrôle des fichiers, SHA256 erroné,
+mauvaise architecture, restauration après fichier verrouillé et garde de fermeture réelle 120 secondes/verrou de mise à jour concurrente.
+La régression MSI réelle par machine réussit 0.8.0 vers 0.9.1 : installation, rollback transactionnel, mise à niveau,
+refus de downgrade et désinstallation, avec conservation des données sur runner jetable.
+
+Les tests GUI emploient Mesa 26.2.4 llvmpipe figé sur ces runners. Ses deux DLL restent dans les copies temporaires de test,
+jamais dans les distributions ; le pilote graphique natif reste à valider. La
+[régression Windows rapide](https://github.com/lmdanavanem/SuniPDF/actions/runs/38838856238) précédente a aussi réussi sur
+la cible publique 0.9.0 figée sous Windows 2022 et récent, avec un scénario MSI réel.
+
+[Compilation ARM64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38839338858/job/116775562315) réussie depuis la même source ;
+exécution matérielle non vérifiée. Les six fichiers préparés réussissent les contrôles SHA256/empreintes, architectures GUI/CLI/PDFium/Tesseract,
+version GUI anglaise, modèles eng/fra figés et notices. Les sept images ICO attendues sont incorporées dans les deux exécutables GUI ;
+lecture/rendu, OCR français et création/remplissage/réouverture de champs du paquet x64 réussis. Contenu MSI identique au ZIP x64 ;
+langue 1033 et séquence de rollback vérifiées.
+
+Les six fichiers publics ont été téléchargés sans authentification et correspondent aux empreintes API GitHub,
+aux fichiers SHA256 et aux fichiers préparés exacts, puis copiés dans `dist/`. Les binaires x64 publics réussissent
+lecture/rendu PDF, OCR français et création/remplissage/réouverture de champs ; contenu MSI public, langue et séquence
+de rollback vérifiés en lecture seule. Le test explicite de l'updater de production réussit sur le ZIP public x64 0.9.1
+(19 270 287 octets, SHA256 `601306861be0c80bda62e568473172504b530d4344635d3bfa28cbf6adbfc082`) : HTTPS/redirections,
+taille et SHA256 contrôlés sans installation. Les scénarios réels de mise à niveau/installation ci-dessus ont réussi séparément en CI.
+Le second job x64 de release s'est arrêté avant ses tests de mise à jour : GitHub a limité ses requêtes de métadonnées
+non authentifiées. Les paquets x64 vérifiés viennent de la CI main réussie ci-dessus ; le job ARM64 a réussi indépendamment.
+Après publication, le script CI authentifie uniquement les requêtes de métadonnées vers l'API GitHub fixe, sans redirection,
+et retire le jeton avant les processus enfants. Contrôles hors ligne anonyme/authentifié réussis ; le workflow complet
+n'a pas été relancé pour ce changement de test seul. Les octets des paquets publiés restent identiques.
 
 Compilation locale limitée à une commande Cargo avec `-j 2`. La reconstruction workspace a atteint l'erreur1455
 du fichier d'échange Windows ; les compilations séquentielles par crate puis la suite workspace complète ont réussi.
@@ -59,7 +86,7 @@ révocation et LTV ne font pas partie de cette version.
 ## Historique d'implémentation jusqu'à la 0.8.3
 
 Les phases et le tableau ci-dessous conservent leurs preuves propres aux anciennes versions. Anciens nombres
-de commandes/clés, observations CI et captures sont historiques, pas des résultats 0.9.0 courants.
+de commandes/clés, observations CI et captures sont historiques, pas des résultats courants de la release.
 
 ## Phase 0 — Audit et planification : terminée (historique)
 - [x] `FEATURE_MATRIX.fr.md`, `ARCHITECTURE.fr.md`,

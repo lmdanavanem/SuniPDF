@@ -21,34 +21,45 @@ hardware/interoperability limits. Historical test counts are not the current rel
 The 0.8.3 P1/P2 corrections remain included: finite text coordinates, bounded Organize thumbnails,
 single-line stamps and valid CLI annotation opacity. English remains the default; French is available.
 
-## Version 0.9.1: reliability changes awaiting validation/publication
+## Version 0.9.1: reliability release published
+
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) is published as Latest under `lmdanavanem`.
 
 - Preserve PDF/A identifiers and unrelated XMP when editing standard properties; clearly refuse malformed XML/DTD.
   This does not certify PDF/A conformance.
 - Emit the explicit AES-256 key length before saving, including metadata/cleanup/optimisation round trips.
 - Pinned qpdf checks of synthetic fixtures/generated output in CI; a real or hostile PDF corpus remains separate work.
-- Portable update/rollback regressions and a real MSI install/upgrade regression on disposable Windows runners.
+- Seven real portable upgrade/failure/rollback scenarios to 0.9.1 and real MSI installation/upgrade/transactional rollback,
+  downgrade rejection and uninstall passed on disposable Windows runners; documents/settings remain preserved.
+- .NET SHA256 hashing works when Windows PowerShell 5 cannot load Get-FileHash; restart failures are reported.
 - Dedicated Windows icon derived from the retouched author-provided source.
 
-Implementation is present; current test, CI, package and publication outcomes must be read in `PROJECT_STATUS.md`.
+Workspace (322 tests), qpdf (22 PDFs/three malformed inputs) and final Windows CI passed; all six public files match
+the verified packages and are available in `dist/`.
+Current package/publication evidence is recorded in `PROJECT_STATUS.md`.
 Do not infer ARM64, physical printer, reader interoperability or interactive updater validation from these checks.
 
 ## Remaining development backlog
 
 1. **P1 — Independent QA:** real hostile/large PDF corpus, interrupted/full-disk saves, interactive installed/portable
    updates, ARM64 hardware, physical printers, Narrator and Acrobat/Foxit/Chrome interoperability.
-2. Font subsetting, CFF/OTF/TTC support and richer paragraph/object-group editing.
-3. Complex untagged column reading order, view rotation and touch validation.
-4. More field types, FDF/XFDF interchange and keyboard activation of on-page widgets.
-5. Office conversion with explicit fidelity limits and detected local converters.
-6. Certificate trust/revocation and trusted timestamps/LTV (not implemented); executable/MSI code signing when
+2. **P2 — Recommended next feature: image compression.** Lossless optimisation already exists. Add resolution/JPEG
+   quality controls, measured before/after size, progress/cancellation and Save As. Preserve the original and verify
+   text, links, fields, transparency and encryption after reopening; qpdf must report no structural warnings.
+   Start with this single feature plus the real-corpus/interrupted-save checks above, without committing a release date.
+3. View-only rotation, then full-screen reading and navigation history; complex untagged columns and touch validation follow.
+4. Create radio/list fields, XFDF export then XFDF/FDF import, grouped value application and keyboard widgets.
+5. Mouse cropping and grouped rotation/resizing before paragraph editing, font subsetting and CFF/OTF/TTC support.
+6. Batch UI for established compression/OCR/conversion operations; local Office conversion with measured fidelity limits later.
+7. Certificate trust/revocation and trusted timestamps/LTV (not implemented); executable/MSI code signing when
    credentials are supplied. Future release numbers/dates require separate scope decisions.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
 2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL rendering.
 3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
-4. Validate a complete installed-MSI and portable update, including cancellation and unsaved documents.
+4. Validate interactive installed-MSI and portable update dialogs, including cancellation and unsaved documents;
+   scripted installation/upgrade/rollback scenarios passed in CI.
 5. Check Windows Narrator and keyboard navigation in the real interface.
 
 ## Tool hub: contract for the next slices (tool-hub delivered, D021)

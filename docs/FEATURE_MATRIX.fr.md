@@ -10,7 +10,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 Les nouveautés 0.9.0 sont couvertes par des régressions automatisées. `PROJECT_STATUS.fr.md` suit les contrôles exécutés ;
 ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou lecteur tiers.
-Les changements 0.9.1 sont implémentés, en attente des résultats de validation/publication consignés dans ce suivi.
+Workspace, qpdf et régressions réelles portable/MSI 0.9.1 réussis ; résultats des paquets et de publication consignés dans ce suivi.
 
 ## A. Lecture
 
@@ -117,6 +117,6 @@ Les changements 0.9.1 sont implémentés, en attente des résultats de validatio
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.9.0 publiés, SHA256/contenu public contrôlés, OCR/champs/lecture/rendu vérifiés ; régression MSI réelle ajoutée pour 0.9.1, résultat dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.9.0 compilé en CI et publié, SHA256/architectures/modèles contrôlés ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.9.1 publiés en Latest, SHA256/contenu public vérifiés, OCR/champs/lecture/rendu et sept scénarios portables réels réussis ; installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation MSI réels réussis ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.9.1 compilé en CI et publié, SHA256 public/architectures/modèles/notices/icônes contrôlés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

@@ -14,19 +14,22 @@ Voir [FEATURE_MATRIX.fr.md](FEATURE_MATRIX.fr.md) pour le périmètre exact et [
 
 ## 0.9.1 : fiabilité et distribution
 
-Changements implémentés, en attente des validations et de la publication consignées dans `PROJECT_STATUS.fr.md` :
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) sous `lmdanavanem` ;
+validations exécutées et preuves des paquets suivies dans `PROJECT_STATUS.fr.md` :
 
 - Préserver l’identification PDF/A et les propriétés XMP indépendantes lors de l’édition des métadonnées ; refuser les XML malformés et DTD.
   La conservation de l’identification ne certifie pas la conformité PDF/A.
 - Écrire explicitement la longueur de clé AES-256 attendue par les lecteurs stricts, y compris après rechiffrement.
 - Ajouter en CI des contrôles structurels qpdf figés sur les fixtures synthétiques et les sorties produites.
   Il s’agit d’une QA structurelle indépendante, pas d’une couverture de corpus réel ou hostile.
-- Étendre les contrôles de mise à jour/restauration portable et ajouter une régression réelle d’installation/mise à niveau MSI sur runners Windows jetables.
+- Sept scénarios portables réels de mise à jour/échec/restauration vers 0.9.1 et régression MSI réelle d’installation/mise à niveau/rollback transactionnel,
+  refus de downgrade et désinstallation réussis sur runners Windows jetables, avec conservation des données.
+- Calculer SHA256 avec .NET dans le helper pour les hôtes Windows PowerShell 5 sans Get-FileHash et signaler les erreurs de relance.
 - Dériver l’icône Windows du visuel dédié fourni par l’auteur et retouché (`assets/icon/sunipdf-source.png`).
 
-Critère de publication : contrôles du workspace, des PDF, du helper portable et régression MSI sur runner réussis ;
-contenus distribués et empreintes conformes à la release publiée. L’UX interactive de mise à jour et le matériel réel
-restent des vérifications distinctes, même après succès de l’automatisation.
+Contrôles du workspace (322 tests), qpdf indépendant (22 PDF/trois entrées malformées), helper portable et régression MSI
+sur runner réussis. Les six fichiers publics ont été téléchargés et correspondent aux contenus/empreintes vérifiés.
+L’UX interactive de mise à jour et le matériel réel restent des vérifications distinctes.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -86,9 +89,12 @@ La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM
 | P1 | Corpus réel et scénarios de sécurité des données | Fixtures reproductibles, contrôles des sorties et aucune perte de l’original |
 | P1 | UX de mise à jour MSI/portable, Narrateur, imprimantes et lecteurs | Résultats consignés sur les vrais parcours Windows/lecteurs/matériels |
 | P1 | Exécution ARM64 et mesures de performance | Machine/pilotes et mesures reproductibles d’ouverture/rendu/mémoire |
+| P2, prochaine fonction | Rééchantillonnage/compression JPEG des images | Taille mesurée, annulation, source préservée, réouverture/rendu/qpdf et contrôles sémantiques |
+| P2 | Rotation de vue, plein écran et historique | Zoom/sélection/navigation corrects en vue continue et double page |
 | P2 | Polices, paragraphes/groupes et recadrage souris | Enregistrer/réouvrir/rendre sur pages normales, pivotées et recadrées |
 | P2 | Types de champs, XFDF/FDF et widgets clavier | Régressions d’échange, de clavier et d’accessibilité |
 | P2 | Comparaison, lots et conversion Office locale | Travaux bornés, annulation, fidélité et source préservée |
 | Plus tard | Services de confiance, horodatage/LTV, MCP et intégrations optionnelles | Modèle de confiance, périmètre et sécurité explicitement validés |
 
+Prochain lot fonctionnel recommandé : compression des images avec corpus réel et enregistrements interrompus/disque plein.
 Aucune date ni version future n’est engagée par ce backlog. L’IA optionnelle reste désactivée par défaut.

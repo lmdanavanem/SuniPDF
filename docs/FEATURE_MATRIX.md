@@ -10,7 +10,7 @@ phase; **Out of scope**. Update this column only with real results.
 
 The 0.9.0 features below have automated regression coverage. `PROJECT_STATUS.md` records the executed checks;
 these results do not establish physical printer, ARM64 or third-party reader compatibility.
-The 0.9.1 changes are implemented, awaiting the validation/publication outcomes recorded in that status document.
+The 0.9.1 workspace, qpdf and real portable/MSI regressions passed; package/publication outcomes are recorded there.
 
 ## A. Reading
 
@@ -117,6 +117,6 @@ The 0.9.1 changes are implemented, awaiting the validation/publication outcomes 
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.9.0 ZIP/MSI published, public SHA256/payloads checked, packaged OCR/forms/read/render verified; real MSI regression added for 0.9.1, result in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.9.0 CI-built portable ZIP published, public SHA256/architecture/models checked; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.9.1 ZIP/MSI published as Latest, public SHA256/payloads verified, packaged OCR/forms/read/render and seven real portable scenarios passed; actual MSI install/transactional rollback/upgrade/downgrade rejection/uninstall passed; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.9.1 CI-built portable ZIP published, public SHA256/architecture/models/notices/icon resources checked; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

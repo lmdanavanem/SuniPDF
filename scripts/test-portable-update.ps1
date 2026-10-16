@@ -5,6 +5,10 @@ param(
     [string]$ReportPath = ''
 )
 $ErrorActionPreference = 'Stop'
+$releaseApiHeaders = @{'User-Agent'='SuniPDF-update-regression'}
+if ($env:SUNIPDF_TEST_GITHUB_TOKEN) { $releaseApiHeaders.Authorization = 'Bearer ' + $env:SUNIPDF_TEST_GITHUB_TOKEN }
+# Keep the CI token out of application/helper processes and public download requests.
+[Environment]::SetEnvironmentVariable('SUNIPDF_TEST_GITHUB_TOKEN', $null, 'Process')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repo = Split-Path -Parent $PSScriptRoot
 $helperSource = Join-Path $repo 'apps/sunipdf-desktop/src/update-helper.ps1'
@@ -36,7 +40,7 @@ function PreviousPackages([string]$Workspace) {
     foreach ($version in @('0.8.2', '0.8.3', '0.9.0')) {
         if ([version]$version -ge [version]$incoming.version) { continue }
         $name = "SuniPDF-$version-win-x64-portable.zip"
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/lmdanavanem/SuniPDF/releases/tags/v$version" -Headers @{'User-Agent'='SuniPDF-update-regression'} -TimeoutSec 60
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/lmdanavanem/SuniPDF/releases/tags/v$version" -Headers $releaseApiHeaders -MaximumRedirection 0 -TimeoutSec 60
         $asset = @($release.assets | Where-Object name -eq $name)
         Assert ($asset.Count -eq 1 -and $asset[0].digest -ieq "sha256:$($pins[$version])") "Pinned release digest disagrees with the public GitHub API: $version"
         $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content

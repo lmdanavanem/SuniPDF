@@ -50,6 +50,8 @@ jobs:
         run: .\scripts\fetch-test-opengl.ps1
       - name: Real isolated portable upgrades, rollback and close cancellation (x64)
         if: matrix.arch == 'x64'
+        env:
+          SUNIPDF_TEST_GITHUB_TOKEN: ${{ github.token }}
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence (x64)
         if: always() && matrix.arch == 'x64'

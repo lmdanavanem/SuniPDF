@@ -5,21 +5,48 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.9.1 reliability release: validation in progress
+## 0.9.1 reliability release: published as Latest
+
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) is published as Latest under
+`lmdanavanem`, with six assets and tag/source `c8473ecafe5f88b9dad846677fa610226955b061`.
 
 Implemented: larger application icon (about 91% visible width instead of 50%), preservation of PDF/A/custom XMP,
-strict malformed-XMP refusal, explicit AES-256 key length, update-helper restart/error reporting,
+strict malformed-XMP refusal, explicit AES-256 key length, update-helper restart/error reporting and .NET SHA256 hashing,
 pinned QPDF corpus checks and real portable/MSI upgrade regression scripts in Windows CI.
 
 Local workspace: 322 tests passed, zero failed, five default ignored; Clippy, formatting and 804 bilingual keys passed.
 The explicit QPDF gate passed on 22 synthetic/generated PDFs and rejected three malformed inputs. XMP preservation,
 compressed/encrypted streams and AES round trips are covered. Windows PowerShell 5 passed with Get-FileHash unavailable.
 
-[Fast Windows regression](https://github.com/lmdanavanem/SuniPDF/actions/runs/38838856238) passed against the pinned public
-0.9.0 target: portable upgrades/rollback/120-second close guard on Windows 2022 and latest; actual per-machine MSI
-0.8.0-to-0.9.0 install/transactional rollback/upgrade/downgrade rejection/uninstall with user-data preservation.
-GUI tests require pinned Mesa software OpenGL on these runners. Its two DLLs exist only in temporary test copies,
-never distribution packages; native graphics-driver validation is separate. Final 0.9.1 package regression/publication is pending.
+[Final main x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38839336101) passed for source
+`c8473ecafe5f88b9dad846677fa610226955b061`, including the workspace, Clippy, qpdf and real 0.9.1 update regressions.
+Seven portable scenarios passed: 0.8.2/0.8.3/0.9.0 to 0.9.1 with actual relaunch and payload checks, bad SHA256,
+wrong architecture, locked-file rollback, and the real 120-second close guard/concurrent-update mutex.
+The actual per-machine MSI regression passed 0.8.0-to-0.9.1 install/transactional rollback/upgrade/downgrade
+rejection/uninstall with user-data preservation on a disposable runner.
+
+GUI regression tests use pinned Mesa 26.2.4 llvmpipe on these runners. Its two DLLs exist only in temporary test copies,
+never distribution packages; native graphics-driver validation is separate. The earlier
+[fast Windows regression](https://github.com/lmdanavanem/SuniPDF/actions/runs/38838856238) also passed against a pinned
+public 0.9.0 target on Windows 2022 and latest, with a real MSI scenario.
+
+[ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38839338858/job/116775562315) passed from the same source;
+hardware execution remains unverified. The six staged files passed SHA256/sidecar, GUI/CLI/PDFium/Tesseract architecture,
+English GUI version, pinned eng/fra models and notices checks. All seven expected ICO images are embedded in both
+GUI executables; packaged x64 reading/rendering, French OCR and field creation/fill/reopen passed. MSI payloads match
+the x64 ZIP; language 1033 and rollback sequence are verified.
+
+All six public assets were downloaded without authentication and matched GitHub API digests, SHA256 sidecars and
+the exact staged files, then copied to `dist/`. Actual public x64 binaries passed PDF reading/rendering, French OCR
+and form-field creation/fill/reopen; the public MSI payload, language and rollback sequence passed read-only verification.
+The explicit live production-updater test passed against the public 0.9.1 x64 ZIP (19,270,287 bytes,
+SHA256 `601306861be0c80bda62e568473172504b530d4344635d3bfa28cbf6adbfc082`): production HTTPS/redirections,
+size and SHA256 checks passed without installation. The real upgrade/install scenarios above passed separately in CI.
+The duplicate release x64 job stopped before its update tests because GitHub rate-limited unauthenticated metadata
+requests; the verified x64 packages come from the successful main CI above. The ARM64 job succeeded independently.
+After publication, the CI harness was changed to authenticate only fixed GitHub API metadata requests, with redirects
+disabled and the token removed before child processes. Anonymous/authenticated offline boundary checks passed;
+the full workflow has not been rerun for that test-only change. Published package bytes are unchanged.
 
 Local compilation is limited to one Cargo command with `-j 2`. A workspace rebuild hit Windows paging-file error1455;
 sequential crate builds followed by the complete workspace rerun passed. No installation or user profile was modified locally.
@@ -58,7 +85,7 @@ Trusted timestamps, revocation and LTV are not part of this release.
 ## Historical implementation record through 0.8.3
 
 The phase details and validation table below retain their original version-specific evidence. Older command/key
-counts, CI observations and screenshots are historical; they are not current 0.9.0 test or publication results.
+counts, CI observations and screenshots are historical; they are not current release test or publication results.
 
 ## Phase 0 - Audit and planning: completed (historical)
 - [x] `FEATURE_MATRIX.md`, `ARCHITECTURE.md`,
