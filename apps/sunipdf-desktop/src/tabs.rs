@@ -68,6 +68,7 @@ impl SuniApp {
         // La sélection d'objet désigne un index du document actif : elle ne doit jamais
         // survivre à un changement de document (Suppr agirait sur l'autre onglet).
         self.edit.reset_for_tab();
+        self.pagesetup.close_labels();
         // Le placement d'une signature vise une page du document actif : il ne survit pas.
         self.cancel_placing();
         self.annotate.clear_reading();

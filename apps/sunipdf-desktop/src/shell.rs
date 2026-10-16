@@ -250,6 +250,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::CropPages => (glyph::CROP, "⌗"),
         Command::ResizePages => (glyph::FIT_PAGE, "▭"),
         Command::InsertBlankPage => (glyph::ADD, "+"),
+        Command::PageLabels => (glyph::PAGES, "#"),
         Command::ToolFillForm => (glyph::FORM, "☑"),
         Command::ToggleForms => (glyph::FORM_LIST, "☰"),
         Command::ClearForm => (glyph::ERASE, "⌫"),

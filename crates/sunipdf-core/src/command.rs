@@ -106,6 +106,7 @@ pub enum Command {
     CropPages,
     ResizePages,
     InsertBlankPage,
+    PageLabels,
     /// Signature visuelle (image), paraphe, date : aucune valeur cryptographique.
     SignDocument,
     SignInitials,
@@ -542,6 +543,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         ResizePages,
         "pages.resize",
         "menu.pages.resize",
+        None,
+        true,
+        Pages
+    ),
+    cmd!(
+        PageLabels,
+        "pages.labels",
+        "menu.pages.labels",
         None,
         true,
         Pages

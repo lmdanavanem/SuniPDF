@@ -29,7 +29,7 @@ SuniPDF/
 │   │                         editor.rs (sélection, poignées, rotation, presse-papiers d'objets, barre d'objet), sign.rs
 │   │                         (signature visuelle : pavé/saisie/import, bibliothèque locale, lots de pages ajustés, date), inline_text.rs
 │   │                         (texte sur la page, sélecteur de polices), objects.rs (panneau Objets), pagesetup.rs (recadrer,
-│   │                         redimensionner, page vierge), annot_adv.rs (encre, texte libre, formes, liens, sélection d'annotation, fils de réponses), view.rs (vue continue / page unique : mise en page virtualisée,
+│   │                         redimensionner, page vierge, étiquettes), annot_adv.rs (encre, texte libre, formes, liens, sélection d'annotation, fils de réponses), view.rs (vue continue / page unique : mise en page virtualisée,
 │   │                         tuiles voulues, pool de textures, zoom ancré)
 │   └── sunipdf-cli/          binaire `sunipdf-cli` (clap) — sortie JSON, codes d'erreur stables
 ├── crates/
@@ -38,6 +38,7 @@ SuniPDF/
 │   │                         (annotations avancées : lopdf écrit avec `/AP` explicite, PDFium rend et relit),
 │   │                         clipboard.rs (copier/coller d'objets), fonts.rs (polices système), boxes.rs (cadres de page),
 │   │                         signature_image.rs (signature visuelle : traits, fond retiré, PNG ; aperçu saisi PDFium natif et lots ajustés atomiques) ;
+│   │                         page_labels.rs (plages bornées, préservation/réinitialisation, validation d'une copie) ;
 │   │                         tests/fixtures/*.pdf (dont boxes.pdf : pages pivotées et rognées)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), catalogues embarqués
 ├── assets/i18n/              fr-FR.json, en-US.json (source de vérité des textes)
@@ -151,6 +152,21 @@ préserve document et journal. La sélection Organiser est capturée à l'ouvert
 structurel des pages abandonne la boîte ou les cibles capturées. CLI `add-image --pages` appelle la même méthode
 de lot ; `--page` conserve son placement historique. Contrôles locaux, CI, paquets/publics et mises à niveau réussis ;
 preuves exécutées et limites matérielles/interactives dans `PROJECT_STATUS.fr.md` (D102–D103).
+
+## Parcours des étiquettes de page 0.14.0 (en développement)
+
+`page_labels.rs` expose `PageLabelRange` et six valeurs `PageLabelStyle`. Le parseur/writer lopdf existant valide
+l'arbre numérique avec bornes de profondeur/nœuds/plages/chaînes, conserve les règles hors plage physique modifiée
+et rétablit la numérotation d'origine à la frontière suivante. Le writer protégé conserve chiffrement/mots de
+passe/permissions. Un document candidat PDFium rafraîchit ses métadonnées avant de remplacer le document actif ;
+un échec laisse l'état actif intact. Réinitialiser retire `PageLabels` du catalogue sans parcourir l'arbre malformé ;
+les anciens objets devenus non référencés ne sont pas effacés de manière sécurisée (D104).
+
+`pagesetup.rs` propose la boîte Pages/Organiser ; `EditOp` et le journal existant prennent en charge Appliquer et
+Réinitialiser. CLI `set-page-labels`/`reset-page-labels` utilisent les mêmes API et garde de sortie.
+`Snapshot::pages_unchanged` accompagne Annuler/Rétablir : vue/historique conservés pour les éditions
+d'étiquettes/contenu, géométrie toujours invalidée par les opérations structurelles (D105). Les étiquettes restent
+positionnelles après ces opérations. Validation en cours ; résultats exécutés dans `PROJECT_STATUS.fr.md`.
 
 ## Coordonnées (SUNI-031c)
 

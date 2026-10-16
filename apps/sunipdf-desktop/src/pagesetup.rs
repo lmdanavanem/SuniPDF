@@ -7,7 +7,7 @@ use crate::icons::glyph;
 use crate::theme;
 use crate::worker::{EditOp, Request};
 use egui::{Key, RichText, Stroke};
-use sunipdf_core::{PageMargins, ResizeMode};
+use sunipdf_core::{PageLabelRange, PageLabelStyle, PageMargins, ResizeMode};
 use sunipdf_i18n::{tr, tr_args, Language};
 
 /// Formats usuels (mm, portrait). Noms non traduits (exception de `docs/I18N.md`).
@@ -109,15 +109,62 @@ pub struct BlankForm {
     pub position: BlankPos,
 }
 
+#[derive(Clone)]
+pub struct LabelForm {
+    pub first: usize,
+    pub last: usize,
+    pub style: PageLabelStyle,
+    pub prefix: String,
+    pub start: u32,
+}
+
+impl LabelForm {
+    fn range(&self, page_count: usize) -> Option<PageLabelRange> {
+        let range = PageLabelRange {
+            first: self.first.checked_sub(1)?,
+            last: self.last.checked_sub(1)?,
+            style: self.style,
+            prefix: self.prefix.clone(),
+            start: if self.style == PageLabelStyle::PrefixOnly {
+                1
+            } else {
+                self.start
+            },
+        };
+        range.validate(page_count).ok()?;
+        Some(range)
+    }
+}
+
+fn label_style_key(style: PageLabelStyle) -> &'static str {
+    match style {
+        PageLabelStyle::Decimal => "pagesetup.labels.decimal",
+        PageLabelStyle::RomanUpper => "pagesetup.labels.roman_upper",
+        PageLabelStyle::RomanLower => "pagesetup.labels.roman_lower",
+        PageLabelStyle::LettersUpper => "pagesetup.labels.letters_upper",
+        PageLabelStyle::LettersLower => "pagesetup.labels.letters_lower",
+        PageLabelStyle::PrefixOnly => "pagesetup.labels.prefix_only",
+    }
+}
+
 pub enum PageDialog {
     Crop(CropForm),
     Resize(ResizeForm),
     Blank(BlankForm),
+    Labels(LabelForm),
 }
 
 #[derive(Default)]
 pub struct PageSetupState {
     pub dialog: Option<PageDialog>,
+}
+
+impl PageSetupState {
+    pub fn close_labels(&mut self) {
+        if matches!(self.dialog, Some(PageDialog::Labels(_))) {
+            self.dialog = None;
+        }
+    }
 }
 
 impl ResizeForm {
@@ -230,6 +277,16 @@ impl SuniApp {
         self.pagesetup.dialog = Some(match which {
             C::CropPages => PageDialog::Crop(CropForm::default()),
             C::ResizePages => PageDialog::Resize(ResizeForm::new()),
+            C::PageLabels => {
+                let Some(doc) = &self.document else { return };
+                PageDialog::Labels(LabelForm {
+                    first: doc.page + 1,
+                    last: doc.info.page_count(),
+                    style: PageLabelStyle::Decimal,
+                    prefix: String::new(),
+                    start: 1,
+                })
+            }
             _ => PageDialog::Blank(BlankForm {
                 size: 0,
                 width: PRESETS[1].1,
@@ -293,6 +350,87 @@ impl SuniApp {
             |ui: &egui::Ui| ui.input(|i| (i.key_pressed(Key::Enter), i.key_pressed(Key::Escape)));
         let mut dialog = dialog;
         match &mut dialog {
+            PageDialog::Labels(f) => {
+                let spec = dialog::Spec::new(
+                    "page-labels",
+                    tr(lang, "pagesetup.labels.title"),
+                    dark,
+                    icons,
+                )
+                .subtitle(tr(lang, "pagesetup.labels.subtitle"))
+                .icon(glyph::PAGES, "#")
+                .width(520.0);
+                let mut labels = f.clone();
+                let valid = std::cell::Cell::new(labels.range(page_count).is_some());
+                dialog::show(
+                    ctx,
+                    spec,
+                    |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label(tr(lang, "pagesetup.labels.first"));
+                            ui.add(egui::DragValue::new(&mut labels.first).range(1..=page_count));
+                            ui.label(tr(lang, "pagesetup.labels.last"));
+                            ui.add(egui::DragValue::new(&mut labels.last).range(1..=page_count));
+                        });
+                        dialog::field_label(ui, tr(lang, "pagesetup.labels.style"));
+                        egui::ComboBox::from_id_salt("page-label-style")
+                            .selected_text(tr(lang, label_style_key(labels.style)))
+                            .show_ui(ui, |ui| {
+                                for style in [
+                                    PageLabelStyle::Decimal,
+                                    PageLabelStyle::RomanUpper,
+                                    PageLabelStyle::RomanLower,
+                                    PageLabelStyle::LettersUpper,
+                                    PageLabelStyle::LettersLower,
+                                    PageLabelStyle::PrefixOnly,
+                                ] {
+                                    ui.selectable_value(
+                                        &mut labels.style,
+                                        style,
+                                        tr(lang, label_style_key(style)),
+                                    );
+                                }
+                            });
+                        dialog::field_label(ui, tr(lang, "pagesetup.labels.prefix"));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut labels.prefix)
+                                .desired_width(f32::INFINITY),
+                        );
+                        ui.horizontal(|ui| {
+                            ui.label(tr(lang, "pagesetup.labels.start"));
+                            ui.add_enabled(
+                                labels.style != PageLabelStyle::PrefixOnly,
+                                egui::DragValue::new(&mut labels.start).range(1..=u32::MAX),
+                            );
+                        });
+                        ui.label(
+                            RichText::new(tr(lang, "pagesetup.labels.positions")).color(muted),
+                        );
+                        valid.set(labels.range(page_count).is_some());
+                        if !valid.get() {
+                            ui.colored_label(
+                                theme::palette(dark).error,
+                                tr(lang, "pagesetup.labels.invalid"),
+                            );
+                        }
+                    },
+                    |ui| {
+                        let (enter, esc) = enter_esc(ui);
+                        ui.add_enabled_ui(valid.get(), |ui| {
+                            if dialog::primary(ui, tr(lang, "pagesetup.labels.apply")) || enter {
+                                submit = true;
+                            }
+                        });
+                        if dialog::secondary(ui, tr(lang, "dialog.password.cancel")) || esc {
+                            cancel = true;
+                        }
+                        if dialog::secondary(ui, tr(lang, "pagesetup.labels.reset")) {
+                            reset = true;
+                        }
+                    },
+                );
+                *f = labels;
+            }
             PageDialog::Crop(f) => {
                 let spec = dialog::Spec::new("crop", tr(lang, "pagesetup.crop.title"), dark, icons)
                     .subtitle(tr(lang, "pagesetup.crop.subtitle"))
@@ -494,6 +632,23 @@ impl SuniApp {
             return;
         }
         let (op, status) = match dialog {
+            PageDialog::Labels(f) => {
+                if reset {
+                    (
+                        EditOp::ResetPageLabels,
+                        Some(tr(lang, "status.labels_reset").to_owned()),
+                    )
+                } else {
+                    let Some(range) = f.range(page_count) else {
+                        self.pagesetup.dialog = Some(PageDialog::Labels(f));
+                        return;
+                    };
+                    (
+                        EditOp::SetPageLabels(range),
+                        Some(tr(lang, "status.labels_applied").to_owned()),
+                    )
+                }
+            }
             PageDialog::Crop(f) => {
                 let pages = self.setup_pages(f.all);
                 let n = pages.len();
@@ -578,6 +733,185 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn label_frame(
+        app: &mut SuniApp,
+        ctx: &egui::Context,
+        events: Vec<egui::Event>,
+    ) -> egui::FullOutput {
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1280.0, 780.0),
+                )),
+                events,
+                ..Default::default()
+            },
+            |_| app.page_setup_dialog(ctx),
+        );
+        output.textures_delta.clear();
+        output
+    }
+
+    fn click_label_button(app: &mut SuniApp, ctx: &egui::Context, key: &str) {
+        let mut target = None;
+        for _ in 0..2 {
+            let output = label_frame(app, ctx, vec![]);
+            if let Some(tree) = output.platform_output.accesskit_update {
+                if let Some(bounds) = tree
+                    .nodes
+                    .iter()
+                    .map(|(_, node)| node)
+                    .find(|node| node.label() == Some(app.t(key)))
+                    .and_then(|node| node.bounds())
+                {
+                    assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1280.0 && bounds.y1 <= 780.0);
+                    target = Some(egui::pos2(
+                        ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                        ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                    ));
+                }
+            }
+        }
+        let pos = target.expect("page labels button bounds");
+        for pressed in [true, false] {
+            label_frame(
+                app,
+                ctx,
+                vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn page_label_buttons_apply_and_reset_once_in_both_languages() {
+        for language in Language::ALL {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            let doc = app.document.as_mut().unwrap();
+            doc.info.page_sizes = vec![doc.info.page_sizes[0]; 5];
+            doc.page = 1;
+            app.execute(&ctx, sunipdf_core::Command::PageLabels);
+            assert!(app.dialog_open());
+            assert!(requests.try_recv().is_err());
+            let Some(PageDialog::Labels(form)) = &mut app.pagesetup.dialog else {
+                panic!("page label command must open its form");
+            };
+            assert_eq!((form.first, form.last, form.start), (2, 5, 1));
+            form.last = 4;
+            form.style = PageLabelStyle::RomanLower;
+            form.prefix = "Intro-".into();
+            form.start = 3;
+            click_label_button(&mut app, &ctx, "pagesetup.labels.apply");
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::SetPageLabels(range))
+                if range.first == 1 && range.last == 3 && range.style == PageLabelStyle::RomanLower
+                    && range.prefix == "Intro-" && range.start == 3)
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.worker.finish_mutation();
+            assert!(requests.try_recv().is_err() && app.pagesetup.dialog.is_none());
+            assert!(
+                !app.dirty && !app.can_undo,
+                "only the worker may report a committed edit"
+            );
+            app.document.as_mut().unwrap().info.page_labels = vec![Some("i".into()); 5];
+            app.execute(&ctx, sunipdf_core::Command::PageLabels);
+            click_label_button(&mut app, &ctx, "pagesetup.labels.reset");
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::Edit(EditOp::ResetPageLabels)
+            ));
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            assert!(requests.try_recv().is_err() && app.pagesetup.dialog.is_none());
+            app.worker.finish_mutation();
+            app.document.as_mut().unwrap().info.page_labels = vec![None; 5];
+            app.execute(&ctx, sunipdf_core::Command::PageLabels);
+            click_label_button(&mut app, &ctx, "pagesetup.labels.reset");
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::Edit(EditOp::ResetPageLabels)
+            ));
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            assert!(requests.try_recv().is_err() && app.pagesetup.dialog.is_none());
+        }
+    }
+
+    #[test]
+    fn page_label_keyboard_rejects_invalid_ranges_and_escape_cancels_without_mutation() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        crate::icons::install(&ctx);
+        app.execute(&ctx, sunipdf_core::Command::PageLabels);
+        let Some(PageDialog::Labels(form)) = &mut app.pagesetup.dialog else {
+            panic!("label form")
+        };
+        form.prefix = "invalid\nlabel".into();
+        let key = |key| egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        };
+        label_frame(&mut app, &ctx, vec![key(egui::Key::Enter)]);
+        assert!(app.pagesetup.dialog.is_some() && requests.try_recv().is_err());
+        let invalid = LabelForm {
+            first: 2,
+            last: 1,
+            style: PageLabelStyle::Decimal,
+            prefix: String::new(),
+            start: 1,
+        };
+        assert!(invalid.range(2).is_none());
+        assert!(LabelForm {
+            first: 0,
+            ..invalid.clone()
+        }
+        .range(2)
+        .is_none());
+        assert!(LabelForm {
+            first: 1,
+            last: 3,
+            ..invalid
+        }
+        .range(2)
+        .is_none());
+        for start in [0, u32::MAX] {
+            let prefix_only = LabelForm {
+                first: 1,
+                last: 2,
+                style: PageLabelStyle::PrefixOnly,
+                prefix: "Appendix".into(),
+                start,
+            };
+            assert_eq!(prefix_only.range(2).unwrap().start, 1);
+        }
+        label_frame(&mut app, &ctx, vec![key(egui::Key::Escape)]);
+        assert!(app.pagesetup.dialog.is_none() && requests.try_recv().is_err());
+        assert!(!app.dirty && !app.can_undo);
+    }
 
     #[test]
     fn units_presets_and_crop_validation() {

@@ -323,11 +323,18 @@ A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a kil
 These additions are published in [0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0). Local, CI, package and upgrade regression
 gates passed; public-download/live-updater checks also passed; evidence and remaining limits are recorded in `PROJECT_STATUS.md`.
 
-A48. **Page-label reading**: labels are optional metadata, not editable page numbering. Blank/unreadable labels,
+A48. **Page labels**: optional navigation metadata, separate from printed page numbering. Blank/unreadable labels,
      labels over 4096 UTF-8 bytes and labels containing control characters fall back to physical indices.
      Exact unique labels take precedence over numeric input; `#N` selects physical page N. Duplicate labels require
      a physical index. No semantic rebasing is performed after structural changes: ranges can stay attached to
      physical positions; extraction can omit labels. CLI indices remain physical and one-based.
+     **0.14.0 in development** adds range authoring and global reset through Pages/Organize and CLI. Six styles;
+     new prefixes are one line of at most 256 UTF-8 bytes, generated labels at most 4096 bytes and numbering starts
+     positive. Existing number trees have bounded traversal; malformed/unsafe trees refuse Apply before mutation.
+     Unaffected rules and their boundary continuation are preserved. Reset removes the catalog label entry,
+     including malformed trees; it is not secure erasure of old objects. Existing signed-PDF rewrite warnings
+     still apply. Undo/Redo retains navigation for geometry-preserving label/content edits (D104–D105); structural
+     edits remain positional, without semantic rebasing. Validation pending in `PROJECT_STATUS.md`; 0.13.0 stays Latest.
 A49. **Destination navigation**: internal links/bookmarks support `/XYZ`, `/Fit` and usable `/FitH` positions,
      with per-tab position/zoom history. Other fit modes retain page-only navigation. PDFium cannot distinguish
      a `/FitH` null position from zero; both use the page-only fallback. Unreadable/invalid view details also fall

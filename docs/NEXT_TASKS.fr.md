@@ -120,7 +120,20 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   qpdf et préservation source. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
   de 19 730 578 octets sans installation. Preuves et limites restantes dans `PROJECT_STATUS.fr.md` (D102–D103).
 
-## Travail restant au-delà de ce lot
+## 0.14.0 : création d'étiquettes et navigation conservée (en développement)
+
+- Pages/Organiser et CLI `set-page-labels`/`reset-page-labels` appliquent six styles, préfixe/départ positif sur
+  une plage physique inclusive, conservent les règles hors plage et leur continuation à la frontière suivante
+  (D104). Préfixes sur une ligne de 256 octets UTF-8 au plus ; étiquettes générées bornées à 4096 octets. Arbre
+  existant malformé : Appliquer refusé avant mutation ; Réinitialiser retire l'entrée du catalogue sans effacement sécurisé.
+- Les étiquettes modifient la navigation, pas les numéros imprimés. Les plages restent positionnelles après
+  opérations structurelles ; recalage sémantique futur. Navigation par libellé/`#N` physique et protection conservées.
+- Les instantanés Annuler/Rétablir conservent l'information de géométrie inchangée pour préserver la navigation
+  lors d'éditions de contenu/étiquettes ; opérations structurelles toujours invalidantes (D105).
+- Validation/publication en cours ; la 0.13.0 reste Latest. Contrôles de mise à niveau prévus : douze scénarios
+  portables et six bases MSI, dont 0.13.0 ; ils ne sont pas annoncés comme réussis. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
+## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
    Acrobat/Foxit/Chrome. Le matériel et les lecteurs réels sont nécessaires ; la CI scriptée ne les remplace pas.
@@ -129,7 +142,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
 3. Sous-ensembles de polices/CFF/OTF/TTC, édition de paragraphes et objets collés éditables.
 4. Conversion Office locale et autres lots de conversion, avec fidélité mesurée.
 5. Confiance/révocation des certificats, horodatage fiable/LTV et signature du code/MSI si identité fournie.
-6. Création d'étiquettes de pages et recalage sémantique après changement de pages, colonnes complexes non balisées,
+6. Recalage sémantique des étiquettes après changement de pages, colonnes complexes non balisées,
    tactile et intégrations facultatives.
 
 Aucune date/version future n’est engagée par cette liste.

@@ -1,9 +1,36 @@
-# Project status - updated 2026-10-16 (version 0.13.0)
+# Project status - updated 2026-10-16 (version 0.14.0 in validation)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.14.0: page-label authoring and navigation history (validation in progress)
+
+Pages / Organize now opens Page labels: an inclusive physical page range, decimal/Roman/letter numbering,
+optional prefix and positive starting number, or prefix-only labels. These labels affect navigation, not printed
+page content. `#N` still selects a physical page when labels are ambiguous. `set-page-labels` and
+`reset-page-labels` add the same operations to the CLI, preserving existing output-overwrite guards.
+
+Range edits retain label rules outside the selected range and restore their ordinal after it. Prefixes are limited
+to 256 UTF-8 bytes and generated labels to 4096 bytes before loading the candidate into PDFium. Decoded number
+trees are traversed with depth/node/reference bounds; malformed or unsupported ranges are refused. Reset all
+removes the catalogue label entry even if the original tree is malformed; it is not secure metadata erasure.
+A candidate is loaded and its metadata refreshed before the active document is changed. Existing passwords,
+encryption and permissions use the shared protected writer. Full rewrites can invalidate digital signatures.
+Labels remain positional after page reordering/insertion/deletion; semantic rebasing remains future work.
+
+Undo snapshots now retain whether the operation changed page geometry/order. Undo/Redo of label and content edits
+preserves reading history, while structural edits still invalidate it. Label dialogs close after tab/document or
+structural changes. English remains the default, French remains available; no new dependency was added.
+
+Local validation passed: **420 workspace tests, zero failed, seven default ignored**, formatting, Clippy with
+warnings denied, **890 matching EN/FR keys**, **63 independent qpdf checks** and **four licensed NIST/NBS PDFs
+(744 pages)** in 53.91 seconds; peak sampled child working set was 332,460,032 bytes. Core native tests include
+protected/malformed label trees, outside-range restoration and unchanged render/text; real worker/headless UI tests
+cover range/reset dispatch, invalid input, stale dialogs and geometry-aware Undo/Redo. Windows CI, package/public
+checks and publication are in progress. Version 0.13.0 remains stable Latest until those gates pass. Upgrade gates
+include the verified 0.13.0 portable/MSI baselines: twelve portable scenarios and six MSI baselines are planned.
 
 ## 0.13.0: typed and multi-page visual signatures (published as Latest)
 

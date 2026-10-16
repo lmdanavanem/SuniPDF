@@ -29,7 +29,7 @@ SuniPDF/
 │   │                         editor.rs (selection, handles, rotation, object clipboard, object bar), sign.rs
 │   │                         (visual signature: pad/type/import, local library, fitted page batches, date), inline_text.rs
 │   │                         (text on the page, font picker), objects.rs (Objects panel), pagesetup.rs (crop,
-│   │                         resize, blank page), annot_adv.rs (ink, free text, shapes, links, annotation selection, reply threads), view.rs (continuous / single-page view: virtualised layout,
+│   │                         resize, blank page, page labels), annot_adv.rs (ink, free text, shapes, links, annotation selection, reply threads), view.rs (continuous / single-page view: virtualised layout,
 │   │                         wanted tiles, texture pool, anchored zoom)
 │   └── sunipdf-cli/          `sunipdf-cli` binary (clap) — JSON output, stable error codes
 ├── crates/
@@ -38,6 +38,7 @@ SuniPDF/
 │   │                         (advanced annotations: lopdf writes with an explicit `/AP`, PDFium renders and reads back),
 │   │                         clipboard.rs (copy/paste of objects), fonts.rs (system fonts), boxes.rs (page boxes),
 │   │                         signature_image.rs (visual signature: strokes, background removal, PNG; native PDFium typed preview and atomic fitted page batches);
+│   │                         page_labels.rs (bounded label ranges, preservation/reset, candidate commit);
 │   │                         tests/fixtures/*.pdf (including boxes.pdf: rotated and cropped pages)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), embedded catalogues
 ├── assets/i18n/              fr-FR.json, en-US.json (source of truth for all texts)
@@ -150,6 +151,21 @@ unchanged. Selected Organize pages are captured when opening the dialog; structu
 dialog or captured targets. CLI `add-image --pages` uses the same batch method, while existing `--page` keeps
 its original placement behaviour. Local, CI, package/public and upgrade gates passed; executed evidence and
 remaining hardware/interaction limits are tracked in `PROJECT_STATUS.md` (D102–D103).
+
+## 0.14.0 page-label paths (in development)
+
+Core `page_labels.rs` exposes `PageLabelRange` and six `PageLabelStyle` values. Existing lopdf parsing/writing
+validates the label number tree with depth/node/range/string bounds, preserves rules outside an authored physical
+range and restores the following range's original numbering at its boundary. The protected writer retains
+encryption/passwords/permissions. A candidate PDFium document refreshes page metadata before replacing the active
+document; failures leave the active state unchanged. Reset removes the catalog's `PageLabels` entry without
+traversing a malformed tree; old unreferenced metadata objects are not securely erased (D104).
+
+Desktop `pagesetup.rs` provides the Pages/Organize dialog; `EditOp` and the existing undo journal handle Apply
+and Reset. CLI `set-page-labels`/`reset-page-labels` call the same API and output guard. `Snapshot::pages_unchanged`
+travels through Undo/Redo, preserving viewport/history for label/content edits while structural edits still
+invalidate page geometry (D105). Labels remain positional after structural operations. Validation is pending;
+executed results belong in `PROJECT_STATUS.md`.
 
 ## Coordinates (SUNI-031c)
 

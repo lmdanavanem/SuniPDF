@@ -5,6 +5,29 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.14.0] — Non publiée
+
+Validation de l'implémentation en cours ; la 0.13.0 reste la Latest publiée. Preuves exécutées dans
+`docs/PROJECT_STATUS.fr.md` ; aucun résultat de paquet ou de publication 0.14.0 annoncé ici.
+
+### Ajouts
+- **Étiquettes de page…** dans Pages/Organiser : styles décimal, romain majuscule/minuscule, lettres
+  majuscules/minuscules ou préfixe seul sur une plage physique inclusive, avec préfixe et départ positif.
+  Numérotation hors plage conservée ; seules les métadonnées de navigation changent, pas les numéros visibles
+  ou imprimés. Réinitialiser tout retire l'entrée du catalogue, même malformée ; ce n'est pas un effacement
+  sécurisé des anciens objets de métadonnées.
+- CLI `set-page-labels --from 1 --to N --style decimal --start 1 --prefix ""` et `reset-page-labels`, avec `--out`
+  et `--password` facultatif, réutilisent les protections contre l'écrasement. Les indices CLI restent physiques.
+
+### Corrections
+- Annuler/Rétablir conserve l'information de géométrie inchangée, donc la navigation pour les éditions
+  d'étiquettes/contenu. Les opérations structurelles continuent à l'invalider.
+
+Nouveaux préfixes sur une ligne de 256 octets UTF-8 au plus, étiquettes générées bornées à 4096 octets ; plage
+invalide, dépassement numérique ou arbre existant malformé : Appliquer refusé avant mutation. Les plages restent
+positionnelles après insertion/suppression/réorganisation ; aucun recalage sémantique. Les doublons demandent
+toujours `#N` physique. Validation et limites matérielles/lecteurs dans l'état du projet.
+
 ## [0.13.0] — 2026-10-16
 
 [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem`, release

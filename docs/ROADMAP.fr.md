@@ -101,6 +101,14 @@ CI Windows, compilation ARM64 de même source, onze scénarios portables, cinq b
 avec contrôles renforcés des binaires réussis. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le
 ZIP Latest x64 de 19 730 578 octets sans installation. Preuves et limites matérielles/lecteurs : `PROJECT_STATUS.fr.md`.
 
+## 0.14.0 : création d'étiquettes de page (en développement)
+
+Appliquer six styles de navigation sur une plage physique inclusive via Pages/Organiser et deux commandes CLI ;
+conserver les étiquettes hors plage, refuser un arbre existant malformé avant mutation, réinitialiser toutes les
+règles sans annoncer d'effacement sécurisé. Numéros imprimés inchangés ; aucun recalage sémantique des plages
+après opérations structurelles. Annuler/Rétablir contenu/étiquettes conserve la navigation si géométrie inchangée
+(D104–D105). Validation et contrôles de release en cours ; la 0.13.0 reste Latest publiée. Voir `PROJECT_STATUS.fr.md`.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -113,8 +121,8 @@ Livrés : onglets, caches de rendu/miniatures bornés, vues continue/double page
 recherche, signets, fusion/division/extraction/rotation/réorganisation, enregistrement atomique, annulation/rétablissement et annotations.
 
 Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
-Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Restent : création/recalage
-sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
+Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Création/réinitialisation en développement
+pour 0.14.0. Restent : recalage sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
 chaque lien, champ, calque ou pièce jointe.
 
 ## Phase 3 : édition professionnelle — partiellement livrée

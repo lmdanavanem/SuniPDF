@@ -192,6 +192,34 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Set navigation page labels for a physical page range; visible page content is unchanged.
+    SetPageLabels {
+        file: PathBuf,
+        /// First physical page (1-based).
+        #[arg(long, default_value_t = 1)]
+        from: usize,
+        /// Last physical page (1-based); defaults to the last page.
+        #[arg(long)]
+        to: Option<usize>,
+        #[arg(long, default_value = "decimal", value_parser = ["decimal", "roman-upper", "roman-lower", "letters-upper", "letters-lower", "prefix-only"])]
+        style: String,
+        #[arg(long, default_value_t = 1)]
+        start: u32,
+        #[arg(long, default_value = "")]
+        prefix: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Remove all navigation page labels; visible page content is unchanged.
+    ResetPageLabels {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Insert pages of another PDF (1-based list, default all) before page --at (1-based; 0 = append).
     Insert {
         file: PathBuf,
@@ -1079,6 +1107,50 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "numbered": count }))
+        }
+        Command::SetPageLabels {
+            file,
+            from,
+            to,
+            style,
+            start,
+            prefix,
+            out,
+            password,
+        } => {
+            use sunipdf_core::{PageLabelRange, PageLabelStyle};
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let last = to.unwrap_or(doc.page_count());
+            let range = PageLabelRange {
+                first: page_index(from, doc.page_count())?,
+                last: page_index(last, doc.page_count())?,
+                style: match style.as_str() {
+                    "decimal" => PageLabelStyle::Decimal,
+                    "roman-upper" => PageLabelStyle::RomanUpper,
+                    "roman-lower" => PageLabelStyle::RomanLower,
+                    "letters-upper" => PageLabelStyle::LettersUpper,
+                    "letters-lower" => PageLabelStyle::LettersLower,
+                    "prefix-only" => PageLabelStyle::PrefixOnly,
+                    _ => unreachable!("page label style validated by clap"),
+                },
+                prefix,
+                start,
+            };
+            doc.set_page_labels(&range)?;
+            doc.save_as(&out)?;
+            Ok(
+                serde_json::json!({ "out": out, "from": from, "to": last, "count": range.last - range.first + 1 }),
+            )
+        }
+        Command::ResetPageLabels {
+            file,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            doc.reset_page_labels()?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "count": doc.page_count() }))
         }
         Command::Insert {
             file,
@@ -2007,6 +2079,8 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Rotate { out, .. }
         | Command::Stamp { out, .. }
         | Command::PageNumbers { out, .. }
+        | Command::SetPageLabels { out, .. }
+        | Command::ResetPageLabels { out, .. }
         | Command::Insert { out, .. }
         | Command::Move { out, .. }
         | Command::Protect { out, .. }
@@ -2215,6 +2289,90 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn page_label_commands_parse_defaults_styles_and_output_guards() {
+        let default = parse_cli([
+            "sunipdf-cli",
+            "set-page-labels",
+            "input.pdf",
+            "--out",
+            "output.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&default.command),
+            Some(std::path::Path::new("output.pdf"))
+        );
+        assert!(
+            matches!(default.command, Command::SetPageLabels { from: 1, to: None, start: 1, style, prefix, .. } if style == "decimal" && prefix.is_empty())
+        );
+        for style in [
+            "decimal",
+            "roman-upper",
+            "roman-lower",
+            "letters-upper",
+            "letters-lower",
+            "prefix-only",
+        ] {
+            let parsed = parse_cli([
+                "sunipdf-cli",
+                "set-page-labels",
+                "input.pdf",
+                "--from",
+                "2",
+                "--to",
+                "4",
+                "--style",
+                style,
+                "--start",
+                "27",
+                "--prefix",
+                "É-",
+                "--out",
+                "output.pdf",
+                "--overwrite",
+            ])
+            .unwrap();
+            assert!(parsed.overwrite);
+            assert!(
+                matches!(parsed.command, Command::SetPageLabels { from: 2, to: Some(4), start: 27, prefix, .. } if prefix == "É-")
+            );
+        }
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-page-labels",
+            "input.pdf",
+            "--style",
+            "unknown",
+            "--out",
+            "output.pdf"
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-page-labels",
+            "input.pdf",
+            "--start",
+            "4294967296",
+            "--out",
+            "output.pdf"
+        ])
+        .is_err());
+        let reset = parse_cli([
+            "sunipdf-cli",
+            "reset-page-labels",
+            "input.pdf",
+            "--out",
+            "output.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(reset.command, Command::ResetPageLabels { .. }));
+        assert_eq!(
+            output_path(&reset.command),
+            Some(std::path::Path::new("output.pdf"))
+        );
     }
 
     #[test]

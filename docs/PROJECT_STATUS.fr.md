@@ -1,9 +1,36 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.13.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.14.0 en validation)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.14.0 : création d'étiquettes de page et historique (validation en cours)
+
+Pages / Organiser ouvre Étiquettes de page : plage physique inclusive, numérotation décimale/romaine/par lettres,
+préfixe facultatif et numéro initial positif, ou préfixe seul. Ces étiquettes servent à la navigation sans modifier
+le contenu imprimé. `#N` conserve l'accès à une page physique si les étiquettes sont ambiguës. Les commandes CLI
+`set-page-labels` et `reset-page-labels` réutilisent les mêmes opérations et protections contre l'écrasement.
+
+Les règles hors plage sont conservées, avec reprise de leur numéro après la plage. Préfixes limités à 256 octets
+UTF-8 et étiquettes produites à 4096 octets avant chargement du candidat dans PDFium. Parcours borné des objets
+décodés (profondeur/nœuds/références) ; refus des plages malformées ou non prises en charge. Réinitialiser tout
+retire l'entrée d'étiquettes du catalogue, même malformée ; ce n'est pas un effacement sécurisé des métadonnées.
+Le candidat et ses métadonnées sont chargés avant modification du document actif. Mots de passe, chiffrement et
+permissions utilisent l'écriture protégée commune. Une réécriture peut invalider les signatures numériques.
+Les étiquettes restent liées aux positions après déplacement/insertion/suppression ; le recalage sémantique reste futur.
+
+Les instantanés Undo mémorisent si l'opération change la géométrie/l'ordre des pages. Undo/Redo des étiquettes et
+éditions de contenu conserve l'historique de lecture ; les opérations structurelles l'invalident. Le dialogue se
+ferme après changement d'onglet/document/structure. Anglais par défaut, français disponible ; aucune dépendance ajoutée.
+
+Validation locale réussie : **420 tests, aucun échec, sept ignorés par défaut**, formatage, Clippy sans avertissement,
+**890 clés EN/FR identiques**, **63 contrôles qpdf indépendants**, **quatre PDF NIST/NBS sous licence (744 pages)**
+en 53,91 secondes ; mémoire de pointe échantillonnée des processus enfants : 332 460 032 octets. Tests natifs :
+arbres protégés/malformés, reprise hors plage et rendu/texte inchangés ; worker réel/tests UI sans fenêtre :
+Apply/Reset, entrées invalides, dialogues périmés et Undo/Redo selon la géométrie. CI Windows, paquets publics et
+publication restent en cours. La 0.13.0 reste stable Latest jusque-là. Paquets de référence 0.13.0 vérifiés :
+douze scénarios portables et six versions MSI de référence prévus, résultats annoncés après exécution.
 
 ## 0.13.0 : signatures visuelles saisies et multipages (publiée en Latest)
 

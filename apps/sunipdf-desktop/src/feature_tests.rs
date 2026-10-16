@@ -332,6 +332,96 @@ fn failed_signature_batch_clears_repeat_hint_without_marking_document_modified()
 }
 
 #[test]
+fn page_label_changes_and_undo_redo_preserve_page_history_and_metadata() {
+    let (mut app, _requests, responses) = test_app();
+    let ctx = egui::Context::default();
+    let doc = app.document.as_mut().unwrap();
+    doc.info.page_sizes = vec![doc.info.page_sizes[0]; 3];
+    doc.info.title = Some("Original document title".into());
+    doc.page = 1;
+    let original = doc.info.clone();
+    app.docinfo.metadata_edit = sunipdf_core::Metadata {
+        title: original.title.clone(),
+        author: Some("Original author".into()),
+        ..Default::default()
+    };
+    let metadata = app.docinfo.metadata_edit.clone();
+    let offset = egui::vec2(12.0, 345.0);
+    app.view.offset = offset;
+    app.view
+        .reading
+        .history
+        .jump(0, Some(egui::Vec2::ZERO), 1, 1.0);
+    assert!(app.view.reading.history.can_back());
+    for labelled in [true, false, true] {
+        let mut info = original.clone();
+        if labelled {
+            info.page_labels = ["i", "ii", "iii"]
+                .into_iter()
+                .map(|label| Some(label.into()))
+                .collect();
+        }
+        responses
+            .send(Response::DocumentChanged(DocState {
+                info,
+                can_undo: labelled,
+                can_redo: !labelled,
+                modified: labelled,
+                pages_unchanged: true,
+                has_signatures: false,
+            }))
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(app.document.as_ref().unwrap().page, 1);
+        assert_eq!(app.page_input, if labelled { "ii" } else { "2" });
+        assert_eq!(app.view.offset, offset);
+        assert!(app.view.reading.history.can_back());
+        assert_eq!(app.docinfo.metadata_edit, metadata);
+        assert_eq!(app.document.as_ref().unwrap().info.title, original.title);
+        assert_eq!(
+            (app.dirty, app.can_undo, app.can_redo),
+            (labelled, labelled, !labelled)
+        );
+    }
+    app.page_input = "#2".into();
+    app.submit_page_input();
+    assert_eq!(app.document.as_ref().unwrap().page, 1);
+    assert_eq!(app.page_input, "ii");
+}
+
+#[test]
+fn page_label_dialog_cannot_survive_tab_open_or_structural_changes() {
+    let (mut app, _requests, responses) = test_app();
+    let ctx = egui::Context::default();
+    app.open_page_dialog(Command::PageLabels);
+    let tab = app.take_tab();
+    assert!(app.pagesetup.dialog.is_none());
+    app.put_tab(tab);
+    assert!(app.pagesetup.dialog.is_none());
+    for pages_unchanged in [true, false] {
+        app.open_page_dialog(Command::PageLabels);
+        let mut changed = state(app.document.as_ref().unwrap().info.path.clone(), true);
+        changed.pages_unchanged = pages_unchanged;
+        responses.send(Response::DocumentChanged(changed)).unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(app.pagesetup.dialog.is_some(), pages_unchanged);
+    }
+    app.open_page_dialog(Command::PageLabels);
+    responses
+        .send(Response::Opened(state(
+            PathBuf::from("test/new.pdf"),
+            false,
+        )))
+        .unwrap();
+    app.handle_responses(&ctx);
+    assert!(app.pagesetup.dialog.is_none());
+    assert_eq!(
+        app.document.as_ref().unwrap().info.path,
+        PathBuf::from("test/new.pdf")
+    );
+}
+
+#[test]
 fn signed_pdf_clean_save_is_noop_and_changed_save_can_be_cancelled() {
     let (mut app, requests, _responses) = test_app();
     let ctx = egui::Context::default();

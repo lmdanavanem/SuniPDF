@@ -159,7 +159,7 @@ pub static TABLE: [WsInfo; 14] = [
                 C::MovePageLeft,
                 C::MovePageRight,
             ],
-            &[C::CropPages, C::ResizePages],
+            &[C::CropPages, C::ResizePages, C::PageLabels],
             &[C::SplitDocument, C::ExtractPages],
         ],
     },

@@ -38,7 +38,7 @@
 | Convert | Images to PDF, PDF to PNG, lossless optimization, lossy image compression to a new copy; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo; sequential multi-file compression/OCR |
 | Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
 | Certificates | Saved-byte integrity verification and incremental PFX/P12 signing into a new copy; certificate trust, revocation and trusted timestamps are unchecked; encrypted PDF signing is refused |
-| Automate | `sunipdf-cli`: 50 commands with JSON output and stable exit codes, including `compress-images`, `form-export`, `rotate-objects`, `resize-objects`, `add-form-field`, `ocr`, `signatures` and `sign` |
+| Automate | `sunipdf-cli`: 52 commands in the 0.14.0 source (50 in published 0.13.0), JSON output and stable exit codes; new `set-page-labels` and `reset-page-labels` commands are under validation |
 
 All 14 task tools have real commands. Reading follows PDFium's logical character order; arbitrary untagged columns
 are not reconstructed. Physical printing, ARM64 hardware and third-party signature interoperability remain separate QA checks.
@@ -55,6 +55,11 @@ in `dist/`. The production updater verified the 19,730,578-byte Latest x64 ZIP w
 New in **0.13.0**: typed visual signatures with an explicit local preview, and one-click placement on
 current/all/selected pages with fitted geometry, atomic cancellation and one undo. Editable drop-down creation
 and consistent radio-button `/Opt` export values remain available from 0.12.0; see the [roadmap](docs/ROADMAP.md).
+
+In development for **0.14.0**: create navigation page labels over a physical page range, or reset all labels,
+through Pages/Organize and two CLI commands. Decimal, Roman, letter and prefix-only styles preserve the labels
+outside the chosen range. Undo/Redo preserves navigation for changes that keep page geometry. Validation is
+pending; these additions are not in the published 0.13.0 packages. See [Project status](docs/PROJECT_STATUS.md).
 
 ## Screenshots
 

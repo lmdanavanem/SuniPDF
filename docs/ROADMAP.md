@@ -98,6 +98,14 @@ Windows CI, same-source ARM64 compilation, eleven portable scenarios, five MSI b
 files with enhanced binary checks passed. Verified copies are in `dist/`; the production updater verified the
 19,730,578-byte Latest x64 ZIP without installation. Evidence and hardware/reader limits: `PROJECT_STATUS.md`.
 
+## 0.14.0: page-label authoring (in development)
+
+Apply six navigation-label styles over an inclusive physical range through Pages/Organize and two CLI commands;
+preserve labels outside the range, reject malformed existing trees before mutation, and reset all label rules
+without claiming secure erasure. Printed numbers remain unchanged; structural operations do not semantically
+rebase the ranges. Geometry-preserving label/content Undo/Redo retains navigation (D104–D105).
+Validation and release gates are pending; 0.13.0 remains published Latest. See `PROJECT_STATUS.md`.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -110,8 +118,8 @@ Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views
 search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
 
 Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
-Delivered in 0.11.0: page-label reading and precise internal navigation. Remaining: page-label
-authoring/semantic rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
+Delivered in 0.11.0: page-label reading and precise internal navigation. Authoring/reset are in development for
+0.14.0. Remaining: semantic label rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
 prove preservation of every link, field, layer or attachment.
 
 ## Phase 3: professional editing — partially delivered

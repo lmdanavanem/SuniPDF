@@ -734,6 +734,7 @@ impl SuniApp {
                     self.thumbs_pending.clear();
                     self.thumbs_failed.clear();
                     self.edit.reset_for_tab();
+                    self.pagesetup.close_labels();
                     self.annotate.adv = Default::default();
                     self.annotate.clear_reading();
                     self.annotate.annotations_page = None;
@@ -826,6 +827,9 @@ impl SuniApp {
                 }) => {
                     self.has_signatures = has_signatures;
                     self.annotate.clear_reading();
+                    if !pages_unchanged {
+                        self.pagesetup.close_labels();
+                    }
                     if !pages_unchanged
                         && (self.sign.open.is_some()
                             || matches!(
@@ -1760,9 +1764,10 @@ impl SuniApp {
                 self.edit.objects_open = !self.edit.objects_open;
                 self.edit.objects_page = None;
             }
-            Command::CropPages | Command::ResizePages | Command::InsertBlankPage => {
-                self.open_page_dialog(command)
-            }
+            Command::CropPages
+            | Command::ResizePages
+            | Command::InsertBlankPage
+            | Command::PageLabels => self.open_page_dialog(command),
             Command::ToolSelect
             | Command::ToolHighlight
             | Command::ToolUnderline

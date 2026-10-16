@@ -5,6 +5,28 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.14.0] - Unreleased
+
+Implementation validation is ongoing; 0.13.0 remains the published Latest. Executed evidence belongs in
+`docs/PROJECT_STATUS.md`; no 0.14.0 package or publication result is claimed here.
+
+### Added
+- **Page Labels…** in Pages/Organize: apply decimal, upper/lower Roman, upper/lower letters or prefix-only labels
+  to an inclusive physical page range, with a prefix and positive start. Labels outside the range retain their
+  existing numbering; this changes navigation metadata, not visible or printed page numbers. Reset All Labels
+  removes the catalog entry, including malformed label trees; it is not secure erasure of old metadata objects.
+- CLI `set-page-labels --from 1 --to N --style decimal --start 1 --prefix ""` and `reset-page-labels`, both with
+  `--out` and optional `--password`, reuse existing overwrite safeguards. CLI page indices remain physical.
+
+### Fixed
+- Undo/Redo carries whether an edit preserved page geometry, so label/content edits retain navigation state.
+  Structural edits still invalidate it.
+
+New prefixes are one line of at most 256 UTF-8 bytes; generated labels are bounded to 4096 bytes, and invalid
+ranges, numbering overflow or malformed existing trees refuse Apply before mutation. Label ranges remain
+positional after page insertion/deletion/reordering; semantic rebasing is not implemented. Duplicate labels
+still require physical `#N` navigation. Validation and hardware/reader limitations remain in Project status.
+
 ## [0.13.0] - 2026-10-16
 
 [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`, release

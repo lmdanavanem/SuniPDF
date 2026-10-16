@@ -61,7 +61,7 @@ Latest x64 ZIP without installation. Detailed evidence and remaining limits are 
 | Text selection / copy in reading order | Declared | **Done**: logical character range, cross-page/reverse selection, double-click words, edge autoscroll | PDFium order; core/headless tests; arbitrary untagged column order not inferred |
 | Thumbnails | Declared | **Done** | Virtualised panel, shared cache |
 | Bookmarks (outline) | Declared | **Done** (panel, page navigation; editing planned); precise destinations **delivered in 0.11.0** | Named, XYZ/Fit/nonzero FitH; local tests passed |
-| Page labels | Declared | **Delivered in 0.11.0** (read-only) | PDFium labels, toolbar/thumbnails/CLI info; exact unique label or physical `#N`; invalid labels fall back; local tests passed |
+| Page labels | Declared | **Reading delivered in 0.11.0**; authoring/reset **in development for 0.14.0**, validation pending | Existing exact unique-label/physical `#N` navigation retained; Pages/Organize and two CLI commands author six styles over an inclusive physical range, preserve outside rules; reset all; no printed-number changes or semantic rebasing |
 | Navigation history, reopened tabs | Declared | Recent files and per-tab 256-entry history **Done**; same-page/zoom history **delivered in 0.11.0** | Local tests passed |
 | Reading mode / full screen | Declared | **Done in 0.10.0** | View mode is a shared preference; rotation/history are retained per tab; editing returns to upright view |
 | Windows printing | Declared (limited fidelity) | **Done** (layout/range tests and actual Microsoft Print to PDF output reopened) | Native dialog, ranges/copies, bounded raster printing, progress/cancel; physical printer and interactive dialog unverified |
@@ -95,7 +95,7 @@ Latest x64 ZIP without installation. Detailed evidence and remaining limits are 
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
 | Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); **implemented for 0.11.0, published; local, CI, package and upgrade gates passed**: retain source encryption/passwords/permissions and refuse output at the source path (D097 supersedes D046). Existing permission policy unchanged; CLI `encryption_removed: false`, additive `encrypted`; semantic preservation to verify beyond qpdf structural checking |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
-| Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save |
+| Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save. **0.14.0 in development**: preserve navigation through label/content Undo/Redo when page geometry is unchanged; validation pending (D105) |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
 | Batch processing | Declared (CLI batch) | **Done in 0.10.0**: sequential compression/local OCR, 128 files, 256 MiB/input, progress/cancel/per-file errors, new copies only |
 

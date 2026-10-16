@@ -119,7 +119,21 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,730,578-byte Latest x64 ZIP without
   installation. Evidence and remaining limits are in `PROJECT_STATUS.md` (D102–D103).
 
-## Remaining work beyond this lot
+## 0.14.0: page-label authoring and navigation retention (in development)
+
+- Pages/Organize and CLI `set-page-labels`/`reset-page-labels` author an inclusive physical range with six styles,
+  prefix/positive start, preserve outside rules and restore their continuation at the following boundary (D104).
+  Prefixes are one line of at most 256 UTF-8 bytes; generated labels are bounded to 4096 bytes. Malformed existing
+  trees refuse Apply before mutation; Reset removes the catalog entry without secure metadata erasure.
+- Label changes affect navigation, not printed numbers. Ranges remain positional after structural edits;
+  semantic rebasing is future work. Existing duplicate-label/physical `#N` navigation and protection remain.
+- Carry geometry-preservation state in Undo/Redo snapshots so content/label changes retain navigation;
+  structural operations still invalidate it (D105).
+- Validation and publication gates are pending; 0.13.0 remains Latest. The planned upgrade checks extend to
+  twelve portable scenarios and six MSI baselines, including 0.13.0; these are not reported as passed.
+  Executed evidence belongs in `PROJECT_STATUS.md`.
+
+## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
    dialogs, and Acrobat/Foxit/Chrome. These require the actual hardware or readers and are not covered by scripted CI.
@@ -128,7 +142,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 3. Font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 4. Local Office conversion and additional batch conversion operations, with measured output fidelity.
 5. Certificate-chain trust/revocation, trusted timestamps/LTV and executable/MSI signing when an identity is supplied.
-6. Page-label authoring and semantic rebasing after page changes, complex untagged-column reading order,
+6. Semantic page-label rebasing after page changes, complex untagged-column reading order,
    touch validation and optional integrations.
 
 No future version/date is committed by this remaining list.

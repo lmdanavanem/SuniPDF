@@ -12,9 +12,9 @@ use sunipdf_core::{
     form_data, security, write_new_copy, AnnotDetail, AnnotShape, AnnotStyle, AnnotationInfo,
     Bookmark, Document, DocumentInfo, Engine, EngineError, FieldValue, FillMode, FormInfo,
     FreeTextStyle, LinkInfo, LinkTarget, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle,
-    PageMargins, PointRect, Properties, Protection, RectMode, RedactMark, RedactOptions,
-    RedactReport, RenderCache, RenderedPage, ResizeMode, ReviewStatus, ShapeKind, ShapeStyle,
-    Stamp, SystemFont, TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
+    PageLabelRange, PageMargins, PointRect, Properties, Protection, RectMode, RedactMark,
+    RedactOptions, RedactReport, RenderCache, RenderedPage, ResizeMode, ReviewStatus, ShapeKind,
+    ShapeStyle, Stamp, SystemFont, TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -41,6 +41,7 @@ pub struct SuspendedDoc {
 pub struct Snapshot {
     bytes: Vec<u8>,
     password: Option<String>,
+    pages_unchanged: bool,
 }
 
 /// Tâche de fichiers (non annulable : produit de nouveaux fichiers, le document ouvert est intact).
@@ -118,6 +119,8 @@ pub enum BytesOp {
 
 /// Modification de pages, appliquée sous instantané (annulable).
 pub enum EditOp {
+    SetPageLabels(PageLabelRange),
+    ResetPageLabels,
     AddFormField {
         page: usize,
         name: String,
@@ -877,6 +880,7 @@ impl State<'_> {
                 Ok(bytes) => Some(Snapshot {
                     bytes,
                     password: doc.password().map(str::to_owned),
+                    pages_unchanged: keeps_pages,
                 }),
                 Err(e) => return Response::OperationFailed(e),
             }
@@ -920,6 +924,7 @@ impl State<'_> {
         let snapshot = Snapshot {
             bytes: doc.snapshot()?,
             password: doc.password().map(str::to_owned),
+            pages_unchanged: false,
         };
         match doc.redact(marks, options) {
             Ok(report) => {
@@ -949,6 +954,7 @@ impl State<'_> {
             Ok(bytes) => Snapshot {
                 bytes,
                 password: doc.password().map(str::to_owned),
+                pages_unchanged: target.pages_unchanged,
             },
             Err(e) => {
                 from.push(target);
@@ -960,10 +966,14 @@ impl State<'_> {
             from.push(target);
             return Some(Response::OperationFailed(e));
         }
+        let pages_unchanged = target.pages_unchanged;
         to.push(current);
         self.last_nudge = None;
         self.invalidate();
-        Some(Response::DocumentChanged(self.doc_state()?))
+        Some(Response::DocumentChanged(DocState {
+            pages_unchanged,
+            ..self.doc_state()?
+        }))
     }
 }
 
@@ -992,6 +1002,7 @@ mod save_point_tests {
         Snapshot {
             bytes: vec![n],
             password: None,
+            pages_unchanged: false,
         }
     }
 
@@ -1056,6 +1067,8 @@ fn checked_pages(mut pages: Vec<usize>, count: usize) -> Result<Vec<usize>, Engi
 
 fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Result<(), EngineError> {
     match op {
+        EditOp::SetPageLabels(range) => doc.set_page_labels(&range),
+        EditOp::ResetPageLabels => doc.reset_page_labels(),
         EditOp::AddFormField {
             page,
             name,
@@ -1542,6 +1555,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     let snapshot = Snapshot {
                         bytes: doc.snapshot()?,
                         password: doc.password().map(str::to_owned),
+                        pages_unchanged: true,
                     };
                     let report = doc.ocr(&options, &cancel, |done, total| {
                         let _ = tx.send(Response::TaskProgress {
@@ -1598,6 +1612,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     let snapshot = Snapshot {
                         bytes: doc.snapshot()?,
                         password: doc.password().map(str::to_owned),
+                        pages_unchanged: true,
                     };
                     doc.place_signature_image(
                         &pages,
@@ -2072,6 +2087,7 @@ mod tests {
                     if failed_page == page && failed_width == width_px
             ));
         }
+        page_label_edits_and_history_keep_page_geometry(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
@@ -2089,6 +2105,66 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn page_label_edits_and_history_keep_page_geometry(worker: &Worker) {
+        let changed = || match next_response(worker) {
+            Response::DocumentChanged(state) => state,
+            _ => panic!("page label document state"),
+        };
+        let range = PageLabelRange {
+            first: 0,
+            last: 0,
+            style: sunipdf_core::PageLabelStyle::RomanLower,
+            prefix: String::new(),
+            start: 1,
+        };
+        worker.send(Request::Edit(EditOp::SetPageLabels(range)));
+        let state = changed();
+        assert!(state.pages_unchanged && state.modified && state.can_undo);
+        assert_eq!(state.info.page_label(0), Some("i"));
+        assert_eq!(state.info.page_label(1), Some("2"));
+        let sizes = state.info.page_sizes;
+
+        worker.send(Request::Undo);
+        let state = changed();
+        assert!(state.pages_unchanged && !state.modified && state.can_redo);
+        assert_eq!(state.info.page_labels, vec![None, None]);
+        assert_eq!(state.info.page_sizes, sizes);
+        worker.send(Request::Redo);
+        let state = changed();
+        assert!(state.pages_unchanged && state.modified && state.can_undo);
+        assert_eq!(state.info.page_label(0), Some("i"));
+
+        worker.send(Request::Edit(EditOp::ResetPageLabels));
+        assert_eq!(changed().info.page_labels, vec![None, None]);
+        worker.send(Request::Undo);
+        let state = changed();
+        assert!(state.pages_unchanged);
+        assert_eq!(state.info.page_label(0), Some("i"));
+        worker.send(Request::Redo);
+        let state = changed();
+        assert!(state.pages_unchanged);
+        assert_eq!(state.info.page_labels, vec![None, None]);
+
+        worker.send(Request::Edit(EditOp::Rotate {
+            pages: vec![0],
+            delta_degrees: 90,
+        }));
+        assert!(!changed().pages_unchanged);
+        worker.send(Request::Undo);
+        let state = changed();
+        assert!(!state.pages_unchanged);
+        assert_eq!(state.info.page_sizes, sizes);
+        worker.send(Request::Redo);
+        assert!(!changed().pages_unchanged);
+
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
     }
 
     fn render_signature_preview(worker: &Worker, id: u64) -> Arc<image::DynamicImage> {

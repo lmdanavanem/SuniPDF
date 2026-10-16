@@ -40,7 +40,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Convertir | Images → PDF, PDF → PNG, optimisation sans perte, compression des images avec perte vers une nouvelle copie ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo ; lots séquentiels compression/OCR |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
 | Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
-| Automatiser | `sunipdf-cli` : 50 commandes JSON et codes stables, dont `compress-images`, `form-export`, `rotate-objects`, `resize-objects`, `add-form-field`, `ocr`, `signatures` et `sign` |
+| Automatiser | `sunipdf-cli` : 52 commandes dans la source 0.14.0 (50 en 0.13.0 publiée), JSON et codes stables ; nouvelles commandes `set-page-labels` et `reset-page-labels` en validation |
 
 Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes
 arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabilité des signatures restent des contrôles QA distincts.
@@ -57,6 +57,11 @@ Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 Nouveautés **0.13.0** : signatures visuelles saisies avec aperçu local explicite, pose en un clic sur la page
 courante/toutes les pages/la sélection, géométrie ajustée, annulation atomique du lot et un undo. Création de listes
 modifiables et exports radio `/Opt` cohérents restent disponibles depuis 0.12.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
+
+En développement pour **0.14.0** : créer des étiquettes de navigation sur une plage physique ou les réinitialiser
+toutes, depuis Pages/Organiser et deux commandes CLI. Styles décimal, romain, lettres et préfixe seul ; étiquettes
+hors plage conservées. Annuler/Rétablir préserve la navigation si la géométrie des pages est inchangée. Validation
+en cours ; ces ajouts sont absents des paquets 0.13.0 publiés. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

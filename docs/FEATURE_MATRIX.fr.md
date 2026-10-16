@@ -62,7 +62,7 @@ x64 de 19 730 578 octets sans installation. Preuves détaillées et limites rest
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | **Fait** (panneau, saut de page ; édition planifiée) ; destinations précises **livrées en 0.11.0** | Nommées, XYZ/Fit/FitH non nul ; tests locaux réussis |
-| Étiquettes de pages | Déclaré | **Livrées en 0.11.0** (lecture seule) | PDFium, barre/miniatures/CLI info ; étiquette exacte et unique ou page physique `#N` ; repli si invalide ; tests locaux réussis |
+| Étiquettes de pages | Déclaré | **Lecture livrée en 0.11.0** ; création/réinitialisation **en développement pour 0.14.0**, validation en cours | Navigation exacte/unique ou `#N` physique conservée ; Pages/Organiser et deux commandes CLI appliquent six styles sur une plage physique inclusive, règles hors plage conservées ; réinitialisation globale ; aucun changement de numéros imprimés ni recalage sémantique |
 | Historique de navigation, onglets rouverts | Déclaré | Fichiers récents et historique borné à 256 **Faits** ; historique même page/zoom **livré en 0.11.0** | Tests locaux réussis |
 | Mode lecture / plein écran | Déclaré | **Fait en 0.10.0** | Mode de vue partagé comme préférence ; rotation/historique conservés par onglet ; retour à une vue droite pour éditer |
 | Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
@@ -96,7 +96,7 @@ x64 de 19 730 578 octets sans installation. Preuves détaillées et limites rest
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
 | Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; **implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis** : conserver chiffrement/mots de passe/permissions et refuser une sortie au chemin source (D097 remplace D046). Politique des permissions inchangée ; CLI `encryption_removed: false`, ajout `encrypted` ; préservation sémantique à vérifier au-delà de qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
-| Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
+| Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde. **0.14.0 en développement** : navigation conservée lors d'Annuler/Rétablir contenu/étiquettes si géométrie inchangée ; validation en cours (D105) |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
 | Traitement par lots | Déclaré (CLI batch) | **Fait en 0.10.0** : compression/OCR séquentiels, 128 PDF, 256 Mio/entrée, progression/annulation/erreurs et nouvelles copies sans écrasement |
 

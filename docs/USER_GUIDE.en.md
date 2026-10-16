@@ -315,9 +315,10 @@ A matching label takes priority over a number: if label `1` belongs to physical 
 Enter `#1` to select physical page 1 explicitly. Without a matching label, a number selects the physical page.
 Unknown, duplicate or out-of-range input leaves the current page unchanged and displays an explanation.
 
-Page labels are read only. There is no label creation/editing or semantic renumbering after inserting, deleting,
-moving or extracting pages; existing label ranges can remain tied to physical positions, and extracted files may
-have no labels. Blank, unreadable, control-containing or over-4096-byte UTF-8 labels fall back to physical indices.
+Page labels are read only in the published 0.13.0 packages; authoring for 0.14.0 is described below. There is no
+semantic renumbering after inserting, deleting, moving or extracting pages; existing label ranges can remain
+tied to physical positions, and extracted files may have no labels. Blank, unreadable, control-containing or
+over-4096-byte UTF-8 labels fall back to physical indices.
 CLI `info` exposes an optional `pages[].label`; all CLI page numbers remain physical and one-based.
 
 Internal links and bookmarks also follow supported PDF destinations: `/XYZ` positions and zoom, `/Fit` page fit,
@@ -326,6 +327,27 @@ or zero/omitted zoom keeps the current viewport value; zoom stays within the app
 returns through the tab's page, position and zoom history, including destinations on the same page. Finish pending
 text or form edits before following a destination. Unsupported fit modes, unreadable destination details and
 `/FitH` zero/null positions fall back to the target page without applying destination zoom or position.
+
+### Page-label authoring — 0.14.0 in development
+
+Open **Pages → Page Labels…**, or the Page Labels command in **Organize pages**. Set **First physical page**
+and **Last physical page**: the range includes both ends. Choose decimal, uppercase/lowercase Roman,
+uppercase/lowercase letters or prefix only, enter an optional prefix and the starting number, then **Apply Labels**.
+Roman examples are `i, ii, iii`; letter numbering goes `A…Z, AA, BB…ZZ`, as specified by PDF. Prefix only repeats
+the same text on each target. The starting number defaults to 1 and must be positive; prefix only requires
+nonblank text. New prefixes must fit on one line of at most 256 UTF-8 bytes; generated labels are bounded to
+4096 bytes. Invalid input or a malformed existing label tree refuses Apply without partial changes.
+
+Existing labels outside the chosen range retain their original numbering. **Reset All Labels** removes all
+label rules, including a malformed tree, and returns navigation to physical page indices. Reset does not securely
+erase old metadata objects. These changes do not add or change printed page numbers: use Number Pages for that.
+Apply/Reset can be undone; save explicitly to keep the changes. Existing signed-document rewrite warnings still
+apply to these metadata edits. Undo/Redo of label/content edits retains the view/navigation when page geometry
+is unchanged; structural edits still invalidate it.
+
+After inserting, deleting or moving pages, label ranges follow physical positions rather than rebasing by document
+meaning. Check them after reorganization. Duplicate labels remain ambiguous; use physical `#N` to navigate.
+These additions are under validation and are not included in the published 0.13.0 packages; see [Project status](PROJECT_STATUS.md).
 
 ## Image compression and batches
 
@@ -473,6 +495,20 @@ rectangle. Example:
 
 ```powershell
 sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf
+```
+
+**0.14.0 in development:** `set-page-labels` accepts `--from` (default 1), `--to` (default last page),
+`--style decimal|roman-upper|roman-lower|letters-upper|letters-lower|prefix-only` (default decimal), `--start`
+(default 1) and `--prefix` (default empty). `reset-page-labels` removes all label rules. Both take `--out` and
+optional `--password`, retain encryption/permissions and use the existing overwrite safeguards. Invalid input
+leaves existing output unchanged, including with `--overwrite`. Page arguments remain physical and one-based;
+`info` reads back labels through `pages[].label`.
+
+```powershell
+sunipdf-cli set-page-labels input.pdf --from 1 --to 4 --style roman-lower --out labelled.pdf
+sunipdf-cli set-page-labels labelled.pdf --from 5 --style decimal --prefix "Appendix-" --start 1 --out appendix.pdf
+sunipdf-cli info appendix.pdf
+sunipdf-cli reset-page-labels appendix.pdf --out unlabelled.pdf
 ```
 
 Commands added in 0.9.0:

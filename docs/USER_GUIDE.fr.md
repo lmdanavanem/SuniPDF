@@ -341,9 +341,9 @@ puis Entrée. Un libellé correspondant prime sur le numéro : si le libellé `1
 saisir `1` ouvre la page 3. Saisissez `#1` pour choisir explicitement la page physique 1. Sans libellé correspondant,
 un nombre désigne la page physique. Une saisie inconnue, ambiguë ou hors limites conserve la page et affiche une explication.
 
-Les libellés sont uniquement lus. Leur création/modification et leur renumérotation sémantique après insertion,
-suppression, déplacement ou extraction ne sont pas proposées : les plages existantes peuvent rester liées aux
-positions physiques, et les fichiers extraits peuvent perdre leurs libellés. Un libellé vide, illisible, contenant
+Les libellés sont uniquement lus dans les paquets 0.13.0 publiés ; la création 0.14.0 est décrite plus bas. Aucune
+renumérotation sémantique après insertion, suppression, déplacement ou extraction : les plages existantes peuvent
+rester liées aux positions physiques, et les fichiers extraits peuvent perdre leurs libellés. Un libellé vide, illisible, contenant
 un caractère de contrôle ou dépassant 4096 octets UTF-8 revient à l'indice physique. La commande CLI `info` fournit
 `pages[].label` lorsqu'il existe ; tous les numéros de page CLI restent physiques et commencent à 1.
 
@@ -354,6 +354,28 @@ Alt+Gauche/Alt+Droite parcourt l'historique de page, position et zoom de l'ongle
 la même page. Terminez les saisies de texte ou formulaire en attente avant de suivre une destination. Les modes
 d'ajustement non pris en charge, les détails illisibles et une position `/FitH` nulle/absente reviennent à la page
 cible sans appliquer le zoom ni la position de destination.
+
+### Création d'étiquettes — 0.14.0 en développement
+
+Ouvrez **Pages → Étiquettes de page…**, ou la commande Étiquettes de page d'**Organiser les pages**. Définissez
+**Première page physique** et **Dernière page physique** : les deux bornes sont incluses. Choisissez décimal,
+romain majuscule/minuscule, lettres majuscules/minuscules ou préfixe seul, entrez le préfixe facultatif et le
+numéro de départ, puis **Appliquer**. Exemple romain : `i, ii, iii` ; les lettres suivent `A…Z, AA, BB…ZZ`,
+selon PDF. Préfixe seul répète le même texte sur chaque cible. Départ par défaut à 1 et toujours positif ;
+préfixe seul exige un texte non vide. Nouveaux préfixes sur une ligne de 256 octets UTF-8 au plus ; étiquettes
+générées bornées à 4096 octets. Saisie invalide ou arbre existant malformé : Appliquer refusé sans changement partiel.
+
+Les étiquettes hors plage conservent leur numérotation d'origine. **Réinitialiser tout** retire toutes les règles,
+même un arbre malformé, et rétablit la navigation par indices physiques. Cela n'efface pas de manière sécurisée
+les anciens objets de métadonnées. Aucun numéro imprimé n'est ajouté ou modifié : utilisez Numéroter les pages
+pour cela. Appliquer/Réinitialiser sont annulables ; enregistrez explicitement pour conserver les changements.
+L'avertissement existant de réécriture des documents signés s'applique aussi à ces métadonnées. Annuler/Rétablir
+une édition de contenu/étiquettes conserve vue/navigation si la géométrie est inchangée ; une opération structurelle
+continue à l'invalider.
+
+Après insertion, suppression ou déplacement, les plages suivent les positions physiques sans recalage sémantique.
+Vérifiez-les après réorganisation. Un doublon reste ambigu ; utilisez `#N` physique pour naviguer. Ces ajouts sont en
+validation et absents des paquets 0.13.0 publiés ; voir l'[état du projet](PROJECT_STATUS.fr.md).
 
 ## Compression des images et lots
 
@@ -505,6 +527,20 @@ pas chaque rectangle ajusté. Exemple :
 
 ```powershell
 sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf
+```
+
+**0.14.0 en développement :** `set-page-labels` accepte `--from` (1 par défaut), `--to` (dernière page par défaut),
+`--style decimal|roman-upper|roman-lower|letters-upper|letters-lower|prefix-only` (décimal par défaut), `--start`
+(1 par défaut) et `--prefix` (vide par défaut). `reset-page-labels` retire toutes les règles. Les deux commandes
+acceptent `--out` et `--password` facultatif, conservent chiffrement/permissions et les protections contre
+l'écrasement. Une saisie invalide préserve une sortie existante, même avec `--overwrite`. Les arguments de pages
+restent physiques à partir de 1 ; `info` relit les étiquettes via `pages[].label`.
+
+```powershell
+sunipdf-cli set-page-labels input.pdf --from 1 --to 4 --style roman-lower --out labelled.pdf
+sunipdf-cli set-page-labels labelled.pdf --from 5 --style decimal --prefix "Annexe-" --start 1 --out appendix.pdf
+sunipdf-cli info appendix.pdf
+sunipdf-cli reset-page-labels appendix.pdf --out unlabelled.pdf
 ```
 
 Nouvelles commandes 0.9.0 :

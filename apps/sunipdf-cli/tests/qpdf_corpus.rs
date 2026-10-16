@@ -156,6 +156,39 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         .arg(&destinations_saved);
     success(command);
     check(&qpdf, &destinations_saved, None);
+    let labelled = temp.path().join("authored-page-labels.pdf");
+    let mut command = cli(&["set-page-labels"], &[&fixture("page-labels.pdf")]);
+    command
+        .args([
+            "--from",
+            "2",
+            "--to",
+            "4",
+            "--style",
+            "roman-lower",
+            "--start",
+            "9",
+            "--prefix",
+            "É-",
+            "--out",
+        ])
+        .arg(&labelled);
+    assert_eq!(success(command)["count"], 3);
+    check(&qpdf, &labelled, None);
+    let info = success(cli(&["info"], &[&labelled]));
+    assert_eq!(info["pages"][1]["label"], "É-ix");
+    assert_eq!(info["pages"][3]["label"], "É-xi");
+    let reset_labels = temp.path().join("reset-page-labels.pdf");
+    let mut command = cli(&["reset-page-labels"], &[&labelled]);
+    command.arg("--out").arg(&reset_labels);
+    assert_eq!(success(command)["count"], 9);
+    check(&qpdf, &reset_labels, None);
+    let info = success(cli(&["info"], &[&reset_labels]));
+    assert!(info["pages"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|page| page["label"].is_null()));
     let original = fixture("two-pages.pdf");
     let original_bytes = std::fs::read(&original).unwrap();
     let signature_image = temp.path().join("signature.png");
@@ -205,6 +238,52 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
+        let encrypted_bytes = std::fs::read(&encrypted).unwrap();
+        let labelled = temp.path().join(format!("{name}-authored-labels.pdf"));
+        let mut command = cli(&["set-page-labels"], &[&encrypted]);
+        command
+            .args([
+                "--password",
+                "package-owner",
+                "--style",
+                "roman-lower",
+                "--prefix",
+                "É-",
+                "--out",
+            ])
+            .arg(&labelled);
+        assert_eq!(success(command)["count"], 2);
+        for password in ["package-user", "package-owner"] {
+            check(&qpdf, &labelled, Some(password));
+            let info = success(cli(&["info", "--password", password], &[&labelled]));
+            assert_eq!(info["pages"][0]["label"], "É-i");
+            assert_eq!(info["pages"][1]["label"], "É-ii");
+            let properties = success(cli(&["properties", "--password", password], &[&labelled]));
+            assert_eq!(properties["permissions"], opened["permissions"]);
+        }
+        let reset_labels = temp.path().join(format!("{name}-reset-labels.pdf"));
+        let mut command = cli(&["reset-page-labels"], &[&labelled]);
+        command
+            .args(["--password", "package-user", "--out"])
+            .arg(&reset_labels);
+        assert_eq!(success(command)["count"], 2);
+        for password in ["package-user", "package-owner"] {
+            check(&qpdf, &reset_labels, Some(password));
+            let info = success(cli(&["info", "--password", password], &[&reset_labels]));
+            assert!(info["pages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|page| page["label"].is_null()));
+            let text = bounded(
+                cli(&["text", "--password", password], &[&reset_labels]),
+                None,
+            );
+            assert!(text.status.success());
+            assert!(String::from_utf8_lossy(&text.stdout).contains("SuniPDF page 1"));
+            assert!(String::from_utf8_lossy(&text.stdout).contains("SuniPDF page 2"));
+        }
+        assert_eq!(std::fs::read(&encrypted).unwrap(), encrypted_bytes);
         let marked = temp.path().join(format!("{name}-signature-pages.pdf"));
         let mut command = cli(&["add-image"], &[&encrypted]);
         command

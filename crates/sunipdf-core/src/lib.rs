@@ -25,6 +25,7 @@ pub mod forms;
 pub mod geometry;
 pub mod links;
 pub mod ocr;
+pub mod page_labels;
 pub mod pages;
 pub mod redact;
 pub mod security;
@@ -56,6 +57,7 @@ pub use forms::{
 };
 pub use geometry::PageGeometry;
 pub use links::{is_safe_external_uri, Destination, DestinationView, LinkInfo};
+pub use page_labels::{PageLabelRange, PageLabelStyle};
 pub use pages::{write_atomic, write_new_copy, Rotation};
 pub use redact::{RedactMark, RedactOptions, RedactReport};
 pub use security::{Bookmark, Metadata, Properties, Protection, ProtectionProblem};
