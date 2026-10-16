@@ -5,9 +5,14 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [Non publiée] — 0.12.0 prévue
+## [0.12.0] — 2026-10-16
 
-Implémentation en développement ; validation et publication en attente dans `docs/PROJECT_STATUS.fr.md`.
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem`, release
+`414674886`, avec six fichiers vérifiés dans `dist/`. Source : `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`.
+Validation réussie : 398 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 859 clés EN/FR,
+48 contrôles qpdf, quatre documents NIST/NBS (744 pages ; 59,68 s), CI Windows et compilation ARM64 de même source.
+Dix scénarios portables, quatre bases MSI, paquets préparés/publics, contrôles renforcés des binaires et téléchargement
+vérifié par l'updater de production sans installation réussis. Preuves et limites : `docs/PROJECT_STATUS.fr.md`.
 
 ### Ajouts
 - Créer une liste déroulante modifiable dans Préparer un formulaire en cochant **Autoriser du texte libre en plus
@@ -22,7 +27,7 @@ Implémentation en développement ; validation et publication en attente dans `d
 ## [0.11.0] — 2026-10-16
 
 Validation et preuves de publication figurent dans `docs/PROJECT_STATUS.fr.md`.
-Publiée en Latest sous `lmdanavanem`, avec six fichiers publics vérifiés dans `dist/`. Validation réussie : 390 tests
+Publiée sous `lmdanavanem` (Latest à cette date), avec six fichiers publics vérifiés dans `dist/`. Validation réussie : 390 tests
 workspace, formatage/Clippy, 42 PDF distincts qpdf (44 contrôles), quatre documents réels (744 pages), CI Windows finale
 et ARM64 de même source. Neuf scénarios portables, trois bases MSI, binaires publics renforcés et updater de production
 réussis. Source immuable de la release : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.

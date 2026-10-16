@@ -5,9 +5,14 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [Unreleased] - planned 0.12.0
+## [0.12.0] - 2026-10-16
 
-Implementation is in development; validation and publication are pending in `docs/PROJECT_STATUS.md`.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release
+`414674886`, with six verified files in `dist/`. Source: `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`.
+Validation passed: 398 workspace tests (zero failed, seven default ignored), formatting/Clippy, 859 EN/FR keys,
+48 qpdf checks, four NIST/NBS documents (744 pages; 59.68 seconds), Windows CI and same-source ARM64 compilation.
+Ten portable scenarios and four MSI baselines passed, as did staged/public packages, enhanced binary checks and
+the production live updater's verified download without installation. Evidence and limits: `docs/PROJECT_STATUS.md`.
 
 ### Added
 - Create editable drop-downs in Prepare a form with **Allow custom text in addition to the listed options**, or
@@ -22,7 +27,7 @@ Implementation is in development; validation and publication are pending in `doc
 ## [0.11.0] - 2026-10-16
 
 Release validation and publication evidence are recorded in `docs/PROJECT_STATUS.md`.
-Published as Latest under `lmdanavanem`, with six verified public files in `dist/`. Validation passed: 390 workspace
+Published under `lmdanavanem` (Latest at the time), with six verified public files in `dist/`. Validation passed: 390 workspace
 tests, formatting/Clippy, 42 distinct qpdf PDFs (44 checks), four real documents (744 pages), final Windows CI and the
 same-source ARM64 build. Nine portable scenarios, three MSI baselines, enhanced public-binary checks and the production
 live updater passed. Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.

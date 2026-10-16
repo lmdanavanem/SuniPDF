@@ -3,10 +3,8 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0), publiée en Latest
+Ce guide couvre [SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
-
-Les passages **Développement 0.12.0** décrivent la prochaine version non publiée ; leur validation est en attente.
 
 ## Installation
 
@@ -244,7 +242,7 @@ dans le panneau des champs. Vos textes et modifications en attente restent dispo
 comme un formulaire vide. Réessayer relit les champs courants avant un import ou un effacement en attente.
 Aucune nouvelle tentative ne tourne en boucle.
 
-**Développement 0.12.0 :** les champs radio avec `/Opt` utilisent leurs valeurs d'export dans le panneau et les
+**0.12.0 :** les champs radio avec `/Opt` utilisent leurs valeurs d'export dans le panneau et les
 échanges JSON/XFDF/FDF, même si le nom d'état coché du widget PDF diffère. `form-fields` CLI conserve `on_state` et
 ajoute `widgets[].export_value`. Une correspondance malformée ou ambiguë place ce champ en lecture seule ; les
 autres restent remplissables. Sans `/Opt`, les radios gardent leurs valeurs fondées sur les noms d'état.
@@ -412,7 +410,7 @@ Pour les choix, une ligne `valeur exportée | libellé affiché` par option, val
 plusieurs sélections. Le rectangle radio contient les boutons verticaux ; libellés dans le panneau, pas comme texte ajouté
 à la page PDF. Création annulable, chiffrement conservé. Dessin de champs à la souris et création XFA non pris en charge.
 
-**Développement 0.12.0 :** pour une liste déroulante, cochez **Autoriser du texte libre en plus des options proposées**
+**0.12.0 :** pour une liste déroulante, cochez **Autoriser du texte libre en plus des options proposées**
 pour accepter les choix et des valeurs saisies. Gardez au moins un choix prédéfini avec une valeur d'export unique
 et non vide. Ce réglage concerne les nouvelles listes ; changer le drapeau d'un champ existant n'est pas proposé.
 
@@ -508,7 +506,7 @@ sunipdf-cli fill-form choix.pdf --values valeurs.xfdf --out rempli.pdf
 `rotate-objects` et `resize-objects` transforment un groupe ; `--help` décrit les options effectives.
 `compress-images` exige toujours une nouvelle copie, même avec `--overwrite`.
 
-Dans la CLI **en développement 0.12.0**, ajoutez `--editable` à `add-form-field --kind combo` pour accepter le
+Dans la CLI **0.12.0**, ajoutez `--editable` à `add-form-field --kind combo` pour accepter le
 texte libre ; les autres types refusent ce drapeau. Des choix prédéfinis restent requis.
 
 ## Limites actuelles

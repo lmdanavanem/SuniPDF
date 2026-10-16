@@ -5,7 +5,14 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.12.0: form creation and radio export compatibility (local gates passed)
+## 0.12.0: form creation and radio export compatibility (published as Latest)
+
+[SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) is stable **Latest** under
+`lmdanavanem`, release ID `414674886`, with six verified assets. Immutable tag/source:
+`3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. [Final Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688)
+and the same-source [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878)
+passed. The duplicate release x64 build/automatic draft publication was cancelled after ARM64 succeeded;
+the successful main-CI x64 packages and ARM64 artifact were used.
 
 Create editable drop-downs through Prepare a form or `add-form-field --kind combo --editable`, with predefined
 choices and custom text. Existing creation APIs keep their default choice-only behaviour. Radio `/Opt` export
@@ -23,13 +30,29 @@ documents (744 pages)** in 59.68 seconds. Tests include headless EN/FR authoring
 Undo/Redo, CLI save/reopen, cropped/rotated protected pages, owner-opened AES-128/256 and malformed mapping refusal.
 Portable and MSI upgrade gates now include the independently verified 0.11.0 public package baseline.
 
-Windows CI, ARM64 compilation, release packages, actual portable/MSI upgrades and publication remain pending.
-The currently published Latest release is 0.11.0. Native interactive dialogs, ARM64 hardware, physical printing,
-Narrator and third-party readers are not covered by these local gates; packages remain unsigned.
+Ten actual portable scenarios passed: upgrades from 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0 and 0.11.0, plus bad
+checksum, wrong architecture, locked-file rollback and the real 120-second close-timeout/concurrent-update guard.
+MSI installation, transactional rollback, upgrade, downgrade rejection, payload hashes, uninstall and user-data
+preservation passed from 0.8.0, 0.9.1, 0.10.0 and 0.11.0 on disposable Windows runners.
+
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,699,323 | `AD1ECB72A999F1A43602E58AD2634F9E80FD7925C90A90B9AD25FB9B6BDC1B83` |
+| ARM64 portable ZIP | 18,290,932 | `567362FB988C9C2C7FF60B67221BAC8D6901E05EF6F6FA25CB8CB1ADE47CD358` |
+| x64 MSI | 19,267,584 | `390A20B7B5999635FDC6F2FE99ED4BD25DE53EAB4623B820FEC2F9AF04AA0C89` |
+
+All six unauthenticated public downloads match API digests, SHA256 sidecars and the staged CI files; verified
+copies are in `dist/`. Both staged and public binaries passed architecture, English metadata/version, exact icon,
+licenses/OCR, MSI/ZIP payload, compression, forms/XFDF, grouped transform and protected-copy checks. The new checks
+also cover authored editable combos and a QPDF-generated `/Opt` radio fixture on plain and owner-opened AES-128/256
+PDFs, with independent qpdf validation. Original inputs stayed unchanged. The production live updater downloaded
+and verified the Latest 19,699,323-byte x64 ZIP without installation.
+Native interactive dialogs, ARM64 hardware, physical printing, Narrator and third-party readers remain unverified;
+packages remain unsigned. Scripted CI installation is not an interactive hardware claim.
 
 ## 0.11.0: navigation, forms and protected copies (published as Latest at that time)
 
-[SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) is stable **Latest** under `lmdanavanem`,
+[SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) was published as stable **Latest** under `lmdanavanem`,
 release ID `414626617`, with six assets. Immutable tag/source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.
 [Final Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) and the same-source
 [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) passed.

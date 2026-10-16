@@ -60,7 +60,7 @@ Provenance et source de release immuable `f7510afd314846079bbdd838525cd28372fd31
 
 ## 0.11.0 : navigation, formulaires et copies protégées (publiée)
 
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem`.
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem` ; Latest à cette date.
 
 La source 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
 `-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST réels
@@ -85,14 +85,21 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   résolue au chemin source. La CLI garde `encryption_removed: false` et ajoute `encrypted` ; la politique existante
   des permissions ne change pas. Contrôles locaux, CI, paquets et régressions de mise à niveau réussis ; preuves dans `PROJECT_STATUS.fr.md`.
 
-## 0.12.0 : création de champs et valeurs d'export radio (en développement)
+## 0.12.0 : création de champs et valeurs d'export radio (publiée en Latest)
 
 - Créer des listes déroulantes modifiables par la case de l'interface ou `add-form-field --kind combo --editable` ;
   conserver choix prédéfinis requis, noms uniques, contrôles de géométrie/protection et annulation.
 - Distinguer valeurs d'export radio `/Opt` et états d'apparence, y compris dans les échanges JSON/XFDF/FDF.
   Ajouter `widgets[].export_value` aux informations CLI sans modifier `on_state` ; correspondances malformées ou
   dupliquées : champ concerné en lecture seule. Sans `/Opt`, les radios conservent les noms d'état.
-- Validation et publication en attente ; résultats exécutés dans `PROJECT_STATUS.fr.md` (D100–D101).
+- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem` (release
+  `414674886`), source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation réussie : 398 tests workspace (zéro échec,
+  sept ignorés par défaut), formatage/Clippy, 859 clés EN/FR, 48 contrôles qpdf et quatre documents NIST/NBS (744 pages ;
+  59,68 s). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) et
+  [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878) réussis,
+  ainsi que dix scénarios portables, quatre bases MSI (0.8.0/0.9.1/0.10.0/0.11.0), six fichiers préparés/publics et
+  contrôles renforcés des binaires. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
+  Fichiers vérifiés dans `dist/` ; preuves et limites dans `PROJECT_STATUS.fr.md` (D100–D101).
 
 ## Travail restant au-delà de ce lot
 
@@ -147,8 +154,8 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 - échanges JSON/XFDF/FDF et panneau Appliquer groupé implémentés en 0.10.0 ; validation dans `PROJECT_STATUS.fr.md` ;
-- Texte libre livré en 0.11.0 ; création de listes modifiables et correspondances radio `/Opt` dans le lot 0.12.0
-  en développement ci-dessus. Activation clavier livrée en 0.10.0 ; Narrateur Windows non vérifié
+- Texte libre livré en 0.11.0 ; création de listes modifiables et correspondances radio `/Opt` livrées en 0.12.0.
+  Activation clavier livrée en 0.10.0 ; Narrateur Windows non vérifié
   (noms `labelled_by` posés, non écoutés).
 - aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
   `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;

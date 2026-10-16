@@ -32,8 +32,8 @@ Licence MIT ou Apache-2.0, au choix.
 | Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
-| Remplir et signer | AcroForm, texte libre des listes déjà modifiables, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles, paraphe, date |
-| Créer des formulaires | Champs texte, cases, groupes radio et listes simples/multiples nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
+| Remplir et signer | AcroForm, texte libre des listes modifiables, exports radio `/Opt`, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles, paraphe, date |
+| Créer des formulaires | Champs texte, cases, groupes radio, listes déroulantes ordinaires/modifiables et zones de liste simples/multiples nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
 | Récupérer | Instantanés automatiques toutes les 60 secondes et à la suspension ; source intacte, chiffrement PDF conservé, aucun mot de passe stocké, restauration Enregistrer sous |
 | Imprimer | Sélection native Windows, plages/copies/orientation, modifications courantes, rendu tramé borné, progression et annulation |
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
@@ -47,15 +47,15 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.11.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0)** sous `lmdanavanem`.
-390 tests du workspace, formatage/Clippy, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts, quatre documents NIST
-(744 pages), CI Windows finale, compilation ARM64, neuf scénarios portables et trois bases de mise à niveau MSI réussis.
-Les paquets préparés passent aussi copies AES-128/256 ouvertes comme propriétaire, libellés, OCR, formulaires et compression.
-Six téléchargements publics, contrôles renforcés des binaires et vérification du ZIP Latest x64 par le metteur à jour
-réussis sans installation. Preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
+**[0.12.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0)** sous `lmdanavanem`.
+398 tests du workspace, formatage/Clippy, 859 clés EN/FR, 48 contrôles qpdf et quatre documents NIST/NBS réels
+(744 pages ; 59,68 s) réussis, ainsi que CI Windows finale, compilation ARM64, dix scénarios portables et quatre
+bases de mise à niveau MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies
+vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
+Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-En développement pour 0.12.0 : création de listes déroulantes modifiables et valeurs d'export `/Opt` des radios
-cohérentes entre interface et échanges JSON/XFDF/FDF. Validation et publication en attente ; voir la [roadmap](docs/ROADMAP.fr.md).
+Nouveautés 0.12.0 : création de listes déroulantes modifiables et exports radio `/Opt` cohérents entre interface et
+échanges JSON/XFDF/FDF. Les radios malformés ou ambigus restent en lecture seule ; voir la [roadmap](docs/ROADMAP.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

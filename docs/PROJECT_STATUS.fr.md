@@ -5,7 +5,14 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.12.0 : création de formulaires et exports radio (contrôles locaux réussis)
+## 0.12.0 : création de formulaires et exports radio (publiée en Latest)
+
+[SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) est stable **Latest** sous
+`lmdanavanem`, release ID `414674886`, avec six fichiers vérifiés. Tag/source immuable :
+`3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. La [CI Windows x64 finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688)
+et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878)
+ont réussi. Le build x64 en double et la publication automatique en brouillon ont été annulés après le succès
+ARM64 ; les paquets x64 de la CI principale et l'artefact ARM64 ont été utilisés.
 
 Création de listes déroulantes à saisie libre dans Préparer un formulaire ou avec
 `add-form-field --kind combo --editable`, en conservant des choix prédéfinis. Les API existantes gardent leur
@@ -26,13 +33,31 @@ création/remplissage sur le vrai worker avec Annuler/Rétablir, CLI avec sauveg
 et protégées, ouverture propriétaire AES-128/256 et refus des mappings malformés.
 Les contrôles de mise à jour portable/MSI incluent maintenant les paquets publics 0.11.0 vérifiés indépendamment.
 
-CI Windows, compilation ARM64, paquets, mises à jour portable/MSI réelles et publication restent en attente.
-La release Latest publiée est actuellement la 0.11.0. Dialogues natifs interactifs, matériel ARM64, impression
-physique, Narrator et lecteurs tiers ne sont pas couverts par ces contrôles locaux ; les paquets restent non signés.
+Dix scénarios portables réels ont réussi : mises à jour depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0 et 0.11.0,
+empreinte incorrecte, mauvaise architecture, retour arrière sur fichier verrouillé et vrai délai de fermeture de
+120 secondes avec verrou de mise à jour concurrente. Installation MSI, retour arrière transactionnel, mise à jour,
+refus de retour de version, empreintes, désinstallation et conservation des données ont réussi depuis 0.8.0,
+0.9.1, 0.10.0 et 0.11.0 sur des runners Windows jetables.
+
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 699 323 | `AD1ECB72A999F1A43602E58AD2634F9E80FD7925C90A90B9AD25FB9B6BDC1B83` |
+| ZIP portable ARM64 | 18 290 932 | `567362FB988C9C2C7FF60B67221BAC8D6901E05EF6F6FA25CB8CB1ADE47CD358` |
+| MSI x64 | 19 267 584 | `390A20B7B5999635FDC6F2FE99ED4BD25DE53EAB4623B820FEC2F9AF04AA0C89` |
+
+Les six téléchargements publics sans authentification correspondent aux empreintes API, aux fichiers SHA256 et
+aux paquets CI ; les copies vérifiées sont dans `dist/`. Les binaires préparés puis publics ont passé les contrôles
+d'architecture, version/métadonnées anglaises, icône exacte, licences/OCR, contenu MSI/ZIP, compression,
+formulaires/XFDF, transformations groupées et copies protégées. Les nouveaux contrôles couvrent les combos éditables
+créés et une fixture radio `/Opt` produite par QPDF, en clair et en AES-128/256 ouvert par le propriétaire, avec
+validation qpdf indépendante. Les sources sont restées inchangées. Le vrai module de mise à jour a téléchargé
+et vérifié le ZIP x64 Latest de 19 699 323 octets sans installation.
+Dialogues natifs interactifs, matériel ARM64, impression physique, Narrator et lecteurs tiers restent non vérifiés ;
+les paquets restent non signés. Une installation CI scriptée ne constitue pas une validation interactive matérielle.
 
 ## 0.11.0 : navigation, formulaires et copies protégées (publiée en Latest à cette date)
 
-[SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) est stable **Latest** sous `lmdanavanem`,
+[SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) a été publiée stable **Latest** sous `lmdanavanem`,
 release ID `414626617`, avec six fichiers. Tag/source immuable : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.
 [CI Windows x64 finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) et
 [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) réussis.

@@ -30,8 +30,8 @@
 | Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages; extraction/split preserve source encryption, passwords and permissions |
-| Fill and sign | AcroForm filling, custom text in existing editable drop-downs, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; visual signatures, initials and date |
-| Create forms | Named text fields, checkboxes, radio groups, drop-downs and single/multiple-selection lists through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
+| Fill and sign | AcroForm filling, editable drop-down text, radio `/Opt` export values, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; visual signatures, initials and date |
+| Create forms | Named text fields, checkboxes, radio groups, ordinary/editable drop-downs and single/multiple-selection lists through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
 | Recover | Automatic snapshots every 60 seconds and on tab suspension; original unchanged, PDF encryption preserved, no passwords stored, restore through Save As |
 | Print | Native Windows printer selection, page ranges/copies/orientation, current edits, bounded raster output, progress and cancellation |
 | Stamp | Text watermarks and page numbering |
@@ -45,15 +45,15 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**[0.11.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0)** under `lmdanavanem`.
-390 workspace tests, formatting/Clippy, 858 EN/FR keys, 44 qpdf checks across 42 distinct PDFs, four real NIST documents
-(744 pages), final Windows CI, ARM64 compilation, nine portable scenarios and three MSI upgrade baselines passed.
-Staged package checks include protected owner-opened AES-128/256 copies, page labels, OCR, forms and compression.
-All six public downloads and enhanced public-binary checks passed; the production updater verified the Latest x64
-ZIP without installation. [Project status](docs/PROJECT_STATUS.md) records evidence and hardware/interoperability limits.
+**[0.12.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0)** under `lmdanavanem`.
+398 workspace tests, formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four real NIST/NBS documents
+(744 pages; 59.68 seconds) passed, alongside final Windows CI, ARM64 compilation, ten portable scenarios and four
+MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks passed; verified files are
+in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
+[Project status](docs/PROJECT_STATUS.md) records source, release evidence and hardware/interoperability limits.
 
-In development for 0.12.0: create editable drop-downs and use radio-button `/Opt` export values consistently in
-the app and JSON/XFDF/FDF interchange. Validation and publication are pending; see the [roadmap](docs/ROADMAP.md).
+New in 0.12.0: create editable drop-downs and use radio-button `/Opt` export values consistently in the app and
+JSON/XFDF/FDF interchange. Malformed or ambiguous radio fields remain read-only; see the [roadmap](docs/ROADMAP.md).
 
 ## Screenshots
 

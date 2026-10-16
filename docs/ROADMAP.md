@@ -58,7 +58,7 @@ to page navigation. Also implemented for 0.11.0: free text in existing editable 
 editor, and extraction/split copies retaining source encryption/passwords/permissions with same-source-path refusal.
 The existing permission policy is unchanged; editable drop-down authoring was outside the 0.11.0 scope.
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`; Latest at the time.
 
 The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
 `-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
@@ -70,12 +70,21 @@ Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six un
 binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
 and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
-## 0.12.0: editable field creation and radio exports (in development)
+## 0.12.0: editable field creation and radio exports (published as Latest)
 
 Create editable drop-downs from Prepare a form or `add-form-field --kind combo --editable`, with predefined choices
 still required. Radio `/Opt` export values are separated from widget appearance states for filling and JSON/XFDF/FDF
 interchange; CLI information adds `widgets[].export_value`. Malformed or duplicate mappings keep the affected
-field read-only; no-`/Opt` radios retain state-name values. Validation and publication are pending (D100–D101).
+field read-only; no-`/Opt` radios retain state-name values (D100–D101).
+
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release
+`414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. The 398 workspace tests (zero failed, seven default
+ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages; 59.68 seconds)
+passed. [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688), the
+[same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878), ten portable
+scenarios and four MSI baselines passed. All six staged/public files and enhanced binary checks passed; verified
+files are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
+Executed evidence and hardware/interoperability limits are recorded in `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -100,7 +109,9 @@ fonts, stamps/watermarks/numbering, threaded comments, metadata, visual signatur
 text/checkbox creation and autosave/recovery.
 
 Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
-FDF/XFDF interchange and keyboard page widgets. Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
+FDF/XFDF interchange and keyboard page widgets.
+Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
+Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
 ## Phase 4: conversion and OCR — partially delivered
@@ -131,7 +142,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.11.0 lot
+## Next work after the 0.12.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

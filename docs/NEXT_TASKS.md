@@ -60,7 +60,7 @@ Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` re
 
 ## 0.11.0: navigation, forms and protected copies (published)
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`; Latest at the time.
 
 The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
 `-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
@@ -84,14 +84,21 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   that resolves to the source path. CLI keeps `encryption_removed: false` and adds `encrypted`; the existing
   document-permission policy is unchanged. Local, CI, package and upgrade regression gates passed; evidence is in `PROJECT_STATUS.md`.
 
-## 0.12.0: form authoring and radio export values (in development)
+## 0.12.0: form authoring and radio export values (published as Latest)
 
 - Create editable drop-downs through the desktop checkbox or CLI `add-form-field --kind combo --editable`;
   retain required predefined choices, unique names, existing geometry/protection checks and undo.
 - Map radio `/Opt` export values independently of widget appearance states, including JSON/XFDF/FDF interchange.
   Add `widgets[].export_value` to CLI information without changing `on_state`; fields with malformed or duplicate
   export mappings stay read-only. Radios without `/Opt` retain state-name values.
-- Validation and publication are pending; executed results belong in `PROJECT_STATUS.md` (D100–D101).
+- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (release
+  `414674886`), source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation passed: 398 workspace tests (zero failed,
+  seven default ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages;
+  59.68 seconds). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) and the
+  [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878) passed,
+  plus ten portable scenarios, four MSI baselines (0.8.0/0.9.1/0.10.0/0.11.0), all six staged/public files and
+  enhanced binary checks. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
+  Verified files are in `dist/`; evidence and limits are in `PROJECT_STATUS.md` (D100–D101).
 
 ## Remaining work beyond this lot
 
@@ -145,8 +152,8 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 - JSON/XFDF/FDF interchange and grouped panel Apply are implemented for 0.10.0; validation is tracked in `PROJECT_STATUS.md`.
-- Editable drop-down filling shipped in 0.11.0; new editable fields and radio `/Opt` mapping are in the 0.12.0
-  development lot above. Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
+- Editable drop-down filling shipped in 0.11.0; new editable fields and radio `/Opt` mapping shipped in 0.12.0.
+  Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
   (`labelled_by` names set, not listened to).
 - flattening: also keep the annotations without an appearance other than links (attachments without
   `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;

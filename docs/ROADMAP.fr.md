@@ -59,7 +59,7 @@ déroulantes déjà modifiables dans le panneau/sur la page, et copies d'extract
 mots de passe et permissions, avec refus du chemin source. Politique des permissions inchangée ; création du
 drapeau de liste modifiable hors du périmètre 0.11.0.
 
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem`.
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem` ; Latest à cette date.
 
 La source 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
 `-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST réels
@@ -72,13 +72,22 @@ téléchargements publics concordent avec les empreintes API/SHA256/paquets ; co
 binaires publics. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 687 375 octets sans installation.
 Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
-## 0.12.0 : création de listes modifiables et exports radio (en développement)
+## 0.12.0 : création de listes modifiables et exports radio (publiée en Latest)
 
 Créer des listes déroulantes modifiables depuis Préparer un formulaire ou `add-form-field --kind combo --editable`,
 avec choix prédéfinis toujours requis. Les exports radio `/Opt` sont distingués des états d'apparence pour remplir
 et échanger JSON/XFDF/FDF ; informations CLI enrichies de `widgets[].export_value`. Une correspondance malformée ou
 dupliquée garde le champ concerné en lecture seule ; sans `/Opt`, les noms d'état restent les valeurs radio.
-Validation et publication en attente (D100–D101).
+Décisions D100–D101.
+
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem`, release
+`414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Les 398 tests workspace (zéro échec, sept ignorés par
+défaut), formatage/Clippy, 859 clés EN/FR, 48 contrôles qpdf et quatre documents NIST/NBS (744 pages ; 59,68 s)
+sont réussis. [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688),
+[job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878), dix scénarios
+portables et quatre bases MSI réussis. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ;
+copies vérifiées dans `dist/`. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
+Preuves exécutées et limites matérielles/d'interopérabilité dans `PROJECT_STATUS.fr.md`.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -103,6 +112,7 @@ tampons/filigranes/numérotation, commentaires, métadonnées, signatures visuel
 création de champs texte/case et sauvegarde/récupération.
 
 Livrés en 0.10.0 : transformations groupées, recadrage souris, champs radio/listes, échanges FDF/XFDF de valeurs et clavier.
+Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, avec lecture seule conservatrice si nécessaire.
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
@@ -134,7 +144,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite après le lot 0.11.0
+## Suite après le lot 0.12.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

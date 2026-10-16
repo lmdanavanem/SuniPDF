@@ -16,7 +16,7 @@ The 0.9.1 workspace, qpdf and real portable/MSI regressions passed; package/publ
 The 362 workspace tests, 31 synthetic qpdf checks, four real NIST documents (744 pages), eight portable scenarios,
 two MSI baselines and all six public assets passed verification; evidence is recorded in `PROJECT_STATUS.md`.
 
-[0.11.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
+[0.11.0 is published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`; Latest at the time.
 
 The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
 `-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
@@ -27,6 +27,15 @@ checks include owner-opened AES-128/256 copies, decoded content/qpdf, page label
 Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six unauthenticated public downloads match API/sidecar/staged hashes; enhanced checks passed again on public
 binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
 and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
+
+[0.12.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release
+`414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation passed: 398 workspace tests (zero failed,
+seven default ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages;
+59.68 seconds). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) and the
+[same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878) passed, plus
+ten portable scenarios, four MSI baselines, all six staged/public files and enhanced binary checks. Verified files
+are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
+Hardware, interactive UI and reader limits remain in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -117,8 +126,8 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 | FDF/XFDF import/export | Declared | **Done in 0.10.0**: JSON/XFDF export, strict bounded JSON/XFDF/FDF value import and grouped panel Apply/Discard with one undo; value-only FDF subset, no scripts/attachments/rich text |
 | Form-read failure recovery | Not documented | **Delivered in 0.11.0**: explicit error/retry preserves drafts and pending actions; local tests passed |
 | Existing editable drop-down free text | Not documented | **Delivered in 0.11.0**: panel/on-page custom text plus listed choices, Apply/Discard/Save and undo; local, CI, package and upgrade gates passed |
-| Create editable drop-downs | Not documented | **In development for 0.12.0**: desktop checkbox and CLI `add-form-field --kind combo --editable`; nonempty predefined choices still required; validation/publication pending |
-| Radio `/Opt` export values | Not documented | **In development for 0.12.0**: separate export values from raw widget states across filling/JSON/XFDF/FDF; additive CLI `widgets[].export_value`; malformed/duplicate mappings keep that field read-only; no-`/Opt` behaviour unchanged; validation/publication pending |
+| Create editable drop-downs | Not documented | **Delivered in 0.12.0**: desktop checkbox and CLI `add-form-field --kind combo --editable`; nonempty predefined choices still required; local, CI, package and upgrade gates passed |
+| Radio `/Opt` export values | Not documented | **Delivered in 0.12.0**: separate export values from raw widget states across filling/JSON/XFDF/FDF; additive CLI `widgets[].export_value`; malformed/duplicate mappings keep that field read-only; no-`/Opt` behaviour unchanged; local, CI, package and upgrade gates passed |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
 
@@ -138,6 +147,6 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.11.0 ZIP/MSI published as Latest; nine real portable scenarios and three MSI baselines (install/rollback/upgrade/downgrade rejection/uninstall) passed; six public files/SHA256 and packaged checks verified; production live updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.11.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.12.0 ZIP/MSI published as Latest; ten real portable scenarios and four MSI baselines (install/rollback/upgrade/downgrade rejection/uninstall) passed; six public files/SHA256 and packaged checks verified; production live updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.12.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

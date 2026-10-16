@@ -212,12 +212,12 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      FDF export are unsupported. XML DTDs, processing instructions, unknown elements, duplicate names and excessive
      size/depth are refused; referenced document paths are never opened. Input cap: 16 MiB.
      0.11.0 delivers editable-combo free text in the panel/on page; local, CI and packaged checks passed.
-     In development for 0.12.0: create editable combos (predefined choices still required) and map radio `/Opt`
-     export values separately from appearance states. Malformed/duplicate mappings keep the affected field read-only;
+     0.12.0 delivers editable combo creation (predefined choices still required) and radio `/Opt` mapping:
+     export values are kept separate from appearance states. Malformed/duplicate mappings keep the affected field read-only;
      so do malformed raw `/Kids`, duplicate widget references and non-UTF-8 appearance names. Unchanged read-only
      values can be exported and imported, including literal `Off` or empty strings. Filling another field preserves
      raw `/V` and `/AS`; PDFium may regenerate a missing appearance and remove inferred read-only status once valid.
-     No-`/Opt` radios retain state-name values. Validation/publication pending. Existing fields' editable flags cannot
+     No-`/Opt` radios retain state-name values. Local, CI, package/public and upgrade checks passed. Existing fields' editable flags cannot
      be changed; mouse-drawn creation is unavailable. Rich text becomes plain text; password fields never stored/exported.
      Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
      field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
