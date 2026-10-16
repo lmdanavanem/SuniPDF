@@ -469,6 +469,10 @@ impl SuniApp {
     }
 
     pub fn go_to_page(&mut self, page: usize) {
+        if self.annotate.adv.free_text.is_some() {
+            self.status_msg = Some(self.t("free_text.finish_first").into());
+            return;
+        }
         if let Some(doc) = &self.document {
             self.view.reading.history.jump(
                 doc.page,
@@ -830,6 +834,7 @@ impl SuniApp {
                     has_signatures,
                 }) => {
                     self.form_builder.cancel();
+                    self.annotate.adv.free_text = None;
                     if self
                         .annotate
                         .adv
@@ -996,6 +1001,12 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    if let Some(prompt) = &mut self.annotate.adv.free_text {
+                        if prompt.pending {
+                            prompt.pending = false;
+                            self.status_msg = Some(self.t("free_text.retry").into());
+                        }
+                    }
                     if let Some(draft) = &mut self.annotate.adv.ink_draft {
                         if draft.pending {
                             draft.pending = false;
@@ -1092,7 +1103,10 @@ impl SuniApp {
     }
 
     pub fn has_unsaved_changes(&self) -> bool {
-        self.dirty || self.forms.has_unsaved_input() || self.ink_draft_active()
+        self.dirty
+            || self.forms.has_unsaved_input()
+            || self.ink_draft_active()
+            || self.annotate.adv.free_text.is_some()
     }
 
     pub(crate) fn form_builder_ready(&self) -> bool {
@@ -1277,6 +1291,7 @@ impl SuniApp {
     // ----- Entrées ---------------------------------------------------------
 
     fn handle_input(&mut self, ctx: &egui::Context) {
+        self.validate_free_text();
         self.validate_form_builder();
         if self.form_builder.drawing
             && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
@@ -2910,9 +2925,10 @@ impl eframe::App for SuniApp {
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
                     .show(ui, |ui| {
-                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
-                            self.bookmarks_panel(&ctx, ui)
-                        });
+                        ui.add_enabled_ui(
+                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            |ui| self.bookmarks_panel(&ctx, ui),
+                        );
                     });
             }
             if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
@@ -2925,9 +2941,10 @@ impl eframe::App for SuniApp {
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
                     .show(ui, |ui| {
-                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
-                            self.comments_panel(&ctx, ui)
-                        });
+                        ui.add_enabled_ui(
+                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            |ui| self.comments_panel(&ctx, ui),
+                        );
                     });
             }
             if self.document.is_some() && self.edit.objects_open && !self.organize.active {
@@ -2940,9 +2957,10 @@ impl eframe::App for SuniApp {
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
                     .show(ui, |ui| {
-                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
-                            self.objects_panel(&ctx, ui)
-                        });
+                        ui.add_enabled_ui(
+                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            |ui| self.objects_panel(&ctx, ui),
+                        );
                     });
             }
             if self.document.is_some() && self.forms.panel_open && !self.organize.active {
@@ -2955,9 +2973,10 @@ impl eframe::App for SuniApp {
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
                     .show(ui, |ui| {
-                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
-                            self.forms_panel(&ctx, ui)
-                        });
+                        ui.add_enabled_ui(
+                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            |ui| self.forms_panel(&ctx, ui),
+                        );
                     });
             }
             if self.document.is_some() {
@@ -2972,9 +2991,10 @@ impl eframe::App for SuniApp {
                         .default_size(170.0)
                         .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
                         .show(ui, |ui| {
-                            ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
-                                self.thumbnails_panel(&ctx, ui)
-                            });
+                            ui.add_enabled_ui(
+                                !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                                |ui| self.thumbnails_panel(&ctx, ui),
+                            );
                         });
                 }
             }
@@ -3011,7 +3031,10 @@ impl eframe::App for SuniApp {
                     ui.colored_label(p.text_muted, self.t("certificate.dirty_warning"));
                 }
                 if !self.reading_full_screen {
-                    ui.add_enabled_ui(!self.ink_draft_active(), |ui| self.forms_bar(&ctx, ui));
+                    ui.add_enabled_ui(
+                        !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                        |ui| self.forms_bar(&ctx, ui),
+                    );
                 }
                 self.document_area(&ctx, ui);
             });

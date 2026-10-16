@@ -1,9 +1,39 @@
-# Project status - updated 2026-10-16 (0.19.0 stable Latest)
+# Project status - updated 2026-10-16 (0.20.0 in development; 0.19.0 stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.20.0: on-page FreeText creation and editing (in development)
+
+The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
+Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
+**Cancel** with the existing size, colour, background and border controls. The existing AddFreeText /
+UpdateFreeText worker operations keep validation, protection and one Undo step; no new dependency,
+annotation type or CLI command is added (53 commands remain).
+
+The draft stays bound to its original page. Zoom remains available; conflicting navigation waits for
+confirmation/cancellation. Document revision/tab/tool/workspace changes cancel stale editing. Pending
+open/save/mutations and concurrent drafts are guarded; validation or worker failure retains typed text
+for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchanged. The editor draft
+exists only in memory until confirmation and has no crash recovery.
+
+Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
+default ignored; formatting and 912 matching EN/FR keys passed. All-target Clippy with warnings denied passed. The existing 75-check
+qpdf gate, four-document/744-page real corpus and update-helper self-test passed. CI/upgrade, staged/public
+package and production-updater gates for 0.20.0 are pending. **0.19.0 remains the current stable Latest**;
+its executed evidence below is not a validation claim for 0.20.0.
+
+Observed 0.20.0 local evidence so far: 75 qpdf checks passed. Four licensed NIST/NBS documents
+(744 pages) passed in 58.260 seconds, with sampled peak child memory of 331,800,576 bytes; source files
+stayed unchanged. The update-helper path/checksum/rollback self-test passed. The 468-test workspace includes
+eight new desktop regressions and the extended native-worker FreeText create/update, Undo/Redo,
+save/reopen, protected-document and failure regression. Headless UI cases cover real mouse rectangle
+coordinates, long text with visible Cancel, explicit submission, lifecycle guards, failure retention and
+blocked search navigation. Quick rectangle drags now use the release position. Planned CI coverage is
+eighteen portable cases (fourteen upgrades and four guards) and twelve MSI baselines/sixty logs; those
+new-version scenarios have not yet been executed. Packages/public downloads and updater remain pending.
 
 ## 0.19.0: mouse placement of existing form fields (published stable Latest)
 

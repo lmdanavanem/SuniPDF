@@ -926,6 +926,9 @@ impl SuniApp {
         if let Some(p) = self.edit.text_prompt.as_ref().filter(|p| p.inline) {
             v.push(p.page);
         }
+        if let Some(p) = &self.annotate.adv.free_text {
+            v.push(p.page);
+        }
         if let Some(e) = &self.forms.editing {
             v.push(e.page);
         }
@@ -934,11 +937,13 @@ impl SuniApp {
 
     /// Zone document : fenêtre de pages, zoom, défilement, tuiles, interactions.
     pub fn document_view(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.validate_free_text();
         self.validate_form_builder();
         if self.view.reading.rotation != ViewRotation::Upright
             && (self.annotate.tool != crate::annotate::Tool::Select
                 || self.sign.placing.is_some()
                 || self.edit.text_prompt.is_some()
+                || self.annotate.adv.free_text.is_some()
                 || self.forms.editing.is_some()
                 || self.forms.popup.is_some()
                 || self.form_builder.drawing)
@@ -1095,7 +1100,7 @@ impl SuniApp {
             self.handle_page_event(page, ev, shift);
         }
         self.form_builder_pointer(ctx, &layout, out.inner_rect);
-        if !self.form_builder.drawing {
+        if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
             self.reading_pointer(ctx, &layout, out.inner_rect);
             self.object_bar(ctx, doc_rect);
             self.annot_bar(ctx, doc_rect);
@@ -1167,6 +1172,7 @@ impl SuniApp {
         }
         if !self.form_builder.drawing {
             self.inline_text_editor(ctx, s.rect, s.page, h);
+            self.free_text_editor(ctx, s.rect, s.page, h);
         }
 
         let interact = ui.interact(
@@ -1217,6 +1223,14 @@ impl SuniApp {
                 .interact_pointer_pos()
                 .map(|p| DragEvent::Move(to_pdf(p)));
         } else if interact.drag_stopped() {
+            if let Some(pt) = interact.interact_pointer_pos().map(to_pdf) {
+                if let Some(drag) = self.annotate.drag.as_mut().filter(|d| d.page == s.page) {
+                    drag.current = pt;
+                    let drag = *drag;
+                    self.edit_drag_moved(&drag);
+                    self.adv_drag_moved(&drag);
+                }
+            }
             event = Some(DragEvent::Stop);
         } else if interact.double_clicked() {
             event = interact
@@ -1238,7 +1252,7 @@ impl SuniApp {
         interact.on_hover_cursor(self.page_cursor(s.page, hover));
         // Champs de formulaire : créés après le widget de la page pour avoir la priorité du clic ;
         // éditeur et liste de choix de cette page par-dessus.
-        if !self.form_builder.drawing {
+        if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
             if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
                 self.forms_activate(s.page, field, widget);
             }
@@ -1551,6 +1565,10 @@ impl SuniApp {
     /// Aller au point (x, y depuis le haut, en points) d'une page (résultat de recherche) : s'il
     /// n'est pas déjà visible, il est amené au tiers supérieur.
     pub fn go_to_page_point(&mut self, page: usize, x_pt: f32, y_from_top_pt: f32) {
+        if self.annotate.adv.free_text.is_some() {
+            self.status_msg = Some(self.t("free_text.finish_first").into());
+            return;
+        }
         self.go_to_page(page);
         if let Some(doc) = &self.document {
             let page = doc.page;
@@ -1631,6 +1649,9 @@ impl SuniApp {
 
     /// Un événement de souris sur une page ; un seul glissement à la fois.
     fn handle_page_event(&mut self, page: usize, ev: DragEvent, shift: bool) {
+        if self.annotate.adv.free_text.is_some() {
+            return;
+        }
         if self.form_builder.drawing {
             self.validate_form_builder();
             if self.form_builder.drawing {
@@ -1814,6 +1835,252 @@ fn reading_edge_scroll(pointer: Pos2, inner: Rect, dt: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn free_text_blocks_same_page_and_other_page_search_jumps_until_cancelled() {
+        use crate::worker::Response;
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        let doc = app.document.as_mut().unwrap();
+        doc.info.page_sizes = vec![doc.info.page_sizes[0]; 2];
+        app.annotate.tool = crate::annotate::Tool::FreeText;
+        app.adv_click(0, (40.0, 700.0));
+        let prompt = app.annotate.adv.free_text.as_mut().unwrap();
+        prompt.text = "Keep this draft".into();
+        let rect = prompt.rect;
+        app.zoom = Zoom::Fixed(1.25);
+        app.view.pending = None;
+        app.view.nav_lock = None;
+        app.view.offset = egui::vec2(30.0, 160.0);
+        let search_result = |page| Response::SearchResults {
+            generation: 0,
+            matches: vec![sunipdf_core::TextMatch {
+                page,
+                rects: vec![sunipdf_core::PointRect {
+                    left: 110.0,
+                    bottom: 220.0,
+                    right: 180.0,
+                    top: 240.0,
+                }],
+            }],
+        };
+        for page in 0..2 {
+            responses.send(search_result(page)).unwrap();
+            app.handle_responses(&ctx);
+            assert_eq!(app.document.as_ref().unwrap().page, 0);
+            assert_eq!(app.zoom, Zoom::Fixed(1.25));
+            assert_eq!(app.view.offset, egui::vec2(30.0, 160.0));
+            assert!(app.view.pending.is_none() && app.view.nav_lock.is_none());
+            let prompt = app.annotate.adv.free_text.as_ref().unwrap();
+            assert_eq!(prompt.text, "Keep this draft");
+            assert_eq!(prompt.rect, rect);
+            assert_eq!(
+                app.status_msg.as_deref(),
+                Some(app.t("free_text.finish_first"))
+            );
+            assert!(requests.try_recv().is_err());
+        }
+        app.annotate.adv.free_text = None;
+        responses.send(search_result(1)).unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(app.document.as_ref().unwrap().page, 1);
+        assert_eq!(
+            app.view.pending,
+            Some(ScrollRequest::PagePoint {
+                page: 1,
+                x_pt: 110.0,
+                y_from_top_pt: 552.0,
+            })
+        );
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn quick_drag_release_keeps_shapes_and_markup_without_duplicate_edits() {
+        use crate::annotate::Tool;
+        for tool in [Tool::AnnotRect, Tool::Highlight] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+            app.annotate.tool = tool;
+            app.zoom = Zoom::Fixed(1.0);
+            let run = |app: &mut SuniApp, events| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1280.0, 800.0))),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| app.document_view(&ctx, ui),
+                );
+                output.textures_delta.clear();
+            };
+            for _ in 0..3 {
+                run(&mut app, vec![]);
+            }
+            let (_, page, height) = app.edit.page_view.unwrap();
+            let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+            let start = page.min + vec2(50.0 * k, (height - 700.0) * k);
+            let end = page.min + vec2(180.0 * k, (height - 650.0) * k);
+            let button = |pos, pressed| egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            };
+            run(
+                &mut app,
+                vec![egui::Event::PointerMoved(start), button(start, true)],
+            );
+            run(&mut app, vec![egui::Event::PointerMoved(end)]);
+            assert!(!requests
+                .try_iter()
+                .any(|r| matches!(r, Request::Edit(_) | Request::TextInRect { .. })));
+            run(&mut app, vec![button(end, false)]);
+            run(&mut app, vec![]);
+            assert!(app.annotate.drag.is_none());
+            let expected = sunipdf_core::PointRect {
+                left: 50.0,
+                bottom: 650.0,
+                right: 180.0,
+                top: 700.0,
+            };
+            let check_rect = |actual: sunipdf_core::PointRect| {
+                for (actual, expected) in [
+                    (actual.left, expected.left),
+                    (actual.right, expected.right),
+                    (actual.bottom, expected.bottom),
+                    (actual.top, expected.top),
+                ] {
+                    assert!(
+                        (actual - expected).abs() < 0.01,
+                        "{tool:?}: actual {actual}, expected {expected}"
+                    );
+                }
+            };
+            let edits: Vec<_> = requests
+                .try_iter()
+                .filter(|r| matches!(r, Request::Edit(_) | Request::TextInRect { .. }))
+                .collect();
+            match tool {
+                Tool::AnnotRect => {
+                    assert_eq!(edits.len(), 1);
+                    match &edits[0] {
+                        Request::Edit(crate::worker::EditOp::AddAnnotShape { rect, .. }) => {
+                            check_rect(*rect)
+                        }
+                        _ => panic!("one shape edit"),
+                    }
+                }
+                Tool::Highlight => {
+                    assert_eq!(edits.len(), 1);
+                    match &edits[0] {
+                        Request::TextInRect { rect, .. } => check_rect(*rect),
+                        _ => panic!("one markup selection request"),
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
+    fn free_text_real_page_drag_pins_draft_and_keeps_cancel_visible_for_long_text() {
+        use crate::annotate::Tool;
+        for mode in [ViewMode::Continuous, ViewMode::Single] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+            app.annotate.tool = Tool::FreeText;
+            app.zoom = Zoom::Fixed(1.0);
+            app.view.mode = mode;
+            let run = |app: &mut SuniApp, events| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1280.0, 800.0))),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| app.document_view(&ctx, ui),
+                );
+                output.textures_delta.clear();
+                output
+            };
+            for _ in 0..3 {
+                run(&mut app, vec![]);
+            }
+            let (_, page, height) = app.edit.page_view.unwrap();
+            let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+            let start = page.min + vec2(50.0 * k, (height - 700.0) * k);
+            let end = page.min + vec2(180.0 * k, (height - 650.0) * k);
+            let button = |pos, pressed| egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            };
+            run(
+                &mut app,
+                vec![egui::Event::PointerMoved(start), button(start, true)],
+            );
+            run(&mut app, vec![egui::Event::PointerMoved(end)]);
+            run(&mut app, vec![button(end, false)]);
+            assert!(
+                app.annotate.adv.free_text.is_some(),
+                "the real page drag opens the editor"
+            );
+            assert!(app.pinned_pages().contains(&0));
+            let p = app.annotate.adv.free_text.as_mut().unwrap();
+            for (actual, expected) in [
+                (p.rect.left, 50.0),
+                (p.rect.right, 180.0),
+                (p.rect.bottom, 650.0),
+                (p.rect.top, 700.0),
+            ] {
+                assert!(
+                    (actual - expected).abs() < 0.01,
+                    "{mode:?}: actual {actual}, expected {expected}"
+                );
+            }
+            p.text = "Many lines\n".repeat(200);
+            p.size = 48.0;
+            let original = p.rect;
+            app.handle_page_event(0, DragEvent::Click((400.0, 400.0)), false);
+            assert_eq!(app.annotate.adv.free_text.as_ref().unwrap().rect, original);
+            app.zoom = Zoom::Fixed(2.0);
+            let mut cancel = None;
+            for _ in 0..3 {
+                let output = run(&mut app, vec![]);
+                if let Some(tree) = output.platform_output.accesskit_update {
+                    cancel = tree
+                        .nodes
+                        .iter()
+                        .map(|(_, n)| n)
+                        .find(|n| n.label() == Some(app.t("dialog.password.cancel")))
+                        .and_then(|n| n.bounds())
+                        .or(cancel);
+                }
+            }
+            let cancel = cancel.expect("visible cancel control");
+            assert!(
+                cancel.x0 >= 0.0 && cancel.y0 >= 0.0 && cancel.x1 <= 1280.0 && cancel.y1 <= 800.0
+            );
+            let pos = egui::pos2(
+                ((cancel.x0 + cancel.x1) / 2.0) as f32,
+                ((cancel.y0 + cancel.y1) / 2.0) as f32,
+            );
+            run(
+                &mut app,
+                vec![egui::Event::PointerMoved(pos), button(pos, true)],
+            );
+            run(&mut app, vec![button(pos, false)]);
+            assert!(app.annotate.adv.free_text.is_none());
+            assert!(!requests.try_iter().any(|r| matches!(r, Request::Edit(_))));
+        }
+    }
 
     #[test]
     fn drawn_field_pointer_uses_the_initial_page_preview_and_hidden_widget_release() {

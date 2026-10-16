@@ -275,6 +275,7 @@ impl SuniApp {
             return false;
         }
         if self.edit.text_prompt.is_some()
+            || self.annotate.adv.free_text.is_some()
             || self.forms.has_unsaved_input()
             || self.worker.has_pending_mutations()
         {

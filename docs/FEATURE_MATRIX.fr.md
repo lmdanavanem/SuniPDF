@@ -2,6 +2,11 @@
 
 [English](FEATURE_MATRIX.md)
 
+**0.20.0 en développement :** créer/modifier FreeText sur la page, avec éditeur multiligne ancré,
+réglages de style existants et Ajouter/Enregistrer/Annuler explicites (D111/A39). Relecture, 468 tests workspace,
+formatage et 912 clés EN/FR réussis en local ; Clippy avec avertissements refusés réussi ; publication en attente. Les preuves 0.19.0 ci-dessous
+concernent la Latest stable actuelle.
+
 **0.19.0 publiée en Latest :** placement à la souris des types de champ existants, relecture numérique et
 Créer explicite (D110/A38). Implémentation, tests locaux, formatage et Clippy réussis ; contrôles de publication réussis.
 **0.19.0 est la Latest stable**.
@@ -138,6 +143,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | **Fait** (D067–D076) : notes, surlignage, souligné, barré ; **encre** à main levée (lissée), **zone de texte libre** (Helvetica WinAnsi), **rectangle, ellipse, ligne, flèche** en vraies annotations PDF (apparence `/AP` explicite, rendues par les autres lecteurs), couleur, épaisseur, fond, opacité ; sélection, déplacement, redimensionnement (annotations de SuniPDF), recoloration, suppression ; pages tournées et rognées justes ; document chiffré conservé chiffré ; CLI `annotate` / `annotations`. **Livré en 0.16.0** : tirets des quatre formes, motif UI/CLI fixe `[6,3]`, `dash_pattern` personnalisé conservé, style malformé refusé et régénération bornée ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis (D107) ; lecteurs réels à vérifier séparément |
 | Fils de réponses, statut des commentaires | Déclaré | **Fait dans SuniPDF** : panneau Commentaires en fils (réponses, statut Accepté / Refusé / Annulé / Terminé, auteur, date, suppression du fil), écrits selon ISO 32000-1 ; **compatibilité Acrobat / Foxit non vérifiée** ; CLI `reply` / `review-state` |
 | Regrouper plusieurs traits à main levée | Déclaré | **Livré en 0.18.0** (D109) : brouillon lié à une page, Terminer/Annuler explicites, un AddInk/Annuler ; conservé après erreur, gardes et limites 64 traits/4 000 points par trait. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour réussis. Aucune gomme, validation à l'inactivité ni récupération du brouillon après plantage |
+| Création et édition FreeText sur la page | Déclaré | **Implémenté et testé localement pour 0.20.0** (D111/A39) : boîte cliquée/tracée existante, éditeur multiligne ancré, taille/couleur/fond/bordure, Ajouter/Enregistrer/Annuler explicites, une édition worker/Annuler, page d'origine, gardes d'état périmé/opérations en attente et texte conservé après échec. Aucun texte enrichi ni nouvelle API moteur/CLI ; workspace/relecture/formatage/traductions réussis en local ; Clippy avec avertissements refusés réussi ; publication en attente |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |

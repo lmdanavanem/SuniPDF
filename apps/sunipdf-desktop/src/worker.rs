@@ -2104,6 +2104,7 @@ mod tests {
         dashed_annotation_styles_survive_edits_and_history(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         drawn_form_rectangles_keep_history_and_saved_fields(&worker);
+        inline_free_text_has_exact_styles_geometry_history_and_saved_content(&worker);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
@@ -2686,6 +2687,171 @@ mod tests {
         assert!(matches!(next_response(worker), Response::Opened(_)));
         assert_eq!(model(), before);
         assert_eq!(std::fs::read(&source).unwrap(), source_bytes);
+        worker.send(Request::Open {
+            path: source,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+    }
+
+    fn inline_free_text_has_exact_styles_geometry_history_and_saved_content(worker: &Worker) {
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original_bytes = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let annotations = || {
+            worker.send(Request::Annotations {
+                page: 0,
+                detailed: true,
+            });
+            match next_response(worker) {
+                Response::Annotations {
+                    details: Some(details),
+                    ..
+                } => details,
+                Response::Annotations {
+                    list,
+                    details: None,
+                    ..
+                } if list.is_empty() => Vec::new(),
+                _ => panic!("free text annotation details"),
+            }
+        };
+        let changed = || {
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(DocState {
+                    pages_unchanged: true,
+                    ..
+                })
+            ));
+        };
+        let before = annotations();
+        let rect = PointRect {
+            left: 40.0,
+            bottom: 600.0,
+            right: 220.0,
+            top: 624.0,
+        };
+        let style = FreeTextStyle {
+            size_pt: 18.0,
+            rgb: (20, 40, 60),
+            fill_rgb: Some((240, 230, 220)),
+            border_pt: 1.5,
+        };
+        let text =
+            "Hello from the page\nBonjour depuis la page\nA third line that wraps in the box";
+        worker.send(Request::Edit(EditOp::AddFreeText {
+            page: 0,
+            rect,
+            text: text.into(),
+            style: style.clone(),
+            author: Some("lmdanavanem".into()),
+        }));
+        changed();
+        let created = annotations();
+        assert_eq!(created.len(), before.len() + 1);
+        let detail = created.last().unwrap();
+        assert_eq!(detail.subtype, "FreeText");
+        assert_eq!(detail.contents.as_deref(), Some(text));
+        assert_eq!(detail.font_size, Some(style.size_pt));
+        assert_eq!(detail.rgb, Some(style.rgb));
+        assert_eq!(detail.fill_rgb, style.fill_rgb);
+        assert_eq!(detail.width_pt, Some(style.border_pt));
+        assert_eq!(detail.author.as_deref(), Some("lmdanavanem"));
+        assert_eq!(
+            (detail.rect.left, detail.rect.right, detail.rect.top),
+            (rect.left, rect.right, rect.top)
+        );
+        assert!(
+            detail.rect.bottom < rect.bottom,
+            "multiline wrapping must grow downwards"
+        );
+        let index = detail.index;
+        worker.send(Request::Edit(EditOp::AddFreeText {
+            page: 0,
+            rect: PointRect {
+                right: rect.left + 35.0,
+                ..rect
+            },
+            text: "Too narrow".into(),
+            style: style.clone(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(annotations(), created);
+        worker.send(Request::Undo);
+        changed();
+        assert_eq!(
+            annotations(),
+            before,
+            "failed addition must not add history"
+        );
+        worker.send(Request::Redo);
+        changed();
+        assert_eq!(annotations(), created);
+        let edited_text = "Edited on page\nModifie sur la page";
+        let edited_style = FreeTextStyle {
+            size_pt: 14.0,
+            rgb: (80, 60, 40),
+            fill_rgb: None,
+            border_pt: 0.0,
+        };
+        worker.send(Request::Edit(EditOp::UpdateFreeText {
+            page: 0,
+            index,
+            text: edited_text.into(),
+            style: edited_style.clone(),
+        }));
+        changed();
+        let edited = annotations();
+        let detail = edited.last().unwrap();
+        assert_eq!(detail.contents.as_deref(), Some(edited_text));
+        assert_eq!(detail.font_size, Some(edited_style.size_pt));
+        assert_eq!(detail.rgb, Some(edited_style.rgb));
+        assert_eq!(detail.fill_rgb, edited_style.fill_rgb);
+        assert_eq!(detail.width_pt, Some(edited_style.border_pt));
+        assert_eq!(detail.rect, created.last().unwrap().rect);
+        worker.send(Request::Edit(EditOp::UpdateFreeText {
+            page: 0,
+            index,
+            text: "Invalid style".into(),
+            style: FreeTextStyle {
+                size_pt: f32::NAN,
+                ..edited_style
+            },
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(annotations(), edited);
+        worker.send(Request::Undo);
+        changed();
+        assert_eq!(annotations(), created, "failed update must not add history");
+        worker.send(Request::Redo);
+        changed();
+        assert_eq!(annotations(), edited);
+        let temp = tempfile::tempdir().unwrap();
+        let output = temp.path().join("inline-free-text.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(annotations(), edited);
+        assert_eq!(std::fs::read(&source).unwrap(), original_bytes);
         worker.send(Request::Open {
             path: source,
             password: None,

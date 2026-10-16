@@ -71,6 +71,35 @@ pub struct FreeTextPrompt {
     pub fill_rgb: [u8; 3],
     pub border: f32,
     pub focus: bool,
+    pub epoch: u64,
+    pub tool: Tool,
+    pub workspace: Option<crate::workspace::Workspace>,
+    pub pending: bool,
+}
+
+impl FreeTextPrompt {
+    fn valid(&self) -> bool {
+        !self.text.trim().is_empty()
+            && (4.0..=200.0).contains(&self.size)
+            && (0.0..=50.0).contains(&self.border)
+            && [
+                self.rect.left,
+                self.rect.bottom,
+                self.rect.right,
+                self.rect.top,
+            ]
+            .into_iter()
+            .all(f32::is_finite)
+            && self.rect.right - self.rect.left >= 2.0 * self.size
+            && self.rect.top - self.rect.bottom >= 2.0
+    }
+
+    fn screen_rect(&self, page: egui::Rect, k: f32, height: f32) -> egui::Rect {
+        egui::Rect::from_min_max(
+            page.min + egui::vec2(self.rect.left * k, (height - self.rect.top) * k),
+            page.min + egui::vec2(self.rect.right * k, (height - self.rect.bottom) * k),
+        )
+    }
 }
 
 #[derive(Clone)]
@@ -125,6 +154,7 @@ pub struct AnnotAdvState {
 impl AnnotAdvState {
     /// Les caches désignent des indices du document actif : repris à zéro quand il change de main.
     pub fn invalidate(&mut self) {
+        self.free_text = None;
         self.link = None;
         self.details.clear();
         self.selected = None;
@@ -448,6 +478,10 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if self.annotate.adv.free_text.is_some() {
+            self.status_msg = Some(self.t("free_text.finish_first").into());
+            return true;
+        }
         if !self.ink_draft_active() {
             return false;
         }
@@ -456,6 +490,16 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        if self.annotate.adv.free_text.is_some() {
+            return !matches!(
+                command,
+                Command::ZoomIn
+                    | Command::ZoomOut
+                    | Command::ActualSize
+                    | Command::FitWidth
+                    | Command::FitPage
+            );
+        }
         self.ink_draft_active()
             && !matches!(
                 command,
@@ -690,6 +734,9 @@ impl SuniApp {
                 }));
             }
             Tool::FreeText => {
+                if !self.free_text_can_start() {
+                    return;
+                }
                 let (pw, ph) = self.page_size_pt(drag.page);
                 let rect = if tiny || w < 20.0 || h < 12.0 {
                     default_text_rect(drag.start, pw, ph)
@@ -708,6 +755,10 @@ impl SuniApp {
                     fill_rgb: self.edit.fill_rgb,
                     border: st.border_pt,
                     focus: true,
+                    epoch: self.view.epoch,
+                    tool: self.annotate.tool,
+                    workspace: self.annotate.workspace,
+                    pending: false,
                 });
             }
             Tool::AddLink => {
@@ -916,9 +967,12 @@ impl SuniApp {
         }
     }
 
-    /// Modifier le texte de l'annotation sélectionnée : zone de texte libre (dialogue complet) ou
+    /// Modifier le texte de l'annotation sélectionnée : zone de texte libre sur la page ou
     /// commentaire d'une autre annotation.
     pub fn edit_selected_annot_text(&mut self) {
+        if !self.free_text_can_start() {
+            return;
+        }
         let Some((page, d)) = self.annotate.adv.selected.clone() else {
             return;
         };
@@ -937,6 +991,10 @@ impl SuniApp {
                 fill_rgb: rgb_arr(d.fill_rgb.unwrap_or((255, 255, 255))),
                 border: d.width_pt.unwrap_or(0.0),
                 focus: true,
+                epoch: self.view.epoch,
+                tool: self.annotate.tool,
+                workspace: self.annotate.workspace,
+                pending: false,
             });
         } else {
             self.annotate.adv.thread = Some(ThreadPrompt {
@@ -1673,141 +1731,213 @@ impl SuniApp {
 
 impl SuniApp {
     pub fn adv_dialogs(&mut self, ctx: &egui::Context) {
-        self.free_text_dialog(ctx);
         self.link_dialog(ctx);
         self.thread_dialog(ctx);
         self.url_dialog(ctx);
     }
 
-    fn free_text_dialog(&mut self, ctx: &egui::Context) {
-        let lang = self.lang();
-        let muted = theme::palette(self.settings.dark_theme).text_muted;
-        let Some(prompt) = self.annotate.adv.free_text.as_mut() else {
-            return;
-        };
-        let editing = prompt.index.is_some();
-        let mut submit = false;
-        let mut cancel = false;
-        let spec = crate::dialog::Spec::new(
-            "free-text",
-            tr(
-                lang,
-                if editing {
-                    "dialog.free_text.title_edit"
-                } else {
-                    "dialog.free_text.title"
-                },
-            ),
-            self.settings.dark_theme,
-            self.has_icons,
-        )
-        .subtitle(tr(lang, "dialog.free_text.subtitle"))
-        .icon(glyph::FONT, "T")
-        .width(480.0);
-        crate::dialog::show(
-            ctx,
-            spec,
-            |ui| {
-                let field = ui.add(
-                    egui::TextEdit::multiline(&mut prompt.text)
-                        .hint_text(tr(lang, "dialog.free_text.placeholder"))
-                        .desired_rows(4)
-                        .desired_width(f32::INFINITY),
-                );
-                if prompt.focus {
-                    field.request_focus();
-                    prompt.focus = false;
-                }
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(tr(lang, "dialog.text.size"));
-                    ui.add(
-                        egui::DragValue::new(&mut prompt.size)
-                            .range(6.0..=96.0)
-                            .speed(0.5),
-                    );
-                    ui.label(tr(lang, "dialog.text.color"));
-                    ui.color_edit_button_srgb(&mut prompt.rgb);
-                });
-                ui.horizontal_wrapped(|ui| {
-                    ui.checkbox(&mut prompt.fill, tr(lang, "dialog.free_text.background"));
-                    ui.add_enabled_ui(prompt.fill, |ui| {
-                        ui.color_edit_button_srgb(&mut prompt.fill_rgb);
-                    });
-                    ui.label(tr(lang, "dialog.free_text.border"));
-                    ui.add(
-                        egui::DragValue::new(&mut prompt.border)
-                            .range(0.0..=10.0)
-                            .speed(0.1),
-                    );
-                });
-                ui.label(
-                    RichText::new(tr(lang, "dialog.free_text.latin_note"))
-                        .size(12.0)
-                        .color(muted),
-                );
-            },
-            |ui| {
-                if crate::dialog::primary(
-                    ui,
-                    tr(
-                        lang,
-                        if editing {
-                            "dialog.free_text.ok_edit"
-                        } else {
-                            "dialog.free_text.ok"
-                        },
-                    ),
-                ) || ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter))
-                {
-                    submit = true;
-                }
-                if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
-                    || ui.input(|i| i.key_pressed(Key::Escape))
-                {
-                    cancel = true;
-                }
-            },
-        );
-        if submit {
-            let Some(p) = self.annotate.adv.free_text.take() else {
-                return;
-            };
-            if p.text.trim().is_empty() {
-                return;
-            }
-            let style = FreeTextStyle {
-                size_pt: p.size,
-                rgb: rgb_tuple(p.rgb),
-                fill_rgb: p.fill.then_some(rgb_tuple(p.fill_rgb)),
-                border_pt: p.border,
-            };
-            // Les réglages choisis deviennent ceux des prochaines zones de texte.
-            self.edit.free_text_size = p.size;
-            self.edit.free_text_border = p.border;
-            self.edit.free_text_rgb = p.rgb;
-            self.edit.free_text_fill = p.fill;
-            let author = self.annot_author();
-            match p.index {
-                Some(index) => {
-                    self.annotate.adv.reselect = Some((p.page, index));
-                    self.worker.send(Request::Edit(EditOp::UpdateFreeText {
-                        page: p.page,
-                        index,
-                        text: p.text,
-                        style,
-                    }));
-                }
-                None => self.worker.send(Request::Edit(EditOp::AddFreeText {
-                    page: p.page,
-                    rect: p.rect,
-                    text: p.text,
-                    style,
-                    author,
-                })),
-            }
-        } else if cancel {
+    fn free_text_can_start(&self) -> bool {
+        self.ink_can_start() && self.form_builder_ready() && !self.form_builder.active()
+    }
+
+    pub(crate) fn validate_free_text(&mut self) {
+        let valid = self.annotate.adv.free_text.as_ref().is_none_or(|p| {
+            self.document
+                .as_ref()
+                .is_some_and(|d| p.page < d.info.page_count())
+                && p.epoch == self.view.epoch
+                && p.tool == self.annotate.tool
+                && p.workspace == self.annotate.workspace
+        });
+        if !valid {
             self.annotate.adv.free_text = None;
         }
+    }
+
+    pub(crate) fn free_text_editor(
+        &mut self,
+        ctx: &egui::Context,
+        page_rect: egui::Rect,
+        page: usize,
+        height: f32,
+    ) {
+        self.validate_free_text();
+        let lang = self.lang();
+        let palette = theme::palette(self.settings.dark_theme);
+        let ready = self.form_builder_ready() && !self.form_builder.active();
+        let k = self.effective_zoom * crate::app::SCREEN_PER_PDF_POINT;
+        let Some(prompt) = self
+            .annotate
+            .adv
+            .free_text
+            .as_mut()
+            .filter(|p| p.page == page)
+        else {
+            return;
+        };
+        let rect = prompt.screen_rect(page_rect, k, height);
+        let (mut submit, mut cancel) = (false, false);
+        egui::Area::new(egui::Id::new("inline-free-text"))
+            .order(egui::Order::Foreground)
+            .fixed_pos(rect.min)
+            .constrain(true)
+            .show(ctx, |ui| {
+                Frame::new()
+                    .fill(palette.surface)
+                    .stroke(Stroke::new(1.5, theme::BLUE))
+                    .corner_radius(6)
+                    .inner_margin(6)
+                    .show(ui, |ui| {
+                        ui.set_width(rect.width().clamp(220.0, 600.0));
+                        ui.add_enabled_ui(!prompt.pending, |ui| {
+                            let color = egui::Color32::from_rgb(
+                                prompt.rgb[0],
+                                prompt.rgb[1],
+                                prompt.rgb[2],
+                            );
+                            let fill = if prompt.fill {
+                                egui::Color32::from_rgb(
+                                    prompt.fill_rgb[0],
+                                    prompt.fill_rgb[1],
+                                    prompt.fill_rgb[2],
+                                )
+                            } else {
+                                egui::Color32::WHITE
+                            };
+                            let field = egui::ScrollArea::vertical()
+                                .max_height(
+                                    (ctx.content_rect().height() - 220.0).clamp(80.0, 320.0),
+                                )
+                                .show(ui, |ui| {
+                                    ui.add(
+                                        egui::TextEdit::multiline(&mut prompt.text)
+                                            .font(egui::FontId::proportional(
+                                                (prompt.size * k).max(6.0),
+                                            ))
+                                            .text_color(color)
+                                            .background_color(fill)
+                                            .desired_width(f32::INFINITY)
+                                            .desired_rows(3)
+                                            .hint_text(tr(lang, "dialog.free_text.placeholder")),
+                                    )
+                                })
+                                .inner;
+                            if prompt.focus {
+                                field.request_focus();
+                                prompt.focus = false;
+                            }
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(tr(lang, "dialog.text.size"));
+                                ui.add(
+                                    egui::DragValue::new(&mut prompt.size)
+                                        .range(6.0..=96.0)
+                                        .speed(0.5),
+                                );
+                                ui.color_edit_button_srgb(&mut prompt.rgb)
+                                    .on_hover_text(tr(lang, "dialog.text.color"));
+                                ui.checkbox(
+                                    &mut prompt.fill,
+                                    tr(lang, "dialog.free_text.background"),
+                                );
+                                ui.add_enabled_ui(prompt.fill, |ui| {
+                                    ui.color_edit_button_srgb(&mut prompt.fill_rgb);
+                                });
+                                ui.label(tr(lang, "dialog.free_text.border"));
+                                ui.add(
+                                    egui::DragValue::new(&mut prompt.border)
+                                        .range(0.0..=10.0)
+                                        .speed(0.1),
+                                );
+                            });
+                            ui.label(
+                                RichText::new(tr(lang, "dialog.free_text.latin_note"))
+                                    .small()
+                                    .color(palette.text_muted),
+                            );
+                            if !prompt.text.trim().is_empty() && !prompt.valid() {
+                                ui.colored_label(palette.error, tr(lang, "free_text.invalid"));
+                            }
+                            ui.horizontal(|ui| {
+                                submit = ui
+                                    .add_enabled(
+                                        ready && prompt.valid(),
+                                        Button::new(tr(
+                                            lang,
+                                            if prompt.index.is_some() {
+                                                "dialog.free_text.ok_edit"
+                                            } else {
+                                                "dialog.free_text.ok"
+                                            },
+                                        )),
+                                    )
+                                    .clicked();
+                                cancel = ui.button(tr(lang, "dialog.password.cancel")).clicked();
+                            });
+                        });
+                        if prompt.pending {
+                            ui.spinner();
+                        }
+                    });
+            });
+        if !prompt.pending
+            && !egui::Popup::is_any_open(ctx)
+            && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Escape))
+        {
+            cancel = true;
+        }
+        if cancel {
+            self.annotate.adv.free_text = None;
+        } else if submit {
+            self.submit_free_text();
+        }
+    }
+
+    fn submit_free_text(&mut self) {
+        self.validate_free_text();
+        if !self.form_builder_ready() || self.form_builder.active() {
+            return;
+        }
+        let author = self.annot_author();
+        let Some(p) = self
+            .annotate
+            .adv
+            .free_text
+            .as_mut()
+            .filter(|p| !p.pending && p.valid())
+        else {
+            return;
+        };
+        p.pending = true;
+        let style = FreeTextStyle {
+            size_pt: p.size,
+            rgb: rgb_tuple(p.rgb),
+            fill_rgb: p.fill.then_some(rgb_tuple(p.fill_rgb)),
+            border_pt: p.border,
+        };
+        self.edit.free_text_size = p.size;
+        self.edit.free_text_border = p.border;
+        self.edit.free_text_rgb = p.rgb;
+        self.edit.free_text_fill = p.fill;
+        self.edit.fill_rgb = p.fill_rgb;
+        let op = match p.index {
+            Some(index) => {
+                self.annotate.adv.reselect = Some((p.page, index));
+                EditOp::UpdateFreeText {
+                    page: p.page,
+                    index,
+                    text: p.text.clone(),
+                    style,
+                }
+            }
+            None => EditOp::AddFreeText {
+                page: p.page,
+                rect: p.rect,
+                text: p.text.clone(),
+                style,
+                author,
+            },
+        };
+        self.worker.send(Request::Edit(op));
     }
 
     fn link_dialog(&mut self, ctx: &egui::Context) {
@@ -2653,8 +2783,13 @@ mod tests {
                 ..Default::default()
             },
             |_| {
-                app.annot_bar(ctx, bounds);
-                app.link_dialog(ctx);
+                if app.annotate.adv.free_text.is_some() {
+                    let height = app.page_size_pt(0).1;
+                    app.free_text_editor(ctx, bounds.shrink(40.0), 0, height);
+                } else {
+                    app.annot_bar(ctx, bounds);
+                    app.link_dialog(ctx);
+                }
             },
         );
         output.textures_delta.clear();
@@ -2697,6 +2832,302 @@ mod tests {
                 ],
             );
         }
+    }
+
+    #[test]
+    fn free_text_inline_add_save_cancel_and_retry_preserve_multiline_input_in_both_languages() {
+        use crate::worker::Response;
+        for language in Language::ALL {
+            let (mut app, requests, responses) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            app.annotate.tool = Tool::FreeText;
+            app.adv_click(0, (40.0, 700.0));
+            assert!(app.annotate.adv.free_text.is_some() && requests.try_recv().is_err());
+            link_frame(&mut app, &ctx, vec![]);
+            link_frame(
+                &mut app,
+                &ctx,
+                vec![egui::Event::Text("Hello\nBonjour".into())],
+            );
+            let prompt = app.annotate.adv.free_text.as_mut().unwrap();
+            assert_eq!(prompt.text, "Hello\nBonjour");
+            prompt.size = 18.0;
+            prompt.rgb = [20, 40, 60];
+            prompt.fill = true;
+            prompt.fill_rgb = [240, 230, 220];
+            prompt.border = 1.5;
+            let rect = prompt.rect;
+            assert!(requests.try_recv().is_err() && !app.dirty && app.has_unsaved_changes());
+            link_frame(
+                &mut app,
+                &ctx,
+                vec![egui::Event::Key {
+                    key: Key::Enter,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            assert!(
+                requests.try_recv().is_err(),
+                "Enter must only insert a line break"
+            );
+            let typed = app.annotate.adv.free_text.as_ref().unwrap().text.clone();
+            click_link_control(&mut app, &ctx, "dialog.free_text.ok");
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::AddFreeText {
+                page: 0, rect: actual, text, style, ..
+            }) if actual == rect && text == typed && style.size_pt == 18.0
+                && style.rgb == (20,40,60) && style.fill_rgb == Some((240,230,220))
+                && style.border_pt == 1.5)
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.submit_free_text();
+            assert!(
+                requests.try_recv().is_err(),
+                "pending submission must not be duplicated"
+            );
+            responses
+                .send(Response::OperationFailed(sunipdf_core::EngineError::Other(
+                    "refused".into(),
+                )))
+                .unwrap();
+            responses.send(Response::MutationFinished).unwrap();
+            app.handle_responses(&ctx);
+            assert_eq!(app.annotate.adv.free_text.as_ref().unwrap().text, typed);
+            assert!(!app.annotate.adv.free_text.as_ref().unwrap().pending);
+            assert_eq!(
+                app.status_msg.as_deref(),
+                Some(tr(language, "free_text.retry"))
+            );
+            click_link_control(&mut app, &ctx, "dialog.password.cancel");
+            assert!(app.annotate.adv.free_text.is_none() && requests.try_recv().is_err());
+
+            app.annotate.tool = Tool::SelectAnnot;
+            let mut selected = detail(3, "FreeText", rect);
+            selected.contents = Some("Existing text".into());
+            selected.font_size = Some(12.0);
+            selected.rgb = Some((1, 2, 3));
+            selected.fill_rgb = Some((230, 240, 250));
+            selected.width_pt = Some(2.0);
+            app.select_annot(0, selected);
+            app.edit_selected_annot_text();
+            let prompt = app.annotate.adv.free_text.as_mut().unwrap();
+            assert_eq!(prompt.text, "Existing text");
+            assert_eq!(
+                (prompt.size, prompt.rgb, prompt.fill_rgb, prompt.border),
+                (12.0, [1, 2, 3], [230, 240, 250], 2.0)
+            );
+            prompt.text = "Edited\nModifie".into();
+            click_link_control(&mut app, &ctx, "dialog.free_text.ok_edit");
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::UpdateFreeText {
+                page: 0, index: 3, text, ..
+            }) if text == "Edited\nModifie")
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            assert_eq!(app.annotate.adv.reselect, Some((0, 3)));
+        }
+    }
+
+    #[test]
+    fn free_text_inline_validation_busy_and_outside_click_never_discard_or_commit_input() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        crate::icons::install(&ctx);
+        ctx.enable_accesskit();
+        app.annotate.tool = Tool::FreeText;
+        app.adv_click(0, (30.0, 700.0));
+        let original = app.annotate.adv.free_text.as_ref().unwrap().clone();
+        for bad in 0..6 {
+            let p = app.annotate.adv.free_text.as_mut().unwrap();
+            *p = original.clone();
+            p.text = "Keep my text".into();
+            match bad {
+                0 => p.text = " \n ".into(),
+                1 => p.size = f32::NAN,
+                2 => p.border = 51.0,
+                3 => p.rect.right = p.rect.left + 2.0 * p.size - 0.1,
+                4 => p.rect.top = p.rect.bottom + 1.9,
+                _ => p.rect.left = f32::INFINITY,
+            }
+            assert!(!p.valid());
+            app.submit_free_text();
+            assert!(app.annotate.adv.free_text.is_some() && requests.try_recv().is_err());
+        }
+        app.annotate.adv.free_text = Some(original);
+        app.annotate.adv.free_text.as_mut().unwrap().text = "Keep my text".into();
+        for busy in 0..4 {
+            app.saving = busy == 0;
+            app.processing.busy = busy == 1;
+            if busy == 2 {
+                app.worker.send(Request::Undo);
+            }
+            app.forms.pending_clear = busy == 3;
+            app.submit_free_text();
+            assert!(!app.annotate.adv.free_text.as_ref().unwrap().pending);
+            app.worker.finish_mutation();
+            while requests.try_recv().is_ok() {}
+        }
+        app.saving = false;
+        app.processing.busy = false;
+        app.forms.pending_clear = false;
+        link_frame(&mut app, &ctx, vec![]);
+        for pressed in [true, false] {
+            link_frame(
+                &mut app,
+                &ctx,
+                vec![egui::Event::PointerButton {
+                    pos: egui::pos2(1200.0, 750.0),
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+        }
+        assert_eq!(
+            app.annotate.adv.free_text.as_ref().unwrap().text,
+            "Keep my text"
+        );
+        assert!(requests.try_recv().is_err());
+        click_link_control(&mut app, &ctx, "dialog.password.cancel");
+        assert!(app.annotate.adv.free_text.is_none());
+        app.adv_click(0, (30.0, 700.0));
+        link_frame(
+            &mut app,
+            &ctx,
+            vec![egui::Event::Key {
+                key: Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert!(app.annotate.adv.free_text.is_none() && requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn free_text_anchor_zoom_page_and_stale_context_are_guarded() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.annotate.tool = Tool::FreeText;
+        app.adv_drag_finished(Drag {
+            page: 0,
+            start: (240.0, 600.0),
+            current: (40.0, 700.0),
+        });
+        let original = app.annotate.adv.free_text.as_ref().unwrap().clone();
+        assert_eq!(original.rect, r(40.0, 600.0, 240.0, 700.0));
+        let page = egui::Rect::from_min_size(egui::pos2(10.0, 20.0), egui::vec2(600.0, 800.0));
+        assert_eq!(
+            original.screen_rect(page, 2.0, 800.0),
+            egui::Rect::from_min_max(egui::pos2(90.0, 220.0), egui::pos2(490.0, 420.0))
+        );
+        let zoom = app.zoom;
+        app.execute(&ctx, Command::ZoomIn);
+        assert_ne!(app.zoom, zoom);
+        assert!(app.annotate.adv.free_text.is_some());
+        app.go_to_page(1);
+        assert_eq!(app.document.as_ref().unwrap().page, 0);
+        for command in [
+            Command::Save,
+            Command::ToolInk,
+            Command::NextPage,
+            Command::ViewSinglePage,
+            Command::CloseDocument,
+        ] {
+            app.execute(&ctx, command);
+            assert!(app.annotate.adv.free_text.is_some() && requests.try_recv().is_err());
+        }
+        for stale in 0..5 {
+            app.annotate.adv.free_text = Some(original.clone());
+            app.annotate.tool = original.tool;
+            app.annotate.workspace = original.workspace;
+            app.view.epoch = original.epoch;
+            match stale {
+                0 => app.view.epoch += 1,
+                1 => app.annotate.tool = Tool::Ink,
+                2 => app.annotate.workspace = Some(crate::workspace::Workspace::Organize),
+                3 => {
+                    let _ = app.take_tab();
+                }
+                _ => app.annotate.adv.invalidate(),
+            }
+            app.validate_free_text();
+            assert!(app.annotate.adv.free_text.is_none(), "stale case {stale}");
+        }
+    }
+
+    #[test]
+    fn free_text_start_guards_busy_drafts_and_locked_existing_annotations() {
+        for busy in 0..8 {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.annotate.tool = Tool::FreeText;
+            match busy {
+                0 => app.saving = true,
+                1 => app.opening = Some("pending.pdf".into()),
+                2 => app.worker.send(Request::Undo),
+                3 => {
+                    app.forms.drafts.insert("Name".into(), "Unsaved".into());
+                }
+                4 => app.annotate.adv.ink_draft = Some(InkDraft::default()),
+                5 => app.form_builder.visible = true,
+                6 => app.tabs.resuming = Some(1),
+                _ => app.sign.placing = Some(crate::sign::Placing::Text("Date".into())),
+            }
+            app.adv_click(0, (40.0, 700.0));
+            assert!(app.annotate.adv.free_text.is_none(), "busy case {busy}");
+            assert!(!requests.try_iter().any(|r| matches!(r, Request::Edit(_))));
+        }
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.annotate.tool = Tool::SelectAnnot;
+        let mut locked = detail(0, "FreeText", r(40.0, 600.0, 220.0, 650.0));
+        locked.can_edit_text = false;
+        app.select_annot(0, locked);
+        app.edit_selected_annot_text();
+        assert!(app.annotate.adv.free_text.is_none() && requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn free_text_revision_and_tab_reloads_remove_stale_indices_after_worker_success() {
+        use crate::worker::{DocState, Response};
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.annotate.tool = Tool::FreeText;
+        app.adv_click(0, (40.0, 700.0));
+        app.annotate.adv.free_text.as_mut().unwrap().text = "Saved once".into();
+        app.submit_free_text();
+        while requests.try_recv().is_ok() {}
+        responses
+            .send(Response::DocumentChanged(DocState {
+                info: app.document.as_ref().unwrap().info.clone(),
+                can_undo: true,
+                can_redo: false,
+                modified: true,
+                pages_unchanged: true,
+                has_signatures: false,
+            }))
+            .unwrap();
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        assert!(app.annotate.adv.free_text.is_none() && app.dirty);
+        app.adv_click(0, (40.0, 700.0));
+        assert!(app.annotate.adv.free_text.is_some());
+        let state = app.take_tab();
+        assert!(state.annotate.adv.free_text.is_none());
+        app.put_tab(state);
+        assert!(app.annotate.adv.free_text.is_none());
     }
 
     #[test]

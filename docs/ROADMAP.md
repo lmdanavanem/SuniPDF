@@ -190,6 +190,26 @@ core/CLI APIs and 53 commands remain unchanged; no dependency or field type is a
 passed, along with formatting/Clippy; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 is stable Latest**. Actual evidence belongs in
 `PROJECT_STATUS.md`. Existing-field geometry editing, XFA creation and native hardware checks remain separate.
 
+## 0.20.0: on-page FreeText creation and editing (in development)
+
+The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
+Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
+**Cancel** with the existing size, colour, background and border controls. The existing AddFreeText /
+UpdateFreeText worker operations keep validation, protection and one Undo step; no new dependency,
+annotation type or CLI command is added (53 commands remain).
+
+The draft stays bound to its original page. Zoom remains available; conflicting navigation waits for
+confirmation/cancellation. Document revision/tab/tool/workspace changes cancel stale editing. Pending
+open/save/mutations and concurrent drafts are guarded; validation or worker failure retains typed text
+for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchanged. The editor draft
+exists only in memory until confirmation and has no crash recovery.
+
+Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
+default ignored; formatting and 912 matching EN/FR keys passed. All-target Clippy with warnings denied passed. The existing 75-check
+qpdf gate, four-document/744-page real corpus and update-helper self-test passed. CI/upgrade, staged/public
+package and production-updater gates for 0.20.0 are pending. **0.19.0 remains the current stable Latest**;
+its executed evidence below is not a validation claim for 0.20.0.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -253,7 +273,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Work beyond the selected 0.19.0 lot
+## Work beyond the selected 0.20.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

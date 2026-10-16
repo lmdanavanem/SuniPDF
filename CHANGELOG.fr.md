@@ -5,6 +5,20 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.20.0] — En développement
+
+- Ajout : créer et modifier les annotations FreeText dans un éditeur de page multiligne ancré, avec rectangles
+  cliqués/tracés et réglages taille/couleur/fond/bordure existants. Ajouter/Enregistrer/Annuler explicites réutilisent
+  AddFreeText/UpdateFreeText, validation, protection et une étape Annuler (D111/A39).
+- Protéger la page/le document/l'onglet/l'outil/l'espace de travail, les opérations en attente et les brouillons concurrents.
+  Zoom disponible ; navigation incompatible bloquée jusqu'à validation/annulation ; texte conservé après erreur de validation/worker.
+- Apparences Helvetica WinAnsi, agrandissement au renvoi, API moteur/CLI et 53 commandes inchangés ; aucune dépendance ajoutée.
+- Correction des tracés rapides de rectangle qui perdaient la position finale au relâchement ; les destinations
+  de recherche incompatibles ne font plus défiler un brouillon FreeText actif.
+- Workspace local : 468 tests réussis, aucun échec et sept ignorés par défaut ; formatage, 912 clés EN/FR,
+  75 contrôles qpdf, corpus licencié et autotest du metteur à jour réussis. Clippy avec avertissements refusés réussi ; CI/publication en attente.
+  0.19.0 reste la Latest stable ; résultats réels dans `docs/PROJECT_STATUS.fr.md`.
+
 ## [0.19.0] — 2026-10-16
 
 - Ajouté : tracer sur la page un rectangle pour les cinq types de champ existants, puis le relire dans

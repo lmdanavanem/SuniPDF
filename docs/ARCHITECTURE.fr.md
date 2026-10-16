@@ -267,6 +267,23 @@ Implémentation, tests locaux, formatage et Clippy réussis ; contrôles CI/paqu
 0.19.0 est la Latest stable.
 Souris/stylet/tactile natifs et Narrateur restent distincts. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
+## 0.20.0 : éditeur FreeText sur la page (en développement)
+
+Le bureau réutilise le placement d'annotation clic/tracé, les coordonnées affichées et l'état de brouillon/style
+FreeText existants (D111). L'éditeur multiligne ancré envoie seulement AddFreeText ou UpdateFreeText existant après
+Ajouter/Enregistrer explicite ; Annuler ne modifie pas le PDF. Aucun code de format PDF, dépendance, type
+d'annotation ou commande CLI ajouté.
+
+Conserver page d'origine et époque du document pendant l'édition, garder le brouillon au zoom, bloquer la
+navigation incompatible et annuler l'état périmé après changement de document/onglet/outil/espace de travail.
+Protéger opérations en attente et brouillons concurrents ; conserver le texte après erreur de validation/worker.
+Le worker existant fournit une étape Annuler, protection, apparence Helvetica WinAnsi et agrandissement vers
+le bas au renvoi. Brouillon non validé sans récupération après plantage.
+
+Implémentation/relecture, 468 tests workspace, formatage et 912 clés EN/FR réussis en local.
+Clippy avec avertissements refusés réussi ; contrôles CI/paquets/publication/metteur à jour en attente ; 0.19.0 reste Latest stable. Preuves dans
+`PROJECT_STATUS.fr.md` ; QA souris/stylet/tactile natifs, Narrateur et lecteurs tiers distincte.
+
 ## Coordonnées (SUNI-031c)
 
 Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,

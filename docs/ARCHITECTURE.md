@@ -263,6 +263,22 @@ Implementation, local tests, formatting and Clippy passed; CI/upgrade, staged/pu
 0.19.0 is stable Latest.
 Native mouse/pen/touch and Narrator checks remain separate. Executed evidence belongs in `PROJECT_STATUS.md`.
 
+## 0.20.0 on-page FreeText editor (in development)
+
+The desktop reuses annotation click/draw placement, display-space coordinates and the existing FreeText
+draft/style state (D111). An anchored multiline editor submits only through the existing AddFreeText or
+UpdateFreeText worker edit after explicit Add/Save; Cancel does not mutate the PDF. No PDF format code,
+dependency, annotation type or CLI command is added.
+
+Keep the origin page and document epoch for the editor lifetime, retain it through zoom, block conflicting
+navigation and cancel stale state on document/tab/tool/workspace changes. Guard pending operations and
+concurrent drafts; preserve typed text on validation/worker failure. The existing worker supplies one Undo,
+protection, Helvetica WinAnsi appearance and downward wrap growth. The unsubmitted draft has no crash recovery.
+
+Local implementation/review, 468 workspace tests, formatting and 912 matching EN/FR keys passed.
+Clippy with warnings denied passed; CI/package/public/updater gates remain pending; 0.19.0 is stable Latest. Executed evidence belongs in
+`PROJECT_STATUS.md`; native mouse/pen/touch, Narrator and third-party-reader QA remain separate.
+
 ## Coordinates (SUNI-031c)
 
 Every coordinate crossing the engine ↔ interface/CLI boundary is in **display space**: points,

@@ -297,6 +297,15 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
     Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
 
+    **Implémenté et testé localement pour 0.20.0 (D111) :** création/édition FreeText dans un éditeur de page multiligne ancré avec
+    Ajouter/Enregistrer/Annuler explicites, réglages existants, validation/protection moteur et une étape Annuler.
+    Page d'origine fixée ; zoom disponible ; navigation incompatible bloquée jusqu'à validation/annulation.
+    Opérations en attente, brouillons concurrents et document/onglet/outil/espace de travail périmés protégés ;
+    erreur de validation/worker : texte conservé. Brouillon en mémoire, exclu de la récupération après plantage.
+    Helvetica WinAnsi, texte simple et agrandissement vers le bas inchangés ; aucune extension police incorporée/
+    texte enrichi. Relecture, workspace, formatage et traductions réussis en local ; Clippy avec avertissements refusés réussi ; publication reste
+    en attente. 0.19.0 reste Latest stable. QA native/lecteurs distincte.
+
     Plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt,
     zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
     sélection d'une annotation de SuniPDF (cadre, quatre poignées, barre flottante) puis déplacement et

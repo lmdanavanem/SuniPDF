@@ -240,6 +240,26 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 geometry/types are not included. Native mouse/pen/touch and Narrator checks remain separate.
 Executed evidence belongs in `PROJECT_STATUS.md`.
 
+## 0.20.0: on-page FreeText creation and editing (in development)
+
+The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
+Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
+**Cancel** with the existing size, colour, background and border controls. The existing AddFreeText /
+UpdateFreeText worker operations keep validation, protection and one Undo step; no new dependency,
+annotation type or CLI command is added (53 commands remain).
+
+The draft stays bound to its original page. Zoom remains available; conflicting navigation waits for
+confirmation/cancellation. Document revision/tab/tool/workspace changes cancel stale editing. Pending
+open/save/mutations and concurrent drafts are guarded; validation or worker failure retains typed text
+for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchanged. The editor draft
+exists only in memory until confirmation and has no crash recovery.
+
+Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
+default ignored; formatting and 912 matching EN/FR keys passed. All-target Clippy with warnings denied passed. The existing 75-check
+qpdf gate, four-document/744-page real corpus and update-helper self-test passed. CI/upgrade, staged/public
+package and production-updater gates for 0.20.0 are pending. **0.19.0 remains the current stable Latest**;
+its executed evidence below is not a validation claim for 0.20.0.
+
 ## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -360,7 +380,7 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
   for the four existing shapes are delivered in 0.16.0, while other annotation types remain unsupported;
 - richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);
 - lighter round trip for big files (write the annotation without reloading the whole document);
-- free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
+- on-page FreeText creation and editing is implemented and locally tested for 0.20.0 (D111); Clippy with warnings denied passed; release gates remain pending.
 
 ## SUNI-025 — Lossy compression and qpdf verification (owner: OCR-CONVERSION + QA)
 Delivered in 0.10.0: bounded image-stream resampling/JPEG re-encoding, four pinned public NIST documents and

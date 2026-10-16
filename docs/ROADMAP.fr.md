@@ -196,6 +196,26 @@ réussis, avec formatage/Clippy ; contrôles CI/paquets/mise à jour/publication
 Preuves réelles dans `PROJECT_STATUS.fr.md`.
 Édition de la géométrie existante, création XFA et contrôles matériels natifs restent distincts.
 
+## 0.20.0 : création et édition FreeText sur la page (en développement)
+
+Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
+Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
+**Enregistrer** / **Annuler** explicites avec les réglages existants de taille, couleur, fond et bordure.
+Les opérations worker AddFreeText / UpdateFreeText conservent validation, protection et une étape Annuler ;
+aucune nouvelle dépendance, type d'annotation ou commande CLI ajouté (53 commandes conservées).
+
+Le brouillon reste lié à sa page d'origine. Le zoom reste disponible ; la navigation incompatible attend
+validation/annulation. Révision du document/changement d'onglet/outil/espace de travail : édition périmée
+annulée. Ouverture/enregistrement/mutations en attente et brouillons concurrents sont protégés ; erreur de
+validation ou du worker : texte saisi conservé pour réessayer. Apparence Helvetica WinAnsi et agrandissement
+vers le bas au renvoi à la ligne inchangés. Brouillon en mémoire jusqu'à validation, sans récupération après plantage.
+
+Implémentation et relecture indépendante réussies. Workspace local : 468 tests réussis, aucun échec, sept
+ignorés par défaut ; formatage et 912 clés EN/FR correspondantes réussis. Clippy toutes cibles avec avertissements refusés réussi. Les 75
+contrôles qpdf existants, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
+CI/mises à niveau, paquets préparés/publics et metteur à jour de production 0.20.0 restent à valider. **0.19.0
+reste la Latest stable actuelle** ; ses preuves exécutées ci-dessous ne valident pas la 0.20.0.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -258,7 +278,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite au-delà du lot 0.19.0 retenu
+## Suite au-delà du lot 0.20.0 retenu
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

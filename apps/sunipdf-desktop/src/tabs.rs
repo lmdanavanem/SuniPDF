@@ -71,6 +71,7 @@ impl SuniApp {
         self.edit.reset_for_tab();
         self.pagesetup.close_labels();
         self.annotate.adv.link = None;
+        self.annotate.adv.free_text = None;
         // Le placement d'une signature vise une page du document actif : il ne survit pas.
         self.cancel_placing();
         self.annotate.clear_reading();

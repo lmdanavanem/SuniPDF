@@ -5,6 +5,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.20.0] - In development
+
+- Added: create and edit FreeText annotations in an anchored multiline page editor, retaining click/drawn
+  rectangles and existing size/colour/background/border controls. Explicit Add/Save/Cancel reuses the current
+  AddFreeText/UpdateFreeText worker edits, validation, protection and one Undo (D111/A39).
+- Guard page/document/tab/tool/workspace identity, pending operations and concurrent drafts. Allow zoom;
+  block conflicting navigation until confirmation/cancellation; retain typed text after validation/worker failure.
+- Helvetica WinAnsi appearances, wrap growth, core/CLI APIs and 53 commands remain unchanged; no new dependency.
+- Fixed quick rectangle drags dropping the final pointer position at release; conflicting search destinations
+  cannot scroll an active FreeText draft away.
+- Local workspace passed 468 tests, zero failures and seven default ignored; formatting, 912 matching EN/FR keys,
+  75 qpdf checks, the licensed corpus and update-helper checks passed. Clippy with warnings denied passed; CI/publication remain pending.
+  0.19.0 remains stable Latest; actual results belong in `docs/PROJECT_STATUS.md`.
+
 ## [0.19.0] - 2026-10-16
 
 - Added: draw a rectangle on the page for the five existing form-field types, then review it in the

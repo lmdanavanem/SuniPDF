@@ -3,9 +3,12 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.19.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0), publiée en Latest sous `lmdanavanem`.
+Ce guide couvre SuniPDF 0.20.0. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
+L'éditeur 0.20.0 a passé relecture, 468 tests workspace, formatage, Clippy avec avertissements refusés
+et 912 clés EN/FR en local ; contrôles de publication en attente.
+Les preuves ci-dessous concernent la version stable actuelle 0.19.0.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release `415214602`,
+[Latest stable actuelle : 0.19.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release `415214602`,
 source `903181fee3bba5794b39714106e5814bca753fb3`. Validation locale : 460 tests réussis, zéro échec, sept ignorés par défaut ;
 formatage/Clippy sans avertissement, 909 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).
 [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) réussis :
@@ -131,9 +134,27 @@ du contenu de page : les autres lecteurs les affichent aussi) :
 |---|---|
 | **Sélectionner une annotation** (A) | Clic sur une annotation : cadre, poignées, barre flottante. Glisser = déplacer ; poignées = redimensionner ; flèches = décaler (Maj : ×10) ; Suppr = supprimer ; double-clic ou bouton « Modifier le texte » = changer son texte ou son commentaire ; Échap = désélectionner |
 | **Dessin à main levée** (D) | Tracer plusieurs traits sur une page ; couleur, épaisseur et opacité pour le groupe. Terminer le dessin = une annotation/un Annuler ; Annuler le dessin ou Échap avant envoi = abandonner le brouillon ; un clic = un point |
-| **Zone de texte libre** (F) | Clic (boîte par défaut) ou glissement (boîte choisie), puis saisie dans la boîte de dialogue : taille, couleur, fond, bordure. La boîte grandit vers le bas si le texte est plus haut. Police Helvetica : les caractères hors alphabet latin s'affichent « ? », le texte exact reste dans l'annotation |
+| **Zone de texte libre** (F) | Clic (boîte par défaut) ou glissement (boîte choisie), puis saisie dans l'éditeur multiligne ancré à la page. Régler taille, couleur, fond et bordure ; Ajouter ou Annuler. Pour modifier un texte libre, le sélectionner puis Modifier le texte/double-clic et Enregistrer ou Annuler. Boîte agrandie vers le bas si besoin. Apparence Helvetica WinAnsi ; texte exact conservé |
 | **Rectangle, Ellipse, Ligne ou flèche** (annotations) | Glisser ; couleur, épaisseur, fond (rectangle et ellipse), opacité, case « Flèche » |
 | **Lien** | Tracer une zone (au moins 6 points) puis choisir « Aller à une page » ou « Ouvrir une adresse web » (`http`, `https` ou `mailto` seulement) |
+
+**Texte libre sur la page — à partir de 0.20.0.** Avec **Zone de texte libre** (F), cliquer pour une boîte
+par défaut ou tracer son rectangle, puis saisir dans l'éditeur multiligne ancré. Régler taille, couleur du texte,
+fond et bordure avec les contrôles existants (taille 6–96 pt, bordure 0–10 pt). **Ajouter** crée l'annotation. Pour modifier une annotation
+FreeText, la sélectionner puis **Modifier le texte**, ou double-cliquer, et choisir **Enregistrer**.
+**Annuler** ou Échap abandonne le brouillon sans modifier le PDF ; clic extérieur et Entrée ne le valident pas.
+
+Valider ou annuler avant les actions incompatibles de page/navigation/document/onglet/outil/espace de travail. Le zoom conserve l'éditeur
+sur la page d'origine ; révision du document/changement d'onglet/outil/espace de travail : édition périmée annulée.
+Ouverture/enregistrement/mutation déjà en cours ou autre brouillon actif peuvent empêcher le démarrage.
+Erreur de validation/worker : texte et style conservés pour réessayer. Texte non vide, rectangle fini
+d'une largeur minimale de deux fois la taille et d'au moins 2 pt de haut. Ajouter/Enregistrer réussi produit une étape Annuler ;
+enregistrer ensuite le PDF explicitement. Texte non validé en mémoire, absent de la récupération après plantage.
+
+La boîte peut grandir vers le bas au renvoi à la ligne. Le rendu reste Helvetica WinAnsi (accents latins, € et
+ponctuation courante) ; caractères non pris en charge affichés « ? », texte exact conservé dans `/Contents`.
+Gras/italique, texte enrichi, CJK et mise en page droite à gauche restent indisponibles. Annotations verrouillées
+et bordures FreeText malformées conservent les restrictions existantes. Cet éditeur ne modifie pas les objets texte de page.
 
 **Dessin groupé — disponible en 0.18.0.** Tracer plusieurs traits sur une page, puis cliquer sur
 **Terminer le dessin** pour créer une annotation et une étape Annuler, ou **Annuler le dessin** pour abandonner
@@ -517,8 +538,7 @@ conservé pour réessayer. Relâcher hors page borne le rectangle à la page ini
 Révision du document/changement d'onglet/outil/espace de travail : placement périmé annulé ; zoom/navigation restent
 possibles, avec finalisation au relâchement si un saut en page unique masque l'origine. Dans ce cas, le dernier rectangle
 connu revient dans la boîte numérique pour relecture ; seul **Créer le champ** le crée. Création numérique conservée.
-Tests locaux, formatage et Clippy réussis ; contrôles de publication réussis. 0.19.0 est la Latest stable. Aucun nouveau type ni éditeur de champs
-existants. Souris/stylet/tactile natifs et Narrateur restent distincts.
+Aucun nouveau type ni éditeur de champs existants. Souris/stylet/tactile natifs et Narrateur restent distincts.
 
 **0.12.0 :** pour une liste déroulante, cochez **Autoriser du texte libre en plus des options proposées**
 pour accepter les choix et des valeurs saisies. Gardez au moins un choix prédéfini avec une valeur d'export unique

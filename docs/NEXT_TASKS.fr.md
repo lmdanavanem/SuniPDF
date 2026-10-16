@@ -243,6 +243,26 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 de champs existants exclues. Souris/stylet/tactile natifs et Narrateur restent distincts.
 Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
+## 0.20.0 : création et édition FreeText sur la page (en développement)
+
+Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
+Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
+**Enregistrer** / **Annuler** explicites avec les réglages existants de taille, couleur, fond et bordure.
+Les opérations worker AddFreeText / UpdateFreeText conservent validation, protection et une étape Annuler ;
+aucune nouvelle dépendance, type d'annotation ou commande CLI ajouté (53 commandes conservées).
+
+Le brouillon reste lié à sa page d'origine. Le zoom reste disponible ; la navigation incompatible attend
+validation/annulation. Révision du document/changement d'onglet/outil/espace de travail : édition périmée
+annulée. Ouverture/enregistrement/mutations en attente et brouillons concurrents sont protégés ; erreur de
+validation ou du worker : texte saisi conservé pour réessayer. Apparence Helvetica WinAnsi et agrandissement
+vers le bas au renvoi à la ligne inchangés. Brouillon en mémoire jusqu'à validation, sans récupération après plantage.
+
+Implémentation et relecture indépendante réussies. Workspace local : 468 tests réussis, aucun échec, sept
+ignorés par défaut ; formatage et 912 clés EN/FR correspondantes réussis. Clippy toutes cibles avec avertissements refusés réussi. Les 75
+contrôles qpdf existants, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
+CI/mises à niveau, paquets préparés/publics et metteur à jour de production 0.20.0 restent à valider. **0.19.0
+reste la Latest stable actuelle** ; ses preuves exécutées ci-dessous ne valident pas la 0.20.0.
+
 ## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -365,7 +385,7 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   bordures en tirets des quatre formes livrées en 0.16.0, autres types toujours non pris en charge ;
 - création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
-- zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
+- création et édition FreeText sur la page implémentées et testées localement pour 0.20.0 (D111) ; Clippy avec avertissements refusés réussi ; publication en attente.
 
 ## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
 Livrés en 0.10.0 : rééchantillonnage borné des flux image/JPEG, quatre documents NIST publics figés et régressions

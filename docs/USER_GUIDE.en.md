@@ -3,9 +3,12 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [SuniPDF 0.19.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0), published as Latest under `lmdanavanem`.
+This guide covers SuniPDF 0.20.0. Publication status and executed release checks are recorded in
+[Project status](PROJECT_STATUS.md). The 0.20.0 editor passed local review, 468 workspace tests, formatting
+and 912 matching EN/FR keys; Clippy with warnings denied passed; release gates remain pending. The evidence below concerns the current
+stable 0.19.0 release.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) under `lmdanavanem`, release `415214602`,
+[Current stable Latest: 0.19.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) under `lmdanavanem`, release `415214602`,
 source `903181fee3bba5794b39714106e5814bca753fb3`. Local validation: 460 passed tests, zero failures, seven default ignored;
 formatting/Clippy with warnings denied, 909 EN/FR keys, 75 qpdf checks, update-helper self-test and four NIST/NBS PDFs (744 pages).
 [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) passed:
@@ -122,9 +125,27 @@ comment. **Advanced annotations**, real PDF annotations (not page content: other
 |---|---|
 | **Select an annotation** (A) | Click an annotation: frame, handles, floating bar. Drag = move; handles = resize; arrow keys = nudge (Shift: ×10); Delete = remove; double-click or the "Edit the text" button = change its text or comment; Esc = deselect |
 | **Freehand drawing** (D) | Draw several strokes on one page; colour, width and opacity apply to the group. Finish drawing = one annotation/Undo; Cancel drawing or Esc before submission = discard the draft; a click = a dot |
-| **Free text box** (F) | Click (default box) or drag (chosen box), then type in the dialog: size, colour, background, border. The box grows downwards if the text is taller. Helvetica font: characters outside the Latin alphabet show as "?", the exact text stays in the annotation |
+| **Free text box** (F) | Click (default box) or drag (chosen box), then type in the anchored multiline page editor. Set size, colour, background and border; choose Add or Cancel. To change existing free text, select it then Edit Text/double-click, and Save or Cancel. The box grows downwards if needed. Helvetica WinAnsi appearance; exact text retained |
 | **Rectangle, Ellipse, Line or arrow** (annotations) | Drag; colour, width, fill (rectangle and ellipse), opacity, "Arrow" checkbox |
 | **Link** | Draw an area (at least 6 points) then choose "Go to a page" or "Open a web address" (`http`, `https` or `mailto` only) |
+
+**On-page free text — from 0.20.0.** With **Free text box** (F), click the page for a default box or
+drag its rectangle, then type directly in the anchored multiline editor. Adjust size, text colour,
+background and border with the existing controls (size 6–96 pt, border 0–10 pt). Choose **Add** to create the annotation. To edit one,
+select the FreeText annotation and choose **Edit Text**, or double-click it, then choose **Save**.
+**Cancel** or Escape discards the draft without changing the PDF; clicking outside or pressing Enter does not submit it.
+
+Confirm or cancel before conflicting page/navigation/document/tab/tool/workspace actions. Zoom keeps the editor bound to
+its original page; document revision/tab/tool/workspace changes cancel stale editing. An operation already
+opening/saving/mutating the document or another active draft can prevent editing from starting. Validation
+or worker failure retains typed text and style for retry. Text must be nonempty, with a finite
+rectangle at least twice the font size wide and at least 2 pt high. A successful Add/Save is one Undo step; save the PDF explicitly
+afterwards. Unsubmitted editor text stays in memory and is absent from crash recovery.
+
+The box can grow downwards for wrapped text. Rendering still uses Helvetica WinAnsi (Latin accents, € and
+common punctuation); unsupported characters appear as "?", while `/Contents` retains the exact text.
+Bold/italic, rich text, CJK and right-to-left layout remain unsupported. Locked annotations and malformed
+free-text borders keep the existing editing restrictions. This editor does not edit PDF page text objects.
 
 **Grouped drawing — available in 0.18.0.** Draw multiple strokes on one page, then click
 **Finish drawing** to create one annotation and one Undo step, or **Cancel drawing** to discard only that draft.
@@ -487,8 +508,7 @@ can retry. Release outside the page clamps to the original page. **Escape** canc
 Document revision/tab/tool/workspace changes cancel stale placement; zoom/navigation remain possible, including
 release finalization when a Single-page jump hides the original page. In that case the last known rectangle
 reopens in the numeric dialog for review; only **Create Field** creates it. Numeric creation remains available.
-Local tests, formatting and Clippy passed; release gates passed. 0.19.0 is stable Latest. This adds no new field type or editor
-for existing fields. Native mouse/pen/touch and Narrator checks remain separate.
+This adds no new field type or editor for existing fields. Native mouse/pen/touch and Narrator checks remain separate.
 
 XFA creation is unsupported. FDF import accepts normal xref text/name/array values;
 streams, actions, attachments and rich text are refused. Referenced document locations are never opened.

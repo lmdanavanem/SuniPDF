@@ -283,7 +283,7 @@ impl SuniApp {
 
     /// Demande le modèle au moteur s'il est utile (panneau, outil, import) et périmé.
     pub fn refresh_forms_if_needed(&mut self) {
-        if self.form_builder.active() {
+        if self.form_builder.active() || self.annotate.adv.free_text.is_some() {
             return;
         }
         let Some(doc) = &self.document else { return };
