@@ -11,13 +11,13 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Cache pinned offline OCR runtime
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: third_party/ocr/win-x64
           key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
@@ -47,7 +47,7 @@ jobs:
         run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
       - name: Real corpus regression evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: real-corpus-evidence
           path: target/regression-corpus-report.json
@@ -64,7 +64,7 @@ jobs:
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: portable-update-evidence
           path: target/portable-update-*.json
@@ -88,12 +88,12 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.19.0
       - name: MSI upgrade regression evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: msi-upgrade-evidence
           path: target/msi-upgrade-*/*.log
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sunipdf-win-x64-portable
           path: |

@@ -14,13 +14,13 @@ jobs:
       matrix:
         arch: [x64, arm64]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
       - name: Cache pinned offline OCR runtime
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: third_party/ocr/win-${{ matrix.arch }}
           key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
@@ -48,7 +48,7 @@ jobs:
         run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
       - name: Real corpus regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: real-corpus-evidence
           path: target/regression-corpus-report.json
@@ -66,7 +66,7 @@ jobs:
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: portable-update-evidence
           path: target/portable-update-*.json
@@ -92,7 +92,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.19.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-msi-upgrade-evidence
           path: target/msi-upgrade-*/*.log
@@ -112,7 +112,7 @@ jobs:
           # La signature modifie le fichier : recalculer l'empreinte publiée.
           $hash = (Get-FileHash $msi -Algorithm SHA256).Hash
           Set-Content -Path "$msi.sha256" -Value "$hash  $(Split-Path -Leaf $msi)" -Encoding ascii
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sunipdf-${{ matrix.arch }}
           path: |
@@ -126,11 +126,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: sunipdf-*
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: artifacts/**/*
           draft: true
