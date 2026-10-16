@@ -316,7 +316,7 @@ try {
         }
     }
     [IO.Directory]::CreateDirectory((Split-Path -Parent ([IO.Path]::GetFullPath($ReportPath)))) | Out-Null
-    @{success=$passed; error=$failure; package=$incoming.version; cases=$results.ToArray(); isolated_profile=$true; installed_app_untouched=$true; test_workspace=$workspace; diagnostics=$diagnostics} |
+    @{success=$passed; error=$failure; package=$incoming.version; cases=$results.ToArray(); isolated_profile=$true; installed_app_untouched=$true; test_workspace=$workspace; diagnostics=$diagnostics; test_opengl_overlay=$(if ($env:SUNIPDF_TEST_OPENGL_DIR) { 'Mesa 26.2.4 llvmpipe' } else { 'system OpenGL' })} |
         ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
     if ($passed) { $checked=ChildPath $workspace ([IO.Path]::GetTempPath()); Remove-Item -LiteralPath $checked -Recurse -Force }
 }

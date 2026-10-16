@@ -11,13 +11,18 @@ Implemented: larger application icon (about 91% visible width instead of 50%), p
 strict malformed-XMP refusal, explicit AES-256 key length, update-helper restart/error reporting,
 pinned QPDF corpus checks and real portable/MSI upgrade regression scripts in Windows CI.
 
-The core test suite passed locally, including namespace/other-resource/UTF-16 preservation, compressed and encrypted XMP,
-malformed XML refusal and AES round trips. Six isolated portable scenarios passed with prior retained packages and 0.9.0;
-the final 0.9.1 regression uses exact pinned public previous packages. MSI install/rollback/upgrade/uninstall runs only
-on an elevated disposable GitHub runner. Full workspace, QPDF, final packages and publication remain pending at this commit.
+Local workspace: 322 tests passed, zero failed, five default ignored; Clippy, formatting and 804 bilingual keys passed.
+The explicit QPDF gate passed on 22 synthetic/generated PDFs and rejected three malformed inputs. XMP preservation,
+compressed/encrypted streams and AES round trips are covered. Windows PowerShell 5 passed with Get-FileHash unavailable.
+
+[Fast Windows regression](https://github.com/lmdanavanem/SuniPDF/actions/runs/38838856238) passed against the pinned public
+0.9.0 target: portable upgrades/rollback/120-second close guard on Windows 2022 and latest; actual per-machine MSI
+0.8.0-to-0.9.0 install/transactional rollback/upgrade/downgrade rejection/uninstall with user-data preservation.
+GUI tests require pinned Mesa software OpenGL on these runners. Its two DLLs exist only in temporary test copies,
+never distribution packages; native graphics-driver validation is separate. Final 0.9.1 package regression/publication is pending.
 
 Local compilation is limited to one Cargo command with `-j 2`. A workspace rebuild hit Windows paging-file error1455;
-crate suites are being run sequentially before the complete CI gate. No installation or user profile was modified locally.
+sequential crate builds followed by the complete workspace rerun passed. No installation or user profile was modified locally.
 
 Remaining independent checks: real customer/hostile corpus, ARM64 hardware, physical printers, Narrator,
 interactive update/save dialogs and Acrobat/Foxit interoperability. PDF/A identification preservation is not conformance certification.

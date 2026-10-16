@@ -11,13 +11,18 @@ Implémentés : icône agrandie (environ 91 % de largeur visible contre 50 %), c
 refus du XMP malformé, longueur AES-256 explicite, résultat/erreurs de relance de l'updater,
 corpus QPDF figé et régressions réelles de mise à jour portable/MSI dans la CI Windows.
 
-Suite moteur réussie localement : espaces de noms/autres ressources/UTF-16 conservés, XMP compressé/chiffré,
-XML malformé refusé et tours AES. Six scénarios portables isolés ont réussi avec les anciens paquets conservés et 0.9.0 ;
-la régression finale vers 0.9.1 emploie les paquets publics précédents exactement figés. Les installations/rollback/upgrade/désinstallations
-MSI s'exécutent uniquement sur un runner GitHub jetable administrateur. Suite complète, QPDF, paquets finaux et publication restent à valider à ce commit.
+Workspace local : 322 tests réussis, zéro échec, cinq ignorés par défaut ; Clippy, formatage et 804 clés bilingues réussis.
+Le contrôle QPDF explicite valide 22 PDF synthétiques/générés et rejette trois entrées malformées. Conservation du XMP,
+flux compressés/chiffrés et tours AES couverts. Windows PowerShell 5 réussit avec Get-FileHash indisponible.
+
+[Régression Windows rapide](https://github.com/lmdanavanem/SuniPDF/actions/runs/38838856238) réussie avec la cible publique
+0.9.0 figée : upgrades/rollback/garde de fermeture réelle 120 secondes sur Windows 2022 et récent ; MSI réel par machine
+0.8.0 vers 0.9.0, installation/rollback transactionnel/upgrade/refus de downgrade/désinstallation avec conservation des données.
+Les tests GUI emploient Mesa logiciel figé sur ces runners. Ses deux DLL restent dans les copies temporaires de test,
+jamais dans les distributions ; le pilote graphique natif reste à valider. Régression des paquets 0.9.1/publication encore en attente.
 
 Compilation locale limitée à une commande Cargo avec `-j 2`. La reconstruction workspace a atteint l'erreur1455
-du fichier d'échange Windows ; les suites par crate passent séquentiellement avant le contrôle CI complet.
+du fichier d'échange Windows ; les compilations séquentielles par crate puis la suite workspace complète ont réussi.
 Aucune installation ni profil utilisateur modifié localement.
 
 Contrôles indépendants restants : corpus réel client/hostile, matériel ARM64, imprimantes physiques, Narrateur,
