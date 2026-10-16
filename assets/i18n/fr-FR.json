@@ -716,6 +716,7 @@
   "bar.font_size": "Taille",
   "bar.border": "Bordure (pt)",
   "bar.arrow": "Flèche",
+  "bar.dashed": "Bordure en tirets",
   "bar.annot_apply": "Appliquer à l'annotation",
   "bar.annot_apply_hint": "Applique ces réglages à l'annotation sélectionnée ({kind})",
   "bar.reply": "Répondre",

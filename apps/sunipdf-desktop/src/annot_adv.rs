@@ -320,6 +320,17 @@ impl SuniApp {
             fill_rgb: (with_fill && self.edit.fill).then_some(rgb_tuple(self.edit.fill_rgb)),
             width_pt: self.edit.stroke_width.max(0.5),
             opacity: (self.edit.opacity_pct / 100.0).clamp(0.05, 1.0),
+            dash_pattern: if matches!(
+                self.annotate.tool,
+                Tool::AnnotRect | Tool::AnnotEllipse | Tool::AnnotLine
+            ) || (self.annotate.tool == Tool::SelectAnnot
+                && self.annotate.adv.selected.as_ref().is_some_and(|(_, d)| {
+                    matches!(d.subtype.as_str(), "Square" | "Circle" | "Line")
+                })) {
+                self.edit.annot_dash_pattern.clone()
+            } else {
+                Vec::new()
+            },
         }
     }
 
@@ -403,6 +414,7 @@ impl SuniApp {
             self.edit.free_text_size = s;
         }
         self.edit.opacity_pct = (detail.opacity * 100.0).round();
+        self.edit.annot_dash_pattern = detail.dash_pattern.clone();
         self.status_msg = Some(if detail.locked {
             tr(lang, "status.annot_locked").to_string()
         } else {
@@ -932,6 +944,68 @@ pub fn kind_label(lang: Language, subtype: &str) -> String {
 
 // ----- Peinture ---------------------------------------------------------------------------------
 
+fn dash_shapes(
+    points: &[egui::Pos2],
+    pattern: &[f32],
+    scale: f32,
+    stroke: Stroke,
+) -> Option<Vec<egui::Shape>> {
+    let cycle: f64 = pattern
+        .iter()
+        .map(|v| f64::from(*v) * f64::from(scale))
+        .sum();
+    let length: f64 = points
+        .windows(2)
+        .map(|p| f64::from(p[0].distance(p[1])))
+        .sum();
+    if pattern.is_empty()
+        || pattern.len() > 16
+        || pattern
+            .iter()
+            .any(|v| !v.is_finite() || *v < 0.0 || (*v > 0.0 && *v < 0.1) || *v > 1_000.0)
+        || !scale.is_finite()
+        || scale <= 0.0
+        || !cycle.is_finite()
+        || cycle <= 0.0
+        || !length.is_finite()
+        || length / cycle * pattern.len() as f64 > 100_000.0
+    {
+        // Invalid or excessive patterns omit the preview stroke rather than misrepresenting it as solid.
+        return None;
+    }
+    let count = pattern.len()
+        * if pattern.len().is_multiple_of(2) {
+            1
+        } else {
+            2
+        };
+    let expanded: Vec<_> = pattern
+        .iter()
+        .cycle()
+        .take(count)
+        .map(|v| v * scale)
+        .collect();
+    let dashes: Vec<_> = expanded.iter().step_by(2).copied().collect();
+    let gaps: Vec<_> = expanded.iter().skip(1).step_by(2).copied().collect();
+    Some(egui::Shape::dashed_line_with_offset(
+        points, stroke, &dashes, &gaps, 0.0,
+    ))
+}
+
+fn paint_annot_stroke(
+    painter: &egui::Painter,
+    points: &[egui::Pos2],
+    pattern: &[f32],
+    scale: f32,
+    stroke: Stroke,
+) {
+    if pattern.is_empty() {
+        painter.add(egui::epaint::PathShape::line(points.to_vec(), stroke));
+    } else if let Some(shapes) = dash_shapes(points, pattern, scale, stroke) {
+        painter.extend(shapes);
+    }
+}
+
 impl SuniApp {
     /// Aperçus de tracé (encre, formes, zones), liens du mode Lien, cadre et poignées de
     /// l'annotation sélectionnée.
@@ -974,7 +1048,20 @@ impl SuniApp {
             };
             match tool {
                 Tool::AnnotRect => {
-                    painter.rect(r, 0.0, fill, stroke, egui::StrokeKind::Middle);
+                    painter.rect_filled(r, 0.0, fill);
+                    paint_annot_stroke(
+                        painter,
+                        &[
+                            r.left_bottom(),
+                            r.right_bottom(),
+                            r.right_top(),
+                            r.left_top(),
+                            r.left_bottom(),
+                        ],
+                        &self.edit.annot_dash_pattern,
+                        k,
+                        stroke,
+                    );
                 }
                 Tool::AnnotEllipse => {
                     painter.add(egui::epaint::EllipseShape {
@@ -982,12 +1069,35 @@ impl SuniApp {
                         radius: r.size() / 2.0,
                         angle: 0.0,
                         fill,
-                        stroke,
+                        stroke: if self.edit.annot_dash_pattern.is_empty() {
+                            stroke
+                        } else {
+                            Stroke::NONE
+                        },
                     });
+                    if !self.edit.annot_dash_pattern.is_empty() {
+                        let points: Vec<_> = (0..=128)
+                            .map(|i| {
+                                let angle = std::f32::consts::TAU * i as f32 / 128.0;
+                                r.center()
+                                    + egui::vec2(
+                                        angle.cos() * r.width() / 2.0,
+                                        -angle.sin() * r.height() / 2.0,
+                                    )
+                            })
+                            .collect();
+                        paint_annot_stroke(
+                            painter,
+                            &points,
+                            &self.edit.annot_dash_pattern,
+                            k,
+                            stroke,
+                        );
+                    }
                 }
                 Tool::AnnotLine => {
                     let (a, b) = (pt(d.start), pt(d.current));
-                    painter.line_segment([a, b], stroke);
+                    paint_annot_stroke(painter, &[a, b], &self.edit.annot_dash_pattern, k, stroke);
                     if self.edit.arrow && (b - a).length() > 1.0 {
                         let u = (b - a).normalized();
                         let n = egui::vec2(-u.y, u.x);
@@ -1078,6 +1188,7 @@ struct BarKind {
     fill: bool,
     opacity: bool,
     arrow: bool,
+    dashed: bool,
     text: bool,
 }
 
@@ -1088,10 +1199,14 @@ fn bar_kind(tool: Tool, selected: Option<&AnnotDetail>) -> Option<BarKind> {
         fill,
         opacity: true,
         arrow,
+        dashed: true,
         text: false,
     };
     match tool {
-        Tool::Ink => Some(shape(false, false)),
+        Tool::Ink => Some(BarKind {
+            dashed: false,
+            ..shape(false, false)
+        }),
         Tool::AnnotRect | Tool::AnnotEllipse => Some(shape(true, false)),
         Tool::AnnotLine => Some(shape(false, true)),
         Tool::FreeText => Some(BarKind {
@@ -1100,19 +1215,25 @@ fn bar_kind(tool: Tool, selected: Option<&AnnotDetail>) -> Option<BarKind> {
             fill: true,
             opacity: false,
             arrow: false,
+            dashed: false,
             text: true,
         }),
         Tool::SelectAnnot => {
             let d = selected?;
             Some(match d.subtype.as_str() {
                 "Square" | "Circle" => shape(true, false),
-                "Line" | "Ink" => shape(false, false),
+                "Line" => shape(false, false),
+                "Ink" => BarKind {
+                    dashed: false,
+                    ..shape(false, false)
+                },
                 "FreeText" => BarKind {
                     stroke: true,
                     width: true,
                     fill: true,
                     opacity: false,
                     arrow: false,
+                    dashed: false,
                     text: true,
                 },
                 _ => BarKind {
@@ -1265,6 +1386,14 @@ impl SuniApp {
                                 if kind.arrow {
                                     ui.separator();
                                     ui.checkbox(&mut self.edit.arrow, tr(lang, "bar.arrow"));
+                                }
+                                if kind.dashed {
+                                    ui.separator();
+                                    let mut dashed = !self.edit.annot_dash_pattern.is_empty();
+                                    if ui.checkbox(&mut dashed, tr(lang, "bar.dashed")).changed() {
+                                        self.edit.annot_dash_pattern =
+                                            if dashed { vec![6.0, 3.0] } else { Vec::new() };
+                                    }
                                 }
                             });
                         }
@@ -2130,6 +2259,7 @@ mod tests {
             rgb: None,
             fill_rgb: None,
             width_pt: None,
+            dash_pattern: Vec::new(),
             opacity: 1.0,
             font_size: None,
             parent: None,
@@ -2395,6 +2525,193 @@ mod tests {
     }
 
     #[test]
+    fn dashed_shape_controls_create_each_shape_in_both_languages() {
+        for language in Language::ALL {
+            for (tool, shape) in [
+                (Tool::AnnotRect, AnnotShape::Square),
+                (Tool::AnnotEllipse, AnnotShape::Circle),
+                (Tool::AnnotLine, AnnotShape::Line),
+                (Tool::AnnotLine, AnnotShape::Arrow),
+            ] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                let ctx = egui::Context::default();
+                crate::icons::install(&ctx);
+                ctx.enable_accesskit();
+                app.settings.set_language(language);
+                app.annotate.tool = tool;
+                app.edit.arrow = shape == AnnotShape::Arrow;
+                click_link_control(&mut app, &ctx, "bar.dashed");
+                assert_eq!(app.edit.annot_dash_pattern, [6.0, 3.0]);
+                assert!(requests.try_recv().is_err());
+                app.adv_drag_finished(Drag {
+                    page: 0,
+                    start: (20.0, 30.0),
+                    current: (120.0, 80.0),
+                });
+                assert!(matches!(
+                    requests.try_recv().unwrap(),
+                    Request::Edit(EditOp::AddAnnotShape { page: 0, shape: actual, style, .. })
+                        if actual == shape && style.dash_pattern == [6.0, 3.0]
+                ));
+                assert!(matches!(
+                    requests.try_recv().unwrap(),
+                    Request::FinishMutation
+                ));
+                app.worker.finish_mutation();
+                assert!(requests.try_recv().is_err());
+                assert!(!app.dirty && !app.can_undo);
+            }
+        }
+    }
+
+    #[test]
+    fn selected_shape_preserves_custom_dashes_until_the_checkbox_changes() {
+        for language in Language::ALL {
+            for subtype in ["Square", "Circle", "Line"] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                let ctx = egui::Context::default();
+                crate::icons::install(&ctx);
+                ctx.enable_accesskit();
+                app.settings.set_language(language);
+                app.annotate.tool = Tool::SelectAnnot;
+                let mut annotation = detail(2, subtype, r(20.0, 30.0, 120.0, 80.0));
+                annotation.dash_pattern = vec![4.0, 2.0, 1.0];
+                app.select_annot(0, annotation.clone());
+                assert_eq!(app.edit.annot_dash_pattern, annotation.dash_pattern);
+                link_frame(&mut app, &ctx, vec![]);
+                app.edit.stroke_rgb = [20, 40, 60];
+                click_link_control(&mut app, &ctx, "bar.annot_apply");
+                assert!(matches!(
+                    requests.try_recv().unwrap(),
+                    Request::Edit(EditOp::StyleAnnotation { page: 0, index: 2, style })
+                        if style.dash_pattern == annotation.dash_pattern && style.rgb == (20, 40, 60)
+                ));
+                assert!(matches!(
+                    requests.try_recv().unwrap(),
+                    Request::FinishMutation
+                ));
+                app.worker.finish_mutation();
+                assert!(requests.try_recv().is_err());
+                app.annotate.annotations_page = Some(0);
+                app.on_annotations(0, vec![], Some(vec![annotation]));
+                assert_eq!(
+                    app.annotate.adv.selected.as_ref().unwrap().1.dash_pattern,
+                    [4.0, 2.0, 1.0]
+                );
+                click_link_control(&mut app, &ctx, "bar.dashed");
+                assert!(app.edit.annot_dash_pattern.is_empty());
+                click_link_control(&mut app, &ctx, "bar.dashed");
+                assert_eq!(app.edit.annot_dash_pattern, [6.0, 3.0]);
+                assert!(requests.try_recv().is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn unsupported_and_locked_annotations_do_not_offer_dashed_borders() {
+        for language in Language::ALL {
+            for subtype in [
+                "Ink",
+                "FreeText",
+                "Highlight",
+                "Link",
+                "Square",
+                "Circle",
+                "Line",
+            ] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                let ctx = egui::Context::default();
+                ctx.enable_accesskit();
+                app.settings.set_language(language);
+                app.annotate.tool = Tool::SelectAnnot;
+                let mut annotation = detail(2, subtype, r(20.0, 30.0, 120.0, 80.0));
+                if matches!(subtype, "Square" | "Circle" | "Line") {
+                    annotation.locked = true;
+                    annotation.can_restyle = false;
+                }
+                app.select_annot(0, annotation);
+                for _ in 0..2 {
+                    let output = link_frame(&mut app, &ctx, vec![]);
+                    assert!(!output
+                        .platform_output
+                        .accesskit_update
+                        .unwrap()
+                        .nodes
+                        .iter()
+                        .any(|(_, node)| node.label() == Some(app.t("bar.dashed"))));
+                }
+                assert!(requests.try_recv().is_err());
+            }
+            for tool in [Tool::Ink, Tool::FreeText] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.annotate.tool = tool;
+                app.edit.annot_dash_pattern = vec![6.0, 3.0];
+                assert!(app.annot_style(false).dash_pattern.is_empty());
+                assert!(!bar_kind(tool, None).unwrap().dashed);
+            }
+        }
+    }
+
+    #[test]
+    fn dash_preview_keeps_odd_patterns_zero_entries_and_phase_across_edges() {
+        let stroke = Stroke::new(1.0, egui::Color32::BLACK);
+        let points = [egui::pos2(0.0, 0.0), egui::pos2(18.0, 0.0)];
+        let ranges = |shapes: Vec<egui::Shape>| -> Vec<(f32, f32)> {
+            shapes
+                .into_iter()
+                .filter_map(|shape| match shape {
+                    egui::Shape::LineSegment { points, .. } if points[0] != points[1] => {
+                        Some((points[0].x, points[1].x))
+                    }
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(
+            ranges(dash_shapes(&points, &[3.0, 2.0, 1.0], 1.0, stroke).unwrap()),
+            [
+                (0.0, 3.0),
+                (5.0, 6.0),
+                (9.0, 11.0),
+                (12.0, 15.0),
+                (17.0, 18.0)
+            ]
+        );
+        assert_eq!(
+            ranges(dash_shapes(&points, &[0.0, 0.0, 3.0], 1.0, stroke).unwrap()),
+            [(0.0, 3.0), (6.0, 9.0), (12.0, 15.0)]
+        );
+        let bent = [
+            egui::pos2(0.0, 0.0),
+            egui::pos2(4.0, 0.0),
+            egui::pos2(4.0, 8.0),
+        ];
+        let shapes = dash_shapes(&bent, &[6.0, 3.0], 1.0, stroke).unwrap();
+        assert!(matches!(
+            &shapes[1], egui::Shape::LineSegment { points, .. }
+                if *points == [egui::pos2(4.0, 0.0), egui::pos2(4.0, 2.0)]
+        ));
+        for pattern in [
+            vec![],
+            vec![0.0, 0.0],
+            vec![f32::NAN],
+            vec![0.001, 3.0],
+            vec![3.0; 17],
+        ] {
+            assert!(dash_shapes(&points, &pattern, 1.0, stroke).is_none());
+        }
+        assert!(dash_shapes(&points, &[0.1, 0.1], 0.1, stroke).is_some());
+        assert!(dash_shapes(&points, &[6.0, 3.0], 0.0, stroke).is_none());
+        assert!(dash_shapes(
+            &[egui::Pos2::ZERO, egui::pos2(1_000_000.0, 0.0)],
+            &[0.0, 0.5],
+            1.0,
+            stroke
+        )
+        .is_none());
+    }
+
+    #[test]
     fn hit_test_prefers_the_top_most_visible_annotation_and_lets_links_yield() {
         let mut list = vec![
             detail(0, "Square", r(0.0, 0.0, 100.0, 100.0)),
@@ -2532,16 +2849,17 @@ mod tests {
         assert!(bar_kind(Tool::Select, None).is_none());
         assert!(bar_kind(Tool::SelectAnnot, None).is_none());
         let ink = bar_kind(Tool::Ink, None).unwrap();
-        assert!(ink.stroke && ink.width && !ink.fill && ink.opacity && !ink.arrow);
+        assert!(ink.stroke && ink.width && !ink.fill && ink.opacity && !ink.arrow && !ink.dashed);
         let line = bar_kind(Tool::AnnotLine, None).unwrap();
-        assert!(line.arrow && !line.fill);
+        assert!(line.arrow && !line.fill && line.dashed);
         assert!(bar_kind(Tool::AnnotRect, None).unwrap().fill);
         let text = bar_kind(Tool::FreeText, None).unwrap();
-        assert!(text.text && text.fill && !text.opacity);
+        assert!(text.text && text.fill && !text.opacity && !text.dashed);
         let hl = detail(0, "Highlight", r(0.0, 0.0, 10.0, 10.0));
         let k = bar_kind(Tool::SelectAnnot, Some(&hl)).unwrap();
-        assert!(k.stroke && k.opacity && !k.width && !k.fill);
+        assert!(k.stroke && k.opacity && !k.width && !k.fill && !k.dashed);
         let sq = detail(0, "Square", r(0.0, 0.0, 10.0, 10.0));
-        assert!(bar_kind(Tool::SelectAnnot, Some(&sq)).unwrap().fill);
+        let square = bar_kind(Tool::SelectAnnot, Some(&sq)).unwrap();
+        assert!(square.fill && square.dashed);
     }
 }

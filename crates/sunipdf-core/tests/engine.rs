@@ -4935,6 +4935,7 @@ fn astyle(rgb: (u8, u8, u8), width: f32) -> AnnotStyle {
         fill_rgb: None,
         width_pt: width,
         opacity: 1.0,
+        dash_pattern: Vec::new(),
     }
 }
 

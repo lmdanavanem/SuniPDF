@@ -2099,6 +2099,7 @@ mod tests {
         }
         page_label_edits_and_history_keep_page_geometry(&worker);
         link_target_edits_have_one_undo_and_preserve_geometry(&worker);
+        dashed_annotation_styles_survive_edits_and_history(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
@@ -2116,6 +2117,99 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn dashed_annotation_styles_survive_edits_and_history(worker: &Worker) {
+        let changed = || match next_response(worker) {
+            Response::DocumentChanged(state) => {
+                assert!(state.pages_unchanged && state.modified && state.can_undo);
+                state.info.page_sizes
+            }
+            _ => panic!("annotation document state"),
+        };
+        let rect = PointRect {
+            left: 50.0,
+            bottom: 100.0,
+            right: 150.0,
+            top: 160.0,
+        };
+        worker.send(Request::Edit(EditOp::AddAnnotShape {
+            page: 0,
+            shape: AnnotShape::Square,
+            rect,
+            style: AnnotStyle::default(),
+            author: Some("lmdanavanem".into()),
+        }));
+        let sizes = changed();
+        let detail = || {
+            worker.send(Request::Annotations {
+                page: 0,
+                detailed: true,
+            });
+            match next_response(worker) {
+                Response::Annotations {
+                    details: Some(details),
+                    ..
+                } => details.into_iter().last().expect("annotation"),
+                _ => panic!("annotation details"),
+            }
+        };
+        let original = detail();
+        assert!(original.dash_pattern.is_empty());
+        let style = AnnotStyle {
+            dash_pattern: vec![6.0, 3.0],
+            ..Default::default()
+        };
+        worker.send(Request::Edit(EditOp::StyleAnnotation {
+            page: 0,
+            index: original.index,
+            style: style.clone(),
+        }));
+        assert_eq!(changed(), sizes);
+        assert_eq!(detail().dash_pattern, style.dash_pattern);
+        worker.send(Request::Undo);
+        assert_eq!(changed(), sizes);
+        assert!(detail().dash_pattern.is_empty());
+        worker.send(Request::Redo);
+        assert_eq!(changed(), sizes);
+        assert_eq!(detail().dash_pattern, style.dash_pattern);
+        worker.send(Request::Edit(EditOp::MoveAnnotation {
+            page: 0,
+            index: original.index,
+            dx: 5.0,
+            dy: 7.0,
+        }));
+        changed();
+        let moved = detail();
+        assert_eq!(moved.dash_pattern, style.dash_pattern);
+        worker.send(Request::Edit(EditOp::ResizeAnnotation {
+            page: 0,
+            index: original.index,
+            rect,
+        }));
+        changed();
+        assert_eq!(detail().dash_pattern, style.dash_pattern);
+        worker.send(Request::Edit(EditOp::StyleAnnotation {
+            page: 0,
+            index: original.index,
+            style: AnnotStyle {
+                dash_pattern: vec![f32::NAN],
+                ..style
+            },
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        changed();
+        assert_eq!(detail().rect, moved.rect);
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
     }
 
     fn link_target_edits_have_one_undo_and_preserve_geometry(worker: &Worker) {

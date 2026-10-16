@@ -219,6 +219,24 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         .arg(&retargeted);
     assert_eq!(success(command)["link"], serde_json::json!({"page":2}));
     check(&qpdf, &retargeted, None);
+    let dashed = temp.path().join("dashed-square.pdf");
+    let mut command = cli(&["annotate"], &[&original]);
+    command
+        .args([
+            "--kind",
+            "square",
+            "--rect",
+            "40,40,200,100",
+            "--dashed",
+            "--out",
+        ])
+        .arg(&dashed);
+    success(command);
+    check(&qpdf, &dashed, None);
+    assert_eq!(
+        success(cli(&["annotations"], &[&dashed]))["pages"][0]["annotations"][0]["dash_pattern"],
+        serde_json::json!([6.0, 3.0])
+    );
     for (name, aes128) in [("aes256.pdf", false), ("aes128.pdf", true)] {
         let encrypted = temp.path().join(name);
         let mut command = cli(&["protect"], &[&edited]);
@@ -295,6 +313,31 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         }
         assert_eq!(std::fs::read(&encrypted_links).unwrap(), links_source_bytes);
         let encrypted_bytes = std::fs::read(&encrypted).unwrap();
+        let dashed = temp.path().join(format!("{name}-dashed-line.pdf"));
+        let mut command = cli(&["annotate"], &[&encrypted]);
+        command
+            .args([
+                "--password",
+                "package-owner",
+                "--kind",
+                "line",
+                "--rect",
+                "40,40,200,100",
+                "--dashed",
+                "--out",
+            ])
+            .arg(&dashed);
+        success(command);
+        for password in ["package-user", "package-owner"] {
+            check(&qpdf, &dashed, Some(password));
+            let annotations = success(cli(&["annotations", "--password", password], &[&dashed]));
+            assert_eq!(
+                annotations["pages"][0]["annotations"][0]["dash_pattern"],
+                serde_json::json!([6.0, 3.0])
+            );
+            let properties = success(cli(&["properties", "--password", password], &[&dashed]));
+            assert_eq!(properties["permissions"], opened["permissions"]);
+        }
         let labelled = temp.path().join(format!("{name}-authored-labels.pdf"));
         let mut command = cli(&["set-page-labels"], &[&encrypted]);
         command

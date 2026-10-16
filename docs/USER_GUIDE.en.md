@@ -121,6 +121,21 @@ An annotation created by SuniPDF can be resized and restyled ("Apply to annotati
 applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can
 also be recoloured). A locked annotation cannot be changed.
 
+**Dashed shapes — 0.16.0 in development.** For Rectangle, Ellipse, Line or Arrow annotations, choose
+**Dashed border** before drawing. On an editable existing SuniPDF shape, change the checkbox and use
+**Apply to annotation**. Checked means 6-point dashes with 3-point gaps; unchecked means solid. Fill stays
+continuous and arrowheads stay solid. A loaded custom pattern is retained when selecting, recolouring, moving,
+resizing or undoing the shape; changing the checkbox explicitly replaces it with the preset or solid. There is
+no custom-pattern editor. Ink, free text, links and text markup do not offer dashed borders. Unsupported or
+malformed border styles refuse edits that would regenerate the appearance; very dense patterns/large paths
+can also be refused. Save explicitly to keep changes. These additions are under validation and absent from
+the published 0.15.0 packages; see [Project status](PROJECT_STATUS.md).
+
+An explicitly empty dash array means solid. A malformed border disables Move/Resize/Style on a SuniPDF shape;
+its comment can still be edited where normal permissions allow. A free-text comment with a malformed border
+cannot be edited because that changes its appearance. Valid subpixel dash patterns are retained in the preview; an
+invalid or excessive pattern omits the outline preview rather than displaying a solid line.
+
 **Clickable links.** With the reading cursor, the pointer turns into a hand over a link. An internal link takes you
 to the page; an external link first opens a **confirmation dialog that shows the full address** (Open in browser,
 Copy address, Cancel): nothing opens without your agreement, and only `http`, `https` and `mailto` addresses are
@@ -532,6 +547,16 @@ including with `--overwrite`. The original link's rectangle/style/comments and d
 sunipdf-cli annotations input.pdf --page 1
 sunipdf-cli set-link-target input.pdf --page 1 --index 0 --url "https://example.org/updated" --out updated-link.pdf
 sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --out page-link.pdf
+```
+
+**0.16.0 in development:** add `--dashed` to `annotate --kind square|circle|line|arrow` for the fixed `[6,3]`
+point pattern. `annotations` returns the actual `dash_pattern` array. Without the flag, existing solid behaviour
+stays unchanged. The flag is refused for unsupported annotation kinds; invalid requests leave no output or
+preserve an existing output, including with `--overwrite`. There are still 53 CLI commands.
+
+```powershell
+sunipdf-cli annotate input.pdf --kind square --rect 40,40,240,140 --dashed --out dashed.pdf
+sunipdf-cli annotations dashed.pdf --page 1
 ```
 
 Commands added in 0.9.0:

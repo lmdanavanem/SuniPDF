@@ -59,6 +59,11 @@ double-clic ou `set-link-target`, en conservant zone, apparence et commentaires.
 autorisée ou une page physique affichée en entier. Liens verrouillés/en lecture seule refusés. Création d'étiquettes
 et navigation conservée par Annuler/Rétablir restent disponibles depuis 0.14.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
 
+En développement pour **0.16.0** : bordures en tirets des annotations rectangle, ellipse, ligne et flèche via
+**Bordure en tirets** et CLI `annotate --dashed`. Les motifs personnalisés restent conservés à la sélection,
+recoloration et modification géométrique ; seul le changement de case remplace le motif. Validation en cours ;
+la 0.15.0 reste Latest. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

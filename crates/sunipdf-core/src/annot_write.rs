@@ -34,6 +34,8 @@ pub struct AnnotStyle {
     pub fill_rgb: Option<(u8, u8, u8)>,
     pub width_pt: f32,
     pub opacity: f32,
+    /// Dash/gap lengths in points; empty means a solid border.
+    pub dash_pattern: Vec<f32>,
 }
 
 impl Default for AnnotStyle {
@@ -43,6 +45,7 @@ impl Default for AnnotStyle {
             fill_rgb: None,
             width_pt: 2.0,
             opacity: 1.0,
+            dash_pattern: Vec::new(),
         }
     }
 }
@@ -148,6 +151,8 @@ pub struct AnnotDetail {
     pub fill_rgb: Option<(u8, u8, u8)>,
     pub width_pt: Option<f32>,
     pub opacity: f32,
+    /// Border dash/gap lengths in points; empty for solid or unsupported borders.
+    pub dash_pattern: Vec<f32>,
     /// Taille de police d'un texte libre.
     pub font_size: Option<f32>,
     /// Annotation à laquelle celle-ci répond (`/IRT`), en indice.
@@ -331,6 +336,80 @@ fn border_width(d: &lopdf::Document, dict: &Dictionary) -> Option<f32> {
         return Some(w);
     }
     floats(d, dict.get(b"Border").ok()?)?.get(2).copied()
+}
+
+fn validate_dash_pattern(pattern: &[f32]) -> Result<(), EngineError> {
+    if pattern.len() > 16
+        || pattern
+            .iter()
+            .any(|v| !v.is_finite() || !(0.0..=1000.0).contains(v) || (*v > 0.0 && *v < 0.1))
+        || (!pattern.is_empty() && !pattern.iter().any(|v| *v > 0.0))
+    {
+        return Err(EngineError::Other("invalid border dash pattern".into()));
+    }
+    Ok(())
+}
+
+fn read_dash_array(pdf: &lopdf::Document, value: &Object) -> Result<Vec<f32>, EngineError> {
+    let bad = || EngineError::Other("unsupported or malformed annotation border".into());
+    let values = deref(pdf, value)
+        .and_then(|o| o.as_array().ok())
+        .ok_or_else(bad)?;
+    if values.len() > 16 {
+        return Err(bad());
+    }
+    let pattern = values
+        .iter()
+        .map(|v| {
+            deref(pdf, v)
+                .and_then(|v| v.as_float().ok())
+                .ok_or_else(bad)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    validate_dash_pattern(&pattern)?;
+    Ok(pattern)
+}
+
+fn border_dash_pattern(pdf: &lopdf::Document, dict: &Dictionary) -> Result<Vec<f32>, EngineError> {
+    let bad = || EngineError::Other("unsupported or malformed annotation border".into());
+    let Ok(raw_bs) = dict.get(b"BS") else {
+        if let Ok(border) = dict.get(b"Border") {
+            let values = deref(pdf, border)
+                .and_then(|o| o.as_array().ok())
+                .ok_or_else(bad)?;
+            if !matches!(values.len(), 3 | 4) {
+                return Err(bad());
+            }
+            if values.len() == 4 {
+                let pattern = deref(pdf, &values[3])
+                    .and_then(|o| o.as_array().ok())
+                    .ok_or_else(bad)?;
+                if !pattern.is_empty() {
+                    return read_dash_array(pdf, &values[3]);
+                }
+            }
+        }
+        return Ok(Vec::new());
+    };
+    let bs = deref(pdf, raw_bs)
+        .and_then(|o| o.as_dict().ok())
+        .ok_or_else(bad)?;
+    let style = match bs.get(b"S") {
+        Ok(value) => deref(pdf, value)
+            .and_then(|o| o.as_name().ok())
+            .ok_or_else(bad)?,
+        Err(_) => b"S",
+    };
+    match style {
+        b"S" => Ok(Vec::new()),
+        b"D" => {
+            let Ok(value) = bs.get(b"D") else {
+                return Ok(vec![3.0]);
+            };
+            read_dash_array(pdf, value)
+        }
+        _ => Err(bad()),
+    }
 }
 
 fn flags(dict: &Dictionary) -> i64 {
@@ -689,6 +768,7 @@ fn parse_ours(
         fill_rgb: color_of(pdf, dict, b"IC"),
         width_pt: border_width(pdf, dict).unwrap_or(1.0),
         opacity,
+        dash_pattern: border_dash_pattern(pdf, dict)?,
     };
     let to_display = |x: f32, y: f32| geo.to_display(x, y);
     let model = match subtype_of(dict).as_str() {
@@ -816,10 +896,13 @@ fn set_ap(pdf: &mut lopdf::Document, dict: &mut Dictionary, stream: Stream) {
     dict.remove(b"PDFIUM_HasGeneratedAP");
 }
 
-fn border_style(width: f32) -> Object {
+fn border_style(width: f32, dash_pattern: &[f32]) -> Object {
     let mut bs = Dictionary::new();
     bs.set("W", Object::Real(width));
-    bs.set("S", name("S"));
+    bs.set("S", name(if dash_pattern.is_empty() { "S" } else { "D" }));
+    if !dash_pattern.is_empty() {
+        bs.set("D", nums(dash_pattern));
+    }
     Object::Dictionary(bs)
 }
 
@@ -830,6 +913,17 @@ fn write_model(
     geo: &PageGeometry,
 ) -> Result<Stream, EngineError> {
     let style = p.style.clone();
+    validate_dash_pattern(&style.dash_pattern)?;
+    if !style.dash_pattern.is_empty()
+        && !matches!(
+            p.model,
+            Model::Square(_) | Model::Circle(_) | Model::Line { .. }
+        )
+    {
+        return Err(EngineError::Other(
+            "dashed borders require a shape annotation".into(),
+        ));
+    }
     if !(0.0..=MAX_WIDTH_PT).contains(&style.width_pt) || !style.width_pt.is_finite() {
         return Err(EngineError::Other("invalid line width".into()));
     }
@@ -855,6 +949,22 @@ fn write_model(
     }
     let rect = p.rect();
     let (w, h) = (rect.right - rect.left, rect.top - rect.bottom);
+    if ![rect.left, rect.bottom, rect.right, rect.top, w, h]
+        .iter()
+        .all(|v| v.is_finite())
+    {
+        return Err(EngineError::Other("invalid rectangle".into()));
+    }
+    if !style.dash_pattern.is_empty() {
+        let cycle: f64 = style.dash_pattern.iter().map(|v| f64::from(*v)).sum();
+        let segments = 2.0 * (f64::from(w).abs() + f64::from(h).abs()) / cycle
+            * style.dash_pattern.len() as f64;
+        if segments > 100_000.0 {
+            return Err(EngineError::Other(
+                "border dash pattern is too dense for this geometry".into(),
+            ));
+        }
+    }
     let to_user = |q: (f32, f32)| geo.to_user(q.0, q.1);
     let local = |q: (f32, f32)| (q.0 - rect.left, q.1 - rect.bottom);
     dict.set("Rect", rect_obj(geo.rect_to_user(rect)));
@@ -931,7 +1041,7 @@ fn write_model(
                     dict.remove(b"C");
                 }
             }
-            dict.set("BS", border_style(fts.border_pt));
+            dict.set("BS", border_style(fts.border_pt, &[]));
         }
         _ => {
             dict.set("C", rgb_obj(style.rgb));
@@ -943,7 +1053,7 @@ fn write_model(
                     dict.remove(b"IC");
                 }
             }
-            dict.set("BS", border_style(style.width_pt));
+            dict.set("BS", border_style(style.width_pt, &style.dash_pattern));
         }
     }
     dict.set("CA", Object::Real(style.opacity.clamp(0.0, 1.0)));
@@ -1114,6 +1224,7 @@ impl Document<'_> {
             fill_rgb: style.fill_rgb,
             width_pt: style.border_pt,
             opacity: 1.0,
+            dash_pattern: Vec::new(),
         };
         self.add_model(
             page_index,
@@ -1209,6 +1320,14 @@ impl Document<'_> {
             if !c.can_move {
                 return Err(EngineError::Other("annotation cannot be moved".into()));
             }
+            if c.ours
+                && matches!(
+                    st.as_str(),
+                    "Square" | "Circle" | "Line" | "Ink" | "FreeText"
+                )
+            {
+                border_dash_pattern(pdf, &dict)?;
+            }
             let (ux, uy) = geo.vec_to_user(dx, dy);
             for key in ["Rect", "QuadPoints", "InkList", "L", "CL", "Vertices"] {
                 if let Some(o) = dict.get(key.as_bytes()).ok().cloned() {
@@ -1270,6 +1389,14 @@ impl Document<'_> {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
+            validate_dash_pattern(&style.dash_pattern)?;
+            if !style.dash_pattern.is_empty()
+                && !matches!(st.as_str(), "Square" | "Circle" | "Line")
+            {
+                return Err(EngineError::Other(
+                    "dashed borders require a shape annotation".into(),
+                ));
+            }
             if matches!(
                 st.as_str(),
                 "Highlight" | "Underline" | "StrikeOut" | "Squiggly" | "Text"
@@ -1574,6 +1701,7 @@ fn details_of(
                 fill_rgb: None,
                 width_pt: None,
                 opacity: 1.0,
+                dash_pattern: Vec::new(),
                 font_size: None,
                 parent: None,
                 status: None,
@@ -1618,6 +1746,13 @@ fn detail_of(
     let subtype = subtype_of(d);
     let nm = text_of(pdf, d, b"NM");
     let c = caps(&subtype, flags(d), nm.as_deref());
+    let dash_pattern = border_dash_pattern(pdf, d);
+    let invalid_border = c.ours
+        && matches!(
+            subtype.as_str(),
+            "Square" | "Circle" | "Line" | "Ink" | "FreeText"
+        )
+        && dash_pattern.is_err();
     let rect = rect_of(pdf, d).map_or(
         PointRect {
             left: 0.0,
@@ -1641,6 +1776,7 @@ fn detail_of(
         opacity: get(pdf, d, b"CA")
             .and_then(|o| o.as_float().ok())
             .unwrap_or(1.0),
+        dash_pattern: dash_pattern.unwrap_or_default(),
         font_size: None,
         parent: d
             .get(b"IRT")
@@ -1654,10 +1790,10 @@ fn detail_of(
         hidden: c.hidden,
         locked: c.locked,
         ours: c.ours,
-        can_move: c.can_move,
-        can_resize: c.can_resize,
-        can_restyle: c.can_restyle,
-        can_edit_text: c.can_edit_text,
+        can_move: c.can_move && !invalid_border,
+        can_resize: c.can_resize && !invalid_border,
+        can_restyle: c.can_restyle && !invalid_border,
+        can_edit_text: c.can_edit_text && !(invalid_border && subtype == "FreeText"),
         can_edit_link: subtype == "Link" && link_target_editable(pdf, d),
         replies: 0,
         subtype: subtype.clone(),
@@ -1751,6 +1887,81 @@ mod tests {
             (Some(12.0), Some((0, 0, 255)))
         );
         assert_eq!(parse_da("0 g"), (None, None));
+    }
+
+    #[test]
+    fn dash_patterns_are_bounded_and_resolve_standard_defaults() {
+        for valid in [vec![], vec![0.1], vec![0.0, 3.0], vec![1000.0; 16]] {
+            validate_dash_pattern(&valid).unwrap();
+        }
+        for invalid in [
+            vec![0.0],
+            vec![0.099],
+            vec![1000.1],
+            vec![-1.0],
+            vec![f32::NAN],
+            vec![f32::INFINITY],
+            vec![1.0; 17],
+        ] {
+            assert!(validate_dash_pattern(&invalid).is_err(), "{invalid:?}");
+        }
+        let mut pdf = lopdf::Document::new();
+        let mut dict = Dictionary::new();
+        assert!(border_dash_pattern(&pdf, &dict).unwrap().is_empty());
+        dict.set(
+            "Border",
+            Object::Array(vec![0.into(), 0.into(), 1.into(), nums(&[6.0, 2.0, 3.0])]),
+        );
+        assert_eq!(border_dash_pattern(&pdf, &dict).unwrap(), [6.0, 2.0, 3.0]);
+        dict.remove(b"Border");
+        dict.set("BS", lopdf::dictionary! {"S" => "D"});
+        assert_eq!(border_dash_pattern(&pdf, &dict).unwrap(), [3.0]);
+        dict.set(
+            "BS",
+            lopdf::dictionary! {"S" => "D", "D" => Vec::<Object>::new()},
+        );
+        assert!(border_dash_pattern(&pdf, &dict).unwrap().is_empty());
+        let gap = pdf.add_object(Object::Real(4.25));
+        let pattern = pdf.add_object(Object::Array(vec![
+            Object::Real(0.0),
+            Object::Reference(gap),
+        ]));
+        let border =
+            pdf.add_object(lopdf::dictionary! {"S" => "D", "D" => Object::Reference(pattern)});
+        dict.set("BS", Object::Reference(border));
+        assert_eq!(border_dash_pattern(&pdf, &dict).unwrap(), [0.0, 4.25]);
+        for invalid in [
+            Object::Null,
+            lopdf::dictionary! {"S" => "B"}.into(),
+            lopdf::dictionary! {"S" => Object::Integer(1)}.into(),
+            lopdf::dictionary! {"S" => "D", "D" => Object::Null}.into(),
+            lopdf::dictionary! {"S" => "D", "D" => vec![Object::Real(0.0)]}.into(),
+            lopdf::dictionary! {"S" => "D", "D" => vec![Object::Real(0.01)]}.into(),
+        ] {
+            dict.set("BS", invalid);
+            assert!(border_dash_pattern(&pdf, &dict).is_err());
+        }
+        let cycle = pdf.new_object_id();
+        pdf.objects.insert(cycle, Object::Reference(cycle));
+        dict.set("BS", Object::Reference(cycle));
+        assert!(border_dash_pattern(&pdf, &dict).is_err());
+        let geo = PageGeometry {
+            bbox: PointRect {
+                left: 0.0,
+                bottom: 0.0,
+                right: 1.0e9,
+                top: 1.0e9,
+            },
+            rotation: Rotation::R0,
+        };
+        let mut parsed = Parsed {
+            model: Model::Square(geo.bbox),
+            style: AnnotStyle {
+                dash_pattern: vec![0.1, 0.1],
+                ..Default::default()
+            },
+        };
+        assert!(write_model(&mut Dictionary::new(), &mut parsed, &geo).is_err());
     }
 
     #[test]
@@ -1889,6 +2100,7 @@ mod tests {
             fill_rgb: None,
             width_pt: None,
             opacity: 1.0,
+            dash_pattern: Vec::new(),
             font_size: None,
             parent,
             status,

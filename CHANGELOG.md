@@ -5,6 +5,34 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.16.0] - Unreleased
+
+Local validation passed: 439 workspace tests (zero failed, seven default ignored), formatting/Clippy,
+895 EN/FR keys, 73 qpdf checks and four licensed documents (744 pages; 53.542 seconds, peak child memory
+331,517,952 bytes). CI, packages and publication remain pending; 0.15.0 stays published Latest.
+Executed evidence belongs in `docs/PROJECT_STATUS.md`.
+
+### Added
+- **Dashed border** for rectangle, ellipse, line and arrow annotations; CLI `annotate --dashed` uses the same
+  fixed 6-point dash/3-point gap. The CLI still has 53 commands. Solid remains the default, fills stay continuous
+  and arrowheads remain solid.
+- Read back the actual `dash_pattern` vector and preserve custom patterns through selection, recolouring,
+  move/resize and Undo/Redo. The checkbox changes the pattern only when explicitly toggled; it does not normalize
+  a loaded custom pattern on selection. No custom-pattern editor is added.
+
+### Safety
+- Write matching PDF border dictionaries and explicit dashed appearances with phase zero. Nonempty patterns
+  are refused for ink, free text, links and markup. Unsupported/malformed border styles on SuniPDF annotations
+  refuse appearance-regenerating edits rather than silently resetting the original style.
+- An explicit empty dashed-border array is valid solid; an absent array keeps the PDF default `[3]`. Malformed
+  SuniPDF borders disable Move/Resize/Style controls. Shape comments can change without rebuilding the appearance;
+  malformed free-text comments are refused because their edit regenerates it. Invalid/excessive nonempty preview
+  patterns omit the stroke instead of showing a solid substitute; valid subpixel patterns remain intact.
+- Bound patterns to 16 finite nonnegative values, at most 1000 points each; positive values must be at least
+  0.1 point, with a positive total. A conservative 100,000-segment appearance limit rejects excessive work.
+
+No new dependency. Native interactive and third-party-reader checks remain separate; packages remain unsigned.
+
 ## [0.15.0] - 2026-10-16
 
 Local source validation passed: 429 workspace tests (zero failed, seven default ignored), formatting/Clippy,

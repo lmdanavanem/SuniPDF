@@ -78,6 +78,7 @@ pub fn detail_json(d: &AnnotDetail) -> serde_json::Value {
         "color": d.rgb.map(hex),
         "fill": d.fill_rgb.map(hex),
         "width": d.width_pt,
+        "dash_pattern": d.dash_pattern,
         "opacity": d.opacity,
         "font_size": d.font_size,
         "parent": d.parent,

@@ -128,6 +128,14 @@ localement). CI Windows, compilation ARM64 de même source, treize scénarios po
 préparés/publics avec contrôles renforcés réussis. Copies vérifiées dans `dist/` ; le metteur à jour de production
 a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation. Preuves exécutées et limites : `PROJECT_STATUS.fr.md`.
 
+## 0.16.0 : annotations de formes en tirets (en développement)
+
+Rectangles/ellipses/lignes/flèches en tirets réutilisent barre, CLI et writer d'apparences. UI et `annotate --dashed`
+choisissent `[6,3]` points ; motifs personnalisés réels conservés lors des éditions ordinaires sauf changement
+explicite de case. Trait continu par défaut, remplissage continu et pointes pleines inchangés. Types non pris en
+charge, styles SuniPDF malformés et travail de régénération excessif refusés (D107). Aucune dépendance ni commande
+ajoutée, toujours 53 commandes CLI. Validation/publication en attente ; la 0.15.0 reste Latest. Voir `PROJECT_STATUS.fr.md`.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -154,6 +162,7 @@ Livrés en 0.10.0 : transformations groupées, recadrage souris, champs radio/li
 Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, avec lecture seule conservatrice si nécessaire.
 Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page courante/toutes/sélection.
 Livré en 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
+En développement pour 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 

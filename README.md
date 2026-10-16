@@ -58,6 +58,11 @@ New in **0.15.0**: edit an existing link's destination through **Edit target**, 
 page fitted to the window. Locked/read-only links are refused. Page-label authoring and navigation-preserving
 Undo/Redo remain available from 0.14.0; see the [roadmap](docs/ROADMAP.md).
 
+In development for **0.16.0**: dashed borders for rectangle, ellipse, line and arrow annotations through
+**Dashed border** and CLI `annotate --dashed`. Existing custom dash patterns survive selection, recolouring and
+geometry edits; only toggling the checkbox changes the pattern. Validation is pending; 0.15.0 remains Latest.
+See [Project status](docs/PROJECT_STATUS.md).
+
 ## Screenshots
 
 | Dark home screen | Light home screen |

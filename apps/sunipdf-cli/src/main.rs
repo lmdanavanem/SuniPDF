@@ -741,6 +741,9 @@ enum Command {
         /// Line width in points (free text: border; default 2, free text 0).
         #[arg(long)]
         width: Option<f32>,
+        /// Dashed border (6pt dash, 3pt gap); square, circle, line or arrow only.
+        #[arg(long)]
+        dashed: bool,
         /// Opacity (0 to 1); free-text annotations only support 1.
         #[arg(long, default_value_t = 1.0)]
         opacity: f32,
@@ -883,7 +886,18 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
     if let Command::Rotate { degrees, .. } = &cli.command {
         quarter_turn(*degrees)?;
     }
-    if let Command::Annotate { kind, opacity, .. } = &cli.command {
+    if let Command::Annotate {
+        kind,
+        opacity,
+        dashed,
+        ..
+    } = &cli.command
+    {
+        if *dashed && !matches!(kind.as_str(), "square" | "circle" | "line" | "arrow") {
+            return Err(EngineError::Other(
+                "--dashed only supports square, circle, line or arrow".into(),
+            ));
+        }
         if !opacity.is_finite() {
             return Err(EngineError::Other("opacity must be finite".into()));
         }
@@ -1874,6 +1888,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             color,
             fill,
             width,
+            dashed,
             opacity,
             goto_page,
             url,
@@ -1897,6 +1912,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 fill_rgb,
                 width_pt: width.unwrap_or(2.0),
                 opacity,
+                dash_pattern: if dashed { vec![6.0, 3.0] } else { Vec::new() },
             };
             let author = author.as_deref();
             let index = match kind.as_str() {
@@ -2342,6 +2358,45 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn annotation_dash_flag_defaults_to_solid_and_keeps_output_guard() {
+        let solid = parse_cli([
+            "sunipdf-cli",
+            "annotate",
+            "input.pdf",
+            "--kind",
+            "square",
+            "--out",
+            "output.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(
+            solid.command,
+            Command::Annotate { dashed: false, .. }
+        ));
+        assert_eq!(
+            output_path(&solid.command),
+            Some(std::path::Path::new("output.pdf"))
+        );
+        let dashed = parse_cli([
+            "sunipdf-cli",
+            "annotate",
+            "input.pdf",
+            "--kind",
+            "arrow",
+            "--dashed",
+            "--out",
+            "output.pdf",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(dashed.overwrite);
+        assert!(matches!(
+            dashed.command,
+            Command::Annotate { dashed: true, .. }
+        ));
     }
 
     #[test]

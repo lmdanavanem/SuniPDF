@@ -125,6 +125,14 @@ locally). Windows CI, same-source ARM64 compilation, thirteen portable scenarios
 staged/public files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified
 the 19,803,226-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
+## 0.16.0: dashed shape annotations (in development)
+
+Dashed rectangle/ellipse/line/arrow annotations reuse the existing toolbar, CLI and appearance writer. UI and
+`annotate --dashed` choose `[6,3]` points; actual custom patterns remain through ordinary edits unless explicitly
+toggled. Solid defaults, continuous fill and solid arrowheads stay unchanged. Unsupported types, malformed
+SuniPDF border styles and excessive regeneration work are refused (D107). No dependency or command is added;
+the CLI remains at 53 commands. Validation/publication are pending; 0.15.0 stays Latest. See `PROJECT_STATUS.md`.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -152,6 +160,7 @@ FDF/XFDF interchange and keyboard page widgets.
 Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
 Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
 Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
+In development for 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 

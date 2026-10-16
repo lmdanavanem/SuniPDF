@@ -131,6 +131,21 @@ la barre lui sont appliquées) ; celle d'un autre logiciel se déplace, se comme
 note se recolore aussi). Une annotation verrouillée
 ne se modifie pas.
 
+**Formes en tirets — 0.16.0 en développement.** Pour les annotations Rectangle, Ellipse, Ligne ou Flèche,
+choisissez **Bordure en tirets** avant de dessiner. Sur une forme SuniPDF existante modifiable, changez la case
+puis **Appliquer à l'annotation**. Case cochée : tirets de 6 points, espaces de 3 points ; décochée : trait continu.
+Remplissage continu et pointes de flèche pleines. Le motif personnalisé chargé reste conservé à la sélection,
+recoloration, au déplacement/redimensionnement et à l'annulation ; changer la case le remplace explicitement
+par le motif fixe ou continu. Aucun éditeur de motif personnalisé. Encre, texte libre, liens et marquages ne
+proposent pas les tirets. Style malformé/non pris en charge : édition régénérant l'apparence refusée ; motif trop
+dense ou tracé trop grand également refusable. Enregistrez explicitement pour garder les changements. Ces ajouts
+sont en validation et absents des paquets 0.15.0 publiés ; voir l'[état du projet](PROJECT_STATUS.fr.md).
+
+Un tableau de tirets explicitement vide signifie continu. Une bordure malformée désactive Déplacer/Redimensionner/
+Style sur une forme SuniPDF ; son commentaire reste modifiable selon les permissions ordinaires. Le commentaire
+d'un texte libre à bordure malformée est refusé car il change son apparence. Les petits tirets valides restent
+dans l'aperçu ; un motif invalide/excessif omet le contour au lieu de montrer un trait continu.
+
 **Liens cliquables.** Avec le curseur de lecture, le pointeur devient une main au-dessus d'un lien. Un lien
 interne amène à la page ; un lien externe ouvre d'abord une **boîte de confirmation qui montre l'adresse
 complète** (Ouvrir dans le navigateur, Copier l'adresse, Annuler) : rien ne s'ouvre sans votre accord, et seules les
@@ -565,6 +580,16 @@ du document sont conservés.
 sunipdf-cli annotations input.pdf --page 1
 sunipdf-cli set-link-target input.pdf --page 1 --index 0 --url "https://example.org/updated" --out updated-link.pdf
 sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --out page-link.pdf
+```
+
+**0.16.0 en développement :** ajoutez `--dashed` à `annotate --kind square|circle|line|arrow` pour le motif fixe
+`[6,3]` points. `annotations` renvoie le tableau réel `dash_pattern`. Sans ce drapeau, comportement continu
+existant inchangé. Drapeau refusé pour les types non pris en charge ; requête invalide : aucune sortie créée ou
+sortie existante préservée, même avec `--overwrite`. La CLI conserve 53 commandes.
+
+```powershell
+sunipdf-cli annotate input.pdf --kind square --rect 40,40,240,140 --dashed --out dashed.pdf
+sunipdf-cli annotations dashed.pdf --page 1
 ```
 
 Nouvelles commandes 0.9.0 :

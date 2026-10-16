@@ -158,6 +158,18 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,803,226-byte Latest x64 ZIP without
   installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D106).
 
+## 0.16.0: dashed shape annotations (in development)
+
+- Rectangle/ellipse/line/arrow only: UI Dashed border and CLI `annotate --dashed` use `[6,3]` points, while the
+  actual custom `dash_pattern` survives selection/recolour/move/resize/undo. Only an explicit checkbox toggle
+  replaces it. Solid defaults, continuous fills and solid arrowheads remain (D107); still 53 CLI commands.
+- Match border dictionaries and explicit appearances at phase zero. Reject nonempty patterns on unsupported
+  annotation kinds and refuse regenerating malformed/unsupported SuniPDF border styles rather than losing them.
+  Pattern validation and conservative appearance-work bounds prevent excessive regeneration.
+- Validation and publication are pending; 0.15.0 remains Latest. Planned upgrade coverage extends to fourteen
+  portable scenarios and eight MSI baselines, including 0.15.0; none is reported passed for this release yet.
+  Executed evidence belongs in `PROJECT_STATUS.md`.
+
 ## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -273,7 +285,8 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
   Chrome (not available on the development machine); structural checking alone does not prove visual interoperability;
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
-- polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
+- polygon, polyline, cloud, stamp, attachment and rich free text (bold, italic, CJK: embedded font); dashed borders
+  for the four existing shapes are tracked in the 0.16.0 lot, while other annotation types remain unsupported;
 - richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.

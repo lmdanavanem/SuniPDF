@@ -184,6 +184,23 @@ utilise les mêmes API et garde de sortie. Publié en 0.15.0 ; contrôles locaux
 et metteur à jour réussis ; preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md`.
 Confirmation des adresses externes et avertissement de réécriture des documents signés inchangés.
 
+## Bordures en tirets des formes 0.16.0 (en développement)
+
+`AnnotStyle::dash_pattern` et les détails d'annotation transportent le vecteur réel plutôt qu'un booléen.
+Rectangle, ellipse et ligne/flèche écrivent un style/tableau `BS` cohérent avec les tirets de l'état graphique
+`/AP`, phase zéro ; un motif vide conserve le parcours continu existant. Remplissage et pointes de flèche restent
+pleins (D107). Les dictionnaires existants sont résolus avant de régénérer une apparence SuniPDF ; un style
+malformé/non pris en charge refuse l'édition au lieu de perdre le motif. Valeurs et travail estimé sont bornés.
+`D []` explicite est un continu valide ; `D` absent devient `[3]`. Une bordure SuniPDF invalide désactive
+Déplacer/Redimensionner/Style ; le commentaire de forme garde `/AP` intact, celui d'un texte libre la régénère
+et refuse donc une bordure malformée. Aperçu borné au même seuil de 100 000, motifs valides sous-pixel conservés ;
+un motif non vide invalide/excessif omet le contour au lieu d'un repli continu.
+
+`annot_adv.rs` conserve le vecteur chargé lors de la sélection et des éditions ordinaires ; un changement réel
+de la case choisit `[6, 3]` ou continu. CLI `annotate --dashed` fournit le même motif fixe ; `annotations` relit
+`dash_pattern`. Motif non vide sur un type non pris en charge : erreur. Annulation/protection/gardes de sortie
+existantes réutilisées, sans nouvelle dépendance. Validation en cours dans `PROJECT_STATUS.fr.md`.
+
 ## Coordonnées (SUNI-031c)
 
 Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,

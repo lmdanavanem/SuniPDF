@@ -166,6 +166,15 @@ fn header(s: &AnnotStyle, with_fill: bool) -> String {
     }
     c.push_str(&color_ops(s.rgb, true));
     c.push_str(&format!(" {} w ", fmt_num(s.width_pt)));
+    if !s.dash_pattern.is_empty() {
+        let pattern = s
+            .dash_pattern
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(" ");
+        c.push_str(&format!("[{pattern}] 0 d "));
+    }
     c
 }
 
@@ -324,6 +333,9 @@ pub(crate) fn line_ap(
         fmt_num(p2.1)
     ));
     if arrow {
+        if !s.dash_pattern.is_empty() {
+            c.push_str("[] 0 d ");
+        }
         let (dx, dy) = (p2.0 - p1.0, p2.1 - p1.1);
         let len = (dx * dx + dy * dy).sqrt().max(1e-3);
         let (ux, uy) = (dx / len, dy / len);
@@ -457,6 +469,7 @@ mod tests {
             fill_rgb: None,
             width_pt: 2.0,
             opacity: 1.0,
+            dash_pattern: Vec::new(),
         }
     }
 
@@ -575,6 +588,33 @@ mod tests {
             curve.contains("0 0 m") && curve.contains("30 10 l S"),
             "{curve}"
         );
+    }
+
+    #[test]
+    fn dashed_shapes_preserve_fill_and_solid_arrowheads() {
+        let mut dashed = style();
+        dashed.dash_pattern = vec![6.25, 3.0, 0.123_456];
+        let sq = text(&square_ap(100.0, 50.0, &dashed));
+        assert!(
+            sq.contains("[6.25 3 0.123456] 0 d ") && sq.contains(" re S Q"),
+            "{sq}"
+        );
+        dashed.fill_rgb = Some((0, 255, 0));
+        assert!(text(&square_ap(100.0, 50.0, &dashed)).contains(" re B Q"));
+        assert!(text(&circle_ap(100.0, 50.0, &dashed)).contains("[6.25 3 0.123456] 0 d "));
+        let arrow = text(&line_ap(
+            100.0,
+            50.0,
+            (0.0, 0.0),
+            (100.0, 50.0),
+            true,
+            &dashed,
+        ));
+        assert!(
+            arrow.contains(" l S [] 0 d ") && arrow.matches(" l ").count() == 3,
+            "{arrow}"
+        );
+        assert!(!text(&square_ap(100.0, 50.0, &style())).contains(" d "));
     }
 
     #[test]

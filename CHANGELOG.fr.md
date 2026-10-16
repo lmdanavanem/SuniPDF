@@ -5,6 +5,34 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.16.0] — Non publiée
+
+Validation locale réussie : 439 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy,
+895 clés EN/FR, 73 contrôles qpdf et quatre documents licenciés (744 pages ; 53,542 s, pic mémoire enfant
+331 517 952 octets). CI, paquets et publication en attente ; la 0.15.0 reste Latest publiée.
+Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
+
+### Ajouts
+- **Bordure en tirets** pour les annotations rectangle, ellipse, ligne et flèche ; CLI `annotate --dashed`
+  utilise le même motif fixe : tiret de 6 points, espace de 3 points. La CLI conserve 53 commandes. Trait continu
+  par défaut, remplissages continus et pointes de flèche pleines.
+- Relire le vecteur réel `dash_pattern` et conserver les motifs personnalisés lors de sélection, recoloration,
+  déplacement/redimensionnement et Annuler/Rétablir. Seul un changement explicite de la case remplace le motif ;
+  sélectionner un motif personnalisé ne le normalise pas. Aucun éditeur de motif personnalisé ajouté.
+
+### Protections
+- Dictionnaires de bordure et apparences explicites cohérents, phase zéro. Motifs non vides refusés pour encre,
+  texte libre, liens et marquages. Style de bordure malformé/non pris en charge sur une annotation SuniPDF : édition
+  régénérant l'apparence refusée, sans remplacer silencieusement le style d'origine.
+- Tableau de tirets explicitement vide : continu valide ; tableau absent : valeur PDF `[3]`. Bordure SuniPDF
+  malformée : Déplacer/Redimensionner/Style désactivés. Commentaire de forme modifiable sans reconstruire l'apparence ;
+  commentaire de texte libre malformé refusé car il la régénère. Aperçu non vide invalide/excessif : contour omis,
+  jamais remplacé par un trait continu ; motifs valides plus petits qu'un pixel conservés.
+- Motifs bornés à 16 valeurs finies non négatives, 1000 points au plus chacune ; valeur positive d'au moins
+  0,1 point et somme positive. Une borne conservatrice de 100 000 segments d'apparence refuse un travail excessif.
+
+Aucune nouvelle dépendance. Contrôles natifs interactifs et lecteurs tiers distincts ; paquets non signés.
+
 ## [0.15.0] — 2026-10-16
 
 Validation locale réussie : 429 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy,

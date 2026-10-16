@@ -1,9 +1,26 @@
-# Project status - updated 2026-10-16 (version 0.15.0)
+# Project status - updated 2026-10-16 (version 0.16.0 in development)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.16.0: dashed shape annotations (in development)
+
+This source adds a Dashed control for rectangle, ellipse, line and arrow annotations, and `annotate --dashed`
+with the same 6-point dash / 3-point gap preset. Existing solid defaults remain. The core stores the actual
+dash array so selecting, recolouring, moving, resizing and Undo/Redo preserve it; only an explicit checkbox
+toggle replaces a custom pattern. Border dictionaries and appearance streams use the same pattern and phase 0;
+arrowheads remain solid and fills continuous. Unsupported annotation kinds refuse nonempty dash patterns.
+
+Pattern parsing and generated appearances are bounded; malformed or unsupported authored border styles refuse
+regenerating edits rather than becoming solid. No new dependency, command or tool is added. English remains
+the default, French remains available. The CLI still has 53 commands. Version 0.15.0 remains published Latest.
+
+Local validation passed: 439 workspace tests, zero failed, seven default ignored; formatting, Clippy with
+warnings denied, 895 matching EN/FR keys, 73 independent qpdf checks and four licensed NIST/NBS documents
+(744 pages; 53.542 seconds, peak sampled child working set 331,517,952 bytes). CI, package and publication
+gates remain pending. Upgrade regressions include the verified 0.15.0 ZIP/MSI baseline.
 
 ## 0.15.0: editing existing link destinations (published as Latest)
 

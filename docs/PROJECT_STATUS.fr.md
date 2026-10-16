@@ -1,9 +1,28 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.15.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.16.0 en développement)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.16.0 : annotations de forme en pointillés (en développement)
+
+Cette source ajoute un contrôle Pointillés pour les rectangles, ellipses, lignes et flèches, et `annotate --dashed`
+avec le même motif de 6 points de trait / 3 points d'espace. Le plein reste la valeur par défaut. Le moteur
+conserve le motif réel pour que sélection, recoloration, déplacement, redimensionnement et Annuler/Rétablir
+le préservent ; seul un changement explicite de la case remplace un motif personnalisé. Dictionnaires de contour
+et flux d'apparence utilisent le même motif et une phase nulle ; les pointes de flèche restent pleines et les
+fonds continus. Les types d'annotation non pris en charge refusent un motif non vide.
+
+Lecture des motifs et génération des apparences sont bornées ; les styles de contour malformés ou non pris en
+charge des annotations créées par l'app refusent les modifications régénératrices au lieu de devenir pleins.
+Aucune dépendance, commande ou outil ajouté. L'anglais reste la langue par défaut, le français reste disponible.
+La CLI compte toujours 53 commandes. La 0.15.0 reste publiée en Latest.
+
+Validation locale réussie : 439 tests du workspace, aucun échec, sept ignorés par défaut ; formatage, Clippy sans
+avertissement, 895 clés EN/FR concordantes, 73 contrôles qpdf indépendants et quatre documents NIST/NBS sous
+licence (744 pages ; 53,542 secondes, pic mémoire échantillonné du processus enfant 331 517 952 octets).
+CI, paquets et publication restent à valider. Les régressions de mise à jour incluent le ZIP/MSI 0.15.0 vérifiés.
 
 ## 0.15.0 : modification des destinations de liens existants (publiée en Latest)
 

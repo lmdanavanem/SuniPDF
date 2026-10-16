@@ -716,6 +716,7 @@
   "bar.font_size": "Size",
   "bar.border": "Border (pt)",
   "bar.arrow": "Arrow",
+  "bar.dashed": "Dashed border",
   "bar.annot_apply": "Apply to annotation",
   "bar.annot_apply_hint": "Applies these settings to the selected annotation ({kind})",
   "bar.reply": "Reply",

@@ -206,6 +206,7 @@ pub struct EditState {
     /// Annotations avancées (réglages globaux, comme les couleurs de forme) : flèche au bout d'une
     /// ligne, taille, fond et bordure des zones de texte libre.
     pub arrow: bool,
+    pub annot_dash_pattern: Vec<f32>,
     pub free_text_size: f32,
     /// Couleur du texte (noir par défaut), distincte de la couleur de trait des autres outils.
     pub free_text_rgb: [u8; 3],
@@ -256,6 +257,7 @@ impl Default for EditState {
             opacity_dirty: false,
             angle_field: 0.0,
             arrow: false,
+            annot_dash_pattern: Vec::new(),
             free_text_size: 12.0,
             free_text_rgb: [0, 0, 0],
             free_text_fill: false,

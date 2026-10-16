@@ -159,6 +159,18 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets
   sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D106).
 
+## 0.16.0 : annotations de formes en tirets (en développement)
+
+- Rectangle/ellipse/ligne/flèche seulement : case Bordure en tirets et CLI `annotate --dashed` utilisent `[6,3]`
+  points ; vecteur `dash_pattern` réel conservé lors de sélection/recoloration/déplacement/redimensionnement/
+  annulation. Seul un changement explicite de case le remplace. Trait continu par défaut, remplissage continu et
+  pointes pleines conservés (D107) ; toujours 53 commandes CLI.
+- Dictionnaire de bordure et apparence explicite cohérents, phase zéro. Refuser les motifs non vides sur types
+  non pris en charge et les régénérations de styles SuniPDF malformés/non pris en charge plutôt que les perdre.
+  Validation du motif et bornes conservatrices du travail d'apparence empêchent une régénération excessive.
+- Validation/publication en attente ; la 0.15.0 reste Latest. Mises à niveau prévues : quatorze scénarios portables
+  et huit bases MSI, dont 0.15.0 ; aucun succès annoncé pour cette release. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
 ## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -275,8 +287,8 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
 - regroupement des traits d'encre (une annotation pour N traits, validée à l'inactivité) avec écriture garantie à
   l'enregistrement et à la fermeture ; gomme ;
-- polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
-  incorporée) ;
+- polygone, polyligne, nuage, tampon, pièce jointe et texte libre riche (gras, italique, CJK : police incorporée) ;
+  bordures en tirets des quatre formes suivies dans le lot 0.16.0, autres types toujours non pris en charge ;
 - création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
