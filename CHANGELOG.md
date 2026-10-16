@@ -5,10 +5,17 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [0.14.0] - Unreleased
+## [0.14.0] - 2026-10-16
 
-Implementation validation is ongoing; 0.13.0 remains the published Latest. Executed evidence belongs in
-`docs/PROJECT_STATUS.md`; no 0.14.0 package or publication result is claimed here.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem`, release
+`414812776`, with six verified files in `dist/`. Source: `af532888804c196aabe216b8f6a2980c3d1e9e2d`.
+Validation passed: 420 workspace tests (zero failed, seven default ignored), formatting/Clippy, 890 EN/FR keys,
+63 qpdf checks and four licensed NIST/NBS documents (744 pages; 53.91 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
+and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)
+passed, along with twelve portable scenarios and six MSI baselines. All six staged/public files and enhanced
+binary checks passed, including plain/protected label authoring/reset, both passwords, unaffected labels,
+Unicode, unchanged text/page PNGs, source preservation and qpdf. The production updater verified the
+19,785,200-byte Latest x64 ZIP without installation. Evidence and limits: `docs/PROJECT_STATUS.md`.
 
 ### Added
 - **Page Labels…** in Pages/Organize: apply decimal, upper/lower Roman, upper/lower letters or prefix-only labels
@@ -29,7 +36,7 @@ still require physical `#N` navigation. Validation and hardware/reader limitatio
 
 ## [0.13.0] - 2026-10-16
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`, release
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (Latest at the time), release
 `414763678`, with six verified files in `dist/`. Source: `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`.
 Validation passed: 410 workspace tests (zero failed, seven default ignored), formatting/Clippy, 870 EN/FR keys,
 53 qpdf checks and four licensed NIST/NBS documents (744 pages; 76.40 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)

@@ -153,7 +153,7 @@ structurel des pages abandonne la boîte ou les cibles capturées. CLI `add-imag
 de lot ; `--page` conserve son placement historique. Contrôles locaux, CI, paquets/publics et mises à niveau réussis ;
 preuves exécutées et limites matérielles/interactives dans `PROJECT_STATUS.fr.md` (D102–D103).
 
-## Parcours des étiquettes de page 0.14.0 (en développement)
+## Parcours des étiquettes de page 0.14.0 (publiée)
 
 `page_labels.rs` expose `PageLabelRange` et six valeurs `PageLabelStyle`. Le parseur/writer lopdf existant valide
 l'arbre numérique avec bornes de profondeur/nœuds/plages/chaînes, conserve les règles hors plage physique modifiée
@@ -166,7 +166,8 @@ les anciens objets devenus non référencés ne sont pas effacés de manière s�
 Réinitialiser. CLI `set-page-labels`/`reset-page-labels` utilisent les mêmes API et garde de sortie.
 `Snapshot::pages_unchanged` accompagne Annuler/Rétablir : vue/historique conservés pour les éditions
 d'étiquettes/contenu, géométrie toujours invalidée par les opérations structurelles (D105). Les étiquettes restent
-positionnelles après ces opérations. Validation en cours ; résultats exécutés dans `PROJECT_STATUS.fr.md`.
+positionnelles après ces opérations. Contrôles locaux, CI, paquets/publics, mises à niveau et mise à jour de production
+réussis ; preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md`.
 
 ## Coordonnées (SUNI-031c)
 

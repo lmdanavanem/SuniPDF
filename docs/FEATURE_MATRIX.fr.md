@@ -38,13 +38,22 @@ ainsi que dix scénarios portables, quatre bases MSI, six fichiers préparés/pu
 Copies vérifiées dans `dist/`. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
 Limites matérielles, d'interface interactive et de lecteurs dans `PROJECT_STATUS.fr.md`.
 
-[0.13.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem`, release
+[0.13.0 publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem` (Latest à cette date), release
 `414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation réussie : 410 tests workspace (zéro échec,
 sept ignorés par défaut), formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents licenciés
 (744 pages ; 76,40 s localement), CI Windows et compilation ARM64 de même source, onze scénarios portables et
 cinq bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis, dont lots de signatures
 protégés et les deux mots de passe. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest
 x64 de 19 730 578 octets sans installation. Preuves détaillées et limites restantes dans `PROJECT_STATUS.fr.md`.
+
+[0.14.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem`, release
+`414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation réussie : 420 tests workspace (zéro échec,
+sept ignorés par défaut), formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents licenciés
+(744 pages ; 53,91 s localement), CI Windows et compilation ARM64 de même source, douze scénarios portables et
+six bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis, dont création/réinitialisation
+non chiffrée/protégée, les deux mots de passe, étiquettes hors plage et texte/PNG inchangés. Copies vérifiées dans
+`dist/` ; l'updater de production a vérifié le ZIP Latest x64 de 19 785 200 octets sans installation.
+Preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
 
 ## A. Lecture
 
@@ -62,7 +71,7 @@ x64 de 19 730 578 octets sans installation. Preuves détaillées et limites rest
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | **Fait** (panneau, saut de page ; édition planifiée) ; destinations précises **livrées en 0.11.0** | Nommées, XYZ/Fit/FitH non nul ; tests locaux réussis |
-| Étiquettes de pages | Déclaré | **Lecture livrée en 0.11.0** ; création/réinitialisation **en développement pour 0.14.0**, validation en cours | Navigation exacte/unique ou `#N` physique conservée ; Pages/Organiser et deux commandes CLI appliquent six styles sur une plage physique inclusive, règles hors plage conservées ; réinitialisation globale ; aucun changement de numéros imprimés ni recalage sémantique |
+| Étiquettes de pages | Déclaré | **Lecture livrée en 0.11.0** ; création/réinitialisation **livrées en 0.14.0**, contrôles locaux/CI/paquets/publics/mises à niveau réussis | Navigation exacte/unique ou `#N` physique conservée ; Pages/Organiser et deux commandes CLI appliquent six styles sur une plage physique inclusive, règles hors plage conservées ; réinitialisation globale ; aucun changement de numéros imprimés ni recalage sémantique |
 | Historique de navigation, onglets rouverts | Déclaré | Fichiers récents et historique borné à 256 **Faits** ; historique même page/zoom **livré en 0.11.0** | Tests locaux réussis |
 | Mode lecture / plein écran | Déclaré | **Fait en 0.10.0** | Mode de vue partagé comme préférence ; rotation/historique conservés par onglet ; retour à une vue droite pour éditer |
 | Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
@@ -96,7 +105,7 @@ x64 de 19 730 578 octets sans installation. Preuves détaillées et limites rest
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
 | Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; **implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis** : conserver chiffrement/mots de passe/permissions et refuser une sortie au chemin source (D097 remplace D046). Politique des permissions inchangée ; CLI `encryption_removed: false`, ajout `encrypted` ; préservation sémantique à vérifier au-delà de qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
-| Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde. **0.14.0 en développement** : navigation conservée lors d'Annuler/Rétablir contenu/étiquettes si géométrie inchangée ; validation en cours (D105) |
+| Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde. **Livré en 0.14.0** : navigation conservée lors d'Annuler/Rétablir contenu/étiquettes si géométrie inchangée ; contrôles exécutés réussis (D105) |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
 | Traitement par lots | Déclaré (CLI batch) | **Fait en 0.10.0** : compression/OCR séquentiels, 128 PDF, 256 Mio/entrée, progression/annulation/erreurs et nouvelles copies sans écrasement |
 
@@ -156,6 +165,6 @@ x64 de 19 730 578 octets sans installation. Preuves détaillées et limites rest
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.13.0 ZIP/MSI publiés en Latest ; onze scénarios portables et cinq bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.13.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.14.0 ZIP/MSI publiés en Latest ; douze scénarios portables et six bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.14.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

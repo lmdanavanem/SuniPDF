@@ -28,7 +28,7 @@ Licence MIT ou Apache-2.0, au choix.
 ## Fonctionnalités
 | Domaine | Détail |
 |---|---|
-| Lire | Onglets, vues continue/page unique/double page/Livre, libellés et page physique `#N`, destinations précises des liens/signets, rotation de vue, plein écran, historique de position/zoom, tuiles, recherche et sélection logique entre pages |
+| Lire | Onglets, vues continue/page unique/double page/Livre, création/réinitialisation des étiquettes et page physique `#N`, destinations précises des liens/signets, rotation de vue, plein écran, historique de position/zoom, tuiles, recherche et sélection logique entre pages |
 | Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
@@ -40,28 +40,24 @@ Licence MIT ou Apache-2.0, au choix.
 | Convertir | Images → PDF, PDF → PNG, optimisation sans perte, compression des images avec perte vers une nouvelle copie ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo ; lots séquentiels compression/OCR |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
 | Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
-| Automatiser | `sunipdf-cli` : 52 commandes dans la source 0.14.0 (50 en 0.13.0 publiée), JSON et codes stables ; nouvelles commandes `set-page-labels` et `reset-page-labels` en validation |
+| Automatiser | `sunipdf-cli` : 52 commandes JSON et codes stables, dont `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` et `sign` |
 
 Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes
 arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabilité des signatures restent des contrôles QA distincts.
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.13.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0)** sous `lmdanavanem`.
-410 tests du workspace, formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents NIST/NBS réels
-(744 pages ; 76,40 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, onze scénarios portables et cinq
+**[0.14.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0)** sous `lmdanavanem`.
+420 tests du workspace, formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents NIST/NBS licenciés
+(744 pages ; 53,91 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, douze scénarios portables et six
 bases de mise à niveau MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies
-vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 730 578 octets sans installation.
+vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 785 200 octets sans installation.
 Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-Nouveautés **0.13.0** : signatures visuelles saisies avec aperçu local explicite, pose en un clic sur la page
-courante/toutes les pages/la sélection, géométrie ajustée, annulation atomique du lot et un undo. Création de listes
-modifiables et exports radio `/Opt` cohérents restent disponibles depuis 0.12.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
-
-En développement pour **0.14.0** : créer des étiquettes de navigation sur une plage physique ou les réinitialiser
+Nouveautés **0.14.0** : créer des étiquettes de navigation sur une plage physique ou les réinitialiser
 toutes, depuis Pages/Organiser et deux commandes CLI. Styles décimal, romain, lettres et préfixe seul ; étiquettes
-hors plage conservées. Annuler/Rétablir préserve la navigation si la géométrie des pages est inchangée. Validation
-en cours ; ces ajouts sont absents des paquets 0.13.0 publiés. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
+hors plage conservées. Annuler/Rétablir préserve la navigation si la géométrie des pages est inchangée. Les signatures
+visuelles saisies et multipages restent disponibles depuis 0.13.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

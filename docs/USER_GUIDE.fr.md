@@ -3,7 +3,7 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0), publiée en Latest
+Ce guide couvre [SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
 
 ## Installation
@@ -341,7 +341,7 @@ puis Entrée. Un libellé correspondant prime sur le numéro : si le libellé `1
 saisir `1` ouvre la page 3. Saisissez `#1` pour choisir explicitement la page physique 1. Sans libellé correspondant,
 un nombre désigne la page physique. Une saisie inconnue, ambiguë ou hors limites conserve la page et affiche une explication.
 
-Les libellés sont uniquement lus dans les paquets 0.13.0 publiés ; la création 0.14.0 est décrite plus bas. Aucune
+La création d'étiquettes est disponible en 0.14.0, comme décrit plus bas. Aucune
 renumérotation sémantique après insertion, suppression, déplacement ou extraction : les plages existantes peuvent
 rester liées aux positions physiques, et les fichiers extraits peuvent perdre leurs libellés. Un libellé vide, illisible, contenant
 un caractère de contrôle ou dépassant 4096 octets UTF-8 revient à l'indice physique. La commande CLI `info` fournit
@@ -355,7 +355,7 @@ la même page. Terminez les saisies de texte ou formulaire en attente avant de s
 d'ajustement non pris en charge, les détails illisibles et une position `/FitH` nulle/absente reviennent à la page
 cible sans appliquer le zoom ni la position de destination.
 
-### Création d'étiquettes — 0.14.0 en développement
+### Création d'étiquettes — disponible en 0.14.0
 
 Ouvrez **Pages → Étiquettes de page…**, ou la commande Étiquettes de page d'**Organiser les pages**. Définissez
 **Première page physique** et **Dernière page physique** : les deux bornes sont incluses. Choisissez décimal,
@@ -374,8 +374,8 @@ une édition de contenu/étiquettes conserve vue/navigation si la géométrie es
 continue à l'invalider.
 
 Après insertion, suppression ou déplacement, les plages suivent les positions physiques sans recalage sémantique.
-Vérifiez-les après réorganisation. Un doublon reste ambigu ; utilisez `#N` physique pour naviguer. Ces ajouts sont en
-validation et absents des paquets 0.13.0 publiés ; voir l'[état du projet](PROJECT_STATUS.fr.md).
+Vérifiez-les après réorganisation. Un doublon reste ambigu ; utilisez `#N` physique pour naviguer. Ces ajouts figurent
+dans les paquets 0.14.0 publiés ; contrôles exécutés et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 ## Compression des images et lots
 
@@ -529,7 +529,7 @@ pas chaque rectangle ajusté. Exemple :
 sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf
 ```
 
-**0.14.0 en développement :** `set-page-labels` accepte `--from` (1 par défaut), `--to` (dernière page par défaut),
+**Disponible en 0.14.0 :** `set-page-labels` accepte `--from` (1 par défaut), `--to` (dernière page par défaut),
 `--style decimal|roman-upper|roman-lower|letters-upper|letters-lower|prefix-only` (décimal par défaut), `--start`
 (1 par défaut) et `--prefix` (vide par défaut). `reset-page-labels` retire toutes les règles. Les deux commandes
 acceptent `--out` et `--password` facultatif, conservent chiffrement/permissions et les protections contre

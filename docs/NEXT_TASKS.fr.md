@@ -101,7 +101,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   contrôles renforcés des binaires. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
   Fichiers vérifiés dans `dist/` ; preuves et limites dans `PROJECT_STATUS.fr.md` (D100–D101).
 
-## 0.13.0 : signatures visuelles saisies et lots de pages (publiée en Latest)
+## 0.13.0 : signatures visuelles saisies et lots de pages (publiée ; Latest à cette date)
 
 - Aperçu local explicite d'un nom/paraphe saisi, sélecteur standard/TrueType système existant,
   contrôles de glyphes/incorporation et parcours PNG transparent/bibliothèque réutilisés (D102). Times italique
@@ -109,7 +109,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
 - Page courante/toutes les pages/sélection Organiser capturée avant de quitter la grille ; même centre en
   points affichés, proportions conservées, annulation/restauration atomiques et un undo pour le lot (D103).
   CLI `add-image --pages` ajoute le lot sans modifier le comportement/JSON historique de `--page`.
-- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem` (release
+- [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem` (Latest à cette date ; release
   `414763678`), source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation réussie : 410 tests workspace (zéro échec,
   sept ignorés par défaut), formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents NIST/NBS licenciés
   (744 pages ; 76,40 s localement). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
@@ -120,7 +120,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   qpdf et préservation source. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
   de 19 730 578 octets sans installation. Preuves et limites restantes dans `PROJECT_STATUS.fr.md` (D102–D103).
 
-## 0.14.0 : création d'étiquettes et navigation conservée (en développement)
+## 0.14.0 : création d'étiquettes et navigation conservée (publiée en Latest)
 
 - Pages/Organiser et CLI `set-page-labels`/`reset-page-labels` appliquent six styles, préfixe/départ positif sur
   une plage physique inclusive, conservent les règles hors plage et leur continuation à la frontière suivante
@@ -130,8 +130,16 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   opérations structurelles ; recalage sémantique futur. Navigation par libellé/`#N` physique et protection conservées.
 - Les instantanés Annuler/Rétablir conservent l'information de géométrie inchangée pour préserver la navigation
   lors d'éditions de contenu/étiquettes ; opérations structurelles toujours invalidantes (D105).
-- Validation/publication en cours ; la 0.13.0 reste Latest. Contrôles de mise à niveau prévus : douze scénarios
-  portables et six bases MSI, dont 0.13.0 ; ils ne sont pas annoncés comme réussis. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem` (release
+  `414812776`), source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation réussie : 420 tests workspace (zéro échec,
+  sept ignorés par défaut), formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents NIST/NBS licenciés
+  (744 pages ; 53,91 s localement). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
+  et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)
+  réussis. Douze scénarios portables (huit mises à niveau dont 0.13.0 et quatre protections contre les échecs), six
+  bases MSI (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0), six fichiers préparés/publics et contrôles renforcés des binaires
+  réussis, dont création/réinitialisation protégée, les deux mots de passe, étiquettes hors plage, Unicode et texte/PNG
+  inchangés. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64 de 19 785 200 octets
+  sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D104–D105).
 
 ## Travail restant au-delà de ces lots
 

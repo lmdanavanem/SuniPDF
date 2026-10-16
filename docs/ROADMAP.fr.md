@@ -89,25 +89,30 @@ portables et quatre bases MSI réussis. Six fichiers préparés/publics et contr
 copies vérifiées dans `dist/`. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
 Preuves exécutées et limites matérielles/d'interopérabilité dans `PROJECT_STATUS.fr.md`.
 
-## 0.13.0 : améliorations de signature visuelle (publiée en Latest)
+## 0.13.0 : améliorations de signature visuelle (publiée ; Latest à cette date)
 
 Nom/paraphe saisi avec aperçu natif explicite et parcours police/image/bibliothèque existants. Page courante,
 toutes les pages et sélection partagent une géométrie affichée ajustée ; lot atomique, annulable entre cibles et
 un undo. CLI `add-image --pages` additive ; comportement historique de `--page` compatible (D102–D103).
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem`, release
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem` (Latest à cette date), release
 `414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation locale réussie : 410 tests workspace,
 formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents licenciés (744 pages ; 76,40 s localement).
 CI Windows, compilation ARM64 de même source, onze scénarios portables, cinq bases MSI et six fichiers préparés/publics
 avec contrôles renforcés des binaires réussis. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le
 ZIP Latest x64 de 19 730 578 octets sans installation. Preuves et limites matérielles/lecteurs : `PROJECT_STATUS.fr.md`.
 
-## 0.14.0 : création d'étiquettes de page (en développement)
+## 0.14.0 : création d'étiquettes de page (publiée en Latest)
 
 Appliquer six styles de navigation sur une plage physique inclusive via Pages/Organiser et deux commandes CLI ;
 conserver les étiquettes hors plage, refuser un arbre existant malformé avant mutation, réinitialiser toutes les
 règles sans annoncer d'effacement sécurisé. Numéros imprimés inchangés ; aucun recalage sémantique des plages
 après opérations structurelles. Annuler/Rétablir contenu/étiquettes conserve la navigation si géométrie inchangée
-(D104–D105). Validation et contrôles de release en cours ; la 0.13.0 reste Latest publiée. Voir `PROJECT_STATUS.fr.md`.
+(D104–D105). [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem`,
+release `414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation réussie : 420 tests workspace,
+formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents licenciés (744 pages ; 53,91 s localement).
+CI Windows, compilation ARM64 de même source, douze scénarios portables, six bases MSI et six fichiers préparés/publics
+avec contrôles renforcés réussis. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
+de 19 785 200 octets sans installation. Preuves exécutées et limites restantes : `PROJECT_STATUS.fr.md`.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -121,8 +126,8 @@ Livrés : onglets, caches de rendu/miniatures bornés, vues continue/double page
 recherche, signets, fusion/division/extraction/rotation/réorganisation, enregistrement atomique, annulation/rétablissement et annotations.
 
 Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
-Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Création/réinitialisation en développement
-pour 0.14.0. Restent : recalage sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
+Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Création/réinitialisation et navigation
+conservée par Annuler/Rétablir livrées en 0.14.0. Restent : recalage sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
 chaque lien, champ, calque ou pièce jointe.
 
 ## Phase 3 : édition professionnelle — partiellement livrée
@@ -165,7 +170,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite après le lot 0.13.0
+## Suite après le lot 0.14.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

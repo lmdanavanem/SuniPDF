@@ -100,7 +100,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   enhanced binary checks. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
   Verified files are in `dist/`; evidence and limits are in `PROJECT_STATUS.md` (D100–D101).
 
-## 0.13.0: typed visual signatures and page batches (published as Latest)
+## 0.13.0: typed visual signatures and page batches (published; Latest at the time)
 
 - Local explicit preview of a typed name/initials, using the existing standard/system TrueType font picker,
   glyph/embedding checks and transparent PNG/library flow (D102). Times italic is the portable default;
@@ -108,7 +108,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 - Current/all/Organize-selected targets, captured before leaving the grid; one common display-space centre,
   aspect-preserving fitting, atomic cancellation/rollback and one undo for a multi-page placement (D103).
   CLI `add-image --pages` adds batch placement while preserving existing `--page` behaviour/JSON.
-- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (release
+- [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (Latest at the time; release
   `414763678`), source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation passed: 410 workspace tests (zero failed,
   seven default ignored), formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed NIST/NBS documents
   (744 pages; 76.40 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
@@ -119,7 +119,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,730,578-byte Latest x64 ZIP without
   installation. Evidence and remaining limits are in `PROJECT_STATUS.md` (D102–D103).
 
-## 0.14.0: page-label authoring and navigation retention (in development)
+## 0.14.0: page-label authoring and navigation retention (published as Latest)
 
 - Pages/Organize and CLI `set-page-labels`/`reset-page-labels` author an inclusive physical range with six styles,
   prefix/positive start, preserve outside rules and restore their continuation at the following boundary (D104).
@@ -129,9 +129,16 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   semantic rebasing is future work. Existing duplicate-label/physical `#N` navigation and protection remain.
 - Carry geometry-preservation state in Undo/Redo snapshots so content/label changes retain navigation;
   structural operations still invalidate it (D105).
-- Validation and publication gates are pending; 0.13.0 remains Latest. The planned upgrade checks extend to
-  twelve portable scenarios and six MSI baselines, including 0.13.0; these are not reported as passed.
-  Executed evidence belongs in `PROJECT_STATUS.md`.
+- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem` (release
+  `414812776`), source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests (zero failed,
+  seven default ignored), formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed NIST/NBS documents
+  (744 pages; 53.91 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
+  and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)
+  passed. Twelve portable scenarios (eight upgrades including 0.13.0 and four failure guards), six MSI baselines
+  (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0), six staged/public files and enhanced binary checks passed, including
+  protected label authoring/reset, both passwords, outside labels, Unicode and unchanged text/page PNGs.
+  Verified copies are in `dist/`; the production updater verified the 19,785,200-byte Latest x64 ZIP without
+  installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D104–D105).
 
 ## Remaining work beyond these lots
 

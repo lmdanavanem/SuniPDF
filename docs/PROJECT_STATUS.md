@@ -1,40 +1,69 @@
-# Project status - updated 2026-10-16 (version 0.14.0 in validation)
+# Project status - updated 2026-10-16 (version 0.14.0)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.14.0: page-label authoring and navigation history (validation in progress)
+## 0.14.0: page-label authoring and navigation history (published as Latest)
 
-Pages / Organize now opens Page labels: an inclusive physical page range, decimal/Roman/letter numbering,
-optional prefix and positive starting number, or prefix-only labels. These labels affect navigation, not printed
-page content. `#N` still selects a physical page when labels are ambiguous. `set-page-labels` and
-`reset-page-labels` add the same operations to the CLI, preserving existing output-overwrite guards.
+[SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) is stable **Latest** under
+`lmdanavanem`, release ID `414812776`, with six verified assets. Immutable tag/source:
+`af532888804c196aabe216b8f6a2980c3d1e9e2d`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
+and the same-source [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)
+passed. The duplicate release x64 build/automatic draft publication was cancelled after ARM64 succeeded;
+the successful main-CI x64 packages and ARM64 artifact were used.
 
-Range edits retain label rules outside the selected range and restore their ordinal after it. Prefixes are limited
-to 256 UTF-8 bytes and generated labels to 4096 bytes before loading the candidate into PDFium. Decoded number
-trees are traversed with depth/node/reference bounds; malformed or unsupported ranges are refused. Reset all
-removes the catalogue label entry even if the original tree is malformed; it is not secure metadata erasure.
-A candidate is loaded and its metadata refreshed before the active document is changed. Existing passwords,
-encryption and permissions use the shared protected writer. Full rewrites can invalidate digital signatures.
-Labels remain positional after page reordering/insertion/deletion; semantic rebasing remains future work.
+Pages / Organize opens Page labels: an inclusive physical range, decimal/Roman/letter numbering, optional prefix
+and positive starting number, or prefix-only labels. Labels affect navigation, not printed page content; `#N`
+still selects a physical page when labels are ambiguous. The CLI adds `set-page-labels` and `reset-page-labels`,
+bringing its published command count to 52. Existing output-overwrite safeguards remain in place.
 
-Undo snapshots now retain whether the operation changed page geometry/order. Undo/Redo of label and content edits
-preserves reading history, while structural edits still invalidate it. Label dialogs close after tab/document or
-structural changes. English remains the default, French remains available; no new dependency was added.
+Range edits retain outside rules and restore their ordinal after the range. New prefixes are limited to 256
+UTF-8 bytes and generated labels to 4096 bytes before candidate loading. Decoded number trees have bounded
+traversal, references and input lengths; malformed/unsupported rules refuse Apply. Reset all removes the
+catalogue entry even for malformed trees; it is not secure erasure. The candidate is loaded and its metadata
+refreshed before the active state changes. Existing passwords, encryption, permissions, content, forms and links
+use the shared writer. Full rewrites can invalidate digital signatures; the existing save warning remains.
+Labels stay positional after reordering/insertion/deletion; semantic rebasing is not implemented (D104).
 
-Local validation passed: **420 workspace tests, zero failed, seven default ignored**, formatting, Clippy with
-warnings denied, **890 matching EN/FR keys**, **63 independent qpdf checks** and **four licensed NIST/NBS PDFs
-(744 pages)** in 53.91 seconds; peak sampled child working set was 332,460,032 bytes. Core native tests include
-protected/malformed label trees, outside-range restoration and unchanged render/text; real worker/headless UI tests
-cover range/reset dispatch, invalid input, stale dialogs and geometry-aware Undo/Redo. Windows CI, package/public
-checks and publication are in progress. Version 0.13.0 remains stable Latest until those gates pass. Upgrade gates
-include the verified 0.13.0 portable/MSI baselines: twelve portable scenarios and six MSI baselines are planned.
+Undo snapshots retain whether page geometry/order changed. Undo/Redo of label and content edits preserves
+reading history, while structural edits still invalidate it. Label dialogs close after tab/document or structural
+changes (D105). English remains the default, French remains available; no new dependency was added.
 
-## 0.13.0: typed and multi-page visual signatures (published as Latest)
+Local and Windows CI validation passed: **420 workspace tests, zero failed, seven default ignored**, formatting,
+Clippy with warnings denied, **890 matching EN/FR keys**, **63 independent qpdf checks** and **four licensed
+NIST/NBS PDFs (744 pages)**. Local real-corpus time: 53.91 seconds; peak sampled child working set: 332,460,032
+bytes. CI corpus: 51.89 seconds, 321,134,592 bytes. Native tests cover six styles, malformed/nested trees,
+outside continuation, default/blank labels, protected files, unchanged rendering/text and save/reset/reopen.
+Real-worker/headless UI tests cover Apply/Reset, invalid input, stale dialogs and geometry-aware Undo/Redo.
 
-[SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) is stable **Latest** under
+Twelve actual portable scenarios passed: upgrades from 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0
+and 0.13.0, plus bad checksum, wrong architecture, locked-file rollback and the real 120-second close-timeout /
+concurrent-update guard. MSI installation, transactional rollback, upgrade, downgrade rejection, payload hashes,
+uninstall and user-data preservation passed from 0.8.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0 and 0.13.0 on disposable
+Windows runners. Evidence includes the main job log, 12 portable results, 30 MSI logs and the real-corpus report.
+
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,785,200 | `9A2A085FDCC0E30852A2F72755705CB42EE2F5C866EF9A4E00ADCEEA9C6D6960` |
+| ARM64 portable ZIP | 18,382,324 | `20CE7CA3C04495548FA45CADDB568266B52C574D6292A2A35A7DDAE0CAD476D0` |
+| x64 MSI | 19,345,408 | `838DA744E862C840B4000678FC6E4757B3EFD85DBDB5910764178334EFFB5FBA` |
+
+All six unauthenticated public downloads match API digests, SHA256 sidecars and staged CI files; verified copies
+are in `dist/`. Staged/public binaries passed architecture, English version/metadata, exact icon, licenses/OCR,
+MSI/ZIP payload and existing feature checks. New packaged tests cover range labels, reset, Unicode and outside
+rules on plain and owner-opened AES-128/256 PDFs, both passwords, qpdf, readable text, identical PNG renders for
+both fixture pages and unchanged source hashes. The production updater downloaded and verified the Latest
+19,785,200-byte x64 ZIP without installation.
+
+Native interactive dialogs, ARM64 hardware, physical printing, Narrator and third-party readers remain unverified;
+packages remain unsigned. Scripted CI installation is not an interactive hardware claim. Metadata rewrites and
+undo snapshots add memory cost for large documents.
+
+## 0.13.0: typed and multi-page visual signatures (published as Latest at that time)
+
+[SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) was published as stable **Latest** under
 `lmdanavanem`, release ID `414763678`, with six verified assets. Immutable tag/source:
 `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
 and the same-source [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)

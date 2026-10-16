@@ -37,13 +37,22 @@ ten portable scenarios, four MSI baselines, all six staged/public files and enha
 are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
 Hardware, interactive UI and reader limits remain in `PROJECT_STATUS.md`.
 
-[0.13.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`,
+[0.13.0 is published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (Latest at the time),
 release `414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation passed: 410 workspace tests
 (zero failed, seven default ignored), formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed documents
 (744 pages; 76.40 seconds locally), Windows CI and same-source ARM64 compilation, eleven portable scenarios and
 five MSI baselines. Six staged/public files and enhanced binary checks passed, including protected signature
 batches and both passwords. Verified copies are in `dist/`; the production updater verified the 19,730,578-byte
 Latest x64 ZIP without installation. Detailed evidence and remaining limits are in `PROJECT_STATUS.md`.
+
+[0.14.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem`,
+release `414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests
+(zero failed, seven default ignored), formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed documents
+(744 pages; 53.91 seconds locally), Windows CI and same-source ARM64 compilation, twelve portable scenarios and
+six MSI baselines. Six staged/public files and enhanced binary checks passed, including plain/protected label
+authoring/reset, both passwords, unaffected labels and unchanged text/page PNGs. Verified copies are in `dist/`;
+the production updater verified the 19,785,200-byte Latest x64 ZIP without installation. Evidence and remaining
+limits are in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -61,7 +70,7 @@ Latest x64 ZIP without installation. Detailed evidence and remaining limits are 
 | Text selection / copy in reading order | Declared | **Done**: logical character range, cross-page/reverse selection, double-click words, edge autoscroll | PDFium order; core/headless tests; arbitrary untagged column order not inferred |
 | Thumbnails | Declared | **Done** | Virtualised panel, shared cache |
 | Bookmarks (outline) | Declared | **Done** (panel, page navigation; editing planned); precise destinations **delivered in 0.11.0** | Named, XYZ/Fit/nonzero FitH; local tests passed |
-| Page labels | Declared | **Reading delivered in 0.11.0**; authoring/reset **in development for 0.14.0**, validation pending | Existing exact unique-label/physical `#N` navigation retained; Pages/Organize and two CLI commands author six styles over an inclusive physical range, preserve outside rules; reset all; no printed-number changes or semantic rebasing |
+| Page labels | Declared | **Reading delivered in 0.11.0**; authoring/reset **delivered in 0.14.0**, local/CI/package/public/upgrade checks passed | Existing exact unique-label/physical `#N` navigation retained; Pages/Organize and two CLI commands author six styles over an inclusive physical range, preserve outside rules; reset all; no printed-number changes or semantic rebasing |
 | Navigation history, reopened tabs | Declared | Recent files and per-tab 256-entry history **Done**; same-page/zoom history **delivered in 0.11.0** | Local tests passed |
 | Reading mode / full screen | Declared | **Done in 0.10.0** | View mode is a shared preference; rotation/history are retained per tab; editing returns to upright view |
 | Windows printing | Declared (limited fidelity) | **Done** (layout/range tests and actual Microsoft Print to PDF output reopened) | Native dialog, ranges/copies, bounded raster printing, progress/cancel; physical printer and interactive dialog unverified |
@@ -95,7 +104,7 @@ Latest x64 ZIP without installation. Detailed evidence and remaining limits are 
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
 | Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); **implemented for 0.11.0, published; local, CI, package and upgrade gates passed**: retain source encryption/passwords/permissions and refuse output at the source path (D097 supersedes D046). Existing permission policy unchanged; CLI `encryption_removed: false`, additive `encrypted`; semantic preservation to verify beyond qpdf structural checking |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
-| Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save. **0.14.0 in development**: preserve navigation through label/content Undo/Redo when page geometry is unchanged; validation pending (D105) |
+| Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save. **Delivered in 0.14.0**: preserve navigation through label/content Undo/Redo when page geometry is unchanged; executed checks passed (D105) |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
 | Batch processing | Declared (CLI batch) | **Done in 0.10.0**: sequential compression/local OCR, 128 files, 256 MiB/input, progress/cancel/per-file errors, new copies only |
 
@@ -155,6 +164,6 @@ Latest x64 ZIP without installation. Detailed evidence and remaining limits are 
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.13.0 ZIP/MSI published as Latest; eleven real portable scenarios and five MSI baselines passed; six public files/SHA256 and packaged checks verified; production live updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.13.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.14.0 ZIP/MSI published as Latest; twelve real portable scenarios and six MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.14.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

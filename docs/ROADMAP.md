@@ -86,25 +86,30 @@ scenarios and four MSI baselines passed. All six staged/public files and enhance
 files are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
 Executed evidence and hardware/interoperability limits are recorded in `PROJECT_STATUS.md`.
 
-## 0.13.0: visual signature improvements (published as Latest)
+## 0.13.0: visual signature improvements (published; Latest at the time)
 
 Typed name/initials use an explicit native preview and the existing font/image/library paths. Current/all/selected
 pages share fitted display-space geometry; multi-page placement is atomic, cancellable between targets and one
 undo. CLI `add-image --pages` is additive; legacy `--page` behaviour remains compatible (D102–D103).
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`, release
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (Latest at the time), release
 `414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Local validation passed: 410 workspace tests,
 formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed documents (744 pages; 76.40 seconds locally).
 Windows CI, same-source ARM64 compilation, eleven portable scenarios, five MSI baselines and all six staged/public
 files with enhanced binary checks passed. Verified copies are in `dist/`; the production updater verified the
 19,730,578-byte Latest x64 ZIP without installation. Evidence and hardware/reader limits: `PROJECT_STATUS.md`.
 
-## 0.14.0: page-label authoring (in development)
+## 0.14.0: page-label authoring (published as Latest)
 
 Apply six navigation-label styles over an inclusive physical range through Pages/Organize and two CLI commands;
 preserve labels outside the range, reject malformed existing trees before mutation, and reset all label rules
 without claiming secure erasure. Printed numbers remain unchanged; structural operations do not semantically
 rebase the ranges. Geometry-preserving label/content Undo/Redo retains navigation (D104–D105).
-Validation and release gates are pending; 0.13.0 remains published Latest. See `PROJECT_STATUS.md`.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem`, release
+`414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests,
+formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed documents (744 pages; 53.91 seconds locally).
+Windows CI, same-source ARM64 compilation, twelve portable scenarios, six MSI baselines and six staged/public
+files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified the
+19,785,200-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -118,8 +123,8 @@ Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views
 search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
 
 Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
-Delivered in 0.11.0: page-label reading and precise internal navigation. Authoring/reset are in development for
-0.14.0. Remaining: semantic label rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
+Delivered in 0.11.0: page-label reading and precise internal navigation. Authoring/reset and navigation-preserving
+Undo/Redo were delivered in 0.14.0. Remaining: semantic label rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
 prove preservation of every link, field, layer or attachment.
 
 ## Phase 3: professional editing — partially delivered
@@ -163,7 +168,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.13.0 lot
+## Next work after the 0.14.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

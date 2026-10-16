@@ -329,14 +329,14 @@ A48. **Étiquettes de page** : métadonnées de navigation facultatives, distinc
      Le libellé exact et unique prime sur une saisie numérique ; `#N` choisit la page physique N. Un doublon exige
      un indice physique. Aucun recalage sémantique après une opération structurelle : les plages peuvent rester
      attachées aux positions physiques ; l'extraction peut omettre les libellés. Les indices CLI restent physiques, à partir de 1.
-     **0.14.0 en développement** ajoute création par plage et réinitialisation globale via Pages/Organiser et CLI.
+     **0.14.0** ajoute création par plage et réinitialisation globale via Pages/Organiser et CLI.
      Six styles, nouveaux préfixes sur une ligne de 256 octets UTF-8 au plus, étiquettes générées de 4096 octets au
      plus et départ positif. Parcours des arbres numériques borné ; arbre malformé/dangereux : Appliquer refusé
      avant mutation. Règles hors plage et continuation à leur frontière conservées. Réinitialiser retire l'entrée
      du catalogue, même malformée ; aucun effacement sécurisé des anciens objets. L'avertissement existant de
      réécriture des PDF signés s'applique. Annuler/Rétablir conserve la navigation si la géométrie reste inchangée
-     (D104–D105) ; éditions structurelles positionnelles sans recalage sémantique. Validation en cours dans
-     `PROJECT_STATUS.fr.md` ; la 0.13.0 reste Latest.
+     (D104–D105) ; éditions structurelles positionnelles sans recalage sémantique. Publié en 0.14.0 ; contrôles
+     exécutés et limites restantes dans `PROJECT_STATUS.fr.md`.
 A49. **Navigation vers les destinations** : liens internes/signets avec `/XYZ`, `/Fit` et positions `/FitH` exploitables,
      historique de position/zoom par onglet. Les autres ajustements conservent la navigation à la page seule.
      PDFium ne distingue pas une position `/FitH` absente de zéro ; les deux reviennent à la page seule. Des détails

@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0), published as Latest
+This guide covers [SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0), published as Latest
 under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
 
 ## Installation
@@ -315,7 +315,7 @@ A matching label takes priority over a number: if label `1` belongs to physical 
 Enter `#1` to select physical page 1 explicitly. Without a matching label, a number selects the physical page.
 Unknown, duplicate or out-of-range input leaves the current page unchanged and displays an explanation.
 
-Page labels are read only in the published 0.13.0 packages; authoring for 0.14.0 is described below. There is no
+Page-label authoring is available in 0.14.0, as described below. There is no
 semantic renumbering after inserting, deleting, moving or extracting pages; existing label ranges can remain
 tied to physical positions, and extracted files may have no labels. Blank, unreadable, control-containing or
 over-4096-byte UTF-8 labels fall back to physical indices.
@@ -328,7 +328,7 @@ returns through the tab's page, position and zoom history, including destination
 text or form edits before following a destination. Unsupported fit modes, unreadable destination details and
 `/FitH` zero/null positions fall back to the target page without applying destination zoom or position.
 
-### Page-label authoring — 0.14.0 in development
+### Page-label authoring — available in 0.14.0
 
 Open **Pages → Page Labels…**, or the Page Labels command in **Organize pages**. Set **First physical page**
 and **Last physical page**: the range includes both ends. Choose decimal, uppercase/lowercase Roman,
@@ -347,7 +347,7 @@ is unchanged; structural edits still invalidate it.
 
 After inserting, deleting or moving pages, label ranges follow physical positions rather than rebasing by document
 meaning. Check them after reorganization. Duplicate labels remain ambiguous; use physical `#N` to navigate.
-These additions are under validation and are not included in the published 0.13.0 packages; see [Project status](PROJECT_STATUS.md).
+These additions are included in the published 0.14.0 packages; executed checks and limits are in [Project status](PROJECT_STATUS.md).
 
 ## Image compression and batches
 
@@ -497,7 +497,7 @@ rectangle. Example:
 sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf
 ```
 
-**0.14.0 in development:** `set-page-labels` accepts `--from` (default 1), `--to` (default last page),
+**Available in 0.14.0:** `set-page-labels` accepts `--from` (default 1), `--to` (default last page),
 `--style decimal|roman-upper|roman-lower|letters-upper|letters-lower|prefix-only` (default decimal), `--start`
 (default 1) and `--prefix` (default empty). `reset-page-labels` removes all label rules. Both take `--out` and
 optional `--password`, retain encryption/permissions and use the existing overwrite safeguards. Invalid input

@@ -152,7 +152,7 @@ dialog or captured targets. CLI `add-image --pages` uses the same batch method, 
 its original placement behaviour. Local, CI, package/public and upgrade gates passed; executed evidence and
 remaining hardware/interaction limits are tracked in `PROJECT_STATUS.md` (D102–D103).
 
-## 0.14.0 page-label paths (in development)
+## 0.14.0 page-label paths (published)
 
 Core `page_labels.rs` exposes `PageLabelRange` and six `PageLabelStyle` values. Existing lopdf parsing/writing
 validates the label number tree with depth/node/range/string bounds, preserves rules outside an authored physical
@@ -164,8 +164,8 @@ traversing a malformed tree; old unreferenced metadata objects are not securely 
 Desktop `pagesetup.rs` provides the Pages/Organize dialog; `EditOp` and the existing undo journal handle Apply
 and Reset. CLI `set-page-labels`/`reset-page-labels` call the same API and output guard. `Snapshot::pages_unchanged`
 travels through Undo/Redo, preserving viewport/history for label/content edits while structural edits still
-invalidate page geometry (D105). Labels remain positional after structural operations. Validation is pending;
-executed results belong in `PROJECT_STATUS.md`.
+invalidate page geometry (D105). Labels remain positional after structural operations. Local, CI, package/public,
+upgrade and production updater checks passed; executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## Coordinates (SUNI-031c)
 

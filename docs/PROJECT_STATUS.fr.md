@@ -1,40 +1,71 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.14.0 en validation)
+# État du projet — mis à jour le 2026-10-16 (version 0.14.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.14.0 : création d'étiquettes de page et historique (validation en cours)
+## 0.14.0 : création d'étiquettes de page et historique (publiée en Latest)
+
+[SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) est stable **Latest** sous
+`lmdanavanem`, release ID `414812776`, avec six fichiers vérifiés. Tag/source immuable :
+`af532888804c196aabe216b8f6a2980c3d1e9e2d`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
+et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)
+ont réussi. Le build x64 en double et la publication automatique en brouillon ont été annulés après le succès
+ARM64 ; les paquets x64 de la CI principale et l'artefact ARM64 ont été utilisés.
 
 Pages / Organiser ouvre Étiquettes de page : plage physique inclusive, numérotation décimale/romaine/par lettres,
-préfixe facultatif et numéro initial positif, ou préfixe seul. Ces étiquettes servent à la navigation sans modifier
-le contenu imprimé. `#N` conserve l'accès à une page physique si les étiquettes sont ambiguës. Les commandes CLI
-`set-page-labels` et `reset-page-labels` réutilisent les mêmes opérations et protections contre l'écrasement.
+préfixe facultatif et numéro initial positif, ou préfixe seul. Les étiquettes servent à la navigation sans modifier
+le contenu imprimé ; `#N` conserve l'accès physique si elles sont ambiguës. La CLI ajoute `set-page-labels` et
+`reset-page-labels`, pour 52 commandes publiées. Les protections existantes contre l'écrasement sont conservées.
 
 Les règles hors plage sont conservées, avec reprise de leur numéro après la plage. Préfixes limités à 256 octets
-UTF-8 et étiquettes produites à 4096 octets avant chargement du candidat dans PDFium. Parcours borné des objets
-décodés (profondeur/nœuds/références) ; refus des plages malformées ou non prises en charge. Réinitialiser tout
-retire l'entrée d'étiquettes du catalogue, même malformée ; ce n'est pas un effacement sécurisé des métadonnées.
-Le candidat et ses métadonnées sont chargés avant modification du document actif. Mots de passe, chiffrement et
-permissions utilisent l'écriture protégée commune. Une réécriture peut invalider les signatures numériques.
-Les étiquettes restent liées aux positions après déplacement/insertion/suppression ; le recalage sémantique reste futur.
+UTF-8 et étiquettes produites à 4096 octets avant chargement du candidat. Parcours des objets décodés borné en
+profondeur/nœuds/références/longueurs ; refus des règles malformées ou non prises en charge. Réinitialiser tout
+retire l'entrée du catalogue, même malformée ; ce n'est pas un effacement sécurisé. Le candidat et ses métadonnées
+sont chargés avant modification de l'état actif. Mots de passe, chiffrement, permissions, contenu, formulaires et
+liens utilisent l'écriture commune. Une réécriture peut invalider les signatures numériques ; l'avertissement de
+sauvegarde existant reste en place. Étiquettes liées aux positions après déplacement/insertion/suppression :
+le recalage sémantique n'est pas implémenté (D104).
 
-Les instantanés Undo mémorisent si l'opération change la géométrie/l'ordre des pages. Undo/Redo des étiquettes et
-éditions de contenu conserve l'historique de lecture ; les opérations structurelles l'invalident. Le dialogue se
-ferme après changement d'onglet/document/structure. Anglais par défaut, français disponible ; aucune dépendance ajoutée.
+Undo mémorise si l'opération change la géométrie/l'ordre des pages. Undo/Redo des étiquettes et éditions de contenu
+conserve l'historique de lecture ; les opérations structurelles l'invalident. Le dialogue se ferme après changement
+d'onglet/document/structure (D105). Anglais par défaut, français disponible ; aucune dépendance ajoutée.
 
-Validation locale réussie : **420 tests, aucun échec, sept ignorés par défaut**, formatage, Clippy sans avertissement,
-**890 clés EN/FR identiques**, **63 contrôles qpdf indépendants**, **quatre PDF NIST/NBS sous licence (744 pages)**
-en 53,91 secondes ; mémoire de pointe échantillonnée des processus enfants : 332 460 032 octets. Tests natifs :
-arbres protégés/malformés, reprise hors plage et rendu/texte inchangés ; worker réel/tests UI sans fenêtre :
-Apply/Reset, entrées invalides, dialogues périmés et Undo/Redo selon la géométrie. CI Windows, paquets publics et
-publication restent en cours. La 0.13.0 reste stable Latest jusque-là. Paquets de référence 0.13.0 vérifiés :
-douze scénarios portables et six versions MSI de référence prévus, résultats annoncés après exécution.
+Validation locale et CI Windows réussie : **420 tests, aucun échec, sept ignorés par défaut**, formatage,
+Clippy sans avertissement, **890 clés EN/FR identiques**, **63 contrôles qpdf indépendants**, **quatre PDF NIST/NBS
+sous licence (744 pages)**. Corpus local : 53,91 secondes, pic enfant échantillonné 332 460 032 octets ;
+corpus CI : 51,89 secondes, 321 134 592 octets. Tests natifs : six styles, arbres malformés/imbriqués, reprise
+hors plage, étiquettes par défaut/vides, protection, rendu/texte inchangés et sauvegarde/reset/réouverture.
+Worker réel/tests UI sans fenêtre : Apply/Reset, entrées invalides, dialogues périmés et Undo/Redo selon géométrie.
 
-## 0.13.0 : signatures visuelles saisies et multipages (publiée en Latest)
+Douze scénarios portables réels réussis : mises à niveau depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0,
+0.12.0 et 0.13.0, plus mauvaise empreinte, mauvaise architecture, restauration après fichier verrouillé et attente
+réelle de fermeture 120 secondes/garde contre les mises à jour concurrentes. Installation MSI, rollback
+transactionnel, mise à niveau, refus de downgrade, empreintes des fichiers, désinstallation et conservation des
+données réussis depuis 0.8.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0 et 0.13.0 sur runners Windows jetables. Preuves :
+journal CI, 12 résultats portables, 30 journaux MSI et rapport du corpus réel.
 
-[SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) est stable **Latest** sous
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 785 200 | `9A2A085FDCC0E30852A2F72755705CB42EE2F5C866EF9A4E00ADCEEA9C6D6960` |
+| ZIP portable ARM64 | 18 382 324 | `20CE7CA3C04495548FA45CADDB568266B52C574D6292A2A35A7DDAE0CAD476D0` |
+| MSI x64 | 19 345 408 | `838DA744E862C840B4000678FC6E4757B3EFD85DBDB5910764178334EFFB5FBA` |
+
+Les six téléchargements publics non authentifiés correspondent aux empreintes API, fichiers SHA256 et paquets
+CI ; copies vérifiées dans `dist/`. Les binaires préparés/publics ont passé architecture, version/métadonnées
+anglaises, icône exacte, licences/OCR, contenus MSI/ZIP et fonctions existantes. Nouveaux contrôles : plages,
+réinitialisation, Unicode et règles hors plage sur PDF simples et AES-128/256 ouverts en propriétaire, les deux
+mots de passe, qpdf, texte lisible, PNG identiques pour les deux pages de test et empreintes source inchangées.
+Le mécanisme de mise à jour a téléchargé et vérifié le ZIP x64 Latest de 19 785 200 octets, sans installation.
+
+Dialogues interactifs natifs, matériel ARM64, impression physique, Narrator et lecteurs tiers restent non vérifiés ;
+paquets non signés. Les installations automatisées CI ne prouvent pas l'usage interactif sur matériel réel.
+Les réécritures de métadonnées et instantanés Undo augmentent la mémoire pour les gros documents.
+
+## 0.13.0 : signatures visuelles saisies et multipages (Latest à cette date)
+
+[SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) a été publiée en stable **Latest** sous
 `lmdanavanem`, release ID `414763678`, avec six fichiers vérifiés. Tag/source immuable :
 `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
 et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
