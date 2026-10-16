@@ -5,6 +5,29 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
+## Correctifs P1 main/non publiés
+
+Les deux bugs P1 sont implémentés et validés localement ; **0.21.0 reste la Latest publiée**.
+Source de release, paquets et validations ci-dessous sont inchangés. Contrôles d'intégration GitHub
+CI/CodeQL en attente ; ces correctifs sont absents des paquets publiés et la version n'est pas modifiée.
+
+| Élément P1 | Comportement implémenté | État actuel |
+|---|---|---|
+| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | In Progress ; contrôles locaux réussis, CI/CodeQL en attente |
+| Aplatir sans perdre les annotations non-Link sans apparence utilisable | Conserver graphes bruts des annotations non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables, exclure les annotations conservées du compte et valider via document temporaire atomique | In Progress ; contrôles locaux réussis, CI/CodeQL en attente |
+
+Preuves locales : **476 tests réussis, zéro échec, sept ignorés par défaut sur 37 suites** ; formatage,
+Clippy toutes cibles avec `-D warnings`, **912 clés EN/FR** et **84 contrôles qpdf** réussis. Quatre PDF
+licenciés (**744 pages**) réussis en **60.419 secondes**, pic enfant échantillonné
+**330,194,944 octets** ; toutes les sources inchangées. Les régressions ont
+d'abord reproduit le texte incompatible accepté, le brouillon d'ajout périmé et les annotations perdues
+à l'aplatissement, puis réussi avec les corrections. Régression native de conservation à l'aplatissement
+également exécutée séparément avec succès.
+
+Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) garde 42 brouillons : Bugs (8), Roadmap (23),
+Suggestions (11) ; 39 Todo, ces deux In Progress et la sécurité 0.21.0 Done. API, dépendances et commandes
+CLI inchangées. Finalisation après contrôles GitHub sur la source ; aucune publication de release prévue pour ce lot.
+
 ## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
@@ -19,8 +42,8 @@ CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont ét�
 par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
-avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
-du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
+des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,

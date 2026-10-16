@@ -16,8 +16,9 @@ CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont ét�
 par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
-avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
-du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+avec filtres de catégorie enregistrés. À la publication 0.21.0, l'élément de sécurité était Terminé ;
+l'avancement actuel des autres éléments figure dans l'[état du projet](PROJECT_STATUS.fr.md).
+Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 ## Principes

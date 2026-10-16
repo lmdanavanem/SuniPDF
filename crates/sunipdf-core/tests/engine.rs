@@ -2341,6 +2341,141 @@ fn opacity_text_shapes_images_and_style_preservation() {
 }
 
 #[test]
+fn existing_text_rejects_missing_glyphs_without_mutation() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let original = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    for encrypted in [false, true] {
+        let bytes = if encrypted {
+            security::protect(
+                &original,
+                None,
+                &Protection {
+                    user_password: "user".into(),
+                    owner_password: "owner".into(),
+                    aes256: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        } else {
+            original.clone()
+        };
+        let password = encrypted.then_some("owner");
+        let mut doc = engine
+            .open_bytes(bytes, password, &fixture("two-pages.pdf"))
+            .unwrap();
+        let before = doc.page_objects(0).unwrap();
+        let title = before
+            .iter()
+            .find(|o| o.text.as_deref() == Some("SuniPDF page 1"))
+            .unwrap();
+        let rendered = doc.render_page(0, 1.0).unwrap();
+        let unchanged = doc.snapshot().unwrap();
+        for (text, missing) in [("Updated ЖЖ", "Ж"), ("Updated \u{10ffff}", "\u{10ffff}")] {
+            assert!(
+                matches!(doc.set_object_text(0, title.index, text),
+                    Err(EngineError::MissingGlyphs(chars)) if chars == missing),
+                "unsupported text must be rejected: {text:?}, encrypted={encrypted}"
+            );
+            assert_eq!(doc.page_objects(0).unwrap(), before);
+            assert_eq!(doc.render_page(0, 1.0).unwrap().rgba, rendered.rgba);
+            let snapshot = doc.snapshot().unwrap();
+            if !encrypted {
+                assert_same_pdf_contents(&unchanged, &snapshot);
+            } else {
+                assert!(matches!(
+                    engine.open_bytes(snapshot.clone(), None, &fixture("two-pages.pdf")),
+                    Err(EngineError::PasswordRequired)
+                ));
+            }
+            let reopened = engine
+                .open_bytes(snapshot, password, &fixture("two-pages.pdf"))
+                .unwrap();
+            assert_eq!(reopened.page_objects(0).unwrap(), before);
+        }
+        assert!(doc.set_object_text(0, title.index, "").is_err());
+        assert!(doc.set_object_text(2, title.index, "Updated").is_err());
+        assert!(doc.set_object_text(0, usize::MAX, "Updated").is_err());
+        let path = before
+            .iter()
+            .find(|o| o.kind == sunipdf_core::ObjectKind::Path)
+            .unwrap();
+        assert!(doc.set_object_text(0, path.index, "Updated").is_err());
+        assert_eq!(doc.page_objects(0).unwrap(), before);
+        if !encrypted {
+            assert_same_pdf_contents(&unchanged, &doc.snapshot().unwrap());
+        }
+        doc.set_object_text(0, title.index, "Updated PDF text")
+            .unwrap();
+        let updated = doc.object_info(0, title.index).unwrap();
+        assert_eq!(updated.text.as_deref(), Some("Updated PDF text"));
+        assert_eq!(updated.font_name, title.font_name);
+        let snapshot = doc.snapshot().unwrap();
+        if encrypted {
+            assert!(matches!(
+                engine.open_bytes(snapshot.clone(), None, &fixture("two-pages.pdf")),
+                Err(EngineError::PasswordRequired)
+            ));
+        }
+        let reopened = engine
+            .open_bytes(snapshot, password, &fixture("two-pages.pdf"))
+            .unwrap();
+        assert_eq!(
+            reopened
+                .object_info(0, title.index)
+                .unwrap()
+                .text
+                .as_deref(),
+            Some("Updated PDF text")
+        );
+    }
+    assert_eq!(std::fs::read(fixture("two-pages.pdf")).unwrap(), original);
+}
+
+#[test]
+fn existing_text_keeps_embedded_unicode_font_when_updated() {
+    use sunipdf_core::TextStyle;
+    let fonts = sunipdf_core::fonts::system_fonts();
+    let Some(font) = ["Arial", "Segoe UI"]
+        .iter()
+        .find_map(|name| fonts.iter().find(|font| font.name == *name))
+    else {
+        eprintln!("Arial/Segoe UI unavailable: embedded font check skipped");
+        return;
+    };
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    doc.add_text(
+        0,
+        60.0,
+        300.0,
+        "Привет",
+        &TextStyle {
+            font_file: Some(font.path.clone()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let before = doc.page_objects(0).unwrap().pop().unwrap();
+    doc.set_object_text(0, before.index, "Текст Ω é").unwrap();
+    let updated = doc.object_info(0, before.index).unwrap();
+    assert_eq!(updated.text.as_deref(), Some("Текст Ω é"));
+    assert_eq!(updated.font_name, before.font_name);
+    let reopened = engine
+        .open_bytes(doc.snapshot().unwrap(), None, &fixture("two-pages.pdf"))
+        .unwrap();
+    assert_eq!(
+        reopened
+            .object_info(0, before.index)
+            .unwrap()
+            .text
+            .as_deref(),
+        Some("Текст Ω é")
+    );
+}
+
+#[test]
 fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
     use sunipdf_core::TextStyle;
     {

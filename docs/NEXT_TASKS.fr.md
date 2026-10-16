@@ -2,6 +2,12 @@
 
 [English](NEXT_TASKS.md)
 
+## Lot actuel main/non publié
+
+Correctifs P1 validés localement, éléments du projet In Progress : refus des glyphes absents/récupération
+du brouillon et conservation non-Link à l'aplatissement. GitHub CI/CodeQL en attente ; voir l'[état du projet](PROJECT_STATUS.fr.md).
+Paquets 0.21.0 inchangés.
+
 ## Version 0.9.0 : les sept fonctions demandées sont publiées
 
 Les sept fonctions sont dans la [release 0.9.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
@@ -281,8 +287,8 @@ CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont ét�
 par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
-avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
-du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
+des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 ## Travail restant au-delà de ces lots
@@ -341,8 +347,8 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 - Texte libre livré en 0.11.0 ; création de listes modifiables et correspondances radio `/Opt` livrées en 0.12.0.
   Activation clavier livrée en 0.10.0 ; Narrateur Windows non vérifié
   (noms `labelled_by` posés, non écoutés).
-- aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
-  `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
+- aplatissement : conservation des annotations non-Link sans apparence utilisable, pièces jointes et
+  références partagées validée localement sur main. GitHub CI/CodeQL en attente ; 0.21.0 publiée inchangée.
 
 ## Après sign-image (signature visuelle, tranche livrée)
 

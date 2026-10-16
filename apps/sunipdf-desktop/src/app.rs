@@ -1032,7 +1032,7 @@ impl SuniApp {
                         e,
                         EngineError::MissingGlyphs(_) | EngineError::FontNotEmbeddable
                     ) {
-                        // Le texte saisi n'est pas perdu : l'éditeur rouvre pour changer de police.
+                        // Retain the draft so unsupported text can be corrected without retyping.
                         if let Some(mut p) = self.edit.last_prompt.take() {
                             p.focus = true;
                             p.armed = false;

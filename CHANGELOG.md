@@ -5,6 +5,15 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [Unreleased]
+
+### Fixed
+
+- Refuse lossy edits when an existing text object's original font cannot represent the replacement;
+  retain the original PDF and the current editing draft for retry.
+- Preserve non-widget annotations without a usable normal appearance when flattening forms, including
+  embedded files and shared annotation references; failures leave the original document unchanged.
+
 ## [0.21.0] - 2026-10-16
 
 - Harden native signer-certificate metadata access with an explicit null-pointer guard and add a

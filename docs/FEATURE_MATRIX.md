@@ -16,7 +16,8 @@ CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were indivi
 evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+with saved category filters. At 0.21.0 publication the security item was Done; current implementation
+status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
@@ -160,7 +161,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Group several freehand strokes | Declared | **Delivered in 0.18.0** (D109): page-bound draft, explicit Finish/Cancel, one AddInk/Undo; failure retention, guards and 64-stroke/4,000-points-per-stroke bounds. Local/CI/upgrade, staged/public package and production updater gates passed. No eraser, idle auto-commit or draft crash recovery |
 | On-page FreeText creation and editing | Declared | **Published in 0.20.0** (D111/A39): existing click/drawn box, anchored multiline editor, size/colour/background/border, explicit Add/Save/Cancel, one existing worker edit/Undo, original-page binding, stale-state/pending guards and failure retention. No rich text or new core/CLI API; local/CI/upgrade, staged/public package and production updater gates passed |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
-| Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
+| Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed in published 0.21.0). **Main/unreleased, locally validated:** atomic missing-glyph refusal and correct draft recovery; GitHub CI/CodeQL pending |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
 | Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing delivered in 0.10.0 (single undo) |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |

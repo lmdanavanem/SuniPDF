@@ -25,6 +25,12 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
+## Travail sur main
+
+Deux correctifs P1 implémentés et validés localement : refuser les glyphes absents du texte existant sans
+perdre le brouillon, et conserver les annotations non-Link sans apparence utilisable à l'aplatissement.
+Contrôles GitHub CI/CodeQL en attente ; correctifs absents des paquets 0.21.0. Voir l'[état actuel](docs/PROJECT_STATUS.fr.md).
+
 ## Fonctionnalités
 | Domaine | Détail |
 |---|---|
@@ -61,8 +67,8 @@ CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont ét�
 par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
-avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
-du travail futur. Voir la [revue Code Scanning](docs/CODE_SCANNING_REVIEW.fr.md)
+avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
+des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](docs/CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](docs/PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,

@@ -2,6 +2,11 @@
 
 [Français](NEXT_TASKS.fr.md)
 
+## Current main/unreleased lot
+
+Locally validated, project items In Progress: the P1 missing-glyph refusal/draft-recovery and non-Link
+flatten-preservation fixes. GitHub CI/CodeQL is pending; see [Project status](PROJECT_STATUS.md). 0.21.0 packages are unchanged.
+
 ## Version 0.9.0: seven requested features published
 
 The seven requested features are included in the [0.9.0 release](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
@@ -278,7 +283,8 @@ CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were indivi
 evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+with saved category filters. At 0.21.0 publication the security item was Done; current implementation
+status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
@@ -337,8 +343,8 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 - Editable drop-down filling shipped in 0.11.0; new editable fields and radio `/Opt` mapping shipped in 0.12.0.
   Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
   (`labelled_by` names set, not listened to).
-- flattening: also keep the annotations without an appearance other than links (attachments without
-  `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;
+- flattening: preserving non-Link annotations without usable appearances, including attachments and shared
+  references, is locally validated on main. GitHub CI/CodeQL is pending; published 0.21.0 is unchanged.
 
 ## After sign-image (visual signature, slice delivered)
 

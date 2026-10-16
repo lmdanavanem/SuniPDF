@@ -2100,6 +2100,7 @@ mod tests {
         }
         page_label_edits_and_history_keep_page_geometry(&worker);
         link_target_edits_have_one_undo_and_preserve_geometry(&worker);
+        existing_text_missing_glyphs_keep_history_and_original_objects(&worker);
         grouped_ink_has_one_undo_redo_and_failed_edits_keep_history(&worker);
         dashed_annotation_styles_survive_edits_and_history(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
@@ -2121,6 +2122,72 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn existing_text_missing_glyphs_keep_history_and_original_objects(worker: &Worker) {
+        let objects = || {
+            worker.send(Request::Objects { page: 0 });
+            match next_response(worker) {
+                Response::Objects { list, .. } => list,
+                _ => panic!("text objects"),
+            }
+        };
+        let before = objects();
+        let title = before
+            .iter()
+            .find(|object| object.text.as_deref() == Some("SuniPDF page 1"))
+            .unwrap();
+        let set_text = |text: &str| {
+            worker.send(Request::Edit(EditOp::SetText {
+                page: 0,
+                index: title.index,
+                text: Some(text.into()),
+                size: None,
+                rgb: None,
+            }));
+        };
+        set_text("Updated PDF text");
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                modified: true,
+                can_undo: true,
+                ..
+            })
+        ));
+        let updated = objects();
+        set_text("Updated Ж");
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(EngineError::MissingGlyphs(chars)) if chars == "Ж"
+        ));
+        assert_eq!(objects(), updated);
+        worker.send(Request::Undo);
+        assert!(
+            matches!(
+                next_response(worker),
+                Response::DocumentChanged(DocState {
+                    modified: false,
+                    can_undo: false,
+                    can_redo: true,
+                    ..
+                })
+            ),
+            "rejected text must not add history or mark the document modified"
+        );
+        assert_eq!(objects(), before);
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(objects(), updated);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(objects(), before);
     }
 
     fn grouped_ink_has_one_undo_redo_and_failed_edits_keep_history(worker: &Worker) {

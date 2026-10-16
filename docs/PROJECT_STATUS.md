@@ -5,6 +5,28 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
+## Main/unreleased P1 fixes
+
+Both existing P1 bugs are implemented and locally validated; **0.21.0 remains the published Latest**.
+The release source, packages and its validation below are unchanged. GitHub CI/CodeQL integration checks
+are pending; these fixes are not included in the published packages and no version change is claimed.
+
+| P1 item | Implemented behavior | Current state |
+|---|---|---|
+| Missing glyphs in existing text | Keep the original font; atomically refuse unsupported text and reopen the correct editing draft without changing the PDF | In Progress; local checks passed, CI/CodeQL pending |
+| Flattening non-Link annotations without a usable appearance | Preserve raw non-widget annotation graphs, attachments and shared references; keep widget/drawable-appearance flattening, exclude preserved annotations from the count and commit through an atomic scratch document | In Progress; local checks passed, CI/CodeQL pending |
+
+Local evidence: **476 passed tests, zero failures, seven default ignored across 37 suites**; formatting,
+all-target Clippy with `-D warnings`, **912 EN/FR keys** and **84 qpdf checks** passed. Four licensed PDFs
+(**744 pages**) passed in **60.419 seconds**, sampled peak child memory
+**330,194,944 bytes**; all inputs stayed unchanged. The regression first
+reproduced accepted unsupported text, the stale add-text draft and lost flattening annotations, then passed
+with the fixes. The full native flatten-preservation regression passed separately.
+
+The [GitHub project](https://github.com/users/lmdanavanem/projects/1) retains 42 drafts: Bugs (8), Roadmap (23),
+Suggestions (11); 39 Todo, these two In Progress and the 0.21.0 security item Done. APIs, dependencies and
+CLI commands remain unchanged. Completion awaits GitHub source checks; no release publication is planned for this lot.
+
 ## 0.21.0: Code Scanning remediation (published stable Latest)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
@@ -19,7 +41,8 @@ CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were indivi
 evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+with saved category filters. At 0.21.0 publication the security item was Done; current implementation
+status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 

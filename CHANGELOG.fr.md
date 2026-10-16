@@ -5,6 +5,15 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [Non publié]
+
+### Corrections
+
+- Refuser les modifications avec perte quand la police d'origine d'un objet texte ne peut pas représenter
+  le remplacement ; conserver le PDF d'origine et le brouillon courant pour réessayer.
+- Conserver les annotations non-widget sans apparence normale utilisable lors de l'aplatissement des
+  formulaires, avec leurs fichiers incorporés et références partagées ; un échec laisse le document inchangé.
+
 ## [0.21.0] — 2026-10-16
 
 - Renforcer l'accès natif aux métadonnées du certificat signataire par une garde explicite contre le

@@ -274,6 +274,15 @@ ne sont pas proposées ; la police est incorporée entière (pas de sous-ensembl
 page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
 police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
+**Main/non publié, validé localement :** remplacement incompatible refusé avant modification du PDF,
+avec réouverture du bon brouillon sur la page ou du texte pivoté. GitHub CI/CodeQL en attente ; les
+paquets 0.21.0 gardent la limite ci-dessus.
+
+**Correctif d'aplatissement main/non publié, validé localement :** annotations non-widget sans apparence
+utilisable conservant données brutes, pièces jointes et références partagées. Widgets/apparences dessinables
+restent aplatis ; annotations conservées exclues du compte. Un échec du document temporaire garde le PDF
+actif inchangé. GitHub CI/CodeQL en attente ; changement absent des paquets 0.21.0.
+
 ## Remplir un formulaire
 
 Quand un PDF contient un formulaire (champs AcroForm), un bandeau « Ce document contient un formulaire à

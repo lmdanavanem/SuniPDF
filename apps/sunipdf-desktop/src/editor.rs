@@ -1637,6 +1637,7 @@ impl SuniApp {
                 if same_text && same_size && same_rgb {
                     return;
                 }
+                self.edit.last_prompt = Some(prompt.clone());
                 self.edit.reselect = Some((prompt.page, index));
                 self.worker.send(Request::Edit(EditOp::SetText {
                     page: prompt.page,
@@ -1700,6 +1701,69 @@ mod tests {
             stroke_rgb: None,
             stroke_width: 1.0,
         }
+    }
+
+    #[test]
+    fn existing_text_missing_glyphs_reopens_current_draft_instead_of_previous_addition() {
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let mut object = info(2);
+        object.kind = ObjectKind::Text;
+        object.text = Some("Original".into());
+        object.font_size = 12.0;
+        object.fill_rgb = Some((0, 0, 0));
+        app.set_selection(0, vec![object]);
+        let mut prompt = TextPrompt {
+            page: 0,
+            x: 20.0,
+            y: 30.0,
+            index: Some(2),
+            text: "Updated Ж".into(),
+            size: 12.0,
+            bold: false,
+            italic: false,
+            font: TextFont::Standard(FontFamily::Helvetica),
+            rgb: [0, 0, 0],
+            inline: true,
+            armed: true,
+            focus: false,
+        };
+        app.edit.last_prompt = Some(TextPrompt {
+            index: None,
+            text: "Previous addition".into(),
+            ..prompt.clone()
+        });
+        app.commit_text_prompt(prompt.clone());
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::Edit(EditOp::SetText { page: 0, index: 2, text: Some(text), .. })
+                if text == "Updated Ж"
+        ));
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        assert!(requests.try_recv().is_err());
+        responses
+            .send(crate::worker::Response::OperationFailed(
+                sunipdf_core::EngineError::MissingGlyphs("Ж".into()),
+            ))
+            .unwrap();
+        responses
+            .send(crate::worker::Response::MutationFinished)
+            .unwrap();
+        app.handle_responses(&egui::Context::default());
+        assert!(!app.worker.has_pending_mutations());
+        let reopened = app.edit.text_prompt.as_ref().unwrap();
+        assert_eq!(reopened.index, Some(2));
+        assert_eq!(reopened.text, "Updated Ж");
+        assert!(reopened.inline && reopened.focus && !reopened.armed);
+        assert!(app.edit.last_prompt.is_none());
+        prompt.text = "Supported correction".into();
+        app.commit_text_prompt(prompt);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::Edit(EditOp::SetText { page: 0, index: 2, text: Some(text), .. })
+                if text == "Supported correction"
+        ));
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        assert!(requests.try_recv().is_err());
     }
 
     #[test]

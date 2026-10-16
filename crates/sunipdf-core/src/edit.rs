@@ -543,7 +543,7 @@ impl Document<'_> {
         Ok(token)
     }
 
-    /// Remplace le texte d'un objet texte existant (la police d'origine est conservée).
+    /// Replaces existing text using its original font; unsupported characters leave it unchanged.
     pub fn set_object_text(
         &mut self,
         page_index: usize,
@@ -553,18 +553,41 @@ impl Document<'_> {
         if text.is_empty() {
             return Err(EngineError::Other("empty text".into()));
         }
-        let mut page = self.page_handle(page_index)?;
-        let mut object = page
-            .objects()
-            .get(index as PdfPageObjectIndex)
-            .map_err(|_| not_found(index))?;
-        let Some(text_object) = object.as_text_object_mut() else {
-            return Err(EngineError::Other("not a text object".into()));
+        let scratch = Document {
+            inner: self
+                .pdfium
+                .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password: self.password.clone(),
+            font_cache: Default::default(),
         };
-        text_object.set_text(text)?;
-        drop(object);
-        // Les objets modifiés en place ne régénèrent pas le flux de contenu : le faire explicitement.
-        page.regenerate_content()?;
+        {
+            let mut page = scratch.page_handle(page_index)?;
+            let mut object = page
+                .objects()
+                .get(index as PdfPageObjectIndex)
+                .map_err(|_| not_found(index))?;
+            let Some(text_object) = object.as_text_object_mut() else {
+                return Err(EngineError::Other("not a text object".into()));
+            };
+            text_object.set_text(text)?;
+            let back = text_object.text();
+            let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+            if squash(&back) != squash(text) {
+                let mut seen = std::collections::HashSet::new();
+                let missing = text
+                    .chars()
+                    .filter(|c| !c.is_whitespace() && !back.contains(*c) && seen.insert(*c))
+                    .collect();
+                return Err(EngineError::MissingGlyphs(missing));
+            }
+            drop(object);
+            page.regenerate_content()?;
+        }
+        self.inner = scratch.inner;
+        self.font_cache.clear();
         Ok(())
     }
 

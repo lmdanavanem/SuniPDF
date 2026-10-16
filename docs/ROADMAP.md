@@ -5,6 +5,11 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
+## Current main/unreleased work
+
+The missing-glyph refusal/draft-recovery and non-Link flatten-preservation P1 fixes are locally validated.
+GitHub CI/CodeQL is pending, both project items In Progress. See [Project status](PROJECT_STATUS.md); 0.21.0 remains unchanged.
+
 ## Delivered baseline: 0.9.0
 
 The seven requested features are delivered: autosave/recovery, Windows printing, richer text selection,
@@ -224,7 +229,8 @@ CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were indivi
 evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+with saved category filters. At 0.21.0 publication the security item was Done; current implementation
+status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 

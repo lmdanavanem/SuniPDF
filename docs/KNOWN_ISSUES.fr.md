@@ -16,8 +16,8 @@ CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont ét�
 par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
-avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
-du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
+des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 ## Environnement de build (ce poste)
@@ -70,7 +70,9 @@ A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle U
     comportement natif Windows, acceptable.
 A6. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
     (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
-    Contournement : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
+    Contournement en 0.21.0 publiée : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
+    **Main/non publié, validé localement :** garder cette police, refuser atomiquement le texte incompatible
+    et rouvrir le bon brouillon. GitHub CI/CodeQL en attente ; correctif absent des paquets 0.21.0.
 A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
     du système. Rotation/redimensionnement groupés implémentés en 0.10.0 avec une annulation ; validation dans `PROJECT_STATUS.fr.md`. Restent : un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
     (le redimensionner le déformerait) ; pivot = centre de la boîte englobante, donc un tracé asymétrique peut
@@ -256,8 +258,10 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      Créer le champ explicite. Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis.
      0.19.0 était la Latest stable à sa publication.
      Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
-     Aplatissement partiel : champs orphelins possibles ; annotations sans
-     apparence autres que Link parfois perdues. Apparences Unicode susceptibles d’utiliser une police système non
+     En 0.21.0 publiée, l'aplatissement partiel peut laisser des champs orphelins ; les annotations autres que liens sans apparence peuvent disparaître.
+     **Main/non publié, validé localement :** conserver graphes bruts non-widget, pièces jointes et références
+     partagées sans apparence utilisable ; widgets/apparences dessinables restent aplatis, annotations
+     conservées exclues du compte et document temporaire atomique. GitHub CI/CodeQL en attente. Champs orphelins distincts. Apparences Unicode susceptibles d’utiliser une police système non
      embarquée, donc rendu variable ailleurs. Narrateur et lecteurs tiers non vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
 

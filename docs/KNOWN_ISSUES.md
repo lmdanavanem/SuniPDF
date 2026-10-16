@@ -16,7 +16,8 @@ CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were indivi
 evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+with saved category filters. At 0.21.0 publication the security item was Done; current implementation
+status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
@@ -70,7 +71,9 @@ A5. **The open dialog (`rfd`) is modal and blocks the UI loop** for the duration
     native Windows behaviour, acceptable.
 A6. **Content editing: editing an existing text reuses its original font.** If that font
     (often an embedded subset) does not contain a typed character, PDFium substitutes or omits it.
-    Workaround: delete the object and add a new one (Helvetica, Latin accents supported).
+    Workaround in published 0.21.0: delete the object and add a new one (Helvetica, Latin accents supported).
+    **Main/unreleased, locally validated:** keep that original font, atomically refuse unsupported text
+    and reopen the correct draft. GitHub CI/CodeQL is pending; this fix is absent from 0.21.0 packages.
 A7. ~~Rotation in 90° steps, no system font~~ **Resolved (SUNI-031c)**: free rotation and system TrueType
     fonts. Group rotation/resizing is implemented for 0.10.0 with a single undo; validation is tracked in `PROJECT_STATUS.md`. Remaining: an object rotated by an angle that is not a multiple of 90° no longer has corner handles
     (resizing it would distort it); pivot = centre of the bounding box, so an asymmetric path may
@@ -256,7 +259,10 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      last known rectangle and reopens the numeric dialog; no field is created without explicit Create Field.
      Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. 0.19.0 was stable Latest at publication.
      Rich text becomes plain text; password fields never stored/exported.
-     Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
+     Published 0.21.0: partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear.
+     **Main/unreleased, locally validated:** preserve raw non-widget graphs, attachments and shared references
+     when no usable appearance exists, while widgets/drawable appearances still flatten; excluded count
+     and scratch-document atomicity are retained. GitHub CI/CodeQL is pending. Orphan-field behavior is separate. Unicode
      field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
      third-party-reader interoperability remain unverified. Current executed evidence belongs in `PROJECT_STATUS.md`.
 

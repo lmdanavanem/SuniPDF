@@ -16,8 +16,8 @@ CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont ét�
 par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
-avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
-du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
+des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 **0.20.0 publiée ; Latest à cette date :** créer/modifier FreeText sur la page, avec éditeur multiligne ancré,
@@ -163,7 +163,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Regrouper plusieurs traits à main levée | Déclaré | **Livré en 0.18.0** (D109) : brouillon lié à une page, Terminer/Annuler explicites, un AddInk/Annuler ; conservé après erreur, gardes et limites 64 traits/4 000 points par trait. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour réussis. Aucune gomme, validation à l'inactivité ni récupération du brouillon après plantage |
 | Création et édition FreeText sur la page | Déclaré | **Publié en 0.20.0** (D111/A39) : boîte cliquée/tracée existante, éditeur multiligne ancré, taille/couleur/fond/bordure, Ajouter/Enregistrer/Annuler explicites, une édition worker/Annuler, page d'origine, gardes d'état périmé/opérations en attente et texte conservé après échec. Aucun texte enrichi ni nouvelle API moteur/CLI ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
-| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
+| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis en 0.21.0 publiée). **Main/non publié, validé localement :** refus atomique des glyphes absents et récupération du bon brouillon ; GitHub CI/CodeQL en attente |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés livrés en 0.10.0, une annulation |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |

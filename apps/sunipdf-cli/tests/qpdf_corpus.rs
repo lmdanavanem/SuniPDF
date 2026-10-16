@@ -18,6 +18,9 @@ mod radio_exports;
 #[path = "../../../crates/sunipdf-core/tests/support/conversion_images.rs"]
 mod conversion_images;
 
+#[path = "../../../crates/sunipdf-core/tests/support/flatten_preservation.rs"]
+mod flatten_preservation;
+
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../crates/sunipdf-core/tests/fixtures")
@@ -283,6 +286,27 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
             .collect::<Vec<_>>(),
         vec![6, 4, 2]
     );
+    let preservation_source = temp.path().join("flatten-preservation-source.pdf");
+    let preservation_bytes = flatten_preservation::document();
+    std::fs::write(&preservation_source, &preservation_bytes).unwrap();
+    check(&qpdf, &preservation_source, None);
+    let preservation_flat = temp.path().join("flatten-preservation.pdf");
+    let mut command = cli(&["flatten"], &[&preservation_source]);
+    command.arg("--out").arg(&preservation_flat);
+    assert_eq!(success(command)["annotations"], 17);
+    check(&qpdf, &preservation_flat, None);
+    flatten_preservation::assert_preserved(&lopdf::Document::load(&preservation_flat).unwrap());
+    let preservation_again = temp.path().join("flatten-preservation-again.pdf");
+    let mut command = cli(&["flatten"], &[&preservation_flat]);
+    command.arg("--out").arg(&preservation_again);
+    assert_eq!(success(command)["annotations"], 0);
+    check(&qpdf, &preservation_again, None);
+    flatten_preservation::assert_preserved(&lopdf::Document::load(&preservation_again).unwrap());
+    assert!(
+        std::fs::read(&preservation_source).unwrap() == preservation_bytes,
+        "flatten preservation source changed"
+    );
+
     for (name, aes128) in [("aes256.pdf", false), ("aes128.pdf", true)] {
         let encrypted = temp.path().join(name);
         let mut command = cli(&["protect"], &[&edited]);
@@ -309,6 +333,53 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
+        let preservation_protected = temp.path().join(format!("{name}-preservation-source.pdf"));
+        let mut command = cli(&["protect"], &[&preservation_source]);
+        command
+            .args([
+                "--user-password",
+                "package-user",
+                "--owner-password",
+                "package-owner",
+                "--no-copy",
+                "--no-print",
+                "--out",
+            ])
+            .arg(&preservation_protected);
+        if aes128 {
+            command.arg("--aes128");
+        }
+        success(command);
+        check(&qpdf, &preservation_protected, Some("package-user"));
+        let preservation_flat = temp.path().join(format!("{name}-preservation-flat.pdf"));
+        let preservation_again = temp.path().join(format!("{name}-preservation-again.pdf"));
+        for (input, output, count) in [
+            (&preservation_protected, &preservation_flat, 17),
+            (&preservation_flat, &preservation_again, 0),
+        ] {
+            let input_bytes = std::fs::read(input).unwrap();
+            let mut command = cli(&["flatten"], &[input]);
+            command
+                .args(["--password", "package-user", "--out"])
+                .arg(output);
+            assert_eq!(success(command)["annotations"], count);
+            check(&qpdf, output, Some("package-user"));
+            for password in ["package-user", "package-owner"] {
+                let properties = success(cli(&["properties", "--password", password], &[output]));
+                assert_eq!(properties["encrypted"], true);
+                assert_eq!(properties["permissions"], opened["permissions"]);
+                let decoded = lopdf::Document::load_mem_with_options(
+                    &std::fs::read(output).unwrap(),
+                    lopdf::LoadOptions::with_password(password),
+                )
+                .unwrap();
+                flatten_preservation::assert_preserved(&decoded);
+            }
+            assert!(
+                std::fs::read(input).unwrap() == input_bytes,
+                "encrypted flatten source changed"
+            );
+        }
         let encrypted_links = temp.path().join(format!("{name}-links.pdf"));
         let mut command = cli(&["protect"], &[&fixture("annotated.pdf")]);
         command
@@ -494,6 +565,10 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(String::from_utf8_lossy(&text.stdout).contains("SuniPDF page 1"));
         assert!(String::from_utf8_lossy(&text.stdout).contains("SuniPDF page 2"));
     }
+    assert!(
+        std::fs::read(&preservation_source).unwrap() == preservation_bytes,
+        "protection changed flatten preservation source"
+    );
     let field = temp.path().join("field.pdf");
     let mut command = cli(&["add-form-field"], &[&original]);
     command

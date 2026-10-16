@@ -405,12 +405,6 @@ fn is_widget(dict: &Dictionary) -> bool {
     subtype_is(dict, b"Widget")
 }
 
-fn is_link(d: &lopdf::Document, annot: &Object) -> bool {
-    deref(d, annot)
-        .and_then(|a| a.as_dict().ok())
-        .is_some_and(|a| subtype_is(a, b"Link"))
-}
-
 /// Entrées de `/Annots` d'une page (tableau direct ou indirect), telles quelles.
 fn annots_of(d: &lopdf::Document, page_id: ObjectId) -> Vec<Object> {
     d.get_dictionary(page_id)
@@ -421,76 +415,173 @@ fn annots_of(d: &lopdf::Document, page_id: ObjectId) -> Vec<Object> {
         .unwrap_or_default()
 }
 
-/// Annotations `/Link` d'une page, résolues et copiées : la navigation (URI, destination) n'a pas
-/// d'apparence et `FPDFPage_Flatten` la supprimerait sans rien dessiner.
-fn links_of(d: &lopdf::Document, page_id: ObjectId) -> Vec<Object> {
-    annots_of(d, page_id)
+fn has_flattenable_appearance(d: &lopdf::Document, annot: &Dictionary) -> bool {
+    let Some(normal) = get(d, annot, b"AP")
+        .and_then(|ap| ap.as_dict().ok())
+        .and_then(|ap| get(d, ap, b"N"))
+    else {
+        return false;
+    };
+    let stream = match normal {
+        Object::Stream(stream) => Some(stream),
+        Object::Dictionary(states) => {
+            let state = get(d, annot, b"AS")
+                .and_then(|state| state.as_name().or_else(|_| state.as_str()).ok())
+                .unwrap_or_default();
+            let appearance = if state.is_empty() {
+                states
+                    .iter()
+                    .min_by(|(a, _), (b, _)| a.cmp(b))
+                    .map(|(_, value)| value)
+            } else {
+                states.get(state).ok()
+            };
+            appearance.and_then(|appearance| deref(d, appearance)?.as_stream().ok())
+        }
+        _ => None,
+    };
+    let Some(stream) = stream else { return false };
+    let key: &[u8] = if stream.dict.has(b"Rect") {
+        b"Rect"
+    } else {
+        b"BBox"
+    };
+    let Some(values) = get(d, &stream.dict, key).and_then(|value| value.as_array().ok()) else {
+        return false;
+    };
+    let coordinates = values
         .iter()
-        .filter(|a| is_link(d, a))
-        .filter_map(|a| deref(d, a).cloned())
-        .collect()
+        .map(|value| deref(d, value)?.as_float().ok())
+        .collect::<Option<Vec<_>>>();
+    coordinates.is_some_and(|values| {
+        matches!(values.as_slice(), [left, bottom, right, top]
+            if values.iter().all(|value| value.is_finite()) && left != right && bottom != top)
+    })
 }
 
-/// Copie profonde d'un objet de `src` (document avant aplatissement) vers `dst` (après) : PDFium
-/// n'enregistre pas les objets que plus rien ne référence, l'action `/A` indirecte d'un lien
-/// supprimé a donc disparu. Les références sont résolues et inlinées, sauf les pages (traduites
-/// par `page_map`, numéro pour numéro) et les flux (réajoutés comme objets indirects). Profondeur
-/// bornée : une chaîne d'actions cyclique s'arrête sur `Null`.
+fn preserve_annotation(d: &lopdf::Document, annot: &Object) -> bool {
+    deref(d, annot)
+        .and_then(|annot| annot.as_dict().ok())
+        .is_some_and(|annot| {
+            subtype_is(annot, b"Link")
+                || (!is_widget(annot) && !has_flattenable_appearance(d, annot))
+        })
+}
+
+/// Réserve les références avant leurs enfants : les cycles et les pièces jointes partagées survivent.
 fn deep_copy(
     src: &lopdf::Document,
     dst: &mut lopdf::Document,
     page_map: &HashMap<ObjectId, ObjectId>,
+    copied: &mut HashMap<ObjectId, ObjectId>,
+    existing_max_id: u32,
     o: &Object,
-    depth: u8,
-) -> Object {
+    depth: usize,
+) -> Result<Object, EngineError> {
     if depth == 0 {
-        return Object::Null;
+        return Err(EngineError::Other(
+            "annotation preservation graph is too deep".into(),
+        ));
     }
-    let copy = |dst: &mut lopdf::Document, x: &Object| deep_copy(src, dst, page_map, x, depth - 1);
-    match o {
+    Ok(match o {
         Object::Reference(id) => {
             if let Some(&page) = page_map.get(id) {
-                return Object::Reference(page);
+                return Ok(Object::Reference(page));
             }
-            match src.get_object(*id) {
-                Ok(Object::Stream(s)) => {
-                    let mut s = s.clone();
-                    s.dict = s
-                        .dict
-                        .iter()
-                        .map(|(k, v)| (k.clone(), copy(dst, v)))
-                        .collect();
-                    Object::Reference(dst.add_object(Object::Stream(s)))
-                }
-                Ok(target) => copy(dst, target),
-                Err(_) => Object::Null,
+            if let Some(&id) = copied.get(id) {
+                return Ok(Object::Reference(id));
             }
+            let target = src.objects.get(id).ok_or_else(|| {
+                EngineError::Other("annotation preservation references a missing object".into())
+            })?;
+            let new_id = if id.0 <= existing_max_id && dst.objects.get(id) == Some(target) {
+                *id
+            } else {
+                dst.new_object_id()
+            };
+            copied.insert(*id, new_id);
+            let target = deep_copy(
+                src,
+                dst,
+                page_map,
+                copied,
+                existing_max_id,
+                target,
+                depth - 1,
+            )?;
+            dst.objects.insert(new_id, target);
+            Object::Reference(new_id)
         }
-        Object::Dictionary(d) => {
-            Object::Dictionary(d.iter().map(|(k, v)| (k.clone(), copy(dst, v))).collect())
+        Object::Dictionary(d) => Object::Dictionary(
+            d.iter()
+                .map(|(k, v)| {
+                    Ok((
+                        k.clone(),
+                        deep_copy(src, dst, page_map, copied, existing_max_id, v, depth - 1)?,
+                    ))
+                })
+                .collect::<Result<_, EngineError>>()?,
+        ),
+        Object::Array(a) => Object::Array(
+            a.iter()
+                .map(|value| {
+                    deep_copy(
+                        src,
+                        dst,
+                        page_map,
+                        copied,
+                        existing_max_id,
+                        value,
+                        depth - 1,
+                    )
+                })
+                .collect::<Result<_, _>>()?,
+        ),
+        Object::Stream(stream) => {
+            let mut stream = stream.clone();
+            stream.dict = stream
+                .dict
+                .iter()
+                .map(|(k, v)| {
+                    Ok((
+                        k.clone(),
+                        deep_copy(src, dst, page_map, copied, existing_max_id, v, depth - 1)?,
+                    ))
+                })
+                .collect::<Result<_, EngineError>>()?;
+            Object::Stream(stream)
         }
-        Object::Array(a) => Object::Array(a.iter().map(|x| copy(dst, x)).collect()),
         o => o.clone(),
-    }
+    })
 }
 
-/// Remet des liens relevés dans `before` dans `/Annots` d'une page aplatie de `ld` (les liens que
-/// PDFium aurait laissés sont d'abord retirés : aucun doublon).
-fn restore_links(
+fn restore_annotations(
     before: &lopdf::Document,
     ld: &mut lopdf::Document,
     page_map: &HashMap<ObjectId, ObjectId>,
+    copied: &mut HashMap<ObjectId, ObjectId>,
+    existing_max_id: u32,
     page_id: ObjectId,
-    links: &[Object],
+    preserved: &[Object],
 ) -> Result<(), EngineError> {
     let mut annots: Vec<Object> = annots_of(ld, page_id)
         .into_iter()
-        .filter(|a| !is_link(ld, a))
+        .filter(|a| !preserve_annotation(ld, a))
         .collect();
-    for link in links {
-        let link = deep_copy(before, ld, page_map, link, 16);
-        let id = ld.add_object(link);
-        annots.push(Object::Reference(id));
+    for annot in preserved {
+        let annot = deep_copy(
+            before,
+            ld,
+            page_map,
+            copied,
+            existing_max_id,
+            annot,
+            MAX_DEPTH,
+        )?;
+        annots.push(match annot {
+            Object::Reference(_) => annot,
+            _ => Object::Reference(ld.add_object(annot)),
+        });
     }
     dict_mut(ld, page_id)?.set("Annots", Object::Array(annots));
     Ok(())
@@ -1366,8 +1457,8 @@ impl Document<'_> {
     /// impression) ; `None` = toutes les pages, et `/AcroForm` est alors retiré du catalogue.
     /// Renvoie le nombre d'annotations aplaties. Les annotations sans indicateur « Print » le
     /// reçoivent d'abord (sinon PDFium les supprime sans les dessiner), les apparences manquantes
-    /// sont générées (sinon un champ jamais affiché disparaît) et les liens (`/Link`, sans
-    /// apparence : PDFium les supprimerait) sont relevés avant puis remis dans `/Annots`.
+    /// sont générées (sinon un champ jamais affiché disparaît). Les liens et les annotations
+    /// non-widget sans apparence normale utilisable sont conservés, sans les compter.
     pub fn flatten(&mut self, pages: Option<&[usize]>) -> Result<usize, EngineError> {
         if self.form_kind() == FormKind::Xfa {
             return Err(EngineError::FormXfa);
@@ -1380,36 +1471,74 @@ impl Document<'_> {
         if let Some(&bad) = targets.iter().find(|&&p| p >= total) {
             return Err(EngineError::PageOutOfRange(bad));
         }
+        let mut scratch = Document {
+            inner: self
+                .pdfium
+                .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password: self.password.clone(),
+            font_cache: Default::default(),
+        };
+        let count = scratch.flatten_pages(&targets, total)?;
+        self.inner = scratch.inner;
+        self.info = scratch.info;
+        self.page_rotations = scratch.page_rotations;
+        self.font_cache.clear();
+        Ok(count)
+    }
+
+    fn flatten_pages(
+        &mut self,
+        targets: &BTreeSet<usize>,
+        total: usize,
+    ) -> Result<usize, EngineError> {
+        for &p in targets {
+            self.ensure_appearances(p)?;
+        }
         let before = crate::security::load(&self.snapshot()?, self.password())?;
         let page_ids = before.get_pages();
-        let links: Vec<(usize, Vec<Object>)> = targets
+        let preserved: Vec<(usize, Vec<usize>, Vec<Object>)> = targets
             .iter()
             .filter_map(|&p| {
                 let id = page_ids.get(&(p as u32 + 1))?;
-                let l = links_of(&before, *id);
-                (!l.is_empty()).then_some((p, l))
+                let (indices, annotations): (Vec<_>, Vec<_>) = annots_of(&before, *id)
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, annot)| preserve_annotation(&before, annot))
+                    .unzip();
+                (!annotations.is_empty()).then_some((p, indices, annotations))
             })
             .collect();
         let mut count = 0;
-        for &p in &targets {
-            self.ensure_appearances(p)?;
+        for &p in targets {
             let mut page = self.page_handle(p)?;
-            for mut a in page.annotations().iter() {
-                if a.annotation_type() == PdfPageAnnotationType::Link {
+            let indices = preserved
+                .iter()
+                .find(|(page, _, _)| *page == p)
+                .map(|(_, indices, _)| indices);
+            let mut drawable = false;
+            for index in 0..page.annotations().len() {
+                if indices.is_some_and(|indices| indices.binary_search(&index).is_ok()) {
                     continue;
                 }
+                let mut a = page.annotations().get(index)?;
                 count += 1;
+                drawable = true;
                 if !a.is_hidden() && !a.is_printed() {
                     a.set_is_printed(true)?;
                 }
             }
-            page.flatten()?;
+            if drawable {
+                page.flatten()?;
+            }
         }
         // Rechargement : l'état de formulaire de PDFium ne survit pas aux widgets disparus, et le
         // catalogue perd son /AcroForm quand plus aucune page n'a de champ.
         let bytes = self.snapshot()?;
         let all = targets.len() == total && self.form_kind() != FormKind::None;
-        let bytes = if all || !links.is_empty() {
+        let bytes = if all || !preserved.is_empty() {
             let mut ld = crate::security::load(&bytes, self.password())?;
             if all {
                 ld.catalog_mut().map_err(lopdf_err)?.remove(b"AcroForm");
@@ -1421,9 +1550,19 @@ impl Document<'_> {
                 .iter()
                 .filter_map(|(n, &id)| Some((id, *after_ids.get(n)?)))
                 .collect();
-            for (p, l) in &links {
+            let mut copied = HashMap::new();
+            let existing_max_id = ld.max_id;
+            for (p, _, annotations) in &preserved {
                 if let Some(&id) = after_ids.get(&(*p as u32 + 1)) {
-                    restore_links(&before, &mut ld, &page_map, id, l)?;
+                    restore_annotations(
+                        &before,
+                        &mut ld,
+                        &page_map,
+                        &mut copied,
+                        existing_max_id,
+                        id,
+                        annotations,
+                    )?;
                 }
             }
             ld.prune_objects();
@@ -1439,6 +1578,44 @@ impl Document<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deep_copy_does_not_alias_distinct_source_objects() {
+        let mut source = lopdf::Document::with_version("1.7");
+        let annot = Object::Dictionary(dictionary! {"Subtype"=>"Screen"});
+        source.objects.insert((1, 0), annot.clone());
+        source.objects.insert((21, 0), annot);
+        source.max_id = 21;
+        let mut destination = lopdf::Document::with_version("1.7");
+        destination.max_id = 20;
+        let pages = HashMap::new();
+        let mut copied = HashMap::new();
+        let existing_max_id = destination.max_id;
+        let first = deep_copy(
+            &source,
+            &mut destination,
+            &pages,
+            &mut copied,
+            existing_max_id,
+            &Object::Reference((1, 0)),
+            MAX_DEPTH,
+        )
+        .unwrap();
+        let second = deep_copy(
+            &source,
+            &mut destination,
+            &pages,
+            &mut copied,
+            existing_max_id,
+            &Object::Reference((21, 0)),
+            MAX_DEPTH,
+        )
+        .unwrap();
+        assert_ne!(
+            first.as_reference().unwrap(),
+            second.as_reference().unwrap()
+        );
+    }
 
     fn fixture(name: &str) -> std::path::PathBuf {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

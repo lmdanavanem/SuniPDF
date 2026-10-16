@@ -22,6 +22,12 @@
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
+## Work on main
+
+Two P1 fixes are implemented and locally validated: refuse unsupported glyphs in existing text without
+losing the draft, and preserve non-Link annotations without usable appearances when flattening. GitHub
+CI/CodeQL checks are pending; these fixes are absent from 0.21.0 packages. See [current status](docs/PROJECT_STATUS.md).
+
 ## Features
 
 | Area | Features |
@@ -59,7 +65,8 @@ CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were indivi
 evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+with saved category filters. At 0.21.0 publication the security item was Done; current implementation
+status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](docs/CODE_SCANNING_REVIEW.md)
 and [Project status](docs/PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
