@@ -1,0 +1,3 @@
+# Default owner for everything in the repository.
+# Pull requests touching these paths request a review from the owner.
+* @lmdanavanem
