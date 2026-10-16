@@ -6,6 +6,14 @@ no document ever leaves your computer.
 This guide covers [SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0), published as Latest
 under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
 
+**0.18.0 development preview:** grouped-freehand local validation passed: 452 workspace tests (zero failed,
+seven default ignored), formatting/Clippy, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+The six new headless UI tests, extended worker Undo/Redo/failure test and CLI help regression passed.
+CI/packages/upgrades and publication are pending. 0.17.0 remains Latest;
+current release behavior is identified separately. These checks do not validate native pen/touch interaction.
+Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
 ## Installation
 
 - **Portable**: unzip `SuniPDF-<version>-win-x64-portable.zip` anywhere and run `sunipdf.exe`. Nothing is
@@ -112,10 +120,21 @@ comment. **Advanced annotations**, real PDF annotations (not page content: other
 | Tool | Gesture |
 |---|---|
 | **Select an annotation** (A) | Click an annotation: frame, handles, floating bar. Drag = move; handles = resize; arrow keys = nudge (Shift: ×10); Delete = remove; double-click or the "Edit the text" button = change its text or comment; Esc = deselect |
-| **Freehand drawing** (D) | Drag on the page: smoothed stroke (one stroke = one annotation, a click = a dot); colour, width and opacity in the floating bar |
+| **Freehand drawing** (D) | In 0.17.0: drag on the page for one smoothed stroke/annotation, click for a dot; colour, width and opacity in the floating bar. Grouped drawing is in development for 0.18.0; see below |
 | **Free text box** (F) | Click (default box) or drag (chosen box), then type in the dialog: size, colour, background, border. The box grows downwards if the text is taller. Helvetica font: characters outside the Latin alphabet show as "?", the exact text stays in the annotation |
 | **Rectangle, Ellipse, Line or arrow** (annotations) | Drag; colour, width, fill (rectangle and ellipse), opacity, "Arrow" checkbox |
 | **Link** | Draw an area (at least 6 points) then choose "Go to a page" or "Open a web address" (`http`, `https` or `mailto` only) |
+
+**Grouped drawing — in development for 0.18.0.** Draw multiple strokes on one page, then click
+**Finish drawing** to create one annotation and one Undo step, or **Cancel drawing** to discard only that draft.
+Esc also cancels an unsubmitted draft. Colour, width and opacity restyle the whole draft until Finish captures
+them. Finish or cancel before saving/closing, switching document/tool or making a conflicting edit; navigation,
+zoom and reading view modes can keep the draft on its original page. A worker error keeps all strokes for retry
+or cancellation. While Finish is pending, further drawing, Finish and Cancel are blocked.
+
+At most 64 strokes and 4,000 points per stroke; reaching the point limit stops that stroke and another can be
+started. A click is a dot. Nothing auto-commits on idle; unfinished strokes are not PDF content or crash-recovery
+snapshots. Existing point simplification, geometry and protection remain. CI/package validation and publication pending (D109).
 
 An annotation created by SuniPDF can be resized and restyled ("Apply to annotation" button: the bar's colours are
 applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can

@@ -6,6 +6,14 @@ compte, aucune télémétrie, aucun document envoyé sur Internet.
 Ce guide couvre [SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
 
+**Aperçu 0.18.0 en développement :** validation locale réussie du dessin groupé : 452 tests workspace (zéro
+échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Six nouveaux tests UI sans fenêtre, test worker étendu Annuler/Rétablir/échec et régression d'aide CLI réussis.
+CI/paquets/mises à niveau et publication en attente. 0.17.0 reste Latest ; le comportement
+publié est indiqué séparément. Ces contrôles ne valident pas l'interaction native au stylet/tactile.
+Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
 ## Installation
 
 - **Portable** : décompressez le fichier `SuniPDF-<version>-win-x64-portable.zip` où vous voulez et lancez
@@ -121,10 +129,23 @@ du contenu de page : les autres lecteurs les affichent aussi) :
 | Outil | Geste |
 |---|---|
 | **Sélectionner une annotation** (A) | Clic sur une annotation : cadre, poignées, barre flottante. Glisser = déplacer ; poignées = redimensionner ; flèches = décaler (Maj : ×10) ; Suppr = supprimer ; double-clic ou bouton « Modifier le texte » = changer son texte ou son commentaire ; Échap = désélectionner |
-| **Dessin à main levée** (D) | Glisser sur la page : trait lissé (un trait = une annotation, un clic = un point) ; couleur, épaisseur et opacité dans la barre flottante |
+| **Dessin à main levée** (D) | En 0.17.0 : glisser sur la page pour un trait lissé/une annotation, cliquer pour un point ; couleur, épaisseur et opacité dans la barre flottante. Encre groupée en développement pour 0.18.0, voir ci-dessous |
 | **Zone de texte libre** (F) | Clic (boîte par défaut) ou glissement (boîte choisie), puis saisie dans la boîte de dialogue : taille, couleur, fond, bordure. La boîte grandit vers le bas si le texte est plus haut. Police Helvetica : les caractères hors alphabet latin s'affichent « ? », le texte exact reste dans l'annotation |
 | **Rectangle, Ellipse, Ligne ou flèche** (annotations) | Glisser ; couleur, épaisseur, fond (rectangle et ellipse), opacité, case « Flèche » |
 | **Lien** | Tracer une zone (au moins 6 points) puis choisir « Aller à une page » ou « Ouvrir une adresse web » (`http`, `https` ou `mailto` seulement) |
+
+**Dessin groupé — en développement pour 0.18.0.** Tracer plusieurs traits sur une page, puis cliquer sur
+**Terminer le dessin** pour créer une annotation et une étape Annuler, ou **Annuler le dessin** pour abandonner
+ce brouillon. Échap annule aussi un brouillon non envoyé. Couleur, épaisseur et opacité modifient tout le
+brouillon jusqu'à leur capture par Terminer. Terminer/annuler avant enregistrement/fermeture, changement de
+document/outil ou édition incompatible ; navigation, zoom et modes de lecture conservent le brouillon sur sa
+page d'origine. Une erreur du worker conserve tous les traits pour réessayer ou abandonner. Pendant la validation,
+dessin supplémentaire, Terminer et Annuler sont bloqués.
+
+Au plus 64 traits et 4 000 points par trait ; atteindre la limite de points arrête ce trait et permet d'en
+commencer un autre. Un clic pose un point. Aucune validation à l'inactivité ; les traits non validés ne sont ni
+du contenu PDF ni des instantanés de récupération. Simplification des points, géométrie et protection existantes conservées.
+Validation CI/paquets et publication en attente (D109).
 
 Une annotation créée par SuniPDF se redimensionne et se restyle (bouton « Appliquer à l'annotation » : les couleurs de
 la barre lui sont appliquées) ; celle d'un autre logiciel se déplace, se commente et se supprime (un surlignage ou une

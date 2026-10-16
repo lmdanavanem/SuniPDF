@@ -240,6 +240,49 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         success(cli(&["annotations"], &[&dashed]))["pages"][0]["annotations"][0]["dash_pattern"],
         serde_json::json!([6.0, 3.0])
     );
+    let grouped_ink = temp.path().join("grouped-ink.pdf");
+    let mut command = cli(&["annotate"], &[&original]);
+    command
+        .args([
+            "--kind",
+            "ink",
+            "--stroke",
+            "100,100 150,160 200,100",
+            "--stroke",
+            "100,200 200,200",
+            "--stroke",
+            "250,250",
+            "--out",
+        ])
+        .arg(&grouped_ink);
+    success(command);
+    check(&qpdf, &grouped_ink, None);
+    let annotations = success(cli(&["annotations"], &[&grouped_ink]));
+    let list = annotations["pages"][0]["annotations"].as_array().unwrap();
+    assert_eq!(list.len(), 1);
+    assert_eq!(list[0]["subtype"], "Ink");
+    let raw = lopdf::Document::load(&grouped_ink).unwrap();
+    let page = raw.get_pages()[&1];
+    let annotation_ids = raw
+        .get_dictionary(page)
+        .unwrap()
+        .get(b"Annots")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    assert_eq!(annotation_ids.len(), 1);
+    let annotation = raw
+        .get_dictionary(annotation_ids[0].as_reference().unwrap())
+        .unwrap();
+    let strokes = annotation.get(b"InkList").unwrap().as_array().unwrap();
+    assert_eq!(strokes.len(), 3);
+    assert_eq!(
+        strokes
+            .iter()
+            .map(|s| s.as_array().unwrap().len())
+            .collect::<Vec<_>>(),
+        vec![6, 4, 2]
+    );
     for (name, aes128) in [("aes256.pdf", false), ("aes128.pdf", true)] {
         let encrypted = temp.path().join(name);
         let mut command = cli(&["protect"], &[&edited]);

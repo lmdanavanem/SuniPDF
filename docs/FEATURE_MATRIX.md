@@ -79,6 +79,15 @@ conversion checks passed, including nine exact JPEG streams, oriented corners, P
 refusals and unchanged sources. Verified copies are in `dist/`; the production updater verified the
 19,825,743-byte Latest x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+**0.18.0 in development:** grouped desktop freehand strokes on one page, explicit Finish/Cancel, one annotation
+and one Undo through the existing writer; retained drafts after worker failure and guarded document/save/close/
+tab/tool transitions (D109). A16 uses the existing clap help template for literal `{n}` / `{total}`.
+Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
+EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests, the existing extended
+worker Undo/Redo/failure test and the new CLI help regression passed. CI/packages/upgrades and publication pending; 0.17.0 remains Latest. No new dependency or CLI command; 53 commands remain.
+Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
 ## A. Reading
 
 | Feature | Expected | SuniPDF | Note |
@@ -109,6 +118,7 @@ refusals and unchanged sources. Verified copies are in `dist/`; the production u
 |---|---|---|
 | Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Done** (D067–D076): notes, highlight, underline, strikethrough; freehand **ink** (smoothed), **free text box** (Helvetica WinAnsi), **rectangle, ellipse, line, arrow** as real PDF annotations (explicit `/AP` appearance, rendered by other readers), colour, width, fill, opacity; select, move, resize (SuniPDF annotations), recolour, delete; rotated and cropped pages correct; encrypted document stays encrypted; CLI `annotate` / `annotations`. **Delivered in 0.16.0**: dashed borders for the four shapes, fixed UI/CLI `[6,3]`, preserved custom `dash_pattern`, malformed-style refusal and bounded regeneration; local/CI/upgrade, staged/public package and production updater checks passed (D107); manual reader checks remain separate |
 | Reply threads, comment status | Declared | **Done in SuniPDF**: Comments panel as threads (replies, status Accepted / Rejected / Cancelled / Completed, author, date, thread deletion), written according to ISO 32000-1; **Acrobat / Foxit compatibility not verified**; CLI `reply` / `review-state` |
+| Group several freehand strokes | Declared | **In progress for 0.18.0** (D109): one page-bound draft, explicit Finish/Cancel, one existing AddInk/Undo; failure retention and conflicting-action guards. Local regressions passed; no idle auto-commit or draft crash recovery; CI/packages/publication pending |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
 | Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |

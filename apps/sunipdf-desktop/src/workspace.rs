@@ -504,6 +504,9 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
 
 impl SuniApp {
     pub fn enter_workspace(&mut self, ctx: &egui::Context, ws: Workspace) {
+        if self.ink_blocks_action() {
+            return;
+        }
         switch(
             &mut self.annotate,
             &mut self.organize,
@@ -527,6 +530,9 @@ impl SuniApp {
     }
 
     pub fn leave_workspace(&mut self) {
+        if self.ink_blocks_action() {
+            return;
+        }
         switch(&mut self.annotate, &mut self.organize, &mut self.edit, None);
     }
 
@@ -554,6 +560,9 @@ impl SuniApp {
     }
 
     pub fn command_enabled(&self, c: Command) -> bool {
+        if self.ink_blocks_command(c) {
+            return false;
+        }
         let grid_selection = !self.organize.selected.is_empty();
         let single = self
             .edit

@@ -70,6 +70,20 @@ UI/CLI entry points and 53 commands are unchanged. Independent debug and staged/
 exact JPEG streams, oriented renders, PNG transparency, budget refusals before raster decoding and unchanged inputs.
 See [Project status](docs/PROJECT_STATUS.md) for executed evidence and remaining limits.
 
+### 0.18.0 in development
+
+The next lot groups freehand strokes on one page into one annotation and one Undo step, with explicit
+**Finish drawing** / **Cancel drawing** controls. Drafts stay available after a worker error; finish or cancel
+before operations that would save, replace or leave the draft. The existing ink writer, point simplification and bounds
+are reused (D109). The CLI help for `stamp` and `page-numbers` also shows literal `{n}` / `{total}` variables.
+Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
+EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests cover grouped drawing,
+failure retry and action guards; the existing worker test covers grouped Undo/Redo and failed-edit history.
+The new CLI help regression passed. CI, packages/upgrades and publication
+are pending; **0.17.0 remains Latest**. No new dependency or CLI command; 53 commands remain.
+Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
 ## Screenshots
 
 | Dark home screen | Light home screen |

@@ -81,6 +81,16 @@ de conversion réussis, dont neuf flux JPEG exacts, coins orientés, transparenc
 inchangées. Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de
 19 825 743 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
+**0.18.0 en développement :** traits à main levée du bureau regroupés sur une page, Terminer/Annuler explicites,
+une annotation/étape Annuler via l'écriture existante ; brouillon conservé après erreur du worker et transitions
+document/enregistrement/fermeture/onglet/outil protégées (D109). A16 utilise le modèle d'aide clap existant pour
+garder `{n}` / `{total}` littéraux. Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés par
+défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI
+sans fenêtre, test worker étendu Annuler/Rétablir/échec et nouvelle régression d'aide CLI réussis. CI/paquets/mises à niveau et publication en attente ; 0.17.0 reste Latest. Aucune nouvelle dépendance
+ni commande CLI ; 53 commandes.
+Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
 ## A. Lecture
 
 | Fonction | Attendu | SuniPDF | Note |
@@ -111,6 +121,7 @@ inchangées. Copies vérifiées dans `dist/` ; le metteur à jour de production 
 |---|---|---|
 | Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | **Fait** (D067–D076) : notes, surlignage, souligné, barré ; **encre** à main levée (lissée), **zone de texte libre** (Helvetica WinAnsi), **rectangle, ellipse, ligne, flèche** en vraies annotations PDF (apparence `/AP` explicite, rendues par les autres lecteurs), couleur, épaisseur, fond, opacité ; sélection, déplacement, redimensionnement (annotations de SuniPDF), recoloration, suppression ; pages tournées et rognées justes ; document chiffré conservé chiffré ; CLI `annotate` / `annotations`. **Livré en 0.16.0** : tirets des quatre formes, motif UI/CLI fixe `[6,3]`, `dash_pattern` personnalisé conservé, style malformé refusé et régénération bornée ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis (D107) ; lecteurs réels à vérifier séparément |
 | Fils de réponses, statut des commentaires | Déclaré | **Fait dans SuniPDF** : panneau Commentaires en fils (réponses, statut Accepté / Refusé / Annulé / Terminé, auteur, date, suppression du fil), écrits selon ISO 32000-1 ; **compatibilité Acrobat / Foxit non vérifiée** ; CLI `reply` / `review-state` |
+| Regrouper plusieurs traits à main levée | Déclaré | **En cours pour 0.18.0** (D109) : brouillon lié à une page, Terminer/Annuler explicites, un AddInk/Annuler existant ; conservé après erreur et actions incompatibles bloquées. Aucune validation à l'inactivité ni récupération après plantage ; validation CI/paquets et publication en attente |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |

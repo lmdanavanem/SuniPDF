@@ -71,6 +71,20 @@ totale du processus. Accès UI/CLI et 53 commandes inchangés. Contrôles de con
 publics réussis : flux JPEG exacts, rendus orientés, transparence PNG, refus de budget sans allocation raster et
 entrées inchangées. Preuves exécutées et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
+### 0.18.0 en développement
+
+Le prochain lot regroupe les traits à main levée d'une page en une annotation et une étape Annuler, avec
+**Terminer le dessin** / **Annuler le dessin** explicites. Le brouillon reste disponible après une erreur du worker ; terminer
+ou abandonner avant les actions qui l'enregistreraient, le remplaceraient ou le quitteraient. Écriture d'encre,
+simplification des points et bornes existantes réutilisées (D109). L'aide CLI de `stamp` et `page-numbers` affiche aussi les
+variables littérales `{n}` / `{total}`. Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés
+par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests
+UI sans fenêtre couvrent dessin groupé, relance et gardes ; le test worker existant couvre Annuler/Rétablir groupés
+et historique après échec. Nouvelle régression d'aide CLI réussie. CI, paquets/mises à
+niveau et publication en attente ; **0.17.0 reste Latest**. Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

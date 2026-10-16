@@ -221,6 +221,26 @@ même source, quinze scénarios portables et neuf bases MSI réussis. Publiée e
 contrôles renforcés de conversion des paquets et metteur à jour de production réussis. Preuves, source immuable et
 limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.18.0 : brouillon d'encre groupée (en développement)
+
+Conserver un brouillon d'encre du bureau lié à une page et réutiliser `EditOp::AddInk` / l'écriture d'annotations
+existante pour le groupe entier. Terminer envoie une édition et crée une étape Annuler ; Annuler abandonne
+seulement le brouillon local. Le garder jusqu'au succès du worker et en cas d'échec. Les actions qui
+l'enregistreraient, le remplaceraient ou le quitteraient doivent attendre sa validation/son abandon (D109).
+Simplification des points, géométrie, protection et bornes existantes restent la référence : 64 traits et 4 000 points par trait.
+Le style s'applique au groupe jusqu'à sa capture par Terminer ; validation en cours : dessin/Terminer/Annuler
+bloqués. Navigation, zoom et modes de vue conservent la page du brouillon ; Échap annule un brouillon non envoyé.
+Aucun nouveau code de format PDF, dépendance ni commande CLI prévu.
+
+La correction A16 utilise le modèle d'aide clap existant pour garder `{n}` / `{total}` littéraux dans l'aide CLI.
+Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR
+correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI sans fenêtre et le test worker
+sérialisé existant couvrent brouillon/gardes, fin du geste sur la page capturée, Annuler/Rétablir groupés et
+historique après échec ; nouvelle régression d'aide CLI réussie. CI, paquets/mises à
+niveau et publication en attente ; 0.17.0 reste Latest. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
 ## Coordonnées (SUNI-031c)
 
 Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,

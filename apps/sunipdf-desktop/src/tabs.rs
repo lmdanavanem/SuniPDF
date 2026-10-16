@@ -151,6 +151,9 @@ impl SuniApp {
 
     /// Suspend le document actif dans un onglet (nouvel onglet ou onglet existant).
     pub fn suspend_active(&mut self) -> bool {
+        if self.ink_blocks_action() {
+            return false;
+        }
         if self.navigation_blocked() {
             return false;
         }
@@ -189,6 +192,9 @@ impl SuniApp {
 
     /// Active l'onglet `index` (le document actif, s'il existe, est suspendu).
     pub fn switch_to(&mut self, index: usize) {
+        if self.ink_blocks_action() {
+            return;
+        }
         if index >= self.tabs.tabs.len()
             || self.tabs.active == Some(index)
             || !matches!(self.engine, EngineState::Ready)

@@ -117,10 +117,11 @@ A15. ~~Right rail in a short window: overlap~~ **Fixed (SUNI-012b)**: below ~700
      group (panels, view toggle, search) scrolls (wheel on hover) instead of overlapping the navigation;
      its last icons are then hidden until scrolled. Only whole icons are
      shown and a thin scrollbar, visible without hover, signals the rest (1000 x 560 screenshot).
-A16. **CLI help for `stamp` and `page-numbers`**: clap replaces any `{n}` sequence in a help text
-     with a line break (`clap_builder` 4.6, no escaping possible); the help therefore shows ": ⏎ = page
-     number" instead of `{n}`. The `{n}` and `{total}` variables work; only the help text is
-     truncated (raised by the hub review, not addressed).
+A16. **CLI help for `stamp` and `page-numbers`**: through 0.17.0, clap replaces `{n}` in help text
+     with a line break. The variables work during stamping/numbering; only their help display is affected.
+     A 0.18.0 fix is in development using clap's existing help template to keep `{n}` / `{total}` literal,
+     without changing command behavior. Its regression passed for both commands and `-h` / `--help`;
+     package/CI validation and publication are pending.
 A17. ~~"Modified" indicator after undo~~ **Fixed (review-fixes, D052)**: save point in
      the history; lost only if one edits after an undo or if the saved snapshot leaves the 50
      levels (the document then stays "modified" until the next save).
@@ -240,7 +241,7 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
 A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free text in Helvetica WinAnsi** only
     (Latin accents, € and common punctuation; any other character shows as "?" in the appearance, `/Contents` keeps
     the exact text; no bold, italic, rich text `/RC`, CJK or right-to-left) and the wrapping width is computed with the
-    Helvetica table (2 % margin); **one ink stroke = one annotation** and every operation (stroke, move, style)
+    Helvetica table (2 % margin); through 0.17.0, **one ink stroke = one annotation** and every operation (stroke, move, style)
     costs a full snapshot + lopdf + reload round trip: imperceptible on an ordinary PDF, about a second on a file of
     tens of MB; **reply threads and statuses** written according to ISO 32000-1 but **never tested in Acrobat, Foxit
     or Chrome** (replies without icon: empty appearance + `F 4`), no "Marked" state model; **detailed reading** of
@@ -266,6 +267,15 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     invalid/excessive nonempty strokes rather than showing a solid fallback, under the same work cap.
     No custom-pattern/phase editor. Local/CI/upgrade, staged/public package and production updater checks passed;
     evidence and remaining limits are in `PROJECT_STATUS.md` (D107).
+    **0.18.0 in development (D109):** grouped strokes on one page, explicit Finish/Cancel, one existing AddInk
+    edit and one Undo step. Keep the draft on worker failure and guard actions that would save, replace or leave
+    it until finished/cancelled. No idle auto-commit; uncommitted drafts are not recovery snapshots. CI/packages
+    and publication remain pending; 0.17.0 remains Latest. Local gates passed: 452 workspace tests (zero
+    failed, seven default ignored), formatting/Clippy, 907 matching EN/FR keys, 75 qpdf checks and the update-helper
+    self-test. Six new headless UI tests and the extended worker Undo/Redo/failure test passed, including
+    gesture completion after page navigation; CI/packages remain pending. Local corpus passed: four licensed
+    NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child memory 329,445,376 bytes; all sources
+    unchanged. Clippy with warnings denied passed.
     No eraser, polygon, cloud, stamp or attachment; caps:
     64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,
     selection of a SuniPDF annotation (frame, four handles, floating bar) then moving and resizing with the mouse,

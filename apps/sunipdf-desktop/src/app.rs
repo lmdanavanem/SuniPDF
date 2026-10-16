@@ -396,6 +396,9 @@ impl SuniApp {
     }
 
     pub fn open_path(&mut self, path: PathBuf, password: Option<String>) {
+        if self.ink_blocks_action() {
+            return;
+        }
         if !matches!(self.engine, EngineState::Ready) {
             self.pending_files.push(path);
             return;
@@ -825,6 +828,15 @@ impl SuniApp {
                     modified,
                     has_signatures,
                 }) => {
+                    if self
+                        .annotate
+                        .adv
+                        .ink_draft
+                        .as_ref()
+                        .is_some_and(|draft| draft.pending)
+                    {
+                        self.annotate.adv.ink_draft = None;
+                    }
                     self.has_signatures = has_signatures;
                     self.annotate.clear_reading();
                     if !pages_unchanged {
@@ -982,6 +994,12 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    if let Some(draft) = &mut self.annotate.adv.ink_draft {
+                        if draft.pending {
+                            draft.pending = false;
+                            self.status_msg = Some(self.t("ink.retry").into());
+                        }
+                    }
                     self.pending_save = None;
                     self.saving = false;
                     self.cancel_after_save();
@@ -1072,7 +1090,26 @@ impl SuniApp {
     }
 
     pub fn has_unsaved_changes(&self) -> bool {
-        self.dirty || self.forms.has_unsaved_input()
+        self.dirty || self.forms.has_unsaved_input() || self.ink_draft_active()
+    }
+
+    pub(crate) fn ink_can_start(&self) -> bool {
+        matches!(self.engine, EngineState::Ready)
+            && self.document.is_some()
+            && !self.dialog_open()
+            && !self.palette.open
+            && !self.navigation_blocked()
+            && !self.worker.has_pending_mutations()
+            && self.opening.is_none()
+            && self.tabs.suspending.is_none()
+            && self.tabs.resuming.is_none()
+            && self.pending_files.is_empty()
+            && self.pending_save.is_none()
+            && !self.forms.has_unsaved_input()
+            && !self.forms.pending_clear
+            && self.forms.pending_import.is_none()
+            && self.annotate.pending_markup.is_none()
+            && self.edit.pending_copy.is_none()
     }
 
     fn start_update_check(&mut self, ctx: &egui::Context, manual: bool) {
@@ -1130,7 +1167,7 @@ impl SuniApp {
             self.update_errors_visible = true;
             self.updater.download(ctx);
         }
-        if install {
+        if install && !self.ink_blocks_action() {
             self.show_about = false;
             self.install_confirm = true;
         }
@@ -1186,7 +1223,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.processing.busy
+        self.ink_draft_active()
+            || self.processing.busy
             || self.sign.busy
             || self.worker.has_pending_mutations()
             || self.printing.busy
@@ -1217,6 +1255,28 @@ impl SuniApp {
     // ----- Entrées ---------------------------------------------------------
 
     fn handle_input(&mut self, ctx: &egui::Context) {
+        if !self.annotate.adv.ink.is_empty() && !ctx.input(|i| i.pointer.primary_down()) {
+            if let Some(page) = self
+                .annotate
+                .adv
+                .ink_draft
+                .as_ref()
+                .filter(|draft| !draft.pending)
+                .map(|draft| draft.page)
+            {
+                self.finish_ink_stroke(page);
+                self.annotate.drag = None;
+            }
+        }
+        if self.ink_draft_active()
+            && !self.dialog_open()
+            && !self.palette.open
+            && !egui::Popup::is_any_open(ctx)
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.cancel_ink_draft();
+            return;
+        }
         if self.document.is_some() && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F11)) {
             self.execute(ctx, Command::FullScreenReading);
             return;
@@ -1492,6 +1552,10 @@ impl SuniApp {
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
+        if self.ink_blocks_command(command) {
+            self.ink_blocks_action();
+            return;
+        }
         if (self.processing.busy
             || self.printing.busy
             || self.ocr.busy
@@ -2391,6 +2455,9 @@ impl SuniApp {
     }
 
     pub(crate) fn save_document(&mut self, ask_path: bool) {
+        if self.ink_blocks_action() {
+            return;
+        }
         if self.saving {
             return;
         }
@@ -2783,7 +2850,11 @@ impl eframe::App for SuniApp {
                             .fill(p.chrome)
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
-                    .show(ui, |ui| self.bookmarks_panel(&ctx, ui));
+                    .show(ui, |ui| {
+                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
+                            self.bookmarks_panel(&ctx, ui)
+                        });
+                    });
             }
             if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
                 egui::Panel::right("comments")
@@ -2794,7 +2865,11 @@ impl eframe::App for SuniApp {
                             .fill(p.chrome)
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
-                    .show(ui, |ui| self.comments_panel(&ctx, ui));
+                    .show(ui, |ui| {
+                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
+                            self.comments_panel(&ctx, ui)
+                        });
+                    });
             }
             if self.document.is_some() && self.edit.objects_open && !self.organize.active {
                 egui::Panel::right("objects")
@@ -2805,7 +2880,11 @@ impl eframe::App for SuniApp {
                             .fill(p.chrome)
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
-                    .show(ui, |ui| self.objects_panel(&ctx, ui));
+                    .show(ui, |ui| {
+                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
+                            self.objects_panel(&ctx, ui)
+                        });
+                    });
             }
             if self.document.is_some() && self.forms.panel_open && !self.organize.active {
                 egui::Panel::right("forms")
@@ -2816,7 +2895,11 @@ impl eframe::App for SuniApp {
                             .fill(p.chrome)
                             .inner_margin(egui::Margin::symmetric(8, 4)),
                     )
-                    .show(ui, |ui| self.forms_panel(&ctx, ui));
+                    .show(ui, |ui| {
+                        ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
+                            self.forms_panel(&ctx, ui)
+                        });
+                    });
             }
             if self.document.is_some() {
                 egui::Panel::right("rail")
@@ -2829,7 +2912,11 @@ impl eframe::App for SuniApp {
                         .resizable(true)
                         .default_size(170.0)
                         .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
-                        .show(ui, |ui| self.thumbnails_panel(&ctx, ui));
+                        .show(ui, |ui| {
+                            ui.add_enabled_ui(!self.ink_draft_active(), |ui| {
+                                self.thumbnails_panel(&ctx, ui)
+                            });
+                        });
                 }
             }
         }
@@ -2865,7 +2952,7 @@ impl eframe::App for SuniApp {
                     ui.colored_label(p.text_muted, self.t("certificate.dirty_warning"));
                 }
                 if !self.reading_full_screen {
-                    self.forms_bar(&ctx, ui);
+                    ui.add_enabled_ui(!self.ink_draft_active(), |ui| self.forms_bar(&ctx, ui));
                 }
                 self.document_area(&ctx, ui);
             });
@@ -3078,6 +3165,146 @@ pub(crate) mod tests {
                 height_pt: 792.0,
             }],
             form: sunipdf_core::FormKind::AcroForm,
+        }
+    }
+
+    #[test]
+    fn unfinished_ink_guards_commands_tabs_files_workspace_and_native_close_then_escape_cancels() {
+        for language in Language::ALL {
+            let (mut app, requests, _) = test_app();
+            app.settings.set_language(language);
+            let size = app.document.as_ref().unwrap().info.page_sizes[0];
+            app.document.as_mut().unwrap().info.page_sizes = vec![size; 2];
+            let ctx = egui::Context::default();
+            app.annotate.tool = crate::annotate::Tool::Ink;
+            app.adv_click(0, (20.0, 30.0));
+            assert!(app.has_unsaved_changes() && app.close_must_wait());
+            for entry in sunipdf_core::command::REGISTRY {
+                if app.ink_blocks_command(entry.command) {
+                    assert!(!app.command_enabled(entry.command));
+                    app.execute(&ctx, entry.command);
+                    assert!(app.ink_draft_active() && !app.allow_close);
+                }
+            }
+            app.save_document(true);
+            app.open_path(PathBuf::from("test/replacement.pdf"), None);
+            app.switch_to(1);
+            assert!(!app.suspend_active());
+            app.enter_workspace(&ctx, crate::workspace::Workspace::Edit);
+            app.leave_workspace();
+            app.rotate_reading_view(true);
+            app.set_reading_full_screen(&ctx, true);
+            assert!(requests.try_recv().is_err());
+            assert!(
+                app.opening.is_none()
+                    && app.unsaved_prompt.is_none()
+                    && app.deferred_close.is_none()
+            );
+            assert_eq!(app.annotate.tool, crate::annotate::Tool::Ink);
+            assert_eq!(app.status_msg.as_deref(), Some(app.t("ink.finish_first")));
+            app.execute(&ctx, Command::NextPage);
+            app.execute(&ctx, Command::ZoomIn);
+            assert_eq!(app.document.as_ref().unwrap().page, 1);
+            assert_eq!(app.annotate.adv.ink_draft.as_ref().unwrap().page, 0);
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::Key {
+                        key: Key::Escape,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: Modifiers::NONE,
+                    }],
+                    ..Default::default()
+                },
+                |_| app.handle_input(&ctx),
+            );
+            output.textures_delta.clear();
+            assert!(!app.ink_draft_active() && !app.dirty && !app.has_unsaved_changes());
+            assert!(!app.close_must_wait());
+            assert!(requests.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn ink_release_after_single_page_navigation_keeps_the_captured_stroke() {
+        let (mut app, requests, _) = test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes = vec![size; 2];
+        app.view.mode = ViewMode::Single;
+        app.annotate.tool = crate::annotate::Tool::Ink;
+        let drag = crate::annotate::Drag {
+            page: 0,
+            start: (20.0, 30.0),
+            current: (40.0, 50.0),
+        };
+        app.adv_drag_start(drag.page, drag.start);
+        app.adv_drag_moved(&drag);
+        app.annotate.drag = Some(drag);
+        let ctx = egui::Context::default();
+        for pressed in [true, false] {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::PointerButton {
+                        pos: egui::pos2(10.0, 10.0),
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: Modifiers::NONE,
+                    }],
+                    ..Default::default()
+                },
+                |_| {
+                    app.go_to_page(1);
+                    app.handle_input(&ctx);
+                    assert_eq!(app.annotate.adv.ink.is_empty(), !pressed);
+                },
+            );
+            output.textures_delta.clear();
+        }
+        let draft = app.annotate.adv.ink_draft.as_ref().unwrap();
+        assert_eq!(draft.page, 0);
+        assert_eq!(draft.strokes, vec![vec![(20.0, 30.0), (40.0, 50.0)]]);
+        assert!(app.annotate.drag.is_none());
+        app.adv_click(0, (60.0, 70.0));
+        assert_eq!(
+            app.annotate.adv.ink_draft.as_ref().unwrap().strokes.len(),
+            2
+        );
+        assert!(app.annotate.adv.ink.is_empty() && requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn ink_draft_starts_only_when_document_and_worker_are_idle() {
+        for blocked in 0..11 {
+            let (mut app, requests, _) = test_app();
+            app.annotate.tool = crate::annotate::Tool::Ink;
+            match blocked {
+                0 => app.worker.send(Request::Edit(EditOp::Rotate {
+                    pages: vec![0],
+                    delta_degrees: 90,
+                })),
+                1 => app.opening = Some(PathBuf::from("test/other.pdf")),
+                2 => app.saving = true,
+                3 => app.show_about = true,
+                4 => app.tabs.suspending = Some(0),
+                5 => app.tabs.resuming = Some(0),
+                6 => app.pending_save = Some(PathBuf::from("test/save.pdf")),
+                7 => {
+                    app.forms
+                        .drafts
+                        .insert("field".into(), "uncommitted".into());
+                }
+                8 => app.forms.pending_clear = true,
+                9 => app.forms.pending_import = Some(serde_json::json!({"field":"value"})),
+                _ => app.worker.send(Request::MarkRecovered {
+                    path: PathBuf::from("test/recovered.pdf"),
+                }),
+            }
+            requests.try_iter().for_each(drop);
+            app.adv_click(0, (20.0, 30.0));
+            assert!(!app.ink_draft_active(), "busy case {blocked}");
+            assert!(requests.try_recv().is_err());
+            assert_eq!(app.status_msg.as_deref(), Some(app.t("ink.wait")));
         }
     }
 

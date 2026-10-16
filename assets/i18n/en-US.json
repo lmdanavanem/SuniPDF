@@ -894,5 +894,16 @@
   "status.printed": "Print job sent to Windows.",
   "status.ocr_done": "Text recognition finished.",
   "status.cancelled": "Operation cancelled.",
-  "status.signed_copy": "Signed copy saved."
+  "status.signed_copy": "Signed copy saved.",
+  "ink.finish": "Finish drawing",
+  "ink.cancel": "Cancel drawing",
+  "ink.finish_hint": "Create one annotation from all strokes; undo removes the whole drawing.",
+  "ink.cancel_hint": "Discard this drawing without changing the PDF (Esc).",
+  "ink.hint": "Draw on one page, then finish or cancel. The draft is not saved yet.",
+  "ink.finish_first": "Finish or cancel the drawing before this action.",
+  "ink.wait": "Wait for the current operation before drawing.",
+  "ink.same_page": "Continue on the drawing's original page, or finish or cancel it.",
+  "ink.stroke_limit": "The drawing has reached 64 strokes. Finish or cancel it before drawing more.",
+  "ink.point_limit": "This stroke stopped at 4,000 points. Start another stroke, or finish or cancel the drawing.",
+  "ink.retry": "The drawing could not be added. Your strokes are kept; retry Finish drawing or cancel."
 }

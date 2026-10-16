@@ -1,9 +1,42 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.17.0 publiée)
+# État du projet — mis à jour le 2026-10-16 (version 0.18.0 en développement)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (en développement)
+
+L'application regroupe plusieurs traits à main levée sur une page dans une seule annotation Ink, via
+l'édition moteur/worker existante. Le brouillon dispose de Terminer/Annuler, d'un seul Annuler, de bornes
+sur les traits/points et de gardes empêchant de perdre les traits lors d'une édition, sauvegarde, ouverture
+d'un autre document ou fermeture. Un échec moteur conserve le brouillon pour réessayer ou annuler.
+L'anglais reste la langue par défaut, avec contrôles français équivalents. Implémentation et validation
+bureau réussies ; publication encore en attente. Jusqu'à 64 traits et 4 000 points par trait sont conservés,
+avec messages de limite visibles. Couleur, épaisseur et opacité s'appliquent au brouillon entier. Navigation,
+zoom et modes de vue conservent la page d'origine ; la finalisation globale au relâchement évite un trait
+bloqué après un saut en vue simple. Les changements de formulaire et marqueurs de récupération différés
+doivent finir avant de dessiner. Le brouillon reste uniquement en mémoire jusqu'à Terminer, sans récupération
+après plantage.
+
+Exécuté localement : test de l'aide CLI réussi pour `stamp` et `page-numbers`, aide courte et longue,
+avec `{n}`/`{total}` littéraux et modèle par défaut conservés. Les 75 contrôles qpdf indépendants ont réussi,
+dont une sortie Ink groupée de deux polylignes et un point ; la relecture confirme une annotation et trois
+entrées `InkList`. La CLI conserve ses 53 commandes ; aucune dépendance ajoutée.
+
+Validation locale réussie : 452 tests workspace, zéro échec, sept ignorés par défaut ; formatage, Clippy
+toutes cibles sans avertissement, 907 clés EN/FR et autotest du metteur à jour. Six nouveaux tests bureau
+headless couvrent les vrais clics accessibles EN/FR Terminer/Annuler, échec/réessai/double envoi, page/bornes/
+aperçu, actions dangereuses et relâchement après navigation en vue simple. L'intégration native worker
+sérialisée couvre AddInk groupé, un Annuler/Rétablir et les échecs sans perte d'historique. La relecture
+indépendante n'a trouvé aucun blocage restant. Quatre documents NIST/NBS licenciés (744 pages) ont réussi
+les contrôles sources/rendu/texte/extraction/optimisation/compression/corruption en 50,796 secondes ; pic
+échantillonné du processus enfant 329 445 376 octets, sous la garde existante de 805 306 368 octets.
+
+CI, paquets préparés/publics, mises à niveau et publication restent en attente. Les scripts intègrent la base
+0.17.0 vérifiée ; 16 scénarios portables et 10 bases MSI sont attendus, pas encore exécutés pour 0.18.0.
+La 0.17.0 reste Latest stable. Boîtes natives interactives, matériel ARM64, imprimantes physiques,
+Narrator et lecteurs tiers restent non vérifiés ; les paquets restent non signés.
 
 ## 0.17.0 : conversion JPEG orientée sans recompression et contrôle des lots raster (publiée en Latest)
 

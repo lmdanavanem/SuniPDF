@@ -117,10 +117,11 @@ A15. ~~Rail droit en fenêtre basse : chevauchement~~ **Corrigé (SUNI-012b)** :
      haut (panneaux, bascule de vue, recherche) défile (molette au survol) au lieu de chevaucher la navigation ;
      ses dernières icônes sont alors masquées tant qu'on ne fait pas défiler. Seules des icônes entières sont
      montrées et une fine barre de défilement, visible sans survol, signale la suite (capture 1000 x 560).
-A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute séquence `{n}` d'un texte d'aide
-     par un saut de ligne (`clap_builder` 4.6, sans échappement possible) ; l'aide affiche donc « : ⏎ = page
-     number » au lieu de `{n}`. Les variables `{n}` et `{total}` fonctionnent ; seul le texte d'aide est
-     tronqué (relevé par la revue du hub, non traité).
+A16. **Aide de la CLI pour `stamp` et `page-numbers`** : jusqu'en 0.17.0, clap remplace `{n}` dans l'aide
+     par un saut de ligne. Les variables fonctionnent dans les tampons/numéros ; seul l'affichage de l'aide est touché.
+     Correction 0.18.0 en développement via le modèle d'aide clap existant pour garder `{n}` / `{total}` littéraux,
+     sans modifier le comportement des commandes. Régression réussie pour les deux commandes et `-h` / `--help` ;
+     validation paquets/CI et publication en attente.
 A17. ~~Indicateur « modifié » après annulation~~ **Corrigé (review-fixes, D052)** : point d'enregistrement dans
      l'historique ; perdu seulement si l'on modifie après une annulation ou si l'instantané enregistré sort des 50
      niveaux (le document reste alors « modifié » jusqu'au prochain enregistrement).
@@ -239,7 +240,7 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
 A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **texte libre en Helvetica WinAnsi**
     seulement (accents latins, € et ponctuation courante ; tout autre caractère s'affiche « ? » dans l'apparence,
     `/Contents` garde le texte exact ; pas de gras, d'italique, de texte riche `/RC`, de CJK ni de droite à gauche) et
-    largeur de renvoi à la ligne calculée avec la table Helvetica (marge de 2 %) ; **un trait d'encre = une annotation**
+    largeur de renvoi à la ligne calculée avec la table Helvetica (marge de 2 %) ; jusqu'en 0.17.0, **un trait d'encre = une annotation**
     et chaque opération (trait, déplacement, style) coûte un aller-retour complet instantané + lopdf + rechargement :
     imperceptible sur un PDF courant, de l'ordre de la seconde sur un fichier de dizaines de Mo ; **fils de réponses et
     statuts** écrits selon ISO 32000-1 mais **jamais testés dans Acrobat, Foxit ni Chrome** (réponses sans icône :
@@ -267,7 +268,18 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     conservés, contour non vide invalide/excessif omis sans repli continu, sous la même borne de travail.
     Aucun éditeur de motif/phase. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de
     production réussis ; preuves et limites dans `PROJECT_STATUS.fr.md` (D107). Pas de gomme, polygone, nuage, tampon ou pièce jointe ;
-    plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt, zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
+    **0.18.0 en développement (D109) :** traits regroupés sur une page, Terminer/Annuler explicites, une édition
+    AddInk existante et une étape Annuler. Brouillon conservé en cas d'erreur du worker ; actions qui
+    l'enregistreraient, le remplaceraient ou le quitteraient bloquées jusqu'à validation/abandon. Aucune validation
+    automatique à l'inactivité ; brouillons non validés absents des instantanés de récupération. Validation et
+    publication CI/paquets en attente ; 0.17.0 reste Latest. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept
+    ignorés par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour. Six
+    nouveaux tests UI sans fenêtre et le test worker étendu Annuler/Rétablir/échec réussis, y compris la fin du
+    geste après navigation ; CI/paquets en attente. Corpus local réussi : quatre documents NIST/NBS licenciés,
+    744 pages en 50,796 s, pic mémoire enfant échantillonné 329 445 376 octets ; toutes les sources inchangées.
+    Clippy avec avertissements refusés réussi.
+    Plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt,
+    zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
     sélection d'une annotation de SuniPDF (cadre, quatre poignées, barre flottante) puis déplacement et
     redimensionnement à la souris, déplacement d'une annotation d'un autre producteur (cadre sans poignées), boîtes de
     dialogue (zone de texte, lien, confirmation d'adresse), panneau Commentaires avec fil, thèmes clair et sombre ;

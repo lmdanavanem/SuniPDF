@@ -203,6 +203,22 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP x64 de 19 825 743 octets sans installation
   sur l'hôte. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.18.0 : dessin à main levée groupé et aide CLI littérale (en développement)
+
+- Regrouper les traits d'une page en une annotation d'encre et une étape Annuler via l'écriture existante (D109).
+- Terminer/Annuler explicites, brouillon conservé après une erreur du worker, actions qui l'enregistreraient,
+  le remplaceraient ou le quitteraient bloquées. Simplification des points/géométrie/protection/bornes réutilisées ; aucune validation
+  à l'inactivité ni récupération du brouillon.
+- Corriger A16 via le modèle d'aide clap existant : `stamp` / `page-numbers` affichent `{n}` / `{total}` littéraux.
+- Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR
+  correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI sans fenêtre couvrent dessin/gardes
+  et fin du geste sur la page capturée ; le test worker sérialisé existant couvre Annuler/Rétablir groupés/historique
+  après échec. Nouvelle régression d'aide CLI réussie. CI, paquets/mises à niveau et
+  publication en attente ; **0.17.0 reste Latest**. Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+  Preuves exécutées seulement dans `PROJECT_STATUS.fr.md`.
+  Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+  échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
 ## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -282,7 +298,7 @@ Reste, non bloquant :
   est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;
 - incorporation directe JPEG EXIF 5/7 et estimation PNG/raster cumulée livrées en 0.17.0 (A31/D108) ;
   mesure de la mémoire native/processus et entrées licenciées volumineuses restent distinctes ;
-- aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
+- aide CLI de `stamp` / `page-numbers` incluse dans le lot 0.18.0 en développement (A16) ; régression locale réussie, CI/paquets en attente.
 
 ## SUNI-012c — Affichage, suite (owner : UI-UX)
 Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
@@ -318,8 +334,9 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 `annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
 - **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
   Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
-- regroupement des traits d'encre (une annotation pour N traits, validée à l'inactivité) avec écriture garantie à
-  l'enregistrement et à la fermeture ; gomme ;
+- encre groupée incluse dans le lot 0.18.0 en développement, avec Terminer/Annuler explicites et transitions
+  enregistrement/fermeture protégées (D109), remplaçant la proposition à l'inactivité ; régressions locales réussies, CI/paquets en attente.
+  La gomme reste future ;
 - polygone, polyligne, nuage, tampon, pièce jointe et texte libre riche (gras, italique, CJK : police incorporée) ;
   bordures en tirets des quatre formes livrées en 0.16.0, autres types toujours non pris en charge ;
 - création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;

@@ -25,6 +25,15 @@ const TEXT_BOX_H: f32 = 48.0;
 const HIT_PT: f32 = 2.0;
 /// Zone de lien minimale (points) : plus petite, c'est un clic, pas un tracé.
 const LINK_MIN_PT: f32 = 6.0;
+const INK_MAX_STROKES: usize = 64;
+const INK_MAX_POINTS: usize = 4000;
+
+#[derive(Default)]
+pub struct InkDraft {
+    pub page: usize,
+    pub strokes: Vec<Vec<(f32, f32)>>,
+    pub pending: bool,
+}
 
 impl Tool {
     /// Outils des annotations avancées (dessin, zone de texte, formes, lien, sélection).
@@ -96,6 +105,7 @@ pub struct ThreadPrompt {
 pub struct AnnotAdvState {
     /// Trait d'encre en cours.
     pub ink: Vec<(f32, f32)>,
+    pub ink_draft: Option<InkDraft>,
     pub free_text: Option<FreeTextPrompt>,
     pub link: Option<LinkPrompt>,
     pub thread: Option<ThreadPrompt>,
@@ -123,6 +133,7 @@ impl AnnotAdvState {
         self.links_page = None;
         self.drag = None;
         self.ink.clear();
+        self.ink_draft = None;
     }
 
     /// Une boîte de dialogue des annotations est ouverte : les raccourcis sont suspendus.
@@ -432,13 +443,135 @@ impl SuniApp {
         self.annotate.adv.drag = None;
     }
 
+    pub(crate) fn ink_draft_active(&self) -> bool {
+        self.annotate.adv.ink_draft.is_some()
+    }
+
+    pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if !self.ink_draft_active() {
+            return false;
+        }
+        self.status_msg = Some(self.t("ink.finish_first").into());
+        true
+    }
+
+    pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        self.ink_draft_active()
+            && !matches!(
+                command,
+                Command::FirstPage
+                    | Command::PreviousPage
+                    | Command::NextPage
+                    | Command::LastPage
+                    | Command::ZoomIn
+                    | Command::ZoomOut
+                    | Command::ActualSize
+                    | Command::FitWidth
+                    | Command::FitPage
+                    | Command::ViewContinuous
+                    | Command::ViewSinglePage
+                    | Command::ViewTwoPage
+                    | Command::ViewBook
+                    | Command::Find
+                    | Command::HistoryBack
+                    | Command::HistoryForward
+                    | Command::ToggleThumbnails
+                    | Command::ToggleComments
+                    | Command::ToggleBookmarks
+                    | Command::ToggleObjects
+                    | Command::ToggleForms
+                    | Command::ToggleTools
+                    | Command::CommandPalette
+                    | Command::CopyText
+            )
+    }
+
+    fn start_ink_stroke(&mut self, page: usize, pt: (f32, f32)) {
+        if !pt.0.is_finite() || !pt.1.is_finite() {
+            return;
+        }
+        if !self.ink_draft_active() {
+            if !self.ink_can_start() {
+                self.status_msg = Some(self.t("ink.wait").into());
+                return;
+            }
+            self.annotate.adv.ink_draft = Some(InkDraft {
+                page,
+                ..Default::default()
+            });
+            self.annotate.adv.selected = None;
+        }
+        let adv = &self.annotate.adv;
+        let draft = adv.ink_draft.as_ref().unwrap();
+        let problem = if draft.pending {
+            Some("ink.wait")
+        } else if draft.page != page {
+            Some("ink.same_page")
+        } else if draft.strokes.len() >= INK_MAX_STROKES {
+            Some("ink.stroke_limit")
+        } else if !adv.ink.is_empty() {
+            Some("ink.wait")
+        } else {
+            None
+        };
+        if let Some(key) = problem {
+            self.status_msg = Some(self.t(key).into());
+            return;
+        }
+        self.annotate.adv.ink = vec![pt];
+        self.status_msg = Some(self.t("ink.hint").into());
+    }
+
+    pub(crate) fn finish_ink_stroke(&mut self, page: usize) {
+        let adv = &mut self.annotate.adv;
+        if let Some(draft) = &mut adv.ink_draft {
+            if draft.page == page && !draft.pending && !adv.ink.is_empty() {
+                draft.strokes.push(std::mem::take(&mut adv.ink));
+            }
+        }
+    }
+
+    fn finish_ink_draft(&mut self) {
+        let Some(draft) = self.annotate.adv.ink_draft.as_ref() else {
+            return;
+        };
+        if draft.pending || !self.annotate.adv.ink.is_empty() || draft.strokes.is_empty() {
+            return;
+        }
+        let (page, strokes) = (draft.page, draft.strokes.clone());
+        let style = self.annot_style(false);
+        let author = self.annot_author();
+        self.annotate.adv.ink_draft.as_mut().unwrap().pending = true;
+        self.worker.send(Request::Edit(EditOp::AddInk {
+            page,
+            strokes,
+            style,
+            author,
+        }));
+    }
+
+    pub(crate) fn cancel_ink_draft(&mut self) {
+        if self
+            .annotate
+            .adv
+            .ink_draft
+            .as_ref()
+            .is_some_and(|draft| !draft.pending)
+        {
+            self.annotate.adv.ink_draft = None;
+            self.annotate.adv.ink.clear();
+            self.annotate.drag = None;
+            self.status_msg = Some(self.t("status.cancelled").into());
+        }
+    }
+
     pub fn adv_drag_start(&mut self, page: usize, pt: (f32, f32)) {
         log::debug!(
             "annotation avancée : début {:?} page {page} {pt:?}",
             self.annotate.tool
         );
         match self.annotate.tool {
-            Tool::Ink => self.annotate.adv.ink = vec![pt],
+            Tool::Ink => self.start_ink_stroke(page, pt),
             Tool::SelectAnnot => {
                 self.annotate.adv.drag = if let Some(c) = self.corner_on_selected(page, pt) {
                     Some(AdvDrag::Resize(c))
@@ -470,12 +603,24 @@ impl SuniApp {
     pub fn adv_drag_moved(&mut self, drag: &Drag) {
         if self.annotate.tool == Tool::Ink {
             let adv = &mut self.annotate.adv;
+            let Some(draft) = adv.ink_draft.as_ref() else {
+                return;
+            };
+            if draft.page != drag.page || draft.pending || adv.ink.is_empty() {
+                return;
+            }
             let far = adv
                 .ink
                 .last()
                 .is_none_or(|l| (l.0 - drag.current.0).hypot(l.1 - drag.current.1) > 0.5);
             if far {
-                adv.ink.push(drag.current);
+                if adv.ink.len() < INK_MAX_POINTS {
+                    if drag.current.0.is_finite() && drag.current.1.is_finite() {
+                        adv.ink.push(drag.current);
+                    }
+                } else {
+                    self.status_msg = Some(self.t("ink.point_limit").into());
+                }
             }
         }
     }
@@ -508,15 +653,7 @@ impl SuniApp {
         let author = self.annot_author();
         match self.annotate.tool {
             Tool::Ink => {
-                let stroke = std::mem::take(&mut self.annotate.adv.ink);
-                if !stroke.is_empty() {
-                    self.worker.send(Request::Edit(EditOp::AddInk {
-                        page: drag.page,
-                        strokes: vec![stroke],
-                        style: self.annot_style(false),
-                        author,
-                    }));
-                }
+                self.finish_ink_stroke(drag.page);
             }
             Tool::AnnotRect | Tool::AnnotEllipse | Tool::AnnotLine => {
                 if w < 2.0 && h < 2.0 {
@@ -644,14 +781,8 @@ impl SuniApp {
         );
         match self.annotate.tool {
             Tool::Ink => {
-                let author = self.annot_author();
-                self.annotate.adv.ink.clear();
-                self.worker.send(Request::Edit(EditOp::AddInk {
-                    page,
-                    strokes: vec![vec![pt]],
-                    style: self.annot_style(false),
-                    author,
-                }));
+                self.start_ink_stroke(page, pt);
+                self.finish_ink_stroke(page);
             }
             Tool::FreeText => self.adv_drag_finished(Drag {
                 page,
@@ -1030,13 +1161,22 @@ impl SuniApp {
         );
         if tool == Tool::Ink {
             let adv = &self.annotate.adv;
-            if drag.is_some() && adv.ink.len() > 1 {
-                // Même lissage que l'annotation écrite : l'aperçu est ce qu'on obtiendra.
-                let pts: Vec<egui::Pos2> = sunipdf_core::smooth_polyline(&adv.ink, 4)
-                    .iter()
-                    .map(|p| pt(*p))
-                    .collect();
-                painter.add(egui::epaint::PathShape::line(pts, stroke));
+            if let Some(draft) = adv
+                .ink_draft
+                .as_ref()
+                .filter(|draft| draft.page == page_index)
+            {
+                for path in draft.strokes.iter().chain(std::iter::once(&adv.ink)) {
+                    if path.len() == 1 {
+                        painter.circle_filled(pt(path[0]), stroke.width / 2.0, stroke.color);
+                    } else if path.len() > 1 {
+                        let pts = sunipdf_core::smooth_polyline(path, 4)
+                            .iter()
+                            .map(|p| pt(*p))
+                            .collect();
+                        painter.add(egui::epaint::PathShape::line(pts, stroke));
+                    }
+                }
             }
         }
         if let Some(d) = drag {
@@ -1297,6 +1437,8 @@ impl SuniApp {
         let mut edit_text = false;
         let mut edit_link = false;
         let mut delete = false;
+        let mut finish_ink = false;
+        let mut cancel_ink = false;
         let sel_detail = selected.as_ref().map(|(_, d)| d.clone());
         let size_range = 6.0..=96.0;
         egui::Area::new(id)
@@ -1317,7 +1459,14 @@ impl SuniApp {
                     })
                     .show(ui, |ui| {
                         ui.set_max_width(max_w);
-                        if kind != BarKind::default() {
+                        if kind != BarKind::default()
+                            && !self
+                                .annotate
+                                .adv
+                                .ink_draft
+                                .as_ref()
+                                .is_some_and(|draft| draft.pending)
+                        {
                             ui.horizontal_wrapped(|ui| {
                                 if kind.stroke {
                                     ui.label(tr(
@@ -1456,8 +1605,35 @@ impl SuniApp {
                                 );
                             });
                         }
+                        if self.annotate.tool == Tool::Ink {
+                            ui.horizontal_wrapped(|ui| {
+                                let draft = self.annotate.adv.ink_draft.as_ref();
+                                let pending = draft.is_some_and(|draft| draft.pending);
+                                let ready = draft.is_some_and(|draft| !draft.strokes.is_empty())
+                                    && self.annotate.adv.ink.is_empty()
+                                    && !pending;
+                                finish_ink = ui
+                                    .add_enabled(ready, Button::new(tr(lang, "ink.finish")))
+                                    .on_hover_text(tr(lang, "ink.finish_hint"))
+                                    .clicked();
+                                cancel_ink = ui
+                                    .add_enabled(
+                                        draft.is_some() && !pending,
+                                        Button::new(tr(lang, "ink.cancel")),
+                                    )
+                                    .on_hover_text(tr(lang, "ink.cancel_hint"))
+                                    .clicked();
+                                ui.label(tr(lang, if pending { "ink.wait" } else { "ink.hint" }));
+                            });
+                        }
                     });
             });
+        if finish_ink {
+            self.finish_ink_draft();
+        }
+        if cancel_ink {
+            self.cancel_ink_draft();
+        }
         if let Some((page, d)) = selected {
             if apply {
                 self.annotate.adv.reselect = Some((page, d.index));
@@ -2246,6 +2422,174 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn ink_gesture(app: &mut SuniApp, page: usize, start: (f32, f32), end: (f32, f32)) {
+        let drag = Drag {
+            page,
+            start,
+            current: end,
+        };
+        app.adv_drag_start(page, start);
+        app.adv_drag_moved(&drag);
+        app.adv_drag_finished(drag);
+    }
+
+    #[test]
+    fn grouped_ink_buttons_commit_once_retry_without_loss_and_cancel_in_both_languages() {
+        use crate::worker::{DocState, Response};
+        for language in Language::ALL {
+            let (mut app, requests, responses) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            app.annotate.tool = Tool::Ink;
+            ink_gesture(&mut app, 0, (20.0, 30.0), (80.0, 90.0));
+            app.adv_click(0, (100.0, 110.0));
+            let expected = app.annotate.adv.ink_draft.as_ref().unwrap().strokes.clone();
+            assert_eq!(expected.len(), 2);
+            assert_eq!(expected[1], vec![(100.0, 110.0)]);
+            assert!(requests.try_recv().is_err() && !app.dirty && app.has_unsaved_changes());
+            assert!(!app.dialog_open());
+            app.edit.stroke_rgb = [12, 34, 56];
+            click_link_control(&mut app, &ctx, "ink.finish");
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::AddInk {
+                page: 0, strokes, style, ..
+            }) if strokes == expected && style.rgb == (12, 34, 56))
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.finish_ink_draft();
+            app.cancel_ink_draft();
+            assert!(app.annotate.adv.ink_draft.as_ref().unwrap().pending);
+            assert!(requests.try_recv().is_err());
+            responses
+                .send(Response::OperationFailed(sunipdf_core::EngineError::Other(
+                    "test refusal".into(),
+                )))
+                .unwrap();
+            responses.send(Response::MutationFinished).unwrap();
+            app.handle_responses(&ctx);
+            assert_eq!(app.status_msg.as_deref(), Some(tr(language, "ink.retry")));
+            assert!(!app.annotate.adv.ink_draft.as_ref().unwrap().pending);
+            assert_eq!(
+                app.annotate.adv.ink_draft.as_ref().unwrap().strokes,
+                expected
+            );
+            click_link_control(&mut app, &ctx, "ink.finish");
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::AddInk { strokes, .. }) if strokes == expected)
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            let info = app.document.as_ref().unwrap().info.clone();
+            responses
+                .send(Response::DocumentChanged(DocState {
+                    info,
+                    can_undo: true,
+                    can_redo: false,
+                    pages_unchanged: true,
+                    modified: true,
+                    has_signatures: false,
+                }))
+                .unwrap();
+            responses.send(Response::MutationFinished).unwrap();
+            app.handle_responses(&ctx);
+            assert!(!app.ink_draft_active() && app.dirty && app.can_undo);
+            requests.try_iter().for_each(drop);
+            app.adv_click(0, (40.0, 50.0));
+            click_link_control(&mut app, &ctx, "ink.cancel");
+            assert!(!app.ink_draft_active() && app.dirty);
+            assert!(requests.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn grouped_ink_keeps_page_and_visible_stroke_and_point_limits() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.annotate.tool = Tool::Ink;
+        for i in 0..INK_MAX_STROKES {
+            app.adv_click(0, (i as f32, 20.0));
+        }
+        app.adv_click(1, (10.0, 10.0));
+        assert_eq!(app.status_msg.as_deref(), Some(app.t("ink.same_page")));
+        app.adv_click(0, (200.0, 20.0));
+        assert_eq!(app.status_msg.as_deref(), Some(app.t("ink.stroke_limit")));
+        assert_eq!(
+            app.annotate.adv.ink_draft.as_ref().unwrap().strokes.len(),
+            64
+        );
+        app.cancel_ink_draft();
+        app.adv_drag_start(0, (0.0, 10.0));
+        for i in 1..=INK_MAX_POINTS {
+            app.adv_drag_moved(&Drag {
+                page: 0,
+                start: (0.0, 10.0),
+                current: (i as f32, 10.0),
+            });
+        }
+        assert_eq!(app.annotate.adv.ink.len(), 4000);
+        assert_eq!(app.status_msg.as_deref(), Some(app.t("ink.point_limit")));
+        app.adv_drag_finished(Drag {
+            page: 0,
+            start: (0.0, 10.0),
+            current: (5000.0, 10.0),
+        });
+        app.adv_click(0, (40.0, 10.0));
+        let draft = app.annotate.adv.ink_draft.as_ref().unwrap();
+        assert_eq!(draft.strokes.len(), 2);
+        assert_eq!(draft.strokes[0].last(), Some(&(3999.0, 10.0)));
+        assert_eq!(draft.strokes[1], vec![(40.0, 10.0)]);
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn grouped_ink_preview_retains_completed_paths_and_dots_on_original_page() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.annotate.tool = Tool::Ink;
+        ink_gesture(&mut app, 0, (10.0, 20.0), (50.0, 60.0));
+        app.adv_click(0, (80.0, 90.0));
+        app.adv_drag_start(0, (100.0, 110.0));
+        let ctx = egui::Context::default();
+        let mut own_shapes = None;
+        let mut other_shapes = None;
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            let painter = ui.painter();
+            let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(612.0, 792.0));
+            let before = painter.ctx().graphics(|graphics| {
+                graphics
+                    .get(painter.layer_id())
+                    .map_or(0, |list| list.next_idx().0)
+            });
+            app.paint_annot_adv(painter, bounds, 0, 792.0);
+            let after = painter.ctx().graphics(|graphics| {
+                graphics
+                    .get(painter.layer_id())
+                    .map_or(0, |list| list.next_idx().0)
+            });
+            app.paint_annot_adv(painter, bounds, 1, 792.0);
+            let other = painter.ctx().graphics(|graphics| {
+                graphics
+                    .get(painter.layer_id())
+                    .map_or(0, |list| list.next_idx().0)
+            });
+            own_shapes = Some(after - before);
+            other_shapes = Some(other - after);
+        });
+        output.textures_delta.clear();
+        assert_eq!(
+            own_shapes,
+            Some(3),
+            "completed line, completed dot, active dot"
+        );
+        assert_eq!(other_shapes, Some(0));
+        assert!(requests.try_recv().is_err());
+    }
 
     fn detail(index: usize, subtype: &str, rect: PointRect) -> AnnotDetail {
         AnnotDetail {

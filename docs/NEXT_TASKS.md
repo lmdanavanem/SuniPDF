@@ -201,6 +201,21 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   are in `dist/`; the production updater verified the 19,825,743-byte x64 ZIP without installing it on the host.
   Evidence and remaining limits belong in `PROJECT_STATUS.md`.
 
+## 0.18.0: grouped freehand drawing and literal CLI help (in development)
+
+- Group strokes on one page into one ink annotation and one Undo step, using the existing writer (D109).
+- Use explicit Finish/Cancel, keep the draft after worker failure, and guard operations that would save,
+  replace or leave it. Reuse existing point simplification/geometry/protection/bounds; no idle auto-commit or draft recovery.
+- Fix A16 through clap's existing help template: `stamp` / `page-numbers` display literal `{n}` / `{total}`.
+- Local gates passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching EN/FR
+  keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests cover drawing/guards and
+  captured-page gesture completion; the existing serialized worker test covers grouped Undo/Redo/failure history.
+  The CLI help regression passed. CI, packages/upgrades and publication are
+  pending; **0.17.0 remains Latest**. No new dependency or CLI command; 53 commands remain.
+  Record only executed evidence in `PROJECT_STATUS.md`.
+  Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+  memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
 ## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -279,7 +294,7 @@ Remaining, non-blocking:
   itself is implemented, and current execution evidence belongs in `PROJECT_STATUS.md`;
 - JPEG EXIF 5/7 direct embedding and cumulative PNG/raster estimates are delivered in 0.17.0 (A31/D108);
   measured native/process memory and larger licensed inputs remain separate work;
-- CLI help for `stamp` / `page-numbers` (A16, clap replaces `{n}`).
+- CLI help for `stamp` / `page-numbers` is included in the 0.18.0 development lot (A16); local regression passed, CI/packages pending.
 
 ## SUNI-012c — Display, continued (owner: UI-UX)
 Done: tabs (SUNI-012a); virtualized continuous view, tiles, anchored zoom, single page as an option (SUNI-012b,
@@ -315,8 +330,8 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 `review-state` / `annotation-delete`. What remains:
 - **verify interoperability** of replies and statuses, ink, free text and shape appearances in Acrobat, Foxit and
   Chrome (not available on the development machine); structural checking alone does not prove visual interoperability;
-- grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
-  time; eraser;
+- grouped ink is included in the 0.18.0 development lot with explicit Finish/Cancel and guarded save/close
+  transitions (D109), replacing the idle-commit proposal; local regressions passed, CI/packages pending. Eraser remains future work;
 - polygon, polyline, cloud, stamp, attachment and rich free text (bold, italic, CJK: embedded font); dashed borders
   for the four existing shapes are delivered in 0.16.0, while other annotation types remain unsupported;
 - richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);

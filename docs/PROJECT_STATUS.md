@@ -1,9 +1,40 @@
-# Project status - updated 2026-10-16 (version 0.17.0 published)
+# Project status - updated 2026-10-16 (version 0.18.0 in development)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.18.0: grouped freehand drawings and readable CLI templates (in development)
+
+The desktop groups multiple freehand strokes on one page into one Ink annotation through the existing
+core/worker edit. The desktop draft has explicit Finish/Cancel, one undo, bounded strokes/points and guards
+against losing unsubmitted strokes when editing, saving, switching documents or closing. Worker failure
+retains the draft for retry or cancellation. English remains the default, with matching French controls.
+Up to 64 strokes and 4,000 points per stroke are retained, with visible limit messages. Colour, width and
+opacity apply to the entire draft. Navigation, zoom and view modes retain its original-page binding;
+global pointer-release finalization prevents a stroke becoming stuck after a Single-page jump. Deferred
+form changes and recovery markers must complete before drawing can begin. The draft exists only in memory
+until Finish: it is not included in crash recovery. Implementation/local validation passed; publication is pending.
+
+Executed locally: the CLI help test passed for both `stamp` and `page-numbers`, short and long help,
+preserving literal `{n}`/`{total}` and the default template. All 75 independent qpdf checks passed, including
+one grouped Ink output with two polylines and a dot; readback confirms exactly one annotation and three
+`InkList` entries. The CLI still has 53 commands; no new dependency is added.
+
+Local validation passed: 452 workspace tests, zero failures, seven default ignored; formatting, Clippy
+all-targets with warnings denied, 907 matching EN/FR keys and the update-helper self-test. Six new headless
+desktop tests cover actual accessible EN/FR Finish/Cancel clicks, draft failure/retry/duplicate submission,
+page/bounds/preview, unsafe actions and global pointer release after Single-page navigation. The existing
+serialized native-worker integration covers grouped AddInk, one Undo/Redo and failed edits without history loss.
+Independent review found no remaining blocker. Four licensed NIST/NBS documents (744 pages) passed source,
+render/text/extract/optimize/compression/corruption checks in 50.796 seconds; peak sampled child working set
+329,445,376 bytes, below the existing 805,306,368-byte regression guard.
+
+CI, staged/public packages, upgrades and publication remain pending. The upgrade scripts include the verified
+0.17.0 baseline; 16 portable cases and 10 MSI baselines are expected, not executed for 0.18.0.
+Version 0.17.0 remains stable Latest. Native interactive dialogs, ARM64 hardware, physical printers,
+Narrator and third-party readers remain unverified; packages remain unsigned.
 
 ## 0.17.0: lossless oriented JPEG conversion and raster batch checks (published as Latest)
 

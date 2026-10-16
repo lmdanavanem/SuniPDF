@@ -13,6 +13,8 @@ use sunipdf_core::{
     form_data, Engine, EngineError, FillMode, ImportPlan, Stamp, StampPosition, TextStyle,
 };
 
+const STAMP_HELP_TEMPLATE: &str = "{before-help}{about-with-newline}\n{usage-heading} {usage}\n\n{all-args}{after-help}\nTemplate variables: {n} = page number, {total} = page count.\n";
+
 #[derive(Parser)]
 #[command(
     name = "sunipdf-cli",
@@ -150,7 +152,8 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
-    /// Stamp a single line of text (watermark): {n} = page number, {total} = page count.
+    /// Stamp a single line of text (watermark).
+    #[command(help_template = STAMP_HELP_TEMPLATE)]
     Stamp {
         file: PathBuf,
         #[arg(long)]
@@ -176,7 +179,8 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
-    /// Add single-line page numbers: --template uses {n} and {total} (default "{n} / {total}").
+    /// Add single-line page numbers.
+    #[command(help_template = STAMP_HELP_TEMPLATE)]
     PageNumbers {
         file: PathBuf,
         #[arg(long, default_value = "{n} / {total}")]
@@ -2358,6 +2362,30 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn stamp_help_preserves_literal_page_variables() {
+        for command in ["stamp", "page-numbers"] {
+            for flag in ["-h", "--help"] {
+                let error = parse_cli(["sunipdf-cli", command, flag])
+                    .err()
+                    .expect("help must stop parsing");
+                assert_eq!(error.kind(), clap::error::ErrorKind::DisplayHelp);
+                let help = error.to_string();
+                assert!(
+                    help.contains("Template variables: {n} = page number, {total} = page count.")
+                );
+                assert!(
+                    help.contains("Usage:")
+                        && help.contains("--out")
+                        && help.contains("--overwrite")
+                );
+                if command == "page-numbers" {
+                    assert!(help.contains("{n} / {total}"));
+                }
+            }
+        }
     }
 
     #[test]

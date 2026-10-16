@@ -159,6 +159,21 @@ portables, neuf bases MSI et 45 journaux MSI vérifiés ; corpus en CI 45,791 s/
 vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 825 743 octets sans installation.
 Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.18.0 : dessin à main levée groupé et aide CLI littérale (en développement)
+
+Brouillon d'encre lié à une page, validé explicitement en une annotation/étape Annuler ou abandonné sans
+modifier le document. Réutiliser AddInk, simplification des points, géométrie et protection ; conserver le brouillon après erreur
+du worker et protéger les transitions enregistrement/fermeture/onglet/outil jusqu'à Terminer/Annuler (D109).
+Aucune validation à l'inactivité ni récupération des brouillons non validés. Corriger A16 avec le modèle d'aide
+clap existant pour garder `{n}` / `{total}` littéraux dans l'aide de `stamp` / `page-numbers`.
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes. Validation locale réussie : 452 tests workspace
+(zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur
+à jour. Six nouveaux tests UI sans fenêtre, régression worker existante Annuler/Rétablir groupés/échec et
+nouveau test d'aide CLI réussis. CI, paquets/mises à niveau et publication en attente ;
+**0.17.0 reste Latest**. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -186,6 +201,7 @@ Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, ave
 Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page courante/toutes/sélection.
 Livré en 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
 Livré en 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
+En développement pour 0.18.0 : encre groupée du bureau, Terminer/Annuler explicites et transitions protégées (D109).
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
@@ -220,7 +236,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite après le lot 0.17.0
+## Suite au-delà du lot 0.18.0 retenu
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

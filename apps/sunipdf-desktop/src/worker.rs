@@ -758,6 +758,7 @@ impl Worker {
                 | Request::Print { .. }
                 | Request::SignCertificate { .. }
                 | Request::Autosave
+                | Request::MarkRecovered { .. }
                 | Request::ProcessFiles(_)
         );
         if self.tx.send(request).is_ok() && mutation {
@@ -2099,6 +2100,7 @@ mod tests {
         }
         page_label_edits_and_history_keep_page_geometry(&worker);
         link_target_edits_have_one_undo_and_preserve_geometry(&worker);
+        grouped_ink_has_one_undo_redo_and_failed_edits_keep_history(&worker);
         dashed_annotation_styles_survive_edits_and_history(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         editable_combo_creation_and_filling_undo_redo(&worker);
@@ -2117,6 +2119,74 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn grouped_ink_has_one_undo_redo_and_failed_edits_keep_history(worker: &Worker) {
+        let changed = || match next_response(worker) {
+            Response::DocumentChanged(state) => state,
+            _ => panic!("ink document state"),
+        };
+        let annotations = || {
+            worker.send(Request::Annotations {
+                page: 0,
+                detailed: true,
+            });
+            match next_response(worker) {
+                Response::Annotations { details, .. } => details.unwrap_or_default(),
+                _ => panic!("ink annotations"),
+            }
+        };
+        let before = annotations();
+        let strokes = vec![
+            vec![(30.0, 40.0), (80.0, 90.0), (130.0, 40.0)],
+            vec![(30.0, 110.0), (130.0, 110.0)],
+            vec![(150.0, 110.0)],
+        ];
+        let send = |page, strokes| {
+            worker.send(Request::Edit(EditOp::AddInk {
+                page,
+                strokes,
+                style: AnnotStyle::default(),
+                author: Some("lmdanavanem".into()),
+            }))
+        };
+        send(0, strokes.clone());
+        let state = changed();
+        assert!(state.pages_unchanged && state.modified && state.can_undo && !state.can_redo);
+        let sizes = state.info.page_sizes;
+        let grouped = annotations();
+        assert_eq!(grouped.len(), before.len() + 1);
+        assert_eq!(grouped.last().unwrap().subtype, "Ink");
+        worker.send(Request::Undo);
+        let state = changed();
+        assert!(state.pages_unchanged && !state.modified && !state.can_undo && state.can_redo);
+        assert_eq!(state.info.page_sizes, sizes);
+        assert_eq!(annotations(), before);
+        worker.send(Request::Redo);
+        assert!(changed().modified);
+        assert_eq!(annotations(), grouped);
+        for (page, paths) in [(usize::MAX, strokes), (0, vec![vec![(20.0, 30.0)]; 65])] {
+            send(page, paths);
+            assert!(matches!(
+                next_response(worker),
+                Response::OperationFailed(_)
+            ));
+            assert_eq!(annotations(), grouped);
+        }
+        worker.send(Request::Undo);
+        let state = changed();
+        assert!(!state.modified && !state.can_undo && state.can_redo);
+        assert_eq!(
+            annotations(),
+            before,
+            "failed edits must not add undo entries"
+        );
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
     }
 
     fn dashed_annotation_styles_survive_edits_and_history(worker: &Worker) {

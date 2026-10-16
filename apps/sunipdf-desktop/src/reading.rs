@@ -286,6 +286,9 @@ impl SuniApp {
     }
 
     pub fn rotate_reading_view(&mut self, clockwise: bool) {
+        if self.ink_blocks_action() {
+            return;
+        }
         let Some(page) = self.document.as_ref().map(|d| d.page) else {
             return;
         };
@@ -341,6 +344,9 @@ impl SuniApp {
     }
 
     pub fn set_reading_full_screen(&mut self, ctx: &egui::Context, enabled: bool) {
+        if enabled && self.ink_blocks_action() {
+            return;
+        }
         self.reading_full_screen = enabled;
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(enabled));
     }

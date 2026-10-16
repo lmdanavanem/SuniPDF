@@ -218,6 +218,26 @@ conversion gate. Windows CI, same-source ARM64 compilation, fifteen portable cas
 Published in 0.17.0; all six staged/public files, enhanced packaged conversion checks and the production updater
 passed. Evidence, immutable source and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.18.0 grouped ink draft (in development)
+
+Keep one page-bound desktop ink draft and reuse `EditOp::AddInk` / the existing annotation writer for the
+whole group. Explicit Finish sends one edit and creates one Undo step; Cancel discards only the local draft.
+Keep the draft until worker success and retain it on failure. Operations that would save, replace or leave
+the draft must be guarded until Finish/Cancel (D109). Existing point simplification, geometry, protection and writer
+bounds remain authoritative: 64 strokes and 4,000 points per stroke. Draft styling applies to the whole group
+until Finish captures it; pending submission blocks further strokes/Finish/Cancel. Page navigation, zoom and
+view modes retain the original draft page; Esc cancels an unsubmitted draft. No new PDF format code,
+dependency or CLI command is planned.
+
+The unrelated A16 fix uses clap's existing help template so `{n}` / `{total}` remain literal in CLI help.
+Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
+EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests and the existing serialized
+worker test cover draft/guards, captured-page gesture completion, grouped Undo/Redo and failure history; the
+new CLI help regression passed. CI, packages/upgrades and publication are
+pending; 0.17.0 remains Latest. Executed evidence belongs in `PROJECT_STATUS.md`.
+Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
 ## Coordinates (SUNI-031c)
 
 Every coordinate crossing the engine ↔ interface/CLI boundary is in **display space**: points,

@@ -155,6 +155,20 @@ under `lmdanavanem`, release `415074108`, with six files. All staged/public file
 passed; verified copies are in `dist/`. The production updater verified the 19,825,743-byte x64 ZIP without
 installation. Evidence and remaining limits belong in `PROJECT_STATUS.md`.
 
+## 0.18.0: grouped freehand drawing and literal CLI help (in development)
+
+One page-bound desktop ink draft, explicitly finished as one annotation/Undo or cancelled without document
+changes. Reuse AddInk, point simplification, geometry and protection; retain the draft on worker failure and guard
+save/close/tab/tool transitions until Finish/Cancel (D109). No idle auto-commit or uncommitted-draft recovery.
+Fix A16 with the existing clap help template, retaining literal `{n}` / `{total}` in `stamp` / `page-numbers` help.
+No new dependency or CLI command; 53 commands remain. Local validation passed: 452 workspace tests (zero failed,
+seven default ignored), formatting/Clippy, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Six new headless UI tests, the existing grouped worker Undo/Redo/failure regression and the new CLI help test
+passed. CI, packages/upgrades and publication are pending;
+**0.17.0 remains Latest**. Executed evidence belongs in `PROJECT_STATUS.md`.
+Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -183,6 +197,7 @@ Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping
 Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
 Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
 Delivered in 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
+In development for 0.18.0: grouped desktop ink with explicit Finish/Cancel and guarded transitions (D109).
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
@@ -217,7 +232,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.17.0 lot
+## Work beyond the selected 0.18.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

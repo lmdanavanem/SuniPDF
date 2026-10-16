@@ -5,6 +5,27 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.18.0] — En développement
+
+Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR
+correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI sans fenêtre couvrent dessin groupé,
+relance/gardes et fin du geste sur la page capturée ; le test worker sérialisé existant couvre une annotation,
+Annuler/Rétablir groupés et historique après échec. Régression d'aide CLI réussie pour les deux commandes et
+`-h` / `--help`. CI, paquets/mises à niveau et publication en attente.
+**0.17.0 reste la release stable Latest.**
+Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
+échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+
+### Implémenté ; validation de release en attente
+- Regrouper les traits à main levée d'une page dans une annotation `Ink` et une étape Annuler via l'écriture
+  existante, avec Terminer/Annuler explicites et brouillon conservé après une erreur du worker (D109).
+- Bloquer les modifications du document, enregistrement/fermeture et changements d'onglet/outil jusqu'à la
+  validation ou l'abandon du dessin.
+- Conserver les variables littérales `{n}` / `{total}` dans l'aide de `stamp` et `page-numbers` via le modèle
+  d'aide clap existant (A16). Comportement CLI et 53 commandes inchangés ; aucune nouvelle dépendance.
+
+Interaction native, stylet/tactile et compatibilité avec les lecteurs tiers restent des contrôles manuels distincts.
+
 ## [0.17.0] — 2026-10-16
 
 Validation locale réussie : 445 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy all-targets

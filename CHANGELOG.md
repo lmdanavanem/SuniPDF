@@ -5,6 +5,26 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.18.0] - In development
+
+Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
+EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests cover grouped drawing,
+retry/action guards and captured-page gesture completion; the existing serialized worker test covers one
+annotation, grouped Undo/Redo and failed-edit history. The CLI help regression passed for both commands and
+`-h` / `--help`. CI, packages/upgrades and publication remain pending.
+**0.17.0 remains the stable Latest release.**
+Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
+memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+
+### Implemented; release validation pending
+- Group desktop freehand strokes on one page into one `Ink` annotation and one Undo step through the
+  existing writer, with explicit Finish/Cancel and retained drafts after worker errors (D109).
+- Guard document-changing, save/close and tab/tool transitions until the drawing is finished or cancelled.
+- Keep literal `{n}` / `{total}` variables in `stamp` and `page-numbers` help through clap's existing
+  help-template support (A16). CLI behavior and its 53 commands remain unchanged; no new dependency.
+
+Native interaction, pen/touch input and third-party-reader compatibility remain separate manual checks.
+
 ## [0.17.0] - 2026-10-16
 
 Local validation passed: 445 workspace tests (zero failed, seven default ignored), formatting/Clippy all-targets

@@ -894,5 +894,16 @@
   "status.printed": "Tâche d’impression transmise à Windows.",
   "status.ocr_done": "Reconnaissance du texte terminée.",
   "status.cancelled": "Opération annulée.",
-  "status.signed_copy": "Copie signée enregistrée."
+  "status.signed_copy": "Copie signée enregistrée.",
+  "ink.finish": "Terminer le dessin",
+  "ink.cancel": "Annuler le dessin",
+  "ink.finish_hint": "Créer une annotation avec tous les traits ; Annuler retire le dessin entier.",
+  "ink.cancel_hint": "Abandonner ce dessin sans modifier le PDF (Échap).",
+  "ink.hint": "Dessinez sur une page, puis terminez ou annulez. Le brouillon n'est pas encore enregistré.",
+  "ink.finish_first": "Terminez ou annulez le dessin avant cette action.",
+  "ink.wait": "Attendez la fin de l'opération en cours avant de dessiner.",
+  "ink.same_page": "Continuez sur la page d'origine du dessin, ou terminez ou annulez-le.",
+  "ink.stroke_limit": "Le dessin a atteint 64 traits. Terminez-le ou annulez-le avant de dessiner davantage.",
+  "ink.point_limit": "Ce trait s'est arrêté à 4 000 points. Commencez un autre trait, ou terminez ou annulez le dessin.",
+  "ink.retry": "Le dessin n'a pas pu être ajouté. Vos traits sont conservés ; réessayez Terminer le dessin ou annulez."
 }
