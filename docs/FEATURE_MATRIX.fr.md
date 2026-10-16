@@ -46,13 +46,22 @@ cinq bases MSI. Six fichiers préparés/publics et contrôles renforcés des bin
 protégés et les deux mots de passe. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest
 x64 de 19 730 578 octets sans installation. Preuves détaillées et limites restantes dans `PROJECT_STATUS.fr.md`.
 
-[0.14.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem`, release
+[0.14.0 publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem` (Latest à cette date), release
 `414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation réussie : 420 tests workspace (zéro échec,
 sept ignorés par défaut), formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents licenciés
 (744 pages ; 53,91 s localement), CI Windows et compilation ARM64 de même source, douze scénarios portables et
 six bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis, dont création/réinitialisation
 non chiffrée/protégée, les deux mots de passe, étiquettes hors plage et texte/PNG inchangés. Copies vérifiées dans
 `dist/` ; l'updater de production a vérifié le ZIP Latest x64 de 19 785 200 octets sans installation.
+Preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
+
+[0.15.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem`, release
+`414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation réussie : 429 tests workspace (zéro échec,
+sept ignorés par défaut), formatage/Clippy, 894 clés EN/FR, 68 contrôles qpdf et quatre documents licenciés
+(744 pages ; 48,891 s localement), CI Windows et compilation ARM64 de même source, treize scénarios portables et
+sept bases MSI. Six fichiers préparés/publics et contrôles renforcés réussis, dont cibles non chiffrées/protégées,
+les deux mots de passe, identité/zone des liens et PNG des pages inchangés. Copies vérifiées dans `dist/` ; le metteur
+à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation.
 Preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
 
 ## A. Lecture
@@ -90,7 +99,7 @@ Preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés livrés en 0.10.0, une annulation |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
-| Liens | Déclaré | **Fait** : création page/URI, adresses autorisées confirmées et navigation nommée/XYZ/Fit/FitH non nul résolue par PDFium en 0.11.0. **En développement pour 0.15.0** : édition de cibles existantes UI/CLI, zone/style/commentaires conservés, URI autorisée ou page physique Fit et drapeaux de verrouillage stricts ; validation en cours (D106). Vue détaillée remplacée explicitement ; Launch/JavaScript/GoTo distant jamais exécutés |
+| Liens | Déclaré | **Fait** : création page/URI, adresses autorisées confirmées et navigation nommée/XYZ/Fit/FitH non nul résolue par PDFium en 0.11.0. **Livré en 0.15.0** : édition de cibles existantes UI/CLI, zone/style/commentaires conservés, URI autorisée ou page physique Fit et drapeaux de verrouillage stricts ; contrôles locaux/CI/paquets/publics/mises à niveau réussis (D106). Vue détaillée remplacée explicitement ; Launch/JavaScript/GoTo distant jamais exécutés |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | Planifié (P3) |
 
@@ -165,6 +174,6 @@ Preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.14.0 ZIP/MSI publiés en Latest ; douze scénarios portables et six bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.14.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.15.0 ZIP/MSI publiés en Latest ; treize scénarios portables et sept bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.15.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

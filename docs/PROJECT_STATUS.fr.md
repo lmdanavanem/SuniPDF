@@ -1,32 +1,72 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.15.0 en d?veloppement)
+# État du projet — mis à jour le 2026-10-16 (version 0.15.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.15.0 : modification des destinations de liens existants (en d?veloppement)
+## 0.15.0 : modification des destinations de liens existants (publiée en Latest)
 
-Cette source ajoute `set-link-target` et une action Modifier la destination pour les liens existants. Les adresses
-HTTP/HTTPS/mailto s?res et les destinations de page enti?re remplacent `/A`, `/Dest` et `/AA`, en conservant
-l'indice, le rectangle, l'apparence, les commentaires/r?ponses et les propri?t?s sans rapport. Les destinations
-nomm?es/d?taill?es sont r?solues pour le pr?remplissage si disponibles ; le dialogue explique leur remplacement
-par une destination de page enti?re. Les flags en lecture seule, verrouill?s, au contenu verrouill? ou malform?s
-sont refus?s, y compris les flags indirects.
+[SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) est stable **Latest** sous
+`lmdanavanem`, release ID `414866395`, avec six fichiers. Tag/source immuable :
+`952f8699cac451e7c3004b6d816105d52e41f249`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
+et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541)
+ont réussi. Le workflow de release en double a été annulé après le succès complet du job ARM64 ;
+les paquets x64 de la CI principale et l'artefact ARM64 vérifié ont été utilisés. Les anciennes releases sont conservées.
 
-Le bureau r?utilise son dialogue de lien, propose un seul Annuler/R?tablir pr?servant la g?om?trie et ferme les
-dialogues p?rim?s apr?s modification ou changement d'onglet. L'anglais reste la langue par d?faut, le fran?ais
-reste disponible ; aucune d?pendance ajout?e. La source compte 53 commandes CLI ; la 0.14.0 publi?e en compte 52.
-La 0.14.0 reste stable Latest jusqu'? validation de tous les nouveaux contr?les.
+Cette version ajoute `set-link-target` et une action Modifier la destination pour les liens existants. Les adresses
+HTTP/HTTPS/mailto sûres et les destinations de page entière remplacent `/A`, `/Dest` et `/AA`, en conservant
+l'indice, le rectangle, l'apparence, les commentaires/réponses et les propriétés sans rapport. Les destinations
+nommées/détaillées sont résolues pour le préremplissage si disponibles ; le dialogue explique leur remplacement
+par une destination de page entière. Les flags en lecture seule, verrouillés, au contenu verrouillé ou malformés
+sont refusés, y compris les flags indirects.
 
-Validation locale r?ussie : 429 tests du workspace, aucun ?chec, sept ignor?s par d?faut ; formatage, Clippy sans avertissement, 894 cl?s EN/FR concordantes, 68 contr?les qpdf ind?pendants et quatre documents NIST/NBS sous licence (744 pages ; 48,90 secondes). CI, paquets et publication restent ? valider. Les nouvelles r?gressions de mise ? jour incluent le ZIP portable et le MSI
-0.14.0 v?rifi?s. Les tests natifs/sans fen?tre couvrent les destinations, la protection, les m?tadonn?es, les entr?es
-invalides et la pr?servation des sources ; leurs r?sultats observ?s et les preuves de publication seront consign?s
-avant toute annonce d'ach?vement.
+Le bureau réutilise son dialogue de lien, propose un seul Annuler/Rétablir préservant la géométrie et ferme les
+dialogues périmés après modification ou changement d'onglet. L'anglais reste la langue par défaut, le français
+reste disponible ; aucune dépendance ajoutée. La CLI publiée compte 53 commandes. Sélectionner un lien avec
+l'outil de sélection d'annotation, puis Modifier la destination ou double-cliquer. La création de destinations
+avec coordonnées/vue précises reste à faire ; une page cible utilise l'affichage de la page entière.
 
-## 0.14.0 : création d'étiquettes de page et historique (publiée en Latest)
+Validation locale et CI Windows réussie : **429 tests, aucun échec, sept ignorés par défaut**, formatage,
+Clippy sans avertissement, **894 clés EN/FR concordantes**, **68 contrôles qpdf indépendants** et quatre documents
+NIST/NBS sous licence (**744 pages**). Corpus local : 48,891 secondes, pic mémoire échantillonné du processus
+enfant 328 736 768 octets. Corpus CI : 32,955 secondes, 321 470 464 octets. Les tests natifs couvrent les
+annotations directes/indirectes, les flags malformés/verrouillés, les cibles refusées, les formulaires/contenus/rendus/
+sources inchangés et les deux rôles AES. Le chargeur de test fournit le mot de passe pendant le parsing des flux
+d'objets chiffrés ; les apparences sont générées avant l'instantané de référence strict. Les tests du worker réel
+et sans fenêtre EN/FR couvrent Annuler/Rétablir, les contrôles accessibles réellement cliqués, la validation,
+le préremplissage résolu, l'annulation et les dialogues périmés.
 
-[SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) est stable **Latest** sous
+Treize scénarios portables réels ont réussi : mises à jour depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0,
+0.12.0, 0.13.0 et 0.14.0, plus empreinte incorrecte, mauvaise architecture, restauration après verrouillage et
+attente réelle de 120 secondes avec garde contre une mise à jour concurrente. Les sept baselines MSI (0.8.0,
+0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0, 0.14.0) passent installation, restauration transactionnelle, mise à jour,
+refus du downgrade, contrôles des fichiers/données utilisateur et désinstallation sur runners Windows jetables.
+Les 35 journaux MSI terminent avec le code attendu 0 ou 1603 pour les échecs injectés. Les preuves figurent dans
+le journal du job principal et les artefacts portable/MSI/corpus téléchargés.
+
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 803 226 | `CFC093316717596EE4BD3944DB6108A5512AC191F2D37782F55B4A389CE7E733` |
+| ZIP portable ARM64 | 18 392 243 | `BA09DD4C57F0449AAFF767E7B2E77A894FA298576C3843A33F5334017C2A493D` |
+| MSI x64 | 19 353 600 | `119C4725324AF01FC1245D685604C9A0927773BB2D08E48C4FEA70AFF230CCE7` |
+
+Les six fichiers préparés passent empreintes, architectures, versions/icônes anglaises, OCR/licences,
+contenu MSI/ZIP et contrôles des fonctions existantes. Le remplacement de liens couvre les PDF simples et
+AES-128/256 ouverts en propriétaire, les deux mots de passe, l'identité/le rectangle stables, dix contrôles
+qpdf, dix comparaisons PNG identiques et les empreintes inchangées de toutes les entrées des commandes.
+Les six téléchargements publics sans authentification concordent avec les empreintes API, les fichiers SHA256
+et les paquets préparés ; les contrôles renforcés passent de nouveau sur ces fichiers. Les copies vérifiées sont
+dans `dist/`. Le mécanisme de mise à jour a téléchargé et vérifié le ZIP x64 Latest de 19 803 226 octets sans installation.
+
+Dialogues natifs interactifs, matériel ARM64, imprimantes physiques, Narrator et lecteurs tiers restent non vérifiés ;
+les paquets ne sont pas signés. Remplacer les actions n'efface pas sûrement les anciens objets PDF orphelins.
+Les réécritures complètes peuvent invalider les signatures numériques ; l'avertissement existant reste présent.
+Les étiquettes de page restent liées aux positions après modification structurelle.
+
+## 0.14.0 : création d'étiquettes de page et historique (publiée en Latest à cette date)
+
+[SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) était stable **Latest** à cette date sous
 `lmdanavanem`, release ID `414812776`, avec six fichiers vérifiés. Tag/source immuable :
 `af532888804c196aabe216b8f6a2980c3d1e9e2d`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
 et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)

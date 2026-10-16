@@ -1,13 +1,20 @@
-# Project status - updated 2026-10-16 (version 0.15.0 in development)
+# Project status - updated 2026-10-16 (version 0.15.0)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.15.0: editing existing link destinations (in development)
+## 0.15.0: editing existing link destinations (published as Latest)
 
-This source adds `set-link-target` and an Edit target action for existing links. Safe HTTP/HTTPS/mailto addresses
+[SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) is stable **Latest** under
+`lmdanavanem`, release ID `414866395`, with six assets. Immutable tag/source:
+`952f8699cac451e7c3004b6d816105d52e41f249`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
+and the same-source [ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541)
+passed. The duplicate release workflow was cancelled after the ARM64 job completed successfully;
+the successful main-CI x64 packages and verified ARM64 artifact were used. Earlier releases remain unchanged.
+
+This release adds `set-link-target` and an Edit target action for existing links. Safe HTTP/HTTPS/mailto addresses
 and physical-page fit destinations replace the old `/A`, `/Dest` and `/AA`, retaining the annotation slot,
 rectangle, appearance, comments/replies and unrelated properties. Detailed/named destinations are resolved
 for prefilling where available; the dialog explicitly describes replacing their view with a page-fit target.
@@ -15,15 +22,45 @@ Read-only, locked, locked-content and malformed flag values are refused, includi
 
 The desktop reuses its link dialog, records one geometry-preserving Undo/Redo, and closes stale prompts after
 edits or tab changes. English remains the default, French remains available; no dependency was added.
-The source CLI has 53 commands; published 0.14.0 has 52. Version 0.14.0 remains stable Latest until all new gates pass.
+The published CLI has 53 commands. Select a link with the annotation selection tool, then choose Edit target
+or double-click. Page destinations use full-page fit; precise coordinate/view authoring remains future work.
 
-Local validation passed: 429 workspace tests, zero failed, seven default ignored; formatting, Clippy with warnings denied, 894 matching EN/FR keys, 68 independent qpdf checks and four licensed NIST/NBS documents (744 pages; 48.90 seconds). CI, package and publication gates remain pending. The new upgrade regressions include the verified 0.14.0 portable ZIP
-and MSI baseline. Native/headless tests cover retargeting, protection, metadata, invalid inputs and source preservation;
-their observed results and package/publication evidence will be recorded before claiming completion.
+Local and Windows CI validation passed: **429 workspace tests, zero failed, seven default ignored**, formatting,
+Clippy with warnings denied, **894 matching EN/FR keys**, **68 independent qpdf checks** and four licensed
+NIST/NBS documents (**744 pages**). Local corpus: 48.891 seconds, peak sampled child working set 328,736,768
+bytes. CI corpus: 32.955 seconds, 321,470,464 bytes. Native tests cover direct/indirect annotations, malformed
+and locked flags, unsafe/out-of-range targets, unchanged form/content/rendering/source and both AES opening roles.
+The test loader supplies the password during parsing to decode encrypted object streams; appearance generation
+is completed before taking the strict atomicity baseline. Real-worker and EN/FR headless tests cover Undo/Redo,
+actual accessible controls, validation, resolved destination prefill, cancellation and stale prompts.
 
-## 0.14.0: page-label authoring and navigation history (published as Latest)
+Thirteen actual portable scenarios passed: upgrades from 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0,
+0.13.0 and 0.14.0, plus bad checksum, wrong architecture, locked-file rollback and the real 120-second
+close-timeout/concurrent-update guard. Seven MSI baselines (0.8.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0,
+0.14.0) passed installation, transactional rollback, upgrade, downgrade rejection, payload/user-data checks
+and uninstall on disposable Windows runners. All 35 MSI logs have the expected final exit 0 or injected-failure
+1603. Evidence is in the main job log and downloaded portable/MSI/corpus artifacts.
 
-[SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) is stable **Latest** under
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,803,226 | `CFC093316717596EE4BD3944DB6108A5512AC191F2D37782F55B4A389CE7E733` |
+| ARM64 portable ZIP | 18,392,243 | `BA09DD4C57F0449AAFF767E7B2E77A894FA298576C3843A33F5334017C2A493D` |
+| x64 MSI | 19,353,600 | `119C4725324AF01FC1245D685604C9A0927773BB2D08E48C4FEA70AFF230CCE7` |
+
+All six staged files passed checksums, architecture, English version/icon resources, OCR/licenses,
+MSI/ZIP payload and existing feature checks. Packaged link replacement covers plain and owner-opened AES-128/256,
+both passwords, stable annotation identity/rectangle, ten qpdf checks, ten identical page PNG comparisons and
+unchanged hashes of every input to the retargeting commands. All six unauthenticated public downloads match
+API digests, sidecars and staged hashes; the enhanced binary checks passed again on public files. Verified copies
+are in `dist/`. The production updater downloaded and verified the Latest 19,803,226-byte x64 ZIP without installation.
+
+Native interactive dialogs, ARM64 hardware, physical printing, Narrator and third-party readers remain unverified;
+packages remain unsigned. Replacing actions is not secure erasure of orphaned PDF objects. Full rewrites can
+invalidate digital signatures; the existing save warning applies. Page labels remain positional after structural edits.
+
+## 0.14.0: page-label authoring and navigation history (published as Latest at that time)
+
+[SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) was stable **Latest** at that time under
 `lmdanavanem`, release ID `414812776`, with six verified assets. Immutable tag/source:
 `af532888804c196aabe216b8f6a2980c3d1e9e2d`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
 and the same-source [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739698/job/116916354626)

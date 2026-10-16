@@ -98,27 +98,32 @@ Windows CI, same-source ARM64 compilation, eleven portable scenarios, five MSI b
 files with enhanced binary checks passed. Verified copies are in `dist/`; the production updater verified the
 19,730,578-byte Latest x64 ZIP without installation. Evidence and hardware/reader limits: `PROJECT_STATUS.md`.
 
-## 0.14.0: page-label authoring (published as Latest)
+## 0.14.0: page-label authoring (published; Latest at the time)
 
 Apply six navigation-label styles over an inclusive physical range through Pages/Organize and two CLI commands;
 preserve labels outside the range, reject malformed existing trees before mutation, and reset all label rules
 without claiming secure erasure. Printed numbers remain unchanged; structural operations do not semantically
 rebase the ranges. Geometry-preserving label/content Undo/Redo retains navigation (D104–D105).
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem`, release
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem` (Latest at the time), release
 `414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests,
 formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed documents (744 pages; 53.91 seconds locally).
 Windows CI, same-source ARM64 compilation, twelve portable scenarios, six MSI baselines and six staged/public
 files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified the
 19,785,200-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
-## 0.15.0: editing existing link targets (in development)
+## 0.15.0: editing existing link targets (published as Latest)
 
 Reuse the annotation link dialog and protected writer to change an existing destination through Edit target,
 double-click or CLI `set-link-target`. Safe web/mail URI or physical-page Fit replaces all previous target/action
 fields, keeping the link's area/style/comments/replies and unrelated document data. Existing detailed/named views
 are explicitly replaced by whole-page Fit; unknown targets never default silently to page 1. ReadOnly/Locked/
 LockedContents and malformed flags are refused; one undo preserves geometry/navigation and stale dialogs close
-on document changes (D106). Validation/publication are pending; 0.14.0 remains Latest. See `PROJECT_STATUS.md`.
+on document changes (D106). [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under
+`lmdanavanem`, release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation passed: 429 workspace
+tests, formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents (744 pages; 48.891 seconds
+locally). Windows CI, same-source ARM64 compilation, thirteen portable scenarios, seven MSI baselines and six
+staged/public files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified
+the 19,803,226-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -146,7 +151,7 @@ Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/
 FDF/XFDF interchange and keyboard page widgets.
 Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
 Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
-In development for 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
+Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
@@ -178,7 +183,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.14.0 lot
+## Next work after the 0.15.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

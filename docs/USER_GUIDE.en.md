@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0), published as Latest
+This guide covers [SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0), published as Latest
 under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
 
 ## Installation
@@ -126,7 +126,7 @@ to the page; an external link first opens a **confirmation dialog that shows the
 Copy address, Cancel): nothing opens without your agreement, and only `http`, `https` and `mailto` addresses are
 accepted. Actions that launch a program or a script are never run.
 
-**Edit an existing target — 0.15.0 in development.** Use **Select an annotation** (A), select the link and choose
+**Edit an existing target — available in 0.15.0.** Use **Select an annotation** (A), select the link and choose
 **Edit target**, or double-click it. Choose an `http`, `https` or `mailto` address, or a physical page number.
 An existing resolved named/XYZ destination prefills its page. Replacing a page target fits the whole page;
 the old detailed position/zoom is not retained, as the dialog explains. An unsupported destination starts with
@@ -134,7 +134,8 @@ an empty address, so enter a valid destination explicitly. **Replace destination
 appearance, name, comments and replies. Read-only/locked/locked-content links cannot be edited; malformed flags
 are refused too. Cancel/Esc keeps the original target. One Ctrl+Z undoes the change; save explicitly to keep it.
 Other edits or tab switches close the pending dialog so it cannot use a stale annotation index. Existing signed-PDF
-rewrite warnings still apply. Validation is ongoing; these additions are absent from the published 0.14.0 packages.
+rewrite warnings still apply. These additions are included in the published 0.15.0 packages; executed checks
+and remaining limits are recorded in [Project status](PROJECT_STATUS.md).
 
 The **Comments** panel (F7) groups the page's annotations into **threads**: author, date, text, review status (None,
 Accepted, Rejected, Cancelled, Completed), indented replies. **Reply** adds a reply with no icon on the page, the
@@ -521,7 +522,7 @@ sunipdf-cli info appendix.pdf
 sunipdf-cli reset-page-labels appendix.pdf --out unlabelled.pdf
 ```
 
-**0.15.0 in development:** `set-link-target` uses `--page` (default physical page 1) and required `--index`
+**Available in 0.15.0:** `set-link-target` uses `--page` (default physical page 1) and required `--index`
 (zero-based annotation index from `annotations`). Supply exactly one of `--goto-page N` or `--url ADDRESS`,
 plus `--out` and optional `--password`. A page target uses whole-page Fit; safe addresses are limited to `http`,
 `https` and `mailto`. Existing output guards apply, and invalid input leaves the existing output unchanged,

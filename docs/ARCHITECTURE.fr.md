@@ -169,7 +169,7 @@ d'étiquettes/contenu, géométrie toujours invalidée par les opérations struc
 positionnelles après ces opérations. Contrôles locaux, CI, paquets/publics, mises à niveau et mise à jour de production
 réussis ; preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md`.
 
-## Destinations des liens existants 0.15.0 (en développement)
+## Destinations des liens existants 0.15.0 (publiée)
 
 `Document::set_link_target` réutilise le writer d'annotations et la réécriture protégée. Il vérifie le type Link,
 résout les drapeaux `F` directs/indirects et refuse ReadOnly/Locked/LockedContents ou les valeurs malformées.
@@ -180,7 +180,8 @@ conserve le reste du dictionnaire, la géométrie et les données indépendantes
 Les destinations résolues par PDFium préremplissent la page ; une cible inconnue donne une adresse vide. La boîte
 précise que le remplacement affiche la page entière (Fit). Éditions/changements d'onglet abandonnent les boîtes
 périmées ; le worker applique une édition ordinaire annulable, sans changer la géométrie. CLI `set-link-target`
-utilise les mêmes API et garde de sortie. Validation en cours ; résultats exécutés dans `PROJECT_STATUS.fr.md`.
+utilise les mêmes API et garde de sortie. Publié en 0.15.0 ; contrôles locaux, CI, mises à niveau, paquets préparés/publics
+et metteur à jour réussis ; preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md`.
 Confirmation des adresses externes et avertissement de réécriture des documents signés inchangés.
 
 ## Coordonnées (SUNI-031c)

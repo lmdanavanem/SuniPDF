@@ -239,12 +239,14 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     statuts** écrits selon ISO 32000-1 mais **jamais testés dans Acrobat, Foxit ni Chrome** (réponses sans icône :
     apparence vide + `F 4`), pas de modèle d'état « Marked » ; **lecture détaillée** des annotations (panneau,
     sélection) demandée à la demande et par page, qui relit tout le document. Navigation nommée/XYZ livrée en
-    0.11.0 (A49). **0.15.0 en développement** ajoute le remplacement de cible existante UI/CLI (D106) : URI autorisée
+    0.11.0 (A49). **0.15.0** ajoute le remplacement de cible existante UI/CLI (D106) : URI autorisée
     ou page physique Fit, vue détaillée explicitement remplacée. Zone/style/noms/commentaires, réponses et données
     indépendantes conservés ; `A`/`Dest`/`AA` remplacés ensemble. ReadOnly (64), Locked (128), LockedContents (512),
     drapeaux négatifs/malformés ou indirects illisibles : édition refusée. Cible inconnue : adresse vide, jamais page 1.
     Un Annuler conserve géométrie/navigation ; éditions et changements d'onglet ferment les boîtes périmées.
-    Validation en cours dans `PROJECT_STATUS.fr.md` ; la 0.14.0 reste Latest. Launch / JavaScript / GoToR jamais
+    Publié en 0.15.0 ; contrôles locaux, CI, mises à niveau, paquets préparés/publics et metteur à jour réussis ;
+    preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
+    Launch / JavaScript / GoToR jamais
     exécutées ; **redimensionnement et style réservés aux annotations de SuniPDF**
     (`/NM` préfixé) : celles d'un autre producteur se déplacent, se commentent, se suppriment (surlignages et notes se
     recolorent aussi) ; pas de gomme, de polygone, de nuage, de tampon, de pièce jointe, de bordure pointillée ;

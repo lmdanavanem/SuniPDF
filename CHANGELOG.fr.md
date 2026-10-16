@@ -5,10 +5,18 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.15.0] — Non publiée
+## [0.15.0] — 2026-10-16
 
-Validation de l'implémentation en cours ; la 0.14.0 reste la Latest publiée. Résultats exécutés dans
-`docs/PROJECT_STATUS.fr.md` ; aucun résultat de paquet ou de publication 0.15.0 annoncé ici.
+Validation locale réussie : 429 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy,
+894 clés EN/FR, 68 contrôles qpdf et quatre documents licenciés (744 pages ; 48,891 s, pic mémoire enfant
+328 736 768 octets). Source : `952f8699cac451e7c3004b6d816105d52e41f249`.
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem`, release
+`414866395`, avec six fichiers. [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488) et
+[job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541) réussis,
+ainsi que treize scénarios portables et sept bases MSI. Six fichiers préparés/publics et contrôles renforcés réussis,
+dont cibles non chiffrées/protégées, les deux mots de passe, identité/zone des liens et PNG des pages inchangés.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets
+sans installation. Preuves exécutées et limites restantes dans `docs/PROJECT_STATUS.fr.md`.
 
 ### Ajouts
 - Modifier un lien existant via **Modifier la destination** ou double-clic avec la sélection d'annotations.
@@ -30,7 +38,7 @@ signés conservés. Contrôles natifs interactifs, matériels et lecteurs tiers 
 
 ## [0.14.0] — 2026-10-16
 
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem`, release
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem` (Latest à cette date), release
 `414812776`, avec six fichiers vérifiés dans `dist/`. Source : `af532888804c196aabe216b8f6a2980c3d1e9e2d`.
 Validation réussie : 420 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 890 clés EN/FR,
 63 contrôles qpdf et quatre documents NIST/NBS licenciés (744 pages ; 53,91 s localement). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)

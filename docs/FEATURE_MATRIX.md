@@ -45,7 +45,7 @@ five MSI baselines. Six staged/public files and enhanced binary checks passed, i
 batches and both passwords. Verified copies are in `dist/`; the production updater verified the 19,730,578-byte
 Latest x64 ZIP without installation. Detailed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-[0.14.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem`,
+[0.14.0 is published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem` (Latest at the time),
 release `414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests
 (zero failed, seven default ignored), formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed documents
 (744 pages; 53.91 seconds locally), Windows CI and same-source ARM64 compilation, twelve portable scenarios and
@@ -53,6 +53,14 @@ six MSI baselines. Six staged/public files and enhanced binary checks passed, in
 authoring/reset, both passwords, unaffected labels and unchanged text/page PNGs. Verified copies are in `dist/`;
 the production updater verified the 19,785,200-byte Latest x64 ZIP without installation. Evidence and remaining
 limits are in `PROJECT_STATUS.md`.
+
+[0.15.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem`,
+release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation passed: 429 workspace tests
+(zero failed, seven default ignored), formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents
+(744 pages; 48.891 seconds locally), Windows CI and same-source ARM64 compilation, thirteen portable scenarios and
+seven MSI baselines. Six staged/public files and enhanced checks passed, including plain/protected link retargeting,
+both passwords, preserved link identity/area and unchanged page PNGs. Verified copies are in `dist/`; the production
+updater verified the 19,803,226-byte Latest x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -89,7 +97,7 @@ limits are in `PROJECT_STATUS.md`.
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
 | Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing delivered in 0.10.0 (single undo) |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
-| Links | Declared | **Done**: page/URI creation, confirmed allow-listed addresses and 0.11.0 PDFium-resolved named/XYZ/Fit/nonzero FitH navigation. **In development for 0.15.0**: edit existing targets through UI/CLI, preserving area/style/comments, with safe URI or physical-page Fit replacement and strict lock flags; validation pending (D106). Detailed views are replaced explicitly; Launch/JavaScript/remote GoTo never execute |
+| Links | Declared | **Done**: page/URI creation, confirmed allow-listed addresses and 0.11.0 PDFium-resolved named/XYZ/Fit/nonzero FitH navigation. **Delivered in 0.15.0**: edit existing targets through UI/CLI, preserving area/style/comments, with safe URI or physical-page Fit replacement and strict lock flags; local/CI/package/public/upgrade checks passed (D106). Detailed views are replaced explicitly; Launch/JavaScript/remote GoTo never execute |
 | Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
 | Custom stamps | Not documented | Planned (P3) |
 
@@ -164,6 +172,6 @@ limits are in `PROJECT_STATUS.md`.
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.14.0 ZIP/MSI published as Latest; twelve real portable scenarios and six MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.14.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.15.0 ZIP/MSI published as Latest; thirteen real portable scenarios and seven MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.15.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

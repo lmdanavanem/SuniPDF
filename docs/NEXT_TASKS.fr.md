@@ -120,7 +120,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   qpdf et préservation source. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
   de 19 730 578 octets sans installation. Preuves et limites restantes dans `PROJECT_STATUS.fr.md` (D102–D103).
 
-## 0.14.0 : création d'étiquettes et navigation conservée (publiée en Latest)
+## 0.14.0 : création d'étiquettes et navigation conservée (publiée ; Latest à cette date)
 
 - Pages/Organiser et CLI `set-page-labels`/`reset-page-labels` appliquent six styles, préfixe/départ positif sur
   une plage physique inclusive, conservent les règles hors plage et leur continuation à la frontière suivante
@@ -130,7 +130,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   opérations structurelles ; recalage sémantique futur. Navigation par libellé/`#N` physique et protection conservées.
 - Les instantanés Annuler/Rétablir conservent l'information de géométrie inchangée pour préserver la navigation
   lors d'éditions de contenu/étiquettes ; opérations structurelles toujours invalidantes (D105).
-- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem` (release
+- [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem` (Latest à cette date ; release
   `414812776`), source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation réussie : 420 tests workspace (zéro échec,
   sept ignorés par défaut), formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents NIST/NBS licenciés
   (744 pages ; 53,91 s localement). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
@@ -141,7 +141,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   inchangés. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64 de 19 785 200 octets
   sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D104–D105).
 
-## 0.15.0 : modifier les destinations de liens existants (en développement)
+## 0.15.0 : modifier les destinations de liens existants (publiée en Latest)
 
 - Réutiliser la boîte de lien via Modifier la destination/double-clic, préremplir les destinations nommées/XYZ
   résolues et remplacer explicitement les vues de page par Fit. Cible inconnue : adresse vide, jamais page 1 implicite.
@@ -149,7 +149,15 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   additionnelles et conservent zone/style/noms/commentaires/réponses, données indépendantes et protection (D106).
 - Respecter ReadOnly/Locked/LockedContents directs/indirects ; drapeaux malformés : édition refusée. Un Annuler conserve
   géométrie/navigation. Éditions/changements d'onglet abandonnent les boîtes périmées ; protections CLI existantes conservées.
-- Validation/publication en cours ; la 0.14.0 reste Latest. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) sous `lmdanavanem`, release
+  `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Contrôles locaux réussis : 429 tests workspace (zéro échec,
+  sept ignorés par défaut), formatage/Clippy, 894 clés EN/FR, 68 contrôles qpdf et quatre documents licenciés
+  (744 pages ; 48,891 s, pic mémoire enfant 328 736 768 octets). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
+  et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541) réussis,
+  ainsi que treize scénarios portables (neuf mises à niveau dont 0.14.0 et quatre protections contre les échecs), sept
+  bases MSI (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0/0.14.0), six fichiers préparés/publics et contrôles renforcés.
+  Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets
+  sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D106).
 
 ## Travail restant au-delà de ces lots
 
@@ -269,7 +277,7 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   l'enregistrement et à la fermeture ; gomme ;
 - polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
   incorporée) ;
-- création de vues de destination détaillées au-delà de Fit ; remplacement de cible suivi dans le lot 0.15.0 (D106) ;
+- création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
 

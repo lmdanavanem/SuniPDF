@@ -119,7 +119,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,730,578-byte Latest x64 ZIP without
   installation. Evidence and remaining limits are in `PROJECT_STATUS.md` (D102–D103).
 
-## 0.14.0: page-label authoring and navigation retention (published as Latest)
+## 0.14.0: page-label authoring and navigation retention (published; Latest at the time)
 
 - Pages/Organize and CLI `set-page-labels`/`reset-page-labels` author an inclusive physical range with six styles,
   prefix/positive start, preserve outside rules and restore their continuation at the following boundary (D104).
@@ -129,7 +129,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   semantic rebasing is future work. Existing duplicate-label/physical `#N` navigation and protection remain.
 - Carry geometry-preservation state in Undo/Redo snapshots so content/label changes retain navigation;
   structural operations still invalidate it (D105).
-- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem` (release
+- [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem` (Latest at the time; release
   `414812776`), source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests (zero failed,
   seven default ignored), formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed NIST/NBS documents
   (744 pages; 53.91 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38883739746)
@@ -140,7 +140,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,785,200-byte Latest x64 ZIP without
   installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D104–D105).
 
-## 0.15.0: editing existing link targets (in development)
+## 0.15.0: editing existing link targets (published as Latest)
 
 - Reuse the link dialog through Edit target/double-click, prefill resolved named/XYZ destinations and explicitly
   replace page views with whole-page Fit. Unsupported targets start as an empty address, never implicit page 1.
@@ -148,7 +148,15 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   together and retain area/style/names/comments/replies, unrelated data and protection (D106).
 - Respect direct/indirect ReadOnly/Locked/LockedContents flags; malformed flags refuse editing. One undo preserves
   geometry/navigation. Edits/tab switches discard stale dialogs. CLI `set-link-target` keeps existing output guards.
-- Validation and publication are pending; 0.14.0 remains Latest. Executed evidence belongs in `PROJECT_STATUS.md`.
+- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under `lmdanavanem`, release
+  `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Local gates passed: 429 workspace tests (zero failed,
+  seven default ignored), formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents (744 pages;
+  48.891 seconds, peak child memory 328,736,768 bytes). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343488)
+  and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38889343639/job/116934762541)
+  passed, along with thirteen portable scenarios (nine upgrades including 0.14.0 and four failure guards), seven
+  MSI baselines (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0/0.14.0), six staged/public files and enhanced binary checks.
+  Verified copies are in `dist/`; the production updater verified the 19,803,226-byte Latest x64 ZIP without
+  installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D106).
 
 ## Remaining work beyond these lots
 
@@ -266,7 +274,7 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
 - polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
-- richer destination-view authoring beyond whole-page Fit; existing-link replacement is tracked in the 0.15.0 lot (D106);
+- richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 

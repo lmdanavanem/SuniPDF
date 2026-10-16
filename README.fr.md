@@ -29,7 +29,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Domaine | Détail |
 |---|---|
 | Lire | Onglets, vues continue/page unique/double page/Livre, création/réinitialisation des étiquettes et page physique `#N`, destinations précises des liens/signets, rotation de vue, plein écran, historique de position/zoom, tuiles, recherche et sélection logique entre pages |
-| Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
+| Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens aux destinations autorisées modifiables, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
 | Remplir et signer | AcroForm, texte libre des listes modifiables, exports radio `/Opt`, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles/paraphes dessinés, saisis ou importés, pose atomique sur toutes les pages/la sélection, date |
@@ -40,29 +40,24 @@ Licence MIT ou Apache-2.0, au choix.
 | Convertir | Images → PDF, PDF → PNG, optimisation sans perte, compression des images avec perte vers une nouvelle copie ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo ; lots séquentiels compression/OCR |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
 | Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
-| Automatiser | `sunipdf-cli` : 53 commandes dans la source 0.15.0 (52 en 0.14.0 publiée), JSON et codes stables ; nouvelle commande `set-link-target` en validation |
+| Automatiser | `sunipdf-cli` : 53 commandes JSON et codes stables, dont `set-link-target`, `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` et `sign` |
 
 Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes
 arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabilité des signatures restent des contrôles QA distincts.
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.14.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0)** sous `lmdanavanem`.
-420 tests du workspace, formatage/Clippy, 890 clés EN/FR, 63 contrôles qpdf et quatre documents NIST/NBS licenciés
-(744 pages ; 53,91 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, douze scénarios portables et six
-bases de mise à niveau MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies
-vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 785 200 octets sans installation.
+**[0.15.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0)** sous `lmdanavanem`.
+429 tests du workspace, formatage/Clippy, 894 clés EN/FR, 68 contrôles qpdf et quatre documents NIST/NBS licenciés
+(744 pages ; 48,891 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, treize scénarios portables
+et sept bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies vérifiées
+dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation.
 Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-Nouveautés **0.14.0** : créer des étiquettes de navigation sur une plage physique ou les réinitialiser
-toutes, depuis Pages/Organiser et deux commandes CLI. Styles décimal, romain, lettres et préfixe seul ; étiquettes
-hors plage conservées. Annuler/Rétablir préserve la navigation si la géométrie des pages est inchangée. Les signatures
-visuelles saisies et multipages restent disponibles depuis 0.13.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
-
-En développement pour **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
+Nouveautés **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
 double-clic ou `set-link-target`, en conservant zone, apparence et commentaires. Choisir une adresse web/mail
-autorisée ou une page physique affichée en entier. Liens verrouillés/en lecture seule refusés. Validation en
-cours ; la Latest publiée reste 0.14.0. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
+autorisée ou une page physique affichée en entier. Liens verrouillés/en lecture seule refusés. Création d'étiquettes
+et navigation conservée par Annuler/Rétablir restent disponibles depuis 0.14.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

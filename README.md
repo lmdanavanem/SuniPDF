@@ -27,7 +27,7 @@
 | Area | Features |
 |---|---|
 | Read | Tabs, continuous/single-page/two-page/Book views, page-label authoring/reset and physical `#N` navigation, precise link/bookmark destinations, view rotation, full screen, per-tab position/zoom history, tiled rendering, search and logical cross-page selection |
-| Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
+| Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links with editable safe destinations, reply threads |
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages; extraction/split preserve source encryption, passwords and permissions |
 | Fill and sign | AcroForm filling, editable drop-down text, radio `/Opt` export values, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; drawn/typed/imported visual signatures and initials, atomic all/selected-page placement, date |
@@ -38,29 +38,25 @@
 | Convert | Images to PDF, PDF to PNG, lossless optimization, lossy image compression to a new copy; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo; sequential multi-file compression/OCR |
 | Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
 | Certificates | Saved-byte integrity verification and incremental PFX/P12 signing into a new copy; certificate trust, revocation and trusted timestamps are unchecked; encrypted PDF signing is refused |
-| Automate | `sunipdf-cli`: 53 commands in the 0.15.0 source (52 in published 0.14.0), JSON output and stable exit codes; new `set-link-target` is under validation |
+| Automate | `sunipdf-cli`: 53 commands with JSON output and stable exit codes, including `set-link-target`, `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` and `sign` |
 
 All 14 task tools have real commands. Reading follows PDFium's logical character order; arbitrary untagged columns
 are not reconstructed. Physical printing, ARM64 hardware and third-party signature interoperability remain separate QA checks.
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**[0.14.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0)** under `lmdanavanem`.
-420 workspace tests, formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed NIST/NBS documents
-(744 pages; 53.91 seconds locally) passed, alongside final Windows CI, ARM64 compilation, twelve portable scenarios and six
-MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks passed; verified files are
-in `dist/`. The production updater verified the 19,785,200-byte Latest x64 ZIP without installation.
+**[0.15.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0)** under `lmdanavanem`.
+429 workspace tests, formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed NIST/NBS documents
+(744 pages; 48.891 seconds locally) passed, alongside final Windows CI, ARM64 compilation, thirteen portable
+scenarios and seven MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks
+passed; verified copies are in `dist/`. The production updater verified the 19,803,226-byte Latest x64 ZIP
+without installation.
 [Project status](docs/PROJECT_STATUS.md) records source, release evidence and hardware/interoperability limits.
 
-New in **0.14.0**: create navigation page labels over a physical page range, or reset all labels,
-through Pages/Organize and two CLI commands. Decimal, Roman, letter and prefix-only styles preserve the labels
-outside the chosen range. Undo/Redo preserves navigation for changes that keep page geometry. Typed and
-multi-page visual signatures remain available from 0.13.0; see the [roadmap](docs/ROADMAP.md).
-
-In development for **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
+New in **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
 `set-link-target`, preserving its area, appearance and comments. Choose a safe web/mail address or a physical
-page fitted to the window. Locked/read-only links are refused. Validation is pending; the published Latest
-remains 0.14.0. See [Project status](docs/PROJECT_STATUS.md).
+page fitted to the window. Locked/read-only links are refused. Page-label authoring and navigation-preserving
+Undo/Redo remain available from 0.14.0; see the [roadmap](docs/ROADMAP.md).
 
 ## Screenshots
 

@@ -3,7 +3,7 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.14.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0), publiée en Latest
+Ce guide couvre [SuniPDF 0.15.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
 
 ## Installation
@@ -137,7 +137,7 @@ complète** (Ouvrir dans le navigateur, Copier l'adresse, Annuler) : rien ne s'o
 adresses `http`, `https` et `mailto` sont acceptées. Les actions de lancement de programme ou de script ne sont
 jamais exécutées.
 
-**Modifier une cible existante — 0.15.0 en développement.** Avec **Sélectionner une annotation** (A), sélectionnez
+**Modifier une cible existante — disponible en 0.15.0.** Avec **Sélectionner une annotation** (A), sélectionnez
 le lien puis **Modifier la destination**, ou double-cliquez dessus. Choisissez une adresse `http`, `https` ou
 `mailto`, ou un numéro de page physique. Une destination nommée/XYZ résolue préremplit sa page. Remplacer une
 cible de page affiche la page entière ; position/zoom détaillés ne sont pas conservés, comme indiqué dans la boîte.
@@ -146,7 +146,7 @@ conserve zone, apparence, nom, commentaires et réponses. Liens en lecture seule
 non modifiables ; drapeaux malformés également refusés. Annuler/Échap conserve la cible d'origine. Un Ctrl+Z annule
 le changement ; enregistrez explicitement pour le garder. Autres éditions ou changement d'onglet ferment la boîte
 pour éviter un indice d'annotation périmé. L'avertissement existant de réécriture des PDF signés s'applique.
-Validation en cours ; ces ajouts sont absents des paquets 0.14.0 publiés.
+Ces ajouts figurent dans les paquets 0.15.0 publiés ; contrôles exécutés et limites restantes dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 Le panneau **Commentaires** (F7) groupe les annotations de la page en **fils** : auteur, date, texte, statut de
 relecture (Aucun, Accepté, Refusé, Annulé, Terminé), réponses en retrait. **Répondre** ajoute une réponse sans icône
@@ -554,7 +554,7 @@ sunipdf-cli info appendix.pdf
 sunipdf-cli reset-page-labels appendix.pdf --out unlabelled.pdf
 ```
 
-**0.15.0 en développement :** `set-link-target` utilise `--page` (page physique 1 par défaut) et `--index`
+**Disponible en 0.15.0 :** `set-link-target` utilise `--page` (page physique 1 par défaut) et `--index`
 obligatoire (indice d'annotation à partir de 0, retourné par `annotations`). Fournissez exactement une option
 `--goto-page N` ou `--url ADRESSE`, plus `--out` et `--password` facultatif. Une cible de page utilise Fit ; seules
 les adresses `http`, `https`, `mailto` sont acceptées. Protections de sortie existantes conservées ; une saisie
