@@ -183,7 +183,7 @@ A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (
      300 « Page suiv. » puis Fin puis 300 « Page préc. » : mémoire privée stable vers 810-830 Mo (WorkingSet
      438 Mo) après 175 Mo à l'ouverture ; pas de croissance au-delà (pilote OpenGL NVIDIA, copies système des
      textures comprises). Plafonds en constantes (`view.rs`, `worker.rs`), pas de réglage utilisateur.
-A35. **Signature manuscrite = image sans preuve cryptographique** : copiable ou supprimable par un éditeur.
+A35. **Signature visuelle = image sans preuve cryptographique** : dessinée, saisie ou importée, copiable ou supprimable par un éditeur.
      La CLI `add-image` indique `digital_signature: false`. La signature CMS/PFX est un autre parcours dans
      Utiliser un certificat (A44) ; l’application avertit avant la réécriture d’un PDF signé.
 A36. **Signatures enregistrées en clair** : PNG dans `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
@@ -197,9 +197,15 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      transparent) ; images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
      l'en-tête, même borne de 512 Mio pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
      à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
-     caractère, chiffres Helvetica), non mesurée ; pas de signature **tapée** (police manuscrite : dépend de
-     l'incorporation de polices, A7) ; parapher toutes les pages d'un coup n'est pas proposé (Maj+clic page par
-     page) ; bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
+     caractère, chiffres Helvetica), non mesurée. **Développement 0.13.0** : nom/paraphe saisi et aperçu natif
+     explicite (une ligne, 256 caractères, 1600 px/côté ; Times italique par défaut, contrôles existants des glyphes
+     et droits d'incorporation TrueType standard/système), pose courante/toutes/sélection. Saisie, changement de mode
+     ou annulation de boîte/document invalident l'aperçu. Même centre en points PDF affichés, ajusté aux bords visibles,
+     réduction seulement si trop grand ; aucun positionnement relatif proportionnel. L'annulation est vérifiée entre
+     les pages, pas pendant un appel natif PDFium ; un lot volumineux demande aussi un instantané et une copie temporaire
+     en mémoire. Un undo rétablit le lot entier ; la source change seulement à Enregistrer. CLI : ajustement opt-in
+     par `add-image --pages`, sémantique historique de `--page` conservée. Validation/publication en cours ; 0.12.0
+     reste Latest. Bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
      (le contenu se resserre d'autant à l'image qui suit l'apparition de la barre).
 A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calculs et actions jamais exécutés.
      La 0.10.0 implémente création texte/case/radio/listes, export XFDF et import strict borné JSON/XFDF/FDF de valeurs.

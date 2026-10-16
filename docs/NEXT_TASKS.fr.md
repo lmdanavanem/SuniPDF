@@ -101,6 +101,17 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   contrôles renforcés des binaires. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
   Fichiers vérifiés dans `dist/` ; preuves et limites dans `PROJECT_STATUS.fr.md` (D100–D101).
 
+## 0.13.0 : signatures visuelles saisies et lots de pages (en développement)
+
+- Aperçu local explicite d'un nom/paraphe saisi, sélecteur standard/TrueType système existant,
+  contrôles de glyphes/incorporation et parcours PNG transparent/bibliothèque réutilisés (D102). Times italique
+  par défaut ; une ligne de 256 caractères au plus et aperçu limité à 1600 pixels de côté.
+- Page courante/toutes les pages/sélection Organiser capturée avant de quitter la grille ; même centre en
+  points affichés, proportions conservées, annulation/restauration atomiques et un undo pour le lot (D103).
+  CLI `add-image --pages` ajoute le lot sans modifier le comportement/JSON historique de `--page`.
+- Validation de l'implémentation en cours. Aucune publication 0.13.0 annoncée ; la 0.12.0 reste Latest jusqu'à
+  réussite des contrôles de release. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
 ## Travail restant au-delà de ce lot
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -162,8 +173,7 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 
 ## Après sign-image (signature visuelle, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A35–A37, décisions D054–D060) :
-- signature **tapée** (nom rendu dans une police manuscrite) : dépend de l'incorporation de polices (A7) ;
-- parapher **toutes les pages** d'un coup (aujourd'hui Maj+clic, page par page) ;
+- Signatures saisies et pose sur toutes les pages/la sélection implémentées pour 0.13.0 ; validation en cours (D102–D103).
 - chiffrement DPAPI des signatures enregistrées (ADR à écrire, D055) ;
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
   ombre portée ; pression du stylet si egui l'expose un jour.

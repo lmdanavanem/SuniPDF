@@ -514,8 +514,12 @@ enum Command {
         /// Image file; a PNG with transparency is used as is.
         #[arg(long)]
         image: PathBuf,
-        #[arg(long, default_value_t = 1)]
+        #[arg(long, default_value_t = 1, conflicts_with = "pages")]
         page: usize,
+        /// Place once on each selected page: all, 1,3-5. The image shrinks if necessary and its
+        /// position is clamped inside each displayed page; --x/--y specify the requested corner.
+        #[arg(long)]
+        pages: Option<String>,
         /// Bottom-left corner, in points from the bottom-left of the page as displayed.
         #[arg(long, allow_negative_numbers = true)]
         x: f32,
@@ -1512,6 +1516,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             file,
             image,
             page,
+            pages,
             x,
             y,
             width,
@@ -1522,6 +1527,10 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             use sunipdf_core::signature_image as sig;
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
+            let selection = pages
+                .as_deref()
+                .map(|pages| parse_pages(pages, doc.page_count()).map(unique))
+                .transpose()?;
             let mut img = sig::load(&image, 4096)?;
             if let Some(t) = remove_background {
                 img = sig::trim(&sig::remove_background(&img, t), 4).ok_or_else(|| {
@@ -1532,6 +1541,29 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 return Err(EngineError::Other("image is fully transparent".into()));
             }
             let (w, h) = img.dimensions();
+            if let Some(selection) = selection {
+                let height = width * h as f32 / w as f32;
+                let count = doc.place_signature_image(
+                    &selection,
+                    &image::DynamicImage::ImageRgba8(img),
+                    (x + width / 2.0, y + height / 2.0),
+                    width,
+                    &std::sync::atomic::AtomicBool::new(false),
+                    |_, _| {},
+                )?;
+                doc.save_as(&out)?;
+                return Ok(serde_json::json!({
+                    "out": out,
+                    "pages": selection.iter().map(|p| p + 1).collect::<Vec<_>>(),
+                    "count": count,
+                    "x": x,
+                    "y": y,
+                    "width_pt": width,
+                    "height_pt": height,
+                    "background_removed": remove_background.is_some(),
+                    "digital_signature": false,
+                }));
+            }
             doc.add_image_data(p, &image::DynamicImage::ImageRgba8(img), x, y, width)?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({

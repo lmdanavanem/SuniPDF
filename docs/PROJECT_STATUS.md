@@ -1,9 +1,32 @@
-# Project status - updated 2026-10-16 (version 0.12.0)
+# Project status - updated 2026-10-16 (version 0.13.0 in validation)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.13.0: typed and multi-page visual signatures (validation in progress)
+
+Create a visual signature or initials by typing one line, choosing an existing standard or installed TrueType
+font and black/blue ink, then explicitly previewing a native transparent PNG. Times italic is the default.
+Text, font, ink and mode changes invalidate old previews; switching documents discards pending responses.
+The optional local library reuses its existing PNG format; it remains unencrypted and does not prove identity.
+Certificate-based CMS/PFX signing is a separate existing function.
+
+Choose Current page, All pages or a captured Organize selection. A single batch validates all targets, works on
+a temporary document and commits once, with cooperative cancellation and one Undo/Redo. Signature previews and
+actual placement share fitted geometry: preserve aspect and physical size, shrinking only for a smaller page.
+The same displayed-page centre in PDF points is used on every target. Structural edits discard captured targets.
+CLI `add-image --pages` is additive; the existing single-page command and JSON remain compatible.
+
+Local workspace validation passed: **410 tests, zero failed, seven default ignored**, and **870 matching EN/FR
+keys**. Native core tests cover typed transparency/font checks, crop/rotation/protected PDFs, cancelled and failed
+batches, save/reopen and independent qpdf checks. Real worker tests verify non-mutating preview, progress and a
+single Undo/Redo; headless app tests check selected-page requests, stale previews, cancellation and status retention.
+Formatting, Clippy with warnings denied, **53 independent qpdf checks**, and all **four licensed NIST/NBS PDFs
+(744 pages)** passed in 76.40 seconds; peak sampled child working set was 331,522,048 bytes. Windows CI, packages,
+upgrades and publication are still being finalized. Version 0.12.0 remains stable Latest until those gates pass. No new dependency was added.
+Snapshots and the temporary document increase peak memory; native page calls cannot be cancelled mid-call.
 
 ## 0.12.0: form creation and radio export compatibility (published as Latest)
 

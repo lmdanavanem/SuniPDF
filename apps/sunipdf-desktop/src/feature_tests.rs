@@ -171,13 +171,14 @@ fn successful_save_as_updates_tab_path_and_removes_only_the_old_recovery_entry()
 }
 
 #[test]
-fn close_cancels_print_or_ocr_and_waits_for_the_worker_before_closing() {
-    for kind in [TaskKind::Print, TaskKind::Ocr] {
+fn close_cancels_running_tasks_and_waits_for_the_worker_before_closing() {
+    for kind in [TaskKind::Print, TaskKind::Ocr, TaskKind::Signature] {
         let (mut app, requests, responses) = test_app();
         let ctx = egui::Context::default();
         match kind {
             TaskKind::Print => app.printing.begin(4),
             TaskKind::Ocr => app.ocr.begin(4),
+            TaskKind::Signature => app.sign.begin(4),
         }
         responses
             .send(Response::TaskProgress {
@@ -190,6 +191,7 @@ fn close_cancels_print_or_ocr_and_waits_for_the_worker_before_closing() {
         let progress = match kind {
             TaskKind::Print => (app.printing.done, app.printing.total),
             TaskKind::Ocr => (app.ocr.done, app.ocr.total),
+            TaskKind::Signature => (app.sign.done, app.sign.total),
         };
         assert_eq!(progress, (1, 4));
         app.execute(&ctx, Command::RotateClockwise);
@@ -203,6 +205,7 @@ fn close_cancels_print_or_ocr_and_waits_for_the_worker_before_closing() {
         let cancelled = match kind {
             TaskKind::Print => app.printing.cancel.load(Ordering::Relaxed),
             TaskKind::Ocr => app.ocr.cancel.load(Ordering::Relaxed),
+            TaskKind::Signature => app.sign.cancel.load(Ordering::Relaxed),
         };
         assert!(cancelled);
         assert!(!requests.try_iter().any(|r| matches!(r, Request::Close)));
@@ -215,6 +218,116 @@ fn close_cancels_print_or_ocr_and_waits_for_the_worker_before_closing() {
         app.handle_responses(&ctx);
         assert!(app.document.is_none());
         assert!(requests.try_iter().any(|r| matches!(r, Request::Close)));
+    }
+}
+
+#[test]
+fn signature_page_scopes_are_invalidated_only_by_structural_document_changes() {
+    use crate::sign::{Placing, SignKind};
+
+    for pages_unchanged in [false, true] {
+        for (captured, dialog) in [(true, false), (false, false), (false, true)] {
+            let (mut app, requests, responses) = test_app();
+            let ctx = egui::Context::default();
+            if dialog {
+                app.sign.open = Some(SignKind::Signature);
+            } else {
+                app.sign.placing = Some(Placing::Image {
+                    image: std::sync::Arc::new(image::DynamicImage::ImageRgba8(
+                        image::RgbaImage::from_pixel(2, 1, image::Rgba([0, 0, 0, 255])),
+                    )),
+                    thumb: ctx.load_texture(
+                        "signature-scope-test",
+                        egui::ColorImage::from_rgba_unmultiplied(
+                            [2, 1],
+                            &[0, 0, 0, 255, 0, 0, 0, 255],
+                        ),
+                        Default::default(),
+                    ),
+                    width_pt: 120.0,
+                    aspect: 0.5,
+                    pages: captured.then(|| vec![0]),
+                });
+            }
+            let mut changed = state(app.document.as_ref().unwrap().info.path.clone(), true);
+            changed.pages_unchanged = pages_unchanged;
+            responses.send(Response::DocumentChanged(changed)).unwrap();
+            app.handle_responses(&ctx);
+            if dialog {
+                assert_eq!(app.sign.open.is_some(), pages_unchanged);
+            } else {
+                assert_eq!(app.sign.placing.is_some(), pages_unchanged || !captured);
+            }
+            assert!(!requests.try_iter().any(|request| matches!(
+                request,
+                Request::Edit(_) | Request::PlaceSignature { .. }
+            )));
+        }
+    }
+}
+
+#[test]
+fn signature_completion_survives_document_change_and_preserves_repeat_hint() {
+    for repeat_hint in [None, Some("Keep placing with Shift")] {
+        let (mut app, _requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.sign.begin(2);
+        app.edit.pending_status = repeat_hint.map(str::to_owned);
+        let expected = repeat_hint.unwrap_or(app.t("signature.done")).to_owned();
+        responses
+            .send(Response::TaskDone {
+                kind: TaskKind::Signature,
+                result: Ok(()),
+            })
+            .unwrap();
+        responses
+            .send(Response::DocumentChanged(state(
+                app.document.as_ref().unwrap().info.path.clone(),
+                true,
+            )))
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(!app.sign.busy);
+        assert!(app.dirty && app.can_undo);
+        assert_eq!(app.status_msg.as_deref(), Some(expected.as_str()));
+        assert!(app.edit.pending_status.is_none() && app.edit.hold_status);
+    }
+}
+
+#[test]
+fn failed_signature_batch_clears_repeat_hint_without_marking_document_modified() {
+    for cancelled in [false, true] {
+        let (mut app, _requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.sign.begin(2);
+        app.edit.pending_status = Some("Keep placing with Shift".into());
+        responses
+            .send(Response::TaskDone {
+                kind: TaskKind::Signature,
+                result: Err(if cancelled {
+                    EngineError::Cancelled
+                } else {
+                    EngineError::Other("invalid signature target".into())
+                }),
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(!app.sign.busy && !app.dirty && !app.can_undo);
+        assert!(app.edit.pending_status.is_none());
+        if cancelled {
+            assert_eq!(app.status_msg.as_deref(), Some(app.t("status.cancelled")));
+        } else {
+            assert!(app.error.is_some());
+        }
+        responses
+            .send(Response::DocumentChanged(state(
+                app.document.as_ref().unwrap().info.path.clone(),
+                false,
+            )))
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(app.status_msg.is_none() && !app.edit.hold_status);
+        assert!(!app.dirty && !app.can_undo);
     }
 }
 

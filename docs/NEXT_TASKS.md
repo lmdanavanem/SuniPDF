@@ -100,6 +100,17 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   enhanced binary checks. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
   Verified files are in `dist/`; evidence and limits are in `PROJECT_STATUS.md` (D100–D101).
 
+## 0.13.0: typed visual signatures and page batches (in development)
+
+- Local explicit preview of a typed name/initials, using the existing standard/system TrueType font picker,
+  glyph/embedding checks and transparent PNG/library flow (D102). Times italic is the portable default;
+  input is one line of at most 256 characters and preview sides are capped at 1600 pixels.
+- Current/all/Organize-selected targets, captured before leaving the grid; one common display-space centre,
+  aspect-preserving fitting, atomic cancellation/rollback and one undo for a multi-page placement (D103).
+  CLI `add-image --pages` adds batch placement while preserving existing `--page` behaviour/JSON.
+- Implementation validation is ongoing. No 0.13.0 publication is claimed; 0.12.0 remains Latest until its release
+  gates pass. Executed evidence belongs in `PROJECT_STATUS.md`.
+
 ## Remaining work beyond this lot
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -160,8 +171,7 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 
 ## After sign-image (visual signature, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060):
-- **typed** signature (name rendered in a handwriting font): depends on font embedding (A7);
-- initial **every page** at once (today Shift+click, page by page);
+- Typed signatures and all/selected-page placement are implemented for 0.13.0; validation is ongoing (D102–D103).
 - DPAPI encryption of the saved signatures (ADR to write, D055);
 - stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
   cast shadow; pen pressure if egui ever exposes it.

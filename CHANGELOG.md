@@ -5,6 +5,30 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.13.0] - Unreleased
+
+Implementation is under validation; 0.12.0 remains the published Latest release. See `docs/PROJECT_STATUS.md`.
+
+### Added
+- **Type** a visual signature or initials, select a standard/system TrueType font and black/blue ink, then
+  explicitly **Preview** locally before placement. Times italic is the default; missing glyphs and restricted
+  font embedding are refused. Input is one line of at most 256 characters; the transparent PNG preview is bounded
+  to 1600 pixels per side. Text/font/ink/mode/dialog changes invalidate previous previews and pending responses.
+- Place a visual mark on the current page, all pages or an Organize selection captured when the dialog opens.
+  One click supplies the same display-space centre in PDF points for each target; marks retain aspect and physical
+  size, shrinking only to fit smaller pages. Multi-page placement has progress, cancellation between targets,
+  atomic rollback and one undo; save is still explicit.
+- CLI `add-image --pages "all|1,3-5"` reuses atomic fitted placement. Existing `--page` behaviour and single-page
+  JSON stay compatible; only the batch option clamps/fits placement.
+
+### Fixed
+- Keep oversized visual marks and their placement previews inside small pages using the same fitted geometry.
+- Discard pending signature previews and page-target snapshots when cancelling, switching documents or changing page structure.
+
+Visual signatures remain editable images, with no identity/integrity proof; CMS/PFX signing is a separate
+existing function. Optional saved signatures remain plain local PNG files. Hardware/native interaction and
+third-party reader checks remain separate; distribution packages are unsigned.
+
 ## [0.12.0] - 2026-10-16
 
 [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release

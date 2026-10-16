@@ -57,6 +57,10 @@ Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 Nouveautés 0.12.0 : création de listes déroulantes modifiables et exports radio `/Opt` cohérents entre interface et
 échanges JSON/XFDF/FDF. Les radios malformés ou ambigus restent en lecture seule ; voir la [roadmap](docs/ROADMAP.fr.md).
 
+En développement pour **0.13.0** : signatures visuelles saisies avec aperçu local explicite, pose en un clic sur
+la page courante/toutes les pages/la sélection, géométrie ajustée, annulation du lot et un undo. Ces fonctions ne
+figurent pas dans les paquets 0.12.0 publiés ; contrôles et publication suivis dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

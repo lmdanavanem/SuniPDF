@@ -183,7 +183,7 @@ A28. **View memory**: bounded but notable. Page textures 192 MiB (excluding scre
      300 "Page Down" then End then 300 "Page Up": private memory stable around 810-830 MB (WorkingSet
      438 MB) after 175 MB at opening; no growth beyond (NVIDIA OpenGL driver, system copies of the
      textures included). Caps as constants (`view.rs`, `worker.rs`), no user setting.
-A35. **Handwritten signature = image without cryptographic proof**: another editor can copy or delete it.
+A35. **Visual signature = image without cryptographic proof**: drawn, typed or imported, another editor can copy or delete it.
      CLI `add-image` reports `digital_signature: false`. CMS/PFX signing is a separate Use a certificate
      workflow (A44); the application warns before rewriting a signed PDF.
 A36. **Signatures saved unencrypted**: PNG in `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
@@ -197,9 +197,15 @@ A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pr
      transparent PNG); imported images limited to 16,384 px per side and 512 MiB decoded (refused when reading
      the header, same 512 MiB bound for Insert Image, Replace Image and Images → PDF), then reduced
      to 1600 px per side; the placed date is kept inside the page over an **estimated** width (0.556 em per
-     character, Helvetica digits), not measured; no **typed** signature (handwriting font: depends on
-     font embedding, A7); initialling every page at once is not offered (Shift+click page by
-     page); full library: the dialog body scrolls and its floating bar gets a 10 px gutter
+     character, Helvetica digits), not measured. **0.13.0 development** adds typed name/initials with explicit
+     native preview (one line, 256 characters, 1600 px/side; Times italic default, existing standard/system
+     TrueType glyph/embedding checks), and current/all/selected-page placement. Preview is invalidated by
+     edits, mode changes or dialog/document cancellation. Multi-page marks share a display-space centre in
+     PDF points, clamp to visible page edges and shrink only when oversized; no relative-position scaling.
+     Cancellation is checked between targets, never inside a native PDFium call; large batches also require
+     a document snapshot and temporary in-memory copy. One undo restores the whole operation; source files
+     change only on Save. CLI fitting is opt-in through `add-image --pages`; old `--page` semantics stay unchanged.
+     Validation/publication is ongoing; 0.12.0 remains Latest. Full library: the dialog body scrolls and its floating bar gets a 10 px gutter
      (the content tightens by as much on the frame following the bar's appearance).
 A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calculations and actions never run.
      0.10.0 implements text/checkbox/radio/combo/list creation, XFDF export and strict bounded JSON/XFDF/FDF value import.

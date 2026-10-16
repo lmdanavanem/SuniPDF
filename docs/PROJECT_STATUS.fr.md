@@ -1,9 +1,33 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.12.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.13.0 en validation)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.13.0 : signatures visuelles saisies et multipages (validation en cours)
+
+Création d'une signature visuelle ou d'un paraphe en saisissant une ligne, avec une police standard ou TrueType
+installée et une encre noire/bleue, puis aperçu explicite en PNG transparent natif. Times italique est le défaut.
+Toute modification du texte, de la police, de l'encre ou du mode invalide l'ancien aperçu ; changer de document
+écarte les réponses en attente. La bibliothèque locale facultative conserve son format PNG non chiffré, sans
+preuve d'identité. La signature CMS/PFX par certificat reste une fonction distincte déjà existante.
+
+Choix entre page courante, toutes les pages ou sélection capturée dans Organiser. Le lot valide toutes les cibles,
+travaille sur un document temporaire et valide une seule fois, avec annulation coopérative et un seul Undo/Redo.
+L'aperçu et la pose partagent une géométrie ajustée : proportions et taille physique conservées, réduction seulement
+pour une page plus petite. Même centre en points PDF affichés sur chaque cible ; les modifications structurelles
+écartent les cibles capturées. `add-image --pages` est un ajout compatible avec la commande et le JSON monopages.
+
+Validation locale réussie : **410 tests, aucun échec, sept ignorés par défaut**, **870 clés EN/FR identiques**.
+Les tests natifs couvrent aperçu/polices/transparence, recadrage/rotation/protection, annulation/erreur atomiques,
+sauvegarde/réouverture et qpdf. Le worker réel vérifie aperçu sans mutation, progression et Undo/Redo unique ;
+les tests applicatifs sans fenêtre vérifient sélection, réponses périmées, annulation et messages d'état.
+Formatage, Clippy sans avertissement, **53 contrôles qpdf** et les **quatre PDF NIST/NBS sous licence (744 pages)**
+ont réussi en 76,40 secondes ; mémoire de pointe échantillonnée des processus enfants : 331 522 048 octets.
+CI Windows, paquets, mises à jour et publication restent en cours.
+La 0.12.0 reste stable Latest jusque-là. Aucune nouvelle dépendance. Les instantanés et le document temporaire
+augmentent la mémoire de pointe ; un appel natif de page ne peut pas être interrompu en cours d'exécution.
 
 ## 0.12.0 : création de formulaires et exports radio (publiée en Latest)
 

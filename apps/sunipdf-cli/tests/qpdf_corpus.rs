@@ -158,6 +158,22 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     check(&qpdf, &destinations_saved, None);
     let original = fixture("two-pages.pdf");
     let original_bytes = std::fs::read(&original).unwrap();
+    let signature_image = temp.path().join("signature.png");
+    image::RgbaImage::from_pixel(80, 40, image::Rgba([20, 20, 20, 255]))
+        .save(&signature_image)
+        .unwrap();
+    let marked = temp.path().join("signature-pages.pdf");
+    let mut command = cli(&["add-image"], &[&fixture("boxes.pdf")]);
+    command
+        .arg("--image")
+        .arg(&signature_image)
+        .args(["--pages", "all", "--x", "100", "--y", "100", "--out"])
+        .arg(&marked);
+    let report = success(command);
+    assert_eq!(report["pages"], serde_json::json!([1, 2, 3, 4]));
+    assert_eq!(report["count"], 4);
+    assert_eq!(report["digital_signature"], false);
+    check(&qpdf, &marked, None);
     let edited = temp.path().join("edited.pdf");
     let mut command = cli(&["rotate"], &[&original]);
     command.args(["--degrees", "90", "--out"]).arg(&edited);
@@ -189,6 +205,26 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
+        let marked = temp.path().join(format!("{name}-signature-pages.pdf"));
+        let mut command = cli(&["add-image"], &[&encrypted]);
+        command
+            .arg("--image")
+            .arg(&signature_image)
+            .args([
+                "--password",
+                "package-owner",
+                "--pages",
+                "all",
+                "--x",
+                "100",
+                "--y",
+                "100",
+                "--out",
+            ])
+            .arg(&marked);
+        assert_eq!(success(command)["count"], 2);
+        check(&qpdf, &marked, Some("package-user"));
+        check(&qpdf, &marked, Some("package-owner"));
         let extracted = temp.path().join(format!("{name}-extract.pdf"));
         let mut command = cli(&["extract"], &[&encrypted]);
         command

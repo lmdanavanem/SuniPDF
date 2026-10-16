@@ -86,6 +86,14 @@ scenarios and four MSI baselines passed. All six staged/public files and enhance
 files are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
 Executed evidence and hardware/interoperability limits are recorded in `PROJECT_STATUS.md`.
 
+## 0.13.0: visual signature improvements (in development)
+
+Typed name/initials use an explicit native preview and the existing font/image/library paths. Current/all/selected
+pages share fitted display-space geometry; multi-page placement is atomic, cancellable between targets and one
+undo. CLI `add-image --pages` is additive; legacy `--page` behaviour remains compatible (D102–D103).
+Local/release validation is ongoing; 0.12.0 remains the published Latest. No hardware or third-party reader
+validation is inferred from implementation; see `PROJECT_STATUS.md`.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -111,6 +119,7 @@ text/checkbox creation and autosave/recovery.
 Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
 FDF/XFDF interchange and keyboard page widgets.
 Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
+In development for 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 

@@ -4,19 +4,21 @@
 //!
 //! **Aucune valeur cryptographique** : rien ici ne prouve l'identité du signataire ni l'intégrité
 //! du document (le libellé de la commande, le sous-titre et l'encadré de la boîte le disent). La
-//! signature numérique par certificat est une autre fonction, non livrée.
+//! signature numérique par certificat est une fonction distincte.
 
 use crate::app::{SuniApp, SCREEN_PER_PDF_POINT};
 use crate::dialog;
+use crate::editor::TextFont;
 use crate::icons::{self, glyph};
 use crate::theme;
 use crate::worker::{EditOp, Pick, Request};
 use egui::{Align2, Color32, CursorIcon, FontId, Pos2, Rect, RichText, Sense, Stroke, StrokeKind};
 use image::DynamicImage;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sunipdf_core::signature_image as sig;
-use sunipdf_core::{EngineError, PointRect, TextStyle};
+use sunipdf_core::{EngineError, FontFamily, TextStyle};
 use sunipdf_i18n::{tr, tr_args, Language};
 
 /// Côté maximal d'une image décodée (import ou bibliothèque), en pixels.
@@ -41,6 +43,27 @@ pub enum SignKind {
     #[default]
     Signature,
     Initials,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Mode {
+    #[default]
+    Draw,
+    Type,
+    Import,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Scope {
+    #[default]
+    Current,
+    All,
+    Selected,
+}
+
+struct TypedPreview {
+    source: image::RgbaImage,
+    thumb: egui::TextureHandle,
 }
 
 impl SignKind {
@@ -82,6 +105,7 @@ pub enum Placing {
         width_pt: f32,
         /// hauteur / largeur
         aspect: f32,
+        pages: Option<Vec<usize>>,
     },
     Text(String),
 }
@@ -101,7 +125,15 @@ pub struct SignState {
     /// Boîte ouverte, et sur quel type.
     pub open: Option<SignKind>,
     saved: Vec<SavedSignature>,
-    draw_mode: bool,
+    mode: Mode,
+    typed_text: String,
+    typed_font: TextFont,
+    font_filter: String,
+    typed_preview: Option<TypedPreview>,
+    preview_id: u64,
+    preview_pending: Option<u64>,
+    scope: Scope,
+    selected_pages: Vec<usize>,
     /// Traits relatifs au coin haut-gauche du pavé, en points logiques.
     strokes: Vec<Vec<Pos2>>,
     drawing: bool,
@@ -116,6 +148,10 @@ pub struct SignState {
     error: Option<&'static str>,
     confirm_delete: Option<PathBuf>,
     pub placing: Option<Placing>,
+    pub busy: bool,
+    pub done: usize,
+    pub total: usize,
+    pub cancel: Arc<AtomicBool>,
 }
 
 impl Default for SignState {
@@ -123,7 +159,15 @@ impl Default for SignState {
         Self {
             open: None,
             saved: Vec::new(),
-            draw_mode: true,
+            mode: Mode::Draw,
+            typed_text: String::new(),
+            typed_font: TextFont::Standard(FontFamily::Times),
+            font_filter: String::new(),
+            typed_preview: None,
+            preview_id: 0,
+            preview_pending: None,
+            scope: Scope::Current,
+            selected_pages: Vec::new(),
             strokes: Vec::new(),
             drawing: false,
             pad_w: 556.0,
@@ -135,6 +179,100 @@ impl Default for SignState {
             error: None,
             confirm_delete: None,
             placing: None,
+            busy: false,
+            done: 0,
+            total: 0,
+            cancel: Arc::new(AtomicBool::new(false)),
+        }
+    }
+}
+
+impl SignState {
+    fn invalidate_preview(&mut self) {
+        self.preview_id = self.preview_id.wrapping_add(1);
+        self.preview_pending = None;
+        self.typed_preview = None;
+    }
+
+    fn ready(&self) -> bool {
+        match self.mode {
+            Mode::Draw => !self.strokes.is_empty(),
+            Mode::Type => self.typed_preview.is_some() && self.preview_pending.is_none(),
+            Mode::Import => self.import.is_some() && self.import_pending.is_none(),
+        }
+    }
+
+    fn preview_request(&mut self) -> Option<(u64, String, TextStyle)> {
+        if self.mode != Mode::Type || self.typed_text.trim().is_empty() {
+            return None;
+        }
+        self.invalidate_preview();
+        let id = self.preview_id;
+        self.preview_pending = Some(id);
+        let rgb = ink(self.pen_blue);
+        let mut style = TextStyle {
+            size_pt: 48.0,
+            italic: true,
+            rgb: (rgb[0], rgb[1], rgb[2]),
+            ..Default::default()
+        };
+        match &self.typed_font {
+            TextFont::Standard(family) => style.family = *family,
+            TextFont::System(font) => style.font_file = Some(font.path.clone()),
+        }
+        Some((id, self.typed_text.clone(), style))
+    }
+
+    fn target_pages(&self, count: usize) -> Option<Vec<usize>> {
+        match self.scope {
+            Scope::Current => None,
+            Scope::All => Some((0..count).collect()),
+            Scope::Selected => Some(self.selected_pages.clone()),
+        }
+    }
+
+    pub fn begin(&mut self, total: usize) {
+        self.open = None;
+        self.busy = true;
+        self.done = 0;
+        self.total = total;
+        self.cancel.store(false, Ordering::Relaxed);
+    }
+
+    fn show_progress(&self, ctx: &egui::Context, lang: Language, dark: bool, has_icons: bool) {
+        let mut cancel = false;
+        dialog::show(
+            ctx,
+            dialog::Spec::new(
+                "signature_progress",
+                tr(lang, "signature.title"),
+                dark,
+                has_icons,
+            ),
+            |ui| {
+                ui.label(tr_args(
+                    lang,
+                    "signature.progress",
+                    &[
+                        ("done", &self.done.to_string()),
+                        ("total", &self.total.to_string()),
+                    ],
+                ));
+                ui.add(
+                    egui::ProgressBar::new(self.done as f32 / self.total.max(1) as f32)
+                        .show_percentage(),
+                );
+                if self.cancel.load(Ordering::Relaxed) {
+                    ui.label(tr(lang, "ocr.cancelling"));
+                }
+            },
+            |ui| {
+                cancel = dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|i| i.key_pressed(egui::Key::Escape));
+            },
+        );
+        if cancel {
+            self.cancel.store(true, Ordering::Relaxed);
         }
     }
 }
@@ -144,6 +282,7 @@ enum Act {
     Use(usize),
     Delete(PathBuf),
     PickImage,
+    Preview,
     Cancel,
 }
 
@@ -190,25 +329,6 @@ fn new_file_name(kind: SignKind) -> String {
         .map(|d| d.as_millis())
         .unwrap_or(0);
     format!("{}-{ms:013}.png", kind.prefix())
-}
-
-/// Rectangle (points PDF) centré sur le clic, maintenu dans la page.
-pub fn placement_rect(
-    center: (f32, f32),
-    width_pt: f32,
-    aspect: f32,
-    page: (f32, f32),
-) -> PointRect {
-    let w = width_pt.max(1.0);
-    let h = w * aspect;
-    let left = (center.0 - w / 2.0).clamp(0.0, (page.0 - w).max(0.0));
-    let bottom = (center.1 - h / 2.0).clamp(0.0, (page.1 - h).max(0.0));
-    PointRect {
-        left,
-        bottom,
-        right: left + w,
-        top: bottom + h,
-    }
 }
 
 /// Largeur par défaut : une signature d'au plus 160 pt de large et 64 pt de haut, un paraphe
@@ -297,7 +417,15 @@ fn warn_unreadable(what: &str, path: &Path, e: &EngineError) {
 impl SuniApp {
     pub fn open_sign_dialog(&mut self, kind: SignKind) {
         self.cancel_placing();
+        let selected_pages = if self.organize.active {
+            self.organize.selected.iter().copied().collect()
+        } else {
+            Vec::new()
+        };
         let st = &mut self.sign;
+        st.invalidate_preview();
+        st.scope = Scope::Current;
+        st.selected_pages = selected_pages;
         st.open = Some(kind);
         st.error = None;
         st.confirm_delete = None;
@@ -326,6 +454,11 @@ impl SuniApp {
     }
 
     pub fn sign_dialog(&mut self, ctx: &egui::Context) {
+        if self.sign.busy {
+            self.sign
+                .show_progress(ctx, self.lang(), self.settings.dark_theme, self.has_icons);
+            return;
+        }
         let Some(kind_open) = self.sign.open else {
             return;
         };
@@ -335,6 +468,8 @@ impl SuniApp {
         let p = theme::palette(dark);
         let dir_text = signatures_dir().map_or_else(String::new, |d| d.display().to_string());
         let mut kind = kind_open;
+        let fonts = self.edit.system_fonts.clone();
+        let mut want_fonts = false;
         let title = match kind {
             SignKind::Signature => "signature.title",
             SignKind::Initials => "signature.title_initials",
@@ -345,11 +480,7 @@ impl SuniApp {
             .width(600.0);
         let st = &mut self.sign;
         // Valeur de l'image précédente, comme « Apposer » du tampon.
-        let ready = if st.draw_mode {
-            !st.strokes.is_empty()
-        } else {
-            st.import.is_some()
-        };
+        let ready = st.ready();
         let mut body_act = None;
         let mut foot_act = None;
         let mut new_confirm: Option<Option<PathBuf>> = None;
@@ -370,6 +501,29 @@ impl SuniApp {
                         tr(lang, "signature.kind.initials"),
                     );
                 });
+                ui.horizontal(|ui| {
+                    ui.label(tr(lang, "signature.scope"));
+                    ui.selectable_value(
+                        &mut st.scope,
+                        Scope::Current,
+                        tr(lang, "stamp.scope.current"),
+                    );
+                    ui.selectable_value(&mut st.scope, Scope::All, tr(lang, "stamp.scope.all"));
+                    ui.add_enabled_ui(!st.selected_pages.is_empty(), |ui| {
+                        ui.selectable_value(
+                            &mut st.scope,
+                            Scope::Selected,
+                            tr(lang, "signature.scope.selected"),
+                        );
+                    });
+                });
+                if st.scope != Scope::Current {
+                    ui.label(
+                        RichText::new(tr(lang, "signature.scope.hint"))
+                            .small()
+                            .color(p.text_muted),
+                    );
+                }
                 // Encadré permanent : signature visuelle, sans valeur cryptographique.
                 let (bg, fg) = if dark {
                     (
@@ -511,7 +665,7 @@ impl SuniApp {
                     });
                 }
 
-                // Nouvelle signature : dessiner ou importer.
+                // Nouvelle signature : dessiner, saisir ou importer.
                 dialog::field_label(
                     ui,
                     tr(
@@ -522,18 +676,35 @@ impl SuniApp {
                         },
                     ),
                 );
+                let mode_before = st.mode;
                 ui.horizontal(|ui| {
-                    ui.selectable_value(&mut st.draw_mode, true, tr(lang, "signature.mode.draw"));
+                    ui.selectable_value(&mut st.mode, Mode::Draw, tr(lang, "signature.mode.draw"));
+                    ui.selectable_value(&mut st.mode, Mode::Type, tr(lang, "signature.mode.type"));
                     ui.selectable_value(
-                        &mut st.draw_mode,
-                        false,
+                        &mut st.mode,
+                        Mode::Import,
                         tr(lang, "signature.mode.import"),
                     );
                 });
-                if st.draw_mode {
-                    draw_pad(ui, st, lang, &p);
-                } else if let Some(a) = import_section(ui, st, lang, &p) {
-                    body_act = Some(a);
+                if st.mode != mode_before || kind != kind_open {
+                    st.invalidate_preview();
+                    st.error = None;
+                }
+                match st.mode {
+                    Mode::Draw => draw_pad(ui, st, lang, &p),
+                    Mode::Type => {
+                        let (act, wanted) =
+                            typed_section(ui, st, lang, &p, fonts.as_deref().map(Vec::as_slice));
+                        want_fonts |= wanted;
+                        if act.is_some() {
+                            body_act = act;
+                        }
+                    }
+                    Mode::Import => {
+                        if let Some(a) = import_section(ui, st, lang, &p) {
+                            body_act = Some(a);
+                        }
+                    }
                 }
 
                 ui.add_space(2.0);
@@ -566,11 +737,15 @@ impl SuniApp {
         if self.sign.open.is_some() {
             self.sign.open = Some(kind);
         }
+        if want_fonts {
+            self.worker.send(Request::SystemFonts);
+        }
         if let Some(c) = new_confirm {
             self.sign.confirm_delete = c;
         }
         match body_act.or(foot_act) {
             Some(Act::Cancel) => {
+                self.sign.invalidate_preview();
                 self.sign.open = None;
                 self.sign.drawing = false;
             }
@@ -617,19 +792,31 @@ impl SuniApp {
                     thumb: s.thumb.clone(),
                     width_pt: default_width(s.kind, aspect),
                     aspect,
+                    pages: self
+                        .sign
+                        .target_pages(self.document.as_ref().map_or(0, |d| d.info.page_count())),
                 };
+                self.sign.invalidate_preview();
                 self.sign.open = None;
                 self.start_placing(placing, "signature.placing_hint");
             }
             Some(Act::Place) => self.place_new(ctx, kind),
+            Some(Act::Preview) => {
+                if let Some((id, text, style)) = self.sign.preview_request() {
+                    self.sign.error = None;
+                    self.worker
+                        .send(Request::RenderSignature { id, text, style });
+                }
+            }
             None => {}
         }
     }
 
     /// Trame ou prépare l'image, l'enregistre si demandé, puis passe en mode de placement.
     fn place_new(&mut self, ctx: &egui::Context, kind: SignKind) {
+        let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
         let st = &mut self.sign;
-        let img = if st.draw_mode {
+        let img = if st.mode == Mode::Draw {
             let pts: Vec<Vec<(f32, f32)>> = st
                 .strokes
                 .iter()
@@ -652,6 +839,8 @@ impl SuniApp {
                 ),
                 TRIM_PX,
             )
+        } else if st.mode == Mode::Type {
+            st.typed_preview.as_ref().map(|p| p.source.clone())
         } else {
             let Some(imp) = &st.import else { return };
             let src = if imp.remove_bg {
@@ -704,17 +893,45 @@ impl SuniApp {
         st.strokes.clear();
         st.drawing = false;
         st.import = None;
+        st.invalidate_preview();
         let placing = Placing::Image {
             image,
             thumb,
             width_pt: default_width(kind, aspect),
             aspect,
+            pages: st.target_pages(count),
         };
         self.start_placing(placing, "signature.placing_hint");
         if save_failed {
             // La pose continue ; l'échec est annoncé dans le bandeau.
             self.error = Some("signature.error.save");
         }
+    }
+
+    pub fn on_signature_rendered(
+        &mut self,
+        ctx: &egui::Context,
+        id: u64,
+        result: Result<image::RgbaImage, EngineError>,
+    ) {
+        let st = &mut self.sign;
+        if st.open.is_none() || st.mode != Mode::Type || st.preview_pending != Some(id) {
+            return;
+        }
+        st.preview_pending = None;
+        match result {
+            Ok(source) if !sig::is_blank(&source) => {
+                let image = DynamicImage::ImageRgba8(source.clone());
+                st.typed_preview = Some(TypedPreview {
+                    source,
+                    thumb: texture(ctx, "sign-typed", &thumb_of(&image)),
+                });
+                st.error = None;
+            }
+            Ok(_) => st.error = Some("signature.error.empty"),
+            Err(e) => st.error = Some(crate::app::error_key(&e)),
+        }
+        ctx.request_repaint();
     }
 
     /// Image décodée par le thread moteur : l'import en attente, sinon un fichier de la
@@ -790,6 +1007,11 @@ impl SuniApp {
     }
 
     pub fn cancel_placing(&mut self) {
+        self.sign.open = None;
+        self.sign.invalidate_preview();
+        self.sign.scope = Scope::Current;
+        self.sign.selected_pages.clear();
+        self.sign.import_pending = None;
         if self.sign.placing.take().is_some() {
             self.status_msg = None;
         }
@@ -824,16 +1046,44 @@ impl SuniApp {
                 image,
                 width_pt,
                 aspect,
+                pages,
                 ..
             } => {
-                let r = placement_rect(pt, width_pt, aspect, (size.width_pt, size.height_pt));
-                self.worker.send(Request::Edit(EditOp::AddImageData {
-                    page,
-                    image,
-                    x: r.left,
-                    y: r.bottom,
-                    width_pt,
-                }));
+                if let Some(pages) = pages {
+                    if pages.is_empty() {
+                        self.error = Some("signature.error.pages");
+                        return;
+                    }
+                    self.edit.reselect_many = None;
+                    self.sign.begin(pages.len());
+                    self.worker.send(Request::PlaceSignature {
+                        pages,
+                        image,
+                        center: pt,
+                        width_pt,
+                        cancel: self.sign.cancel.clone(),
+                    });
+                } else {
+                    let r = match sig::placement_rect(
+                        pt,
+                        width_pt,
+                        aspect,
+                        (size.width_pt, size.height_pt),
+                    ) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            self.error = Some(crate::app::error_key(&e));
+                            return;
+                        }
+                    };
+                    self.worker.send(Request::Edit(EditOp::AddImageData {
+                        page,
+                        image,
+                        x: r.left,
+                        y: r.bottom,
+                        width_pt: r.right - r.left,
+                    }));
+                }
             }
             Placing::Text(text) => {
                 let style = TextStyle::default();
@@ -883,7 +1133,11 @@ impl SuniApp {
                 aspect,
                 ..
             } => {
-                let r = placement_rect(pt, *width_pt, *aspect, (page_rect.width() / k, page_h_pt));
+                let Ok(r) =
+                    sig::placement_rect(pt, *width_pt, *aspect, (page_rect.width() / k, page_h_pt))
+                else {
+                    return;
+                };
                 let screen =
                     Rect::from_min_max(to_screen(r.left, r.top), to_screen(r.right, r.bottom));
                 painter.image(thumb.id(), screen, UV, Color32::from_white_alpha(170));
@@ -1055,6 +1309,87 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
     });
 }
 
+/// Saisie et aperçu produit par le moteur, avec le même sélecteur de polices que l'édition.
+fn typed_section(
+    ui: &mut egui::Ui,
+    st: &mut SignState,
+    lang: Language,
+    p: &theme::Palette,
+    fonts: Option<&[sunipdf_core::SystemFont]>,
+) -> (Option<Act>, bool) {
+    let before = (st.typed_text.clone(), st.typed_font.clone(), st.pen_blue);
+    dialog::field_label(ui, tr(lang, "signature.type.name"));
+    ui.add(
+        egui::TextEdit::singleline(&mut st.typed_text)
+            .id(ui.make_persistent_id("signature-name"))
+            .char_limit(256)
+            .desired_width(f32::INFINITY)
+            .hint_text(tr(lang, "signature.type.hint")),
+    );
+    let mut want_fonts = false;
+    ui.horizontal(|ui| {
+        ui.label(tr(lang, "dialog.text.font"));
+        want_fonts = crate::inline_text::font_picker(
+            ui,
+            lang,
+            &mut st.typed_font,
+            &mut st.font_filter,
+            fonts,
+        )
+        .0;
+        for (blue, key) in [
+            (false, "signature.pad.ink.black"),
+            (true, "signature.pad.ink.blue"),
+        ] {
+            ui.selectable_value(&mut st.pen_blue, blue, tr(lang, key));
+        }
+    });
+    if before != (st.typed_text.clone(), st.typed_font.clone(), st.pen_blue) {
+        st.invalidate_preview();
+        st.error = None;
+    }
+    let mut act = None;
+    if ui
+        .add_enabled(
+            !st.typed_text.trim().is_empty(),
+            egui::Button::new(tr(lang, "signature.type.preview")),
+        )
+        .clicked()
+    {
+        act = Some(Act::Preview);
+    }
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(ui.available_width(), PAD_H), Sense::hover());
+    ui.painter().rect(
+        rect,
+        8.0,
+        Color32::WHITE,
+        Stroke::new(1.0, p.border),
+        StrokeKind::Inside,
+    );
+    if st.preview_pending.is_some() {
+        ui.put(
+            Rect::from_center_size(rect.center(), egui::vec2(24.0, 24.0)),
+            egui::Spinner::new(),
+        );
+    } else if let Some(preview) = &st.typed_preview {
+        ui.painter().image(
+            preview.thumb.id(),
+            fit(rect.shrink(10.0), preview.thumb.size_vec2()),
+            UV,
+            Color32::WHITE,
+        );
+    } else {
+        ui.painter().text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            tr(lang, "signature.type.preview_hint"),
+            FontId::proportional(13.0),
+            Color32::from_gray(120),
+        );
+    }
+    (act, want_fonts)
+}
+
 /// Mode Importer : choix du fichier, aperçu sur papier blanc, suppression du fond par seuil.
 /// Alternative accessible au dessin : tout y est atteignable au clavier.
 fn import_section(
@@ -1153,19 +1488,19 @@ mod tests {
     #[test]
     fn placement_is_centered_and_clamped() {
         let page = (612.0, 792.0);
-        let r = placement_rect((300.0, 400.0), 160.0, 0.25, page);
+        let r = sig::placement_rect((300.0, 400.0), 160.0, 0.25, page).unwrap();
         assert_eq!(
             (r.left, r.bottom, r.right, r.top),
             (220.0, 380.0, 380.0, 420.0)
         );
         // Bords : gauche / bas, puis droite / haut.
-        let r = placement_rect((10.0, 5.0), 160.0, 0.25, page);
+        let r = sig::placement_rect((10.0, 5.0), 160.0, 0.25, page).unwrap();
         assert_eq!((r.left, r.bottom), (0.0, 0.0));
-        let r = placement_rect((610.0, 790.0), 160.0, 0.25, page);
+        let r = sig::placement_rect((610.0, 790.0), 160.0, 0.25, page).unwrap();
         assert_eq!((r.right, r.top), (612.0, 792.0));
-        // Plus large que la page : collée à gauche, largeur conservée.
-        let r = placement_rect((300.0, 400.0), 700.0, 0.1, page);
-        assert_eq!((r.left, r.right), (0.0, 700.0));
+        // Plus large que la page : réduite en conservant les proportions.
+        let r = sig::placement_rect((300.0, 400.0), 700.0, 0.1, page).unwrap();
+        assert_eq!((r.left, r.right), (0.0, 612.0));
         assert!(default_width(SignKind::Signature, 2.0) < 40.0);
         assert_eq!(default_width(SignKind::Initials, 0.5), 64.0);
     }
@@ -1241,7 +1576,220 @@ mod tests {
     #[test]
     fn default_state_saves_and_draws() {
         let st = SignState::default();
-        assert!(st.save && st.draw_mode && st.placing.is_none());
+        assert!(st.save && st.mode == Mode::Draw && st.placing.is_none());
         assert!(st.pen_width >= 1.5 && st.pen_width <= 6.0);
+    }
+
+    fn visible_mark() -> image::RgbaImage {
+        image::RgbaImage::from_pixel(60, 20, image::Rgba([10, 10, 10, 255]))
+    }
+
+    #[test]
+    fn typed_preview_rejects_old_requests_mode_changes_and_tab_cancellation() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.sign.open = Some(SignKind::Signature);
+        app.sign.mode = Mode::Type;
+        app.sign.typed_text = "Émilie".into();
+        let (old_id, text, style) = app.sign.preview_request().unwrap();
+        assert_eq!(text, "Émilie");
+        assert_eq!(style.family, FontFamily::Times);
+        assert!(style.italic && style.font_file.is_none());
+        assert!(!app.sign.ready());
+
+        app.sign.typed_text = "EM".into();
+        app.sign.pen_blue = true;
+        let (id, _, style) = app.sign.preview_request().unwrap();
+        assert_ne!(id, old_id);
+        assert_eq!(style.rgb, (INK_BLUE[0], INK_BLUE[1], INK_BLUE[2]));
+        app.on_signature_rendered(&ctx, old_id, Err(EngineError::Other("stale".into())));
+        assert_eq!(app.sign.preview_pending, Some(id));
+        assert!(app.sign.error.is_none());
+        app.on_signature_rendered(&ctx, id, Ok(visible_mark()));
+        assert!(app.sign.ready());
+
+        app.sign.mode = Mode::Import;
+        app.sign.invalidate_preview();
+        app.on_signature_rendered(&ctx, id, Ok(visible_mark()));
+        assert!(app.sign.typed_preview.is_none());
+        app.sign.mode = Mode::Type;
+        let (id, _, _) = app.sign.preview_request().unwrap();
+        app.sign.scope = Scope::Selected;
+        app.sign.selected_pages = vec![0];
+        app.cancel_placing();
+        app.on_signature_rendered(&ctx, id, Ok(visible_mark()));
+        assert!(app.sign.open.is_none() && app.sign.typed_preview.is_none());
+        assert_eq!(app.sign.scope, Scope::Current);
+        assert!(app.sign.selected_pages.is_empty());
+    }
+
+    #[test]
+    fn typed_preview_keeps_system_font_and_refuses_blank_or_failed_output() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.sign.open = Some(SignKind::Initials);
+        app.sign.mode = Mode::Type;
+        assert!(app.sign.preview_request().is_none());
+        app.sign.typed_text = "EM".into();
+        let path = PathBuf::from("test-font.ttf");
+        app.sign.typed_font = TextFont::System(sunipdf_core::SystemFont {
+            name: "Test font".into(),
+            path: path.clone(),
+            size_bytes: 123,
+        });
+        let (id, _, style) = app.sign.preview_request().unwrap();
+        assert_eq!(style.font_file, Some(path));
+        app.on_signature_rendered(&ctx, id, Ok(image::RgbaImage::new(60, 20)));
+        assert!(!app.sign.ready());
+        assert_eq!(app.sign.error, Some("signature.error.empty"));
+        let (id, _, _) = app.sign.preview_request().unwrap();
+        app.on_signature_rendered(&ctx, id, Err(EngineError::Other("font rejected".into())));
+        assert!(!app.sign.ready());
+        assert!(app.sign.error.is_some() && app.sign.preview_pending.is_none());
+    }
+
+    #[test]
+    fn typed_signature_uses_existing_image_flow_and_captured_selected_pages_once() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.document.as_mut().unwrap().info.page_sizes.extend([
+            sunipdf_core::PageSize {
+                width_pt: 300.0,
+                height_pt: 500.0,
+            },
+            sunipdf_core::PageSize {
+                width_pt: 100.0,
+                height_pt: 50.0,
+            },
+        ]);
+        app.organize.active = true;
+        app.organize.selected = [0, 2].into_iter().collect();
+        app.open_sign_dialog(SignKind::Initials);
+        app.sign.saved.clear();
+        while requests.try_recv().is_ok() {}
+        assert_eq!(app.sign.scope, Scope::Current);
+        assert_eq!(app.sign.selected_pages, [0, 2]);
+        app.sign.scope = Scope::Selected;
+        app.sign.mode = Mode::Type;
+        app.sign.typed_text = "EM".into();
+        app.sign.save = false;
+        let (id, _, _) = app.sign.preview_request().unwrap();
+        app.on_signature_rendered(&ctx, id, Ok(visible_mark()));
+        app.place_new(&ctx, SignKind::Initials);
+        assert!(!app.organize.active);
+        assert!(
+            matches!(&app.sign.placing, Some(Placing::Image { pages: Some(pages), .. }) if pages == &[0, 2])
+        );
+        app.place_at(1, (250.0, 480.0), false);
+        assert!(
+            matches!(requests.try_recv().unwrap(), Request::PlaceSignature { pages, center: (250.0, 480.0), width_pt: 64.0, .. } if pages == [0, 2])
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        assert!(requests.try_recv().is_err());
+        assert!(app.sign.busy && app.sign.total == 2 && app.sign.placing.is_none());
+        assert!(app.edit.reselect_many.is_none());
+        app.sign.cancel.store(true, Ordering::Relaxed);
+        app.sign.begin(2);
+        assert!(!app.sign.cancel.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn current_signature_shrinks_on_small_pages_and_shift_keeps_placement() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        let image = Arc::new(DynamicImage::ImageRgba8(visible_mark()));
+        app.document.as_mut().unwrap().info.page_sizes[0] = sunipdf_core::PageSize {
+            width_pt: 30.0,
+            height_pt: 20.0,
+        };
+        app.sign.placing = Some(Placing::Image {
+            image: image.clone(),
+            thumb: texture(&ctx, "test-placement", &thumb_of(&image)),
+            width_pt: 160.0,
+            aspect: 1.0 / 3.0,
+            pages: None,
+        });
+        app.place_at(0, (29.0, 19.0), true);
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::Edit(EditOp::AddImageData {
+                page: 0,
+                x: 0.0,
+                y: 10.0,
+                width_pt: 30.0,
+                ..
+            })
+        ));
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        assert!(app.sign.placing.is_some() && app.edit.reselect_many.is_none());
+        assert_eq!(app.sign.target_pages(3), None);
+        app.sign.scope = Scope::All;
+        assert_eq!(app.sign.target_pages(3), Some(vec![0, 1, 2]));
+    }
+
+    #[test]
+    fn keyboard_edit_invalidates_preview_and_escape_cancels_batch_progress() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        crate::icons::install(&ctx);
+        app.sign.open = Some(SignKind::Signature);
+        app.sign.mode = Mode::Type;
+        app.sign.typed_text = "EM".into();
+        let (id, _, _) = app.sign.preview_request().unwrap();
+        app.on_signature_rendered(&ctx, id, Ok(visible_mark()));
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            ui.memory_mut(|m| m.request_focus(ui.make_persistent_id("signature-name")));
+            typed_section(
+                ui,
+                &mut app.sign,
+                Language::English,
+                &theme::palette(false),
+                Some(&[]),
+            );
+        });
+        out.textures_delta.clear();
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Text("x".into())],
+                ..Default::default()
+            },
+            |ui| {
+                typed_section(
+                    ui,
+                    &mut app.sign,
+                    Language::English,
+                    &theme::palette(false),
+                    Some(&[]),
+                );
+            },
+        );
+        out.textures_delta.clear();
+        assert!(app.sign.typed_text.contains('x'));
+        assert!(!app.sign.ready() && app.sign.typed_preview.is_none());
+
+        app.sign.begin(3);
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: egui::Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |_| {
+                app.sign_dialog(&ctx);
+            },
+        );
+        out.textures_delta.clear();
+        assert!(app.sign.busy && app.sign.cancel.load(Ordering::Relaxed));
     }
 }

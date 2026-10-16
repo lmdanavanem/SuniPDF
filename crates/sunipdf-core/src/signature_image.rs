@@ -1,13 +1,14 @@
-//! Signature visuelle : préparation d'une image (traits tramés, fond clair rendu transparent,
-//! rognage, lecture et écriture PNG). Fonctions pures, sans PDFium.
+//! Visual signatures: native typed-text rendering, image preparation and atomic page placement.
 //!
 //! **Aucune valeur cryptographique.** L'image est posée sur la page comme n'importe quelle image
 //! (`Document::add_image_data`) : elle ne prouve ni l'identité du signataire ni l'intégrité du
-//! document. La signature numérique (certificat) est une autre fonction, non livrée.
+//! document. La signature numérique par certificat est une fonction distincte.
 
-use crate::{write_atomic, EngineError};
-use image::RgbaImage;
+use crate::{write_atomic, Document, Engine, EngineError, PointRect, TextStyle};
+use image::{DynamicImage, GenericImageView, RgbaImage};
+use pdfium_render::prelude::*;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Côté maximal accepté au décodage d'un fichier choisi par l'utilisateur.
 const MAX_DECODE_SIDE: u32 = 16_384;
@@ -15,6 +16,165 @@ const MAX_DECODE_SIDE: u32 = 16_384;
 const RAMP: i32 = 40;
 /// Alpha au-dessous duquel un pixel compte pour vide (rognage).
 const EMPTY_ALPHA: u8 = 16;
+const MAX_TYPED_SIDE: u32 = 1600;
+
+/// Fits a visual signature in display coordinates, keeping its size unless the page is smaller.
+pub fn placement_rect(
+    center: (f32, f32),
+    width_pt: f32,
+    aspect: f32,
+    page: (f32, f32),
+) -> Result<PointRect, EngineError> {
+    if ![center.0, center.1, width_pt, aspect, page.0, page.1]
+        .iter()
+        .all(|v| v.is_finite())
+        || [width_pt, aspect, page.0, page.1].iter().any(|v| *v <= 0.0)
+    {
+        return Err(EngineError::Other("invalid signature placement".into()));
+    }
+    let width = (width_pt as f64)
+        .min(page.0 as f64)
+        .min(page.1 as f64 / aspect as f64) as f32;
+    let height = (width as f64 * aspect as f64).min(page.1 as f64) as f32;
+    let left = (center.0 - width / 2.0).clamp(0.0, (page.0 - width).max(0.0));
+    let bottom = (center.1 - height / 2.0).clamp(0.0, (page.1 - height).max(0.0));
+    let rect = PointRect {
+        left,
+        bottom,
+        right: (left + width).min(page.0),
+        top: (bottom + height).min(page.1),
+    };
+    if rect.right <= rect.left || rect.top <= rect.bottom {
+        return Err(EngineError::Other("invalid signature placement".into()));
+    }
+    Ok(rect)
+}
+
+impl Engine {
+    /// Renders a typed visual signature locally, without modifying any open document.
+    pub fn typed_signature(&self, text: &str, style: &TextStyle) -> Result<RgbaImage, EngineError> {
+        if text.trim().is_empty()
+            || text.chars().count() > 256
+            || text
+                .chars()
+                .any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}'))
+            || !style.size_pt.is_finite()
+            || style.size_pt <= 0.0
+            || !style.opacity.is_finite()
+            || style.opacity <= 0.0
+            || style.opacity > 1.0
+        {
+            return Err(EngineError::Other("invalid typed signature".into()));
+        }
+        let mut inner = self.pdfium.create_new_pdf()?;
+        inner
+            .pages_mut()
+            .create_page_at_end(PdfPagePaperSize::new_custom(
+                PdfPoints::new(1000.0),
+                PdfPoints::new(1000.0),
+            ))?;
+        let mut doc = self.wrap(inner, Path::new(""), None)?;
+        doc.add_text(0, 0.0, 0.0, text, style)?;
+        let mut page = doc.page_handle(0)?;
+        let bounds = page.objects().get(0)?.bounds()?;
+        let padding = style.size_pt * 0.1;
+        let bounds = PdfRect::new(
+            PdfPoints::new(bounds.bottom().value - padding),
+            PdfPoints::new(bounds.left().value - padding),
+            PdfPoints::new(bounds.top().value + padding),
+            PdfPoints::new(bounds.right().value + padding),
+        );
+        let (width, height) = (bounds.width().value, bounds.height().value);
+        if ![width, height].iter().all(|v| v.is_finite() && *v > 0.0) {
+            return Err(EngineError::Other("invalid signature font bounds".into()));
+        }
+        page.boundaries_mut().set_media(bounds)?;
+        page.boundaries_mut().set_crop(bounds)?;
+        let scale = 2.0f32.min(MAX_TYPED_SIDE as f32 / width.max(height));
+        let width = (width * scale).round().clamp(1.0, MAX_TYPED_SIDE as f32) as i32;
+        let height = (height * scale).round().clamp(1.0, MAX_TYPED_SIDE as f32) as i32;
+        let bitmap = page.render_with_config(
+            &PdfRenderConfig::new()
+                .set_target_size(width, height)
+                .set_clear_color(PdfColor::new(0, 0, 0, 0))
+                .render_form_data(false)
+                .render_annotations(false),
+        )?;
+        let mut image = RgbaImage::from_raw(
+            bitmap.width() as u32,
+            bitmap.height() as u32,
+            bitmap.as_rgba_bytes(),
+        )
+        .ok_or_else(|| EngineError::Other("invalid signature bitmap".into()))?;
+        // The alpha is glyph coverage; PNG and egui require unmultiplied ink channels.
+        for pixel in image.pixels_mut() {
+            pixel.0[..3].copy_from_slice(&[style.rgb.0, style.rgb.1, style.rgb.2]);
+        }
+        trim(&image, 6).ok_or_else(|| EngineError::Other("empty typed signature".into()))
+    }
+}
+
+impl Document<'_> {
+    /// Places the same visual signature on selected pages. Failure or cancellation is atomic.
+    pub fn place_signature_image(
+        &mut self,
+        pages: &[usize],
+        image: &DynamicImage,
+        center: (f32, f32),
+        width_pt: f32,
+        cancel: &AtomicBool,
+        mut progress: impl FnMut(usize, usize),
+    ) -> Result<usize, EngineError> {
+        if image.width() == 0
+            || image.height() == 0
+            || image.pixels().all(|(_, _, pixel)| pixel[3] <= EMPTY_ALPHA)
+        {
+            return Err(EngineError::Other("empty signature image".into()));
+        }
+        let mut pages = pages.to_vec();
+        pages.sort_unstable();
+        pages.dedup();
+        if pages.is_empty() {
+            return Err(EngineError::Other("no signature pages selected".into()));
+        }
+        let aspect = image.height() as f32 / image.width() as f32;
+        let targets: Vec<_> = pages
+            .iter()
+            .map(|&page| {
+                let size = self.page_size(page)?;
+                placement_rect(center, width_pt, aspect, (size.width_pt, size.height_pt))
+                    .map(|rect| (page, rect))
+            })
+            .collect::<Result<_, _>>()?;
+        let check_cancel = || {
+            if cancel.load(Ordering::Relaxed) {
+                Err(EngineError::Cancelled)
+            } else {
+                Ok(())
+            }
+        };
+        check_cancel()?;
+        let mut scratch = Document {
+            inner: self
+                .pdfium
+                .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password: self.password.clone(),
+            font_cache: Default::default(),
+        };
+        for (done, &(page, rect)) in targets.iter().enumerate() {
+            check_cancel()?;
+            scratch.add_image_data(page, image, rect.left, rect.bottom, rect.right - rect.left)?;
+            progress(done + 1, targets.len());
+        }
+        check_cancel()?;
+        self.inner = scratch.inner;
+        self.font_cache.clear();
+        Ok(targets.len())
+    }
+}
 
 /// Traits (points en pixels, origine en haut à gauche) → image RGBA : tous les pixels portent
 /// l'encre `rgb`, seul l'alpha varie (bords anti-crénelés). Un trait d'un seul point donne une
@@ -143,6 +303,31 @@ pub fn save_png(img: &RgbaImage, path: &Path) -> Result<(), EngineError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn placement_keeps_size_aspect_and_fits_each_page() {
+        let normal = placement_rect((100.0, 80.0), 160.0, 0.4, (600.0, 800.0)).unwrap();
+        assert_eq!(
+            (normal.left, normal.bottom, normal.right, normal.top),
+            (20.0, 48.0, 180.0, 112.0)
+        );
+        let small = placement_rect((600.0, -200.0), 160.0, 0.4, (80.0, 20.0)).unwrap();
+        assert_eq!(
+            (small.left, small.bottom, small.right, small.top),
+            (30.0, 0.0, 80.0, 20.0)
+        );
+        for (center, width, aspect, page) in [
+            ((f32::NAN, 1.0), 20.0, 0.4, (600.0, 800.0)),
+            ((1.0, f32::INFINITY), 20.0, 0.4, (600.0, 800.0)),
+            ((1.0, 1.0), 0.0, 0.4, (600.0, 800.0)),
+            ((1.0, 1.0), 20.0, -0.4, (600.0, 800.0)),
+            ((1.0, 1.0), 20.0, 0.4, (0.0, 800.0)),
+            ((1.0, 1.0), 20.0, 0.4, (600.0, f32::NAN)),
+            ((1.0, 1.0), f32::INFINITY, 0.4, (600.0, 800.0)),
+        ] {
+            assert!(placement_rect(center, width, aspect, page).is_err());
+        }
+    }
 
     #[test]
     fn rasterize_covers_stroke_and_leaves_rest_transparent() {

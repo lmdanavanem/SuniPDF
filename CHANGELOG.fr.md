@@ -5,6 +5,30 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.13.0] — Non publiée
+
+Implémentation en cours de validation ; la 0.12.0 reste la release Latest publiée. Voir `docs/PROJECT_STATUS.fr.md`.
+
+### Ajouts
+- **Saisir** une signature visuelle ou un paraphe, choisir une police standard/TrueType système et une encre
+  noire/bleue, puis afficher explicitement l'**Aperçu** local avant la pose. Times italique par défaut ; glyphes
+  absents et incorporation de police interdite refusés. Une ligne de 256 caractères au plus, aperçu PNG transparent
+  limité à 1600 pixels de côté. Texte/police/encre/mode/boîte modifiés : anciens aperçus et réponses invalidés.
+- Poser une marque sur la page courante, toutes les pages ou la sélection Organiser capturée à l'ouverture.
+  Un clic fournit le même centre en points PDF affichés sur chaque cible ; proportions et taille physique
+  conservées, réduction seulement pour tenir dans une petite page. Progression, annulation entre cibles,
+  restauration atomique et un undo pour le lot ; enregistrement toujours explicite.
+- CLI `add-image --pages "all|1,3-5"` utilise la pose atomique ajustée. Comportement `--page` et JSON d'une seule
+  page compatibles ; seul le mode lot ajuste la position/taille aux pages.
+
+### Corrections
+- Garder les marques trop grandes et leur fantôme dans les petites pages avec la même géométrie ajustée.
+- Abandonner aperçus asynchrones et cibles de signature à l'annulation, au changement de document ou de structure des pages.
+
+Les signatures visuelles restent des images modifiables sans preuve d'identité/intégrité ; CMS/PFX est une
+fonction existante distincte. Les signatures enregistrées restent des PNG locaux en clair. Matériel, dialogues
+natifs et lecteurs tiers demandent des vérifications séparées ; les paquets distribués ne sont pas signés.
+
 ## [0.12.0] — 2026-10-16
 
 [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem`, release

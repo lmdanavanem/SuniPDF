@@ -249,7 +249,7 @@ autres restent remplissables. Sans `/Opt`, les radios gardent leurs valeurs fond
 
 ## Signer et parapher
 
-L'outil **Remplir et signer** (barre : **Signer (signature manuscrite)…** — touche **S** —, **Parapher
+L'outil **Remplir et signer** (barre : **Signer (signature visuelle)…** — touche **S** —, **Parapher
 (initiales)…**, **Insérer la date du jour** ; aussi dans le menu Édition et la palette) pose une **signature
 visuelle** sur la page. **Ce que cette signature ne garantit pas** : c'est une image, elle ne prouve ni votre
 identité ni l'intégrité du document, et toute personne qui modifie le fichier peut la copier ou la retirer. Ce
@@ -264,15 +264,34 @@ disparaissent). **Placer sur la page** ferme la boîte ; un fantôme suit le poi
 signature (centrée sous le clic, maintenue dans la page), **Maj+clic** la pose plusieurs fois, **Échap**
 annule.
 
+**Saisir — 0.13.0 en développement.** Choisissez **Saisir**, entrez votre nom ou vos initiales, choisissez une
+police standard ou TrueType installée et une encre noire ou bleue, puis cliquez sur **Aperçu**. Times italique
+est la police par défaut. L'aperçu est rendu localement avant la pose ; changer texte, police ou encre demande un
+nouvel aperçu. La saisie tient sur une ligne de 256 caractères au plus. Glyphes absents ou incorporation de police
+interdite : une erreur est affichée. Le résultat est une image transparente, avec le même placement et
+enregistrement facultatif que le dessin/import.
+
+**Pages ciblées — 0.13.0 en développement.** Choisissez **Page courante**, **Toutes les pages** ou **Pages
+sélectionnées** avant de placer. Pour une sélection, sélectionnez les pages dans **Organiser les pages**, puis
+ouvrez Signer/Parapher ; sinon Pages sélectionnées reste désactivé. Un clic appose la même marque sur chaque
+cible, au même centre en points PDF. Taille physique et proportions sont conservées sauf si une petite page
+impose une réduction ; la pose est maintenue dans chaque page visible, y compris pivotée/rognée. Il ne s'agit pas
+d'un placement proportionnel relatif à la taille des pages. Le lot affiche sa progression ; **Annuler** ou
+**Échap** abandonne le lot entier, avec vérification entre les pages. Un **Ctrl+Z** annule le lot terminé.
+Insertion/suppression/réorganisation des pages abandonne la boîte ou les cibles capturées : rouvrez-la après une
+modification de structure. Enregistrez explicitement le document pour conserver les marques. Ces ajouts sont en
+validation et absents des paquets 0.12.0 publiés ; voir l'[état du projet](PROJECT_STATUS.fr.md).
+
 **Réutiliser.** Avec **Enregistrer sur cet ordinateur pour la réutiliser** (coché par défaut), la signature
 rognée est écrite en PNG dans `%APPDATA%\SuniPDF\signatures` et apparaît ensuite dans la boîte, sur fond
-blanc : un clic la place, la corbeille (deux clics) la supprime. Rien n'est chiffré ni envoyé sur Internet :
+blanc : cliquez pour commencer le placement ; la corbeille (deux clics) la supprime. Rien n'est chiffré ni envoyé sur Internet :
 toute personne ayant accès à votre session Windows peut réutiliser ces fichiers ; décochez la case pour ne
 rien enregistrer. Le **Paraphe** a sa propre liste, plus petite sur la page.
 
-**Après la pose**, la signature est un **objet image** ordinaire de la page, aussitôt sélectionné : glissez-la,
+**Après la pose**, la signature est un **objet image** ordinaire de la page. La pose sur la page courante la sélectionne : glissez-la,
 redimensionnez-la par les poignées (proportions conservées), pivotez-la, dupliquez-la, supprimez-la, Ctrl+Z
-l'annule ; le contenu de la page reste visible entre les traits (fond transparent). **Insérer la date du jour**
+l'annule ; le contenu de la page reste visible entre les traits (fond transparent). Le lot ne sélectionne pas
+toutes les images ajoutées ; sélectionnez les objets individuellement avec Modifier un PDF. **Insérer la date du jour**
 pose un objet texte (`15/10/2026` en français, `10/15/2026` en anglais), modifiable par F2. Pour remplir un
 champ en texte libre, utilisez l'outil texte (**T**) de Modifier un PDF.
 
@@ -476,6 +495,17 @@ qu'affichée** (après rotation et recadrage).
 `add-text` exige des coordonnées `--x` et `--y` finies. La CLI `annotate --kind freetext` accepte
 uniquement `--opacity 1` ; les autres opacités d'annotation doivent être finies. Les valeurs invalides
 sont refusées avant l'enregistrement, y compris avec `--overwrite`.
+
+**0.13.0 en développement :** `add-image --pages all` ou `--pages "1,3-5"` place l'image une fois par page
+physique sélectionnée. Cette option exclut `--page` explicite ; sans les deux, le placement historique reste sur
+une page par défaut. `--x`, `--y` et `--width` décrivent le coin bas-gauche et la taille demandés en points PDF
+affichés. Le lot ajuste cette demande dans chaque page et conserve la protection source ; la pose historique
+sur une page reste inchangée. Le JSON de lot ajoute `pages` et `count` ; coordonnées/taille décrivent la demande,
+pas chaque rectangle ajusté. Exemple, après réussite de la validation/publication 0.13.0 :
+
+```powershell
+sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf
+```
 
 Nouvelles commandes 0.9.0 :
 

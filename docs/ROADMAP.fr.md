@@ -89,6 +89,14 @@ portables et quatre bases MSI réussis. Six fichiers préparés/publics et contr
 copies vérifiées dans `dist/`. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
 Preuves exécutées et limites matérielles/d'interopérabilité dans `PROJECT_STATUS.fr.md`.
 
+## 0.13.0 : améliorations de signature visuelle (en développement)
+
+Nom/paraphe saisi avec aperçu natif explicite et parcours police/image/bibliothèque existants. Page courante,
+toutes les pages et sélection partagent une géométrie affichée ajustée ; lot atomique, annulable entre cibles et
+un undo. CLI `add-image --pages` additive ; comportement historique de `--page` compatible (D102–D103).
+Contrôles locaux/de release en cours ; la 0.12.0 reste la Latest publiée. Implémentation ne vaut pas validation
+matérielle ou dans les lecteurs tiers ; voir `PROJECT_STATUS.fr.md`.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -113,6 +121,7 @@ création de champs texte/case et sauvegarde/récupération.
 
 Livrés en 0.10.0 : transformations groupées, recadrage souris, champs radio/listes, échanges FDF/XFDF de valeurs et clavier.
 Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, avec lecture seule conservatrice si nécessaire.
+En développement pour 0.13.0 : signatures visuelles saisies et pose atomique sur page courante/toutes/sélection.
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 

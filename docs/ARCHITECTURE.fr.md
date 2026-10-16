@@ -27,7 +27,7 @@ SuniPDF/
 │   │                         barre d'outils, panneau « Tous les outils », accueil, rail, palette), workspace.rs (hub : table des
 │   │                         outils → commandes du registre, outil actif, barre contextuelle), worker.rs, settings.rs, theme.rs, icons.rs,
 │   │                         editor.rs (sélection, poignées, rotation, presse-papiers d'objets, barre d'objet), sign.rs
-│   │                         (signature visuelle : pavé, import, bibliothèque locale, placement, date), inline_text.rs
+│   │                         (signature visuelle : pavé/saisie/import, bibliothèque locale, lots de pages ajustés, date), inline_text.rs
 │   │                         (texte sur la page, sélecteur de polices), objects.rs (panneau Objets), pagesetup.rs (recadrer,
 │   │                         redimensionner, page vierge), annot_adv.rs (encre, texte libre, formes, liens, sélection d'annotation, fils de réponses), view.rs (vue continue / page unique : mise en page virtualisée,
 │   │                         tuiles voulues, pool de textures, zoom ancré)
@@ -37,7 +37,7 @@ SuniPDF/
 │   │                         pages + tuiles) ; edit.rs (objets), geometry.rs (espace d'affichage), annot_write.rs / appearance.rs / links.rs
 │   │                         (annotations avancées : lopdf écrit avec `/AP` explicite, PDFium rend et relit),
 │   │                         clipboard.rs (copier/coller d'objets), fonts.rs (polices système), boxes.rs (cadres de page),
-│   │                         signature_image.rs (signature visuelle : traits tramés, fond retiré, rognage, PNG ; sans PDFium) ;
+│   │                         signature_image.rs (signature visuelle : traits, fond retiré, PNG ; aperçu saisi PDFium natif et lots ajustés atomiques) ;
 │   │                         tests/fixtures/*.pdf (dont boxes.pdf : pages pivotées et rognées)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), catalogues embarqués
 ├── assets/i18n/              fr-FR.json, en-US.json (source de vérité des textes)
@@ -135,6 +135,22 @@ La validation est suivie dans `PROJECT_STATUS.fr.md` ; cette section décrit la 
   confiance, révocation ni horodatage fiable. UI `certificate.rs` et CLI `feature_cmd.rs` imposent une nouvelle copie
   pour signer et refusent les PDF chiffrés.
 
+## Parcours des signatures visuelles 0.13.0 (en développement)
+
+`Engine::typed_signature` crée un PDF temporaire, réutilise `Document::add_text` et ses contrôles de
+police/glyphes existants, puis rend un PNG transparent borné via PDFium. `RenderSignature` s'exécute sur le
+thread moteur ; l'identifiant de demande empêche un ancien aperçu de remplacer un texte, une police, une encre
+ou une boîte modifiés. L'aperçu ne modifie pas le document ouvert. L'image obtenue emprunte le parcours existant
+de bibliothèque PNG facultative et de placement.
+
+`signature_image::placement_rect` fournit le fantôme de placement et les rectangles ajustés par page.
+`Document::place_signature_image` valide et déduplique les cibles, modifie une copie temporaire via
+`add_image_data`, consulte l'annulation entre les pages et avant la validation, puis remplace le document
+uniquement en cas de succès. Le worker conserve un seul instantané d'annulation pour le lot validé ; un échec
+préserve document et journal. La sélection Organiser est capturée à l'ouverture de la boîte ; un changement
+structurel des pages abandonne la boîte ou les cibles capturées. CLI `add-image --pages` appelle la même méthode
+de lot ; `--page` conserve son placement historique. Validation dans `PROJECT_STATUS.fr.md` (D102–D103).
+
 ## Coordonnées (SUNI-031c)
 
 Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,
@@ -146,8 +162,9 @@ les boîtes. L'UI convertit seulement écran ↔ affichage (`annotate::to_pdf`).
 
 ## Registre de commandes (SUNI-010, livré)
 
-Annulation : chaque modification de pages passe par `worker.rs::State::edit`, qui prend un instantané
-(`Document::snapshot`, octets PDF) avant d'appliquer l'opération ; `Undo`/`Redo` rechargent l'instantané
+Les modifications annulables s'exécutent sur le thread moteur. Les éditions ordinaires utilisent
+`worker.rs::State::edit` ; les tâches atomiques, dont l'OCR et les signatures sur plusieurs pages, ajoutent un
+seul instantané antérieur après validation réussie. `Document::snapshot` fournit les octets PDF ; `Undo`/`Redo` rechargent l'instantané
 (`Document::restore`). Journal plafonné (50 entrées, 512 Mo). Simple, générique, borné en mémoire ;
 un journal de commandes nommées viendra si la mémoire devient contraignante.
 

@@ -429,6 +429,18 @@ pub enum Request {
         options: sunipdf_core::ocr::OcrOptions,
         cancel: Arc<std::sync::atomic::AtomicBool>,
     },
+    RenderSignature {
+        id: u64,
+        text: String,
+        style: TextStyle,
+    },
+    PlaceSignature {
+        pages: Vec<usize>,
+        image: Arc<image::DynamicImage>,
+        center: (f32, f32),
+        width_pt: f32,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    },
     VerifySignatures,
     SignCertificate {
         pfx: PathBuf,
@@ -563,6 +575,7 @@ pub struct DocState {
 pub enum TaskKind {
     Print,
     Ocr,
+    Signature,
 }
 
 pub enum Response {
@@ -581,6 +594,10 @@ pub enum Response {
     TaskDone {
         kind: TaskKind,
         result: Result<(), EngineError>,
+    },
+    SignatureRendered {
+        id: u64,
+        result: Result<image::RgbaImage, EngineError>,
     },
     Signatures(Result<Vec<sunipdf_core::certificate::DigitalSignature>, EngineError>),
     SignedCopy(Result<PathBuf, EngineError>),
@@ -729,6 +746,7 @@ impl Worker {
                 | Request::CopyObjects { cut: true, .. }
                 | Request::Save { .. }
                 | Request::Ocr { .. }
+                | Request::PlaceSignature { .. }
                 | Request::Print { .. }
                 | Request::SignCertificate { .. }
                 | Request::Autosave
@@ -1561,6 +1579,62 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     },
                 }
             }
+            Request::RenderSignature { id, text, style } => Response::SignatureRendered {
+                id,
+                result: engine.typed_signature(&text, &style),
+            },
+            Request::PlaceSignature {
+                pages,
+                image,
+                center,
+                width_pt,
+                cancel,
+            } => {
+                let result = (|| {
+                    let doc = state
+                        .document
+                        .as_mut()
+                        .ok_or_else(|| EngineError::Other("no document".into()))?;
+                    let snapshot = Snapshot {
+                        bytes: doc.snapshot()?,
+                        password: doc.password().map(str::to_owned),
+                    };
+                    doc.place_signature_image(
+                        &pages,
+                        &image,
+                        center,
+                        width_pt,
+                        &cancel,
+                        |done, total| {
+                            let _ = tx.send(Response::TaskProgress {
+                                kind: TaskKind::Signature,
+                                done,
+                                total,
+                            });
+                            ctx.request_repaint();
+                        },
+                    )?;
+                    Ok::<_, EngineError>(snapshot)
+                })();
+                match result {
+                    Ok(snapshot) => {
+                        state.push_undo(snapshot);
+                        state.invalidate();
+                        state.last_nudge = None;
+                        let _ = tx.send(Response::TaskDone {
+                            kind: TaskKind::Signature,
+                            result: Ok(()),
+                        });
+                        let mut changed = state.doc_state().expect("signature document");
+                        changed.pages_unchanged = true;
+                        Response::DocumentChanged(changed)
+                    }
+                    Err(error) => Response::TaskDone {
+                        kind: TaskKind::Signature,
+                        result: Err(error),
+                    },
+                }
+            }
             Request::VerifySignatures => {
                 let result = state
                     .document
@@ -1969,6 +2043,8 @@ mod tests {
             Response::EngineFailed(error) => panic!("engine startup failed: {error}"),
             _ => panic!("unexpected startup response"),
         }
+        let signature = render_signature_preview(&worker, 41);
+        assert!(!worker.has_pending_mutations());
         worker.send(Request::Open {
             path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
@@ -1996,6 +2072,7 @@ mod tests {
                     if failed_page == page && failed_width == width_px
             ));
         }
+        signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
@@ -2012,6 +2089,143 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn render_signature_preview(worker: &Worker, id: u64) -> Arc<image::DynamicImage> {
+        worker.send(Request::RenderSignature {
+            id,
+            text: "Emanuel".into(),
+            style: TextStyle {
+                size_pt: 48.0,
+                family: sunipdf_core::FontFamily::Times,
+                italic: true,
+                ..Default::default()
+            },
+        });
+        match next_response(worker) {
+            Response::SignatureRendered {
+                id: received,
+                result: Ok(image),
+            } => {
+                assert_eq!(received, id);
+                assert!(image.width() > 0 && image.height() > 0);
+                assert!(image.pixels().any(|pixel| pixel[3] > 0));
+                Arc::new(image::DynamicImage::ImageRgba8(image))
+            }
+            _ => panic!("signature preview response"),
+        }
+    }
+
+    fn signature_batch_placement_has_one_undo_and_no_partial_failures(
+        worker: &Worker,
+        image: Arc<image::DynamicImage>,
+    ) {
+        let objects = || {
+            (0..2)
+                .map(|page| {
+                    worker.send(Request::Objects { page });
+                    match next_response(worker) {
+                        Response::Objects {
+                            page: received,
+                            list,
+                        } if received == page => list,
+                        _ => panic!("page objects response"),
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+        let before = objects();
+        let preview = render_signature_preview(worker, 42);
+        assert_eq!(preview.as_rgba8(), image.as_rgba8());
+        assert!(!worker.has_pending_mutations());
+        assert_eq!(objects(), before, "preview must not change page content");
+
+        for (pages, cancelled) in [(vec![0, 1], true), (vec![0, usize::MAX], false)] {
+            worker.send(Request::PlaceSignature {
+                pages,
+                image: image.clone(),
+                center: (200.0, 200.0),
+                width_pt: 120.0,
+                cancel: Arc::new(std::sync::atomic::AtomicBool::new(cancelled)),
+            });
+            assert!(worker.has_pending_mutations());
+            match next_response(worker) {
+                Response::TaskDone {
+                    kind: TaskKind::Signature,
+                    result: Err(error),
+                } => {
+                    assert_eq!(matches!(error, EngineError::Cancelled), cancelled);
+                }
+                _ => panic!("failed signature batch response"),
+            }
+            assert_eq!(
+                objects(),
+                before,
+                "failed batch must not change either page"
+            );
+            assert!(!worker.has_pending_mutations());
+        }
+
+        worker.send(Request::PlaceSignature {
+            pages: vec![0, 1, 0],
+            image,
+            center: (200.0, 200.0),
+            width_pt: 120.0,
+            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        });
+        for expected in 1..=2 {
+            assert!(matches!(next_response(worker), Response::TaskProgress {
+                kind: TaskKind::Signature, done, total: 2,
+            } if done == expected));
+        }
+        assert!(matches!(
+            next_response(worker),
+            Response::TaskDone {
+                kind: TaskKind::Signature,
+                result: Ok(()),
+            }
+        ));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                modified: true,
+                can_undo: true,
+                can_redo: false,
+                pages_unchanged: true,
+                ..
+            })
+        ));
+        let placed = objects();
+        for (original, changed) in before.iter().zip(&placed) {
+            assert_eq!(changed.len(), original.len() + 1);
+            assert_eq!(
+                changed.last().unwrap().kind,
+                sunipdf_core::ObjectKind::Image
+            );
+        }
+
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                modified: false,
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(objects(), before, "one undo must remove the entire batch");
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                modified: true,
+                can_undo: true,
+                can_redo: false,
+                ..
+            })
+        ));
+        assert_eq!(objects(), placed, "one redo must restore both images");
     }
 
     fn editable_combo_creation_and_filling_undo_redo(worker: &Worker) {

@@ -27,7 +27,7 @@ SuniPDF/
 │   │                         toolbar, "All tools" panel, home, rail, palette), workspace.rs (hub: tool table
 │   │                         → registry commands, active tool, contextual bar), worker.rs, settings.rs, theme.rs, icons.rs,
 │   │                         editor.rs (selection, handles, rotation, object clipboard, object bar), sign.rs
-│   │                         (visual signature: pad, import, local library, placement, date), inline_text.rs
+│   │                         (visual signature: pad/type/import, local library, fitted page batches, date), inline_text.rs
 │   │                         (text on the page, font picker), objects.rs (Objects panel), pagesetup.rs (crop,
 │   │                         resize, blank page), annot_adv.rs (ink, free text, shapes, links, annotation selection, reply threads), view.rs (continuous / single-page view: virtualised layout,
 │   │                         wanted tiles, texture pool, anchored zoom)
@@ -37,7 +37,7 @@ SuniPDF/
 │   │                         pages + tiles); edit.rs (objects), geometry.rs (display space), annot_write.rs / appearance.rs / links.rs
 │   │                         (advanced annotations: lopdf writes with an explicit `/AP`, PDFium renders and reads back),
 │   │                         clipboard.rs (copy/paste of objects), fonts.rs (system fonts), boxes.rs (page boxes),
-│   │                         signature_image.rs (visual signature: rasterised strokes, background removal, cropping, PNG; no PDFium);
+│   │                         signature_image.rs (visual signature: strokes, background removal, PNG; native PDFium typed preview and atomic fitted page batches);
 │   │                         tests/fixtures/*.pdf (including boxes.pdf: rotated and cropped pages)
 │   └── sunipdf-i18n/         Language, tr(), tr_args(), embedded catalogues
 ├── assets/i18n/              fr-FR.json, en-US.json (source of truth for all texts)
@@ -135,6 +135,21 @@ Implementation validation is tracked in `PROJECT_STATUS.md`; this section descri
   and certificate metadata without establishing trust, revocation or a trusted timestamp. UI `certificate.rs`
   and CLI `feature_cmd.rs` both require a new copy for signing; encrypted input is refused.
 
+## 0.13.0 visual signature paths (in development)
+
+`Engine::typed_signature` creates a disposable PDF, reuses `Document::add_text` and its existing font/glyph
+checks, then renders a bounded transparent PNG through PDFium. Desktop `RenderSignature` runs on the engine
+thread; a request ID prevents an old preview from replacing changed text, font, ink or dialog state. Preview
+does not mutate the open document. The resulting image uses the existing optional PNG library and placement flow.
+
+`signature_image::placement_rect` supplies both the placement ghost and fitted page rectangles. Core
+`Document::place_signature_image` validates and deduplicates targets, edits a scratch copy using
+`add_image_data`, checks cancellation between pages and before commit, then swaps the document only on success.
+The desktop worker records one undo snapshot for the committed batch; failures leave the document and journal
+unchanged. Selected Organize pages are captured when opening the dialog; structural page changes discard the
+dialog or captured targets. CLI `add-image --pages` uses the same batch method, while existing `--page` keeps
+its original placement behaviour. Validation is tracked in `PROJECT_STATUS.md` (D102–D103).
+
 ## Coordinates (SUNI-031c)
 
 Every coordinate crossing the engine ↔ interface/CLI boundary is in **display space**: points,
@@ -146,8 +161,9 @@ the boxes. The UI only converts screen ↔ display (`annotate::to_pdf`). The tes
 
 ## Command registry (SUNI-010, shipped)
 
-Undo: every page modification goes through `worker.rs::State::edit`, which takes a snapshot
-(`Document::snapshot`, PDF bytes) before applying the operation; `Undo`/`Redo` reload the snapshot
+Undoable changes run on the engine worker. Ordinary edits use `worker.rs::State::edit`; atomic task paths,
+including OCR and multi-page signatures, add one pre-operation snapshot only after a successful commit.
+Snapshots use `Document::snapshot` (PDF bytes); `Undo`/`Redo` reload the snapshot
 (`Document::restore`). Bounded journal (50 entries, 512 MB). Simple, generic, memory-bounded;
 a journal of named commands will come if memory becomes a constraint.
 

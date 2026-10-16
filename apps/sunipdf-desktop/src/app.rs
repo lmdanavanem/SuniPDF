@@ -615,22 +615,35 @@ impl SuniApp {
                         self.ocr.done = done;
                         self.ocr.total = total;
                     }
+                    crate::worker::TaskKind::Signature => {
+                        self.sign.done = done;
+                        self.sign.total = total;
+                    }
                 },
                 Response::TaskDone { kind, result } => {
+                    if kind == crate::worker::TaskKind::Signature && result.is_err() {
+                        self.edit.pending_status = None;
+                    }
                     match kind {
                         crate::worker::TaskKind::Print => self.printing.busy = false,
                         crate::worker::TaskKind::Ocr => self.ocr.busy = false,
+                        crate::worker::TaskKind::Signature => self.sign.busy = false,
                     }
                     match result {
                         Ok(()) => {
                             self.status_msg = Some(
-                                self.t(if kind == crate::worker::TaskKind::Print {
-                                    "status.printed"
-                                } else {
-                                    "status.ocr_done"
+                                self.t(match kind {
+                                    crate::worker::TaskKind::Print => "status.printed",
+                                    crate::worker::TaskKind::Ocr => "status.ocr_done",
+                                    crate::worker::TaskKind::Signature => "signature.done",
                                 })
                                 .into(),
-                            )
+                            );
+                            if kind == crate::worker::TaskKind::Signature
+                                && self.edit.pending_status.is_none()
+                            {
+                                self.edit.pending_status = self.status_msg.clone();
+                            }
                         }
                         Err(EngineError::Cancelled) => {
                             self.status_msg = Some(self.t("status.cancelled").into())
@@ -813,6 +826,15 @@ impl SuniApp {
                 }) => {
                     self.has_signatures = has_signatures;
                     self.annotate.clear_reading();
+                    if !pages_unchanged
+                        && (self.sign.open.is_some()
+                            || matches!(
+                                self.sign.placing,
+                                Some(crate::sign::Placing::Image { pages: Some(_), .. })
+                            ))
+                    {
+                        self.cancel_placing();
+                    }
                     if self.document.is_none() {
                         continue;
                     }
@@ -933,6 +955,9 @@ impl SuniApp {
                     self.edit.system_fonts = Some(list);
                 }
                 Response::ImageLoaded { path, result } => self.on_image_loaded(ctx, path, result),
+                Response::SignatureRendered { id, result } => {
+                    self.on_signature_rendered(ctx, id, result)
+                }
                 Response::Suspended(s) => self.on_suspended(s),
                 Response::Resumed(state) => {
                     self.has_signatures = state.has_signatures;
@@ -1146,6 +1171,7 @@ impl SuniApp {
 
     pub(crate) fn navigation_blocked(&self) -> bool {
         self.processing.busy
+            || self.sign.busy
             || self.saving
             || self.after_save.is_some()
             || self.deferred_close.is_some()
@@ -1156,6 +1182,7 @@ impl SuniApp {
 
     fn close_must_wait(&self) -> bool {
         self.processing.busy
+            || self.sign.busy
             || self.worker.has_pending_mutations()
             || self.printing.busy
             || self.ocr.busy
@@ -1420,6 +1447,7 @@ impl SuniApp {
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
         self.processing.open
+            || self.sign.busy
             || self.processing.busy
             || self.recovery.open
             || self.printing.busy
@@ -1459,7 +1487,11 @@ impl SuniApp {
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
-        if (self.processing.busy || self.printing.busy || self.ocr.busy || self.certificate.busy)
+        if (self.processing.busy
+            || self.printing.busy
+            || self.ocr.busy
+            || self.certificate.busy
+            || self.sign.busy)
             && !matches!(command, Command::Quit | Command::CloseDocument)
         {
             return;
@@ -1475,6 +1507,9 @@ impl SuniApp {
                 .cancel
                 .store(true, std::sync::atomic::Ordering::Relaxed);
             self.printing
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+            self.sign
                 .cancel
                 .store(true, std::sync::atomic::Ordering::Relaxed);
             self.deferred_close = Some(if command == Command::CloseDocument {

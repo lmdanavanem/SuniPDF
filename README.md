@@ -55,6 +55,10 @@ in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP w
 New in 0.12.0: create editable drop-downs and use radio-button `/Opt` export values consistently in the app and
 JSON/XFDF/FDF interchange. Malformed or ambiguous radio fields remain read-only; see the [roadmap](docs/ROADMAP.md).
 
+In development for **0.13.0**: typed visual signatures with an explicit local preview, and one-click placement
+on current/all/selected pages with fitted geometry, cancellation and one undo. These features are not included in
+the published 0.12.0 packages; validation and publication are tracked in [Project status](docs/PROJECT_STATUS.md).
+
 ## Screenshots
 
 | Dark home screen | Light home screen |
