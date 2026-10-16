@@ -128,20 +128,20 @@ localement). CI Windows, compilation ARM64 de même source, treize scénarios po
 préparés/publics avec contrôles renforcés réussis. Copies vérifiées dans `dist/` ; le metteur à jour de production
 a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation. Preuves exécutées et limites : `PROJECT_STATUS.fr.md`.
 
-## 0.16.0 : annotations de formes en tirets (publiée en Latest)
+## 0.16.0 : annotations de formes en tirets (jalon publié)
 
 Rectangles/ellipses/lignes/flèches en tirets réutilisent barre, CLI et writer d'apparences. UI et `annotate --dashed`
 choisissent `[6,3]` points ; motifs personnalisés réels conservés lors des éditions ordinaires sauf changement
 explicite de case. Trait continu par défaut, remplissage continu et pointes pleines inchangés. Types non pris en
 charge, styles SuniPDF malformés et travail de régénération excessif refusés (D107). Aucune dépendance ni commande
-ajoutée, toujours 53 commandes CLI. [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
-sous `lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation locale,
+ajoutée, toujours 53 commandes CLI. [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+sous `lmdanavanem` (Latest à cette date), release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation locale,
 CI Windows et compilation ARM64 de même source réussies : 439 tests, 895 clés EN/FR, 73 contrôles qpdf, quatre
 documents licenciés/744 pages (53,542 s localement), quatorze scénarios portables et huit bases MSI. Six fichiers
 préparés/publics et contrôles renforcés réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a
 vérifié le ZIP x64 de 19 821 719 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.17.0 : fiabilité de la conversion d'images (en développement)
+## 0.17.0 : fiabilité de la conversion d'images (publiée en Latest)
 
 Compléter l'incorporation directe JPEG EXIF 5 et 7 : les huit orientations évitent décodage/recompression d'image.
 Contrôler les non-JPEG avant allocation avec une estimation raster cumulée de 512 Mio :
@@ -151,9 +151,13 @@ UI/CLI/API existantes conservées. Estimation distincte d'un plafond RSS natif/p
 comprimé. Aucune dépendance ni commande ajoutée ; erreur localisée `image_batch_too_large` pour dépassement/overflow
 du budget, `other` conservé pour géométrie invalide. Validation locale réussie : 445 tests workspace, formatage/
 Clippy, 896 clés EN/FR, 74 contrôles qpdf et quatre documents licenciés/744 pages (48,187 s ; pic mémoire enfant
-330 264 576 octets), autotest du helper de mise à jour et contrôle de conversion debug indépendant. CI, paquets/
-publication et quinze scénarios portables/neuf bases MSI en attente. 0.16.0 reste Latest publiée ; preuves et
-limites dans `PROJECT_STATUS.fr.md`.
+330 264 576 octets), autotest du helper de mise à jour et contrôle de conversion debug indépendant. Source
+`5785de282e126fb4666b28fb83340d0e9c6e9acf` : CI Windows, compilation ARM64 de même source, quinze scénarios
+portables, neuf bases MSI et 45 journaux MSI vérifiés ; corpus en CI 45,791 s/pic mémoire enfant 321 413 120 octets.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous `lmdanavanem`, release
+`415074108`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés de conversion réussis ; copies
+vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 825 743 octets sans installation.
+Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -189,7 +193,7 @@ Critère : rendu, enregistrement et réouverture couverts pour chaque opération
 
 Livrés : images ↔ PDF, PDF → texte/PNG, optimisation sans perte, lots CLI et OCR anglais/français local embarqué.
 
-En développement pour 0.17.0 : huit orientations JPEG EXIF incorporées directement et estimation raster cumulée ;
+Livré en 0.17.0 : huit orientations JPEG EXIF incorporées directement et estimation raster cumulée ;
 mesure des limites de mémoire native/processus distincte (D108).
 
 Restent : Office → PDF via convertisseur local détecté, PDF → Word/Excel/PowerPoint avec limites de fidélité mesurées
@@ -216,7 +220,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite après le lot 0.16.0
+## Suite après le lot 0.17.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

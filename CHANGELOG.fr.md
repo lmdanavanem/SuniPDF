@@ -5,16 +5,23 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.17.0] — Non publiée
+## [0.17.0] — 2026-10-16
 
 Validation locale réussie : 445 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy all-targets
 sans avertissement, 896 clés EN/FR, 74 contrôles qpdf et quatre documents licenciés (744 pages ; 48,187 s,
 pic mémoire enfant 330 264 576 octets). Autotest du helper de mise à jour réussi. Contrôle indépendant de la CLI
 debug réussi : huit orientations, neuf flux JPEG exacts dont aller-retour au DPI maximal, 32 coins JPEG/quatre
 PNG et masque alpha, trois contrôles qpdf, deux refus de budget avant décodage, dix refus de DPI invalides,
-treize sources inchangées (35 sous-processus, 1,063 s). CI, paquets, mises à niveau et publication en attente ;
-quinze scénarios portables et neuf bases MSI attendus, non exécutés. 0.16.0 reste Latest publiée.
-Preuves exécutées et limites dans `docs/PROJECT_STATUS.fr.md`.
+treize sources inchangées (35 sous-processus, 1,063 s).
+Source : `5785de282e126fb4666b28fb83340d0e9c6e9acf`. [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
+et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
+réussis. Quinze scénarios portables, neuf bases MSI et 45 journaux MSI vérifiés. Corpus en CI : 45,791 s,
+pic mémoire enfant 321 413 120 octets.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous `lmdanavanem`,
+release `415074108`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés des paquets réussis,
+dont contrôles indépendants JPEG/transparence/budget/DPI ci-dessus. Copies vérifiées dans `dist/` ; le metteur
+à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 825 743 octets sans installation sur l'hôte.
+Preuves et limites restantes dans `docs/PROJECT_STATUS.fr.md`.
 
 ### Modifications
 - Images → PDF incorpore directement les JPEG d'orientations EXIF 5 et 7 : les huit orientations sont ainsi
@@ -38,7 +45,7 @@ Validation locale réussie : 439 tests workspace (zéro échec, sept ignorés pa
 [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589) réussis,
 ainsi que les quatorze scénarios portables (dix mises à niveau dont 0.15.0 et quatre protections), huit bases MSI
 et 40 journaux MSI vérifiés. Corpus en CI : 47,628 s, pic mémoire enfant 321 306 624 octets.
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) sous `lmdanavanem`,
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) sous `lmdanavanem` (Latest à cette date),
 release `414934190`, avec six fichiers. Six fichiers préparés/publics et contrôles renforcés des paquets réussis ;
 copies vérifiées dans `dist/`. Le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de
 19 821 719 octets sans installation sur l'hôte. Preuves exécutées et limites dans `docs/PROJECT_STATUS.fr.md`.

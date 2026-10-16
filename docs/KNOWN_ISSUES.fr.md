@@ -140,11 +140,12 @@ A30. **AES-128 et mots de passe** : seul le Latin-1 imprimable est accepté (0x2
      (vérifié par `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choisir AES-256 pour ces
      mots de passe. AES-128 utilise les 32 premiers octets encodés, complétés selon le format PDF ; depuis 0.8.0,
      la différence propriétaire/utilisateur est vérifiée sur ces octets effectifs.
-A31. **Images → PDF** : la 0.16.0 publiée incorpore les JPEG tels quels sauf les orientations EXIF 5 et 7 (rotation +
-     miroir), décodées. **0.17.0 en développement** incorpore les huit orientations directement sans recompression
+A31. **Images → PDF** : la 0.17.0 publiée incorpore les JPEG des huit orientations EXIF directement sans recompression
      et contrôle avant allocation une estimation raster non-JPEG cumulée de 512 Mio :
      `somme(max(decoder.total_bytes(), largeur × hauteur × 4))`. Arithmétique vérifiée, dimensions physiques finies/
-     positives, contrôles répétés au chargement pour les changements simples de fichiers (D108). Workspace local, qpdf/corpus et conversion debug indépendante réussis ; CI/paquets/publication et mises à niveau en attente dans `PROJECT_STATUS.fr.md`.
+     positives, contrôles répétés au chargement pour les changements simples de fichiers (D108). Workspace local,
+     qpdf/corpus, conversion indépendante debug/paquets préparés/publics, CI Windows, compilation ARM64 de même
+     source, mises à niveau et metteur à jour de production réussis ; preuves et limites dans `PROJECT_STATUS.fr.md`.
      PNG, TIFF, BMP, GIF et WebP restent décodés avec qualité/transparence conservées, puis stockés en pixels
      comprimés (Flate) ; le PDF peut être plus lourd que l'original. Estimation distincte d'un plafond RSS natif/
      processus ou d'une limite JPEG comprimé ; coût du décodeur/de PDFium/de sortie et mémoire du poste restent distincts.

@@ -158,7 +158,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,803,226-byte Latest x64 ZIP without
   installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D106).
 
-## 0.16.0: dashed shape annotations (published as Latest)
+## 0.16.0: dashed shape annotations (published milestone)
 
 - Rectangle/ellipse/line/arrow only: UI Dashed border and CLI `annotate --dashed` use `[6,3]` points, while the
   actual custom `dash_pattern` survives selection/recolour/move/resize/undo. Only an explicit checkbox toggle
@@ -172,12 +172,12 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589)
   passed. All fourteen portable cases (ten upgrades including 0.15.0 and four guards), eight MSI baselines
   (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0/0.14.0/0.15.0) and 40 MSI logs passed verification. CI corpus:
-  47.628 seconds, peak child memory 321,306,624 bytes. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
-  under `lmdanavanem`, release `414934190`, with six files. All staged/public files and enhanced checks passed;
+  47.628 seconds, peak child memory 321,306,624 bytes. [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+  under `lmdanavanem` (Latest at the time), release `414934190`, with six files. All staged/public files and enhanced checks passed;
   verified copies are in `dist/`. The production updater verified the 19,821,719-byte x64 ZIP without installing
   it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.17.0: image conversion reliability (in development)
+## 0.17.0: image conversion reliability (published as Latest)
 
 - Embed JPEG EXIF orientations 5 and 7 directly without recompression, completing all eight orientations through
   the existing object matrix path. Keep non-JPEG quality/transparency and existing desktop/CLI callers (D108).
@@ -191,8 +191,14 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   896 EN/FR keys, 74 qpdf checks, four licensed documents/744 pages (48.187 seconds; peak child memory
   330,264,576 bytes) and the update-helper self-test. Independent debug conversion checks passed: eight orientations,
   nine exact JPEG streams, 32 JPEG/four PNG corners and alpha mask, three qpdf checks, two budget/ten DPI refusals,
-  thirteen unchanged sources (35 subprocesses, 1.063 seconds). CI, package/publication and upgrades remain pending;
-  fifteen portable cases and nine MSI baselines including 0.16.0 are expected, not executed. 0.16.0 stays Latest.
+  thirteen unchanged sources (35 subprocesses, 1.063 seconds).
+- Source `5785de282e126fb4666b28fb83340d0e9c6e9acf`: [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
+  and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
+  passed, along with fifteen portable cases, nine MSI baselines including 0.16.0 and 45 verified MSI logs.
+  CI corpus: 45.791 seconds, peak child memory 321,413,120 bytes. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
+  under `lmdanavanem`, release `415074108`, with six files. All staged/public files and enhanced conversion checks
+  passed, including exact JPEG streams, corners/transparency and budget refusals before raster decoding. Verified copies
+  are in `dist/`; the production updater verified the 19,825,743-byte x64 ZIP without installing it on the host.
   Evidence and remaining limits belong in `PROJECT_STATUS.md`.
 
 ## Remaining work beyond these lots
@@ -271,7 +277,7 @@ Remaining, non-blocking:
 - expand the independent AES/XMP interoperability corpus beyond the synthetic qpdf gate (A4);
 - validate preserved PDF/A metadata with a dedicated conformance validator (A34); the 0.9.1 preservation fix
   itself is implemented, and current execution evidence belongs in `PROJECT_STATUS.md`;
-- JPEG EXIF 5/7 direct embedding and cumulative PNG/raster estimates are in development for 0.17.0 (A31/D108);
+- JPEG EXIF 5/7 direct embedding and cumulative PNG/raster estimates are delivered in 0.17.0 (A31/D108);
   measured native/process memory and larger licensed inputs remain separate work;
 - CLI help for `stamp` / `page-numbers` (A16, clap replaces `{n}`).
 

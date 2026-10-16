@@ -1,11 +1,18 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.17.0 en développement)
+# État du projet — mis à jour le 2026-10-16 (version 0.17.0 publiée)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.17.0 : conversion JPEG orientée sans recompression et contrôle des lots raster (en développement)
+## 0.17.0 : conversion JPEG orientée sans recompression et contrôle des lots raster (publiée en Latest)
+
+[SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) est stable **Latest** sous
+`lmdanavanem`, release ID `415074108`, avec six fichiers. Tag/source immuable :
+`5785de282e126fb4666b28fb83340d0e9c6e9acf`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
+et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
+ont réussi. Le workflow de release en double a été annulé après le succès complet ARM64, upload et post-cache inclus ;
+les paquets x64 de la CI principale et l’artefact ARM64 vérifié ont été utilisés. Les anciennes releases restent disponibles.
 
 Images vers PDF incorpore désormais les JPEG sans décodage des pixels ni recompression pour les huit orientations
 EXIF, y compris les rotations avec miroir 5 et 7. Les dimensions de page suivent l’image orientée. L’API moteur
@@ -34,13 +41,36 @@ Un contrôle indépendant Python/Pillow/qpdf passe sur la CLI debug : neuf compa
 en-têtes seuls avant décodage, dix refus de DPI invalides et géométrie positive/finie après sauvegarde au DPI f32
 maximum. Les 13 empreintes d’entrée restent inchangées. Ce résultat debug ne prouve ni paquet publié ni GUI manuelle.
 
-CI, binaires empaquetés, téléchargements publics, publication et updater de production restent à valider. Les mises
-à niveau incluent le ZIP/MSI 0.16.0 vérifiés indépendamment, pour 15 scénarios portables et neuf baselines MSI.
-La 0.16.0 reste stable Latest.
+La CI Windows passe les mêmes contrôles de tests/traductions/qpdf. Son corpus de quatre documents termine en
+45,791 secondes, avec un pic mémoire échantillonné du processus enfant de 321 413 120 octets. Les 15 scénarios
+portables réels réussissent : mises à jour depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0,
+0.14.0, 0.15.0 et 0.16.0, plus empreinte incorrecte, mauvaise architecture, restauration après verrouillage et
+attente réelle de 120 secondes avec garde contre une mise à jour concurrente. Les neuf baselines MSI (0.8.0,
+0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0, 0.14.0, 0.15.0, 0.16.0) passent installation, restauration transactionnelle,
+mise à jour, refus du downgrade, fichiers/données utilisateur et désinstallation sur runners Windows jetables.
+Les 45 journaux MSI terminent avec le code attendu 0 ou 1603. Preuves dans le journal principal et les artefacts
+portable/MSI/corpus téléchargés.
 
-## 0.16.0 : annotations de forme en pointillés (publiée en Latest)
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 825 743 | `55D8CBC224D1D6D9582AD9402F51B7F76CEC84C93A0FC90AFE91C43471ACF1D4` |
+| ZIP portable ARM64 | 18 413 678 | `CBFA86B5D1EEE8B83A82EE97D4105BCE7539E19A04CB6916938D5678FBB373E4` |
+| MSI x64 | 19 369 984 | `C59DE003132EFC077B6D5F0C70B7FC8DAE06616D6F4E4B12DDD45BCB479A603E` |
 
-[SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) est stable **Latest** sous
+Les six fichiers préparés passent empreintes, architectures, versions/icônes anglaises, OCR/licences, contenu
+MSI/ZIP et contrôles des fonctions existantes. Les contrôles indépendants de conversion passent sur la CLI x64
+du paquet : flux JPEG exacts, coins orientés, masques PNG, refus budget/DPI et entrées/sorties préservées.
+Les six téléchargements publics sans authentification concordent avec les empreintes API, fichiers SHA256 et
+paquets préparés ; les contrôles renforcés passent de nouveau sur ces fichiers. Copies vérifiées dans `dist/`.
+L’updater de production a téléchargé et vérifié le ZIP x64 Latest de 19 825 743 octets sans installation sur ce poste.
+
+Dialogues natifs interactifs, matériel ARM64, imprimantes physiques, Narrator et lecteurs tiers restent non vérifiés ;
+les paquets ne sont pas signés. Le budget raster de 512 Mio ne plafonne pas la mémoire native/totale du processus.
+Les réécritures PDF complètes peuvent invalider les signatures numériques ; l’avertissement existant reste présent.
+
+## 0.16.0 : annotations de forme en pointillés (publiée en Latest à cette date)
+
+[SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) était stable **Latest** à cette date sous
 `lmdanavanem`, release ID `414934190`, avec six fichiers. Tag/source immuable :
 `6cd7843734f3924e87033d8b05539d493ccbcb95`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537)
 et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589)

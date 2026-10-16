@@ -5,16 +5,23 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [0.17.0] - Unreleased
+## [0.17.0] - 2026-10-16
 
 Local validation passed: 445 workspace tests (zero failed, seven default ignored), formatting/Clippy all-targets
 with warnings denied, 896 EN/FR keys, 74 qpdf checks and four licensed documents (744 pages; 48.187 seconds,
 peak child memory 330,264,576 bytes). The update-helper self-test passed. The independent debug-CLI conversion
 gate passed: eight orientations, nine exact JPEG streams including the maximum-DPI round trip, 32 JPEG/four
 PNG corner comparisons and soft mask, three qpdf checks, two budget refusals before decoding, ten invalid-DPI
-refusals and thirteen unchanged sources (35 subprocesses, 1.063 seconds). CI, packages, upgrades and publication
-remain pending; fifteen portable cases and nine MSI baselines are expected, not executed. 0.16.0 stays published
-Latest. Executed evidence and remaining limits belong in `docs/PROJECT_STATUS.md`.
+refusals and thirteen unchanged sources (35 subprocesses, 1.063 seconds).
+Source: `5785de282e126fb4666b28fb83340d0e9c6e9acf`. [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
+and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
+passed. All fifteen portable cases, nine MSI baselines and 45 MSI logs passed verification. The CI corpus took
+45.791 seconds, peak child memory 321,413,120 bytes.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) under `lmdanavanem`,
+release `415074108`, with six assets. All staged/public files and enhanced package checks passed, including
+the independent JPEG/transparency/budget/DPI checks above. Verified copies are in `dist/`; the production
+updater downloaded and verified the 19,825,743-byte Latest x64 ZIP without installing it on the host.
+Evidence and remaining limits are in `docs/PROJECT_STATUS.md`.
 
 ### Changed
 - Images → PDF embeds JPEG EXIF orientations 5 and 7 directly, completing all eight orientations without
@@ -38,7 +45,7 @@ Local validation passed: 439 workspace tests (zero failed, seven default ignored
 [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589) passed,
 along with all fourteen portable cases (ten upgrades including 0.15.0 and four guards), eight MSI baselines and
 40 verified MSI logs. The CI corpus took 47.628 seconds with peak child memory 321,306,624 bytes.
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) under `lmdanavanem`,
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) under `lmdanavanem` (Latest at the time),
 release `414934190`, with six assets. All six staged/public files and enhanced packaged checks passed;
 verified copies are in `dist/`. The production updater downloaded and verified the 19,821,719-byte Latest
 x64 ZIP without installing it on the host. Executed evidence and remaining limits are in `docs/PROJECT_STATUS.md`.

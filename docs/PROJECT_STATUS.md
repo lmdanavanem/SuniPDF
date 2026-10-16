@@ -1,11 +1,18 @@
-# Project status - updated 2026-10-16 (version 0.17.0 in development)
+# Project status - updated 2026-10-16 (version 0.17.0 published)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.17.0: lossless oriented JPEG conversion and raster batch checks (in development)
+## 0.17.0: lossless oriented JPEG conversion and raster batch checks (published as Latest)
+
+[SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) is stable **Latest** under
+`lmdanavanem`, release ID `415074108`, with six assets. Immutable tag/source:
+`5785de282e126fb4666b28fb83340d0e9c6e9acf`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
+and the same-source [ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
+passed. The duplicate release workflow was cancelled after ARM64 completed upload and post-cache successfully;
+the successful main-CI x64 packages and verified ARM64 artifact were used. Earlier releases remain available.
 
 Images to PDF now embeds JPEGs without pixel decoding or recompression for all eight EXIF orientations,
 including mirrored rotations 5 and 7. Page dimensions follow the oriented image. The shared core API and
@@ -33,13 +40,35 @@ An independent Python/Pillow/qpdf check passed against the debug CLI: nine exact
 before pixel decoding, ten invalid-DPI refusals and positive finite geometry after saving at f32 maximum DPI.
 All 13 input hashes stayed unchanged. This is debug-runtime evidence, not released-package or manual GUI proof.
 
-CI, packaged binaries, public downloads, publication and the live production updater remain pending. Upgrade
-coverage includes the independently verified 0.16.0 ZIP/MSI baseline, for 15 portable scenarios and nine MSI
-baselines. Version 0.16.0 remains stable Latest.
+Windows CI passed the same tests/translation/qpdf gates. Its four-document corpus completed in 45.791 seconds,
+with peak sampled child working set 321,413,120 bytes. All 15 real portable scenarios passed: upgrades from
+0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0, 0.14.0, 0.15.0 and 0.16.0, plus bad checksum,
+wrong architecture, locked-file rollback and the real 120-second close-timeout/concurrent-update guard.
+Nine MSI baselines (0.8.0, 0.9.1, 0.10.0, 0.11.0, 0.12.0, 0.13.0, 0.14.0, 0.15.0, 0.16.0) passed installation,
+transactional rollback, upgrade, downgrade rejection, payload/user-data checks and uninstall on disposable
+Windows runners. All 45 MSI logs have the expected final exit 0 or 1603. Evidence is in the main job log and
+downloaded portable/MSI/corpus artifacts.
 
-## 0.16.0: dashed shape annotations (published as Latest)
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,825,743 | `55D8CBC224D1D6D9582AD9402F51B7F76CEC84C93A0FC90AFE91C43471ACF1D4` |
+| ARM64 portable ZIP | 18,413,678 | `CBFA86B5D1EEE8B83A82EE97D4105BCE7539E19A04CB6916938D5678FBB373E4` |
+| x64 MSI | 19,369,984 | `C59DE003132EFC077B6D5F0C70B7FC8DAE06616D6F4E4B12DDD45BCB479A603E` |
 
-[SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) is stable **Latest** under
+All six staged files passed checksums, architecture, English version/icon resources, OCR/licenses, MSI/ZIP
+payload and existing feature checks. The independent conversion checks passed on the packaged x64 CLI,
+including exact JPEG streams, oriented corners, PNG soft masks, budget/DPI refusal and input/output preservation.
+All six unauthenticated public downloads match API digests, sidecars and staged hashes; all enhanced checks
+passed again on the public files. Verified copies are in `dist/`. The production updater downloaded and
+verified the Latest 19,825,743-byte x64 ZIP without installation on the development machine.
+
+Native interactive dialogs, ARM64 hardware, physical printers, Narrator and third-party readers remain unverified;
+packages remain unsigned. The 512 MiB raster budget does not cap total native/process memory. Full PDF rewrites
+can invalidate digital signatures; the existing save warning applies.
+
+## 0.16.0: dashed shape annotations (published as Latest at that time)
+
+[SuniPDF 0.16.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) was stable **Latest** at that time under
 `lmdanavanem`, release ID `414934190`, with six assets. Immutable tag/source:
 `6cd7843734f3924e87033d8b05539d493ccbcb95`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377537)
 and the same-source [ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589)

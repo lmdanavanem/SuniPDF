@@ -64,13 +64,22 @@ les deux mots de passe, identité/zone des liens et PNG des pages inchangés. Co
 à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets sans installation.
 Preuves et limites restantes dans `PROJECT_STATUS.fr.md`.
 
-[0.16.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) sous
-`lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation réussie :
+[0.16.0 publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) sous
+`lmdanavanem` (Latest à cette date), release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation réussie :
 439 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 895 clés EN/FR, 73 contrôles qpdf et
 quatre documents licenciés (744 pages ; 53,542 s localement), CI Windows et compilation ARM64 de même source,
 quatorze scénarios portables et huit bases MSI. Six fichiers préparés/publics et contrôles renforcés des paquets
 réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de
 19 821 719 octets sans installation. Preuves et limites matérielles/d'interopérabilité dans `PROJECT_STATUS.fr.md`.
+
+[0.17.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous
+`lmdanavanem`, release `415074108`, source `5785de282e126fb4666b28fb83340d0e9c6e9acf`. Validation réussie :
+445 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 896 clés EN/FR, 74 contrôles qpdf,
+quatre documents licenciés/744 pages (48,187 s localement ; 45,791 s en CI), CI Windows et compilation ARM64
+de même source, quinze scénarios portables et neuf bases MSI. Six fichiers préparés/publics et contrôles renforcés
+de conversion réussis, dont neuf flux JPEG exacts, coins orientés, transparence PNG, refus budget/DPI et sources
+inchangées. Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de
+19 825 743 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
 ## A. Lecture
 
@@ -132,7 +141,7 @@ réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a v
 |---|---|---|
 | PDF → images | Déclaré (CLI render) | **Fait** (UI export PNG 150 ppp, CLI `render`, `export-images`) |
 | PDF → texte | Déclaré | **Fait** (CLI `text`) |
-| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP ; orientation EXIF appliquée ; la 0.16.0 publiée décode les orientations JPEG 5/7, autres JPEG incorporés tels quels). **En développement pour 0.17.0** : incorporation directe des huit orientations JPEG ; estimation raster non-JPEG cumulée de 512 Mio `somme(max(octets décodés, largeur × hauteur × 4))` avant allocation, arithmétique vérifiée et géométrie finie/positive (D108). Qualité/transparence et accès conservés ; estimation distincte d'un plafond RSS natif/processus ou d'une limite JPEG comprimé. Workspace local, qpdf/corpus et conversion debug indépendante réussis ; CI/paquets/publication et mises à niveau en attente dans `PROJECT_STATUS.fr.md` |
+| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP). **Livré en 0.17.0** : incorporation directe des huit orientations JPEG EXIF ; estimation raster non-JPEG cumulée de 512 Mio `somme(max(octets décodés, largeur × hauteur × 4))` avant allocation, arithmétique vérifiée et géométrie finie/positive (D108). Qualité/transparence et accès conservés ; estimation distincte d'un plafond RSS natif/processus ou d'une limite JPEG comprimé. Contrôles locaux/CI/mises à niveau, conversion indépendante debug/paquets préparés/publics et metteur à jour de production réussis ; preuves et limites dans `PROJECT_STATUS.fr.md` |
 | PDF → Word | Partiel (perd la mise en page) | Planifié (P4), fidélité à annoncer honnêtement |
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
 | Office → PDF | Absent | Planifié (P4) via LibreOffice/Word installé si présent ; sinon hors périmètre |
@@ -182,6 +191,6 @@ réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a v
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.16.0 ZIP/MSI publiés en Latest ; quatorze scénarios portables et huit bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.16.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.17.0 ZIP/MSI publiés en Latest ; quinze scénarios portables et neuf bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.17.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

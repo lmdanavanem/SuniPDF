@@ -62,13 +62,22 @@ seven MSI baselines. Six staged/public files and enhanced checks passed, includi
 both passwords, preserved link identity/area and unchanged page PNGs. Verified copies are in `dist/`; the production
 updater verified the 19,803,226-byte Latest x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-[0.16.0 is published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) under
-`lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation passed:
+[0.16.0 was published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0) under
+`lmdanavanem` (Latest at the time), release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Validation passed:
 439 workspace tests (zero failed, seven default ignored), formatting/Clippy, 895 EN/FR keys, 73 qpdf checks and
 four licensed documents (744 pages; 53.542 seconds locally), Windows CI and same-source ARM64 compilation,
 fourteen portable cases and eight MSI baselines. All six staged/public files and enhanced package checks passed;
 verified copies are in `dist/`. The production updater verified the 19,821,719-byte Latest x64 ZIP without
 installation. Evidence and remaining hardware/interoperability limits are in `PROJECT_STATUS.md`.
+
+[0.17.0 is published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) under
+`lmdanavanem`, release `415074108`, source `5785de282e126fb4666b28fb83340d0e9c6e9acf`. Validation passed:
+445 workspace tests (zero failed, seven default ignored), formatting/Clippy, 896 EN/FR keys, 74 qpdf checks,
+four licensed documents/744 pages (48.187 seconds locally; 45.791 seconds in CI), Windows CI and same-source
+ARM64 compilation, fifteen portable cases and nine MSI baselines. All six staged/public files and enhanced
+conversion checks passed, including nine exact JPEG streams, oriented corners, PNG transparency, budget/DPI
+refusals and unchanged sources. Verified copies are in `dist/`; the production updater verified the
+19,825,743-byte Latest x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -130,7 +139,7 @@ installation. Evidence and remaining hardware/interoperability limits are in `PR
 |---|---|---|
 | PDF → images | Declared (CLI render) | **Done** (UI 150 dpi PNG export, CLI `render`, `export-images`) |
 | PDF → text | Declared | **Done** (CLI `text`) |
-| Images → PDF | Declared (create) | **Done** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP; EXIF orientation applied; published 0.16.0 decodes JPEG orientations 5/7, otherwise embeds JPEGs as is). **In development for 0.17.0**: direct embedding for all eight JPEG orientations; 512 MiB cumulative non-JPEG raster estimate `sum(max(decoded bytes, width × height × 4))` before allocation, checked arithmetic and finite/positive page geometry (D108). Quality/transparency and callers retained; estimate is not a process/native RSS ceiling or compressed-JPEG limit. Local workspace, qpdf/corpus and independent debug conversion checks passed; CI/packages/publication and upgrades pending in `PROJECT_STATUS.md` |
+| Images → PDF | Declared (create) | **Done** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP). **Delivered in 0.17.0**: direct embedding for all eight JPEG EXIF orientations; 512 MiB cumulative non-JPEG raster estimate `sum(max(decoded bytes, width × height × 4))` before allocation, checked arithmetic and finite/positive page geometry (D108). Quality/transparency and callers retained; estimate is not a process/native RSS ceiling or compressed-JPEG limit. Local/CI/upgrade, independent debug/staged/public conversion and production updater checks passed; evidence and remaining limits in `PROJECT_STATUS.md` |
 | PDF → Word | Partial (loses the layout) | Planned (P4), fidelity to be announced honestly |
 | PDF → Excel / PowerPoint | Absent / partial pptx export | Planned (P4) |
 | Office → PDF | Absent | Planned (P4) through an installed LibreOffice/Word if present; otherwise out of scope |
@@ -180,6 +189,6 @@ installation. Evidence and remaining hardware/interoperability limits are in `PR
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.16.0 ZIP/MSI published as Latest; fourteen real portable cases and eight MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.16.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.17.0 ZIP/MSI published as Latest; fifteen real portable cases and nine MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.17.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

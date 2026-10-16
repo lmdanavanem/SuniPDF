@@ -125,20 +125,20 @@ locally). Windows CI, same-source ARM64 compilation, thirteen portable scenarios
 staged/public files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified
 the 19,803,226-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
-## 0.16.0: dashed shape annotations (published as Latest)
+## 0.16.0: dashed shape annotations (published milestone)
 
 Dashed rectangle/ellipse/line/arrow annotations reuse the existing toolbar, CLI and appearance writer. UI and
 `annotate --dashed` choose `[6,3]` points; actual custom patterns remain through ordinary edits unless explicitly
 toggled. Solid defaults, continuous fill and solid arrowheads stay unchanged. Unsupported types, malformed
 SuniPDF border styles and excessive regeneration work are refused (D107). No dependency or command is added;
-the CLI remains at 53 commands. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
-under `lmdanavanem`, release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Local validation,
+the CLI remains at 53 commands. [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+under `lmdanavanem` (Latest at the time), release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Local validation,
 Windows CI and same-source ARM64 compilation passed: 439 tests, 895 EN/FR keys, 73 qpdf checks, four licensed
 documents/744 pages (53.542 seconds locally), fourteen portable cases and eight MSI baselines. Six staged/public
 files and enhanced checks passed; verified copies are in `dist/`. The production updater verified the
 19,821,719-byte x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.17.0: image conversion reliability (in development)
+## 0.17.0: image conversion reliability (published as Latest)
 
 Complete direct JPEG embedding for EXIF orientations 5 and 7, so all eight orientations avoid image decoding/
 recompression. Preflight non-JPEG inputs against a cumulative 512 MiB raster-data estimate:
@@ -148,8 +148,12 @@ The estimate is not a native/process RSS ceiling or compressed-JPEG limit. No de
 is added. Budget excess/overflow has a localized `image_batch_too_large` error; invalid geometry retains `other`.
 Local validation passed: 445 workspace tests, formatting/Clippy, 896 EN/FR keys, 74 qpdf checks and four licensed
 documents/744 pages (48.187 seconds; peak child memory 330,264,576 bytes), the update-helper self-test and
-independent debug conversion gate. CI, packages/publication and fifteen portable/nine MSI checks remain pending.
-0.16.0 stays published Latest; executed evidence and remaining limits belong in `PROJECT_STATUS.md`.
+independent debug conversion gate. Source `5785de282e126fb4666b28fb83340d0e9c6e9acf` passed Windows CI,
+same-source ARM64 compilation, fifteen portable cases, nine MSI baselines and 45 MSI logs; CI corpus took
+45.791 seconds with peak child memory 321,413,120 bytes. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
+under `lmdanavanem`, release `415074108`, with six files. All staged/public files and enhanced conversion checks
+passed; verified copies are in `dist/`. The production updater verified the 19,825,743-byte x64 ZIP without
+installation. Evidence and remaining limits belong in `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -186,7 +190,7 @@ Acceptance: rendering, saving and reopening covered for each added operation, wi
 
 Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches and bundled local English/French OCR.
 
-In development for 0.17.0: all eight JPEG EXIF orientations embedded directly and cumulative raster-data estimates;
+Delivered in 0.17.0: all eight JPEG EXIF orientations embedded directly and cumulative raster-data estimates;
 measured native/process memory limits remain separate work (D108).
 
 Remaining: Office → PDF through a detected local converter, PDF → Word/Excel/PowerPoint with explicit measured
@@ -213,7 +217,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.16.0 lot
+## Next work after the 0.17.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

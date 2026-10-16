@@ -47,11 +47,11 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.16.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)** sous `lmdanavanem`.
-439 tests du workspace, formatage/Clippy, 895 clés EN/FR, 73 contrôles qpdf et quatre documents NIST/NBS licenciés
-(744 pages ; 53,542 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, quatorze scénarios portables
-et huit bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies vérifiées
-dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 821 719 octets sans installation.
+**[0.17.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)** sous `lmdanavanem`.
+445 tests du workspace, formatage/Clippy, 896 clés EN/FR, 74 contrôles qpdf et quatre documents NIST/NBS licenciés
+(744 pages ; 48,187 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, quinze scénarios portables
+et neuf bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies vérifiées
+dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 825 743 octets sans installation.
 Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 Depuis **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
@@ -59,17 +59,17 @@ double-clic ou `set-link-target`, en conservant zone, apparence et commentaires.
 autorisée ou une page physique affichée en entier. Liens verrouillés/en lecture seule refusés. Création d'étiquettes
 et navigation conservée par Annuler/Rétablir restent disponibles depuis 0.14.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
 
-Nouveautés **0.16.0** : bordures en tirets des annotations rectangle, ellipse, ligne et flèche via
+Depuis **0.16.0** : bordures en tirets des annotations rectangle, ellipse, ligne et flèche via
 **Bordure en tirets** et CLI `annotate --dashed`. Les motifs personnalisés restent conservés à la sélection,
 recoloration et modification géométrique ; seul un changement explicite de case remplace le motif. Les styles
 invalides sont refusés sans remplacement silencieux. Validation et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-En développement pour **0.17.0** : incorporer les JPEG des huit orientations EXIF sans recompression, dont
+Nouveautés **0.17.0** : incorporer les JPEG des huit orientations EXIF sans recompression, dont
 les orientations 5 et 7 auparavant décodées. Images → PDF contrôle aussi un **budget raster cumulé estimé de
 512 Mio** avant de décoder les entrées non-JPEG. Cette estimation porte sur les images décodées, pas la mémoire
-totale du processus. Accès UI/CLI et 53 commandes inchangés. Contrôles locaux réussis : 445 tests workspace,
-formatage/Clippy, 896 clés EN/FR, 74 contrôles qpdf, quatre documents licenciés/744 pages (48,187 s) et contrôle
-de conversion debug indépendant. CI, paquets/publication et quinze scénarios portables/neuf bases MSI en attente ; 0.16.0 reste Latest.
+totale du processus. Accès UI/CLI et 53 commandes inchangés. Contrôles de conversion debug et des paquets préparés/
+publics réussis : flux JPEG exacts, rendus orientés, transparence PNG, refus de budget sans allocation raster et
+entrées inchangées. Preuves exécutées et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

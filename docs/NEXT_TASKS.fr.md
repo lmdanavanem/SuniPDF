@@ -159,7 +159,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 803 226 octets
   sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D106).
 
-## 0.16.0 : annotations de formes en tirets (publiée en Latest)
+## 0.16.0 : annotations de formes en tirets (jalon publié)
 
 - Rectangle/ellipse/ligne/flèche seulement : case Bordure en tirets et CLI `annotate --dashed` utilisent `[6,3]`
   points ; vecteur `dash_pattern` réel conservé lors de sélection/recoloration/déplacement/redimensionnement/
@@ -174,12 +174,12 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38897377641/job/116961002589) réussis.
   Les quatorze scénarios portables (dix mises à niveau dont 0.15.0 et quatre protections), huit bases MSI
   (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0/0.13.0/0.14.0/0.15.0) et 40 journaux MSI ont été vérifiés. Corpus en CI :
-  47,628 s, pic mémoire enfant 321 306 624 octets. [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
-  sous `lmdanavanem`, release `414934190`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés réussis ;
+  47,628 s, pic mémoire enfant 321 306 624 octets. [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
+  sous `lmdanavanem` (Latest à cette date), release `414934190`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés réussis ;
   copies vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 821 719 octets sans
   installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.17.0 : fiabilité de la conversion d'images (en développement)
+## 0.17.0 : fiabilité de la conversion d'images (publiée en Latest)
 
 - Incorporer directement les JPEG EXIF 5 et 7 sans recompression : huit orientations via les matrices existantes.
   Conserver qualité/transparence des non-JPEG et les accès bureau/CLI (D108).
@@ -193,9 +193,15 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   896 clés EN/FR, 74 contrôles qpdf, quatre documents licenciés/744 pages (48,187 s ; pic mémoire enfant
   330 264 576 octets) et autotest du helper de mise à jour. Conversion debug indépendante réussie : huit orientations,
   neuf flux JPEG exacts, 32 coins JPEG/quatre PNG et masque alpha, trois contrôles qpdf, deux refus budget/dix DPI,
-  treize sources inchangées (35 sous-processus, 1,063 s). CI, paquets/publication et mises à niveau en attente ;
-  quinze scénarios portables et neuf bases MSI dont 0.16.0 attendus, non exécutés. 0.16.0 reste Latest.
-  Preuves et limites dans `PROJECT_STATUS.fr.md`.
+  treize sources inchangées (35 sous-processus, 1,063 s).
+- Source `5785de282e126fb4666b28fb83340d0e9c6e9acf` : [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
+  et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
+  réussis, ainsi que quinze scénarios portables, neuf bases MSI dont 0.16.0 et 45 journaux MSI vérifiés.
+  Corpus en CI : 45,791 s, pic mémoire enfant 321 413 120 octets. [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
+  sous `lmdanavanem`, release `415074108`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés de
+  conversion réussis, dont flux JPEG exacts, coins/transparence et refus de budget sans allocation raster. Copies
+  vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP x64 de 19 825 743 octets sans installation
+  sur l'hôte. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Travail restant au-delà de ces lots
 
@@ -274,7 +280,7 @@ Reste, non bloquant :
 - élargir le corpus d'interopérabilité AES/XMP au-delà du contrôle qpdf synthétique (A4) ;
 - contrôler les métadonnées PDF/A préservées avec un validateur dédié (A34) ; la correction de préservation 0.9.1
   est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;
-- incorporation directe JPEG EXIF 5/7 et estimation PNG/raster cumulée en développement pour 0.17.0 (A31/D108) ;
+- incorporation directe JPEG EXIF 5/7 et estimation PNG/raster cumulée livrées en 0.17.0 (A31/D108) ;
   mesure de la mémoire native/processus et entrées licenciées volumineuses restent distinctes ;
 - aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
 

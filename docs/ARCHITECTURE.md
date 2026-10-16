@@ -200,7 +200,7 @@ chooses `[6, 3]` or solid. CLI `annotate --dashed` supplies the same fixed patte
 output guards are reused, with no new dependency. Published in 0.16.0; local/CI/upgrade, staged/public package
 and production updater checks passed. Source, executed evidence and remaining limits are recorded in `PROJECT_STATUS.md`.
 
-## 0.17.0 image conversion bounds (in development)
+## 0.17.0 image conversion bounds (published)
 
 `convert.rs` keeps the existing `Engine::images_to_pdf` API shared by desktop and CLI. All eight JPEG EXIF
 orientations use object matrices and the original compressed stream; orientations 5 and 7 no longer require
@@ -214,8 +214,9 @@ It does not eliminate decoder, PDFium or output-buffer overhead. UI/CLI callers 
 with no new dependency or command. Budget excess/overflow uses `ImageBatchTooLarge` / `image_batch_too_large`,
 mapped to one new EN/FR error key; invalid geometry retains `Other`. Local validation passed: 445 workspace tests,
 896 EN/FR keys, formatting/Clippy, 74 qpdf checks, four licensed documents/744 pages and the independent debug
-conversion gate. CI/package/publication and upgrades remain pending; evidence and limits are in `PROJECT_STATUS.md`.
-0.16.0 stays published Latest.
+conversion gate. Windows CI, same-source ARM64 compilation, fifteen portable cases and nine MSI baselines passed.
+Published in 0.17.0; all six staged/public files, enhanced packaged conversion checks and the production updater
+passed. Evidence, immutable source and remaining limits are in `PROJECT_STATUS.md`.
 
 ## Coordinates (SUNI-031c)
 

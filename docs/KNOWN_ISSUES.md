@@ -140,11 +140,12 @@ A30. **AES-128 and passwords**: only printable Latin-1 is accepted (0x20–0x7E,
      (verified by `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choose AES-256 for these
      passwords. AES-128 uses the first 32 encoded bytes, padded according to the PDF format; since 0.8.0,
      owner/user differences are checked on these effective bytes.
-A31. **Images → PDF**: published 0.16.0 embeds JPEGs as is except for EXIF orientations 5 and 7 (rotation +
-     mirror), which are decoded. **0.17.0 in development** embeds all eight orientations directly without
+A31. **Images → PDF**: published 0.17.0 embeds JPEGs in all eight EXIF orientations directly without
      recompression and preflights a cumulative non-JPEG raster estimate of 512 MiB before allocation:
      `sum(max(decoder.total_bytes(), width × height × 4))`. Arithmetic is checked, physical page dimensions must
-     be finite/positive and loading repeats checks for simple file changes (D108). Local workspace, qpdf/corpus and independent debug conversion checks passed; CI/packages/publication and upgrades remain pending in `PROJECT_STATUS.md`.
+     be finite/positive and loading repeats checks for simple file changes (D108). Local workspace, qpdf/corpus,
+     independent debug/staged/public conversion checks, Windows CI, same-source ARM64 compilation, upgrades and
+     production updater passed; evidence and remaining limits are in `PROJECT_STATUS.md`.
      PNG, TIFF, BMP, GIF and WebP still decode with quality/transparency preserved and are stored as compressed
      pixels (Flate); the PDF can be larger than the original. The estimate is not a process/native RSS ceiling
      or a limit on compressed JPEGs; decoder/PDFium/output overhead and machine memory remain separate constraints.

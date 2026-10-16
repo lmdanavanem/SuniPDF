@@ -45,11 +45,11 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**[0.16.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)** under `lmdanavanem`.
-439 workspace tests, formatting/Clippy, 895 EN/FR keys, 73 qpdf checks and four licensed NIST/NBS documents
-(744 pages; 53.542 seconds locally) passed, alongside final Windows CI, ARM64 compilation, fourteen portable
-scenarios and eight MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks
-passed; verified copies are in `dist/`. The production updater verified the 19,821,719-byte Latest x64 ZIP
+**[0.17.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)** under `lmdanavanem`.
+445 workspace tests, formatting/Clippy, 896 EN/FR keys, 74 qpdf checks and four licensed NIST/NBS documents
+(744 pages; 48.187 seconds locally) passed, alongside final Windows CI, ARM64 compilation, fifteen portable
+scenarios and nine MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks
+passed; verified copies are in `dist/`. The production updater verified the 19,825,743-byte Latest x64 ZIP
 without installation.
 [Project status](docs/PROJECT_STATUS.md) records source, release evidence and hardware/interoperability limits.
 
@@ -58,17 +58,17 @@ Available since **0.15.0**: edit an existing link's destination through **Edit t
 page fitted to the window. Locked/read-only links are refused. Page-label authoring and navigation-preserving
 Undo/Redo remain available from 0.14.0; see the [roadmap](docs/ROADMAP.md).
 
-New in **0.16.0**: dashed borders for rectangle, ellipse, line and arrow annotations through
+Available since **0.16.0**: dashed borders for rectangle, ellipse, line and arrow annotations through
 **Dashed border** and CLI `annotate --dashed`. Existing custom dash patterns survive selection, recolouring and
 geometry edits; only explicitly toggling the checkbox changes the pattern. Invalid styles are refused rather
 than silently replaced. See [Project status](docs/PROJECT_STATUS.md) for validation and remaining limits.
 
-In development for **0.17.0**: embed JPEGs with all eight EXIF orientations without recompression, including
+New in **0.17.0**: embed JPEGs with all eight EXIF orientations without recompression, including
 the previously decoded orientations 5 and 7. Images → PDF also checks a cumulative **512 MiB estimated raster
 budget** before decoding non-JPEG inputs. This estimates decoded image data, not total process memory.
-UI/CLI entry points and 53 commands are unchanged. Local checks passed: 445 workspace tests, formatting/Clippy,
-896 EN/FR keys, 74 qpdf checks, four licensed documents/744 pages (48.187 seconds) and the independent debug
-conversion gate. CI, packages/publication and fifteen portable/nine MSI checks remain pending; 0.16.0 stays Latest.
+UI/CLI entry points and 53 commands are unchanged. Independent debug and staged/public conversion checks passed:
+exact JPEG streams, oriented renders, PNG transparency, budget refusals before raster decoding and unchanged inputs.
+See [Project status](docs/PROJECT_STATUS.md) for executed evidence and remaining limits.
 
 ## Screenshots
 
