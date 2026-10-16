@@ -89,8 +89,8 @@ A24. **Object clipboard and system clipboard**: Ctrl+V only pastes objects if th
 A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same process after
     `FPDF_DestroyLibrary`; the tests share a single engine that is never destroyed (`tests/engine.rs`).
 A10. **Distribution validation**: current tests, CI, package and release evidence are recorded in `PROJECT_STATUS.md`.
-     Version 0.9.1 passed seven real portable update/failure/rollback scenarios and disposable-runner MSI
-     installation/transactional rollback/upgrade/downgrade rejection/uninstall, preserving user data.
+     Published Latest 0.10.0 passed eight real portable update/failure/rollback scenarios and two disposable-runner MSI
+     baselines covering installation/transactional rollback/upgrade/downgrade rejection/uninstall, preserving user data.
      Interactive flows, ARM64 hardware and physical printers remain separate checks.
 A11. **All tools: 14 tools implemented for 0.9.0.** OCR, field creation and certificate signatures now have
      real commands. Automated and hardware coverage is recorded in `PROJECT_STATUS.md`.
@@ -153,7 +153,7 @@ A33. **Save point**: "modified" clears when undoing back to the saved state, unl
 A34. **Properties and PDF/A**: 0.9.1 preserves PDF/A identification (`pdfaid:part`, `pdfaid:conformance`) and unrelated
      XMP properties/namespaces when updating the four standard editable properties. Malformed XML, DTDs and unreadable
      streams are clearly refused, rather than silently replacing the packet. Preserving identification does not certify
-     PDF/A conformance. A dedicated conformance validator and real corpus remain future work; current executed checks
+     PDF/A conformance. A dedicated conformance validator and broader PDF/A corpus remain future work; current executed checks
      are recorded in `PROJECT_STATUS.md`.
 A25. **Continuous view: limits (SUNI-012b)**.
      - Selection follows PDFium logical order across pages and scrolls near viewport edges; intended order
@@ -301,5 +301,5 @@ A46. **0.10.0 batches**: sequential compression or offline English/French OCR, a
      Cancel takes effect at engine checkpoints; a codec or native call already running may delay it.
 A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a killed partial-save child exercise original
      preservation. They do not simulate every physical disk/power-loss failure. Four public NIST PDFs supplement the
-     synthetic corpus; they do not establish broad customer/hostile/large-file compatibility. Validation is pending
-     until recorded in `PROJECT_STATUS.md`.
+     synthetic corpus: 31 synthetic qpdf checks and all four real documents (744 pages) passed for 0.10.0.
+     They do not establish broad customer/hostile/large-file compatibility; executed evidence is in `PROJECT_STATUS.md`.

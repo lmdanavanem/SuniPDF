@@ -12,8 +12,9 @@ Les nouveautés 0.9.0 sont couvertes par des régressions automatisées. `PROJEC
 ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou lecteur tiers.
 Workspace, qpdf et régressions réelles portable/MSI 0.9.1 réussis ; résultats des paquets et de publication consignés dans ce suivi.
 
-La 0.10.0 implémente le lot P1/P2 demandé. Les nouveautés restent **Implémentées ; validation en attente**
-jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.md`.
+[La 0.10.0 est publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) avec le lot P1/P2 demandé.
+Les 362 tests du workspace, 31 contrôles qpdf synthétiques, quatre documents NIST réels (744 pages), huit scénarios portables,
+deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
 ## A. Lecture
 
@@ -25,15 +26,15 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 | Zoom, ajuster largeur/page, taille réelle | Déclaré | **Fait** (UI) | Rendu à la résolution physique (DPI) ; Ctrl + molette ancré sous le pointeur, 10 à 3200 % |
 | Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, liste de tuiles voulues remplacée en bloc, époques anti-obsolescence |
 | Onglets multi-documents | Déclaré | **Fait** (suspension des documents inactifs, état d'interface conservé) | |
-| Affichage continu, double page, rotation de vue | Déclaré | Continu/double page/Livre avec couverture seule **Faits** ; rotation de vue implémentée en 0.10.0, validation en attente | Tuiles/cache communs, régressions tailles mixtes, dernière page et zoom |
+| Affichage continu, double page, rotation de vue | Déclaré | Continu/double page/Livre avec couverture seule **Faits** ; rotation de vue **faite en 0.10.0** | Tuiles/cache communs, régressions tailles mixtes, dernière page et zoom |
 | Rendu en tuiles, cache plafonné | Déclaré | **Fait** (tuiles de 1024 px au-delà de 4096 px / 8 Mpx, cache LRU 256 Mo, textures 192 Mo) | `Document::render_region`, tests de pixels (régions, recollage, zoom ×40) ; CLI `render --region` |
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | **Fait** (panneau, navigation ; édition planifiée) | |
 | Étiquettes de pages | Déclaré | Planifié (P3) | |
-| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents **Faits** (accueil) ; historique de 256 positions par onglet implémenté en 0.10.0, validation en attente | |
-| Mode lecture / plein écran | Déclaré | Implémenté en 0.10.0 ; validation en attente | Retour à une vue droite pour éditer |
+| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents **Faits** (accueil) ; historique de 256 positions par onglet **fait en 0.10.0** | |
+| Mode lecture / plein écran | Déclaré | **Fait en 0.10.0** | Mode de vue partagé comme préférence ; rotation/historique conservés par onglet ; retour à une vue droite pour éditer |
 | Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
 | Récupération après plantage, autosave | Déclaré | **Fait** (régressions récupération/worker/onglets) | Instantanés 60 s/suspension d'onglet ; source intacte ; chiffrement conservé/sans mots de passe ; restauration Enregistrer sous |
 | Thèmes clair/sombre | Déclaré | **Fait** | Design system `theme.rs`, bascule dans la barre d'onglets |
@@ -48,7 +49,7 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
-| Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés implémentés en 0.10.0, une annulation ; validation en attente |
+| Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés livrés en 0.10.0, une annulation |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
 | Liens | Déclaré | **Fait** : création (aller à une page, adresse `http` / `https` / `mailto`), clic sur un lien interne (saut de page), **adresse externe seulement après confirmation** montrant l'adresse complète ; actions Launch / JavaScript jamais exécutées ; destinations nommées non résolues ; CLI `annotate --kind link` |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
@@ -59,7 +60,7 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI `insert-blank` pour les pages vierges) |
-| Recadrer les pages (CropBox) | Déclaré | **Fait** (dialogue en mm avec aperçu, rétablissement, CLI `crop`) ; masque seulement, pas de caviardage ; recadrage souris dans l’aperçu implémenté en 0.10.0 ; validation en attente |
+| Recadrer les pages (CropBox) | Déclaré | **Fait** (dialogue en mm avec aperçu, rétablissement, CLI `crop`) ; masque seulement, pas de caviardage ; recadrage souris dans l’aperçu livré en 0.10.0 |
 | Redimensionner les pages | Déclaré | **Fait** (A3–Legal ou personnalisé, contenu conservé ou mis à l'échelle ; CLI `resize-pages`) ; annotations non mises à l'échelle |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
@@ -67,7 +68,7 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
-| Traitement par lots | Déclaré (CLI batch) | Implémenté en 0.10.0 ; validation en attente : compression/OCR séquentiels, 128 PDF, 256 Mio/entrée, progression/annulation/erreurs et nouvelles copies sans écrasement |
+| Traitement par lots | Déclaré (CLI batch) | **Fait en 0.10.0** : compression/OCR séquentiels, 128 PDF, 256 Mio/entrée, progression/annulation/erreurs et nouvelles copies sans écrasement |
 
 ## D. Conversion et OCR
 
@@ -80,7 +81,7 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
 | Office → PDF | Absent | Planifié (P4) via LibreOffice/Word installé si présent ; sinon hors périmètre |
 | HTML → PDF | Absent | Planifié (P5, optionnel) |
-| Compression des images | Déclaré | Implémentée en 0.10.0 ; validation en attente : RGB/gris bornés, qualité JPEG/côté maximal, copie exacte sans gain, masques/profils conservés, PDF signés/restreints refusés |
+| Compression des images | Déclaré | **Faite en 0.10.0** : RGB/gris bornés, qualité JPEG/côté maximal, copie exacte sans gain, masques/profils conservés, PDF signés/restreints refusés |
 | OCR | Partiel (latin, modèles CC-BY-SA) | **Fait** : Tesseract 5.5.3 / Leptonica 1.87 embarqués hors ligne, modèles rapides eng/fra, texte invisible, pages textuelles ignorées, progression/annulation/un undo ; tests moteur et reconnaissance CLI réelle ; CLI `ocr` |
 
 ## E. Sécurité et signatures
@@ -100,8 +101,8 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
-| Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes ajoutés en 0.10.0, validation en attente ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
-| Import/export FDF/XFDF | Déclaré | Implémenté en 0.10.0 ; validation en attente : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
+| Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes livrés en 0.10.0 ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
+| Import/export FDF/XFDF | Déclaré | **Fait en 0.10.0** : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 
@@ -121,6 +122,6 @@ jusqu’aux résultats workspace/CI/paquets consignés dans `PROJECT_STATUS.fr.m
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.9.1 publiés en Latest, SHA256/contenu public vérifiés, OCR/champs/lecture/rendu et sept scénarios portables réels réussis ; installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation MSI réels réussis ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.9.1 compilé en CI et publié, SHA256 public/architectures/modèles/notices/icônes contrôlés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.10.0 publiés en Latest, SHA256/contenu public vérifiés, OCR/champs/XFDF/compression/transformations groupées/lecture/rendu et huit scénarios portables réels réussis ; deux bases MSI réussies pour installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation ; mise à jour en ligne vérifiée ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.10.0 compilé en CI et publié, SHA256 public/architectures/modèles/notices/icônes contrôlés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

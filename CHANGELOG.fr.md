@@ -11,7 +11,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 Validation et publication sont suivies dans `docs/PROJECT_STATUS.fr.md` ; le code présent ne prouve pas une release validée.
 Validation locale réussie : 362 tests workspace, Clippy/formatage, 31 PDF qpdf et quatre publications authentiques
-(744 pages). CI GitHub, mises à jour/installeurs empaquetés et publication restent en attente.
+(744 pages). CI main finale et ARM64 de même source réussis ; six fichiers préparés, huit scénarios portables réels et
+deux bases MSI réelles vérifiés. Publiée en Latest sous `lmdanavanem`, avec six fichiers publics vérifiés dans `dist/` ;
+contrôles renforcés des binaires publics et updater de production réussis. Preuves et source immuable figurent dans l'état du projet.
 
 ### Ajouts
 - Compression réelle des images vers une nouvelle copie : dimension maximale, qualité JPEG, taille avant/après,

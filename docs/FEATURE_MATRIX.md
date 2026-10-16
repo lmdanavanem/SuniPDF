@@ -12,8 +12,9 @@ The 0.9.0 features below have automated regression coverage. `PROJECT_STATUS.md`
 these results do not establish physical printer, ARM64 or third-party reader compatibility.
 The 0.9.1 workspace, qpdf and real portable/MSI regressions passed; package/publication outcomes are recorded there.
 
-0.10.0 implements the requested P1/P2 lot. New rows are marked **Implemented; validation pending** until the
-workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
+[0.10.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) with the requested P1/P2 lot.
+The 362 workspace tests, 31 synthetic qpdf checks, four real NIST documents (744 pages), eight portable scenarios,
+two MSI baselines and all six public assets passed verification; evidence is recorded in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -25,15 +26,15 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 | Zoom, fit width/page, actual size | Declared | **Done** (UI) | Rendering at physical resolution (DPI); Ctrl + wheel anchored under the pointer, 10 to 3200% |
 | Rendering off the UI thread | Declared | **Done** | Single engine thread, wanted-tile list replaced as a block, anti-staleness epochs |
 | Multi-document tabs | Declared | **Done** (inactive documents suspended, interface state kept) | |
-| Continuous display, two-page view, view rotation | Declared | Continuous/two-page/cover-first Book **Done**; view-only rotation implemented for 0.10.0, validation pending | Shared tile planner/cache, mixed sizes, odd last page and zoom regression tests |
+| Continuous display, two-page view, view rotation | Declared | Continuous/two-page/cover-first Book **Done**; view-only rotation **Done in 0.10.0** | Shared tile planner/cache, mixed sizes, odd last page and zoom regression tests |
 | Tiled rendering, capped cache | Declared | **Done** (1024 px tiles beyond 4096 px / 8 Mpx, 256 MB LRU cache, 192 MB textures) | `Document::render_region`, pixel tests (regions, stitching, ×40 zoom); CLI `render --region` |
 | Full-text search | Declared | **Done** | Ctrl+F, case, highlighting, CLI `search` |
 | Text selection / copy in reading order | Declared | **Done**: logical character range, cross-page/reverse selection, double-click words, edge autoscroll | PDFium order; core/headless tests; arbitrary untagged column order not inferred |
 | Thumbnails | Declared | **Done** | Virtualised panel, shared cache |
 | Bookmarks (outline) | Declared | **Done** (panel, navigation; editing planned) | |
 | Page labels | Declared | Planned (P3) | |
-| Navigation history, reopened tabs | Declared | Recent files **Done**; per-tab 256-entry navigation history implemented for 0.10.0, validation pending | |
-| Reading mode / full screen | Declared | Implemented for 0.10.0; validation pending | View mode retained per tab; editing returns to upright view |
+| Navigation history, reopened tabs | Declared | Recent files **Done**; per-tab 256-entry navigation history **Done in 0.10.0** | |
+| Reading mode / full screen | Declared | **Done in 0.10.0** | View mode is a shared preference; rotation/history are retained per tab; editing returns to upright view |
 | Windows printing | Declared (limited fidelity) | **Done** (layout/range tests and actual Microsoft Print to PDF output reopened) | Native dialog, ranges/copies, bounded raster printing, progress/cancel; physical printer and interactive dialog unverified |
 | Crash recovery, autosave | Declared | **Done** (recovery/worker/tab regression tests) | 60-second and tab-suspend snapshots; source unchanged; encryption retained/no passwords; restore Save As |
 | Light/dark themes | Declared | **Done** | Design system `theme.rs`, toggle in the tab bar |
@@ -48,7 +49,7 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
 | Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
-| Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing implemented for 0.10.0 (single undo), validation pending |
+| Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing delivered in 0.10.0 (single undo) |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
 | Links | Declared | **Done**: creation (go to a page, `http` / `https` / `mailto` address), click on an internal link (page jump), **external address only after a confirmation** showing the full address; Launch / JavaScript actions never executed; named destinations not resolved; CLI `annotate --kind link` |
 | Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
@@ -59,7 +60,7 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 | Feature | Expected | SuniPDF |
 |---|---|---|
 | Rotate, delete, insert, move, blank pages | Declared | **Done** (UI + CLI `insert-blank` for blank pages) |
-| Crop pages (CropBox) | Declared | **Done** (dialog in mm with preview, restore, CLI `crop`); mask only, not redaction; mouse crop preview implemented for 0.10.0, validation pending |
+| Crop pages (CropBox) | Declared | **Done** (dialog in mm with preview, restore, CLI `crop`); mask only, not redaction; mouse crop preview delivered in 0.10.0 |
 | Resize pages | Declared | **Done** (A3–Legal or custom, content kept or scaled; CLI `resize-pages`); annotations not scaled |
 | Merge N PDFs with bookmarks | Declared | Merge **Done** (UI "Combine files", CLI `merge`); merge bookmarks planned |
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
@@ -67,7 +68,7 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
-| Batch processing | Declared (CLI batch) | Implemented for 0.10.0; validation pending: sequential compression/local OCR, 128 files, 256 MiB/input, progress/cancel/per-file errors, new copies only |
+| Batch processing | Declared (CLI batch) | **Done in 0.10.0**: sequential compression/local OCR, 128 files, 256 MiB/input, progress/cancel/per-file errors, new copies only |
 
 ## D. Conversion and OCR
 
@@ -80,7 +81,7 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 | PDF → Excel / PowerPoint | Absent / partial pptx export | Planned (P4) |
 | Office → PDF | Absent | Planned (P4) through an installed LibreOffice/Word if present; otherwise out of scope |
 | HTML → PDF | Absent | Planned (P5, optional) |
-| Image compression | Declared | Implemented for 0.10.0; validation pending: supported RGB/Gray images, JPEG quality/max-side controls, no-gain byte copy, masks/profiles retained, signed/restricted inputs refused |
+| Image compression | Declared | **Done in 0.10.0**: supported RGB/Gray images, JPEG quality/max-side controls, no-gain byte copy, masks/profiles retained, signed/restricted inputs refused |
 | OCR | Partial (Latin, CC-BY-SA models) | **Done**: bundled offline Tesseract 5.5.3 / Leptonica 1.87, fast eng/fra models, invisible text, skip existing text, progress/cancel/one undo; core and real CLI recognition tests; CLI `ocr` |
 
 ## E. Security and signatures
@@ -100,8 +101,8 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 | Feature | Expected | SuniPDF |
 |---|---|---|
 | Fill AcroForm, regenerated appearances | Declared | **Done** (forms slice, D061–D063): text (single line, multiline, maximum length), checkbox, radio buttons, drop-down list, list box (multiple choice), hierarchical and multi-widget fields; values written by lopdf, appearances regenerated by PDFium and present in the file; on-page tool + accessible panel + flattening (fields and annotations) + clear; encrypted document kept encrypted; CLI `form-fields` / `fill-form` / `flatten`; scripts never executed (reported) |
-| Create fields | Not documented | **Done**: numeric text/checkbox creation in Prepare a form; radio/combo/list creation implemented for 0.10.0, validation pending;, unique names, rotated/cropped/encrypted pages, undo; core/CLI tests; CLI `add-form-field` |
-| FDF/XFDF import/export | Declared | Implemented for 0.10.0; validation pending: JSON/XFDF export, strict bounded JSON/XFDF/FDF value import and grouped panel Apply/Discard with one undo; value-only FDF subset, no scripts/attachments/rich text |
+| Create fields | Not documented | **Done**: numeric text/checkbox creation in Prepare a form; radio/combo/list creation delivered in 0.10.0; unique names, rotated/cropped/encrypted pages, undo; core/CLI tests; CLI `add-form-field` |
+| FDF/XFDF import/export | Declared | **Done in 0.10.0**: JSON/XFDF export, strict bounded JSON/XFDF/FDF value import and grouped panel Apply/Discard with one undo; value-only FDF subset, no scripts/attachments/rich text |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
 
@@ -121,6 +122,6 @@ workspace, CI and package results are recorded in `PROJECT_STATUS.md`.
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.9.1 ZIP/MSI published as Latest, public SHA256/payloads verified, packaged OCR/forms/read/render and seven real portable scenarios passed; actual MSI install/transactional rollback/upgrade/downgrade rejection/uninstall passed; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.9.1 CI-built portable ZIP published, public SHA256/architecture/models/notices/icon resources checked; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.10.0 ZIP/MSI published as Latest, public SHA256/payloads verified, packaged OCR/forms/XFDF/compression/group transforms/read/render and eight real portable scenarios passed; two MSI baselines passed actual install/transactional rollback/upgrade/downgrade rejection/uninstall; live updater passed; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.10.0 CI-built portable ZIP published, public SHA256/architecture/models/notices/icon resources checked; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

@@ -11,7 +11,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Validation and publication are tracked in `docs/PROJECT_STATUS.md`; implementation alone is not a passed release gate.
 Local validation passed: 362 workspace tests, Clippy/formatting, 31 qpdf fixtures/outputs and four authentic public
-research documents (744 pages). GitHub CI, packaged updates/installers and publication are still pending.
+research documents (744 pages). Final main CI and the same-source ARM64 build passed; six staged files, all eight
+real portable scenarios and both real MSI upgrade baselines passed. Published as Latest under `lmdanavanem` with
+six verified public assets in `dist/`; enhanced public-binary checks and the production live updater passed.
+Evidence and immutable release source are recorded in status.
 
 ### Added
 - Image compression to a new copy: maximum image side and JPEG quality, measured before/after sizes, progress and cancellation.

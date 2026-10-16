@@ -28,19 +28,19 @@ Licence MIT ou Apache-2.0, au choix.
 ## Fonctionnalités
 | Domaine | Détail |
 |---|---|
-| Lire | Onglets, vues continue/page unique/double page/Livre, tuiles au zoom profond, miniatures, recherche, signets, sélection logique entre pages, mots par double-clic et défilement au bord |
+| Lire | Onglets, vues continue/page unique/double page/Livre, rotation de vue, plein écran, historique par onglet, tuiles au zoom profond, miniatures, recherche, signets, sélection logique entre pages, mots par double-clic et défilement au bord |
 | Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
-| Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, copier-coller entre pages et onglets, panneau Objets, recadrage et redimensionnement des pages |
+| Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner (glisser-déposer), combiner, diviser, extraire, pages vierges |
-| Remplir et signer | Formulaires AcroForm (remplir, panneau, aplatir, import / export JSON), signature manuscrite ou image, paraphe, date (signature visuelle, non certifiée) |
-| Créer des formulaires | Champs texte et cases nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
+| Remplir et signer | Formulaires AcroForm, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signature manuscrite ou image, paraphe, date (signature visuelle, non certifiée) |
+| Créer des formulaires | Champs texte, cases, groupes radio et listes simples/multiples nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
 | Récupérer | Instantanés automatiques toutes les 60 secondes et à la suspension ; source intacte, chiffrement PDF conservé, aucun mot de passe stocké, restauration Enregistrer sous |
 | Imprimer | Sélection native Windows, plages/copies/orientation, modifications courantes, rendu tramé borné, progression et annulation |
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
-| Convertir | Images → PDF, PDF → PNG, optimisation sans perte ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo |
+| Convertir | Images → PDF, PDF → PNG, optimisation sans perte, compression des images avec perte vers une nouvelle copie ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo ; lots séquentiels compression/OCR |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
 | Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
-| Automatiser | `sunipdf-cli` : 46 commandes JSON et codes stables, dont `add-form-field`, `ocr`, `signatures` et `sign` |
+| Automatiser | `sunipdf-cli` : 50 commandes JSON et codes stables, dont `compress-images`, `form-export`, `rotate-objects`, `resize-objects`, `add-form-field`, `ocr`, `signatures` et `sign` |
 
 Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes
 arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabilité des signatures restent des contrôles QA distincts.

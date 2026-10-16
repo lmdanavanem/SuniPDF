@@ -89,8 +89,8 @@ A24. **Presse-papiers d'objets et presse-papiers système** : Ctrl+V ne colle le
 A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
     `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).
 A10. **Validation de distribution** : l'état courant des tests, CI, paquets et releases est consigné dans
-     `PROJECT_STATUS.fr.md`. La 0.9.1 réussit sept scénarios portables réels de mise à jour/échec/restauration et
-     installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation MSI sur runners jetables,
+     `PROJECT_STATUS.fr.md`. La 0.10.0 publiée en Latest réussit huit scénarios portables réels de mise à jour/échec/restauration et
+     deux bases MSI sur runners jetables : installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation,
      avec conservation des données. Parcours interactifs, matériel ARM64 et imprimantes physiques restent distincts.
 A11. **Hub « Tous les outils » : 14 outils implémentés en 0.9.0.** OCR, création de champs et certificat
      ont désormais de vraies commandes. Couverture automatisée et matérielle dans `PROJECT_STATUS.fr.md`.
@@ -303,5 +303,5 @@ A46. **Lots 0.10.0** : compression ou OCR anglais/français séquentiels, 128 PD
      document qui en nécessite un refusé. Annulation aux points de contrôle ; codec/appel natif actif peut retarder l’arrêt.
 A47. **Sauvegardes/corpus 0.10.0** : erreurs de stockage injectées et arrêt forcé d’une écriture partielle contrôlent
      la préservation de la source. Ce ne sont pas toutes les pannes physiques/coupures possibles. Quatre PDF NIST publics
-     complètent les fixtures synthétiques, sans prouver une couverture client/hostile/volumineuse universelle.
-     Validation en attente jusqu’aux résultats consignés dans `PROJECT_STATUS.fr.md`.
+     complètent les fixtures synthétiques : 31 contrôles qpdf synthétiques et quatre documents réels (744 pages) réussis en 0.10.0.
+     Cela ne prouve pas une couverture client/hostile/volumineuse universelle ; preuves exécutées dans `PROJECT_STATUS.fr.md`.

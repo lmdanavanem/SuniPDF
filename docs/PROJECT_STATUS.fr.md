@@ -5,17 +5,48 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Version 0.10.0 : lot P1/P2, validation locale réussie
+## Version 0.10.0 : lot P1/P2 publié et vérifié
 
 Les six domaines demandés sont implémentés : sauvegardes/corpus, compression réelle, lecture, formulaires,
 recadrage/transformations groupées et lots compression/OCR. La CLI déclare 50 sous-commandes dans son code source.
 L’anglais reste la langue par défaut et le français reste disponible.
 
-Le workspace local complet réussit : **362 tests, zéro échec, sept ignorés par défaut**. Formatage, Clippy sans
+Le workspace local complet consigne **362 tests, zéro échec, sept ignorés par défaut**. Formatage, Clippy sans
 avertissement et 853 clés EN/FR identiques réussissent. Les deux corpus indépendants ont ensuite été exécutés
 explicitement : **31 PDF synthétiques/générés** validés par qpdf et **quatre publications authentiques, 744 pages**,
-validées par les régressions CLI bornées. CI GitHub, vérification des compilations/paquets, mises à jour portables/MSI
-réelles et publication 0.10.0 restent **en attente**. Ces résultats locaux ne certifient aucun paquet ni release publiée.
+validées par les régressions CLI bornées. CI GitHub de la source finale, compilations, paquets préparés et mises à jour
+portables/MSI réelles réussissent comme détaillé ci-dessous. [SuniPDF 0.10.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0)
+est publiée en **Latest** sous `lmdanavanem`, avec six fichiers (release `414522111`), sans brouillon ni préversion.
+
+[CI finale main x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38848137022) réussie pour le tag/source
+immuable `f7510afd314846079bbdd838525cd28372fd3100`, avec workspace, Clippy, corpus indépendants et régressions
+réelles de mise à jour. [Compilation ARM64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38848138423/job/116803186215)
+réussie depuis la même source ; exécution matérielle ARM64 non vérifiée. Le workflow x64 de release en double a été
+annulé après ARM64 ; les fichiers x64 testés de la CI main et le job ARM64 réussi fournissent les paquets de publication.
+
+Les **huit scénarios portables réels** réussissent : 0.8.2/0.8.3/0.9.0/0.9.1 vers 0.10.0, avec relance réelle,
+empreintes des fichiers/sauvegardes et conservation documents/paramètres ; SHA erroné, mauvaise architecture,
+rollback après fichier verrouillé et garde réelle 120 secondes/verrou concurrent réussissent aussi. La régression
+MSI réelle par machine réussit depuis **0.8.0 (français) et 0.9.1 (anglais)** : installation, échec transactionnel
+injecté/rollback, mise à niveau, refus de downgrade, empreintes, désinstallation et données conservées. Runners
+Windows jetables avec Mesa 26.2.4 llvmpipe pour le démarrage GUI ; ses DLL de test ne sont jamais distribuées.
+
+Les six fichiers préparés réussissent SHA256/fichiers d'empreintes ; architectures GUI/CLI/PDFium/Tesseract x64/ARM64,
+métadonnées anglaises, sept images ICO incorporées, modèles FR/EN figés et notices complètes vérifiés. Les binaires
+x64 empaquetés réussissent lecture/rendu, OCR français, gain de compression/source intacte, création radio/listes,
+échanges XFDF et rendu des transformations groupées. Inspection MSI en lecture seule : langue 1033, transaction de
+mise à niveau compatible et empreintes identiques au ZIP x64. L'installation réelle est prouvée par la CI ci-dessus ;
+l'inspection des paquets n'installe rien.
+
+Les six fichiers publics ont été téléchargés sans authentification et correspondent aux empreintes API GitHub,
+fichiers SHA256 et fichiers préparés exacts, puis copiés dans `dist/`. Les contrôles renforcés sur ces octets publics
+confirment architectures, métadonnées anglaises, sept images ICO, modèles/notices, gain de compression réel,
+champs de choix/XFDF, groupes, OCR français et contenu/transaction MSI en lecture seule. Le test de l'updater de
+production réussit sur le ZIP x64 public Latest : **19 651 167 octets**, SHA256
+`add8ef3f1f385b47aa4e3fb9061f8735c7e31004d408abd853924a8bd9a35742`. HTTPS/redirections, taille et empreinte
+réussissent sans installation locale ; les installations réelles ont réussi séparément en CI. Le corpus réel réussit
+aussi en CI en 33,747 secondes, avec un pic enfant observé de 333 922 304 octets. Les mesures locales ci-dessous
+décrivent leur propre exécution et ne garantissent pas des performances indépendantes du matériel.
 
 | Domaine | Périmètre implémenté et contrôles attendus |
 |---|---|
@@ -48,7 +79,7 @@ certifiée. Confiance de chaîne, révocation et horodatage fiable/LTV restent n
 
 ## Version 0.9.1 : preuves de la publication précédente
 
-[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) est publiée en Latest sous
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) a été publiée en Latest sous
 `lmdanavanem`, avec six fichiers et le tag/source `c8473ecafe5f88b9dad846677fa610226955b061`.
 
 Implémentés : icône agrandie (environ 91 % de largeur visible contre 50 %), conservation du XMP PDF/A/personnalisé,

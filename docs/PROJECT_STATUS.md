@@ -5,17 +5,48 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.10.0: requested P1/P2 lot, local validation passed
+## 0.10.0: requested P1/P2 lot published and verified
 
 The six requested backlog areas are implemented: data-safety/corpus checks, real image compression, reading controls,
 form creation/interchange/grouped keyboard editing, mouse cropping/group transformations, and compression/OCR batches.
 The CLI source registers 50 subcommands. English remains the default; French remains available.
 
-The complete local workspace passed: **362 tests, zero failures, seven default ignored**. Formatting, Clippy with
+The complete local workspace recorded **362 tests, zero failures, seven default ignored**. Formatting, Clippy with
 warnings denied and all 853 matching EN/FR catalogue keys passed. The two independent corpus gates were then
 executed explicitly: **31 synthetic/generated PDFs** passed qpdf, and **four authentic public research PDFs,
-744 pages in total**, passed bounded CLI regression checks. GitHub CI, package/build verification, actual portable/MSI
-updates and publication of 0.10.0 remain **pending**. No package or release outcome is established by these local checks.
+744 pages in total**, passed bounded CLI regression checks. Final-source GitHub CI, builds, staged packages and actual
+portable/MSI update regressions passed as detailed below. [SuniPDF 0.10.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0)
+is published as **Latest** under `lmdanavanem`, with six assets (release ID `414522111`), neither draft nor prerelease.
+
+[Final main x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38848137022) passed for immutable
+tag/source `f7510afd314846079bbdd838525cd28372fd3100`, including the workspace, Clippy, independent corpora and actual
+update regressions. [ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38848138423/job/116803186215)
+passed from the same source; ARM64 hardware execution remains unverified. The duplicate release x64 workflow was
+cancelled after ARM64 completed; the tested main-CI x64 files and successful ARM64 job provide the release packages.
+
+All **eight real portable scenarios** passed: 0.8.2/0.8.3/0.9.0/0.9.1 to 0.10.0, each with actual application relaunch,
+payload/backup hashes and documents/settings preserved; bad checksum, wrong architecture, locked-file rollback and
+the real 120-second close guard/concurrent-update mutex also passed. Actual per-machine MSI regression passed from
+**both 0.8.0 (French) and 0.9.1 (English)**: installation, injected transactional rollback, upgrade, downgrade rejection,
+payload checks, uninstall and user-data preservation. These ran on disposable Windows runners with Mesa 26.2.4
+llvmpipe for GUI startup; its test DLLs are never included in distributed packages.
+
+All six staged files passed checksum/sidecar verification; GUI/CLI/PDFium/Tesseract architecture for x64/ARM64,
+English executable metadata, seven embedded ICO frames, pinned FR/EN OCR models and all notices were checked.
+Actual packaged x64 binaries passed info/render, French OCR, image-compression gain/source preservation,
+radio/combo/list creation and XFDF round trips, and grouped rotation/resize rendering. Read-only MSI inspection
+confirmed language 1033, compatible upgrade transaction and payload hashes matching the x64 ZIP. The real-install
+proof comes from CI above; staged inspection does not itself install anything.
+
+All six public files were downloaded without authentication and matched GitHub API digests, their SHA256 sidecars
+and the exact staged files, then copied to `dist/`. Enhanced verification on those public bytes repeated architecture,
+English metadata, all seven embedded icon frames, pinned models/notices, actual compression gain, choice forms/XFDF,
+group transformations, French OCR and read-only MSI payload/transaction checks. The production live-updater test
+passed against the Latest public x64 ZIP: **19,651,167 bytes**, SHA256
+`add8ef3f1f385b47aa4e3fb9061f8735c7e31004d408abd853924a8bd9a35742`. HTTPS redirects, size and SHA verification
+passed without installing locally; the real installations passed separately in CI. The real corpus also passed in
+CI in 33.747 seconds with an observed peak child working set of 333,922,304 bytes; the local measurements below
+describe their own run and are not hardware-independent performance guarantees.
 
 | Area | Implemented scope and gate |
 |---|---|
@@ -46,7 +77,7 @@ conformance certification; certificate-chain trust, revocation and trusted times
 
 ## 0.9.1 reliability release: previous publication evidence
 
-[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) is published as Latest under
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) was published as Latest under
 `lmdanavanem`, with six assets and tag/source `c8473ecafe5f88b9dad846677fa610226955b061`.
 
 Implemented: larger application icon (about 91% visible width instead of 50%), preservation of PDF/A/custom XMP,

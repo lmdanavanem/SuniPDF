@@ -23,7 +23,7 @@ single-line stamps and valid CLI annotation opacity. English remains the default
 
 ## Version 0.9.1: reliability release published
 
-[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) is published as Latest under `lmdanavanem`.
+[SuniPDF 0.9.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) was published as Latest under `lmdanavanem`.
 
 - Preserve PDF/A identifiers and unrelated XMP when editing standard properties; clearly refuse malformed XML/DTD.
   This does not certify PDF/A conformance.
@@ -39,7 +39,7 @@ the verified packages and are available in `dist/`.
 Current package/publication evidence is recorded in `PROJECT_STATUS.md`.
 Do not infer ARM64, physical printer, reader interoperability or interactive updater validation from these checks.
 
-## Version 0.10.0: local P1/P2 gates passed, release checks pending
+## Version 0.10.0: requested P1/P2 lot published and verified
 
 The requested six-area lot is implemented: atomic-save failures/public corpus, image compression, view rotation/full
 screen/history, new form types and interchange/grouped keyboard controls, mouse crop/group transformations, and
@@ -48,8 +48,15 @@ Local workspace: 362 passed, zero failed, seven default ignored; formatting, Cli
 passed. Explicit qpdf checks passed for 31 synthetic/generated PDFs; four licensed NIST/NBS publications (744 pages)
 passed text/render/extract/optimize/compression/source-preservation checks. Upstream source warnings are pinned;
 rewritten outputs must pass without warnings. The shared writer fixes stale storage/xref bounds/revision offsets.
-GitHub CI, package verification, eight real portable update scenarios, both MSI baselines (0.8.0 and 0.9.1), public
-download verification and publication remain pending; local results do not establish a published release.
+[Final main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38848137022), the same-source ARM64 build,
+six staged packages/checksums, all eight real portable update scenarios and both real MSI baselines (0.8.0 and 0.9.1)
+passed. Package checks include English metadata, embedded icons, real compression, choice forms/XFDF, grouped edits,
+French OCR and matching MSI/ZIP payloads. [SuniPDF 0.10.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0)
+is published as Latest under `lmdanavanem`; all six unauthenticated public downloads match API/sidecar/staged hashes
+and are available in `dist/`. The enhanced checks passed again on public binaries, and the production live updater
+verified the 19,651,167-byte Latest x64 ZIP without installation. The requested P1/P2 release gates are complete;
+the independent hardware/interoperability work below remains open.
+Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` release source are recorded in status.
 
 ## Remaining work beyond this lot
 

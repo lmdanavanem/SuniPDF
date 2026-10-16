@@ -2,7 +2,7 @@
 
 [Français](ROADMAP.fr.md)
 
-This roadmap separates delivered features, implemented changes awaiting validation, and future work.
+This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Delivered baseline: 0.9.0
@@ -14,7 +14,7 @@ See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for the exact scope and [KNOWN_ISSUES
 
 ## 0.9.1: reliability and distribution
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) under `lmdanavanem`;
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) under `lmdanavanem`;
 executed validation and package evidence are tracked in `PROJECT_STATUS.md`:
 
 - Preserve PDF/A identification and unrelated XMP properties when editing metadata; reject malformed XML and DTDs.
@@ -31,7 +31,9 @@ Workspace checks (322 tests), independent qpdf checks (22 PDFs/three malformed i
 the disposable-runner MSI regression passed. All six public assets were downloaded and matched the verified
 payloads/checksums. Interactive updater UX and real hardware remain separate checks.
 
-## 0.10.0: requested P1/P2 lot, implementation complete and validation pending
+## 0.10.0: requested P1/P2 lot published
+
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) under `lmdanavanem`.
 
 | Area | Included scope |
 |---|---|
@@ -42,8 +44,10 @@ payloads/checksums. Interactive updater UX and real hardware remain separate che
 | P2 editing | Mouse crop preview and grouped rotation/resizing with one undo |
 | P2 batches | Sequential compression/offline OCR, bounded inputs, cancellation, per-file errors and no overwriting |
 
-Full workspace, CI, package and public-release gates remain pending in `PROJECT_STATUS.md`. Hardware, native interactive
-flows, Narrator, third-party readers and customer/hostile corpus coverage remain independent work.
+The 362 workspace tests, 31 independent synthetic qpdf checks, four public NIST documents (744 pages), eight portable
+update/failure/rollback cases and two MSI baselines passed. Final CI and all six public assets passed verification,
+including packaged CLI/OCR, icons, MSI payloads and the live updater. Evidence is recorded in `PROJECT_STATUS.md`.
+Hardware, native interactive flows, Narrator, third-party readers and broader customer/hostile corpus coverage remain independent work.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -56,7 +60,7 @@ Historical milestones and decisions remain in `DECISIONS.md` and `PROJECT_STATUS
 Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views, logical cross-page selection,
 search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
 
-Implemented for 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
+Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
 Remaining: page labels and intended reading order
 for complex untagged columns. qpdf structural checks do not prove preservation of every link, field, layer or attachment.
 
@@ -66,7 +70,7 @@ Delivered: editable text/images and shapes, object transformations, grouped move
 fonts, stamps/watermarks/numbering, threaded comments, metadata, visual signatures, AcroForm filling/flattening,
 text/checkbox creation and autosave/recovery.
 
-Implemented for 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
+Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
 FDF/XFDF interchange and keyboard page widgets. Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
@@ -75,7 +79,7 @@ Acceptance: rendering, saving and reopening covered for each added operation, wi
 Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches and bundled local English/French OCR.
 
 Remaining: Office → PDF through a detected local converter, PDF → Word/Excel/PowerPoint with explicit measured
-fidelity limits and reusable conversion profiles. Image compression and sequential compression/OCR batch UI are implemented for 0.10.0.
+fidelity limits and reusable conversion profiles. Image compression and sequential compression/OCR batch UI are delivered in 0.10.0.
 
 ## Phase 5: security and productivity — partially delivered
 
@@ -92,7 +96,7 @@ Executable/MSI code signing needs an appropriate supplied identity.
 Delivered baseline: x64 portable/MSI and ARM64 portable releases, SHA256 files, startup update notifications with
 explicit installation, FR/EN guides, third-party notices and GitHub build workflows.
 
-Implemented for 0.10.0: four pinned public NIST samples and interrupted/full-disk/failed-save scenarios.
+Delivered in 0.10.0: four pinned public NIST samples and interrupted/full-disk/failed-save scenarios.
 Remaining: customer/hostile/large corpus expansion, fuzzing,
 published benchmarks with hardware, complete dependency licence inventory, Narrator and third-party reader checks,
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
@@ -100,10 +104,9 @@ Automated MSI regression covers its scripted scenario only; packaged cross-compi
 
 ## Next work after the 0.10.0 lot
 
-1. Record the full release gates in `PROJECT_STATUS.md` before publishing 0.10.0.
-2. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
-3. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
-4. Address fonts/paragraph editing, local Office conversion and trust services as separately scoped future work.
+1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
+2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
+3. Address fonts/paragraph editing, local Office conversion and trust services as separately scoped future work.
 
 
 

@@ -2,7 +2,7 @@
 
 [English](ROADMAP.md)
 
-Cette roadmap distingue les fonctions livrées, les changements implémentés en attente de validation et le travail futur.
+Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
 ## Base livrée : 0.9.0
@@ -14,7 +14,7 @@ Voir [FEATURE_MATRIX.fr.md](FEATURE_MATRIX.fr.md) pour le périmètre exact et [
 
 ## 0.9.1 : fiabilité et distribution
 
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) sous `lmdanavanem` ;
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) sous `lmdanavanem` ;
 validations exécutées et preuves des paquets suivies dans `PROJECT_STATUS.fr.md` :
 
 - Préserver l’identification PDF/A et les propriétés XMP indépendantes lors de l’édition des métadonnées ; refuser les XML malformés et DTD.
@@ -31,7 +31,9 @@ Contrôles du workspace (322 tests), qpdf indépendant (22 PDF/trois entrées ma
 sur runner réussis. Les six fichiers publics ont été téléchargés et correspondent aux contenus/empreintes vérifiés.
 L’UX interactive de mise à jour et le matériel réel restent des vérifications distinctes.
 
-## 0.10.0 : lot P1/P2 demandé, implémentation terminée et validation en attente
+## 0.10.0 : lot P1/P2 demandé publié
+
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) sous `lmdanavanem`.
 
 | Domaine | Périmètre inclus |
 |---|---|
@@ -42,8 +44,10 @@ L’UX interactive de mise à jour et le matériel réel restent des vérificati
 | P2 édition | Recadrage souris dans l’aperçu et rotation/redimensionnement groupés, une annulation |
 | P2 lots | Compression/OCR local séquentiels, entrées bornées, annulation, erreurs individuelles et aucun écrasement |
 
-Workspace complet, CI, paquets et publication restent à valider dans `PROJECT_STATUS.fr.md`. Matériel, dialogues
-natifs interactifs, Narrateur, lecteurs tiers et couverture client/hostile restent indépendants.
+Les 362 tests du workspace, 31 contrôles qpdf synthétiques indépendants, quatre documents NIST publics (744 pages),
+huit scénarios portables de mise à jour/échec/restauration et deux bases MSI ont réussi. CI finale et six fichiers publics
+vérifiés, y compris CLI/OCR embarqués, icônes, contenu MSI et mise à jour en ligne ; preuves dans `PROJECT_STATUS.fr.md`.
+Matériel, dialogues natifs interactifs, Narrateur, lecteurs tiers et corpus client/hostile élargi restent indépendants.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -56,7 +60,7 @@ Les jalons et décisions historiques restent dans `DECISIONS.fr.md` et `PROJECT_
 Livrés : onglets, caches de rendu/miniatures bornés, vues continue/double page/Livre, sélection logique entre pages,
 recherche, signets, fusion/division/extraction/rotation/réorganisation, enregistrement atomique, annulation/rétablissement et annotations.
 
-Implémentés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
+Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
 Restent : labels de pages et ordre voulu des
 colonnes complexes non balisées. qpdf ne prouve pas la préservation de chaque lien, champ, calque ou pièce jointe.
 
@@ -66,7 +70,7 @@ Livrés : texte/images/formes, transformations d’objets, déplacement groupé 
 tampons/filigranes/numérotation, commentaires, métadonnées, signatures visuelles, remplissage/aplatissement AcroForm,
 création de champs texte/case et sauvegarde/récupération.
 
-Implémentés en 0.10.0 : transformations groupées, recadrage souris, champs radio/listes, échanges FDF/XFDF de valeurs et clavier.
+Livrés en 0.10.0 : transformations groupées, recadrage souris, champs radio/listes, échanges FDF/XFDF de valeurs et clavier.
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
@@ -75,7 +79,7 @@ Critère : rendu, enregistrement et réouverture couverts pour chaque opération
 Livrés : images ↔ PDF, PDF → texte/PNG, optimisation sans perte, lots CLI et OCR anglais/français local embarqué.
 
 Restent : Office → PDF via convertisseur local détecté, PDF → Word/Excel/PowerPoint avec limites de fidélité mesurées
-et explicites, profils réutilisables. Compression des images et lots compression/OCR implémentés en 0.10.0.
+et explicites, profils réutilisables. Compression des images et lots compression/OCR livrés en 0.10.0.
 
 ## Phase 5 : sécurité et productivité — partiellement livrée
 
@@ -92,7 +96,7 @@ La signature du code/MSI demande une identité appropriée fournie.
 Base livrée : releases x64 portable/MSI et ARM64 portable, SHA256, notification au démarrage avec installation explicite,
 guides FR/EN, notices tierces et workflows de compilation GitHub.
 
-Implémentés en 0.10.0 : quatre documents NIST publics et scénarios d’enregistrement interrompu/disque plein/échec.
+Livrés en 0.10.0 : quatre documents NIST publics et scénarios d’enregistrement interrompu/disque plein/échec.
 Restent : corpus client/hostile/volumineux plus large, fuzzing,
 benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteurs tiers, parcours interactifs de mise à
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
@@ -100,9 +104,8 @@ La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM
 
 ## Suite après le lot 0.10.0
 
-1. Consigner tous les critères de release dans `PROJECT_STATUS.fr.md` avant publication.
-2. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
-3. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.
-4. Définir séparément polices/paragraphes, conversion Office locale et services de confiance.
+1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
+2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.
+3. Définir séparément polices/paragraphes, conversion Office locale et services de confiance.
 
 Aucune date/version suivante n’est engagée. L’IA facultative reste désactivée par défaut.

@@ -26,19 +26,19 @@
 
 | Area | Features |
 |---|---|
-| Read | Tabs, continuous/single-page/two-page/Book views, tiled high-zoom rendering, thumbnails, search, bookmarks, logical text selection across pages, double-click words and edge scrolling |
+| Read | Tabs, continuous/single-page/two-page/Book views, view rotation, full screen, per-tab navigation history, tiled high-zoom rendering, thumbnails, search, bookmarks, logical text selection across pages, double-click words and edge scrolling |
 | Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
-| Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, clipboard across tabs, Objects panel, page crop and resize |
+| Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages |
-| Fill and sign | AcroForm filling, flattening and JSON import/export; handwritten/image signatures, initials and date (visual signatures, not digital certificates) |
-| Create forms | Named text fields and checkboxes through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
+| Fill and sign | AcroForm filling, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; handwritten/image signatures, initials and date (visual signatures, not digital certificates) |
+| Create forms | Named text fields, checkboxes, radio groups, drop-downs and single/multiple-selection lists through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
 | Recover | Automatic snapshots every 60 seconds and on tab suspension; original unchanged, PDF encryption preserved, no passwords stored, restore through Save As |
 | Print | Native Windows printer selection, page ranges/copies/orientation, current edits, bounded raster output, progress and cancellation |
 | Stamp | Text watermarks and page numbering |
-| Convert | Images to PDF, PDF to PNG, lossless optimization; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo |
+| Convert | Images to PDF, PDF to PNG, lossless optimization, lossy image compression to a new copy; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo; sequential multi-file compression/OCR |
 | Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
 | Certificates | Saved-byte integrity verification and incremental PFX/P12 signing into a new copy; certificate trust, revocation and trusted timestamps are unchecked; encrypted PDF signing is refused |
-| Automate | `sunipdf-cli`: 46 commands with JSON output and stable exit codes, including `add-form-field`, `ocr`, `signatures` and `sign` |
+| Automate | `sunipdf-cli`: 50 commands with JSON output and stable exit codes, including `compress-images`, `form-export`, `rotate-objects`, `resize-objects`, `add-form-field`, `ocr`, `signatures` and `sign` |
 
 All 14 task tools have real commands. Reading follows PDFium's logical character order; arbitrary untagged columns
 are not reconstructed. Physical printing, ARM64 hardware and third-party signature interoperability remain separate QA checks.
