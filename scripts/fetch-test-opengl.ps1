@@ -57,12 +57,12 @@ foreach ($name in $dllHashes.Keys) {
     Assert-TestOpenGlHash $path $dllHashes[$name]
     Assert-TestOpenGlArchitecture $path
 }
-$env:GLUTIN_WGL_OPENGL_DLL = Join-Path $bin 'opengl32.dll'
+$env:SUNIPDF_TEST_OPENGL_DIR = $bin
 $env:GALLIUM_DRIVER = 'llvmpipe'
 $env:WGL_DISABLE_ERROR_DIALOGS = '1'
 $env:PATH = "$bin;$env:PATH"
 if ($env:GITHUB_ENV) {
-    $values = "GLUTIN_WGL_OPENGL_DLL=$env:GLUTIN_WGL_OPENGL_DLL`nGALLIUM_DRIVER=llvmpipe`nWGL_DISABLE_ERROR_DIALOGS=1`n"
+    $values = "SUNIPDF_TEST_OPENGL_DIR=$bin`nGALLIUM_DRIVER=llvmpipe`nWGL_DISABLE_ERROR_DIALOGS=1`n"
     [IO.File]::AppendAllText($env:GITHUB_ENV, $values, [Text.UTF8Encoding]::new($false))
     [IO.File]::AppendAllText($env:GITHUB_PATH, "$bin`n", [Text.UTF8Encoding]::new($false))
 }

@@ -94,6 +94,33 @@ function StopOwned($Process, [string]$Executable) {
         throw
     }
 }
+function PrepareTestOpenGl([string]$Target) {
+    if (-not $env:SUNIPDF_TEST_OPENGL_DIR) { return @() }
+    $hashes = @{
+        'opengl32.dll' = '75B295FC80DF0EAA8F1264C28663F6932C8B72D36513EB092556608858B7F5E0'
+        'libgallium_wgl.dll' = '53E49ADF87590D5B0CAB8553B1E98084812040CC1FCA8C487695B17B7AF3702E'
+    }
+    foreach ($name in $hashes.Keys) {
+        $source = Join-Path $env:SUNIPDF_TEST_OPENGL_DIR $name
+        $destination = ChildPath (Join-Path $Target $name) $Target
+        Assert (-not (Test-Path -LiteralPath $destination)) 'Test OpenGL would replace a packaged application file.'
+        Assert ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -eq $hashes[$name]) 'Test OpenGL source checksum mismatch.'
+        $reader = [IO.BinaryReader]::new([IO.File]::OpenRead($source))
+        try {
+            Assert ($reader.BaseStream.Length -ge 64 -and $reader.ReadUInt16() -eq 0x5A4D) 'Invalid test OpenGL binary.'
+            $reader.BaseStream.Position = 60
+            $header = $reader.ReadInt32()
+            Assert ($header -ge 64 -and $header -le $reader.BaseStream.Length - 6) 'Invalid test OpenGL PE header.'
+            $reader.BaseStream.Position = $header
+            Assert ($reader.ReadUInt32() -eq 0x00004550 -and $reader.ReadUInt16() -eq 0x8664) 'Test OpenGL source is not x64.'
+        } finally { $reader.Dispose() }
+        Copy-Item -LiteralPath $source -Destination $destination
+        Assert ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -eq $hashes[$name]) 'Test OpenGL application copy checksum mismatch.'
+    }
+    # WGL creation and statically imported OpenGL calls must use the same per-application DLL.
+    $env:GLUTIN_WGL_OPENGL_DLL = Join-Path $Target 'opengl32.dll'
+    return @($hashes.Keys)
+}
 function StartApp([string]$Target) {
     $exe = Join-Path $Target 'sunipdf.exe'
     $logs = Split-Path -Parent $Target
@@ -166,7 +193,7 @@ $workspace = Join-Path ([IO.Path]::GetTempPath()) ('SuniPDF-update-regression-' 
 ChildPath $workspace ([IO.Path]::GetTempPath()) | Out-Null
 [IO.Directory]::CreateDirectory($workspace) | Out-Null
 $originalEnvironment = @{}
-foreach ($name in @('APPDATA', 'LOCALAPPDATA', 'SUNIPDF_RECOVERY_DIR')) { $originalEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+foreach ($name in @('APPDATA', 'LOCALAPPDATA', 'SUNIPDF_RECOVERY_DIR', 'GLUTIN_WGL_OPENGL_DLL')) { $originalEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $results = [Collections.Generic.List[object]]::new()
 $owned = [Collections.Generic.List[object]]::new()
 $passed = $false
@@ -191,6 +218,7 @@ try {
             $case = Join-Path $workspace ("case-$sequence-$scenario")
             $target = Join-Path $case ('SuniPDF space ' + [char]0x00E9)
             ExpandTestCopy $old.path $target
+            $testFiles = @(PrepareTestOpenGl $target)
             Copy-Item -LiteralPath (Join-Path $repo 'crates/sunipdf-core/tests/fixtures/two-pages.pdf') -Destination (Join-Path $target 'document.pdf')
             [IO.File]::WriteAllText((Join-Path $target 'settings.json'), 'unrelated portable settings')
             [IO.File]::WriteAllText((Join-Path $target 'licenses/keep-user-license.txt'), 'unrelated license')
@@ -230,7 +258,7 @@ try {
                     Assert ([bool]$result.success) "Real upgrade failed: $($result.error)"
                     $after = FileMap $target
                     foreach ($name in $incomingFiles.Keys) { Assert ($after[$name] -eq $incomingFiles[$name]) "Updated payload differs: $name" }
-                    foreach ($name in @('document.pdf','settings.json','licenses\keep-user-license.txt')) { Assert ($after[$name] -eq $before[$name]) "Update changed $name." }
+                    foreach ($name in (@('document.pdf','settings.json','licenses\keep-user-license.txt') + $testFiles)) { Assert ($after[$name] -eq $before[$name]) "Update changed $name." }
                     $backupFiles = @{}
                     foreach ($name in $incomingFiles.Keys) {
                         if ($before.ContainsKey($name)) { $backupFiles[$name] = $before[$name] }

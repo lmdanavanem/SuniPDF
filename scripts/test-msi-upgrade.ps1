@@ -25,14 +25,25 @@ $installer = New-Object -ComObject WindowsInstaller.Installer
 function Read-Property([string]$Path, [string]$Name) {
     $database = $installer.OpenDatabase($Path, 0)
     $view = $database.OpenView("SELECT Value FROM Property WHERE Property = '$Name'")
-    try { $view.Execute(); return $view.Fetch().StringData(1) }
-    finally { $view.Close(); [Runtime.InteropServices.Marshal]::FinalReleaseComObject($view) | Out-Null; [Runtime.InteropServices.Marshal]::FinalReleaseComObject($database) | Out-Null }
+    try {
+        $null = $view.Execute()
+        $record = $view.Fetch()
+        if ($null -eq $record) { throw "MSI property is missing: $Name" }
+        return [string]$record.StringData(1)
+    } finally {
+        $null = $view.Close()
+        [Runtime.InteropServices.Marshal]::FinalReleaseComObject($view) | Out-Null
+        [Runtime.InteropServices.Marshal]::FinalReleaseComObject($database) | Out-Null
+    }
 }
 $oldCode = Read-Property $old 'ProductCode'
 $newCode = Read-Property $msi 'ProductCode'
 $version = Read-Property $msi 'ProductVersion'
+$oldLanguage = Read-Property $old 'ProductLanguage'
+$newLanguage = Read-Property $msi 'ProductLanguage'
+Write-Host "MSI metadata: old=$oldCode ($oldLanguage), new=$newCode ($newLanguage), version=$version"
 if ($oldCode -eq $newCode -or $version -notmatch '^\d+\.\d+\.\d+$') { throw 'Upgrade requires distinct products and a valid version.' }
-if ((Read-Property $old 'ProductLanguage') -ne '1036' -or (Read-Property $msi 'ProductLanguage') -ne '1033') { throw 'Expected a French-to-English MSI upgrade.' }
+if ($oldLanguage -ne '1036' -or $newLanguage -ne '1033') { throw 'Expected a French-to-English MSI upgrade.' }
 $sourceHash = (Get-FileHash -LiteralPath $msi).Hash
 function Invoke-Msi([string]$Package, [string]$Label, [switch]$Remove, [switch]$ExpectFailure) {
     $operation = if ($Remove) { '/x' } else { '/i' }
