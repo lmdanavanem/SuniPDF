@@ -3,6 +3,9 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
+This source guide includes the locally verified 0.11.0 changes. CI/packages/publication remain pending in
+[project status](PROJECT_STATUS.md); published 0.10.0 packages do not include these additions.
+
 ## Installation
 
 - **Portable**: unzip `SuniPDF-<version>-win-x64-portable.zip` anywhere and run `sunipdf.exe`. Nothing is
@@ -193,6 +196,9 @@ visible page.
   enforced.
 - **Drop-down list, list box**: one click opens the list of choices (checkboxes for a multi-select list;
   "(none)" clears a list that is not required).
+- **Existing editable drop-down (0.11.0)**: choose **Enter a value…** in the on-page choice popup to type custom text,
+  then confirm like a text field. The fields panel also accepts custom text alongside the listed choices, with the
+  same Apply/Discard/Save controls. Ordinary drop-downs remain choice-only; field creation does not offer the editable flag.
 - The value is drawn by the PDF engine itself (regenerated appearance): what you see is what other readers will
   show, and what Ctrl+S saves.
 
@@ -213,7 +219,7 @@ with Ctrl+Z while the document is open; flattening every page removes the form f
 **password** field is neither fillable nor exported (its value must never be stored). A password-protected
 document is filled like any other and stays protected. Ctrl+S confirms the entry in progress first.
 
-**Unreleased local build:** a failed form read shows an error and a **Retry** button in the fields panel.
+**0.11.0:** a failed form read shows an error and a **Retry** button in the fields panel.
 Your pending text and panel changes remain available; a read failure is not treated as an empty form.
 Retry reads the current fields again before applying a waiting import or clear operation. Nothing is retried in a loop.
 
@@ -262,8 +268,8 @@ Stamp text and page-number templates must fit on one line; CR/LF line breaks are
 - **Undo / Redo**: Ctrl+Z / Ctrl+Y (up to 50 steps).
 - **Split document**: choose pages per file and a destination folder.
 - **Extract selected pages**: creates a new PDF with the selection. From a protected document, the new
-  file (like the parts of a split) **is not encrypted**: the status bar says so; open it and run **Protect**
-  if needed.
+  file and split parts **retain the original encryption, passwords and permissions in 0.11.0**. An output resolving
+  to the original file is refused, including with CLI `--overwrite`; the existing document-permission policy is unchanged.
 - **Combine PDF files**: pick files in order, then the output file; it opens afterwards.
 - **Insert Blank Page…**: size of the current page, A3, A4, A5, Letter, Legal or custom (portrait or
   landscape), number of pages, before or after the current page or at the end.
@@ -279,7 +285,7 @@ Use **View** for view-only quarter-turn rotation and full screen. These controls
 starting an editing tool returns to upright view. Back/Forward navigation (Alt+Left/Alt+Right) keeps up to 256 positions
 per tab, including page and scroll anchors. View state/history belongs to each tab and is not PDF content.
 
-### Next local build (unreleased)
+### 0.11.0 navigation
 
 PDF page labels such as `iv`, `1` or `Annexe-É7` appear alongside physical page indices in thumbnails, the status bar
 and accessibility descriptions. Type an exact, case-sensitive, unique label into the page box and press Enter.
@@ -420,7 +426,8 @@ box: choices separated by `;` —, strict by default: an unknown field or a reje
 `form_field_not_found` / `form_value_invalid` error and nothing is written, `--ignore-unknown` to skip and count,
 `--flatten`) and `flatten` (`--pages all` or `1,3-5`; every page = the form is removed). An XFA form returns
 `form_xfa`.
-Output is JSON (`extract` and `split` report `encryption_removed` when the source was protected); exit codes
+Output is JSON. In 0.11.0, `extract` and `split` retain protection: `encryption_removed` stays `false`, and additive
+`encrypted` reports whether the copies are encrypted. They refuse a resolved source-path output even with `--overwrite`. Exit codes
 distinguish password required (3), invalid file (4), unreadable file (5) and
 existing output file (6). No command overwrites an existing file without `--overwrite`. `render` always
 writes PNG (`--region x,y,w,h`: an area in pixels of the page rendered at `--scale`, for scales where the

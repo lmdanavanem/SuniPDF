@@ -52,17 +52,18 @@ rewritten outputs must pass without warnings. The shared writer fixes stale stor
 six staged packages/checksums, all eight real portable update scenarios and both real MSI baselines (0.8.0 and 0.9.1)
 passed. Package checks include English metadata, embedded icons, real compression, choice forms/XFDF, grouped edits,
 French OCR and matching MSI/ZIP payloads. [SuniPDF 0.10.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0)
-is published as Latest under `lmdanavanem`; all six unauthenticated public downloads match API/sidecar/staged hashes
+was published under `lmdanavanem`; all six unauthenticated public downloads match API/sidecar/staged hashes
 and are available in `dist/`. The enhanced checks passed again on public binaries, and the production live updater
 verified the 19,651,167-byte Latest x64 ZIP without installation. The requested P1/P2 release gates are complete;
 the independent hardware/interoperability work below remains open.
 Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` release source are recorded in status.
 
-## Current development: reading and form reliability (unreleased)
+## 0.11.0: navigation, forms and protected copies (local gates passed)
 
-Implemented and locally validated: 383 workspace tests passed, zero failed, seven default ignored; formatting,
-Clippy, 34 qpdf PDFs, four real documents (744 pages), 857 matching EN/FR keys and development CLI/GUI builds passed.
-This lot remains unreleased; CI has not yet run for these changes. Published 0.10.0 tags and packages remain unchanged.
+The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting, Clippy with
+`-D warnings`, 858 matching EN/FR keys, 42 independent qpdf checks across 40 distinct PDFs and four NIST documents
+(744 pages; 76.05 seconds, peak child memory 332,398,592 bytes). CI, package and publication gates remain pending;
+current evidence belongs in `PROJECT_STATUS.md`. Published 0.10.0 tags and packages remain unchanged.
 
 - Read PDF page labels through PDFium in the toolbar, thumbnails and CLI `info`. Go to accepts an exact unique
   label; `#N` always selects the physical page. Labels remain read-only; invalid labels fall back to physical numbering.
@@ -70,6 +71,11 @@ This lot remains unreleased; CI has not yet run for these changes. Published 0.1
   crop/rotation transforms, retained null axes and zoom. History includes same-page destinations and zoom changes.
   `/FitH` zero/null and other fit modes retain page-only navigation; PDFium cannot distinguish FitH null from zero.
 - Preserve form drafts and pending actions when reading fields fails, show the failure and require an explicit retry.
+- Fill existing editable drop-down fields with custom text in the panel and on the page; preserve named choices,
+  Apply/Discard, Save and undo. Creating the editable flag on a new field is outside this slice.
+- Preserve original encryption, passwords and permissions when extracting/splitting protected PDFs; refuse an output
+  that resolves to the source path. CLI keeps `encryption_removed: false` and adds `encrypted`; the existing
+  document-permission policy is unchanged. Local regression gates passed; CI/package/publication checks remain pending.
 
 ## Remaining work beyond this lot
 
@@ -123,7 +129,8 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 - JSON/XFDF/FDF interchange and grouped panel Apply are implemented for 0.10.0; validation is tracked in `PROJECT_STATUS.md`.
-- free text in an editable drop-down list; `/Opt` export values of radio buttons; keyboard activation
+- Editable drop-down free text is implemented for 0.11.0, local gates passed; CI/package/publication checks pending; `/Opt` export values of radio buttons remain;
+  keyboard activation
   (Space / Enter) of the page's field rectangles is implemented in 0.10.0; Windows Narrator check (`labelled_by` names
   set, not listened to);
 - flattening: also keep the annotations without an appearance other than links (attachments without
@@ -143,7 +150,7 @@ final visual validation by the user. The short-window right-rail overlap is alre
 ## After review-fixes (findings of the 14/10 adversarial reviews, slice delivered)
 The 39 findings of `docs/plans/review-fixes.md` are fixed or already covered (engine and application tests).
 Remaining, non-blocking:
-- automatically re-encrypt the extracts and the parts of a split of a protected document (D046, A29);
+- Protected extraction/split re-encryption is implemented for 0.11.0, local gates passed; CI/package/publication checks pending (D097 supersedes D046; A29).
 - expand the independent AES/XMP interoperability corpus beyond the synthetic qpdf gate (A4);
 - validate preserved PDF/A metadata with a dedicated conformance validator (A34); the 0.9.1 preservation fix
   itself is implemented, and current execution evidence belongs in `PROJECT_STATUS.md`;
@@ -187,7 +194,7 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
 - polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
-- change the target of an existing link; named destinations and `/XYZ` reading are implemented in the unreleased lot above;
+- change the target of an existing link; named destinations and `/XYZ` reading are implemented in the 0.11.0 lot above;
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 

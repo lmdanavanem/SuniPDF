@@ -89,7 +89,7 @@ A24. **Object clipboard and system clipboard**: Ctrl+V only pastes objects if th
 A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same process after
     `FPDF_DestroyLibrary`; the tests share a single engine that is never destroyed (`tests/engine.rs`).
 A10. **Distribution validation**: current tests, CI, package and release evidence are recorded in `PROJECT_STATUS.md`.
-     Published Latest 0.10.0 passed eight real portable update/failure/rollback scenarios and two disposable-runner MSI
+     Published 0.10.0 passed eight real portable update/failure/rollback scenarios and two disposable-runner MSI
      baselines covering installation/transactional rollback/upgrade/downgrade rejection/uninstall, preserving user data.
      Interactive flows, ARM64 hardware and physical printers remain separate checks.
 A11. **All tools: 14 tools implemented for 0.9.0.** OCR, field creation and certificate signatures now have
@@ -124,9 +124,10 @@ A16. **CLI help for `stamp` and `page-numbers`**: clap replaces any `{n}` sequen
 A17. ~~"Modified" indicator after undo~~ **Fixed (review-fixes, D052)**: save point in
      the history; lost only if one edits after an undo or if the saved snapshot leaves the 50
      levels (the document then stays "modified" until the next save).
-A29. **Extracting / splitting a protected document**: the produced files are not encrypted (PDFium copies the
-     pages into a new document); the interface and the CLI (`encryption_removed`) say so, and Protect
-     then applies to the created file (D046). Automatic re-encryption on the roadmap.
+A29. ~~Extraction/split removed PDF protection~~ **Implementation resolved for 0.11.0; local gates passed**:
+     copies retain original encryption, passwords and permissions through the shared protected writer (D097 replaces
+     D046). Output at the resolved source path is refused. CLI reports `encryption_removed: false` and adds `encrypted`.
+     Existing document-permission policy is unchanged; current validation belongs in `PROJECT_STATUS.md`.
 A30b. **AES-256 and passwords**: the password is SASLprep-normalized before encryption (special spaces
     mapped to spaces, ligatures decomposed), then limited to a valid UTF-8 prefix of 127 bytes. SuniPDF applies
     the same transformation on opening; another reader may require this effective form (for example
@@ -210,7 +211,8 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      FDF supports normal xref tables and text/name/array values only; streams, actions, attachments, rich text and
      FDF export are unsupported. XML DTDs, processing instructions, unknown elements, duplicate names and excessive
      size/depth are refused; referenced document paths are never opened. Input cap: 16 MiB.
-     Existing limits: no mouse-drawn field creation; editable combo free text through CLI only; widget state is the
+     0.11.0 editable-combo free text in the panel/on page passed local gates; CI/packages/publication are pending.
+     Existing limits: no mouse-drawn field creation or editable-combo flag authoring; widget state is the
      radio value, not arbitrary legacy /Opt mappings; rich text becomes plain text; password fields never stored/exported.
      Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
      field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
@@ -304,9 +306,10 @@ A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a kil
      synthetic corpus: 31 synthetic qpdf checks and all four real documents (744 pages) passed for 0.10.0.
      They do not establish broad customer/hostile/large-file compatibility; executed evidence is in `PROJECT_STATUS.md`.
 
-## Unreleased local changes
+## 0.11.0 release preparation
 
-These additions are not part of the published 0.10.0 release. Executed validation belongs in `PROJECT_STATUS.md`.
+These additions passed 0.11.0 local gates. They are not part of published 0.10.0; CI/packages/publication remain
+pending in `PROJECT_STATUS.md`.
 
 A48. **Page-label reading**: labels are optional metadata, not editable page numbering. Blank/unreadable labels,
      labels over 4096 UTF-8 bytes and labels containing control characters fall back to physical indices.
@@ -320,4 +323,4 @@ A49. **Destination navigation**: internal links/bookmarks support `/XYZ`, `/Fit`
      to application limits. This does not establish Acrobat/Foxit or native screen-reader interoperability.
 A50. **Form-read failures**: an error is kept distinct from an empty form, and the panel offers an explicit retry.
      Pending drafts and staged values are retained while the read fails. A waiting import/clear operation resumes
-     only after a successful read; repeated automatic retries are suppressed. The local changes are not yet a release.
+     only after a successful read; repeated automatic retries are suppressed.

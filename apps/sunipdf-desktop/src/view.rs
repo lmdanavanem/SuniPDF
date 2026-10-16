@@ -1222,8 +1222,8 @@ impl SuniApp {
             self.forms_activate(s.page, field, widget);
         }
         let view = ui.clip_rect();
-        self.forms_editor(ctx, view, s.rect, s.page, h);
         self.forms_popup(ctx, view, s.rect, s.page, h);
+        self.forms_editor(ctx, view, s.rect, s.page, h);
         event.map(|e| (s.page, e))
     }
 

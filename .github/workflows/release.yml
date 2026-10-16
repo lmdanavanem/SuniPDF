@@ -80,6 +80,7 @@ jobs:
           $msi = Get-ChildItem dist\*.msi | Select-Object -First 1 -ExpandProperty FullName
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.8.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.9.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.10.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@v4

@@ -47,6 +47,11 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
+**0.11.0 vérifiée localement :** libellés de pages, liens/signets précis avec zoom/historique, brouillons conservés après
+échec de lecture des champs, texte libre dans les listes déroulantes déjà modifiables et copies d'extraction/division
+conservant mots de passe et permissions. CI/paquets/publication en attente dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
+Les paquets 0.10.0 publiés restent inchangés.
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

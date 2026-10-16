@@ -5,13 +5,24 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [Non publié]
+## [0.11.0] — 2026-10-16
+
+Validation et preuves de publication figurent dans `docs/PROJECT_STATUS.fr.md`.
 
 ### Ajouts
 - Libellés PDF dans la barre de navigation, les miniatures, le statut et `info` CLI. Accès par libellé exact unique
   ou `#N` pour la position physique ; un libellé ambigu ne change pas la page.
 - Liens internes et signets vers les positions/zooms XYZ, Fit et FitH non nul pris en charge, y compris les noms
   résolus par PDFium. Retour/avance conserve positions sur une même page et zoom, même lors de sauts rapides.
+- Texte libre dans les listes déroulantes déjà éditables, depuis le panneau ou directement sur la page.
+  Les options restent disponibles ; les valeurs saisies utilisent Appliquer/Abandonner et l’annulation existants.
+
+### Changements
+- Extraits et parties découpées conservent mots de passe, clé de chiffrement et permissions de la source.
+  La CLI garde `encryption_removed` à `false` et ajoute `encrypted`. Une source non protégée reste non protégée.
+- Extraction et découpage refusent de remplacer la source, même avec écrasement explicite. Sans écrasement,
+  le découpage refuse aussi un fichier créé entre le contrôle initial et la publication atomique.
+- Les tests Windows réels incluent désormais les mises à jour portables et MSI depuis 0.10.0.
 
 ### Corrections
 - L’outil de sélection de texte suit les clics sur les liens, avec confirmation et contrôle des adresses externes conservés.
@@ -23,7 +34,9 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 ### Limites
 - Création de libellés et recalage sémantique après réorganisation non implémentés. Les libellés illisibles, contenant
   des contrôles ou dépassant 4096 octets utilisent les numéros physiques. Les modes de destination non pris en charge
-  et FitH zéro/null ambigus reviennent à la navigation par page. Ces changements ne sont pas dans les paquets 0.10.0 publiés.
+  et FitH zéro/null ambigus reviennent à la navigation par page. La lecture des libellés ajoute du travail à l’ouverture
+  des gros documents. Le texte libre nécessite une liste déjà marquée éditable ; créer/modifier ce drapeau reste à faire.
+  Un découpage échoué peut laisser des parties déjà terminées ; aucun fichier partiel ni source modifiée n’est accepté.
 
 ## [0.10.0] — 2026-10-16
 

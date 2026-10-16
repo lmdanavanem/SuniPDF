@@ -78,7 +78,14 @@ impl FormsState {
                 self.info
                     .as_ref()
                     .and_then(|i| i.field(&e.field))
-                    .is_none_or(|f| f.value != FieldValue::Text(e.text.clone()))
+                    .is_none_or(|f| {
+                        f.value
+                            != input_value(
+                                f,
+                                &e.text,
+                                self.staged.get(&e.field).unwrap_or(&f.value),
+                            )
+                    })
             })
     }
 
@@ -158,6 +165,34 @@ fn chosen(f: &FormField) -> Vec<String> {
     }
 }
 
+fn input_text(f: &FormField, value: &FieldValue) -> String {
+    match value {
+        FieldValue::Text(text) => text.clone(),
+        FieldValue::Choice(values) => values
+            .first()
+            .map_or_else(String::new, |value| f.label_of(value).to_string()),
+        _ => String::new(),
+    }
+}
+
+fn input_value(f: &FormField, text: &str, current: &FieldValue) -> FieldValue {
+    if f.kind == FieldKind::Combo {
+        if text == input_text(f, current) {
+            return current.clone();
+        }
+        FieldValue::Choice(if text.is_empty() {
+            Vec::new()
+        } else {
+            vec![f
+                .option(text)
+                .map_or(text, |option| &option.value)
+                .to_string()]
+        })
+    } else {
+        FieldValue::Text(text.to_string())
+    }
+}
+
 /// Valeurs d'export dans l'ordre des options (JSON et `/I` stables).
 fn ordered_choice(f: &FormField, wanted: &[String]) -> FieldValue {
     FieldValue::Choice(
@@ -188,8 +223,17 @@ impl SuniApp {
             drafts.insert(e.field.clone(), e.text.clone());
         }
         let mut pending = self.forms.staged.clone();
+        let mut combo_drafts = Vec::new();
         for (name, text) in &drafts {
-            pending.insert(name.clone(), FieldValue::Text(text.clone()));
+            let Some(field) = self.forms.info.as_ref().and_then(|i| i.field(name)) else {
+                self.error = Some("error.form_value_invalid");
+                return false;
+            };
+            let value = input_value(field, text, pending.get(name).unwrap_or(&field.value));
+            if field.kind == FieldKind::Combo {
+                combo_drafts.push((name.clone(), value.clone()));
+            }
+            pending.insert(name.clone(), value);
         }
         let mut values = Vec::new();
         for (name, value) in pending {
@@ -204,6 +248,7 @@ impl SuniApp {
         }
         self.forms.editing = None;
         self.forms.drafts = drafts;
+        self.forms.staged.extend(combo_drafts);
         if !values.is_empty() {
             self.commit_many(values);
         }
@@ -298,9 +343,11 @@ impl SuniApp {
             self.error = None;
         }
         // Un brouillon égal au modèle n'a plus de raison d'être ; un brouillon refusé reste.
+        let staged = &self.forms.staged;
         self.forms.drafts.retain(|name, draft| {
-            info.field(name)
-                .is_some_and(|f| !matches!(&f.value, FieldValue::Text(t) if t == draft))
+            info.field(name).is_some_and(|f| {
+                f.value != input_value(f, draft, staged.get(name).unwrap_or(&f.value))
+            })
         });
         self.forms
             .staged
@@ -378,6 +425,9 @@ impl SuniApp {
             return;
         }
         for (name, value) in values {
+            if matches!(value, FieldValue::Choice(_)) {
+                self.forms.drafts.remove(&name);
+            }
             if info.field(&name).is_some_and(|f| f.value == value) {
                 self.forms.staged.remove(&name);
                 self.forms.drafts.remove(&name);
@@ -528,6 +578,7 @@ impl SuniApp {
             self.status_msg = Some(tr(lang, "status.form_unsupported_widget").to_string());
             return;
         }
+        let f = f.clone();
         let name = f.name.clone();
         match f.kind {
             FieldKind::Checkbox => {
@@ -536,7 +587,7 @@ impl SuniApp {
             }
             FieldKind::Radio => {
                 let Some(on) = w.on_state.clone() else { return };
-                let already = chosen(f).first() == Some(&on);
+                let already = chosen(&f).first() == Some(&on);
                 let value = if !already {
                     FieldValue::Choice(vec![on])
                 } else if f.no_toggle_off {
@@ -547,21 +598,7 @@ impl SuniApp {
                 self.commit_form(name, value);
             }
             FieldKind::Text => {
-                let text = match &f.value {
-                    FieldValue::Text(t) => t.clone(),
-                    _ => String::new(),
-                };
-                self.forms.popup = None;
-                self.forms.editing = Some(InPlace {
-                    page,
-                    field: name,
-                    widget: wi,
-                    text,
-                    multiline: f.multiline,
-                    max_len: f.max_len,
-                    focus: true,
-                    armed: false,
-                });
+                self.open_form_editor(f, page, wi);
             }
             FieldKind::Combo | FieldKind::List => {
                 self.forms.editing = None;
@@ -576,6 +613,35 @@ impl SuniApp {
         }
     }
 
+    fn open_form_editor(&mut self, field: FormField, page: usize, widget: usize) {
+        let text = self
+            .forms
+            .drafts
+            .get(&field.name)
+            .cloned()
+            .unwrap_or_else(|| {
+                input_text(
+                    &field,
+                    self.forms.staged.get(&field.name).unwrap_or(&field.value),
+                )
+            });
+        self.forms.popup = None;
+        self.forms.editing = Some(InPlace {
+            page,
+            field: field.name,
+            widget,
+            text,
+            multiline: field.kind == FieldKind::Text && field.multiline,
+            max_len: if field.kind == FieldKind::Text {
+                field.max_len
+            } else {
+                None
+            },
+            focus: true,
+            armed: false,
+        });
+    }
+
     /// Valide la saisie en cours de l'éditeur posé sur la page (texte changé → `commit_form`) et
     /// le ferme ; renvoie l'éditeur fermé. Appelé par Entrée, Tab, un clic ailleurs, la sortie
     /// du widget de la zone visible et l'enregistrement (Ctrl+S).
@@ -584,14 +650,17 @@ impl SuniApp {
             return None;
         }
         let e = self.forms.editing.as_ref()?;
-        let value = FieldValue::Text(e.text.clone());
-        if self
-            .forms
-            .info
-            .as_ref()
-            .and_then(|i| i.field(&e.field))
-            .is_none_or(|f| f.validate(&value).is_err())
-        {
+        let Some(field) = self.forms.info.as_ref().and_then(|i| i.field(&e.field)) else {
+            self.error = Some("error.form_value_invalid");
+            return None;
+        };
+        let value = input_value(
+            field,
+            &e.text,
+            self.forms.staged.get(&e.field).unwrap_or(&field.value),
+        );
+        let combo = field.kind == FieldKind::Combo;
+        if field.validate(&value).is_err() {
             self.error = Some("error.form_value_invalid");
             return None;
         }
@@ -602,9 +671,21 @@ impl SuniApp {
             .as_ref()
             .and_then(|i| i.field(&e.field))
             .map(|f| f.value.clone());
-        if current != Some(FieldValue::Text(e.text.clone())) {
+        if current != Some(value.clone()) {
+            if combo {
+                self.forms.staged.insert(e.field.clone(), value.clone());
+            } else {
+                self.forms.staged.remove(&e.field);
+            }
             self.forms.drafts.insert(e.field.clone(), e.text.clone());
-            self.commit_form(e.field.clone(), FieldValue::Text(e.text.clone()));
+            self.commit_form(e.field.clone(), value);
+        } else if self.forms.drafts.contains_key(&e.field) {
+            if combo {
+                self.forms.staged.insert(e.field.clone(), value);
+            }
+            self.forms.drafts.insert(e.field.clone(), e.text.clone());
+        } else {
+            self.forms.staged.remove(&e.field);
         }
         Some(e)
     }
@@ -718,10 +799,11 @@ impl SuniApp {
             )
         });
         let commit_click = e.armed && pressed_outside;
+        let commit_keys = e.armed && (enter || tab);
         e.armed = true;
         if escape {
             self.forms.editing = None;
-        } else if enter || tab || commit_click {
+        } else if commit_keys || commit_click {
             if let Some(e) = self.commit_editor().filter(|_| tab) {
                 self.open_next_field(&e.field, e.widget, shift);
             }
@@ -813,6 +895,7 @@ impl SuniApp {
         let multi = f.kind == FieldKind::List && f.multi_select;
         let current = chosen(&f);
         let mut new_value: Option<Vec<String>> = None;
+        let mut custom_input = false;
         let mut focused = false;
         let area = egui::Area::new(egui::Id::new(("form-choice", page)))
             .order(egui::Order::Foreground)
@@ -825,10 +908,19 @@ impl SuniApp {
                     egui::ScrollArea::vertical()
                         .max_height(260.0)
                         .show(ui, |ui| {
+                            if f.kind == FieldKind::Combo && f.editable {
+                                let response = ui.button(tr(lang, "forms.panel.custom_value"));
+                                if !armed {
+                                    response.request_focus();
+                                    focused = true;
+                                }
+                                custom_input = response.clicked();
+                                ui.separator();
+                            }
                             if !multi && !f.required {
                                 let none = tr(lang, "forms.panel.choice_none");
                                 let response = ui.selectable_label(current.is_empty(), none);
-                                if !armed {
+                                if !armed && !focused {
                                     response.request_focus();
                                     focused = true;
                                 }
@@ -900,7 +992,11 @@ impl SuniApp {
         if let Some(p) = self.forms.popup.as_mut() {
             p.armed = true;
         }
-        if let Some(v) = new_value {
+        if custom_input {
+            self.open_form_editor(f, page, widget);
+        } else if let Some(v) = new_value {
+            self.forms.drafts.remove(&f.name);
+            self.forms.staged.remove(&f.name);
             self.commit_form(f.name.clone(), ordered_choice(&f, &v));
             if !multi {
                 self.forms.popup = None;
@@ -1432,24 +1528,25 @@ fn field_card(
                 .inner;
             ui.add_space(2.0);
             theme::square_boxes(ui);
-            ui.add_enabled_ui(enabled, |ui| match f.kind {
-                FieldKind::Text => {
-                    let current = match &f.value {
-                        FieldValue::Text(t) => t.clone(),
-                        _ => String::new(),
-                    };
+            ui.add_enabled_ui(enabled, |ui| {
+                if f.kind == FieldKind::Text || (f.kind == FieldKind::Combo && f.editable) {
+                    let current = input_text(f, &f.value);
                     // Un brouillon n'existe que pendant la frappe : sinon le champ suit le modèle.
                     let mut text = drafts
                         .get(&f.name)
                         .cloned()
                         .unwrap_or_else(|| current.clone());
-                    let mut edit = if f.multiline {
+                    let mut edit = if f.kind == FieldKind::Text && f.multiline {
                         egui::TextEdit::multiline(&mut text).desired_rows(3)
                     } else {
                         egui::TextEdit::singleline(&mut text)
                     }
-                    .desired_width(f32::INFINITY);
-                    if let Some(n) = f.max_len {
+                    .desired_width(f32::INFINITY)
+                    .id(egui::Id::new(("form-panel-input", &f.name)));
+                    if f.kind == FieldKind::Combo {
+                        edit = edit.hint_text(tr(lang, "forms.panel.custom_value"));
+                    }
+                    if let Some(n) = f.max_len.filter(|_| f.kind == FieldKind::Text) {
                         edit = edit.char_limit(n as usize);
                     }
                     let resp = ui.add(edit).labelled_by(label_id);
@@ -1461,7 +1558,7 @@ fn field_card(
                         if escape || text == current {
                             drafts.remove(&f.name);
                         } else {
-                            let value = FieldValue::Text(text.clone());
+                            let value = input_value(f, &text, &f.value);
                             if f.validate(&value).is_ok() {
                                 commits.push((f.name.clone(), value));
                             } else {
@@ -1470,98 +1567,31 @@ fn field_card(
                         }
                     }
                 }
-                FieldKind::Checkbox => {
-                    let mut on = matches!(f.value, FieldValue::Bool(true));
-                    let label = tr(
-                        lang,
-                        if on {
-                            "a11y.forms.checked"
-                        } else {
-                            "a11y.forms.unchecked"
-                        },
-                    );
-                    if ui.checkbox(&mut on, label).labelled_by(label_id).changed() {
-                        commits.push((f.name.clone(), FieldValue::Bool(on)));
-                    }
-                }
-                FieldKind::Radio => {
-                    let mut value = chosen(f).first().cloned();
-                    let before = value.clone();
-                    for o in &f.options {
-                        ui.radio_value(&mut value, Some(o.value.clone()), &o.label)
-                            .labelled_by(label_id);
-                    }
-                    if !f.no_toggle_off {
-                        ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"))
-                            .labelled_by(label_id);
-                    }
-                    if value != before {
-                        commits.push((
-                            f.name.clone(),
-                            FieldValue::Choice(value.into_iter().collect()),
-                        ));
-                    }
-                }
-                FieldKind::Combo => {
-                    let current = chosen(f).first().cloned();
-                    let selected = current
-                        .as_deref()
-                        .map_or_else(|| tr(lang, "forms.panel.choice_none"), |v| f.label_of(v));
-                    let mut value = current.clone();
-                    egui::ComboBox::from_id_salt(("form-combo", &f.name))
-                        .selected_text(selected)
-                        .width(ui.available_width())
-                        .show_ui(ui, |ui| {
-                            if !f.required {
-                                ui.selectable_value(
-                                    &mut value,
-                                    None,
-                                    tr(lang, "forms.panel.choice_none"),
-                                );
-                            }
-                            for o in &f.options {
-                                ui.selectable_value(&mut value, Some(o.value.clone()), &o.label);
-                            }
-                        })
-                        .response
-                        .labelled_by(label_id);
-                    if value != current {
-                        commits.push((
-                            f.name.clone(),
-                            FieldValue::Choice(value.into_iter().collect()),
-                        ));
-                    }
-                }
-                FieldKind::List => {
-                    let current = chosen(f);
-                    if f.multi_select {
-                        let mut wanted = current.clone();
-                        let mut changed = false;
-                        for o in &f.options {
-                            let mut on = wanted.contains(&o.value);
-                            if ui
-                                .checkbox(&mut on, &o.label)
-                                .labelled_by(label_id)
-                                .changed()
-                            {
-                                changed = true;
-                                if on {
-                                    wanted.push(o.value.clone());
-                                } else {
-                                    wanted.retain(|x| x != &o.value);
-                                }
-                            }
+                match f.kind {
+                    FieldKind::Text => {}
+                    FieldKind::Checkbox => {
+                        let mut on = matches!(f.value, FieldValue::Bool(true));
+                        let label = tr(
+                            lang,
+                            if on {
+                                "a11y.forms.checked"
+                            } else {
+                                "a11y.forms.unchecked"
+                            },
+                        );
+                        if ui.checkbox(&mut on, label).labelled_by(label_id).changed() {
+                            commits.push((f.name.clone(), FieldValue::Bool(on)));
                         }
-                        if changed {
-                            commits.push((f.name.clone(), ordered_choice(f, &wanted)));
-                        }
-                    } else {
-                        let mut value = current.first().cloned();
+                    }
+                    FieldKind::Radio => {
+                        let mut value = chosen(f).first().cloned();
                         let before = value.clone();
-                        ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"))
-                            .labelled_by(label_id);
                         for o in &f.options {
                             ui.radio_value(&mut value, Some(o.value.clone()), &o.label)
+                                .labelled_by(label_id);
+                        }
+                        if !f.no_toggle_off {
+                            ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"))
                                 .labelled_by(label_id);
                         }
                         if value != before {
@@ -1571,19 +1601,93 @@ fn field_card(
                             ));
                         }
                     }
-                }
-                FieldKind::PushButton | FieldKind::Signature => {
-                    let key = if f.kind == FieldKind::Signature {
-                        "forms.panel.unsupported_signature"
-                    } else {
-                        "forms.panel.unsupported_button"
-                    };
-                    ui.add(
-                        egui::Label::new(
-                            RichText::new(tr(lang, key)).size(12.0).color(p.text_muted),
-                        )
-                        .wrap(),
-                    );
+                    FieldKind::Combo => {
+                        let current = chosen(f).first().cloned();
+                        let selected = current
+                            .as_deref()
+                            .map_or_else(|| tr(lang, "forms.panel.choice_none"), |v| f.label_of(v));
+                        let mut value = current.clone();
+                        egui::ComboBox::from_id_salt(("form-combo", &f.name))
+                            .selected_text(selected)
+                            .width(ui.available_width())
+                            .show_ui(ui, |ui| {
+                                if !f.required {
+                                    ui.selectable_value(
+                                        &mut value,
+                                        None,
+                                        tr(lang, "forms.panel.choice_none"),
+                                    );
+                                }
+                                for o in &f.options {
+                                    ui.selectable_value(
+                                        &mut value,
+                                        Some(o.value.clone()),
+                                        &o.label,
+                                    );
+                                }
+                            })
+                            .response
+                            .labelled_by(label_id);
+                        if value != current {
+                            commits.push((
+                                f.name.clone(),
+                                FieldValue::Choice(value.into_iter().collect()),
+                            ));
+                        }
+                    }
+                    FieldKind::List => {
+                        let current = chosen(f);
+                        if f.multi_select {
+                            let mut wanted = current.clone();
+                            let mut changed = false;
+                            for o in &f.options {
+                                let mut on = wanted.contains(&o.value);
+                                if ui
+                                    .checkbox(&mut on, &o.label)
+                                    .labelled_by(label_id)
+                                    .changed()
+                                {
+                                    changed = true;
+                                    if on {
+                                        wanted.push(o.value.clone());
+                                    } else {
+                                        wanted.retain(|x| x != &o.value);
+                                    }
+                                }
+                            }
+                            if changed {
+                                commits.push((f.name.clone(), ordered_choice(f, &wanted)));
+                            }
+                        } else {
+                            let mut value = current.first().cloned();
+                            let before = value.clone();
+                            ui.radio_value(&mut value, None, tr(lang, "forms.panel.choice_none"))
+                                .labelled_by(label_id);
+                            for o in &f.options {
+                                ui.radio_value(&mut value, Some(o.value.clone()), &o.label)
+                                    .labelled_by(label_id);
+                            }
+                            if value != before {
+                                commits.push((
+                                    f.name.clone(),
+                                    FieldValue::Choice(value.into_iter().collect()),
+                                ));
+                            }
+                        }
+                    }
+                    FieldKind::PushButton | FieldKind::Signature => {
+                        let key = if f.kind == FieldKind::Signature {
+                            "forms.panel.unsupported_signature"
+                        } else {
+                            "forms.panel.unsupported_button"
+                        };
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(tr(lang, key)).size(12.0).color(p.text_muted),
+                            )
+                            .wrap(),
+                        );
+                    }
                 }
             });
         });
@@ -1890,6 +1994,355 @@ mod tests {
                     modifiers: egui::Modifiers::NONE,
                 }],
             );
+        }
+    }
+
+    fn enter(pressed: bool) -> egui::Event {
+        egui::Event::Key {
+            key: Key::Enter,
+            physical_key: None,
+            pressed,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }
+    }
+
+    #[test]
+    fn editable_combo_panel_stages_typed_values_and_keeps_them_after_read_failure() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let mut combo = field("Country", FieldKind::Combo, vec![]);
+        combo.editable = true;
+        combo.value = FieldValue::Choice(Vec::new());
+        combo.options = vec![sunipdf_core::FieldOption {
+            value: "FR".into(),
+            label: "France".into(),
+        }];
+        assert_eq!(
+            input_value(&combo, "France", &combo.value),
+            FieldValue::Choice(vec!["FR".into()])
+        );
+        assert_eq!(
+            input_value(&combo, "", &combo.value),
+            FieldValue::Choice(Vec::new())
+        );
+        let mut ambiguous = combo.clone();
+        ambiguous.value = FieldValue::Choice(vec!["FR".into()]);
+        ambiguous.options.push(sunipdf_core::FieldOption {
+            value: "France".into(),
+            label: "Other export".into(),
+        });
+        assert_eq!(
+            input_value(
+                &ambiguous,
+                &input_text(&ambiguous, &ambiguous.value),
+                &ambiguous.value
+            ),
+            ambiguous.value
+        );
+        let info = FormInfo {
+            kind: FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![combo.clone()],
+        };
+        app.forms.info = Some(info.clone());
+        let ctx = egui::Context::default();
+        icons::install(&ctx);
+        let frame = |app: &mut SuniApp, events| {
+            let mut commits = Vec::new();
+            let mut error = false;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    field_card(
+                        ui,
+                        Language::English,
+                        &theme::palette(false),
+                        &combo,
+                        true,
+                        &mut app.forms.drafts,
+                        &mut commits,
+                        &mut None,
+                        &mut error,
+                    )
+                },
+            );
+            output.textures_delta.clear();
+            assert!(!error);
+            app.stage_form_values(commits);
+        };
+        frame(&mut app, Vec::new());
+        ctx.memory_mut(|m| m.request_focus(egui::Id::new(("form-panel-input", "Country"))));
+        frame(&mut app, vec![egui::Event::Text("Zürich".into())]);
+        assert_eq!(app.forms.drafts["Country"], "Zürich");
+        frame(&mut app, vec![enter(true)]);
+        let value = FieldValue::Choice(vec!["Zürich".into()]);
+        assert_eq!(app.forms.staged["Country"], value);
+        assert!(!app.forms.drafts.contains_key("Country"));
+        assert!(requests.try_recv().is_err());
+        app.on_form_read_failed(EngineError::Other("injected read failure".into()));
+        assert!(!app.commit_form_input());
+        assert_eq!(app.forms.staged["Country"], value);
+        assert!(requests.try_recv().is_err());
+        app.on_form_info(info);
+        assert!(app.commit_form_input());
+        assert!(
+            matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values == vec![("Country".into(), value.clone())])
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        app.worker.finish_mutation();
+        app.on_form_info(app.forms.info.clone().unwrap());
+        assert!(!app.forms.has_unsaved_input());
+        combo.editable = false;
+        app.forms.info.as_mut().unwrap().fields[0] = combo;
+        app.forms.drafts.insert("Country".into(), "unknown".into());
+        assert!(!app.commit_form_input());
+        assert!(requests.try_recv().is_err());
+        assert_eq!(app.forms.drafts["Country"], "unknown");
+    }
+
+    #[test]
+    fn staged_editable_combo_with_duplicate_labels_keeps_its_export_value() {
+        for via_editor in [false, true] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let mut combo = field("Choice", FieldKind::Combo, vec![]);
+            combo.editable = true;
+            combo.value = FieldValue::Choice(vec!["A".into()]);
+            combo.options = ["A", "B"]
+                .into_iter()
+                .map(|value| sunipdf_core::FieldOption {
+                    value: value.into(),
+                    label: "Same".into(),
+                })
+                .collect();
+            let info = FormInfo {
+                kind: FormKind::AcroForm,
+                has_scripts: false,
+                fields: vec![combo.clone()],
+            };
+            let wanted = FieldValue::Choice(vec!["B".into()]);
+            app.forms.info = Some(info.clone());
+            app.stage_form_values(vec![("Choice".into(), wanted.clone())]);
+            app.open_form_editor(combo, 0, 0);
+            assert_eq!(app.forms.editing.as_ref().unwrap().text, "Same");
+            if via_editor {
+                assert!(app.commit_editor().is_some());
+            } else {
+                assert!(app.commit_form_input());
+            }
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values == vec![("Choice".into(), wanted.clone())])
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.worker.finish_mutation();
+            let confirmed = app.forms.info.clone().unwrap();
+            app.on_form_info(info);
+            assert_eq!(app.forms.staged["Choice"], wanted);
+            assert_eq!(app.forms.drafts["Choice"], "Same");
+            assert!(app.commit_form_input());
+            assert!(
+                matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values == vec![("Choice".into(), wanted.clone())])
+            );
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.worker.finish_mutation();
+            app.on_form_info(confirmed);
+            assert!(!app.forms.has_unsaved_input());
+            assert!(requests.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn editable_combo_popup_opens_text_editor_and_enter_commits_one_choice() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let mut combo = field(
+            "Country",
+            FieldKind::Combo,
+            vec![(0, rect(40.0, 50.0, 200.0, 76.0))],
+        );
+        combo.editable = true;
+        combo.value = FieldValue::Choice(vec!["FR".into()]);
+        combo.options = vec![sunipdf_core::FieldOption {
+            value: "FR".into(),
+            label: "France".into(),
+        }];
+        let info = FormInfo {
+            kind: FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![combo],
+        };
+        app.forms.info = Some(info.clone());
+        app.effective_zoom = 1.0;
+        app.forms_activate(0, 0, 0);
+        let ctx = egui::Context::default();
+        let frame = |app: &mut SuniApp, events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(900.0, 1200.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |_| {
+                    let bounds =
+                        egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 1100.0));
+                    app.forms_popup(&ctx, bounds, bounds, 0, 792.0);
+                    app.forms_editor(&ctx, bounds, bounds, 0, 792.0);
+                },
+            );
+            output.textures_delta.clear();
+        };
+        frame(&mut app, Vec::new());
+        frame(&mut app, vec![enter(true)]);
+        assert!(app.forms.popup.is_none());
+        assert_eq!(app.forms.editing.as_ref().unwrap().text, "France");
+        assert!(!app.forms.has_unsaved_input());
+        assert!(
+            requests.try_recv().is_err(),
+            "the opening Enter must not immediately close the editor"
+        );
+        frame(
+            &mut app,
+            vec![enter(false), egui::Event::Text("Québec".into())],
+        );
+        assert_eq!(app.forms.editing.as_ref().unwrap().text, "Québec");
+        frame(&mut app, vec![enter(true)]);
+        let value = FieldValue::Choice(vec!["Québec".into()]);
+        assert!(
+            matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::FillForm { values }) if values == vec![("Country".into(), value)])
+        );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        app.worker.finish_mutation();
+        assert!(app.forms.editing.is_none());
+        assert_eq!(app.forms.drafts["Country"], "Québec");
+        let optimistic = app.forms.info.as_ref().unwrap().fields[0].clone();
+        app.open_form_editor(optimistic, 0, 0);
+        assert!(app.commit_editor().is_some());
+        assert_eq!(
+            app.forms.drafts["Country"], "Québec",
+            "an unchanged editor cannot confirm an unconfirmed write"
+        );
+        assert!(requests.try_recv().is_err());
+        app.on_form_read_failed(EngineError::Other("injected read failure".into()));
+        assert!(!app.commit_form_input());
+        assert_eq!(app.forms.drafts["Country"], "Québec");
+        let confirmed = app.forms.info.clone().unwrap();
+        app.on_form_info(info);
+        assert_eq!(
+            app.forms.drafts["Country"], "Québec",
+            "a failed write keeps the raw draft"
+        );
+        app.on_form_info(confirmed);
+        assert!(!app.forms.has_unsaved_input());
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn editable_combo_desktop_values_roundtrip_rotated_and_encrypted_pdfs() {
+        if std::env::var_os("SUNIPDF_EDITABLE_COMBO_TEST_CHILD").is_none() {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "forms::tests::editable_combo_desktop_values_roundtrip_rotated_and_encrypted_pdfs"])
+                .env("SUNIPDF_EDITABLE_COMBO_TEST_CHILD", "1").output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        let engine = Box::leak(Box::new(sunipdf_core::Engine::new().unwrap()));
+        let source = include_bytes!("../../../crates/sunipdf-core/tests/fixtures/acroform.pdf");
+        for rotation in [0, 90, 180, 270] {
+            for encrypted in [false, true] {
+                let mut pdf = lopdf::Document::load_mem(source).unwrap();
+                let page = pdf.get_pages()[&1];
+                let dict = pdf.get_dictionary_mut(page).unwrap();
+                dict.set("Rotate", rotation);
+                dict.set(
+                    "CropBox",
+                    vec![20.into(), 30.into(), 550.into(), 760.into()],
+                );
+                let combo = pdf
+                    .objects
+                    .values_mut()
+                    .find_map(|object| {
+                        let dict = object.as_dict_mut().ok()?;
+                        (dict.get(b"T").ok()?.as_str().ok()? == b"pays").then_some(dict)
+                    })
+                    .unwrap();
+                combo.set("Ff", (1 << 17) | (1 << 18));
+                let mut bytes = Vec::new();
+                pdf.save_to(&mut bytes).unwrap();
+                if encrypted {
+                    bytes = sunipdf_core::security::protect(
+                        &bytes,
+                        None,
+                        &sunipdf_core::Protection {
+                            user_password: "user".into(),
+                            owner_password: "owner".into(),
+                            ..Default::default()
+                        },
+                    )
+                    .unwrap();
+                }
+                let password = encrypted.then_some("user");
+                let path = std::path::Path::new("editable-combo.pdf");
+                let mut doc = engine.open_bytes(bytes, password, path).unwrap();
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                app.forms.info = Some(doc.form_info().unwrap());
+                let field = app.forms.info.as_ref().unwrap().field("pays").unwrap();
+                assert!(field.editable);
+                app.forms
+                    .drafts
+                    .insert("pays".into(), "Zürich libre".into());
+                assert!(app.commit_form_input());
+                let Request::Edit(EditOp::FillForm { values }) = requests.try_recv().unwrap()
+                else {
+                    panic!("expected a grouped form edit")
+                };
+                assert_eq!(
+                    values,
+                    vec![(
+                        "pays".into(),
+                        FieldValue::Choice(vec!["Zürich libre".into()])
+                    )]
+                );
+                doc.fill_form(&values, sunipdf_core::FillMode::Strict)
+                    .unwrap();
+                let saved = doc.snapshot().unwrap();
+                assert_eq!(
+                    lopdf::Document::load_mem(&saved).unwrap().is_encrypted(),
+                    encrypted
+                );
+                let reopened = engine.open_bytes(saved, password, path).unwrap();
+                let confirmed = reopened.form_info().unwrap();
+                assert_eq!(confirmed.field("pays").unwrap().value, values[0].1);
+                for extension in ["json", "xfdf"] {
+                    let exported = form_data::export_values(&confirmed, extension).unwrap();
+                    let imported = form_data::parse_values(&exported, extension).unwrap();
+                    let plan = form_data::strict_plan_from_json(&confirmed, &imported).unwrap();
+                    assert!(plan.values.contains(&values[0]));
+                }
+                assert!(reopened.render_page(0, 1.0).is_ok());
+                app.on_form_info(confirmed);
+                assert!(!app.forms.has_unsaved_input());
+            }
         }
     }
 

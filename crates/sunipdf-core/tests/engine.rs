@@ -3554,48 +3554,176 @@ fn review_metadata_edits_reach_xmp_and_strip_cleans_pages_and_images() {
 }
 
 #[test]
-fn review_extract_from_protected_document_is_detectable() {
+fn extract_and_split_preserve_protection_passwords_permissions_and_current_pages() {
     use sunipdf_core::{security, Protection};
     let engine = engine();
-    let dir = temp_dir("review-extract");
+    let dir = tempfile::tempdir().unwrap();
     let input = std::fs::read(fixture("two-pages.pdf")).unwrap();
-    let protected = security::protect(
-        &input,
-        None,
-        &Protection {
-            user_password: "secret".into(),
-            owner_password: "owner".into(),
-            allow_copy: false,
-            ..Default::default()
-        },
+    let mut cases = vec![("plain", input.clone(), None, None)];
+    let legacy = lopdf::Document::load_mem_with_options(
+        &std::fs::read(fixture("encrypted-rc4.pdf")).unwrap(),
+        lopdf::LoadOptions::with_password("secret"),
     )
     .unwrap();
-    let path = dir.join("protected.pdf");
-    std::fs::write(&path, &protected).unwrap();
-    let doc = engine.open(&path, Some("secret")).unwrap();
-    assert!(
-        doc.is_encrypted(),
-        "document protégé ouvert avec mot de passe"
-    );
-    assert!(!engine
-        .open(&fixture("two-pages.pdf"), None)
-        .unwrap()
-        .is_encrypted());
-    assert!(engine
-        .open(&fixture("encrypted-rc4.pdf"), Some("secret"))
-        .unwrap()
-        .is_encrypted());
-    // D046 : l'extrait n'est pas chiffré (copie de pages dans un document neuf) ; annoncé par
-    // l'interface et la CLI, jamais en silence.
-    let out = dir.join("extract.pdf");
-    assert_eq!(doc.extract_to(&[1], &out).unwrap(), 1);
-    let extracted = engine.open(&out, None).unwrap();
-    assert!(!extracted.is_encrypted());
-    assert!(extracted.page_text(0).unwrap().contains("SuniPDF page 2"));
-    let parts = doc.split_to(1, &dir, "part", false).unwrap();
-    assert_eq!(parts.len(), 2);
-    assert!(!engine.open(&parts[0], None).unwrap().is_encrypted());
-    let _ = std::fs::remove_dir_all(dir);
+    let mut rc4 = lopdf::Document::load_mem(&input).unwrap();
+    rc4.trailer
+        .set("ID", legacy.trailer.get(b"ID").unwrap().clone());
+    rc4.encrypt(legacy.encryption_state.as_ref().unwrap())
+        .unwrap();
+    let mut rc4_bytes = Vec::new();
+    rc4.save_to(&mut rc4_bytes).unwrap();
+    cases.push(("rc4", rc4_bytes, Some("secret"), None));
+    for (name, aes256, user) in [
+        ("aes128", false, "secret"),
+        ("aes256", true, "secret"),
+        ("owner-only", true, ""),
+    ] {
+        cases.push((
+            name,
+            security::protect(
+                &input,
+                None,
+                &Protection {
+                    user_password: user.into(),
+                    owner_password: "owner".into(),
+                    allow_print: false,
+                    allow_copy: false,
+                    allow_modify: false,
+                    allow_annotate: false,
+                    aes256,
+                },
+            )
+            .unwrap(),
+            (!user.is_empty()).then_some(user),
+            Some("owner"),
+        ));
+    }
+    for (name, original, password, owner) in cases {
+        let path = dir.path().join(format!("{name}.pdf"));
+        std::fs::write(&path, &original).unwrap();
+        let mut doc = engine.open(&path, password).unwrap();
+        let encrypted = doc.is_encrypted();
+        let props = doc.properties();
+        doc.set_page_rotation(1, sunipdf_core::Rotation::R90)
+            .unwrap();
+        let out = dir.path().join(format!("{name}-extract.pdf"));
+        assert_eq!(doc.extract_to(&[1, 0, 1], &out).unwrap(), 3);
+        let parts = doc
+            .split_to(1, dir.path(), &format!("{name}-part"), false)
+            .unwrap();
+        assert_eq!(parts.len(), 2);
+        for output in std::iter::once(&out).chain(&parts) {
+            let copy = engine.open(output, password).unwrap();
+            let copy_props = copy.properties();
+            assert_eq!(copy_props.encrypted, encrypted, "{name}");
+            assert_eq!(copy_props.can_print, props.can_print, "{name}");
+            assert_eq!(copy_props.can_copy, props.can_copy, "{name}");
+            assert_eq!(copy_props.can_modify, props.can_modify, "{name}");
+            assert_eq!(copy_props.can_annotate, props.can_annotate, "{name}");
+            if encrypted && password.is_some() {
+                assert!(matches!(
+                    engine.open(output, None),
+                    Err(EngineError::PasswordRequired)
+                ));
+                assert!(matches!(
+                    engine.open(output, Some("wrong")),
+                    Err(EngineError::PasswordRequired)
+                ));
+            }
+            if let Some(owner) = owner {
+                assert!(engine.open(output, Some(owner)).is_ok(), "{name}");
+            }
+            if encrypted {
+                let read = |bytes: &[u8]| {
+                    lopdf::Document::load_mem_with_options(
+                        bytes,
+                        lopdf::LoadOptions::with_password(password.unwrap_or("")),
+                    )
+                    .unwrap()
+                };
+                let source = read(&original);
+                let copied = read(&std::fs::read(output).unwrap());
+                let source_state = source.encryption_state.as_ref().unwrap();
+                let copy_state = copied.encryption_state.as_ref().unwrap();
+                assert_eq!(
+                    copy_state.file_encryption_key(),
+                    source_state.file_encryption_key(),
+                    "{name}"
+                );
+                let source_security = source_state.encode().unwrap();
+                let copy_security = copy_state.encode().unwrap();
+                for key in ["V", "R", "P", "O", "U", "OE", "UE", "Perms", "CF"] {
+                    assert_eq!(
+                        copy_security.get(key.as_bytes()).ok(),
+                        source_security.get(key.as_bytes()).ok(),
+                        "{name} /{key}"
+                    );
+                }
+                assert_eq!(
+                    copied
+                        .trailer
+                        .get(b"ID")
+                        .unwrap()
+                        .as_array()
+                        .unwrap()
+                        .first(),
+                    source
+                        .trailer
+                        .get(b"ID")
+                        .unwrap()
+                        .as_array()
+                        .unwrap()
+                        .first(),
+                    "{name} permanent file ID used by legacy encryption"
+                );
+            }
+        }
+        let extracted = engine.open(&out, password).unwrap();
+        assert!(extracted.page_text(0).unwrap().contains("SuniPDF page 2"));
+        assert!(extracted.page_text(1).unwrap().contains("SuniPDF page 1"));
+        assert!(extracted.page_text(2).unwrap().contains("SuniPDF page 2"));
+        assert_eq!(
+            extracted.page_rotation(0).unwrap(),
+            sunipdf_core::Rotation::R90
+        );
+        assert_eq!(
+            engine
+                .open(&parts[1], password)
+                .unwrap()
+                .page_rotation(0)
+                .unwrap(),
+            sunipdf_core::Rotation::R90
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), original, "{name} source");
+    }
+}
+
+#[test]
+fn extract_and_split_refuse_to_replace_the_source_and_keep_existing_parts() {
+    let engine = engine();
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("part-1.pdf");
+    let original = std::fs::read(fixture("two-pages.pdf")).unwrap();
+    std::fs::write(&source, &original).unwrap();
+    let doc = engine.open(&source, None).unwrap();
+    assert!(matches!(
+        doc.extract_to(&[1], &dir.path().join(".").join("part-1.pdf")),
+        Err(EngineError::AlreadyExists(_))
+    ));
+    assert!(matches!(
+        doc.split_to(1, dir.path(), "part", true),
+        Err(EngineError::AlreadyExists(_))
+    ));
+    assert!(!dir.path().join("part-2.pdf").exists());
+    let existing = dir.path().join("other-2.pdf");
+    std::fs::write(&existing, b"existing copy").unwrap();
+    assert!(matches!(
+        doc.split_to(1, dir.path(), "other", false),
+        Err(EngineError::AlreadyExists(_))
+    ));
+    assert!(!dir.path().join("other-1.pdf").exists());
+    assert_eq!(std::fs::read(existing).unwrap(), b"existing copy");
+    assert_eq!(std::fs::read(source).unwrap(), original);
 }
 
 #[test]

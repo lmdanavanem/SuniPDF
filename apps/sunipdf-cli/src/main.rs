@@ -114,6 +114,7 @@ enum Command {
         out: PathBuf,
     },
     /// Extract pages (1-based, e.g. "1,3-5") into a new file, in the given order.
+    /// Retain the input's encryption and permissions; the input cannot be replaced.
     Extract {
         file: PathBuf,
         #[arg(long)]
@@ -124,6 +125,7 @@ enum Command {
         password: Option<String>,
     },
     /// Split into files of N pages each, written to a directory.
+    /// Retain the input's encryption and permissions on every part.
     Split {
         file: PathBuf,
         #[arg(long, default_value_t = 1)]
@@ -972,9 +974,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let doc = engine.open(&file, password.as_deref())?;
             let selection = parse_pages(&pages, doc.page_count())?;
             let n = doc.extract_to(&selection, &out)?;
-            // D046 : les pages copiées dans un document neuf ne sont pas chiffrées ; dit ici.
             Ok(serde_json::json!({
-                "out": out, "page_count": n, "encryption_removed": doc.is_encrypted()
+                "out": out, "page_count": n, "encryption_removed": false,
+                "encrypted": doc.is_encrypted()
             }))
         }
         Command::Split {
@@ -990,7 +992,8 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 .unwrap_or_else(|| "document".into());
             let files = doc.split_to(every, &out_dir, &stem, overwrite)?;
             Ok(serde_json::json!({
-                "files": files, "count": files.len(), "encryption_removed": doc.is_encrypted()
+                "files": files, "count": files.len(), "encryption_removed": false,
+                "encrypted": doc.is_encrypted()
             }))
         }
         Command::Rotate {

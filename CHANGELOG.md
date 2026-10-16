@@ -5,13 +5,24 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [Unreleased]
+## [0.11.0] - 2026-10-16
+
+Release validation and publication evidence are recorded in `docs/PROJECT_STATUS.md`.
 
 ### Added
 - Read PDF page labels in the toolbar, thumbnails, status and CLI `info`. Go to a unique exact label or use `#N`
   for a physical page; ambiguous labels leave navigation unchanged.
 - Follow internal links and bookmarks to supported XYZ positions/zoom, Fit and nonzero FitH destinations,
   including names resolved by PDFium. Back/forward keeps same-page positions and zoom, including rapid jumps.
+- Enter custom text in existing editable drop-down form fields, in the fields panel or on the page.
+  Standard options remain selectable; typed values use the existing grouped Apply/Discard and undo mechanisms.
+
+### Changed
+- Extracted pages and split parts retain the source passwords, encryption key and permissions. The CLI keeps
+  `encryption_removed` as `false` and adds `encrypted`. Plain sources still produce plain copies.
+- Extraction and splitting refuse to replace their source, even with explicit overwrite. Split without overwrite
+  also refuses an output created between its initial check and atomic publication.
+- Actual Windows upgrade regressions now include portable and MSI upgrades from 0.10.0.
 
 ### Fixed
 - The text-selection tool now follows link clicks while preserving the confirmation and scheme checks for external URLs.
@@ -22,7 +33,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 ### Limits
 - Page-label authoring and semantic rebasing after structural edits remain unimplemented. Unreadable, control-containing
   or over-4096-byte labels use physical page numbers. Unsupported destination fit modes and ambiguous FitH zero/null
-  fall back to page navigation. These changes are not included in the published 0.10.0 packages.
+  fall back to page navigation. Reading labels adds an eager metadata pass on large documents. Custom drop-down text
+  requires a field already marked editable; creating or changing that flag is not implemented. Split failures can
+  leave earlier completed parts; no partially written output or changed source is accepted.
 
 ## [0.10.0] - 2026-10-16
 

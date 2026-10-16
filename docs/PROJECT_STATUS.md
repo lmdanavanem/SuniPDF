@@ -1,11 +1,11 @@
-# Project status - updated 2026-10-16 (version 0.10.0)
+# Project status - updated 2026-10-16 (version 0.11.0)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Current development: navigation and form-read safety (unreleased)
+## 0.11.0: navigation, forms and protected copies (local validation passed)
 
 - Cached PDF page labels, exact unique-label navigation and explicit `#N` physical positions; thumbnails/status,
   accessibility and additive CLI `info.pages[].label`. Unreadable, control-containing or over-4096-byte labels use
@@ -16,15 +16,28 @@ Rule: a ticked box = code present **and** command executed with a result observe
 - Typed form-read failures preserve text, choices, in-place input and pending actions. They block commits based on
   stale values, show Retry, and do not retry continuously. A confirmed empty form is still a valid successful read.
 
-Executed locally: **383 workspace tests passed, zero failed, seven default ignored**; formatting, Clippy with warnings
+Final local gates for the expanded 0.11.0 source passed: **390 workspace tests, zero failed, seven default ignored**,
+formatting, Clippy with warnings denied and **858 matching EN/FR keys**. Independent qpdf checks passed for **40 distinct
+PDFs (42 password-specific checks)**, plus malformed-input refusal. The **four licensed NIST/NBS documents, 744 pages**,
+passed in 76.05 seconds with peak sampled child working set 332,398,592 bytes. Tests exercise editable combo panel/page
+input, ambiguous export labels, first-frame keyboard input, failed reads/retries, eight crop/rotation/encryption cases,
+JSON/XFDF round trips, protected extraction/split, both passwords, RC4/AES-128/AES-256, source/collision preservation,
+actual worker output and unsaved page rotations. GitHub CI, packages and publication are the remaining release gates.
+Historical navigation/form-read slice, before the expanded 0.11.0 source: **383 workspace tests passed, zero failed, seven default ignored**; formatting, Clippy with warnings
 denied and **857 EN/FR keys** passed. The explicit qpdf gate passed **34 PDFs** and rejected its malformed samples.
 All **four licensed real documents (744 pages)** passed in 63.01 seconds; peak sampled child working set was
 328,953,856 bytes. Core/CLI tests cover named/direct/action destinations, rotations/crops, AES-256 and save/reopen;
 headless UI tests cover label navigation, link clicks, same-page zoom history, rapid Back/link sequences and failed
 form reads. The actual local GUI and CLI development binaries were built successfully. GitHub CI is separate.
-These changes are unreleased; published 0.10.0 files are unchanged. Native interactive use, Narrator and third-party
+The expanded 0.11.0 final gates and publication are pending; published 0.10.0 files are unchanged. Native interactive use, Narrator and third-party
 readers remain unverified.
 
+The expanded lot also implements custom text in existing editable drop-downs from the fields panel or page,
+including typed export-value retention across ambiguous labels, failed reads and retries. Extraction and split parts
+retain passwords, the encryption key and permissions. The input cannot be replaced; split without overwrite uses
+atomic non-clobber publication. Plain sources stay plain. The existing permission policy is unchanged. Split failures
+can leave earlier completed parts, which remain complete and protected. CLI output retains `encryption_removed: false`
+and adds `encrypted`. Upgrade checks now include the published 0.10.0 portable and MSI baselines.
 Page labels and rotations share one cached metadata pass. Page rotation updates only the affected cache entries;
 grouped deletion validates all indices before mutation and refreshes metadata once. A 492-page CLI `info` measurement
 on AMD Ryzen 7 6800HS took 2.332/2.848/2.869 seconds in the optimized dev build, versus 2.387/2.455/2.536 seconds

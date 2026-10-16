@@ -45,6 +45,11 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
+**0.11.0 passed local gates:** PDF page labels and precise link/bookmark navigation with zoom/history, preserved drafts
+after form-read errors, custom text in existing editable drop-downs, and protected extraction/split copies retaining
+original passwords and permissions. CI/packages/publication remain pending in [project status](docs/PROJECT_STATUS.md).
+Published 0.10.0 packages remain unchanged.
+
 ## Screenshots
 
 | Dark home screen | Light home screen |

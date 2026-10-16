@@ -492,33 +492,29 @@ impl SuniApp {
                 ));
                 self.open_path(out, None);
             }
-            BatchResult::Split {
-                files,
-                encryption_removed,
-            } => {
+            BatchResult::Split { files, encrypted } => {
                 let mut msg = tr_args(
                     lang,
                     "tools.done.split",
                     &[("count", &files.len().to_string())],
                 );
-                if encryption_removed {
-                    // D046 : les parties d'un document protégé ne le sont pas, dit clairement.
-                    msg = format!("{msg} {}", tr(lang, "tools.done.encryption_removed"));
+                if encrypted {
+                    msg = format!("{msg} {}", tr(lang, "tools.done.encryption_preserved"));
                 }
                 self.status_msg = Some(msg);
             }
             BatchResult::Extracted {
                 out,
                 pages,
-                encryption_removed,
+                encrypted,
             } => {
                 let mut msg = tr_args(
                     lang,
                     "tools.done.extract",
                     &[("pages", &pages.to_string()), ("name", &file_name(&out))],
                 );
-                if encryption_removed {
-                    msg = format!("{msg} {}", tr(lang, "tools.done.encryption_removed"));
+                if encrypted {
+                    msg = format!("{msg} {}", tr(lang, "tools.done.encryption_preserved"));
                 }
                 self.status_msg = Some(msg);
             }

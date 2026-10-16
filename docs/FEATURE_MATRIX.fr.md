@@ -12,13 +12,14 @@ Les nouveautés 0.9.0 sont couvertes par des régressions automatisées. `PROJEC
 ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou lecteur tiers.
 Workspace, qpdf et régressions réelles portable/MSI 0.9.1 réussis ; résultats des paquets et de publication consignés dans ce suivi.
 
-[La 0.10.0 est publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) avec le lot P1/P2 demandé.
+[La 0.10.0 est publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) avec le lot P1/P2 demandé.
 Les 362 tests du workspace, 31 contrôles qpdf synthétiques, quatre documents NIST réels (744 pages), huit scénarios portables,
 deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
-Le développement courant n'est pas publié. Critères locaux réussis : 383 tests du workspace (sept ignorés par défaut),
-formatage/Clippy, 34 PDF qpdf, quatre documents réels (744 pages), 857 clés EN/FR identiques et builds CLI/GUI de développement.
-CI de ce lot en attente ; les paquets 0.10.0 publiés restent inchangés.
+La 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec `-D warnings`,
+858 clés EN/FR, 42 contrôles qpdf sur 40 PDF distincts et quatre documents NIST (744 pages ; 76,05 s, pic mémoire
+enfant 332 398 592 octets). CI/paquets/publication restent en attente dans `PROJECT_STATUS.fr.md`.
+Les paquets 0.10.0 publiés restent inchangés.
 
 ## A. Lecture
 
@@ -68,7 +69,7 @@ CI de ce lot en attente ; les paquets 0.10.0 publiés restent inchangés.
 | Redimensionner les pages | Déclaré | **Fait** (A3–Legal ou personnalisé, contenu conservé ou mis à l'échelle ; CLI `resize-pages`) ; annotations non mises à l'échelle |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
-| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; d'un document protégé : résultat non chiffré, annoncé (D046) ; préservation sémantique à vérifier au-delà du contrôle structurel qpdf |
+| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; **implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente** : conserver chiffrement/mots de passe/permissions et refuser une sortie au chemin source (D097 remplace D046). Politique des permissions inchangée ; CLI `encryption_removed: false`, ajout `encrypted` ; préservation sémantique à vérifier au-delà de qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
@@ -108,6 +109,7 @@ CI de ce lot en attente ; les paquets 0.10.0 publiés restent inchangés.
 | Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes livrés en 0.10.0 ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
 | Import/export FDF/XFDF | Déclaré | **Fait en 0.10.0** : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
 | Récupération après erreur de lecture des champs | Non documenté | **Implémentée, non publiée** : erreur/relance explicites préservent brouillons et actions en attente ; tests locaux réussis |
+| Texte libre des listes déroulantes déjà modifiables | Non documenté | **Implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente** : texte libre/choix dans le panneau et sur la page, Appliquer/Abandonner/Enregistrer et annulation ; création du drapeau modifiable hors de cette tranche |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 

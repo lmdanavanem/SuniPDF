@@ -81,13 +81,12 @@ pub enum BatchResult {
     },
     Split {
         files: Vec<PathBuf>,
-        /// Le document d'origine était protégé : les parties ne le sont pas (D046).
-        encryption_removed: bool,
+        encrypted: bool,
     },
     Extracted {
         out: PathBuf,
         pages: usize,
-        encryption_removed: bool,
+        encrypted: bool,
     },
     Created {
         out: PathBuf,
@@ -1323,7 +1322,7 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
             let files = doc.split_to(every, &out_dir, &stem, false)?;
             Ok(BatchResult::Split {
                 files,
-                encryption_removed: doc.is_encrypted(),
+                encrypted: doc.is_encrypted(),
             })
         }
         BatchOp::Extract { pages, out } => {
@@ -1332,7 +1331,7 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
             Ok(BatchResult::Extracted {
                 out,
                 pages: n,
-                encryption_removed: doc.is_encrypted(),
+                encrypted: doc.is_encrypted(),
             })
         }
         BatchOp::CreateFromImages { images, out } => {
@@ -2039,6 +2038,37 @@ mod tests {
             next_response(worker),
             Response::DocumentChanged(DocState { modified: true, .. })
         ));
+        let extracted = temp.path().join("extracted.pdf");
+        worker.send(Request::Batch(BatchOp::Extract {
+            pages: vec![0],
+            out: extracted.clone(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::BatchDone(BatchResult::Extracted {
+                encrypted: true,
+                pages: 1,
+                ..
+            })
+        ));
+        assert!(lopdf_encrypted(&std::fs::read(&extracted).unwrap()));
+        worker.send(Request::Batch(BatchOp::Split {
+            every: 1,
+            out_dir: temp.path().join("split"),
+        }));
+        match next_response(worker) {
+            Response::BatchDone(BatchResult::Split {
+                files,
+                encrypted: true,
+            }) => {
+                assert_eq!(files.len(), 2);
+                for file in files {
+                    assert!(lopdf_encrypted(&std::fs::read(file).unwrap()));
+                }
+            }
+            _ => panic!("protected split result"),
+        }
+        assert_eq!(std::fs::read(&original).unwrap(), bytes);
         worker.send(Request::Autosave);
         assert!(matches!(
             next_response(worker),

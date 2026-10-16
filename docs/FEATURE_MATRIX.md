@@ -12,13 +12,14 @@ The 0.9.0 features below have automated regression coverage. `PROJECT_STATUS.md`
 these results do not establish physical printer, ARM64 or third-party reader compatibility.
 The 0.9.1 workspace, qpdf and real portable/MSI regressions passed; package/publication outcomes are recorded there.
 
-[0.10.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) with the requested P1/P2 lot.
+[0.10.0 is published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) with the requested P1/P2 lot.
 The 362 workspace tests, 31 synthetic qpdf checks, four real NIST documents (744 pages), eight portable scenarios,
 two MSI baselines and all six public assets passed verification; evidence is recorded in `PROJECT_STATUS.md`.
 
-Current development is unreleased. Local gates passed: 383 workspace tests (seven default ignored), formatting/Clippy,
-34 qpdf PDFs, four real documents (744 pages), 857 matching EN/FR keys and development CLI/GUI builds.
-CI for this lot is pending; the published 0.10.0 packages remain unchanged.
+0.11.0 local gates passed: 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
+`-D warnings`, 858 EN/FR keys, 42 qpdf checks across 40 distinct PDFs and four NIST documents (744 pages; 76.05 s,
+peak child memory 332,398,592 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`.
+Published 0.10.0 packages remain unchanged.
 
 ## A. Reading
 
@@ -68,7 +69,7 @@ CI for this lot is pending; the published 0.10.0 packages remain unchanged.
 | Resize pages | Declared | **Done** (A3–Legal or custom, content kept or scaled; CLI `resize-pages`); annotations not scaled |
 | Merge N PDFs with bookmarks | Declared | Merge **Done** (UI "Combine files", CLI `merge`); merge bookmarks planned |
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
-| Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); from a protected document: unencrypted result, announced (D046); semantic preservation to verify beyond qpdf structural checking |
+| Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); **implemented for 0.11.0, local gates passed; CI/packages/publication pending**: retain source encryption/passwords/permissions and refuse output at the source path (D097 supersedes D046). Existing permission policy unchanged; CLI `encryption_removed: false`, additive `encrypted`; semantic preservation to verify beyond qpdf structural checking |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
@@ -108,6 +109,7 @@ CI for this lot is pending; the published 0.10.0 packages remain unchanged.
 | Create fields | Not documented | **Done**: numeric text/checkbox creation in Prepare a form; radio/combo/list creation delivered in 0.10.0; unique names, rotated/cropped/encrypted pages, undo; core/CLI tests; CLI `add-form-field` |
 | FDF/XFDF import/export | Declared | **Done in 0.10.0**: JSON/XFDF export, strict bounded JSON/XFDF/FDF value import and grouped panel Apply/Discard with one undo; value-only FDF subset, no scripts/attachments/rich text |
 | Form-read failure recovery | Not documented | **Implemented, unreleased**: explicit error/retry preserves drafts and pending actions; local tests passed |
+| Existing editable drop-down free text | Not documented | **Implemented for 0.11.0, local gates passed; CI/packages/publication pending**: panel/on-page custom text plus listed choices, Apply/Discard/Save and undo; creating an editable flag is outside this slice |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
 
@@ -127,6 +129,6 @@ CI for this lot is pending; the published 0.10.0 packages remain unchanged.
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.10.0 ZIP/MSI published as Latest, public SHA256/payloads verified, packaged OCR/forms/XFDF/compression/group transforms/read/render and eight real portable scenarios passed; two MSI baselines passed actual install/transactional rollback/upgrade/downgrade rejection/uninstall; live updater passed; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.10.0 ZIP/MSI published, public SHA256/payloads verified, packaged OCR/forms/XFDF/compression/group transforms/read/render and eight real portable scenarios passed; two MSI baselines passed actual install/transactional rollback/upgrade/downgrade rejection/uninstall; live updater passed; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
 | Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.10.0 CI-built portable ZIP published, public SHA256/architecture/models/notices/icon resources checked; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

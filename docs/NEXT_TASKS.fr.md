@@ -58,11 +58,12 @@ et l'updater de production valide le ZIP x64 Latest de 19 651 167 octets sans in
 du lot P1/P2 demandé sont remplis ; les contrôles matériels/d'interopérabilité indépendants ci-dessous restent ouverts.
 Provenance et source de release immuable `f7510afd314846079bbdd838525cd28372fd3100` figurent dans l'état du projet.
 
-## Développement courant : lecture et fiabilité des formulaires (non publié)
+## 0.11.0 : navigation, formulaires et copies protégées (contrôles locaux réussis)
 
-Implémenté et validé localement : 383 tests du workspace réussis, zéro échec, sept ignorés par défaut ; formatage,
-Clippy, 34 PDF qpdf, quatre documents réels (744 pages), 857 clés EN/FR identiques et builds CLI/GUI de développement réussis.
-Lot non publié ; la CI n'a pas encore validé ces changements. Le tag et les paquets publiés 0.10.0 restent inchangés.
+La source 0.11.0 élargie réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
+`-D warnings`, 858 clés EN/FR identiques, 42 contrôles qpdf sur 40 PDF distincts et quatre documents NIST
+(744 pages ; 76,05 s, pic mémoire enfant 332 398 592 octets). CI, paquets et publication restent en attente ;
+preuves dans `PROJECT_STATUS.fr.md`. Le tag et les paquets publiés 0.10.0 restent inchangés.
 
 - Lire les étiquettes de pages via PDFium dans la barre, les miniatures et la CLI `info`. Aller à accepte une
   étiquette exacte et unique ; `#N` désigne toujours la page physique. Lecture seule ; étiquettes invalides remplacées par le numéro physique.
@@ -70,6 +71,11 @@ Lot non publié ; la CI n'a pas encore validé ces changements. Le tag et les pa
   recadrage/rotation et conservation des axes nuls et du zoom. L'historique couvre les sauts dans la même page et le zoom.
   `/FitH` zéro/null et les autres modes gardent le saut de page ; PDFium ne distingue pas FitH null de zéro.
 - Conserver les brouillons et actions de formulaire en cas d'échec de lecture, afficher l'erreur et demander une relance explicite.
+- Saisir du texte libre dans les listes déroulantes déjà modifiables, depuis le panneau et sur la page ; garder les choix,
+  Appliquer/Abandonner, Enregistrer et l'annulation. La création de ce drapeau sur un nouveau champ reste hors de cette tranche.
+- Conserver chiffrement, mots de passe et permissions d'origine en extrayant/divisant un PDF protégé ; refuser une sortie
+  résolue au chemin source. La CLI garde `encryption_removed: false` et ajoute `encrypted` ; la politique existante
+  des permissions ne change pas. Les contrôles finaux de régression/paquets restent nécessaires pour ces ajouts.
 
 ## Travail restant au-delà de ce lot
 
@@ -124,7 +130,7 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 - échanges JSON/XFDF/FDF et panneau Appliquer groupé implémentés en 0.10.0 ; validation dans `PROJECT_STATUS.fr.md` ;
-- texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
+- Texte libre des listes déroulantes modifiables implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente ; valeurs d'export `/Opt` des radios restantes ; activation clavier
   (Espace / Entrée) implémentée en 0.10.0 ; vérification Narrateur Windows (noms `labelled_by`
   posés, non écoutés) ;
 - aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
@@ -144,7 +150,7 @@ validation visuelle finale par l'utilisateur. Le chevauchement du rail droit en 
 ## Après review-fixes (constats des revues adverses du 14/10, tranche livrée)
 Les 39 constats de `docs/plans/review-fixes.md` sont corrigés ou déjà couverts (tests moteur et application).
 Reste, non bloquant :
-- rechiffrer automatiquement les extraits et les parties d'une division d'un document protégé (D046, A29) ;
+- Rechiffrement des extraits/divisions protégés implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente (D097 remplace D046 ; A29).
 - élargir le corpus d'interopérabilité AES/XMP au-delà du contrôle qpdf synthétique (A4) ;
 - contrôler les métadonnées PDF/A préservées avec un validateur dédié (A34) ; la correction de préservation 0.9.1
   est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;
@@ -189,7 +195,7 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   l'enregistrement et à la fermeture ; gomme ;
 - polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
   incorporée) ;
-- modifier la cible d'un lien existant ; lecture des destinations nommées et `/XYZ` implémentée dans le lot non publié ci-dessus ;
+- modifier la cible d'un lien existant ; lecture des destinations nommées et `/XYZ` implémentée dans le lot 0.11.0 ci-dessus ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
 

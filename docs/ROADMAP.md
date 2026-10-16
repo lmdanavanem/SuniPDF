@@ -33,7 +33,7 @@ payloads/checksums. Interactive updater UX and real hardware remain separate che
 
 ## 0.10.0: requested P1/P2 lot published
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) under `lmdanavanem`.
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) under `lmdanavanem`.
 
 | Area | Included scope |
 |---|---|
@@ -49,15 +49,18 @@ update/failure/rollback cases and two MSI baselines passed. Final CI and all six
 including packaged CLI/OCR, icons, MSI payloads and the live updater. Evidence is recorded in `PROJECT_STATUS.md`.
 Hardware, native interactive flows, Narrator, third-party readers and broader customer/hostile corpus coverage remain independent work.
 
-## Current development: reading and form reliability (unreleased)
+## 0.11.0: navigation, forms and protected copies (local gates passed)
 
 Implemented and locally validated: read-only page labels with exact unique-label navigation and `#N` physical
 indices; named destinations and `/XYZ`, `/Fit`, nonzero `/FitH` for links/bookmarks; same-page and zoom-aware history;
 form-read errors that preserve inputs and require an explicit retry. `/FitH` zero/null and other fit modes fall back
-to page navigation. The published 0.10.0 source and packages remain unchanged; no new release version is assigned.
+to page navigation. Also implemented for 0.11.0: free text in existing editable drop-downs through the panel/on-page
+editor, and extraction/split copies retaining source encryption/passwords/permissions with same-source-path refusal.
+The existing permission policy is unchanged; creating editable drop-down flags remains future work.
 
-Local gates passed: 383 workspace tests, formatting/Clippy, 34 qpdf PDFs, four real documents (744 pages), 857 matching
-EN/FR keys and development CLI/GUI builds. Seven tests remain ignored by default; CI for this lot is still pending.
+Local gates passed: 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with `-D warnings`,
+858 EN/FR keys, 42 qpdf checks across 40 distinct PDFs and four NIST documents (744 pages; 76.05 s, peak child
+memory 332,398,592 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -113,7 +116,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.10.0 lot
+## Next work after the 0.11.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

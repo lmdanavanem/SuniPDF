@@ -3,6 +3,9 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
+Ce guide source inclut les changements 0.11.0 vérifiés localement. CI/paquets/publication restent en attente dans
+l'[état du projet](PROJECT_STATUS.fr.md) ; les paquets 0.10.0 publiés ne contiennent pas ces ajouts.
+
 ## Installation
 
 - **Portable** : décompressez le fichier `SuniPDF-<version>-win-x64-portable.zip` où vous voulez et lancez
@@ -209,6 +212,9 @@ bouton). Les champs restent interactifs en défilement continu, sur toutes les p
   champ est respectée.
 - **Liste déroulante, zone de liste** : un clic ouvre la liste des choix (cases à cocher pour une liste à
   choix multiple ; « (aucun) » vide une liste non obligatoire).
+- **Liste déroulante déjà modifiable (0.11.0)** : choisissez **Saisir une valeur…** dans la liste sur la page, puis
+  confirmez comme un champ texte. Le panneau accepte aussi du texte libre à côté des choix, avec Appliquer/Abandonner/
+  Enregistrer. Une liste ordinaire reste limitée aux choix ; la création de champs ne propose pas le drapeau modifiable.
 - La valeur est dessinée par le moteur PDF lui-même (apparence régénérée) : ce que vous voyez est ce que les
   autres lecteurs afficheront, et ce qui est enregistré avec Ctrl+S.
 
@@ -231,7 +237,7 @@ document). Un champ **mot de passe** n'est ni remplissable ni exporté (sa valeu
 document protégé par mot de passe se remplit comme les autres et reste protégé. Ctrl+S valide d'abord la saisie
 en cours.
 
-**Version locale non publiée :** un échec de lecture du formulaire affiche une erreur et un bouton **Réessayer**
+**0.11.0 :** un échec de lecture du formulaire affiche une erreur et un bouton **Réessayer**
 dans le panneau des champs. Vos textes et modifications en attente restent disponibles ; l'échec n'est pas traité
 comme un formulaire vide. Réessayer relit les champs courants avant un import ou un effacement en attente.
 Aucune nouvelle tentative ne tourne en boucle.
@@ -284,8 +290,8 @@ Les textes de tampon et modèles de numérotation tiennent sur une seule ligne ;
 - **Annuler / Rétablir** : Ctrl+Z / Ctrl+Y (jusqu'à 50 étapes).
 - **Diviser le document** : choisissez le nombre de pages par fichier et un dossier de destination.
 - **Extraire les pages sélectionnées** : crée un nouveau PDF avec la sélection. Depuis un document
-  protégé, le fichier créé (comme les parties d'une division) **n'est pas chiffré** : la barre d'état le
-  signale ; ouvrez-le et appliquez **Protéger** si besoin.
+  protégé, le fichier et les parties d'une division **conservent chiffrement, mots de passe et permissions d'origine
+  en 0.11.0**. Sortie résolue au fichier source refusée, même avec `--overwrite` en CLI ; politique des permissions inchangée.
 - **Combiner des fichiers PDF** : choisissez les fichiers dans l'ordre, puis le fichier de sortie ; il s'ouvre ensuite.
 - **Insérer une page vierge…** : taille de la page courante, A3, A4, A5, Letter, Legal ou personnalisée
   (portrait ou paysage), nombre de pages, avant ou après la page courante ou à la fin.
@@ -303,7 +309,7 @@ Le menu **Affichage** propose rotation de vue par quarts de tour et plein écran
 L’activation d’un outil d’édition revient à une vue droite. Retour/Avance (Alt+Gauche/Alt+Droite) conserve 256 positions
 maximum par onglet, avec page et position de défilement. Cet historique n’est pas du contenu PDF.
 
-### Prochaine version locale (non publiée)
+### Navigation 0.11.0
 
 Les libellés PDF tels que `iv`, `1` ou `Annexe-É7` apparaissent avec les indices physiques dans les miniatures,
 la barre d'état et les descriptions d'accessibilité. Saisissez un libellé exact, sensible à la casse et unique,
@@ -449,7 +455,8 @@ fichier.json` ou `-` pour l'entrée standard, `--set nom=valeur` répétable —
 choix séparés par `;` —, strict par défaut : champ inconnu ou valeur refusée = erreur `form_field_not_found` /
 `form_value_invalid` sans rien écrire, `--ignore-unknown` pour ignorer et compter, `--flatten`) et `flatten`
 (`--pages all` ou `1,3-5` ; toutes les pages = formulaire retiré). Un formulaire XFA renvoie `form_xfa`.
-Les sorties sont en JSON (`extract` et `split` signalent `encryption_removed` quand la source était protégée) ;
+Les sorties sont en JSON. En 0.11.0, `extract` et `split` conservent la protection : `encryption_removed` reste `false`
+et l'ajout `encrypted` indique si les copies sont chiffrées. Sortie résolue au chemin source refusée même avec `--overwrite` ;
 les codes de retour distinguent mot de passe requis (3), fichier invalide (4),
 fichier illisible (5) et fichier de sortie déjà existant (6). Aucune commande n'écrase un fichier existant
 sans l'option `--overwrite`. `render` écrit toujours du PNG (`--region x,y,l,h` : une zone en pixels de la page

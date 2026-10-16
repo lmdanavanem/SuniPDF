@@ -8,6 +8,11 @@ use crate::{Document, Engine, EngineError, PageSize};
 use pdfium_render::prelude::*;
 use std::path::{Path, PathBuf};
 
+struct CopyProtection {
+    state: lopdf::encryption::EncryptionState,
+    file_id: Option<lopdf::Object>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rotation {
     R0,
@@ -158,6 +163,7 @@ pub fn ensure_absent(paths: &[PathBuf]) -> Result<(), EngineError> {
 impl Document<'_> {
     /// Divise le document (état courant, y compris non enregistré) en fichiers de `chunk` pages
     /// nommés `<stem>-<n>.pdf`. Sans `overwrite`, échoue avant toute écriture si l'un existe.
+    /// Chaque partie conserve le chiffrement et les permissions du document.
     pub fn split_to(
         &self,
         chunk: usize,
@@ -168,7 +174,7 @@ impl Document<'_> {
         if chunk == 0 {
             return Err(EngineError::Other("chunk size must be at least 1".into()));
         }
-        std::fs::create_dir_all(output_dir)?;
+        let protection = self.copy_protection()?;
         let count = self.page_count();
         let parts: Vec<(Vec<usize>, PathBuf)> = (0..count)
             .step_by(chunk)
@@ -180,18 +186,22 @@ impl Document<'_> {
                 )
             })
             .collect();
+        for (_, out) in &parts {
+            self.check_copy_output(out)?;
+        }
         if !overwrite {
             ensure_absent(&parts.iter().map(|(_, p)| p.clone()).collect::<Vec<_>>())?;
         }
         let mut outputs = Vec::new();
         for (pages, out) in parts {
-            self.extract_to(&pages, &out)?;
+            self.extract_copy(&pages, &out, protection.as_ref(), overwrite)?;
             outputs.push(out);
         }
         Ok(outputs)
     }
 
     /// Extrait les pages (indices base 0, ordre conservé, doublons permis) vers `output`.
+    /// La copie conserve le chiffrement et les permissions ; l'original ne peut pas être remplacé.
     pub fn extract_to(&self, pages: &[usize], output: &Path) -> Result<usize, EngineError> {
         if pages.is_empty() {
             return Err(EngineError::Other("no pages selected".into()));
@@ -199,12 +209,63 @@ impl Document<'_> {
         if let Some(&bad) = pages.iter().find(|&&p| p >= self.page_count()) {
             return Err(EngineError::PageOutOfRange(bad));
         }
+        self.check_copy_output(output)?;
+        let protection = self.copy_protection()?;
+        self.extract_copy(pages, output, protection.as_ref(), true)
+    }
+
+    fn check_copy_output(&self, output: &Path) -> Result<(), EngineError> {
+        if output.exists()
+            && self.info.path.exists()
+            && std::fs::canonicalize(output)? == std::fs::canonicalize(&self.info.path)?
+        {
+            return Err(EngineError::AlreadyExists(output.into()));
+        }
+        Ok(())
+    }
+
+    fn copy_protection(&self) -> Result<Option<CopyProtection>, EngineError> {
+        if !self.is_encrypted() {
+            return Ok(None);
+        }
+        let mut source = crate::security::load(&self.snapshot()?, self.password())?;
+        let state = source
+            .encryption_state
+            .take()
+            .ok_or(EngineError::InvalidFormat)?;
+        Ok(Some(CopyProtection {
+            state,
+            file_id: source.trailer.get(b"ID").ok().cloned(),
+        }))
+    }
+
+    fn extract_copy(
+        &self,
+        pages: &[usize],
+        output: &Path,
+        protection: Option<&CopyProtection>,
+        overwrite: bool,
+    ) -> Result<usize, EngineError> {
         let mut target = self.pdfium().create_new_pdf()?;
         target
             .pages_mut()
             .copy_pages_from_document(&self.inner, &page_range_string(pages), 0)?;
         let count = target.pages().len() as usize;
-        write_atomic(output, &target.save_to_bytes()?)?;
+        let mut bytes = target.save_to_bytes()?;
+        if let Some(protection) = protection {
+            let mut copy = crate::security::load(&bytes, None)?;
+            copy.encryption_state = Some(protection.state.clone());
+            // Legacy encryption derives its key from /ID; keep it with the original security state.
+            if let Some(id) = &protection.file_id {
+                copy.trailer.set("ID", id.clone());
+            }
+            bytes = crate::security::save(copy)?;
+        }
+        if overwrite {
+            write_atomic(output, &bytes)?;
+        } else {
+            write_new_copy(output, &bytes)?;
+        }
         Ok(count)
     }
 

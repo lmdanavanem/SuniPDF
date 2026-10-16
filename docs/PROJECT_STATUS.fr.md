@@ -1,11 +1,11 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.10.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.11.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Développement courant : navigation et sécurité de lecture des formulaires (non publié)
+## 0.11.0 : navigation, formulaires et copies protégées (validation locale réussie)
 
 - Libellés PDF en cache, navigation par libellé exact unique et positions physiques explicites `#N` ; miniatures,
   statut, accessibilité et ajout CLI `info.pages[].label`. Un libellé illisible, contenant des contrôles ou dépassant
@@ -17,15 +17,28 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - Échecs de lecture typés des formulaires : textes, choix, saisies en place et actions en attente conservés, validation
   sur modèle périmé bloquée, réessai explicite et aucune boucle de relecture. Un formulaire vide confirmé reste valide.
 
-Exécuté localement : **383 tests workspace réussis, zéro échec, sept ignorés par défaut** ; formatage, Clippy sans
+Contrôles locaux finaux du lot élargi 0.11.0 réussis : **390 tests workspace, zéro échec, sept ignorés par défaut**,
+formatage, Clippy sans avertissement et **858 clés EN/FR identiques**. qpdf valide **40 PDF distincts (42 contrôles selon
+le mot de passe)**, avec refus des entrées malformées. Les **quatre documents NIST/NBS sous licence, 744 pages**, passent
+en 76,05 secondes ; pic mémoire enfant échantillonné 332 398 592 octets. Les tests couvrent panneau/saisie en place des
+combos éditables, valeurs d’export ambiguës, première saisie clavier, échecs/réessais, huit cas cadres/rotations/chiffrement,
+JSON/XFDF, extraction/découpage protégés, deux mots de passe, RC4/AES-128/AES-256, préservation source/collisions,
+sorties du vrai worker et rotations non enregistrées. CI GitHub, paquets et publication restent à vérifier.
+Tranche navigation/lecture des formulaires antérieure au lot élargi 0.11.0 : **383 tests workspace réussis, zéro échec, sept ignorés par défaut** ; formatage, Clippy sans
 avertissement et **857 clés EN/FR** validés. Le contrôle qpdf explicite valide **34 PDF** et refuse ses entrées malformées.
 Les **quatre documents réels sous licence (744 pages)** passent en 63,01 secondes ; pic mémoire enfant échantillonné
 328 953 856 octets. Tests moteur/CLI : destinations nommées/directes/actions, rotations/cadres, AES-256 et relecture.
 Tests UI sans fenêtre native : libellés, clics sur liens, historique avec zoom sur une même page, enchaînements rapides
 Retour/lien et lectures de formulaire échouées. Les vrais binaires GUI/CLI de développement locaux sont construits.
-La CI GitHub reste distincte. Lot non publié, fichiers 0.10.0 publiés inchangés ; usage natif interactif, Narrateur
+La CI GitHub reste distincte. Contrôles finaux du lot élargi 0.11.0 et publication en attente ; fichiers 0.10.0 inchangés. Usage natif interactif, Narrateur
 et lecteurs tiers non vérifiés.
 
+Le lot élargi ajoute la saisie libre dans les listes déjà éditables, par panneau ou sur la page, avec conservation
+des valeurs d’export lors de libellés ambigus, lectures échouées et réessais. Extraits et parties découpées conservent
+mots de passe, clé de chiffrement et permissions. La source ne peut être remplacée ; sans écrasement, les parties
+utilisent une publication atomique sans remplacement. Une source non protégée reste non protégée ; la politique de
+permissions ne change pas. Un échec peut laisser des parties déjà terminées, complètes et protégées. La CLI conserve
+`encryption_removed: false` et ajoute `encrypted`. Les tests de mise à jour incluent les bases portable/MSI 0.10.0.
 Libellés et rotations partagent une seule lecture mise en cache. Une rotation de page met à jour les seules entrées
 concernées ; une suppression groupée valide les indices avant mutation et relit les métadonnées une fois.
 Sur AMD Ryzen 7 6800HS, `info` CLI d’un PDF de 492 pages prend 2,332/2,848/2,869 secondes avec le build dev optimisé,

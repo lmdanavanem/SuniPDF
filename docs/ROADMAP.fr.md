@@ -33,7 +33,7 @@ L’UX interactive de mise à jour et le matériel réel restent des vérificati
 
 ## 0.10.0 : lot P1/P2 demandé publié
 
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) sous `lmdanavanem`.
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) sous `lmdanavanem`.
 
 | Domaine | Périmètre inclus |
 |---|---|
@@ -49,16 +49,19 @@ huit scénarios portables de mise à jour/échec/restauration et deux bases MSI 
 vérifiés, y compris CLI/OCR embarqués, icônes, contenu MSI et mise à jour en ligne ; preuves dans `PROJECT_STATUS.fr.md`.
 Matériel, dialogues natifs interactifs, Narrateur, lecteurs tiers et corpus client/hostile élargi restent indépendants.
 
-## Développement courant : lecture et fiabilité des formulaires (non publié)
+## 0.11.0 : navigation, formulaires et copies protégées (contrôles locaux réussis)
 
 Implémentés et validés localement : étiquettes en lecture seule, navigation par étiquette exacte et unique ou
 indice physique `#N` ; destinations nommées et `/XYZ`, `/Fit`, `/FitH` non nul des liens/signets ; historique des sauts
 dans la même page et du zoom ; erreurs de lecture de formulaire préservant les saisies avec relance explicite.
-`/FitH` zéro/null et les autres modes gardent le saut de page. Source et paquets 0.10.0 publiés restent inchangés ;
-aucun nouveau numéro de release n'est attribué.
+`/FitH` zéro/null et les autres modes gardent le saut de page. Aussi implémentés pour 0.11.0 : texte libre des listes
+déroulantes déjà modifiables dans le panneau/sur la page, et copies d'extraction/division conservant chiffrement,
+mots de passe et permissions, avec refus du chemin source. Politique des permissions inchangée ; création du
+drapeau de liste modifiable à venir.
 
-Critères locaux réussis : 383 tests du workspace, formatage/Clippy, 34 PDF qpdf, quatre documents réels (744 pages),
-857 clés EN/FR identiques et builds CLI/GUI de développement. Sept tests ignorés par défaut ; CI de ce lot encore en attente.
+La source élargie réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
+`-D warnings`, 858 clés EN/FR, 42 contrôles qpdf sur 40 PDF distincts et quatre documents NIST (744 pages ; 76,05 s,
+pic mémoire enfant 332 398 592 octets). CI/paquets/publication restent en attente dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -114,7 +117,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite après le lot 0.10.0
+## Suite après le lot 0.11.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

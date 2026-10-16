@@ -179,6 +179,26 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         check(&qpdf, &encrypted, Some("qa-user"));
         let opened = success(cli(&["properties", "--password", "qa-user"], &[&encrypted]));
         assert!(opened.is_object());
+        let extracted = temp.path().join(format!("{name}-extract.pdf"));
+        let mut command = cli(&["extract"], &[&encrypted]);
+        command
+            .args(["--password", "qa-user", "--pages", "2,1", "--out"])
+            .arg(&extracted);
+        let report = success(command);
+        assert_eq!(report["encryption_removed"], false);
+        assert_eq!(report["encrypted"], true);
+        check(&qpdf, &extracted, Some("qa-user"));
+        check(&qpdf, &extracted, Some("qa-owner"));
+        let mut command = cli(&["split"], &[&encrypted]);
+        command
+            .args(["--password", "qa-user", "--every", "1", "--out-dir"])
+            .arg(temp.path().join(format!("{name}-parts")));
+        let report = success(command);
+        assert_eq!(report["encryption_removed"], false);
+        assert_eq!(report["encrypted"], true);
+        for part in report["files"].as_array().unwrap() {
+            check(&qpdf, Path::new(part.as_str().unwrap()), Some("qa-user"));
+        }
     }
     let field = temp.path().join("field.pdf");
     let mut command = cli(&["add-form-field"], &[&original]);
