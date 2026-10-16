@@ -14,6 +14,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 - La modification des métadonnées conserve l'identification PDF/A et les propriétés XMP indépendantes. Le XMP malformé est refusé au lieu d'être supprimé silencieusement ; cela ne certifie pas la conformité PDF/A.
 - Les dictionnaires de chiffrement AES-256 indiquent explicitement la longueur de clé de 256 bits pour les lecteurs indépendants.
 - Le résultat de mise à jour est enregistré après la relance de l'application, avec le chemin de sauvegarde conservé en cas d'échec d'installation ou de relance.
+- La vérification SHA256 de l'updater utilise directement .NET, y compris quand les chemins de modules proviennent de PowerShell 7.
 
 ### Modifié
 - Contrôles QPDF figés dans la CI Windows : corpus synthétique, modifications, chiffrement AES, formulaires, caviardage, OCR, signatures numériques et entrées malformées. Les avertissements structurels font échouer le contrôle.

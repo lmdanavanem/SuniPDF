@@ -14,6 +14,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 - Metadata edits preserve existing PDF/A identification and unrelated XMP properties. Malformed XMP is refused instead of silently discarded; this does not certify PDF/A conformance.
 - AES-256 encryption dictionaries explicitly declare their 256-bit key length for independent readers.
 - Update results are recorded after starting the new application, with backup details retained on installation or restart failure.
+- Update SHA256 verification uses .NET directly, including when PowerShell module paths are inherited from PowerShell 7.
 
 ### Changed
 - Pinned QPDF checks in Windows CI cover the synthetic regression corpus, generated edits, AES encryption, forms, redaction, OCR, digital signatures and malformed inputs. Structural warnings fail the gate.

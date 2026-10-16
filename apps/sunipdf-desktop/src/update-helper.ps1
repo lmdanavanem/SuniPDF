@@ -44,9 +44,16 @@ function Assert-NoReparsePoint([string]$Path) {
     }
 }
 
+function Get-Sha256([string]$Path) {
+    $stream = [IO.File]::OpenRead($Path)
+    $digest = [Security.Cryptography.SHA256]::Create()
+    try { return [BitConverter]::ToString($digest.ComputeHash($stream)).Replace('-', '') }
+    finally { $digest.Dispose(); $stream.Dispose() }
+}
+
 function Assert-PackageHash([string]$Path, [string]$Expected) {
     if ($Expected -notmatch '^[A-Fa-f0-9]{64}$' -or
-        (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ine $Expected) {
+        (Get-Sha256 $Path) -ine $Expected) {
         throw "The downloaded package failed its SHA256 check."
     }
 }
@@ -168,7 +175,7 @@ function Install-Portable([string]$Stage, [string]$Target, [string]$Backup, [str
             try {
                 if (Test-Path -LiteralPath $saved -PathType Leaf) {
                     if (-not (Test-Path -LiteralPath $destination -PathType Leaf) -or
-                        (Get-FileHash -LiteralPath $destination).Hash -ne (Get-FileHash -LiteralPath $saved).Hash) {
+                        (Get-Sha256 $destination) -ne (Get-Sha256 $saved)) {
                         [IO.File]::Copy($saved, $destination, $true)
                     }
                 } elseif (Test-Path -LiteralPath $destination -PathType Leaf) {
@@ -187,6 +194,11 @@ function Invoke-SelfTest {
     $workspace = Join-Path ([IO.Path]::GetTempPath()) ("SuniPDF-update-test-" + [guid]::NewGuid())
     [IO.Directory]::CreateDirectory($workspace) | Out-Null
     try {
+        $knownHash = Join-Path $workspace 'known-hash.txt'
+        [IO.File]::WriteAllBytes($knownHash, [byte[]]@(97, 98, 99))
+        if ((Get-Sha256 $knownHash) -ne 'BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD') {
+            throw 'SHA256 known-value check failed.'
+        }
         $outside = Join-Path (Split-Path -Parent $workspace) 'outside.pdf'
         try { Assert-ChildPath $outside $workspace | Out-Null; throw "Boundary check failed." }
         catch { if ($_.Exception.Message -eq 'Boundary check failed.') { throw } }
@@ -204,7 +216,7 @@ function Invoke-SelfTest {
             [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Join-Path $source $name), $name) | Out-Null
         }
         $zip.Dispose()
-        $hash = (Get-FileHash -LiteralPath $package).Hash
+        $hash = Get-Sha256 $package
         Assert-PackageHash $package $hash
         try { Assert-PackageHash $package ('0' * 64); throw "Hash check failed." }
         catch { if ($_.Exception.Message -eq 'Hash check failed.') { throw } }

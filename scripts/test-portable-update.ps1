@@ -9,6 +9,7 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repo = Split-Path -Parent $PSScriptRoot
 $helperSource = Join-Path $repo 'apps/sunipdf-desktop/src/update-helper.ps1'
 $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+& (Join-Path $PSScriptRoot 'test-update-helper-host.ps1')
 
 function Assert([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
 function ChildPath([string]$Path, [string]$Root) {
