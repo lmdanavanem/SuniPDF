@@ -195,7 +195,11 @@ pub(super) fn verify(cms: &[u8], parts: &[&[u8]]) -> Result<CertificateInfo, u32
             Some(&mut cert),
         )
     };
-    let cert = (!cert.is_null()).then(|| Cert(cert));
+    let cert = if cert.is_null() {
+        None
+    } else {
+        Some(Cert(cert))
+    };
     result.map_err(|e| e.code().0 as u32)?;
     cert_info(cert.as_ref().ok_or(0x80092004u32)?.0).map_err(|_| 0x80092004u32)
 }

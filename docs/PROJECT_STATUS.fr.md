@@ -1,9 +1,47 @@
-# État du projet — mis à jour le 2026-10-16 (0.20.0 publiée en Latest stable)
+# État du projet — mis à jour le 2026-10-16 (0.21.0 en préparation ; 0.20.0 Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.21.0 : traitement des alertes Code Scanning (en préparation)
+
+Le lot 0.21.0 renforce la frontière du certificat signataire natif par un contrôle explicite du pointeur
+avant l'accès aux métadonnées et une régression CMS malformé. Le workflow de release déclare
+`contents: read` à la racine ; seul son job Publish distinct conserve `contents: write` (D112).
+
+La revue des 117 alertes distingue 114 entrées de test déterministes, un essai intentionnel de mot de passe
+utilisateur PDF vide, le parcours du pointeur natif et les permissions du workflow. Le triage conserve
+preuves individuelles et fixtures déterministes ; aucune requête, dossier de tests ni couverture de scanning
+n'est désactivé. Les 115 alertes critiques ont été écartées individuellement par `lmdanavanem` : 114 comme
+`used in tests`, #13 comme `false positive`, le 2026-10-16 entre 19:34:00 et 19:38:10 UTC. Le nouvel instantané
+API n'a aucune critique ouverte et conserve deux alertes ouvertes : élevée #3 et moyenne #119 (permissions
+de release réindexées ; ancienne #1 corrigée). La nouvelle analyse CodeQL doit vérifier ces corrections.
+Validation locale réussie : 471 tests, zéro échec, sept ignorés par défaut ; formatage, Clippy toutes cibles
+sans avertissement, 912 clés EN/FR, 75 contrôles qpdf et autotest du metteur à jour. Le corpus licencié de
+quatre documents/744 pages a réussi avec sources inchangées. La migration API XML 1.0 garde les bornes
+et refuse les DTD XMP/XFDF ; nouvelles régressions UTF-8/UTF-16 réussies. CI (19 scénarios portables,
+13 bases MSI/65 journaux), paquets/téléchargements publics et metteur à jour restent en attente.
+0.20.0 reste Latest stable. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) et l'[état du projet](PROJECT_STATUS.fr.md)
+pour les résultats observés. Commandes CLI et comportement des documents inchangés.
+
+### Preuves locales 0.21.0 observées
+
+Workspace : **471 tests réussis, zéro échec et sept ignorés par défaut**. Formatage et Clippy toutes cibles
+avec `-D warnings` réussis (Clippy : 22,36 secondes) ; **912 clés EN/FR correspondantes**, **75 contrôles qpdf**
+et autotest chemins/checksum/rollback du metteur à jour réussis. Quatre PDF NIST/NBS licenciés (**744 pages**)
+ont réussi en **67,304 secondes**, avec pic de mémoire enfant échantillonné de **329 601 024 octets** ; toutes
+les sources sont inchangées. Relectures indépendantes moteur et fichiers de release réussies. Les trois
+régressions ajoutées couvrent CMS vide/malformé et refus DTD/entités XMP/XFDF en UTF-8 et UTF-16. Les notices
+XML couvrent exactement paquets directs/réexportés/transitifs ; fichier de licence MIT existant identique
+octet pour octet à celui de XML 1.4.
+
+Les 115 exclusions d'alertes critiques sont vérifiées indépendamment des corrections source. Élevée #3
+et moyenne #119 attendent encore CodeQL sur la source de release. CI prévue : **19 scénarios portables** et
+**13 bases MSI/65 journaux** ; ces contrôles, ARM64 de même source, fichiers préparés/publics et metteur à
+jour de production n'ont pas encore été validés pour 0.21.0. Les preuves antérieures ci-dessous ne valident
+pas ce candidat.
 
 ## 0.20.0 : création et édition FreeText sur la page (publiée en Latest stable)
 

@@ -5,6 +5,25 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.21.0] — 2026-10-16
+
+- Renforcer l'accès natif aux métadonnées du certificat signataire par une garde explicite contre le
+  pointeur nul et ajouter une régression CMS malformé ; propriété native et erreurs conservées (D112).
+- Déclarer `contents: read` à la racine du workflow de release ; conserver `contents: write` sur Publish.
+- Garder fixtures de sécurité déterministes et couverture du scanning, avec preuves individuelles lors du
+  triage des valeurs cryptographiques de test ; le mot de passe PDF vide reste un essai d'authentification.
+- Conserver les mises à jour Dependabot `getrandom` 0.4.3, `xml-rs` 1.0.0 et celles des GitHub Actions existantes.
+  Migrer les deux lecteurs XML vers `ParserConfig`, refuser les DTD avant le traitement des entités et garder
+  les bornes ; nouvelles régressions XMP/XFDF UTF-8/UTF-16 et notices de licence XML exactes.
+- Vérifier le triage individuel des 115 critiques par `lmdanavanem` : 114 `used in tests`, #13 `false positive`.
+  Aucune critique ouverte ; élevée #3 et moyenne réindexée #119 attendent CodeQL. Ancienne #1 corrigée.
+- Contrôles locaux réussis : 471 tests, zéro échec, sept ignorés par défaut ; formatage, Clippy sans
+  avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre documents/744 pages.
+  Trois nouvelles régressions : CMS malformé et deux refus d'entités XML UTF-8/UTF-16.
+- CodeQL, CI (19 scénarios portables, 13 bases MSI/65 journaux), paquets/publics et mise à jour en attente ;
+  0.20.0 reste Latest stable.
+  Résultats réels et états des alertes dans `docs/PROJECT_STATUS.fr.md` et `docs/CODE_SCANNING_REVIEW.fr.md`.
+
 ## [0.20.0] — 2026-10-16
 
 - Ajout : créer et modifier les annotations FreeText dans un éditeur de page multiligne ancré, avec rectangles

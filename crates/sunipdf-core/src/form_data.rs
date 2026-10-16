@@ -274,8 +274,8 @@ pub fn parse_values(bytes: &[u8], extension: &str) -> Result<Value, EngineError>
 }
 
 fn parse_xfdf(bytes: &[u8]) -> Result<Value, EngineError> {
-    use xml::reader::{ParserConfig2, XmlEvent};
-    let mut reader = ParserConfig2::new()
+    use xml::reader::{ParserConfig, XmlEvent};
+    let mut reader = ParserConfig::new()
         .ignore_comments(true)
         .trim_whitespace(false)
         .max_data_length(IMPORT_LIMIT)
@@ -290,10 +290,10 @@ fn parse_xfdf(bytes: &[u8]) -> Result<Value, EngineError> {
     let mut fields_seen = false;
     loop {
         let event = reader.next().map_err(import_error)?;
-        if reader.doctype().is_some() {
-            return Err(import_error("DTD declarations are not supported"));
-        }
         match event {
+            XmlEvent::Doctype { .. } => {
+                return Err(import_error("DTD declarations are not supported"));
+            }
             XmlEvent::StartElement {
                 name, attributes, ..
             } => {
@@ -851,6 +851,21 @@ mod tests {
         assert!(
             strict_plan_from_json(&info, &json!({"nom":"valid", "missing":"unknown"})).is_err()
         );
+    }
+
+    #[test]
+    fn xfdf_rejects_dtd_before_processing_entity_values() {
+        let xml = "<!DOCTYPE xfdf [<!ENTITY replacement 'content'>]><xfdf xmlns='http://ns.adobe.com/xfdf/'><fields><field name='a'><value>&replacement;</value></field></fields></xfdf>";
+        let utf16: Vec<u8> = [0xff, 0xfe]
+            .into_iter()
+            .chain(xml.encode_utf16().flat_map(u16::to_le_bytes))
+            .collect();
+        for bytes in [xml.as_bytes(), utf16.as_slice()] {
+            let error = parse_values(bytes, "xfdf").unwrap_err();
+            assert!(error
+                .to_string()
+                .contains("DTD declarations are not supported"));
+        }
     }
 
     fn fdf(values: lopdf::Dictionary) -> Vec<u8> {

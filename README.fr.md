@@ -47,6 +47,27 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
+## 0.21.0 : traitement des alertes Code Scanning (en préparation)
+
+Le lot 0.21.0 renforce la frontière du certificat signataire natif par un contrôle explicite du pointeur
+avant l'accès aux métadonnées et une régression CMS malformé. Le workflow de release déclare
+`contents: read` à la racine ; seul son job Publish distinct conserve `contents: write` (D112).
+
+La revue des 117 alertes distingue 114 entrées de test déterministes, un essai intentionnel de mot de passe
+utilisateur PDF vide, le parcours du pointeur natif et les permissions du workflow. Le triage conserve
+preuves individuelles et fixtures déterministes ; aucune requête, dossier de tests ni couverture de scanning
+n'est désactivé. Les 115 alertes critiques ont été écartées individuellement par `lmdanavanem` : 114 comme
+`used in tests`, #13 comme `false positive`, le 2026-10-16 entre 19:34:00 et 19:38:10 UTC. Le nouvel instantané
+API n'a aucune critique ouverte et conserve deux alertes ouvertes : élevée #3 et moyenne #119 (permissions
+de release réindexées ; ancienne #1 corrigée). La nouvelle analyse CodeQL doit vérifier ces corrections.
+Validation locale réussie : 471 tests, zéro échec, sept ignorés par défaut ; formatage, Clippy toutes cibles
+sans avertissement, 912 clés EN/FR, 75 contrôles qpdf et autotest du metteur à jour. Le corpus licencié de
+quatre documents/744 pages a réussi avec sources inchangées. La migration API XML 1.0 garde les bornes
+et refuse les DTD XMP/XFDF ; nouvelles régressions UTF-8/UTF-16 réussies. CI (19 scénarios portables,
+13 bases MSI/65 journaux), paquets/téléchargements publics et metteur à jour restent en attente.
+0.20.0 reste Latest stable. Voir la [revue Code Scanning](docs/CODE_SCANNING_REVIEW.fr.md) et l'[état du projet](docs/PROJECT_STATUS.fr.md)
+pour les résultats observés. Commandes CLI et comportement des documents inchangés.
+
 [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`, release `415294715`,
 source `54054b101282a7688dde778b24090af6d6e1e6a6`. Validation locale : 468 tests réussis, zéro échec, sept ignorés par défaut ;
 formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).

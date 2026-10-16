@@ -1,9 +1,44 @@
-# Project status - updated 2026-10-16 (0.20.0 published stable Latest)
+# Project status - updated 2026-10-16 (0.21.0 in preparation; 0.20.0 stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.21.0: Code Scanning remediation (in preparation)
+
+The 0.21.0 lot hardens the native signer-certificate boundary with an explicit null check before
+certificate metadata access and a malformed-CMS regression. The release workflow declares root
+`contents: read`; only its separate Publish job retains `contents: write` (D112).
+
+The 117-alert review distinguishes 114 deterministic test inputs, one intentional empty PDF user-password
+attempt, the native pointer path and the workflow permission gap. Triage keeps per-alert evidence and
+deterministic fixtures; no query, test directory or scanning coverage is disabled. All 115 critical alerts
+were individually dismissed by `lmdanavanem`: 114 as `used in tests`, #13 as `false positive`, between
+2026-10-16 19:34:00 and 19:38:10 UTC. The fresh API snapshot has zero open criticals and two open alerts:
+high #3 and medium #119 (the reindexed release-permissions finding; old #1 is fixed). Fresh CodeQL must
+verify those source fixes. Local validation passed: 471 tests, zero failures, seven default ignored;
+formatting, all-target Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks and update-helper self-test.
+The four-document/744-page licensed corpus passed with unchanged inputs. The XML 1.0 API migration
+retains bounded parsing and explicitly rejects DTD events for XMP/XFDF; the new UTF-8/UTF-16 regressions
+passed. CI (19 portable cases, 13 MSI baselines/65 logs), packages/public downloads and updater remain
+pending. 0.20.0 remains stable Latest. See [Code Scanning review](CODE_SCANNING_REVIEW.md)
+and [Project status](PROJECT_STATUS.md) for observed results. CLI commands and document behavior are unchanged.
+
+### Observed 0.21.0 local evidence
+
+The workspace passed **471 tests, zero failures and seven default ignored**. Formatting and all-target
+Clippy with `-D warnings` passed (Clippy: 22.36 seconds); **912 matching EN/FR keys**, **75 qpdf checks**
+and the update-helper path/checksum/rollback self-test passed. Four licensed NIST/NBS PDFs (**744 pages**)
+passed in **67.304 seconds**, with sampled peak child memory **329,601,024 bytes**; all source files stayed
+unchanged. Independent core and release-file review passed. The three added regressions cover empty/
+malformed CMS and XMP/XFDF DTD/entity refusal for UTF-8 and UTF-16. XML notices accurately cover the
+direct/reexported/transitive packages; the existing MIT license file is byte-identical to XML 1.4's license.
+
+The 115 critical-alert dismissals are verified independently of source fixes. High #3 and medium #119
+still await fresh CodeQL on the release source. Planned CI covers **19 portable cases** and **13 MSI
+baselines/65 logs**; these, same-source ARM64, staged/public files and production updater have not yet
+been validated for 0.21.0. Earlier release proof below does not validate this candidate.
 
 ## 0.20.0: on-page FreeText creation and editing (published stable Latest)
 

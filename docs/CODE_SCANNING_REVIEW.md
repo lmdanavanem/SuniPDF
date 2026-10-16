@@ -2,6 +2,30 @@
 
 [Français](CODE_SCANNING_REVIEW.fr.md) · [Per-alert critical inventory (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
+## 0.21.0 remediation follow-up
+
+The user authorized correction and publication of the reviewed findings. The 0.21.0 source now makes
+the signer-certificate null check explicit before metadata access and adds malformed-CMS verification
+coverage. The release workflow receives explicit root `contents: read`, retaining Publish's separate
+`contents: write`. Fresh CodeQL results must establish that high #3 and medium #119 (the reindexed
+release-permissions finding) are fixed; they are not to be dismissed to substitute for that verification.
+Old #1 is now fixed in GitHub after workflow reindexing, which does not by itself prove the new permission
+guard; the fresh scan must also close #119.
+
+All **115 critical alerts were individually dismissed** by `lmdanavanem` between **2026-10-16 19:34:00 and
+19:38:10 UTC**: **114 `used in tests`**, with their existing scope evidence, and **#13 `false positive`**
+because an empty-password authentication attempt embeds no secret. The authenticated follow-up API
+snapshot contains **zero open criticals and two open alerts (#3 and #119)**. The CSV retains all original
+review fields and adds the verified state, reason, author, timestamp and individual comment. Local gates
+passed: 471 tests, zero failures, seven default ignored; formatting, all-target Clippy with warnings denied,
+912 matching EN/FR keys, 75 qpdf checks, update-helper self-test and the four-document/744-page licensed
+corpus. Fresh CodeQL, CI/upgrade, package/public and updater checks remain pending. Deterministic fixtures and scanning coverage are preserved; no folder
+or query is excluded. XML 1.0 reader migration also keeps parsing bounds and explicitly refuses DTD events
+for XMP/XFDF; both new UTF-8/UTF-16 entity-input regressions and the malformed-CMS regression passed. The original snapshot below remains historical evidence;
+its open-alert statements describe that snapshot rather than a current GitHub state.
+
+## Original reviewed snapshot
+
 All **117 open alerts** in the authenticated GitHub API snapshot were reviewed: **115 critical, one high
 and one medium**. There is also **one already-fixed medium alert (#2)** and **zero dismissed alerts**.
 No other closed critical alert appears in this snapshot. These are GitHub alert states; a source-review

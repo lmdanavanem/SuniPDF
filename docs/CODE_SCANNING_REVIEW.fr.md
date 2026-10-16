@@ -2,6 +2,33 @@
 
 [English](CODE_SCANNING_REVIEW.md) · [Inventaire critique par alerte (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
+## Suivi des corrections 0.21.0
+
+L'utilisateur a autorisé correction et publication des constats examinés. La source 0.21.0 rend explicite
+le contrôle du certificat signataire non nul avant les métadonnées et ajoute une régression CMS malformé.
+Le workflow de release reçoit `contents: read` à la racine, avec `contents: write` conservé sur Publish.
+Les nouveaux résultats CodeQL doivent établir la correction de l'élevée #3 et de la moyenne #119
+(permissions de release réindexées) ; leur exclusion ne doit pas remplacer cette vérification. L'ancienne
+#1 est maintenant corrigée dans GitHub après réindexation du workflow, ce qui ne prouve pas à lui seul la
+nouvelle garde de permissions ; l'analyse doit aussi fermer #119.
+
+Les **115 critiques ont toutes été écartées individuellement** par `lmdanavanem` le **2026-10-16 entre
+19:34:00 et 19:38:10 UTC** : **114 `used in tests`**, avec les preuves de périmètre existantes, et **#13
+`false positive`**, car un essai d'authentification par mot de passe vide ne contient pas de secret.
+Le nouvel instantané API authentifié contient **zéro critique ouverte et deux alertes ouvertes (#3 et #119)**.
+Le CSV conserve tous les champs de revue initiaux et ajoute état, motif, auteur, horodatage et commentaire
+individuel vérifiés. Contrôles locaux réussis : 471 tests, zéro échec, sept ignorés par défaut ; formatage,
+Clippy toutes cibles sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et
+corpus licencié de quatre documents/744 pages. CodeQL, CI/mises à niveau, paquets/publics et metteur à jour
+restent en attente. Fixtures
+déterministes et couverture du scanning conservées ; aucun dossier ni requête exclu. La migration des
+lecteurs XML 1.0 garde aussi les bornes et refuse explicitement les DTD XMP/XFDF ; régressions avec entités
+UTF-8/UTF-16 et régression CMS malformé réussies. L'instantané
+initial ci-dessous reste une preuve historique ; ses états ouverts décrivent cet instantané et non
+l'état GitHub actuel.
+
+## Instantané initial examiné
+
 Les **117 alertes ouvertes** de l'instantané API GitHub authentifié ont toutes été analysées : **115 critiques,
 une élevée et une moyenne**. L'instantané comporte aussi **une alerte moyenne déjà corrigée (#2)** et **zéro
 alerte écartée**. Aucune autre alerte critique fermée n'y figure. Ce sont les états GitHub ; une classification

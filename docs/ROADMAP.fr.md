@@ -216,6 +216,27 @@ Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest d
 CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
 et metteur à jour de production réussis. **0.20.0 est publiée en Latest stable** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
 
+## 0.21.0 : traitement des alertes Code Scanning (en préparation)
+
+Le lot 0.21.0 renforce la frontière du certificat signataire natif par un contrôle explicite du pointeur
+avant l'accès aux métadonnées et une régression CMS malformé. Le workflow de release déclare
+`contents: read` à la racine ; seul son job Publish distinct conserve `contents: write` (D112).
+
+La revue des 117 alertes distingue 114 entrées de test déterministes, un essai intentionnel de mot de passe
+utilisateur PDF vide, le parcours du pointeur natif et les permissions du workflow. Le triage conserve
+preuves individuelles et fixtures déterministes ; aucune requête, dossier de tests ni couverture de scanning
+n'est désactivé. Les 115 alertes critiques ont été écartées individuellement par `lmdanavanem` : 114 comme
+`used in tests`, #13 comme `false positive`, le 2026-10-16 entre 19:34:00 et 19:38:10 UTC. Le nouvel instantané
+API n'a aucune critique ouverte et conserve deux alertes ouvertes : élevée #3 et moyenne #119 (permissions
+de release réindexées ; ancienne #1 corrigée). La nouvelle analyse CodeQL doit vérifier ces corrections.
+Validation locale réussie : 471 tests, zéro échec, sept ignorés par défaut ; formatage, Clippy toutes cibles
+sans avertissement, 912 clés EN/FR, 75 contrôles qpdf et autotest du metteur à jour. Le corpus licencié de
+quatre documents/744 pages a réussi avec sources inchangées. La migration API XML 1.0 garde les bornes
+et refuse les DTD XMP/XFDF ; nouvelles régressions UTF-8/UTF-16 réussies. CI (19 scénarios portables,
+13 bases MSI/65 journaux), paquets/téléchargements publics et metteur à jour restent en attente.
+0.20.0 reste Latest stable. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) et l'[état du projet](PROJECT_STATUS.fr.md)
+pour les résultats observés. Commandes CLI et comportement des documents inchangés.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,

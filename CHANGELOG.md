@@ -5,6 +5,25 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.21.0] - 2026-10-16
+
+- Harden native signer-certificate metadata access with an explicit null-pointer guard and add a
+  malformed-CMS verification regression, retaining native ownership and existing error behavior (D112).
+- Declare release-workflow root `contents: read`; retain the separate Publish job's `contents: write`.
+- Preserve deterministic security fixtures and scanning coverage while triaging the reviewed test-only
+  cryptographic-value alerts with individual evidence; the empty PDF password is an authentication probe.
+- Retain the Dependabot updates to `getrandom` 0.4.3, `xml-rs` 1.0.0 and the existing GitHub Actions upgrades.
+  Migrate the two XML readers to `ParserConfig` and explicitly reject DTD events before entity processing;
+  preserve parsing bounds, with new UTF-8/UTF-16 XMP/XFDF refusal regressions and accurate XML license notices.
+- Verify individual triage of all 115 criticals by `lmdanavanem`: 114 `used in tests`, #13 `false positive`.
+  No critical remains open; high #3 and reindexed medium #119 await fresh CodeQL. Old #1 is fixed.
+- Local gates passed: 471 tests, zero failures, seven default ignored; formatting, Clippy with warnings
+  denied, 912 matching EN/FR keys, 75 qpdf checks, update-helper self-test and the four-document/744-page corpus.
+  New regression coverage includes one malformed-CMS and two UTF-8/UTF-16 XML entity-refusal tests.
+- Fresh CodeQL, CI (19 portable cases, 13 MSI baselines/65 logs), package/public and updater gates remain pending;
+  0.20.0 remains stable Latest.
+  Actual results and alert states belong in `docs/PROJECT_STATUS.md` and `docs/CODE_SCANNING_REVIEW.md`.
+
 ## [0.20.0] - 2026-10-16
 
 - Added: create and edit FreeText annotations in an anchored multiline page editor, retaining click/drawn

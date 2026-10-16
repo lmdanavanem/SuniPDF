@@ -470,8 +470,8 @@ fn xmp_error(error: impl std::fmt::Display) -> EngineError {
 }
 
 fn update_xmp(input: &[u8], m: &Metadata) -> Result<Vec<u8>, EngineError> {
-    use xml::reader::{ParserConfig2, XmlEvent};
-    let config = ParserConfig2::new()
+    use xml::reader::{ParserConfig, XmlEvent};
+    let config = ParserConfig::new()
         .ignore_comments(false)
         .ignore_root_level_whitespace(false)
         .allow_multiple_root_elements(false)
@@ -488,10 +488,10 @@ fn update_xmp(input: &[u8], m: &Metadata) -> Result<Vec<u8>, EngineError> {
     let mut seen_rdf = false;
     loop {
         let mut event = reader.next().map_err(xmp_error)?;
-        if reader.doctype().is_some() {
-            return Err(xmp_error("DTD declarations are not supported"));
-        }
         match &mut event {
+            XmlEvent::Doctype { .. } => {
+                return Err(xmp_error("DTD declarations are not supported"));
+            }
             XmlEvent::StartDocument { .. } => continue,
             XmlEvent::StartElement {
                 name, attributes, ..
@@ -927,6 +927,21 @@ mod tests {
             ..Default::default()
         };
         assert!(update_xmp(original.as_bytes(), &invalid_value).is_err());
+    }
+
+    #[test]
+    fn xmp_edit_rejects_dtd_before_processing_entity_values() {
+        let xml = "<!DOCTYPE RDF [<!ENTITY replacement 'content'>]><RDF xmlns='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>&replacement;</RDF>";
+        let utf16: Vec<u8> = [0xff, 0xfe]
+            .into_iter()
+            .chain(xml.encode_utf16().flat_map(u16::to_le_bytes))
+            .collect();
+        for bytes in [xml.as_bytes(), utf16.as_slice()] {
+            let error = update_xmp(bytes, &Metadata::default()).unwrap_err();
+            assert!(error
+                .to_string()
+                .contains("DTD declarations are not supported"));
+        }
     }
 
     #[test]

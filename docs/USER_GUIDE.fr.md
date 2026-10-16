@@ -3,9 +3,9 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.20.0. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
-Éditeur et contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production
-réussis ; 0.20.0 est la Latest stable actuelle.
+Ce guide couvre SuniPDF 0.21.0. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
+Les instructions s'appliquent aussi à 0.20.0 ; ses preuves de publication vérifiées ci-dessous sont
+historiques et ne valident pas le candidat 0.21.0.
 
 [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`, release `415294715`,
 source `54054b101282a7688dde778b24090af6d6e1e6a6`. Validation locale : 468 tests réussis, zéro échec, sept ignorés par défaut ;
@@ -17,6 +17,14 @@ Copies vérifiées dans `dist/` ; le metteur à jour de production a télécharg
 Preuves détaillées et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre et FreeText non validés sans récupération après plantage.
+
+## Maintenance de sécurité 0.21.0
+
+Cette version de maintenance rend explicites les contrôles natifs des certificats et les permissions
+du workflow de release. Les signatures vérifient toujours l'intégrité des octets enregistrés ; confiance
+de la chaîne, révocation et horodatage fiable restent non vérifiés. Mots de passe PDF, chiffrement et
+enregistrement conservent leur comportement. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+pour les preuves par alerte et l'état actuel du triage.
 
 ## Installation
 

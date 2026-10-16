@@ -18,7 +18,7 @@ n'est utilisée ; aucun code d'un autre lecteur n'a été copié.
 | Tesseract 5.5.3 (OCR hors ligne) | Apache-2.0 | `licenses/ocr-tesseract.txt`, `ocr-AUTHORS.txt`, `ocr-COPYRIGHTS.txt`, `ocr-NOTICE.txt` |
 | Leptonica 1.87.0 (décodage PNM) | BSD-2-Clause | `licenses/ocr-leptonica.txt` |
 | Modèles anglais et français tessdata_fast (révision figée) | Apache-2.0 | `licenses/ocr-tessdata-fast.txt`, `ocr-NOTICE.txt` |
-| xml-rs 0.8.29 (lecture/écriture XMP, dépendance désormais directe) | MIT | `assets/licenses/xml-rs-MIT.txt` → `licenses/xml-rs-MIT.txt` |
+| xml-rs 1.0.0 (dépendance directe, compatibilité), xml 1.4.0 (implémentation de lecture/écriture XMP/XFDF), xml-rs 0.8.29 (dépendance transitive) | MIT, mêmes mentions de copyright et texte de licence | `assets/licenses/xml-rs-MIT.txt` → `licenses/xml-rs-MIT.txt` |
 | Autres crates Rust | Consulter la licence de chaque crate | Inventaire complet via `cargo about generate` (P6) |
 
 Interdits : modèles OCR `ocrs` (CC-BY-SA-4.0) ; icônes/polices non vérifiées ; captures d'écran d'applications tierces.

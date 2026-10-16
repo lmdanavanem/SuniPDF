@@ -433,6 +433,19 @@ impl crate::Document<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_rejects_empty_and_malformed_cms() {
+        for cms in [
+            b"".as_slice(),
+            b"invalid",
+            &[0x30, 0x00],
+            &[0x30, 0x82, 0x01],
+        ] {
+            assert!(native::verify(cms, &[b"content"]).is_err());
+        }
+    }
+
     #[test]
     fn native_ephemeral_pfx_signs_and_verifies() {
         let bytes = test_identity::identity();

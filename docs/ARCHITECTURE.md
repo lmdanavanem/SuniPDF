@@ -2,6 +2,26 @@
 
 [Français](ARCHITECTURE.fr.md)
 
+## 0.21.0: Code Scanning remediation (in preparation)
+
+The 0.21.0 lot hardens the native signer-certificate boundary with an explicit null check before
+certificate metadata access and a malformed-CMS regression. The release workflow declares root
+`contents: read`; only its separate Publish job retains `contents: write` (D112).
+
+The 117-alert review distinguishes 114 deterministic test inputs, one intentional empty PDF user-password
+attempt, the native pointer path and the workflow permission gap. Triage keeps per-alert evidence and
+deterministic fixtures; no query, test directory or scanning coverage is disabled. All 115 critical alerts
+were individually dismissed by `lmdanavanem`: 114 as `used in tests`, #13 as `false positive`, between
+2026-10-16 19:34:00 and 19:38:10 UTC. The fresh API snapshot has zero open criticals and two open alerts:
+high #3 and medium #119 (the reindexed release-permissions finding; old #1 is fixed). Fresh CodeQL must
+verify those source fixes. Local validation passed: 471 tests, zero failures, seven default ignored;
+formatting, all-target Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks and update-helper self-test.
+The four-document/744-page licensed corpus passed with unchanged inputs. The XML 1.0 API migration
+retains bounded parsing and explicitly rejects DTD events for XMP/XFDF; the new UTF-8/UTF-16 regressions
+passed. CI (19 portable cases, 13 MSI baselines/65 logs), packages/public downloads and updater remain
+pending. 0.20.0 remains stable Latest. See [Code Scanning review](CODE_SCANNING_REVIEW.md)
+and [Project status](PROJECT_STATUS.md) for observed results. CLI commands and document behavior are unchanged.
+
 ## Principles
 
 1. **Engine first.** Every PDF operation lives in `crates/sunipdf-core` (and, later, in domain crates

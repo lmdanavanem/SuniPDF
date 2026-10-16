@@ -3,9 +3,9 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.20.0. Publication status and executed release checks are recorded in
-[Project status](PROJECT_STATUS.md). The editor and its local/CI/upgrade, staged/public package and
-production updater checks passed; 0.20.0 is the current stable Latest.
+This guide covers SuniPDF 0.21.0. Publication status and executed release checks are recorded in
+[Project status](PROJECT_STATUS.md). The usage instructions also apply to 0.20.0; its verified release
+evidence below is historical and does not validate the 0.21.0 candidate.
 
 [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) under `lmdanavanem`, release `415294715`,
 source `54054b101282a7688dde778b24090af6d6e1e6a6`. Local validation: 468 passed tests, zero failures, seven default ignored;
@@ -17,6 +17,13 @@ Verified copies are in `dist/`; the production updater downloaded and verified t
 Detailed evidence and limits are in [Project status](PROJECT_STATUS.md).
 
 Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unsubmitted ink and FreeText drafts have no crash recovery.
+
+## Security maintenance in 0.21.0
+
+This maintenance release makes native certificate checks and release-workflow permissions explicit.
+Signing still verifies saved-byte integrity; certificate-chain trust, revocation and trusted timestamps
+remain unchecked. Existing PDF password, encryption and document-saving behavior is preserved.
+See the [Code Scanning review](CODE_SCANNING_REVIEW.md) for the per-alert evidence and current triage state.
 
 ## Installation
 
