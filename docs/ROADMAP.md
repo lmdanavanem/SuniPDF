@@ -178,6 +178,18 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.19.0: mouse placement of existing form types (implemented; unpublished)
+
+Add **Draw on page** to the current numeric form builder, preserving text/checkbox/radio/drop-down/list-box
+types, names, choices and flags. Draw a finite rectangle clamped to one page, at least 4 pt wide/high, then
+review the reopened numeric dialog and explicitly **Create Field**. Drawing itself does not mutate the PDF;
+the existing worker edit supplies one Undo step, validation and encryption (D110/A38).
+
+Crosshair/preview, widget exclusion and stale document/tab/tool guards are included. Numeric creation,
+core/CLI APIs and 53 commands remain unchanged; no dependency or field type is added. Implementation and local tests
+passed, along with formatting/Clippy; CI/package/updater/publication gates remain pending. **0.18.0 remains stable Latest**. Actual evidence belongs in
+`PROJECT_STATUS.md`. Existing-field geometry editing, XFA creation and native hardware checks remain separate.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -241,7 +253,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Work beyond the selected 0.18.0 lot
+## Work beyond the selected 0.19.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

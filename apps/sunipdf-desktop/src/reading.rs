@@ -295,6 +295,7 @@ impl SuniApp {
         if !self.reading_navigation_ready() {
             return;
         }
+        self.form_builder.cancel();
         // Editing controls use the document's upright display coordinates.
         self.annotate.tool = crate::annotate::Tool::Select;
         self.annotate.drag = None;
@@ -347,6 +348,7 @@ impl SuniApp {
         if enabled && self.ink_blocks_action() {
             return;
         }
+        self.form_builder.cancel();
         self.reading_full_screen = enabled;
         ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(enabled));
     }

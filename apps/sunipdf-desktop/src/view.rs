@@ -920,6 +920,9 @@ impl SuniApp {
     /// disparaîtrait au défilement) et celle de l'éditeur de texte posé sur la page.
     fn pinned_pages(&self) -> Vec<usize> {
         let mut v: Vec<usize> = self.annotate.drag.map(|d| d.page).into_iter().collect();
+        if let Some(drag) = self.form_builder.drag {
+            v.push(drag.page);
+        }
         if let Some(p) = self.edit.text_prompt.as_ref().filter(|p| p.inline) {
             v.push(p.page);
         }
@@ -931,12 +934,14 @@ impl SuniApp {
 
     /// Zone document : fenêtre de pages, zoom, défilement, tuiles, interactions.
     pub fn document_view(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        self.validate_form_builder();
         if self.view.reading.rotation != ViewRotation::Upright
             && (self.annotate.tool != crate::annotate::Tool::Select
                 || self.sign.placing.is_some()
                 || self.edit.text_prompt.is_some()
                 || self.forms.editing.is_some()
-                || self.forms.popup.is_some())
+                || self.forms.popup.is_some()
+                || self.form_builder.drawing)
         {
             self.view.reading.rotation = ViewRotation::Upright;
             if let Some(doc) = &self.document {
@@ -1089,9 +1094,12 @@ impl SuniApp {
             let shift = ctx.input(|i| i.modifiers.shift);
             self.handle_page_event(page, ev, shift);
         }
-        self.reading_pointer(ctx, &layout, out.inner_rect);
-        self.object_bar(ctx, doc_rect);
-        self.annot_bar(ctx, doc_rect);
+        self.form_builder_pointer(ctx, &layout, out.inner_rect);
+        if !self.form_builder.drawing {
+            self.reading_pointer(ctx, &layout, out.inner_rect);
+            self.object_bar(ctx, doc_rect);
+            self.annot_bar(ctx, doc_rect);
+        }
     }
 
     /// Ombre, tuiles (ou replis), surcouches et interactions d'une page ; identique en continu et
@@ -1133,6 +1141,13 @@ impl SuniApp {
         self.paint_object_selection(&overlay_painter, source_rect, s.page, h);
         self.paint_annot_adv(&overlay_painter, source_rect, s.page, h);
         self.paint_redact_marks(&overlay_painter, source_rect, s.page, h);
+        self.form_builder.paint(
+            &overlay_painter,
+            source_rect,
+            s.page,
+            self.effective_zoom * SCREEN_PER_PDF_POINT,
+            h,
+        );
         rotate_overlay_shapes(
             ctx,
             &painter,
@@ -1150,7 +1165,9 @@ impl SuniApp {
         if on_selection.map_or(s.current, |p| p == s.page) {
             self.edit.page_view = Some((s.page, s.rect, h));
         }
-        self.inline_text_editor(ctx, s.rect, s.page, h);
+        if !self.form_builder.drawing {
+            self.inline_text_editor(ctx, s.rect, s.page, h);
+        }
 
         let interact = ui.interact(
             s.rect,
@@ -1186,7 +1203,10 @@ impl SuniApp {
             crate::annotate::to_pdf(rect.min + source.to_vec2(), source_rect, zoom, h)
         };
         let mut event = None;
-        if interact.drag_started() {
+        if interact.drag_started()
+            && (!self.form_builder.drawing
+                || interact.drag_started_by(egui::PointerButton::Primary))
+        {
             // Origine réelle de la pression : le glissement n'est détecté qu'après le seuil.
             let origin = ui
                 .input(|i| i.pointer.press_origin())
@@ -1218,12 +1238,14 @@ impl SuniApp {
         interact.on_hover_cursor(self.page_cursor(s.page, hover));
         // Champs de formulaire : créés après le widget de la page pour avoir la priorité du clic ;
         // éditeur et liste de choix de cette page par-dessus.
-        if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
-            self.forms_activate(s.page, field, widget);
+        if !self.form_builder.drawing {
+            if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
+                self.forms_activate(s.page, field, widget);
+            }
+            let view = ui.clip_rect();
+            self.forms_popup(ctx, view, s.rect, s.page, h);
+            self.forms_editor(ctx, view, s.rect, s.page, h);
         }
-        let view = ui.clip_rect();
-        self.forms_popup(ctx, view, s.rect, s.page, h);
-        self.forms_editor(ctx, view, s.rect, s.page, h);
         event.map(|e| (s.page, e))
     }
 
@@ -1609,6 +1631,26 @@ impl SuniApp {
 
     /// Un événement de souris sur une page ; un seul glissement à la fois.
     fn handle_page_event(&mut self, page: usize, ev: DragEvent, shift: bool) {
+        if self.form_builder.drawing {
+            self.validate_form_builder();
+            if self.form_builder.drawing {
+                match ev {
+                    DragEvent::Start(pt) => {
+                        if let Some(size) = self
+                            .document
+                            .as_ref()
+                            .and_then(|d| d.info.page_sizes.get(page))
+                            .copied()
+                        {
+                            self.form_builder.start_drag(page, pt, size);
+                        }
+                    }
+                    DragEvent::Move(pt) => self.form_builder.move_drag(page, pt),
+                    DragEvent::Stop | DragEvent::Click(_) | DragEvent::DoubleClick(_) => {}
+                }
+            }
+            return;
+        }
         if self.sign.placing.is_some() {
             // Mode de placement d'une signature : le premier appui pose ; les Move / Stop qui
             // suivent ne trouvent aucun glissement en cours et ne font rien.
@@ -1693,6 +1735,32 @@ impl SuniApp {
         }
     }
 
+    fn form_builder_pointer(&mut self, ctx: &egui::Context, layout: &Layout, inner: Rect) {
+        self.validate_form_builder();
+        let Some(drag) = self.form_builder.drag else {
+            return;
+        };
+        let (position, down) = ctx.input(|i| (i.pointer.interact_pos(), i.pointer.primary_down()));
+        if layout.contains(drag.page) {
+            if let Some(position) = position {
+                let content = position - inner.min + self.view.offset;
+                let rect = layout.page_rect(drag.page);
+                let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
+                self.form_builder.move_drag(
+                    drag.page,
+                    (
+                        (content.x - rect.left()) / k,
+                        layout.page_size_pt(drag.page).height_pt - (content.y - rect.top()) / k,
+                    ),
+                );
+            }
+        }
+        // shortcut: hidden Single-page origins keep the last point; retain their layout if navigation-time reprojection is needed.
+        if !down {
+            self.form_builder.finish_drag();
+        }
+    }
+
     fn reading_pointer(&mut self, ctx: &egui::Context, layout: &Layout, inner: Rect) {
         if self.annotate.reading_drag.is_none() {
             return;
@@ -1746,6 +1814,86 @@ fn reading_edge_scroll(pointer: Pos2, inner: Rect, dt: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn drawn_field_pointer_uses_the_initial_page_preview_and_hidden_widget_release() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let sizes = vec![letter(); 2];
+        app.document.as_mut().unwrap().info.page_sizes = sizes.clone();
+        let ctx = egui::Context::default();
+        app.execute(&ctx, sunipdf_core::Command::ToolAddTextField);
+        app.form_builder.start_drawing();
+        app.handle_page_event(0, DragEvent::Click((100.0, 700.0)), false);
+        assert!(app.form_builder.drag.is_none());
+        app.handle_page_event(0, DragEvent::Start((100.0, 700.0)), false);
+        assert_eq!(app.pinned_pages(), vec![0]);
+        app.handle_page_event(1, DragEvent::Move((500.0, 30.0)), false);
+        assert_eq!(app.form_builder.drag.unwrap().current, (100.0, 700.0));
+        let inner = Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 600.0));
+        let layout = Layout::new(&sizes, 0, SCREEN_PER_PDF_POINT, inner.size());
+        let position = layout.page_rect(0).min + vec2(-50.0, 200.0);
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(inner),
+                events: vec![
+                    egui::Event::PointerMoved(position),
+                    egui::Event::PointerButton {
+                        pos: position,
+                        button: egui::PointerButton::Primary,
+                        pressed: true,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+                ..Default::default()
+            },
+            |ui| {
+                app.form_builder_pointer(ui.ctx(), &layout, inner);
+                app.form_builder.paint(
+                    ui.painter(),
+                    layout.page_rect(0),
+                    0,
+                    SCREEN_PER_PDF_POINT,
+                    792.0,
+                );
+            },
+        );
+        output.textures_delta.clear();
+        assert!(output
+            .shapes
+            .iter()
+            .any(|s| matches!(&s.shape, egui::Shape::Rect(r) if r.stroke.width == 1.5)));
+        assert_eq!(app.form_builder.drag.unwrap().current, (0.0, 642.0));
+        assert_eq!(app.page_cursor(0, None), egui::CursorIcon::Crosshair);
+        let hidden_layout = Layout::for_mode(
+            &sizes[1..],
+            1,
+            SCREEN_PER_PDF_POINT,
+            inner.size(),
+            ViewMode::Single,
+        );
+        app.document.as_mut().unwrap().page = 1;
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(inner),
+                events: vec![egui::Event::PointerButton {
+                    pos: position,
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |ui| app.form_builder_pointer(ui.ctx(), &hidden_layout, inner),
+        );
+        output.textures_delta.clear();
+        assert!(app.form_builder.visible && !app.form_builder.drawing);
+        assert!(app.form_builder.drag.is_none());
+        assert!(
+            requests.try_recv().is_err(),
+            "preview and release never edit the PDF"
+        );
+        assert!(!app.dirty);
+    }
 
     fn letter() -> PageSize {
         PageSize {

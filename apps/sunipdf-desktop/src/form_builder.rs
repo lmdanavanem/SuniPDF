@@ -17,6 +17,13 @@ pub struct FormFieldDraft {
 
 pub struct FormBuilderState {
     pub visible: bool,
+    pub(crate) drawing: bool,
+    pub(crate) drag: Option<crate::annotate::Drag>,
+    context: Option<(
+        u64,
+        crate::annotate::Tool,
+        Option<crate::workspace::Workspace>,
+    )>,
     page: usize,
     kind: FieldKind,
     name: String,
@@ -30,6 +37,9 @@ impl Default for FormBuilderState {
     fn default() -> Self {
         Self {
             visible: false,
+            drawing: false,
+            drag: None,
+            context: None,
             page: 0,
             kind: FieldKind::Text,
             name: String::new(),
@@ -51,6 +61,7 @@ impl Default for FormBuilderState {
 }
 impl FormBuilderState {
     pub fn open(&mut self, page: usize, kind: FieldKind, size: PageSize) {
+        self.cancel();
         self.page = page;
         self.kind = kind;
         self.size = size;
@@ -77,6 +88,112 @@ impl FormBuilderState {
         self.visible = true;
     }
 
+    pub(crate) fn active(&self) -> bool {
+        self.visible || self.drawing
+    }
+
+    pub(crate) fn cancel(&mut self) {
+        self.visible = false;
+        self.drawing = false;
+        self.drag = None;
+        self.context = None;
+    }
+
+    pub(crate) fn bind(
+        &mut self,
+        epoch: u64,
+        tool: crate::annotate::Tool,
+        workspace: Option<crate::workspace::Workspace>,
+    ) {
+        self.context = Some((epoch, tool, workspace));
+    }
+
+    pub(crate) fn matches_context(
+        &self,
+        epoch: u64,
+        tool: crate::annotate::Tool,
+        workspace: Option<crate::workspace::Workspace>,
+    ) -> bool {
+        self.context == Some((epoch, tool, workspace))
+    }
+
+    pub(crate) fn start_drawing(&mut self) {
+        self.visible = false;
+        self.drawing = true;
+        self.drag = None;
+    }
+
+    pub(crate) fn start_drag(&mut self, page: usize, pt: (f32, f32), size: PageSize) {
+        if !self.drawing
+            || self.drag.is_some()
+            || ![pt.0, pt.1, size.width_pt, size.height_pt]
+                .iter()
+                .all(|v| v.is_finite())
+            || size.width_pt < 4.0
+            || size.height_pt < 4.0
+        {
+            return;
+        }
+        self.page = page;
+        self.size = size;
+        let pt = (
+            pt.0.clamp(0.0, size.width_pt),
+            pt.1.clamp(0.0, size.height_pt),
+        );
+        self.drag = Some(crate::annotate::Drag {
+            page,
+            start: pt,
+            current: pt,
+        });
+    }
+
+    pub(crate) fn move_drag(&mut self, page: usize, pt: (f32, f32)) {
+        if let Some(drag) = self.drag.as_mut().filter(|d| d.page == page) {
+            if pt.0.is_finite() && pt.1.is_finite() {
+                drag.current = (
+                    pt.0.clamp(0.0, self.size.width_pt),
+                    pt.1.clamp(0.0, self.size.height_pt),
+                );
+            }
+        }
+    }
+
+    pub(crate) fn finish_drag(&mut self) {
+        let Some(drag) = self.drag.take() else { return };
+        let rect = drag.rect();
+        if rect.right - rect.left < 4.0 || rect.top - rect.bottom < 4.0 {
+            return;
+        }
+        self.rect = rect;
+        self.drawing = false;
+        self.visible = true;
+    }
+
+    pub(crate) fn paint(
+        &self,
+        painter: &egui::Painter,
+        page_rect: egui::Rect,
+        page: usize,
+        k: f32,
+        h: f32,
+    ) {
+        if let Some(drag) = self.drag.filter(|d| d.page == page) {
+            let rect = drag.rect();
+            let pt = |x: f32, y: f32| page_rect.min + egui::vec2(x * k, (h - y) * k);
+            let rect =
+                egui::Rect::from_two_pos(pt(rect.left, rect.top), pt(rect.right, rect.bottom));
+            let color =
+                crate::theme::palette(painter.ctx().global_style().visuals.dark_mode).accent;
+            painter.rect_filled(rect, 0.0, color.gamma_multiply(0.12));
+            painter.rect_stroke(
+                rect,
+                0.0,
+                egui::Stroke::new(1.5, color),
+                egui::StrokeKind::Inside,
+            );
+        }
+    }
+
     pub fn show(
         &mut self,
         ctx: &egui::Context,
@@ -89,6 +206,7 @@ impl FormBuilderState {
         }
         let mut create = false;
         let mut close = false;
+        let mut draw = false;
         let choice = matches!(
             self.kind,
             FieldKind::Radio | FieldKind::Combo | FieldKind::List
@@ -164,6 +282,7 @@ impl FormBuilderState {
                     }
                 }
                 ui.label(tr(lang, "form_builder.coordinates"));
+                draw = ui.button(tr(lang, "form_builder.draw")).clicked();
                 egui::Grid::new("field-bounds").show(ui, |ui| {
                     for (key, v) in [
                         ("form_builder.left", &mut self.rect.left),
@@ -186,7 +305,9 @@ impl FormBuilderState {
             },
         );
         if close || create {
-            self.visible = false;
+            self.cancel();
+        } else if draw {
+            self.start_drawing();
         }
         create.then(|| FormFieldDraft {
             page: self.page,
@@ -377,5 +498,268 @@ mod tests {
         for invalid in ["", "one\none", "|missing"] {
             assert!(parse_options(invalid).is_none());
         }
+    }
+
+    #[test]
+    fn draw_button_keeps_all_five_field_drafts_until_explicit_create() {
+        for lang in [Language::English, Language::French] {
+            for kind in [
+                FieldKind::Text,
+                FieldKind::Checkbox,
+                FieldKind::Radio,
+                FieldKind::Combo,
+                FieldKind::List,
+            ] {
+                let ctx = egui::Context::default();
+                crate::icons::install(&ctx);
+                let mut builder = FormBuilderState::default();
+                builder.open(0, kind, builder.size);
+                builder.name = "DrawnField".into();
+                builder.options = "FR|France\nBE|Belgique".into();
+                builder.editable = kind == FieldKind::Combo;
+                builder.multi_select = kind == FieldKind::List;
+                for _ in 0..3 {
+                    frame(&mut builder, &ctx, lang, Vec::new());
+                }
+                let (_, output) = frame(&mut builder, &ctx, lang, Vec::new());
+                let draw = text_position(&output.shapes, tr(lang, "form_builder.draw")).unwrap();
+                assert!(click(&mut builder, &ctx, lang, draw).is_none());
+                assert!(builder.drawing && !builder.visible);
+                builder.start_drag(1, (180.0, 120.0), builder.size);
+                builder.move_drag(1, (40.0, 30.0));
+                builder.finish_drag();
+                assert!(builder.visible && !builder.drawing);
+                assert_eq!(builder.name, "DrawnField");
+                assert_eq!(builder.options, "FR|France\nBE|Belgique");
+                for _ in 0..3 {
+                    assert!(frame(&mut builder, &ctx, lang, Vec::new()).0.is_none());
+                }
+                let (_, output) = frame(&mut builder, &ctx, lang, Vec::new());
+                let create =
+                    text_position(&output.shapes, tr(lang, "form_builder.create")).unwrap();
+                let draft =
+                    click(&mut builder, &ctx, lang, create).expect("only Create returns the field");
+                assert_eq!(draft.page, 1);
+                assert_eq!(draft.kind, kind);
+                assert_eq!(
+                    draft.rect,
+                    PointRect {
+                        left: 40.0,
+                        bottom: 30.0,
+                        right: 180.0,
+                        top: 120.0
+                    }
+                );
+                assert_eq!(draft.editable, kind == FieldKind::Combo);
+                assert_eq!(draft.multi_select, kind == FieldKind::List);
+                assert_eq!(
+                    draft.options.len(),
+                    if matches!(kind, FieldKind::Radio | FieldKind::Combo | FieldKind::List) {
+                        2
+                    } else {
+                        0
+                    }
+                );
+                assert!(!builder.active());
+            }
+        }
+    }
+
+    #[test]
+    fn drawing_rejects_tiny_and_nonfinite_moves_clamps_and_pins_one_page() {
+        let mut builder = FormBuilderState::default();
+        builder.open(0, FieldKind::Radio, builder.size);
+        builder.name = "Group".into();
+        builder.start_drawing();
+        builder.finish_drag();
+        assert!(builder.drawing && !builder.visible);
+        builder.start_drag(0, (f32::NAN, 20.0), builder.size);
+        assert!(builder.drag.is_none());
+        builder.start_drag(0, (10.0, 20.0), builder.size);
+        builder.move_drag(0, (13.9, 30.0));
+        builder.finish_drag();
+        assert!(builder.drawing && !builder.visible);
+        builder.start_drag(0, (10.0, 20.0), builder.size);
+        builder.move_drag(1, (50.0, 80.0));
+        builder.move_drag(0, (f32::INFINITY, 80.0));
+        assert_eq!(builder.drag.unwrap().current, (10.0, 20.0));
+        builder.move_drag(0, (-90.0, 900.0));
+        assert_eq!(builder.drag.unwrap().current, (0.0, 792.0));
+        builder.finish_drag();
+        assert_eq!(
+            builder.rect,
+            PointRect {
+                left: 0.0,
+                bottom: 20.0,
+                right: 10.0,
+                top: 792.0
+            }
+        );
+        assert!(builder.visible);
+        builder.cancel();
+        assert!(!builder.active() && builder.drag.is_none());
+    }
+
+    #[test]
+    fn drawing_keeps_radio_per_option_size_and_off_validation() {
+        let ctx = egui::Context::default();
+        crate::icons::install(&ctx);
+        let mut builder = FormBuilderState::default();
+        builder.open(0, FieldKind::Radio, builder.size);
+        builder.name = "Group".into();
+        builder.start_drawing();
+        builder.start_drag(0, (20.0, 20.0), builder.size);
+        builder.move_drag(0, (100.0, 24.0));
+        builder.finish_drag();
+        for _ in 0..3 {
+            frame(&mut builder, &ctx, Language::English, Vec::new());
+        }
+        let (_, output) = frame(&mut builder, &ctx, Language::English, Vec::new());
+        let create =
+            text_position(&output.shapes, tr(Language::English, "form_builder.create")).unwrap();
+        assert!(click(&mut builder, &ctx, Language::English, create).is_none());
+        builder.rect.top = 40.0;
+        builder.options = "Off\nYes".into();
+        frame(&mut builder, &ctx, Language::English, Vec::new());
+        assert!(click(&mut builder, &ctx, Language::English, create).is_none());
+        assert!(builder.visible);
+    }
+
+    #[test]
+    fn real_document_widget_draws_over_existing_fill_widget_then_explicit_create_edits() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        crate::icons::install(&ctx);
+        app.zoom = crate::app::Zoom::Fixed(0.5);
+        app.annotate.tool = crate::annotate::Tool::FillForm;
+        app.view.reading.rotation = crate::reading::ViewRotation::Clockwise;
+        let existing = PointRect {
+            left: 40.0,
+            bottom: 600.0,
+            right: 200.0,
+            top: 700.0,
+        };
+        app.forms.info = Some(sunipdf_core::FormInfo {
+            kind: sunipdf_core::FormKind::AcroForm,
+            has_scripts: false,
+            fields: vec![sunipdf_core::FormField {
+                name: "Existing".into(),
+                kind: FieldKind::Checkbox,
+                value: sunipdf_core::FieldValue::Bool(false),
+                tooltip: None,
+                read_only: false,
+                required: false,
+                multiline: false,
+                password: false,
+                comb: false,
+                max_len: None,
+                multi_select: false,
+                editable: false,
+                no_toggle_off: false,
+                options: Vec::new(),
+                widgets: vec![sunipdf_core::FieldWidget {
+                    page: 0,
+                    rect: existing,
+                    display: existing,
+                    on_state: Some("Yes".into()),
+                    export_value: None,
+                }],
+            }],
+        });
+        app.execute(&ctx, sunipdf_core::Command::ToolAddTextField);
+        app.form_builder.name = "DrawnOverWidget".into();
+        let run = |app: &mut crate::app::SuniApp, events| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280.0, 1000.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    app.document_view(&ctx, ui);
+                    app.feature_dialogs(&ctx);
+                },
+            );
+            output.textures_delta.clear();
+            output
+        };
+        for _ in 0..3 {
+            run(&mut app, Vec::new());
+        }
+        assert_eq!(
+            app.view.reading.rotation,
+            crate::reading::ViewRotation::Upright
+        );
+        let output = run(&mut app, Vec::new());
+        let draw =
+            text_position(&output.shapes, tr(Language::English, "form_builder.draw")).unwrap();
+        let button = |pos, pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        run(
+            &mut app,
+            vec![egui::Event::PointerMoved(draw), button(draw, true)],
+        );
+        run(&mut app, vec![button(draw, false)]);
+        assert!(app.form_builder.drawing);
+        for _ in 0..3 {
+            run(&mut app, Vec::new());
+        }
+        let (_, page_rect, h) = app.edit.page_view.unwrap();
+        let k = app.effective_zoom * crate::app::SCREEN_PER_PDF_POINT;
+        let pt = |x: f32, y: f32| page_rect.min + egui::vec2(x * k, (h - y) * k);
+        let (start, end) = (pt(150.0, 650.0), pt(50.0, 610.0));
+        run(
+            &mut app,
+            vec![egui::Event::PointerMoved(start), button(start, true)],
+        );
+        run(&mut app, vec![egui::Event::PointerMoved(end)]);
+        assert!(
+            app.form_builder.drag.is_some(),
+            "the real page widget owns the primary drag"
+        );
+        run(&mut app, vec![button(end, false)]);
+        assert!(app.form_builder.visible && !app.form_builder.drawing);
+        let rect = app.form_builder.rect;
+        for (actual, expected) in [
+            (rect.left, 50.0),
+            (rect.bottom, 610.0),
+            (rect.right, 150.0),
+            (rect.top, 650.0),
+        ] {
+            assert!((actual - expected).abs() < 0.01);
+        }
+        assert!(app.forms.editing.is_none() && app.forms.popup.is_none());
+        assert!(
+            !requests
+                .try_iter()
+                .any(|r| matches!(r, crate::worker::Request::Edit(_))),
+            "draw and review do not change the existing checkbox or PDF"
+        );
+        for _ in 0..3 {
+            run(&mut app, Vec::new());
+        }
+        let output = run(&mut app, Vec::new());
+        let create =
+            text_position(&output.shapes, tr(Language::English, "form_builder.create")).unwrap();
+        run(
+            &mut app,
+            vec![egui::Event::PointerMoved(create), button(create, true)],
+        );
+        run(&mut app, vec![button(create, false)]);
+        let edits: Vec<_> = requests
+            .try_iter()
+            .filter(|r| matches!(r, crate::worker::Request::Edit(_)))
+            .collect();
+        assert_eq!(edits.len(), 1);
+        assert!(
+            matches!(&edits[0], crate::worker::Request::Edit(crate::worker::EditOp::AddFormField { page: 0, name, rect: created, .. }) if name == "DrawnOverWidget" && *created == rect)
+        );
     }
 }

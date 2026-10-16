@@ -485,7 +485,18 @@ labels appear in the fields panel and are not inserted as PDF page text. Creatio
 both predefined choices and typed values. Keep at least one predefined choice with a unique, nonempty export value.
 This setting applies only to new drop-downs; changing the flag on an existing field is not offered.
 
-Drawing fields with the mouse and XFA creation are unsupported. FDF import accepts normal xref text/name/array values;
+**Implemented for 0.19.0 (unpublished):** choose **Draw on page** to hide this dialog, drag a rectangle on one
+page and reopen it with the field name, choices and flags retained. Review the numeric rectangle, then choose
+**Create Field**; drawing alone does not create a field. Rectangles stay inside one page and must be at least
+4 PDF points wide/high. Reverse dragging is allowed; a click or tiny rectangle stays in drawing mode so you
+can retry. Release outside the page clamps to the original page. **Escape** cancels the builder without writing.
+Document revision/tab/tool/workspace changes cancel stale placement; zoom/navigation remain possible, including
+release finalization when a Single-page jump hides the original page. In that case the last known rectangle
+reopens in the numeric dialog for review; only **Create Field** creates it. Numeric creation remains available.
+Local tests, formatting and Clippy passed; release gates remain pending. 0.18.0 remains stable Latest. This adds no new field type or editor
+for existing fields. Native mouse/pen/touch and Narrator checks remain separate.
+
+XFA creation is unsupported. FDF import accepts normal xref text/name/array values;
 streams, actions, attachments and rich text are refused. Referenced document locations are never opened.
 
 ## Offline OCR

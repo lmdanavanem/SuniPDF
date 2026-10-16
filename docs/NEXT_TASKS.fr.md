@@ -227,6 +227,22 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.19.0 : placement de champs à la souris (implémenté ; validation de publication en attente)
+
+1. Réutiliser **Préparer un formulaire** et les cinq types existants. **Dessiner sur la page** masque la boîte
+   numérique ; le geste rouvre le même brouillon avec nom, choix et options modifiable/sélection multiple conservés.
+2. Garder un rectangle fini, borné à une page et d'au moins quatre points par dimension. Afficher réticule/aperçu,
+   exclure les widgets existants et annuler un placement périmé après changement de révision/onglet/outil.
+3. Modifier seulement par **Créer le champ** explicite, avec validation moteur, chiffrement et une étape Annuler.
+   Création numérique et API moteur/CLI conservées ; toujours 53 commandes, aucun nouveau type ni dépendance.
+4. Interactions sans fenêtre, paramètres conservés, gestes minuscules/hors page, cibles périmées, sauvegarde automatique
+   et régression étendue création/annulation des cinq types réussis dans le workspace. Revue indépendante, formatage et Clippy réussis.
+   Terminer les contrôles CI/paquets/mise à jour/publication avant publication. Résultats exécutés dans l'état du projet.
+
+**0.18.0 reste la Latest stable.** D110/A38 définissent le périmètre ; création XFA et édition de la géométrie/des types
+de champs existants exclues. Souris/stylet/tactile natifs et Narrateur restent distincts.
+Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
 ## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et

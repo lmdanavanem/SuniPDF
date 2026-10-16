@@ -528,6 +528,9 @@ impl SuniApp {
 
     /// Curseur à afficher au-dessus de la page selon l'outil et la position (points).
     pub fn page_cursor(&self, page: usize, pt: Option<(f32, f32)>) -> CursorIcon {
+        if self.form_builder.drawing {
+            return CursorIcon::Crosshair;
+        }
         if self.sign.placing.is_some() {
             return CursorIcon::Crosshair;
         }

@@ -85,6 +85,15 @@ At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Fini
 recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
 through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
 
+### In development: 0.19.0
+
+The implemented lot adds mouse placement to **Prepare a form** for the existing text, checkbox, radio,
+drop-down and list-box types. **Draw on page** temporarily hides the numeric dialog; drawing a rectangle
+reopens it with the name, choices and flags retained. Only **Create Field** changes the PDF, through the existing
+undoable creation path. Numeric creation remains available; no new field type, dependency or CLI command.
+Local tests, formatting and Clippy passed; CI/package/updater/publication gates remain pending. **0.18.0 remains stable Latest**. See
+[next tasks](docs/NEXT_TASKS.md) and [project status](docs/PROJECT_STATUS.md).
+
 ## Screenshots
 
 | Dark home screen | Light home screen |

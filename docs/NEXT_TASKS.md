@@ -224,6 +224,22 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.19.0: mouse placement of form fields (implemented; release validation pending)
+
+1. Reuse **Prepare a form** and its five existing types. **Draw on page** hides the numeric dialog;
+   a rectangle gesture reopens the same draft with name, choices and editable/multiple-selection flags retained.
+2. Keep the rectangle finite, clamped to one page and at least four points per dimension. Show a crosshair and
+   preview, exclude existing widget interactions and cancel stale placement after document revision/tab/tool changes.
+3. Mutate only through explicit **Create Field**, retaining existing core validation, encryption and one Undo step.
+   Numeric creation and core/CLI APIs remain available; still 53 commands and no new dependency or field type.
+4. Headless interactions, settings retention, tiny/out-of-page gestures, stale targets, autosave and the extended
+   five-type creation/undo regression passed in the workspace suite. Independent review, formatting and Clippy passed.
+   Complete CI/package/update/publication gates before publishing. Executed results belong in status.
+
+**0.18.0 remains stable Latest.** D110/A38 define the selected scope; XFA authoring and editing existing field
+geometry/types are not included. Native mouse/pen/touch and Narrator checks remain separate.
+Executed evidence belongs in `PROJECT_STATUS.md`.
+
 ## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save

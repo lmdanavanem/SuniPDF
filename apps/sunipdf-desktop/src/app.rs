@@ -433,7 +433,7 @@ impl SuniApp {
         }
         self.has_signatures = false;
         self.certificate.visible = false;
-        self.form_builder.visible = false;
+        self.form_builder.cancel();
         if self.document.take().is_some() {
             self.worker.send(Request::Close);
         }
@@ -708,6 +708,7 @@ impl SuniApp {
                     has_signatures,
                     ..
                 }) => {
+                    self.form_builder.cancel();
                     self.has_signatures = has_signatures;
                     let restored = self
                         .recovery
@@ -828,6 +829,7 @@ impl SuniApp {
                     modified,
                     has_signatures,
                 }) => {
+                    self.form_builder.cancel();
                     if self
                         .annotate
                         .adv
@@ -1093,6 +1095,26 @@ impl SuniApp {
         self.dirty || self.forms.has_unsaved_input() || self.ink_draft_active()
     }
 
+    pub(crate) fn form_builder_ready(&self) -> bool {
+        self.document.is_some()
+            && matches!(self.engine, EngineState::Ready)
+            && !self.navigation_blocked()
+            && !self.worker.has_pending_mutations()
+            && self.opening.is_none()
+            && self.tabs.suspending.is_none()
+            && self.tabs.resuming.is_none()
+            && self.pending_files.is_empty()
+            && self.pending_save.is_none()
+            && !self.ink_draft_active()
+            && !self.forms.has_unsaved_input()
+            && !self.forms.pending_clear
+            && self.forms.pending_import.is_none()
+            && self.annotate.pending_markup.is_none()
+            && self.edit.pending_copy.is_none()
+            && self.edit.text_prompt.is_none()
+            && self.sign.placing.is_none()
+    }
+
     pub(crate) fn ink_can_start(&self) -> bool {
         matches!(self.engine, EngineState::Ready)
             && self.document.is_some()
@@ -1255,6 +1277,13 @@ impl SuniApp {
     // ----- Entrées ---------------------------------------------------------
 
     fn handle_input(&mut self, ctx: &egui::Context) {
+        self.validate_form_builder();
+        if self.form_builder.drawing
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.form_builder.cancel();
+            return;
+        }
         if !self.annotate.adv.ink.is_empty() && !ctx.input(|i| i.pointer.primary_down()) {
             if let Some(page) = self
                 .annotate
@@ -1594,6 +1623,26 @@ impl SuniApp {
             self.open_file_dialog();
             return;
         }
+        if !matches!(
+            command,
+            Command::FirstPage
+                | Command::PreviousPage
+                | Command::NextPage
+                | Command::LastPage
+                | Command::ZoomIn
+                | Command::ZoomOut
+                | Command::ActualSize
+                | Command::FitWidth
+                | Command::FitPage
+                | Command::ViewContinuous
+                | Command::ViewSinglePage
+                | Command::ViewTwoPage
+                | Command::ViewBook
+                | Command::HistoryBack
+                | Command::HistoryForward
+        ) {
+            self.form_builder.cancel();
+        }
         match command {
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
@@ -1655,6 +1704,10 @@ impl SuniApp {
             | Command::ToolAddRadioField
             | Command::ToolAddComboField
             | Command::ToolAddListField => {
+                if !self.form_builder_ready() {
+                    self.status_msg = Some(self.t("reading.finish_edit").into());
+                    return;
+                }
                 if let Some(doc) = &self.document {
                     let kind = match command {
                         Command::ToolAddRadioField => sunipdf_core::FieldKind::Radio,
@@ -1665,6 +1718,11 @@ impl SuniApp {
                     };
                     self.form_builder
                         .open(doc.page, kind, doc.info.page_sizes[doc.page]);
+                    self.form_builder.bind(
+                        self.view.epoch,
+                        self.annotate.tool,
+                        self.annotate.workspace,
+                    );
                 }
             }
             Command::VerifySignatures | Command::SignWithCertificate => {
@@ -2458,6 +2516,7 @@ impl SuniApp {
         if self.ink_blocks_action() {
             return;
         }
+        self.form_builder.cancel();
         if self.saving {
             return;
         }
@@ -3166,6 +3225,129 @@ pub(crate) mod tests {
             }],
             form: sunipdf_core::FormKind::AcroForm,
         }
+    }
+
+    #[test]
+    fn form_builder_guards_open_draw_and_create_against_busy_or_unsaved_state() {
+        let ctx = egui::Context::default();
+        for blocked in 0..15 {
+            let (mut app, requests, _) = test_app();
+            app.execute(&ctx, Command::ToolAddTextField);
+            assert!(app.form_builder.visible);
+            app.form_builder.start_drawing();
+            match blocked {
+                0 => app.saving = true,
+                1 => app.opening = Some(PathBuf::from("pending.pdf")),
+                2 => app.tabs.suspending = Some(0),
+                3 => app.tabs.resuming = Some(0),
+                4 => app.worker.send(Request::Edit(EditOp::Rotate {
+                    pages: vec![0],
+                    delta_degrees: 90,
+                })),
+                5 => {
+                    app.forms
+                        .drafts
+                        .insert("Existing".into(), "unsaved input".into());
+                }
+                6 => {
+                    app.annotate.tool = crate::annotate::Tool::Ink;
+                    app.adv_click(0, (20.0, 30.0));
+                }
+                7 => app.processing.busy = true,
+                8 => app.sign.busy = true,
+                9 => app.printing.busy = true,
+                10 => app.ocr.busy = true,
+                11 => app.forms.pending_clear = true,
+                12 => app.forms.pending_import = Some(serde_json::json!({"Existing": "queued"})),
+                13 => app.pending_files.push(PathBuf::from("queued.pdf")),
+                14 => app.pending_save = Some(PathBuf::from("queued-save.pdf")),
+                _ => unreachable!(),
+            }
+            assert!(!app.form_builder_ready(), "case {blocked}");
+            app.validate_form_builder();
+            assert!(!app.form_builder.active());
+            for command in [
+                Command::ToolAddTextField,
+                Command::ToolAddCheckbox,
+                Command::ToolAddRadioField,
+                Command::ToolAddComboField,
+                Command::ToolAddListField,
+            ] {
+                app.execute(&ctx, command);
+                assert!(
+                    !app.form_builder.active(),
+                    "case {blocked}, command {command:?}"
+                );
+            }
+            let edits = requests
+                .try_iter()
+                .filter(|r| matches!(r, Request::Edit(_)))
+                .count();
+            assert_eq!(edits, usize::from(blocked == 4));
+        }
+    }
+
+    #[test]
+    fn form_builder_cannot_survive_revision_tabs_close_tool_workspace_or_escape() {
+        let ctx = egui::Context::default();
+        for change in 0..8 {
+            let (mut app, requests, _) = test_app();
+            app.execute(&ctx, Command::ToolAddComboField);
+            app.form_builder.start_drawing();
+            let size = app.document.as_ref().unwrap().info.page_sizes[0];
+            app.form_builder.start_drag(0, (30.0, 40.0), size);
+            match change {
+                0 => app.view.bump_epoch(),
+                1 => app.annotate.tool = crate::annotate::Tool::AddText,
+                2 => app.annotate.workspace = Some(crate::workspace::Workspace::Edit),
+                3 => {
+                    app.take_tab();
+                }
+                4 => app.close_document(false),
+                5 => app.save_document(false),
+                6 => app.leave_workspace(),
+                7 => {
+                    let mut output = ctx.run_ui(
+                        egui::RawInput {
+                            events: vec![egui::Event::Key {
+                                key: Key::Escape,
+                                physical_key: None,
+                                pressed: true,
+                                repeat: false,
+                                modifiers: Modifiers::NONE,
+                            }],
+                            ..Default::default()
+                        },
+                        |_| app.handle_input(&ctx),
+                    );
+                    output.textures_delta.clear();
+                }
+                _ => unreachable!(),
+            }
+            app.validate_form_builder();
+            assert!(
+                !app.form_builder.active() && app.form_builder.drag.is_none(),
+                "change {change}"
+            );
+            assert!(
+                !requests.try_iter().any(|r| matches!(r, Request::Edit(_))),
+                "cancel never edits"
+            );
+        }
+        let (mut app, requests, _) = test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes.push(size);
+        app.execute(&ctx, Command::ToolAddListField);
+        app.form_builder.start_drawing();
+        app.execute(&ctx, Command::ZoomIn);
+        app.execute(&ctx, Command::NextPage);
+        app.execute(&ctx, Command::ViewSinglePage);
+        app.validate_form_builder();
+        assert!(
+            app.form_builder.drawing,
+            "zoom and page navigation keep the draft"
+        );
+        assert!(!requests.try_iter().any(|r| matches!(r, Request::Edit(_))));
     }
 
     #[test]

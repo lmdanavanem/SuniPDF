@@ -1,11 +1,32 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.18.0 publiée)
+# État du projet — mis à jour le 2026-10-16 (0.19.0 en développement ; 0.18.0 Latest)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (publiée en Latest)
+## 0.19.0 : placement à la souris des champs existants (en développement)
+
+Le lot retenu ajoute **Dessiner sur la page** à **Préparer un formulaire** pour texte, case, radio, liste déroulante
+et zone de liste. La boîte numérique se masque pendant le tracé, puis se rouvre avec nom, choix et options conservés.
+Le tracé seul ne modifie pas le PDF ; **Créer le champ** explicite réutilise validation/protection et une étape Annuler.
+Rectangles finis bornés à la page initiale, minimum quatre points PDF par dimension. Glissement inverse accepté ;
+gestes minuscules : mode dessin conservé pour réessayer. Échap annule sans écriture. Révision du document,
+changement d'onglet/outil/espace de travail : placement périmé annulé ; zoom/navigation possibles, avec repli au
+relâchement si la page initiale est masquée. Réticule/aperçu et exclusion des widgets accompagnent le tracé (D110/A38).
+
+Implémentation et revue indépendante réussies. Workspace local : 460 réussis, zéro échec, sept ignorés par défaut ;
+909 clés EN/FR correspondantes. Huit nouveaux tests UI/sauvegarde automatique et régression worker native des cinq types réussis.
+Le contrôle qpdf local a réussi 75 vérifications ; autotest du metteur à jour réussi pour chemins/empreintes/rollback.
+Quatre documents NIST/NBS licenciés (744 pages) ont réussi le contrôle local du corpus réel en 76,762 s, avec
+un pic mémoire enfant échantillonné de 331 276 288 octets ; tous les fichiers source sont restés inchangés.
+Formatage (`cargo fmt --all -- --check`) et Clippy toutes cibles avec `-D warnings` réussis.
+CI, paquets, mise à jour de production et publication en attente.
+API moteur/CLI et 53 commandes inchangés ; aucune dépendance ni type ajouté. Souris/stylet/tactile natifs,
+Narrateur, impression, matériel ARM64 et lecteurs tiers restent distincts. **0.18.0 reste la Latest stable** ;
+les preuves complètes ci-dessous concernent cette source publiée, pas la source 0.19.0 en développement.
+
+## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (base publiée ; toujours Latest)
 
 L'application regroupe plusieurs traits à main levée sur une page dans une seule annotation Ink, via
 l'édition moteur/worker existante. Le brouillon dispose de Terminer/Annuler, d'un seul Annuler, de bornes

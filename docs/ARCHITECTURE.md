@@ -246,6 +246,23 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.19.0 form rectangle drawing (in development)
+
+Desktop `form_builder.rs`, the page interaction in `view.rs` and document/tool lifecycle guards in
+`app.rs` reuse the current numeric `FormFieldDraft`, display-space geometry and worker creation operation (D110).
+**Draw on page** hides the dialog while retaining its name, kind, choices and flags. A finite rectangle is
+clamped to one page and must remain at least four PDF points wide/high; a valid release reopens the same dialog.
+Only explicit **Create Field** calls the existing undoable field writer. Existing form-widget overlays are disabled
+during the draw gesture; crosshair/preview provide feedback. Document revision/tab/tool changes cancel stale
+placement rather than apply it to another document; workspace changes also invalidate it. Reverse dragging
+and outside-page release clamp to the original page. Tiny gestures remain active for retry; Escape discards
+the builder without writing. Zoom/navigation retain the gesture, with global primary-release finalization
+when Single-page navigation hides its original page. Core/CLI APIs and 53 commands remain unchanged.
+
+Implementation, local tests, formatting and Clippy passed; CI/package/updater/publication gates remain pending.
+0.18.0 remains stable Latest.
+Native mouse/pen/touch and Narrator checks remain separate. Executed evidence belongs in `PROJECT_STATUS.md`.
+
 ## Coordinates (SUNI-031c)
 
 Every coordinate crossing the engine ↔ interface/CLI boundary is in **display space**: points,

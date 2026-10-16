@@ -55,6 +55,7 @@ pub struct TabsState {
 impl SuniApp {
     /// Retire l'état d'interface du document actif (prêt à être stocké dans un onglet).
     pub fn take_tab(&mut self) -> TabState {
+        self.form_builder.cancel();
         let bookmarks_open = self.docinfo.bookmarks_open;
         let comments_open = self.annotate.comments_open;
         let forms_open = self.forms.panel_open;
@@ -102,6 +103,7 @@ impl SuniApp {
     }
 
     pub fn put_tab(&mut self, t: TabState) {
+        self.form_builder.cancel();
         self.edit.reset_for_tab();
         let bookmarks_open = self.docinfo.bookmarks_open;
         let comments_open = self.annotate.comments_open;

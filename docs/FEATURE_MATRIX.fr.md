@@ -2,6 +2,10 @@
 
 [English](FEATURE_MATRIX.md)
 
+**0.19.0 en développement :** placement à la souris des types de champ existants, relecture numérique et
+Créer explicite (D110/A38). Implémentation, tests locaux, formatage et Clippy réussis ; contrôles de publication en attente.
+**0.18.0 reste la Latest stable**.
+
 Colonne « Attendu » : capacité attendue d'un éditeur PDF complet (**Déclaré** = courante dans les éditeurs du marché,
 **Partiel** = annoncé comme incomplet par le projet, **Absent** = annoncé manquant. Non vérifié par exécution.
 
@@ -190,6 +194,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 |---|---|---|
 | Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
 | Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes livrés en 0.10.0 ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
+| Tracer les rectangles de nouveaux champs sur la page | Non documenté | **Implémenté pour 0.19.0 ; non publié** (D110) : mêmes cinq types et boîte numérique, nom/choix/options conservés, rectangle fini sur une page d'au moins 4 pt par dimension, Créer explicite/un Annuler, gardes de document/onglet/outil périmés. Tests locaux, formatage et Clippy réussis ; contrôles de publication en attente. Aucun nouveau type ni API moteur/CLI |
 | Import/export FDF/XFDF | Déclaré | **Fait en 0.10.0** : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
 | Récupération après erreur de lecture des champs | Non documenté | **Livrée en 0.11.0** : erreur/relance explicites préservent brouillons et actions en attente ; tests locaux réussis |
 | Texte libre des listes déroulantes déjà modifiables | Non documenté | **Livré en 0.11.0** : texte libre/choix dans le panneau et sur la page, Appliquer/Abandonner/Enregistrer et annulation ; contrôles locaux, CI, paquets et mises à niveau réussis |

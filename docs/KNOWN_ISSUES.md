@@ -231,7 +231,13 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      values can be exported and imported, including literal `Off` or empty strings. Filling another field preserves
      raw `/V` and `/AS`; PDFium may regenerate a missing appearance and remove inferred read-only status once valid.
      No-`/Opt` radios retain state-name values. Local, CI, package/public and upgrade checks passed. Existing fields' editable flags cannot
-     be changed; mouse-drawn creation is unavailable. Rich text becomes plain text; password fields never stored/exported.
+     be changed. Mouse-drawn creation is implemented for 0.19.0 (D110), unpublished: reuse the five existing types
+     and numeric dialog, retain settings, clamp finite rectangles to one page (minimum 4 pt per dimension), then
+     require explicit Create Field/one Undo. Document revision/tab/tool changes cancel stale placement; drawing does
+     not edit existing fields. If Single-page navigation hides the original page during a drag, release uses the
+     last known rectangle and reopens the numeric dialog; no field is created without explicit Create Field.
+     Local tests, formatting and Clippy passed; CI/package/updater/publication gates remain pending. 0.18.0 remains stable Latest.
+     Rich text becomes plain text; password fields never stored/exported.
      Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
      field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
      third-party-reader interoperability remain unverified. Current executed evidence belongs in `PROJECT_STATUS.md`.

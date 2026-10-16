@@ -1,11 +1,32 @@
-# Project status - updated 2026-10-16 (version 0.18.0 published)
+# Project status - updated 2026-10-16 (0.19.0 in development; 0.18.0 Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.18.0: grouped freehand drawings and readable CLI templates (published as Latest)
+## 0.19.0: mouse placement of existing form fields (in development)
+
+The selected lot adds **Draw on page** to **Prepare a form** for text, checkbox, radio, drop-down and list-box
+fields. The numeric dialog hides while drawing, then reopens with name, choices and flags retained. Drawing
+alone does not change the PDF; explicit **Create Field** uses the current validation/protection and one Undo.
+Finite rectangles are clamped to the original page, at least four PDF points per dimension. Reverse dragging
+is allowed; tiny gestures stay in drawing mode for retry. Escape cancels without writing. Document revisions,
+tab/tool/workspace changes cancel stale placement; zoom/navigation remain available, with a release fallback
+when the original page is hidden. Crosshair/preview and excluded widget overlays support placement (D110/A38).
+
+Implementation and independent review passed. Local workspace: 460 passed, zero failed, seven default ignored;
+909 matching EN/FR keys. Eight new UI/autosave tests and the extended five-type native-worker regression passed.
+The local qpdf gate passed 75 checks; the update-helper self-test passed path/checksum/rollback checks.
+Four licensed NIST/NBS documents (744 pages) passed the local real-corpus gate in 76.762 seconds, with sampled
+peak child memory of 331,276,288 bytes; all source files stayed unchanged.
+Formatting (`cargo fmt --all -- --check`) and all-target Clippy with `-D warnings` passed.
+CI, packages, live updater and publication remain pending.
+Core/CLI APIs and 53 commands remain unchanged; no dependency or field type is added. Native mouse/pen/touch,
+Narrator, printing, ARM64 hardware and third-party readers remain separate checks. **0.18.0 remains stable Latest**;
+the completed evidence below describes that published source, not the developing 0.19.0 source.
+
+## 0.18.0: grouped freehand drawings and readable CLI templates (published baseline; still Latest)
 
 The desktop groups multiple freehand strokes on one page into one Ink annotation through the existing
 core/worker edit. The desktop draft has explicit Finish/Cancel, one undo, bounded strokes/points and guards

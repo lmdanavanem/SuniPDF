@@ -513,7 +513,18 @@ Ouvrez **Préparer un formulaire**, puis choisissez texte, case à cocher, group
 Nom unique sans point/contrôle ; rectangle en points PDF affichés, dans la page et de 4 points minimum par dimension.
 Pour les choix, une ligne `valeur exportée | libellé affiché` par option, valeurs uniques. La zone de liste peut autoriser
 plusieurs sélections. Le rectangle radio contient les boutons verticaux ; libellés dans le panneau, pas comme texte ajouté
-à la page PDF. Création annulable, chiffrement conservé. Dessin de champs à la souris et création XFA non pris en charge.
+à la page PDF. Création annulable, chiffrement conservé. Création XFA non prise en charge.
+
+**Implémenté pour 0.19.0 (non publié) :** **Dessiner sur la page** masque cette boîte ; tracer un rectangle
+sur une page la rouvre en conservant nom, choix et options. Relisez le rectangle numérique, puis choisissez
+**Créer le champ** ; le tracé seul ne crée aucun champ. Le rectangle reste dans une page et mesure au moins
+4 points PDF par dimension. Glissement inverse accepté ; clic simple ou rectangle minuscule : mode dessin
+conservé pour réessayer. Relâcher hors page borne le rectangle à la page initiale. **Échap** annule la boîte sans écriture.
+Révision du document/changement d'onglet/outil/espace de travail : placement périmé annulé ; zoom/navigation restent
+possibles, avec finalisation au relâchement si un saut en page unique masque l'origine. Dans ce cas, le dernier rectangle
+connu revient dans la boîte numérique pour relecture ; seul **Créer le champ** le crée. Création numérique conservée.
+Tests locaux, formatage et Clippy réussis ; contrôles de publication en attente. 0.18.0 reste la Latest stable. Aucun nouveau type ni éditeur de champs
+existants. Souris/stylet/tactile natifs et Narrateur restent distincts.
 
 **0.12.0 :** pour une liste déroulante, cochez **Autoriser du texte libre en plus des options proposées**
 pour accepter les choix et des valeurs saisies. Gardez au moins un choix prédéfini avec une valeur d'export unique

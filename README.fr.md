@@ -88,6 +88,15 @@ jusqu'à Terminer, absent de la récupération après plantage. Aucune validatio
 L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
 Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
 
+### En développement : 0.19.0
+
+Le lot implémenté ajoute le placement à la souris dans **Préparer un formulaire** pour les types existants : texte,
+case, radio, liste déroulante et zone de liste. **Dessiner sur la page** masque temporairement la boîte numérique ;
+tracer un rectangle la rouvre en conservant nom, choix et options. Seul **Créer le champ** modifie le PDF par le parcours
+existant avec annulation. La création numérique reste disponible ; aucun nouveau type, dépendance ou commande CLI.
+Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication en attente. **0.18.0 reste la Latest stable**. Voir les
+[prochaines tâches](docs/NEXT_TASKS.fr.md) et l'[état du projet](docs/PROJECT_STATUS.fr.md).
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

@@ -507,6 +507,7 @@ impl SuniApp {
         if self.ink_blocks_action() {
             return;
         }
+        self.form_builder.cancel();
         switch(
             &mut self.annotate,
             &mut self.organize,
@@ -533,6 +534,7 @@ impl SuniApp {
         if self.ink_blocks_action() {
             return;
         }
+        self.form_builder.cancel();
         switch(&mut self.annotate, &mut self.organize, &mut self.edit, None);
     }
 

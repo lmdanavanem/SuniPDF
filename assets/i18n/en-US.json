@@ -852,6 +852,8 @@
   "form_builder.right": "Right",
   "form_builder.top": "Top",
   "form_builder.create": "Create Field",
+  "form_builder.draw": "Draw on page",
+  "form_builder.draw_hint": "Drag a field rectangle on one page, then review its settings and click Create Field. Minimum size: 4 pt. Escape cancels.",
   "certificate.sign_title": "Sign with a Certificate",
   "certificate.verify_title": "Verify Digital Signatures",
   "certificate.trust_unknown": "A valid signature does not establish that its certificate is trusted.",

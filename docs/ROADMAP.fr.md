@@ -183,6 +183,19 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.19.0 : placement à la souris des types de formulaire existants (implémenté ; non publié)
+
+Ajouter **Dessiner sur la page** au builder numérique, en conservant texte/case/radio/listes déroulantes/zones
+de liste, noms, choix et options. Tracer un rectangle fini borné à une page, d'au moins 4 pt par dimension,
+puis relire la boîte numérique rouverte et **Créer le champ** explicitement. Le tracé seul ne modifie pas le PDF ;
+l'édition worker existante fournit une étape Annuler, validation et chiffrement (D110/A38).
+
+Réticule/aperçu, exclusion des widgets et gardes de document/onglet/outil périmés inclus. Création numérique,
+API moteur/CLI et 53 commandes inchangés ; aucune dépendance ni type ajouté. Implémentation et tests locaux
+réussis, avec formatage/Clippy ; contrôles CI/paquets/mise à jour/publication en attente. **0.18.0 reste la Latest stable**.
+Preuves réelles dans `PROJECT_STATUS.fr.md`.
+Édition de la géométrie existante, création XFA et contrôles matériels natifs restent distincts.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -245,7 +258,7 @@ benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteur
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-## Suite au-delà du lot 0.18.0 retenu
+## Suite au-delà du lot 0.19.0 retenu
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

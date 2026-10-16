@@ -5,6 +5,17 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.19.0] — En développement
+
+- Ajouté : tracer sur la page un rectangle pour les cinq types de champ existants, puis le relire dans
+  la boîte numérique existante avant **Créer le champ** explicite. Conserver nom, choix, options modifiable/sélection multiple,
+  validation moteur, chiffrement et une étape Annuler ; le tracé seul ne doit pas modifier le PDF (D110).
+- Gardes ajoutées : géométrie finie dans la page et minimum de quatre points, annulation si document/onglet/outil périmé,
+  réticule/aperçu et aucune interaction avec les widgets existants pendant le tracé.
+- Aucun nouveau type, dépendance ou commande CLI. Implémentation, tests locaux, formatage et Clippy réussis ;
+  contrôles CI/paquets/mise à jour/publication en attente ;
+  **0.18.0 reste la Latest stable**. Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
+
 ## [0.18.0] — 2026-10-16
 
 [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,

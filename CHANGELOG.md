@@ -5,6 +5,17 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.19.0] - In development
+
+- Added: draw a rectangle on the page for the five existing form-field types, then review it in the
+  existing numeric dialog before explicit **Create Field**. Preserve name, choices, editable/multiple-selection flags,
+  core validation, encryption and one Undo step; drawing alone must not mutate the PDF (D110).
+- Added guards: finite in-page geometry with a four-point minimum, stale document/tab/tool cancellation,
+  crosshair/preview and no interaction with existing form widgets during drawing.
+- No new field type, dependency or CLI command. Implementation, local tests, formatting and Clippy passed;
+  CI/package/updater/publication gates remain pending;
+  **0.18.0 remains stable Latest**. Executed evidence belongs in `docs/PROJECT_STATUS.md`.
+
 ## [0.18.0] - 2026-10-16
 
 [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,

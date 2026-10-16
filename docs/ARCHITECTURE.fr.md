@@ -250,6 +250,23 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.19.0 : tracé des rectangles de formulaire (en développement)
+
+`form_builder.rs` du bureau, les interactions de page de `view.rs` et les gardes de document/outil
+d'`app.rs` réutilisent le `FormFieldDraft` numérique, la géométrie affichée et l'opération worker existants (D110).
+**Dessiner sur la page** masque la boîte en conservant nom, type, choix et options. Le rectangle fini est
+borné à une page et doit mesurer au moins quatre points PDF par dimension ; un relâchement valide rouvre la même boîte.
+Seul **Créer le champ** explicite appelle l'écriture existante avec annulation. Les widgets de formulaire sont désactivés
+pendant le geste ; réticule/aperçu donnent le retour visuel. Changement de révision/onglet/outil : placement périmé
+annulé pour éviter une autre cible ; changer d'espace de travail invalide aussi le tracé. Glissement inverse
+et relâchement hors page bornés à la page initiale. Gestes minuscules conservés pour réessayer ; Échap abandonne
+la boîte sans écriture. Zoom/navigation conservent le geste, avec finalisation globale au relâchement primaire
+si la navigation en page unique masque l'origine. API moteur/CLI et 53 commandes inchangées.
+
+Implémentation, tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication en attente.
+0.18.0 reste la Latest stable.
+Souris/stylet/tactile natifs et Narrateur restent distincts. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
 ## Coordonnées (SUNI-031c)
 
 Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,

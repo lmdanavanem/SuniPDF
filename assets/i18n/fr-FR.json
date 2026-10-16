@@ -852,6 +852,8 @@
   "form_builder.right": "Droite",
   "form_builder.top": "Haut",
   "form_builder.create": "Créer le champ",
+  "form_builder.draw": "Dessiner sur la page",
+  "form_builder.draw_hint": "Tracez le rectangle du champ sur une page, vérifiez ses paramètres, puis cliquez sur Créer le champ. Taille minimale : 4 pt. Échap annule.",
   "certificate.sign_title": "Signer avec un certificat",
   "certificate.verify_title": "Vérifier les signatures numériques",
   "certificate.trust_unknown": "Une signature valide ne garantit pas que son certificat est digne de confiance.",

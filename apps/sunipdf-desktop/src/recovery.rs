@@ -348,6 +348,42 @@ impl crate::app::SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn due_autosave_waits_for_numeric_or_drawn_field_draft_without_consuming_deadline() {
+        for drawing in [false, true] {
+            let dir = tempfile::tempdir().unwrap();
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.autosave = true;
+            app.dirty = true;
+            app.recovery.session = Some(Session::create(dir.path().join("recovery")).unwrap());
+            app.recovery.last = Instant::now() - Duration::from_secs(61);
+            let deadline = app.recovery.last;
+            app.execute(
+                &egui::Context::default(),
+                sunipdf_core::Command::ToolAddTextField,
+            );
+            if drawing {
+                app.form_builder.start_drawing();
+                app.form_builder.start_drag(
+                    0,
+                    (20.0, 30.0),
+                    app.document.as_ref().unwrap().info.page_sizes[0],
+                );
+            }
+            app.autosave_tick();
+            assert!(app.form_builder.active() && !app.recovery.pending);
+            assert_eq!(app.recovery.last, deadline);
+            assert!(requests.try_recv().is_err());
+            app.form_builder.cancel();
+            app.autosave_tick();
+            assert!(app.recovery.pending);
+            assert!(matches!(
+                requests.recv().unwrap(),
+                crate::worker::Request::Autosave
+            ));
+        }
+    }
     #[test]
     fn snapshots_preserve_original_and_corrupt_metadata_is_recoverable() {
         let dir = tempfile::tempdir().unwrap();

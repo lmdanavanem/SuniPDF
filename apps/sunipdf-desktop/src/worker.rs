@@ -2103,6 +2103,7 @@ mod tests {
         grouped_ink_has_one_undo_redo_and_failed_edits_keep_history(&worker);
         dashed_annotation_styles_survive_edits_and_history(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
+        drawn_form_rectangles_keep_history_and_saved_fields(&worker);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
@@ -2542,6 +2543,154 @@ mod tests {
             })
         ));
         assert_eq!(objects(), placed, "one redo must restore both images");
+    }
+
+    fn drawn_form_rectangles_keep_history_and_saved_fields(worker: &Worker) {
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let source_bytes = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        let size = match next_response(worker) {
+            Response::Opened(state) => state.info.page_sizes[0],
+            _ => panic!("fresh form document"),
+        };
+        let model = || {
+            worker.send(Request::FormInfo);
+            match next_response(worker) {
+                Response::FormInfo(Ok(info)) => info,
+                _ => panic!("form model"),
+            }
+        };
+        let kinds = [
+            FieldKind::Text,
+            FieldKind::Checkbox,
+            FieldKind::Radio,
+            FieldKind::Combo,
+            FieldKind::List,
+        ];
+        for (index, kind) in kinds.into_iter().enumerate() {
+            let mut builder = crate::form_builder::FormBuilderState::default();
+            builder.open(0, kind, size);
+            builder.start_drawing();
+            builder.start_drag(0, (200.0, 180.0), size);
+            builder.move_drag(0, (40.0, 60.0));
+            let rect = builder.drag.unwrap().rect();
+            builder.finish_drag();
+            assert!(builder.visible && !builder.drawing);
+            let choice = matches!(kind, FieldKind::Radio | FieldKind::Combo | FieldKind::List);
+            worker.send(Request::Edit(EditOp::AddFormField {
+                page: 0,
+                name: format!("Drawn{index}"),
+                kind,
+                rect,
+                options: if choice {
+                    vec![
+                        FieldOption {
+                            value: "FR".into(),
+                            label: "France".into(),
+                        },
+                        FieldOption {
+                            value: "BE".into(),
+                            label: "Belgique".into(),
+                        },
+                    ]
+                } else {
+                    Vec::new()
+                },
+                multi_select: kind == FieldKind::List,
+                editable: kind == FieldKind::Combo,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(DocState {
+                    pages_unchanged: true,
+                    modified: true,
+                    can_undo: true,
+                    ..
+                })
+            ));
+            let created = model();
+            let field = created.field(&format!("Drawn{index}")).unwrap();
+            assert_eq!(field.kind, kind);
+            assert_eq!(field.editable, kind == FieldKind::Combo);
+            assert_eq!(field.multi_select, kind == FieldKind::List);
+            assert_eq!(
+                field.widgets.len(),
+                if kind == FieldKind::Radio { 2 } else { 1 }
+            );
+            for widget in &field.widgets {
+                assert_eq!(widget.page, 0);
+                assert!(widget.display.left >= rect.left && widget.display.right <= rect.right);
+                assert!(widget.display.bottom >= rect.bottom && widget.display.top <= rect.top);
+            }
+            worker.send(Request::Undo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert!(model().field(&format!("Drawn{index}")).is_none());
+            worker.send(Request::Redo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert_eq!(model(), created);
+        }
+        let before = model();
+        worker.send(Request::Edit(EditOp::AddFormField {
+            page: 0,
+            name: "Drawn0".into(),
+            kind: FieldKind::Text,
+            rect: PointRect {
+                left: 40.0,
+                bottom: 60.0,
+                right: 200.0,
+                top: 180.0,
+            },
+            options: Vec::new(),
+            multi_select: false,
+            editable: false,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(model(), before);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(
+            model().field("Drawn4").is_none(),
+            "a failed creation must not add history"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let temp = tempfile::tempdir().unwrap();
+        let output = temp.path().join("drawn-fields.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(model(), before);
+        assert_eq!(std::fs::read(&source).unwrap(), source_bytes);
+        worker.send(Request::Open {
+            path: source,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
     }
 
     fn editable_combo_creation_and_filling_undo_redo(worker: &Worker) {

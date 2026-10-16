@@ -230,7 +230,14 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      en lecture seule se réimportent inchangées, y compris `Off` littéral ou chaîne vide. Remplir un autre champ
      préserve `/V` et `/AS` bruts ; PDFium peut régénérer une apparence manquante et retirer la lecture seule déduite
      une fois le champ valide. Sans `/Opt`, noms d'état conservés. Contrôles locaux, CI, paquets/publics et mises à niveau réussis. Modification du drapeau d'un champ existant
-     et dessin souris indisponibles. Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
+     indisponible. Création souris implémentée pour 0.19.0 (D110), non publiée : cinq types et boîte numérique
+     existants, paramètres conservés, rectangle fini borné à une page (minimum 4 pt par dimension), puis
+     Créer le champ explicite/un Annuler. Changement de révision/onglet/outil : placement périmé annulé ; aucune
+     édition de champ existant par le tracé. Si la navigation en page unique masque la page initiale pendant le geste,
+     le relâchement conserve le dernier rectangle connu et rouvre la boîte numérique ; aucun champ créé sans
+     Créer le champ explicite. Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication en attente.
+     0.18.0 reste la Latest stable.
+     Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
      Aplatissement partiel : champs orphelins possibles ; annotations sans
      apparence autres que Link parfois perdues. Apparences Unicode susceptibles d’utiliser une police système non
      embarquée, donc rendu variable ailleurs. Narrateur et lecteurs tiers non vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.

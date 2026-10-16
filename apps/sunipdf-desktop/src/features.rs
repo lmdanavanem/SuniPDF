@@ -4,6 +4,19 @@ use crate::worker::{EditOp, Request};
 use sunipdf_i18n::{tr, tr_args};
 
 impl SuniApp {
+    pub(crate) fn validate_form_builder(&mut self) {
+        if self.form_builder.active()
+            && (!self.form_builder_ready()
+                || !self.form_builder.matches_context(
+                    self.view.epoch,
+                    self.annotate.tool,
+                    self.annotate.workspace,
+                ))
+        {
+            self.form_builder.cancel();
+        }
+    }
+
     pub(crate) fn start_print(&mut self) {
         if !self.commit_form_input() {
             return;
@@ -56,7 +69,13 @@ impl SuniApp {
                 }
             }
         }
-        if let Some(field) = self.form_builder.show(ctx, lang, dark, icons) {
+        self.validate_form_builder();
+        let was_drawing = self.form_builder.drawing;
+        if let Some(field) = self
+            .form_builder
+            .show(ctx, lang, dark, icons)
+            .filter(|_| self.form_builder_ready())
+        {
             self.worker.send(Request::Edit(EditOp::AddFormField {
                 page: field.page,
                 name: field.name,
@@ -67,6 +86,16 @@ impl SuniApp {
                 editable: field.editable,
             }));
             self.forms.panel_open = true;
+        }
+        if !was_drawing && self.form_builder.drawing {
+            self.annotate.drag = None;
+            self.annotate.clear_reading();
+            self.annotate.adv.selected = None;
+            self.annotate.adv.drag = None;
+            self.edit.selection = None;
+            self.forms.editing = None;
+            self.forms.popup = None;
+            self.status_msg = Some(tr(lang, "form_builder.draw_hint").into());
         }
         if let Some(action) = self.certificate.show(ctx, lang, dark, icons) {
             if self.has_unsaved_changes() || self.worker.has_pending_mutations() {
@@ -106,6 +135,7 @@ impl SuniApp {
         }
         if !self.settings.autosave
             || !self.has_unsaved_changes()
+            || self.form_builder.active()
             || self.printing.busy
             || self.ocr.busy
             || self.certificate.busy
