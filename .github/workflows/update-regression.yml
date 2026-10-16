@@ -1,0 +1,44 @@
+name: update-regression
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned public 0.9.0 target without building
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'sunipdf-update-target'
+          [IO.Directory]::CreateDirectory($directory) | Out-Null
+          $name = 'SuniPDF-0.9.0-win-x64-portable.zip'
+          $package = Join-Path $directory $name
+          $expected = 'E935A02D5DC98AB2AFC67C3CAC856AB10ACA6D4A090212CE084AA87A9398A9A2'
+          $base = 'https://github.com/lmdanavanem/SuniPDF/releases/download/v0.9.0/'
+          Invoke-WebRequest -Uri ($base + $name) -OutFile $package -TimeoutSec 300
+          Invoke-WebRequest -Uri ($base + $name + '.sha256') -OutFile ($package + '.sha256') -TimeoutSec 60
+          if ((Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash -ine $expected) { throw 'Public 0.9.0 target digest mismatch.' }
+          $sidecar = [IO.File]::ReadAllText($package + '.sha256').Trim() -split '\s+', 2
+          if ($sidecar[0] -ine $expected -or $sidecar[1] -ne $name) { throw 'Public 0.9.0 target sidecar mismatch.' }
+          "SUNIPDF_TEST_PACKAGE=$package" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Real portable regression with startup diagnostics
+        shell: pwsh
+        run: .\scripts\test-portable-update.ps1 -Package $env:SUNIPDF_TEST_PACKAGE
+      - name: Portable update diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-regression-${{ matrix.os }}
+          path: |
+            target/portable-update-*.json
+            target/portable-update-diagnostics-*/**/*
+          if-no-files-found: ignore

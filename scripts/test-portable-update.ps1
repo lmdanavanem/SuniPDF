@@ -96,10 +96,21 @@ function StopOwned($Process, [string]$Executable) {
 }
 function StartApp([string]$Target) {
     $exe = Join-Path $Target 'sunipdf.exe'
-    $process = Start-Process -FilePath $exe -WorkingDirectory $Target -WindowStyle Hidden -PassThru
+    $logs = Split-Path -Parent $Target
+    $stdout = Join-Path $logs 'application.stdout.log'
+    $stderr = Join-Path $logs 'application.stderr.log'
+    $process = Start-Process -FilePath $exe -WorkingDirectory $Target -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $process.Handle | Out-Null
     Start-Sleep -Milliseconds 1000
     $process.Refresh()
-    Assert (-not $process.HasExited) 'The isolated released application did not stay running.'
+    if ($process.HasExited) {
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
+        $output = [IO.File]::ReadAllText($stdout)
+        $errorOutput = [IO.File]::ReadAllText($stderr)
+        $process.Dispose()
+        throw "The isolated released application did not stay running: $exe; exit=$exitCode (0x$('{0:X8}' -f $exitCode)); stdout=$output; stderr=$errorOutput"
+    }
     return $process
 }
 function PrepareHelper([string]$Case, $TargetPackage) {
@@ -159,6 +170,8 @@ foreach ($name in @('APPDATA', 'LOCALAPPDATA', 'SUNIPDF_RECOVERY_DIR')) { $origi
 $results = [Collections.Generic.List[object]]::new()
 $owned = [Collections.Generic.List[object]]::new()
 $passed = $false
+$failure = $null
+$diagnostics = Join-Path $repo "target/portable-update-diagnostics-$($incoming.version)"
 try {
     if ($FromPackage.Count -eq 0) { $FromPackage = @(PreviousPackages $workspace) }
     $oldPackages = @($FromPackage | ForEach-Object { PackageInfo $_ })
@@ -252,6 +265,9 @@ try {
         }
     }
     $passed = $true
+} catch {
+    $failure = $_.Exception.Message
+    throw
 } finally {
     foreach ($process in Get-Process -Name sunipdf -ErrorAction SilentlyContinue) {
         try {
@@ -264,8 +280,15 @@ try {
         finally { $item.process.Dispose() }
     }
     foreach ($name in $originalEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name,$originalEnvironment[$name],'Process') }
+    if (-not $passed) {
+        foreach ($file in Get-ChildItem -LiteralPath $workspace -Recurse -File | Where-Object { $_.Extension -eq '.log' -or $_.Name -eq 'result.json' }) {
+            $destination = ChildPath (Join-Path $diagnostics $file.FullName.Substring($workspace.Length + 1)) $diagnostics
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $destination)) | Out-Null
+            Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
+        }
+    }
     [IO.Directory]::CreateDirectory((Split-Path -Parent ([IO.Path]::GetFullPath($ReportPath)))) | Out-Null
-    @{success=$passed; package=$incoming.version; cases=$results.ToArray(); isolated_profile=$true; installed_app_untouched=$true; test_workspace=$workspace} |
+    @{success=$passed; error=$failure; package=$incoming.version; cases=$results.ToArray(); isolated_profile=$true; installed_app_untouched=$true; test_workspace=$workspace; diagnostics=$diagnostics} |
         ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
     if ($passed) { $checked=ChildPath $workspace ([IO.Path]::GetTempPath()); Remove-Item -LiteralPath $checked -Recurse -Force }
 }
