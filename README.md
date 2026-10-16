@@ -45,13 +45,19 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**[0.17.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)** under `lmdanavanem`.
-445 workspace tests, formatting/Clippy, 896 EN/FR keys, 74 qpdf checks and four licensed NIST/NBS documents
-(744 pages; 48.187 seconds locally) passed, alongside final Windows CI, ARM64 compilation, fifteen portable
-scenarios and nine MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks
-passed; verified copies are in `dist/`. The production updater verified the 19,825,743-byte Latest x64 ZIP
-without installation.
-[Project status](docs/PROJECT_STATUS.md) records source, release evidence and hardware/interoperability limits.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 Available since **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
 `set-link-target`, preserving its area, appearance and comments. Choose a safe web/mail address or a physical
@@ -63,26 +69,21 @@ Available since **0.16.0**: dashed borders for rectangle, ellipse, line and arro
 geometry edits; only explicitly toggling the checkbox changes the pattern. Invalid styles are refused rather
 than silently replaced. See [Project status](docs/PROJECT_STATUS.md) for validation and remaining limits.
 
-New in **0.17.0**: embed JPEGs with all eight EXIF orientations without recompression, including
+Available since **0.17.0**: embed JPEGs with all eight EXIF orientations without recompression, including
 the previously decoded orientations 5 and 7. Images → PDF also checks a cumulative **512 MiB estimated raster
 budget** before decoding non-JPEG inputs. This estimates decoded image data, not total process memory.
 UI/CLI entry points and 53 commands are unchanged. Independent debug and staged/public conversion checks passed:
 exact JPEG streams, oriented renders, PNG transparency, budget refusals before raster decoding and unchanged inputs.
 See [Project status](docs/PROJECT_STATUS.md) for executed evidence and remaining limits.
 
-### 0.18.0 in development
+### New in 0.18.0
 
-The next lot groups freehand strokes on one page into one annotation and one Undo step, with explicit
-**Finish drawing** / **Cancel drawing** controls. Drafts stay available after a worker error; finish or cancel
-before operations that would save, replace or leave the draft. The existing ink writer, point simplification and bounds
-are reused (D109). The CLI help for `stamp` and `page-numbers` also shows literal `{n}` / `{total}` variables.
-Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
-EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests cover grouped drawing,
-failure retry and action guards; the existing worker test covers grouped Undo/Redo and failed-edit history.
-The new CLI help regression passed. CI, packages/upgrades and publication
-are pending; **0.17.0 remains Latest**. No new dependency or CLI command; 53 commands remain.
-Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
-memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
+**Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
+wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
+At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
+recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
+through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
 
 ## Screenshots
 

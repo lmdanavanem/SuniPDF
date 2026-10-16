@@ -1,11 +1,11 @@
-# Project status - updated 2026-10-16 (version 0.18.0 in development)
+# Project status - updated 2026-10-16 (version 0.18.0 published)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.18.0: grouped freehand drawings and readable CLI templates (in development)
+## 0.18.0: grouped freehand drawings and readable CLI templates (published as Latest)
 
 The desktop groups multiple freehand strokes on one page into one Ink annotation through the existing
 core/worker edit. The desktop draft has explicit Finish/Cancel, one undo, bounded strokes/points and guards
@@ -15,30 +15,45 @@ Up to 64 strokes and 4,000 points per stroke are retained, with visible limit me
 opacity apply to the entire draft. Navigation, zoom and view modes retain its original-page binding;
 global pointer-release finalization prevents a stroke becoming stuck after a Single-page jump. Deferred
 form changes and recovery markers must complete before drawing can begin. The draft exists only in memory
-until Finish: it is not included in crash recovery. Implementation/local validation passed; publication is pending.
+until Finish: it is not included in crash recovery. Implementation/local validation passed.
 
-Executed locally: the CLI help test passed for both `stamp` and `page-numbers`, short and long help,
-preserving literal `{n}`/`{total}` and the default template. All 75 independent qpdf checks passed, including
-one grouped Ink output with two polylines and a dot; readback confirms exactly one annotation and three
-`InkList` entries. The CLI still has 53 commands; no new dependency is added.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-Local validation passed: 452 workspace tests, zero failures, seven default ignored; formatting, Clippy
-all-targets with warnings denied, 907 matching EN/FR keys and the update-helper self-test. Six new headless
-desktop tests cover actual accessible EN/FR Finish/Cancel clicks, draft failure/retry/duplicate submission,
-page/bounds/preview, unsafe actions and global pointer release after Single-page navigation. The existing
-serialized native-worker integration covers grouped AddInk, one Undo/Redo and failed edits without history loss.
-Independent review found no remaining blocker. Four licensed NIST/NBS documents (744 pages) passed source,
-render/text/extract/optimize/compression/corruption checks in 50.796 seconds; peak sampled child working set
-329,445,376 bytes, below the existing 805,306,368-byte regression guard.
+The sixteen portable cases cover twelve upgrades, including 0.17.0, and four guards. Ten MSI baselines:
+0.8.0, 0.9.1 and 0.10.0 through 0.17.0; 50 install/rollback/upgrade/downgrade/uninstall logs verified.
+The ARM64 job succeeded in 612 seconds, including upload/post-cache; the duplicate workflow was then cancelled.
+ARM64 artifact `12056658063`. Published 2026-10-16 at 16:03:33 UTC.
 
-CI, staged/public packages, upgrades and publication remain pending. The upgrade scripts include the verified
-0.17.0 baseline; 16 portable cases and 10 MSI baselines are expected, not executed for 0.18.0.
-Version 0.17.0 remains stable Latest. Native interactive dialogs, ARM64 hardware, physical printers,
-Narrator and third-party readers remain unverified; packages remain unsigned.
+Five independent qpdf readbacks confirm one Ink annotation and three strokes, including a dot, with InkList
+lengths `[6,4,2]`, for three plain/AES-128/AES-256 outputs reopened with both passwords. Public conversion checks
+include 35 EXIF/transparency/budget/DPI subprocesses and thirteen unchanged sources.
 
-## 0.17.0: lossless oriented JPEG conversion and raster batch checks (published as Latest)
+| File | Bytes | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.18.0-win-x64-portable.zip` | 19834488 | `8D1C76930C7D929D289745DC20897C91418DF63873B6E66B2566CA6AF289A08C` |
+| `SuniPDF-0.18.0-win-arm64-portable.zip` | 18422022 | `89A814C2395CAD59D761B02CC8ACC7C9E2629B23FA8D3DB22D5B7C1AB90815FB` |
+| `SuniPDF-0.18.0-win-x64.msi` | 19378176 | `D3DABCB44438E4E005D33A5D4544ACD6C3514DE10BF7BB07B745123E4CD7DDC4` |
 
-[SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) is stable **Latest** under
+Three SHA256 sidecars complete the six files; `dist/` copies were independently matched against API,
+public and staged files. MSI ProductCode `{2C188A13-8DBB-475A-B48D-78BCC8D058EA}`, language 1033.
+
+Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unfinished ink drafts have no crash recovery.
+
+## 0.17.0: lossless oriented JPEG conversion and raster batch checks (published; Latest at the time)
+
+[SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) was stable **Latest** at the time under
 `lmdanavanem`, release ID `415074108`, with six assets. Immutable tag/source:
 `5785de282e126fb4666b28fb83340d0e9c6e9acf`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
 and the same-source [ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)

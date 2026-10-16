@@ -218,25 +218,33 @@ conversion gate. Windows CI, same-source ARM64 compilation, fifteen portable cas
 Published in 0.17.0; all six staged/public files, enhanced packaged conversion checks and the production updater
 passed. Evidence, immutable source and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.18.0 grouped ink draft (in development)
+## 0.18.0 grouped ink draft (published)
 
-Keep one page-bound desktop ink draft and reuse `EditOp::AddInk` / the existing annotation writer for the
-whole group. Explicit Finish sends one edit and creates one Undo step; Cancel discards only the local draft.
-Keep the draft until worker success and retain it on failure. Operations that would save, replace or leave
-the draft must be guarded until Finish/Cancel (D109). Existing point simplification, geometry, protection and writer
-bounds remain authoritative: 64 strokes and 4,000 points per stroke. Draft styling applies to the whole group
-until Finish captures it; pending submission blocks further strokes/Finish/Cancel. Page navigation, zoom and
-view modes retain the original draft page; Esc cancels an unsubmitted draft. No new PDF format code,
-dependency or CLI command is planned.
+Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
+**Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
+wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
+At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
+recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
+through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
 
-The unrelated A16 fix uses clap's existing help template so `{n}` / `{total}` remain literal in CLI help.
-Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
-EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests and the existing serialized
-worker test cover draft/guards, captured-page gesture completion, grouped Undo/Redo and failure history; the
-new CLI help regression passed. CI, packages/upgrades and publication are
-pending; 0.17.0 remains Latest. Executed evidence belongs in `PROJECT_STATUS.md`.
-Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
-memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+Style applies to the group until Finish captures it. Pending submission blocks drawing, Finish and Cancel.
+Esc discards an unsubmitted draft. Navigation/zoom/view modes retain the original page; global pointer release
+finalizes a gesture after Single-page navigation. Deferred form changes and recovery markers must finish before
+a new drawing can start.
+
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## Coordinates (SUNI-031c)
 

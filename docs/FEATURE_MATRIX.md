@@ -70,7 +70,7 @@ fourteen portable cases and eight MSI baselines. All six staged/public files and
 verified copies are in `dist/`. The production updater verified the 19,821,719-byte Latest x64 ZIP without
 installation. Evidence and remaining hardware/interoperability limits are in `PROJECT_STATUS.md`.
 
-[0.17.0 is published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) under
+[0.17.0 was published (Latest at the time)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) under
 `lmdanavanem`, release `415074108`, source `5785de282e126fb4666b28fb83340d0e9c6e9acf`. Validation passed:
 445 workspace tests (zero failed, seven default ignored), formatting/Clippy, 896 EN/FR keys, 74 qpdf checks,
 four licensed documents/744 pages (48.187 seconds locally; 45.791 seconds in CI), Windows CI and same-source
@@ -79,14 +79,26 @@ conversion checks passed, including nine exact JPEG streams, oriented corners, P
 refusals and unchanged sources. Verified copies are in `dist/`; the production updater verified the
 19,825,743-byte Latest x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-**0.18.0 in development:** grouped desktop freehand strokes on one page, explicit Finish/Cancel, one annotation
-and one Undo through the existing writer; retained drafts after worker failure and guarded document/save/close/
-tab/tool transitions (D109). A16 uses the existing clap help template for literal `{n}` / `{total}`.
-Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
-EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests, the existing extended
-worker Undo/Redo/failure test and the new CLI help regression passed. CI/packages/upgrades and publication pending; 0.17.0 remains Latest. No new dependency or CLI command; 53 commands remain.
-Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
-memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
+**Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
+wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
+At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
+recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
+through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
+
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -118,7 +130,7 @@ memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied pas
 |---|---|---|
 | Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Done** (D067–D076): notes, highlight, underline, strikethrough; freehand **ink** (smoothed), **free text box** (Helvetica WinAnsi), **rectangle, ellipse, line, arrow** as real PDF annotations (explicit `/AP` appearance, rendered by other readers), colour, width, fill, opacity; select, move, resize (SuniPDF annotations), recolour, delete; rotated and cropped pages correct; encrypted document stays encrypted; CLI `annotate` / `annotations`. **Delivered in 0.16.0**: dashed borders for the four shapes, fixed UI/CLI `[6,3]`, preserved custom `dash_pattern`, malformed-style refusal and bounded regeneration; local/CI/upgrade, staged/public package and production updater checks passed (D107); manual reader checks remain separate |
 | Reply threads, comment status | Declared | **Done in SuniPDF**: Comments panel as threads (replies, status Accepted / Rejected / Cancelled / Completed, author, date, thread deletion), written according to ISO 32000-1; **Acrobat / Foxit compatibility not verified**; CLI `reply` / `review-state` |
-| Group several freehand strokes | Declared | **In progress for 0.18.0** (D109): one page-bound draft, explicit Finish/Cancel, one existing AddInk/Undo; failure retention and conflicting-action guards. Local regressions passed; no idle auto-commit or draft crash recovery; CI/packages/publication pending |
+| Group several freehand strokes | Declared | **Delivered in 0.18.0** (D109): page-bound draft, explicit Finish/Cancel, one AddInk/Undo; failure retention, guards and 64-stroke/4,000-points-per-stroke bounds. Local/CI/upgrade, staged/public package and production updater gates passed. No eraser, idle auto-commit or draft crash recovery |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
 | Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed) |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
@@ -199,6 +211,6 @@ memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied pas
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.17.0 ZIP/MSI published as Latest; fifteen real portable cases and nine MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.17.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.18.0 ZIP/MSI published as Latest; sixteen real portable cases and ten MSI baselines passed; six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.18.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

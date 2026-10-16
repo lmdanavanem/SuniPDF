@@ -5,26 +5,33 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.18.0] — En développement
+## [0.18.0] — 2026-10-16
 
-Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR
-correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI sans fenêtre couvrent dessin groupé,
-relance/gardes et fin du geste sur la page capturée ; le test worker sérialisé existant couvre une annotation,
-Annuler/Rétablir groupés et historique après échec. Régression d'aide CLI réussie pour les deux commandes et
-`-h` / `--help`. CI, paquets/mises à niveau et publication en attente.
-**0.17.0 reste la release stable Latest.**
-Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-### Implémenté ; validation de release en attente
-- Regrouper les traits à main levée d'une page dans une annotation `Ink` et une étape Annuler via l'écriture
-  existante, avec Terminer/Annuler explicites et brouillon conservé après une erreur du worker (D109).
-- Bloquer les modifications du document, enregistrement/fermeture et changements d'onglet/outil jusqu'à la
-  validation ou l'abandon du dessin.
-- Conserver les variables littérales `{n}` / `{total}` dans l'aide de `stamp` et `page-numbers` via le modèle
-  d'aide clap existant (A16). Comportement CLI et 53 commandes inchangés ; aucune nouvelle dépendance.
+### Changements
 
-Interaction native, stylet/tactile et compatibilité avec les lecteurs tiers restent des contrôles manuels distincts.
+Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+**Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+
+Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
 
 ## [0.17.0] — 2026-10-16
 
@@ -38,7 +45,7 @@ Source : `5785de282e126fb4666b28fb83340d0e9c6e9acf`. [CI Windows](https://github
 et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
 réussis. Quinze scénarios portables, neuf bases MSI et 45 journaux MSI vérifiés. Corpus en CI : 45,791 s,
 pic mémoire enfant 321 413 120 octets.
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous `lmdanavanem`,
+[Publiée (Latest à cette date)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous `lmdanavanem`,
 release `415074108`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés des paquets réussis,
 dont contrôles indépendants JPEG/transparence/budget/DPI ci-dessus. Copies vérifiées dans `dist/` ; le metteur
 à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 825 743 octets sans installation sur l'hôte.

@@ -117,11 +117,10 @@ A15. ~~Right rail in a short window: overlap~~ **Fixed (SUNI-012b)**: below ~700
      group (panels, view toggle, search) scrolls (wheel on hover) instead of overlapping the navigation;
      its last icons are then hidden until scrolled. Only whole icons are
      shown and a thin scrollbar, visible without hover, signals the rest (1000 x 560 screenshot).
-A16. **CLI help for `stamp` and `page-numbers`**: through 0.17.0, clap replaces `{n}` in help text
-     with a line break. The variables work during stamping/numbering; only their help display is affected.
-     A 0.18.0 fix is in development using clap's existing help template to keep `{n}` / `{total}` literal,
-     without changing command behavior. Its regression passed for both commands and `-h` / `--help`;
-     package/CI validation and publication are pending.
+A16. ~~CLI variable help for `stamp` and `page-numbers`~~ **Fixed in 0.18.0**: the existing clap help
+     template retains literal `{n}` / `{total}` without command changes. Both commands' `-h` / `--help` regression
+     and four staged/public help checks passed.
+
 A17. ~~"Modified" indicator after undo~~ **Fixed (review-fixes, D052)**: save point in
      the history; lost only if one edits after an undo or if the saved snapshot leaves the 50
      levels (the document then stays "modified" until the next save).
@@ -267,15 +266,28 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     invalid/excessive nonempty strokes rather than showing a solid fallback, under the same work cap.
     No custom-pattern/phase editor. Local/CI/upgrade, staged/public package and production updater checks passed;
     evidence and remaining limits are in `PROJECT_STATUS.md` (D107).
-    **0.18.0 in development (D109):** grouped strokes on one page, explicit Finish/Cancel, one existing AddInk
-    edit and one Undo step. Keep the draft on worker failure and guard actions that would save, replace or leave
-    it until finished/cancelled. No idle auto-commit; uncommitted drafts are not recovery snapshots. CI/packages
-    and publication remain pending; 0.17.0 remains Latest. Local gates passed: 452 workspace tests (zero
-    failed, seven default ignored), formatting/Clippy, 907 matching EN/FR keys, 75 qpdf checks and the update-helper
-    self-test. Six new headless UI tests and the extended worker Undo/Redo/failure test passed, including
-    gesture completion after page navigation; CI/packages remain pending. Local corpus passed: four licensed
-    NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child memory 329,445,376 bytes; all sources
-    unchanged. Clippy with warnings denied passed.
+    **Delivered in 0.18.0 (D109).**
+    Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
+    **Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
+    wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
+    At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
+    recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
+    through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
+    [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+    source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+    formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+    Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+    329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+    grouped Undo/Redo/failure regression and the CLI help regression passed.
+    [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+    with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+    sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+    package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+    checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+    Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+    installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
+    Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unfinished ink drafts have no crash recovery.
+
     No eraser, polygon, cloud, stamp or attachment; caps:
     64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,
     selection of a SuniPDF annotation (frame, four handles, floating bar) then moving and resizing with the mouse,

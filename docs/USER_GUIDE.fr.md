@@ -3,16 +3,23 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0), publiée en Latest
-sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
+Ce guide couvre [SuniPDF 0.18.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0), publiée en Latest sous `lmdanavanem`.
 
-**Aperçu 0.18.0 en développement :** validation locale réussie du dessin groupé : 452 tests workspace (zéro
-échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
-Six nouveaux tests UI sans fenêtre, test worker étendu Annuler/Rétablir/échec et régression d'aide CLI réussis.
-CI/paquets/mises à niveau et publication en attente. 0.17.0 reste Latest ; le comportement
-publié est indiqué séparément. Ces contrôles ne valident pas l'interaction native au stylet/tactile.
-Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
+
+Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
 
 ## Installation
 
@@ -129,12 +136,12 @@ du contenu de page : les autres lecteurs les affichent aussi) :
 | Outil | Geste |
 |---|---|
 | **Sélectionner une annotation** (A) | Clic sur une annotation : cadre, poignées, barre flottante. Glisser = déplacer ; poignées = redimensionner ; flèches = décaler (Maj : ×10) ; Suppr = supprimer ; double-clic ou bouton « Modifier le texte » = changer son texte ou son commentaire ; Échap = désélectionner |
-| **Dessin à main levée** (D) | En 0.17.0 : glisser sur la page pour un trait lissé/une annotation, cliquer pour un point ; couleur, épaisseur et opacité dans la barre flottante. Encre groupée en développement pour 0.18.0, voir ci-dessous |
+| **Dessin à main levée** (D) | Tracer plusieurs traits sur une page ; couleur, épaisseur et opacité pour le groupe. Terminer le dessin = une annotation/un Annuler ; Annuler le dessin ou Échap avant envoi = abandonner le brouillon ; un clic = un point |
 | **Zone de texte libre** (F) | Clic (boîte par défaut) ou glissement (boîte choisie), puis saisie dans la boîte de dialogue : taille, couleur, fond, bordure. La boîte grandit vers le bas si le texte est plus haut. Police Helvetica : les caractères hors alphabet latin s'affichent « ? », le texte exact reste dans l'annotation |
 | **Rectangle, Ellipse, Ligne ou flèche** (annotations) | Glisser ; couleur, épaisseur, fond (rectangle et ellipse), opacité, case « Flèche » |
 | **Lien** | Tracer une zone (au moins 6 points) puis choisir « Aller à une page » ou « Ouvrir une adresse web » (`http`, `https` ou `mailto` seulement) |
 
-**Dessin groupé — en développement pour 0.18.0.** Tracer plusieurs traits sur une page, puis cliquer sur
+**Dessin groupé — disponible en 0.18.0.** Tracer plusieurs traits sur une page, puis cliquer sur
 **Terminer le dessin** pour créer une annotation et une étape Annuler, ou **Annuler le dessin** pour abandonner
 ce brouillon. Échap annule aussi un brouillon non envoyé. Couleur, épaisseur et opacité modifient tout le
 brouillon jusqu'à leur capture par Terminer. Terminer/annuler avant enregistrement/fermeture, changement de
@@ -145,7 +152,7 @@ dessin supplémentaire, Terminer et Annuler sont bloqués.
 Au plus 64 traits et 4 000 points par trait ; atteindre la limite de points arrête ce trait et permet d'en
 commencer un autre. Un clic pose un point. Aucune validation à l'inactivité ; les traits non validés ne sont ni
 du contenu PDF ni des instantanés de récupération. Simplification des points, géométrie et protection existantes conservées.
-Validation CI/paquets et publication en attente (D109).
+Contrôles locaux/CI/paquets/mises à jour réussis (D109) ; stylet/tactile natifs non vérifiés.
 
 Une annotation créée par SuniPDF se redimensionne et se restyle (bouton « Appliquer à l'annotation » : les couleurs de
 la barre lui sont appliquées) ; celle d'un autre logiciel se déplace, se commente et se supprime (un surlignage ou une

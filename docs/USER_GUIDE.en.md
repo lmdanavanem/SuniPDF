@@ -3,16 +3,23 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0), published as Latest
-under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
+This guide covers [SuniPDF 0.18.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0), published as Latest under `lmdanavanem`.
 
-**0.18.0 development preview:** grouped-freehand local validation passed: 452 workspace tests (zero failed,
-seven default ignored), formatting/Clippy, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
-The six new headless UI tests, extended worker Undo/Redo/failure test and CLI help regression passed.
-CI/packages/upgrades and publication are pending. 0.17.0 remains Latest;
-current release behavior is identified separately. These checks do not validate native pen/touch interaction.
-Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
-memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
+
+Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unfinished ink drafts have no crash recovery.
 
 ## Installation
 
@@ -120,12 +127,12 @@ comment. **Advanced annotations**, real PDF annotations (not page content: other
 | Tool | Gesture |
 |---|---|
 | **Select an annotation** (A) | Click an annotation: frame, handles, floating bar. Drag = move; handles = resize; arrow keys = nudge (Shift: ×10); Delete = remove; double-click or the "Edit the text" button = change its text or comment; Esc = deselect |
-| **Freehand drawing** (D) | In 0.17.0: drag on the page for one smoothed stroke/annotation, click for a dot; colour, width and opacity in the floating bar. Grouped drawing is in development for 0.18.0; see below |
+| **Freehand drawing** (D) | Draw several strokes on one page; colour, width and opacity apply to the group. Finish drawing = one annotation/Undo; Cancel drawing or Esc before submission = discard the draft; a click = a dot |
 | **Free text box** (F) | Click (default box) or drag (chosen box), then type in the dialog: size, colour, background, border. The box grows downwards if the text is taller. Helvetica font: characters outside the Latin alphabet show as "?", the exact text stays in the annotation |
 | **Rectangle, Ellipse, Line or arrow** (annotations) | Drag; colour, width, fill (rectangle and ellipse), opacity, "Arrow" checkbox |
 | **Link** | Draw an area (at least 6 points) then choose "Go to a page" or "Open a web address" (`http`, `https` or `mailto` only) |
 
-**Grouped drawing — in development for 0.18.0.** Draw multiple strokes on one page, then click
+**Grouped drawing — available in 0.18.0.** Draw multiple strokes on one page, then click
 **Finish drawing** to create one annotation and one Undo step, or **Cancel drawing** to discard only that draft.
 Esc also cancels an unsubmitted draft. Colour, width and opacity restyle the whole draft until Finish captures
 them. Finish or cancel before saving/closing, switching document/tool or making a conflicting edit; navigation,
@@ -134,7 +141,7 @@ or cancellation. While Finish is pending, further drawing, Finish and Cancel are
 
 At most 64 strokes and 4,000 points per stroke; reaching the point limit stops that stroke and another can be
 started. A click is a dot. Nothing auto-commits on idle; unfinished strokes are not PDF content or crash-recovery
-snapshots. Existing point simplification, geometry and protection remain. CI/package validation and publication pending (D109).
+snapshots. Existing point simplification, geometry and protection remain. Local/CI/package/update gates passed (D109); native pen/touch remains unverified.
 
 An annotation created by SuniPDF can be resized and restyled ("Apply to annotation" button: the bar's colours are
 applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can

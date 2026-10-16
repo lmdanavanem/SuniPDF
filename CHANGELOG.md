@@ -5,25 +5,32 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [0.18.0] - In development
+## [0.18.0] - 2026-10-16
 
-Local validation passed: 452 workspace tests (zero failed, seven default ignored), formatting/Clippy, 907 matching
-EN/FR keys, 75 qpdf checks and the update-helper self-test. Six new headless UI tests cover grouped drawing,
-retry/action guards and captured-page gesture completion; the existing serialized worker test covers one
-annotation, grouped Undo/Redo and failed-edit history. The CLI help regression passed for both commands and
-`-h` / `--help`. CI, packages/upgrades and publication remain pending.
-**0.17.0 remains the stable Latest release.**
-Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
-memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-### Implemented; release validation pending
-- Group desktop freehand strokes on one page into one `Ink` annotation and one Undo step through the
-  existing writer, with explicit Finish/Cancel and retained drafts after worker errors (D109).
-- Guard document-changing, save/close and tab/tool transitions until the drawing is finished or cancelled.
-- Keep literal `{n}` / `{total}` variables in `stamp` and `page-numbers` help through clap's existing
-  help-template support (A16). CLI behavior and its 53 commands remain unchanged; no new dependency.
+### Changed
 
-Native interaction, pen/touch input and third-party-reader compatibility remain separate manual checks.
+Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
+**Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
+wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
+At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
+recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
+through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
+
+Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unfinished ink drafts have no crash recovery.
 
 ## [0.17.0] - 2026-10-16
 
@@ -37,7 +44,7 @@ Source: `5785de282e126fb4666b28fb83340d0e9c6e9acf`. [Windows CI](https://github.
 and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
 passed. All fifteen portable cases, nine MSI baselines and 45 MSI logs passed verification. The CI corpus took
 45.791 seconds, peak child memory 321,413,120 bytes.
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) under `lmdanavanem`,
+[Published (Latest at the time)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) under `lmdanavanem`,
 release `415074108`, with six assets. All staged/public files and enhanced package checks passed, including
 the independent JPEG/transparency/budget/DPI checks above. Verified copies are in `dist/`; the production
 updater downloaded and verified the 19,825,743-byte Latest x64 ZIP without installing it on the host.

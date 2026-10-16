@@ -141,7 +141,7 @@ documents licenciés/744 pages (53,542 s localement), quatorze scénarios portab
 préparés/publics et contrôles renforcés réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a
 vérifié le ZIP x64 de 19 821 719 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.17.0 : fiabilité de la conversion d'images (publiée en Latest)
+## 0.17.0 : fiabilité de la conversion d'images (publiée ; Latest à cette date)
 
 Compléter l'incorporation directe JPEG EXIF 5 et 7 : les huit orientations évitent décodage/recompression d'image.
 Contrôler les non-JPEG avant allocation avec une estimation raster cumulée de 512 Mio :
@@ -154,25 +154,34 @@ Clippy, 896 clés EN/FR, 74 contrôles qpdf et quatre documents licenciés/744 p
 330 264 576 octets), autotest du helper de mise à jour et contrôle de conversion debug indépendant. Source
 `5785de282e126fb4666b28fb83340d0e9c6e9acf` : CI Windows, compilation ARM64 de même source, quinze scénarios
 portables, neuf bases MSI et 45 journaux MSI vérifiés ; corpus en CI 45,791 s/pic mémoire enfant 321 413 120 octets.
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous `lmdanavanem`, release
+[Publiée (Latest à cette date)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous `lmdanavanem`, release
 `415074108`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés de conversion réussis ; copies
 vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 825 743 octets sans installation.
 Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.18.0 : dessin à main levée groupé et aide CLI littérale (en développement)
+## 0.18.0 : dessin à main levée groupé et aide CLI littérale (publiée)
 
-Brouillon d'encre lié à une page, validé explicitement en une annotation/étape Annuler ou abandonné sans
-modifier le document. Réutiliser AddInk, simplification des points, géométrie et protection ; conserver le brouillon après erreur
-du worker et protéger les transitions enregistrement/fermeture/onglet/outil jusqu'à Terminer/Annuler (D109).
-Aucune validation à l'inactivité ni récupération des brouillons non validés. Corriger A16 avec le modèle d'aide
-clap existant pour garder `{n}` / `{total}` littéraux dans l'aide de `stamp` / `page-numbers`.
-Aucune nouvelle dépendance ni commande CLI ; 53 commandes. Validation locale réussie : 452 tests workspace
-(zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur
-à jour. Six nouveaux tests UI sans fenêtre, régression worker existante Annuler/Rétablir groupés/échec et
-nouveau test d'aide CLI réussis. CI, paquets/mises à niveau et publication en attente ;
-**0.17.0 reste Latest**. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
-Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+**Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Phases 0–1 : planification et fondations — livrées
 
@@ -201,7 +210,7 @@ Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, ave
 Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page courante/toutes/sélection.
 Livré en 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
 Livré en 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
-En développement pour 0.18.0 : encre groupée du bureau, Terminer/Annuler explicites et transitions protégées (D109).
+Livré en 0.18.0 : encre groupée du bureau, Terminer/Annuler explicites et transitions protégées (D109).
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 

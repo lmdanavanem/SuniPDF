@@ -72,24 +72,36 @@ quatorze scénarios portables et huit bases MSI. Six fichiers préparés/publics
 réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de
 19 821 719 octets sans installation. Preuves et limites matérielles/d'interopérabilité dans `PROJECT_STATUS.fr.md`.
 
-[0.17.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous
+[0.17.0 publiée (Latest à cette date)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) sous
 `lmdanavanem`, release `415074108`, source `5785de282e126fb4666b28fb83340d0e9c6e9acf`. Validation réussie :
 445 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 896 clés EN/FR, 74 contrôles qpdf,
 quatre documents licenciés/744 pages (48,187 s localement ; 45,791 s en CI), CI Windows et compilation ARM64
-de même source, quinze scénarios portables et neuf bases MSI. Six fichiers préparés/publics et contrôles renforcés
+de même source, seize scénarios portables et dix bases MSI. Six fichiers préparés/publics et contrôles renforcés
 de conversion réussis, dont neuf flux JPEG exacts, coins orientés, transparence PNG, refus budget/DPI et sources
 inchangées. Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de
 19 825 743 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
-**0.18.0 en développement :** traits à main levée du bureau regroupés sur une page, Terminer/Annuler explicites,
-une annotation/étape Annuler via l'écriture existante ; brouillon conservé après erreur du worker et transitions
-document/enregistrement/fermeture/onglet/outil protégées (D109). A16 utilise le modèle d'aide clap existant pour
-garder `{n}` / `{total}` littéraux. Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés par
-défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI
-sans fenêtre, test worker étendu Annuler/Rétablir/échec et nouvelle régression d'aide CLI réussis. CI/paquets/mises à niveau et publication en attente ; 0.17.0 reste Latest. Aucune nouvelle dépendance
-ni commande CLI ; 53 commandes.
-Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+**Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
 ## A. Lecture
 
@@ -121,7 +133,7 @@ Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796
 |---|---|---|
 | Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | **Fait** (D067–D076) : notes, surlignage, souligné, barré ; **encre** à main levée (lissée), **zone de texte libre** (Helvetica WinAnsi), **rectangle, ellipse, ligne, flèche** en vraies annotations PDF (apparence `/AP` explicite, rendues par les autres lecteurs), couleur, épaisseur, fond, opacité ; sélection, déplacement, redimensionnement (annotations de SuniPDF), recoloration, suppression ; pages tournées et rognées justes ; document chiffré conservé chiffré ; CLI `annotate` / `annotations`. **Livré en 0.16.0** : tirets des quatre formes, motif UI/CLI fixe `[6,3]`, `dash_pattern` personnalisé conservé, style malformé refusé et régénération bornée ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis (D107) ; lecteurs réels à vérifier séparément |
 | Fils de réponses, statut des commentaires | Déclaré | **Fait dans SuniPDF** : panneau Commentaires en fils (réponses, statut Accepté / Refusé / Annulé / Terminé, auteur, date, suppression du fil), écrits selon ISO 32000-1 ; **compatibilité Acrobat / Foxit non vérifiée** ; CLI `reply` / `review-state` |
-| Regrouper plusieurs traits à main levée | Déclaré | **En cours pour 0.18.0** (D109) : brouillon lié à une page, Terminer/Annuler explicites, un AddInk/Annuler existant ; conservé après erreur et actions incompatibles bloquées. Aucune validation à l'inactivité ni récupération après plantage ; validation CI/paquets et publication en attente |
+| Regrouper plusieurs traits à main levée | Déclaré | **Livré en 0.18.0** (D109) : brouillon lié à une page, Terminer/Annuler explicites, un AddInk/Annuler ; conservé après erreur, gardes et limites 64 traits/4 000 points par trait. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour réussis. Aucune gomme, validation à l'inactivité ni récupération du brouillon après plantage |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis) |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
@@ -202,6 +214,6 @@ Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.17.0 ZIP/MSI publiés en Latest ; quinze scénarios portables et neuf bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.17.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.18.0 ZIP/MSI publiés en Latest ; seize scénarios portables et dix bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.18.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

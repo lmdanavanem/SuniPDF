@@ -179,7 +179,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   copies vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 821 719 octets sans
   installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.17.0 : fiabilité de la conversion d'images (publiée en Latest)
+## 0.17.0 : fiabilité de la conversion d'images (publiée ; Latest à cette date)
 
 - Incorporer directement les JPEG EXIF 5 et 7 sans recompression : huit orientations via les matrices existantes.
   Conserver qualité/transparence des non-JPEG et les accès bureau/CLI (D108).
@@ -197,27 +197,35 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
 - Source `5785de282e126fb4666b28fb83340d0e9c6e9acf` : [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
   et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)
   réussis, ainsi que quinze scénarios portables, neuf bases MSI dont 0.16.0 et 45 journaux MSI vérifiés.
-  Corpus en CI : 45,791 s, pic mémoire enfant 321 413 120 octets. [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
+  Corpus en CI : 45,791 s, pic mémoire enfant 321 413 120 octets. [Publiée (Latest à cette date)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
   sous `lmdanavanem`, release `415074108`, avec six fichiers. Fichiers préparés/publics et contrôles renforcés de
   conversion réussis, dont flux JPEG exacts, coins/transparence et refus de budget sans allocation raster. Copies
   vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP x64 de 19 825 743 octets sans installation
   sur l'hôte. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.18.0 : dessin à main levée groupé et aide CLI littérale (en développement)
+## 0.18.0 : dessin à main levée groupé et aide CLI littérale (publiée)
 
-- Regrouper les traits d'une page en une annotation d'encre et une étape Annuler via l'écriture existante (D109).
-- Terminer/Annuler explicites, brouillon conservé après une erreur du worker, actions qui l'enregistreraient,
-  le remplaceraient ou le quitteraient bloquées. Simplification des points/géométrie/protection/bornes réutilisées ; aucune validation
-  à l'inactivité ni récupération du brouillon.
-- Corriger A16 via le modèle d'aide clap existant : `stamp` / `page-numbers` affichent `{n}` / `{total}` littéraux.
-- Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR
-  correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI sans fenêtre couvrent dessin/gardes
-  et fin du geste sur la page capturée ; le test worker sérialisé existant couvre Annuler/Rétablir groupés/historique
-  après échec. Nouvelle régression d'aide CLI réussie. CI, paquets/mises à niveau et
-  publication en attente ; **0.17.0 reste Latest**. Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
-  Preuves exécutées seulement dans `PROJECT_STATUS.fr.md`.
-  Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-  échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+**Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Travail restant au-delà de ces lots
 
@@ -298,7 +306,7 @@ Reste, non bloquant :
   est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;
 - incorporation directe JPEG EXIF 5/7 et estimation PNG/raster cumulée livrées en 0.17.0 (A31/D108) ;
   mesure de la mémoire native/processus et entrées licenciées volumineuses restent distinctes ;
-- aide CLI de `stamp` / `page-numbers` incluse dans le lot 0.18.0 en développement (A16) ; régression locale réussie, CI/paquets en attente.
+- aide CLI de `stamp` / `page-numbers` incluse dans le lot 0.18.0 publié (A16) ; contrôles locaux/CI/paquets réussis.
 
 ## SUNI-012c — Affichage, suite (owner : UI-UX)
 Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
@@ -334,8 +342,8 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 `annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
 - **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
   Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
-- encre groupée incluse dans le lot 0.18.0 en développement, avec Terminer/Annuler explicites et transitions
-  enregistrement/fermeture protégées (D109), remplaçant la proposition à l'inactivité ; régressions locales réussies, CI/paquets en attente.
+- encre groupée livrée en 0.18.0, avec Terminer/Annuler explicites et transitions
+  enregistrement/fermeture protégées (D109), remplaçant la proposition à l'inactivité ; régressions locales/CI/paquets réussies.
   La gomme reste future ;
 - polygone, polyligne, nuage, tampon, pièce jointe et texte libre riche (gras, italique, CJK : police incorporée) ;
   bordures en tirets des quatre formes livrées en 0.16.0, autres types toujours non pris en charge ;

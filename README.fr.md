@@ -47,12 +47,19 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.17.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)** sous `lmdanavanem`.
-445 tests du workspace, formatage/Clippy, 896 clés EN/FR, 74 contrôles qpdf et quatre documents NIST/NBS licenciés
-(744 pages ; 48,187 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, quinze scénarios portables
-et neuf bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies vérifiées
-dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 825 743 octets sans installation.
-Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
 Depuis **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
 double-clic ou `set-link-target`, en conservant zone, apparence et commentaires. Choisir une adresse web/mail
@@ -64,26 +71,22 @@ Depuis **0.16.0** : bordures en tirets des annotations rectangle, ellipse, ligne
 recoloration et modification géométrique ; seul un changement explicite de case remplace le motif. Les styles
 invalides sont refusés sans remplacement silencieux. Validation et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-Nouveautés **0.17.0** : incorporer les JPEG des huit orientations EXIF sans recompression, dont
+Depuis **0.17.0** : incorporer les JPEG des huit orientations EXIF sans recompression, dont
 les orientations 5 et 7 auparavant décodées. Images → PDF contrôle aussi un **budget raster cumulé estimé de
 512 Mio** avant de décoder les entrées non-JPEG. Cette estimation porte sur les images décodées, pas la mémoire
 totale du processus. Accès UI/CLI et 53 commandes inchangés. Contrôles de conversion debug et des paquets préparés/
 publics réussis : flux JPEG exacts, rendus orientés, transparence PNG, refus de budget sans allocation raster et
 entrées inchangées. Preuves exécutées et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-### 0.18.0 en développement
+### Nouveautés 0.18.0
 
-Le prochain lot regroupe les traits à main levée d'une page en une annotation et une étape Annuler, avec
-**Terminer le dessin** / **Annuler le dessin** explicites. Le brouillon reste disponible après une erreur du worker ; terminer
-ou abandonner avant les actions qui l'enregistreraient, le remplaceraient ou le quitteraient. Écriture d'encre,
-simplification des points et bornes existantes réutilisées (D109). L'aide CLI de `stamp` et `page-numbers` affiche aussi les
-variables littérales `{n}` / `{total}`. Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés
-par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests
-UI sans fenêtre couvrent dessin groupé, relance et gardes ; le test worker existant couvre Annuler/Rétablir groupés
-et historique après échec. Nouvelle régression d'aide CLI réussie. CI, paquets/mises à
-niveau et publication en attente ; **0.17.0 reste Latest**. Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
-Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+**Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

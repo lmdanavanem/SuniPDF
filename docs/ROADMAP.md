@@ -138,7 +138,7 @@ documents/744 pages (53.542 seconds locally), fourteen portable cases and eight 
 files and enhanced checks passed; verified copies are in `dist/`. The production updater verified the
 19,821,719-byte x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.17.0: image conversion reliability (published as Latest)
+## 0.17.0: image conversion reliability (published; Latest at the time)
 
 Complete direct JPEG embedding for EXIF orientations 5 and 7, so all eight orientations avoid image decoding/
 recompression. Preflight non-JPEG inputs against a cumulative 512 MiB raster-data estimate:
@@ -150,24 +150,33 @@ Local validation passed: 445 workspace tests, formatting/Clippy, 896 EN/FR keys,
 documents/744 pages (48.187 seconds; peak child memory 330,264,576 bytes), the update-helper self-test and
 independent debug conversion gate. Source `5785de282e126fb4666b28fb83340d0e9c6e9acf` passed Windows CI,
 same-source ARM64 compilation, fifteen portable cases, nine MSI baselines and 45 MSI logs; CI corpus took
-45.791 seconds with peak child memory 321,413,120 bytes. [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
+45.791 seconds with peak child memory 321,413,120 bytes. [Published (Latest at the time)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
 under `lmdanavanem`, release `415074108`, with six files. All staged/public files and enhanced conversion checks
 passed; verified copies are in `dist/`. The production updater verified the 19,825,743-byte x64 ZIP without
 installation. Evidence and remaining limits belong in `PROJECT_STATUS.md`.
 
-## 0.18.0: grouped freehand drawing and literal CLI help (in development)
+## 0.18.0: grouped freehand drawing and literal CLI help (published)
 
-One page-bound desktop ink draft, explicitly finished as one annotation/Undo or cancelled without document
-changes. Reuse AddInk, point simplification, geometry and protection; retain the draft on worker failure and guard
-save/close/tab/tool transitions until Finish/Cancel (D109). No idle auto-commit or uncommitted-draft recovery.
-Fix A16 with the existing clap help template, retaining literal `{n}` / `{total}` in `stamp` / `page-numbers` help.
-No new dependency or CLI command; 53 commands remain. Local validation passed: 452 workspace tests (zero failed,
-seven default ignored), formatting/Clippy, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
-Six new headless UI tests, the existing grouped worker Undo/Redo/failure regression and the new CLI help test
-passed. CI, packages/upgrades and publication are pending;
-**0.17.0 remains Latest**. Executed evidence belongs in `PROJECT_STATUS.md`.
-Local corpus passed: four licensed NIST/NBS documents, 744 pages in 50.796 seconds, sampled peak child
-memory 329,445,376 bytes; all sources unchanged. Clippy with warnings denied passed.
+Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
+**Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
+wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
+At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
+recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
+through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
+
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
+formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
+Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
+329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
+grouped Undo/Redo/failure regression and the CLI help regression passed.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
+with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
+sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
+package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
+checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
+Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
+installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -197,7 +206,7 @@ Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping
 Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
 Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
 Delivered in 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
-In development for 0.18.0: grouped desktop ink with explicit Finish/Cancel and guarded transitions (D109).
+Delivered in 0.18.0: grouped desktop ink with explicit Finish/Cancel and guarded transitions (D109).
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 

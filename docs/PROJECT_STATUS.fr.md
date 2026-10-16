@@ -1,46 +1,60 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.18.0 en développement)
+# État du projet — mis à jour le 2026-10-16 (version 0.18.0 publiée)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (en développement)
+## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (publiée en Latest)
 
 L'application regroupe plusieurs traits à main levée sur une page dans une seule annotation Ink, via
 l'édition moteur/worker existante. Le brouillon dispose de Terminer/Annuler, d'un seul Annuler, de bornes
 sur les traits/points et de gardes empêchant de perdre les traits lors d'une édition, sauvegarde, ouverture
 d'un autre document ou fermeture. Un échec moteur conserve le brouillon pour réessayer ou annuler.
-L'anglais reste la langue par défaut, avec contrôles français équivalents. Implémentation et validation
-bureau réussies ; publication encore en attente. Jusqu'à 64 traits et 4 000 points par trait sont conservés,
+L'anglais reste la langue par défaut, avec contrôles français équivalents. Implémentation et validation bureau réussies. Jusqu'à 64 traits et 4 000 points par trait sont conservés,
 avec messages de limite visibles. Couleur, épaisseur et opacité s'appliquent au brouillon entier. Navigation,
 zoom et modes de vue conservent la page d'origine ; la finalisation globale au relâchement évite un trait
 bloqué après un saut en vue simple. Les changements de formulaire et marqueurs de récupération différés
 doivent finir avant de dessiner. Le brouillon reste uniquement en mémoire jusqu'à Terminer, sans récupération
 après plantage.
 
-Exécuté localement : test de l'aide CLI réussi pour `stamp` et `page-numbers`, aide courte et longue,
-avec `{n}`/`{total}` littéraux et modèle par défaut conservés. Les 75 contrôles qpdf indépendants ont réussi,
-dont une sortie Ink groupée de deux polylignes et un point ; la relecture confirme une annotation et trois
-entrées `InkList`. La CLI conserve ses 53 commandes ; aucune dépendance ajoutée.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-Validation locale réussie : 452 tests workspace, zéro échec, sept ignorés par défaut ; formatage, Clippy
-toutes cibles sans avertissement, 907 clés EN/FR et autotest du metteur à jour. Six nouveaux tests bureau
-headless couvrent les vrais clics accessibles EN/FR Terminer/Annuler, échec/réessai/double envoi, page/bornes/
-aperçu, actions dangereuses et relâchement après navigation en vue simple. L'intégration native worker
-sérialisée couvre AddInk groupé, un Annuler/Rétablir et les échecs sans perte d'historique. La relecture
-indépendante n'a trouvé aucun blocage restant. Quatre documents NIST/NBS licenciés (744 pages) ont réussi
-les contrôles sources/rendu/texte/extraction/optimisation/compression/corruption en 50,796 secondes ; pic
-échantillonné du processus enfant 329 445 376 octets, sous la garde existante de 805 306 368 octets.
+Les seize cas portables couvrent douze mises à niveau, dont 0.17.0, et quatre gardes. Dix bases MSI :
+0.8.0, 0.9.1, 0.10.0 à 0.17.0 ; 50 journaux install/rollback/upgrade/downgrade/uninstall vérifiés.
+Le job ARM64 a réussi en 612 s, upload et post-cache inclus ; le workflow en double a ensuite été annulé.
+Artefact ARM64 `12056658063`. Publication le 2026-10-16 à 16:03:33 UTC.
 
-CI, paquets préparés/publics, mises à niveau et publication restent en attente. Les scripts intègrent la base
-0.17.0 vérifiée ; 16 scénarios portables et 10 bases MSI sont attendus, pas encore exécutés pour 0.18.0.
-La 0.17.0 reste Latest stable. Boîtes natives interactives, matériel ARM64, imprimantes physiques,
-Narrator et lecteurs tiers restent non vérifiés ; les paquets restent non signés.
+Les cinq relectures qpdf indépendantes confirment une annotation Ink et trois traits, dont un point, avec
+longueurs InkList `[6,4,2]`, pour trois sorties clair/AES-128/AES-256 relues avec les deux mots de passe.
+Les contrôles de conversion publics incluent 35 sous-processus EXIF/transparence/budget/DPI et 13 sources intactes.
 
-## 0.17.0 : conversion JPEG orientée sans recompression et contrôle des lots raster (publiée en Latest)
+| Fichier | Octets | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.18.0-win-x64-portable.zip` | 19834488 | `8D1C76930C7D929D289745DC20897C91418DF63873B6E66B2566CA6AF289A08C` |
+| `SuniPDF-0.18.0-win-arm64-portable.zip` | 18422022 | `89A814C2395CAD59D761B02CC8ACC7C9E2629B23FA8D3DB22D5B7C1AB90815FB` |
+| `SuniPDF-0.18.0-win-x64.msi` | 19378176 | `D3DABCB44438E4E005D33A5D4544ACD6C3514DE10BF7BB07B745123E4CD7DDC4` |
 
-[SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) est stable **Latest** sous
+Trois sidecars SHA256 complètent les six fichiers ; copies `dist/` vérifiées indépendamment contre API,
+public et préparation. ProductCode MSI `{2C188A13-8DBB-475A-B48D-78BCC8D058EA}`, langue 1033.
+
+Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
+
+## 0.17.0 : conversion JPEG orientée sans recompression et contrôle des lots raster (publiée ; Latest à cette date)
+
+[SuniPDF 0.17.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0) était stable **Latest** à cette date sous
 `lmdanavanem`, release ID `415074108`, avec six fichiers. Tag/source immuable :
 `5785de282e126fb4666b28fb83340d0e9c6e9acf`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916382731)
 et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38916383380/job/117024804268)

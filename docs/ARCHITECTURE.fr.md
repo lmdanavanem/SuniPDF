@@ -221,25 +221,34 @@ même source, quinze scénarios portables et neuf bases MSI réussis. Publiée e
 contrôles renforcés de conversion des paquets et metteur à jour de production réussis. Preuves, source immuable et
 limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.18.0 : brouillon d'encre groupée (en développement)
+## 0.18.0 : brouillon d'encre groupée (publiée)
 
-Conserver un brouillon d'encre du bureau lié à une page et réutiliser `EditOp::AddInk` / l'écriture d'annotations
-existante pour le groupe entier. Terminer envoie une édition et crée une étape Annuler ; Annuler abandonne
-seulement le brouillon local. Le garder jusqu'au succès du worker et en cas d'échec. Les actions qui
-l'enregistreraient, le remplaceraient ou le quitteraient doivent attendre sa validation/son abandon (D109).
-Simplification des points, géométrie, protection et bornes existantes restent la référence : 64 traits et 4 000 points par trait.
-Le style s'applique au groupe jusqu'à sa capture par Terminer ; validation en cours : dessin/Terminer/Annuler
-bloqués. Navigation, zoom et modes de vue conservent la page du brouillon ; Échap annule un brouillon non envoyé.
-Aucun nouveau code de format PDF, dépendance ni commande CLI prévu.
+Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+**Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
 
-La correction A16 utilise le modèle d'aide clap existant pour garder `{n}` / `{total}` littéraux dans l'aide CLI.
-Validation locale réussie : 452 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 907 clés EN/FR
-correspondantes, 75 qpdf et autotest du metteur à jour. Six nouveaux tests UI sans fenêtre et le test worker
-sérialisé existant couvrent brouillon/gardes, fin du geste sur la page capturée, Annuler/Rétablir groupés et
-historique après échec ; nouvelle régression d'aide CLI réussie. CI, paquets/mises à
-niveau et publication en attente ; 0.17.0 reste Latest. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
-Corpus local réussi : quatre documents NIST/NBS licenciés, 744 pages en 50,796 s, pic mémoire enfant
-échantillonné 329 445 376 octets ; toutes les sources inchangées. Clippy avec avertissements refusés réussi.
+Le style s'applique au groupe jusqu'à sa capture par Terminer. Envoi en cours : dessin, Terminer et Annuler
+sont bloqués. Échap abandonne un brouillon non envoyé. Navigation/zoom/modes de vue gardent la page d'origine ;
+le relâchement global termine aussi le geste après un saut en vue simple. Les changements différés de formulaire
+et marqueurs de récupération doivent finir avant de commencer.
+
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
 ## Coordonnées (SUNI-031c)
 

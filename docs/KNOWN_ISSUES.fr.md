@@ -117,11 +117,10 @@ A15. ~~Rail droit en fenêtre basse : chevauchement~~ **Corrigé (SUNI-012b)** :
      haut (panneaux, bascule de vue, recherche) défile (molette au survol) au lieu de chevaucher la navigation ;
      ses dernières icônes sont alors masquées tant qu'on ne fait pas défiler. Seules des icônes entières sont
      montrées et une fine barre de défilement, visible sans survol, signale la suite (capture 1000 x 560).
-A16. **Aide de la CLI pour `stamp` et `page-numbers`** : jusqu'en 0.17.0, clap remplace `{n}` dans l'aide
-     par un saut de ligne. Les variables fonctionnent dans les tampons/numéros ; seul l'affichage de l'aide est touché.
-     Correction 0.18.0 en développement via le modèle d'aide clap existant pour garder `{n}` / `{total}` littéraux,
-     sans modifier le comportement des commandes. Régression réussie pour les deux commandes et `-h` / `--help` ;
-     validation paquets/CI et publication en attente.
+A16. ~~Aide CLI des variables de `stamp` et `page-numbers`~~ **Corrigé en 0.18.0** : le modèle d'aide
+     clap existant conserve `{n}` / `{total}` littéraux, sans changer les commandes. Régression `-h` / `--help`
+     des deux commandes et quatre contrôles d'aide préparés/publics réussis.
+
 A17. ~~Indicateur « modifié » après annulation~~ **Corrigé (review-fixes, D052)** : point d'enregistrement dans
      l'historique ; perdu seulement si l'on modifie après une annulation ou si l'instantané enregistré sort des 50
      niveaux (le document reste alors « modifié » jusqu'au prochain enregistrement).
@@ -268,16 +267,29 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     conservés, contour non vide invalide/excessif omis sans repli continu, sous la même borne de travail.
     Aucun éditeur de motif/phase. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de
     production réussis ; preuves et limites dans `PROJECT_STATUS.fr.md` (D107). Pas de gomme, polygone, nuage, tampon ou pièce jointe ;
-    **0.18.0 en développement (D109) :** traits regroupés sur une page, Terminer/Annuler explicites, une édition
-    AddInk existante et une étape Annuler. Brouillon conservé en cas d'erreur du worker ; actions qui
-    l'enregistreraient, le remplaceraient ou le quitteraient bloquées jusqu'à validation/abandon. Aucune validation
-    automatique à l'inactivité ; brouillons non validés absents des instantanés de récupération. Validation et
-    publication CI/paquets en attente ; 0.17.0 reste Latest. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept
-    ignorés par défaut), formatage/Clippy, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour. Six
-    nouveaux tests UI sans fenêtre et le test worker étendu Annuler/Rétablir/échec réussis, y compris la fin du
-    geste après navigation ; CI/paquets en attente. Corpus local réussi : quatre documents NIST/NBS licenciés,
-    744 pages en 50,796 s, pic mémoire enfant échantillonné 329 445 376 octets ; toutes les sources inchangées.
-    Clippy avec avertissements refusés réussi.
+    **Livré en 0.18.0 (D109).**
+    Regrouper les traits à main levée d'une page en une annotation et une étape Annuler via **Terminer le dessin** /
+    **Annuler le dessin**. Une erreur du worker conserve le brouillon pour réessayer ; les actions incompatibles
+    enregistrement/fermeture/document/outil attendent Terminer/Annuler. Réutiliser AddInk, simplification des points,
+    géométrie affichée et protection (D109). Au plus 64 traits et 4 000 points par trait. Brouillon en mémoire
+    jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
+    L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
+    Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
+    [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+    source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
+    formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
+    Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
+    329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
+    étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
+    [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
+    avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
+    enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
+    réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
+    et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
+    Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
+    sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
+    Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
+
     Plafonds : 64 traits de 4 000 points, épaisseur ≤ 50 pt,
     zone de lien ≥ 6 pt ; **vérifié en capture** (`dev-screenshot.ps1`) : encre,
     sélection d'une annotation de SuniPDF (cadre, quatre poignées, barre flottante) puis déplacement et
