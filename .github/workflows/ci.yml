@@ -14,16 +14,23 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Cache pinned offline OCR runtime
+        uses: actions/cache@v4
+        with:
+          path: third_party/ocr/win-x64
+          key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: PDFium (x64)
         run: .\scripts\fetch-pdfium.ps1 -Arch x64
+      - name: Offline OCR (x64, including English and French)
+        run: .\scripts\fetch-ocr.ps1 -Arch x64
       - name: Translation catalog parity
         run: .\scripts\check-i18n.ps1
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
       - name: Tests
-        run: cargo test --workspace
+        run: cargo test --workspace --locked -j 2
       - name: Update helper checks
         run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: "Portable x64 package (including licenses and notices)"

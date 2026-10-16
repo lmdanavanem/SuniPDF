@@ -94,6 +94,7 @@ const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     ),
     (Modifiers::COMMAND, Key::O, Command::OpenDocument),
     (Modifiers::COMMAND, Key::S, Command::Save),
+    (Modifiers::COMMAND, Key::P, Command::PrintDocument),
     (Modifiers::COMMAND, Key::K, Command::CommandPalette),
     (
         Modifiers::COMMAND.plus(Modifiers::SHIFT),
@@ -107,6 +108,7 @@ const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
 /// même touche sans Maj (`consume_key` ignore un Maj en trop ; invariant testé).
 const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::COMMAND, Key::O, Command::OpenDocument),
+    (Modifiers::COMMAND, Key::P, Command::PrintDocument),
     (Modifiers::COMMAND, Key::W, Command::CloseDocument),
     (Modifiers::COMMAND, Key::Plus, Command::ZoomIn),
     (Modifiers::COMMAND, Key::Equals, Command::ZoomIn),
@@ -197,6 +199,13 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
 ];
 
 pub struct SuniApp {
+    pub recovery: crate::recovery::RecoveryState,
+    pub printing: crate::printing::PrintState,
+    pub ocr: crate::ocr::OcrState,
+    pub form_builder: crate::form_builder::FormBuilderState,
+    pub certificate: crate::certificate::CertificateState,
+    has_signatures: bool,
+    signed_save_confirm: Option<bool>,
     pub settings: Settings,
     pub worker: Worker,
     pub engine: EngineState,
@@ -267,7 +276,16 @@ impl SuniApp {
         // Ctrl+Plus / Moins / 0 zooment la page, jamais l'interface (egui les prendrait dès que
         // `handle_input` laisse passer les touches : champ focalisé, boîte de dialogue, palette).
         cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
+        let recovery = crate::recovery::RecoveryState::load();
+        let recovery_failed = recovery.failed;
         let mut app = Self {
+            recovery,
+            printing: Default::default(),
+            ocr: Default::default(),
+            form_builder: Default::default(),
+            certificate: Default::default(),
+            has_signatures: false,
+            signed_save_confirm: None,
             has_icons,
             brand: None,
             after_open: None,
@@ -310,7 +328,7 @@ impl SuniApp {
             zoom: Zoom::FitWidth,
             effective_zoom: 1.0,
             page_input: String::new(),
-            error: None,
+            error: recovery_failed.then_some("error.recovery_failed"),
             password_prompt: None,
             show_about: false,
             pending_files: initial_files,
@@ -344,6 +362,12 @@ impl SuniApp {
             install_confirm: false,
             status_msg: None,
         };
+        app.view.mode = match app.settings.view_mode.as_deref() {
+            Some("single") => ViewMode::Single,
+            Some("two_page") => ViewMode::TwoPage,
+            Some("book") => ViewMode::Book,
+            _ => app.view.mode,
+        };
         app.start_update_check(&cc.egui_ctx, false);
         app
     }
@@ -376,15 +400,33 @@ impl SuniApp {
             // Une ouverture ou un changement d'onglet est déjà en cours.
             return;
         }
-        self.error = None;
-        if self.document.is_some() {
-            self.suspend_active();
+        self.error = self.recovery.failed.then_some("error.recovery_failed");
+        if self.document.is_some() && !self.suspend_active() {
+            return;
         }
         self.opening = Some(path.clone());
         self.worker.send(Request::Open { path, password });
     }
 
     fn close_document(&mut self, announce: bool) {
+        if let Some(slot) = self.recovery_slot() {
+            if let Err(e) = slot.remove() {
+                log::warn!("Recovery cleanup failed: {e}");
+            }
+        }
+        if let Some(id) = self
+            .tabs
+            .active
+            .and_then(|i| self.tabs.tabs.get(i))
+            .map(|t| t.recovery_id)
+        {
+            if let Err(e) = self.recovery.finish(id) {
+                log::warn!("Recovered file cleanup failed: {e}");
+            }
+        }
+        self.has_signatures = false;
+        self.certificate.visible = false;
+        self.form_builder.visible = false;
         if self.document.take().is_some() {
             self.worker.send(Request::Close);
         }
@@ -505,6 +547,7 @@ impl SuniApp {
     }
 
     pub fn persist_settings(&self) {
+        #[cfg(not(test))]
         if let Err(e) = self.settings.save() {
             log::warn!("préférences non enregistrées : {e}");
         }
@@ -525,7 +568,108 @@ impl SuniApp {
                     log::error!("moteur indisponible : {e}");
                     self.engine = EngineState::Failed;
                 }
-                Response::Opened(DocState { info, .. }) => {
+                Response::TaskProgress { kind, done, total } => match kind {
+                    crate::worker::TaskKind::Print => {
+                        self.printing.done = done;
+                        self.printing.total = total;
+                    }
+                    crate::worker::TaskKind::Ocr => {
+                        self.ocr.done = done;
+                        self.ocr.total = total;
+                    }
+                },
+                Response::TaskDone { kind, result } => {
+                    match kind {
+                        crate::worker::TaskKind::Print => self.printing.busy = false,
+                        crate::worker::TaskKind::Ocr => self.ocr.busy = false,
+                    }
+                    match result {
+                        Ok(()) => {
+                            self.status_msg = Some(
+                                self.t(if kind == crate::worker::TaskKind::Print {
+                                    "status.printed"
+                                } else {
+                                    "status.ocr_done"
+                                })
+                                .into(),
+                            )
+                        }
+                        Err(EngineError::Cancelled) => {
+                            self.status_msg = Some(self.t("status.cancelled").into())
+                        }
+                        Err(error) => {
+                            log::error!("Operation failed: {error}");
+                            self.error = Some(error_key(&error));
+                        }
+                    }
+                }
+                Response::Signatures(result) => {
+                    self.certificate.busy = false;
+                    match result {
+                        Ok(signatures) => self.certificate.results(signatures),
+                        Err(e) => {
+                            log::warn!("Signature verification failed: {e}");
+                            self.certificate.error = Some(self.t(error_key(&e)).into());
+                        }
+                    }
+                }
+                Response::SignedCopy(result) => {
+                    self.certificate.busy = false;
+                    match result {
+                        Ok(path) => {
+                            self.certificate.visible = false;
+                            self.status_msg = Some(self.t("status.signed_copy").into());
+                            self.open_path(path, None);
+                        }
+                        Err(e) => {
+                            log::warn!("Certificate signing failed: {e}");
+                            self.certificate.error = Some(self.t(error_key(&e)).into());
+                        }
+                    }
+                }
+                Response::RecoverySaved(result) => {
+                    self.recovery.pending = false;
+                    if let Err(e) = result {
+                        log::error!("Recovery snapshot failed: {e}");
+                        self.error = Some("error.recovery_failed");
+                    }
+                }
+                Response::SuspendFailed(error) => {
+                    self.opening = None;
+                    self.tabs.resuming = None;
+                    if let Some(index) = self.tabs.suspending.take() {
+                        if let Some(state) =
+                            self.tabs.tabs.get_mut(index).and_then(|tab| tab.ui.take())
+                        {
+                            self.put_tab(state);
+                            self.tabs.active = Some(index);
+                        }
+                    }
+                    self.worker.send(Request::AcknowledgeSuspendFailure);
+                    log::error!("Document suspension failed: {error}");
+                    self.error = Some(error_key(&error));
+                }
+                Response::Opened(DocState {
+                    mut info,
+                    has_signatures,
+                    ..
+                }) => {
+                    self.has_signatures = has_signatures;
+                    let restored = self
+                        .recovery
+                        .pending_restore
+                        .as_ref()
+                        .filter(|entry| entry.snapshot == info.path)
+                        .cloned();
+                    if let Some(entry) = &restored {
+                        info.path = entry.original.clone().unwrap_or_else(|| {
+                            std::env::var_os("USERPROFILE")
+                                .map(std::path::PathBuf::from)
+                                .unwrap_or_default()
+                                .join("Documents/Recovered.pdf")
+                        });
+                        self.recovery.pending_restore = None;
+                    }
                     self.opening = None;
                     self.password_prompt = None;
                     self.page_input = "1".into();
@@ -540,6 +684,7 @@ impl SuniApp {
                     self.thumbs_failed.clear();
                     self.edit.reset_for_tab();
                     self.annotate.adv = Default::default();
+                    self.annotate.clear_reading();
                     self.annotate.annotations_page = None;
                     self.view.reset();
                     self.forms.reset_for_document();
@@ -547,8 +692,18 @@ impl SuniApp {
                     self.view.request(crate::view::ScrollRequest::Page(0));
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
-                    self.dirty = false;
+                    self.dirty = restored.is_some();
+                    self.worker.send(Request::SetRecovery(self.recovery_slot()));
                     self.status_msg = None;
+                    if let Some(entry) = restored {
+                        if let Some(tab) = self.tabs.active.and_then(|i| self.tabs.tabs.get(i)) {
+                            let id = tab.recovery_id;
+                            self.worker.send(Request::MarkRecovered {
+                                path: self.document.as_ref().unwrap().info.path.clone(),
+                            });
+                            self.recovery_restored(id, entry);
+                        }
+                    }
                     if let Some(cmd) = self.after_open.take() {
                         self.execute(ctx, cmd);
                     }
@@ -616,7 +771,10 @@ impl SuniApp {
                     can_redo,
                     pages_unchanged,
                     modified,
+                    has_signatures,
                 }) => {
+                    self.has_signatures = has_signatures;
+                    self.annotate.clear_reading();
                     if self.document.is_none() {
                         continue;
                     }
@@ -686,6 +844,13 @@ impl SuniApp {
                 } => self.on_redact_matches(query, verify, marks),
                 // L'intention (surligner, souligner, barrer ou simple sélection) est celle du
                 // glissement, pas celle de l'outil au moment où la réponse arrive.
+                Response::ReadingSelected {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_reading_selected(epoch, generation, result);
+                }
                 Response::TextSelected { page, selection } => {
                     match self.annotate.pending_markup.take() {
                         Some((kind, rgb)) if !selection.rects.is_empty() => {
@@ -698,7 +863,10 @@ impl SuniApp {
                             self.annotate.selection = None;
                         }
                         Some(_) => self.annotate.selection = None,
-                        None => self.annotate.selection = Some((page, selection)),
+                        None if self.annotate.tool != crate::annotate::Tool::Select => {
+                            self.annotate.selection = Some((page, selection))
+                        }
+                        None => {}
                     }
                 }
                 Response::Annotations {
@@ -725,7 +893,11 @@ impl SuniApp {
                 }
                 Response::ImageLoaded { path, result } => self.on_image_loaded(ctx, path, result),
                 Response::Suspended(s) => self.on_suspended(s),
-                Response::Resumed(state) => self.on_resumed(state, ctx),
+                Response::Resumed(state) => {
+                    self.has_signatures = state.has_signatures;
+                    self.on_resumed(state, ctx);
+                    self.worker.send(Request::SetRecovery(self.recovery_slot()));
+                }
                 Response::ResumeFailed(error) => {
                     log::error!("reprise d'onglet impossible : {error}");
                     self.on_resume_failed();
@@ -779,8 +951,15 @@ impl SuniApp {
                         &[("name", &file_name(&path))],
                     ));
                     if let Some(doc) = &mut self.document {
-                        doc.info.path = path;
+                        doc.info.path = path.clone();
                     }
+                    if let Some(tab) = self.tabs.active.and_then(|i| self.tabs.tabs.get_mut(i)) {
+                        tab.path = path;
+                        if let Err(e) = self.recovery.finish(tab.recovery_id) {
+                            log::warn!("Recovered file cleanup failed: {e}");
+                        }
+                    }
+                    self.worker.send(Request::SetRecovery(self.recovery_slot()));
                     self.update_title(ctx);
                     if let Some(action) = self.after_save.take() {
                         self.deferred_close = Some(action);
@@ -925,11 +1104,19 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.saving || self.after_save.is_some() || self.deferred_close.is_some()
+        self.saving
+            || self.after_save.is_some()
+            || self.deferred_close.is_some()
+            || self.printing.busy
+            || self.ocr.busy
+            || self.certificate.busy
     }
 
     fn close_must_wait(&self) -> bool {
         self.worker.has_pending_mutations()
+            || self.printing.busy
+            || self.ocr.busy
+            || self.certificate.busy
             || self.saving
             || self.opening.is_some()
             || self.tabs.suspending.is_some()
@@ -955,6 +1142,9 @@ impl SuniApp {
     // ----- Entrées ---------------------------------------------------------
 
     fn handle_input(&mut self, ctx: &egui::Context) {
+        if self.dialog_open() {
+            return;
+        }
         let dropped: Vec<PathBuf> = ctx.input(|i| {
             i.raw
                 .dropped_files
@@ -1102,7 +1292,7 @@ impl SuniApp {
                 self.nudge_annot(nudge.0 * step, nudge.1 * step);
             }
         }
-        let continuous = self.view.mode == ViewMode::Continuous;
+        let continuous = self.view.mode != ViewMode::Single;
         if self.document.is_some() && !self.organize.active {
             self.view.scroll_keys(ctx);
         }
@@ -1168,7 +1358,13 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.password_prompt.is_some()
+        self.recovery.open
+            || self.printing.busy
+            || self.ocr.dialog_open()
+            || self.form_builder.visible
+            || self.certificate.visible
+            || self.signed_save_confirm.is_some()
+            || self.password_prompt.is_some()
             || self.show_about
             || self.unsaved_prompt.is_some()
             || self.tools.split_open
@@ -1200,10 +1396,21 @@ impl SuniApp {
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
         log::debug!("commande {}", command.info().id);
+        if (self.printing.busy || self.ocr.busy || self.certificate.busy)
+            && !matches!(command, Command::Quit | Command::CloseDocument)
+        {
+            return;
+        }
         if command == Command::CloseDocument && self.install_on_quit {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            self.ocr
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+            self.printing
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             self.deferred_close = Some(if command == Command::CloseDocument {
                 PendingAction::Close
             } else {
@@ -1219,6 +1426,55 @@ impl SuniApp {
         }
         match command {
             Command::OpenDocument => self.open_file_dialog(),
+            Command::RecoverDocuments => {
+                if let Some(session) = &self.recovery.session {
+                    match session.scan() {
+                        Ok(mut entries) => {
+                            self.recovery.failed = false;
+                            entries.retain(|entry| {
+                                !self
+                                    .recovery
+                                    .restored
+                                    .values()
+                                    .any(|open| open.snapshot == entry.snapshot)
+                            });
+                            self.recovery.entries = entries;
+                            self.recovery.open = true;
+                        }
+                        Err(e) => {
+                            log::error!("Recovery scan failed: {e}");
+                            self.error = Some("error.recovery_failed");
+                        }
+                    }
+                }
+            }
+            Command::PrintDocument => self.start_print(),
+            Command::OcrDocument => {
+                self.ocr.open = true;
+            }
+            Command::ToolAddTextField | Command::ToolAddCheckbox => {
+                if let Some(doc) = &self.document {
+                    let kind = if command == Command::ToolAddTextField {
+                        sunipdf_core::FieldKind::Text
+                    } else {
+                        sunipdf_core::FieldKind::Checkbox
+                    };
+                    self.form_builder
+                        .open(doc.page, kind, doc.info.page_sizes[doc.page]);
+                }
+            }
+            Command::VerifySignatures | Command::SignWithCertificate => {
+                if self.has_unsaved_changes() || self.worker.has_pending_mutations() {
+                    self.error = Some("error.certificate_save_first");
+                } else {
+                    self.certificate
+                        .open(command == Command::SignWithCertificate);
+                    if command == Command::VerifySignatures {
+                        self.certificate.busy = true;
+                        self.worker.send(Request::VerifySignatures);
+                    }
+                }
+            }
             Command::CloseDocument => {
                 if self.has_unsaved_changes() {
                     self.unsaved_prompt = Some(PendingAction::Close);
@@ -1257,6 +1513,8 @@ impl SuniApp {
             Command::FitPage => self.zoom = Zoom::FitPage,
             Command::ViewContinuous => self.set_view_mode(ViewMode::Continuous),
             Command::ViewSinglePage => self.set_view_mode(ViewMode::Single),
+            Command::ViewTwoPage => self.set_view_mode(ViewMode::TwoPage),
+            Command::ViewBook => self.set_view_mode(ViewMode::Book),
             Command::ToggleThumbnails => {
                 self.settings.show_thumbnails = !self.settings.show_thumbnails;
                 self.persist_settings();
@@ -1390,6 +1648,7 @@ impl SuniApp {
             | Command::ToolLink
             | Command::ToolRedact => {
                 self.cancel_placing();
+                self.annotate.clear_reading();
                 self.annotate.tool =
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
                 self.annotate.drag = None;
@@ -1423,6 +1682,9 @@ impl SuniApp {
             | Command::HubComment
             | Command::HubProtect
             | Command::HubStamp
+            | Command::HubPrepareForm
+            | Command::HubOcr
+            | Command::HubCertificate
             | Command::HubRedact => {
                 if let Some(ws) = crate::workspace::Workspace::from_command(command) {
                     self.enter_workspace(ctx, ws);
@@ -1555,6 +1817,8 @@ impl SuniApp {
                     && match info.command {
                         Command::ViewContinuous => self.view.mode == ViewMode::Continuous,
                         Command::ViewSinglePage => self.view.mode == ViewMode::Single,
+                        Command::ViewTwoPage => self.view.mode == ViewMode::TwoPage,
+                        Command::ViewBook => self.view.mode == ViewMode::Book,
                         _ => false,
                     };
                 if menu_item(ui, tr(lang, info.label_key), shortcut, enabled, active) {
@@ -1975,6 +2239,14 @@ impl SuniApp {
         if self.saving {
             return;
         }
+        let ask_path = self.requires_save_as(ask_path);
+        if !ask_path && !self.has_unsaved_changes() && !self.worker.has_pending_mutations() {
+            return;
+        }
+        if self.has_signatures {
+            self.signed_save_confirm = Some(ask_path);
+            return;
+        }
         // Zones de caviardage non appliquées : le fichier contiendrait encore le contenu marqué.
         // Garde ici (et non dans `execute`) : la boîte « non enregistré » appelle cette fonction.
         if self.redact_blocks_save(ask_path) {
@@ -2026,6 +2298,52 @@ impl SuniApp {
             if let Some(path) = self.pending_save.take() {
                 self.worker.send(Request::Save { path });
             }
+        }
+    }
+
+    pub(crate) fn requires_save_as(&self, ask_path: bool) -> bool {
+        ask_path
+            || self
+                .tabs
+                .active
+                .and_then(|i| self.tabs.tabs.get(i))
+                .is_some_and(|tab| self.recovery.restored.contains_key(&tab.recovery_id))
+    }
+
+    fn signed_save_dialog(&mut self, ctx: &egui::Context) {
+        let Some(ask_path) = self.signed_save_confirm else {
+            return;
+        };
+        let lang = self.lang();
+        let (mut proceed, mut cancel) = (false, false);
+        dialog::show(
+            ctx,
+            dialog::Spec::new(
+                "signed-save",
+                tr(lang, "certificate.save_warning_title"),
+                self.settings.dark_theme,
+                self.has_icons,
+            )
+            .width(480.0),
+            |ui| {
+                ui.label(tr(lang, "certificate.save_warning"));
+            },
+            |ui| {
+                proceed = dialog::primary(ui, tr(lang, "certificate.save_changed"));
+                cancel = dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|i| i.key_pressed(Key::Escape));
+            },
+        );
+        if proceed || cancel {
+            self.signed_save_confirm = None;
+        }
+        if proceed {
+            self.has_signatures = false;
+            self.save_document(ask_path);
+            self.has_signatures = true;
+        }
+        if cancel {
+            self.cancel_after_save();
         }
     }
 
@@ -2111,6 +2429,7 @@ impl SuniApp {
         let logo = self.brand_wordmark(ctx, 150.0);
         let mut close = false;
         let mut startup_check = self.settings.check_updates;
+        let mut autosave = self.settings.autosave;
         let mut manual_check = false;
         let spec = dialog::Spec::new(
             "about",
@@ -2167,6 +2486,10 @@ impl SuniApp {
                 ui.add_space(10.0);
                 self.update_controls(ctx, ui);
                 ui.checkbox(&mut startup_check, tr(lang, "updates.startup"));
+                ui.add_enabled(
+                    !self.close_must_wait(),
+                    egui::Checkbox::new(&mut autosave, tr(lang, "recovery.autosave")),
+                );
                 let busy = matches!(
                     self.updater.phase,
                     UpdatePhase::Checking | UpdatePhase::Downloading | UpdatePhase::Ready(_)
@@ -2203,11 +2526,31 @@ impl SuniApp {
         if manual_check {
             self.start_update_check(ctx, true);
         }
+        if autosave != self.settings.autosave {
+            if !autosave {
+                if let Some(session) = &self.recovery.session {
+                    for tab in &self.tabs.tabs {
+                        if let Err(e) = session.slot(tab.recovery_id, tab.path.clone(), 0).remove()
+                        {
+                            log::warn!("Recovery cleanup failed: {e}");
+                            self.error = Some("error.recovery_failed");
+                        }
+                    }
+                }
+            }
+            self.settings.autosave = autosave;
+            self.worker.send(Request::SetRecovery(self.recovery_slot()));
+            self.persist_settings();
+        }
     }
 }
 
 impl eframe::App for SuniApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if self.settings.autosave && self.has_unsaved_changes() {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_secs(5));
+        }
         let ctx = ui.ctx().clone();
         if self.updater.poll() {
             ctx.request_repaint();
@@ -2351,6 +2694,9 @@ impl eframe::App for SuniApp {
             let canvas = egui::Frame::new().fill(theme::canvas_bg(self.settings.dark_theme));
             egui::CentralPanel::default().frame(canvas).show(ui, |ui| {
                 self.error_banner(ui);
+                if self.has_signatures && self.has_unsaved_changes() {
+                    ui.colored_label(p.text_muted, self.t("certificate.dirty_warning"));
+                }
                 self.forms_bar(&ctx, ui);
                 self.document_area(&ctx, ui);
             });
@@ -2388,6 +2734,9 @@ impl eframe::App for SuniApp {
             }
         }
         self.unsaved_dialog(&ctx);
+        self.signed_save_dialog(&ctx);
+        self.feature_dialogs(&ctx);
+        self.autosave_tick();
         self.split_dialog(&ctx);
         self.flatten_dialog(&ctx);
         self.stamp_dialog(&ctx);
@@ -2460,21 +2809,29 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::FormValueInvalid(_) => "error.form_value_invalid",
         EngineError::FormXfa => "error.form_xfa",
         EngineError::RedactionIncomplete => "error.redact_incomplete",
+        EngineError::Cancelled => "error.cancelled",
         EngineError::Other(_) => "error.unknown",
     }
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
-    fn test_app() -> (
+    pub(crate) fn test_app() -> (
         SuniApp,
         std::sync::mpsc::Receiver<Request>,
         std::sync::mpsc::Sender<Response>,
     ) {
         let (worker, requests, responses) = Worker::test_channels();
         let mut app = SuniApp {
+            recovery: Default::default(),
+            printing: Default::default(),
+            ocr: Default::default(),
+            form_builder: Default::default(),
+            certificate: Default::default(),
+            has_signatures: false,
+            signed_save_confirm: None,
             settings: Settings::default(),
             worker,
             engine: EngineState::Ready,
@@ -3045,6 +3402,7 @@ mod tests {
                     can_redo: false,
                     modified: dirty,
                     pages_unchanged: false,
+                    has_signatures: false,
                 }))
                 .unwrap();
             app.handle_responses(&ctx);
@@ -3074,6 +3432,7 @@ mod tests {
             page: 0,
         });
         app.tabs.tabs.push(crate::tabs::Tab {
+            recovery_id: crate::recovery::next_id(),
             path: PathBuf::from("test/second.pdf"),
             dirty,
             ui: Some(second_ui),
@@ -3104,6 +3463,7 @@ mod tests {
     fn clicking_inactive_tab_cross_during_save_does_not_close_active_document() {
         let (mut app, requests, responses) = test_app();
         add_background_tab(&mut app, false);
+        app.dirty = true;
         let ctx = egui::Context::default();
         app.save_document(false);
         assert!(requests
@@ -3130,7 +3490,7 @@ mod tests {
         );
     }
 
-    fn form_draft(app: &mut SuniApp, text: &str) {
+    pub(crate) fn form_draft(app: &mut SuniApp, text: &str) {
         app.forms.info = Some(sunipdf_core::FormInfo {
             kind: sunipdf_core::FormKind::AcroForm,
             has_scripts: false,
@@ -3272,6 +3632,7 @@ mod tests {
                 page: 0,
             });
             app.tabs.tabs.push(crate::tabs::Tab {
+                recovery_id: crate::recovery::next_id(),
                 path: PathBuf::from("test/second.pdf"),
                 dirty: false,
                 ui: Some(second_ui),
@@ -3328,6 +3689,7 @@ mod tests {
                     can_redo: false,
                     modified: false,
                     pages_unchanged: false,
+                    has_signatures: false,
                 }))
                 .unwrap();
             app.handle_responses(&ctx);
@@ -3348,6 +3710,7 @@ mod tests {
             can_redo: false,
             modified,
             pages_unchanged: false,
+            has_signatures: false,
         })
     }
 
@@ -3463,6 +3826,7 @@ mod tests {
         });
         app.dirty = true;
         app.tabs.tabs.push(crate::tabs::Tab {
+            recovery_id: crate::recovery::next_id(),
             path: PathBuf::from("test/second.pdf"),
             dirty: true,
             ui: Some(second_ui),
@@ -3539,6 +3903,7 @@ mod tests {
             page: 0,
         });
         app.tabs.tabs.push(crate::tabs::Tab {
+            recovery_id: crate::recovery::next_id(),
             path: PathBuf::from("test/second.pdf"),
             dirty: false,
             ui: Some(second_ui),
@@ -3594,6 +3959,7 @@ mod tests {
                 can_redo: false,
                 modified: false,
                 pages_unchanged: false,
+                has_signatures: false,
             }))
             .unwrap();
         app.handle_responses(&ctx);
@@ -3734,6 +4100,7 @@ mod tests {
                 can_redo: false,
                 modified: true,
                 pages_unchanged: false,
+                has_signatures: false,
             }))
             .unwrap();
         app.handle_responses(&ctx);
@@ -3785,7 +4152,12 @@ mod tests {
             include_str!("sign.rs"),
             include_str!("forms.rs"),
             include_str!("annot_adv.rs"),
-            include_str!("redact.rs")
+            include_str!("redact.rs"),
+            include_str!("features.rs"),
+            include_str!("form_builder.rs"),
+            include_str!("certificate.rs"),
+            include_str!("ocr.rs"),
+            include_str!("printing.rs")
         );
         let mut checked = 0;
         for key in src.split('"').filter(|s| {
@@ -3793,7 +4165,10 @@ mod tests {
                 && s.chars()
                     .all(|c| c.is_ascii_lowercase() || c == '.' || c == '_')
         }) {
-            if !key.contains("..") && !key.ends_with(".rs") && key.split('.').all(|p| !p.is_empty())
+            if !key.contains("..")
+                && !key.ends_with(".rs")
+                && !key.ends_with(".pdf")
+                && key.split('.').all(|p| !p.is_empty())
             {
                 checked += 1;
                 for lang in Language::ALL {
@@ -3877,3 +4252,7 @@ mod tests {
         assert!(!is_pdf(Path::new("a/b.txt")));
     }
 }
+
+#[cfg(test)]
+#[path = "feature_tests.rs"]
+mod feature_tests;

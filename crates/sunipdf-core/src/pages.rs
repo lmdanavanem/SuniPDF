@@ -86,6 +86,27 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     result
 }
 
+/// Atomically publishes a new copy without replacing a file created in the meantime.
+pub fn write_new_copy(path: &Path, bytes: &[u8]) -> Result<(), EngineError> {
+    use std::io::Write;
+    let dir = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    std::fs::create_dir_all(dir)?;
+    let mut file = tempfile::NamedTempFile::new_in(dir)?;
+    file.write_all(bytes)?;
+    file.as_file().sync_all()?;
+    file.persist_noclobber(path).map_err(|failure| {
+        if failure.error.kind() == std::io::ErrorKind::AlreadyExists {
+            EngineError::AlreadyExists(path.into())
+        } else {
+            EngineError::Io(failure.error)
+        }
+    })?;
+    Ok(())
+}
+
 /// Chaîne de pages PDFium ("1,3-5", base 1) à partir d'indices base 0.
 fn page_range_string(pages: &[usize]) -> String {
     pages

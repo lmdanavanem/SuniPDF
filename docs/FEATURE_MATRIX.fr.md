@@ -8,6 +8,9 @@ Colonne « Attendu » : capacité attendue d'un éditeur PDF complet (**Déclar�
 Statuts SuniPDF : **Fait** = implémenté **et** couvert par des tests exécutés ; **En cours** ; **Planifié (Pn)** = phase
 de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement avec des résultats réels.
 
+Les nouveautés 0.9.0 sont couvertes par des régressions automatisées. `PROJECT_STATUS.fr.md` suit les contrôles exécutés ;
+ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou lecteur tiers.
+
 ## A. Lecture
 
 | Fonction | Attendu | SuniPDF | Note |
@@ -18,17 +21,17 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Zoom, ajuster largeur/page, taille réelle | Déclaré | **Fait** (UI) | Rendu à la résolution physique (DPI) ; Ctrl + molette ancré sous le pointeur, 10 à 3200 % |
 | Rendu hors thread UI | Déclaré | **Fait** | Thread moteur unique, liste de tuiles voulues remplacée en bloc, époques anti-obsolescence |
 | Onglets multi-documents | Déclaré | **Fait** (suspension des documents inactifs, état d'interface conservé) | |
-| Affichage continu, double page, rotation de vue | Déclaré | Affichage continu **Fait** (virtualisé, page courante suivie, page unique en option F5) ; double page et rotation de vue planifiées | Tests `view.rs` (mise en page, virtualisation, ancre de zoom), captures |
+| Affichage continu, double page, rotation de vue | Déclaré | Continu/double page/Livre avec couverture seule **Faits** ; rotation de vue prévue | Tuiles/cache communs, régressions tailles mixtes, dernière page et zoom |
 | Rendu en tuiles, cache plafonné | Déclaré | **Fait** (tuiles de 1024 px au-delà de 4096 px / 8 Mpx, cache LRU 256 Mo, textures 192 Mo) | `Document::render_region`, tests de pixels (régions, recollage, zoom ×40) ; CLI `render --region` |
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
-| Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** (sélection rectangulaire, lignes fusionnées) | ordre de lecture complexe planifié |
+| Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
 | Signets (outline) | Déclaré | **Fait** (panneau, navigation ; édition planifiée) | |
 | Étiquettes de pages | Déclaré | Planifié (P3) | |
 | Historique de navigation, onglets rouverts | Déclaré | Fichiers récents **Faits** (accueil) ; historique de navigation planifié (P3) | |
 | Mode lecture / plein écran | Déclaré | Planifié (P3) | |
-| Impression Windows | Déclaré (fidélité limitée) | Planifié (P5) | API Windows (`sunipdf-platform`) |
-| Récupération après plantage, autosave | Déclaré | Planifié (P3) | |
+| Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
+| Récupération après plantage, autosave | Déclaré | **Fait** (régressions récupération/worker/onglets) | Instantanés 60 s/suspension d'onglet ; source intacte ; chiffrement conservé/sans mots de passe ; restauration Enregistrer sous |
 | Thèmes clair/sombre | Déclaré | **Fait** | Design system `theme.rs`, bascule dans la barre d'onglets |
 | Interface traduisible | Déclaré (EN, JA + 22 catalogues) | **Fait** (en-US par défaut, fr-FR disponible) | Changement à chaud, préférences existantes conservées |
 
@@ -73,7 +76,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
 | Office → PDF | Absent | Planifié (P4) via LibreOffice/Word installé si présent ; sinon hors périmètre |
 | HTML → PDF | Absent | Planifié (P5, optionnel) |
-| OCR | Partiel (latin, modèles CC-BY-SA) | Planifié (P4) : Tesseract (Apache-2.0) fra+eng, hors ligne |
+| OCR | Partiel (latin, modèles CC-BY-SA) | **Fait** : Tesseract 5.5.3 / Leptonica 1.87 embarqués hors ligne, modèles rapides eng/fra, texte invisible, pages textuelles ignorées, progression/annulation/un undo ; tests moteur et reconnaissance CLI réelle ; CLI `ocr` |
 
 ## E. Sécurité et signatures
 
@@ -84,7 +87,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Caviardage irréversible | Déclaré (crate redact) | **Fait** (outil Caviarder du hub : zones à la souris, marquage d'un texte, confirmation, garde d'enregistrement ; CLI `redact`) : objets retirés + vignette noircie, annotations / champs / métadonnées / révisions antérieures supprimés, vérification par relecture ; absence prouvée par tests (extraction, octets décompressés, pixels, pages pivotées, document chiffré) ; limites `KNOWN_ISSUES.fr.md` A40 |
 | Nettoyage des métadonnées | Déclaré | **Fait** (Info, XMP du catalogue, des pages et des images, `/PieceInfo` ; les propriétés modifiées régénèrent le XMP) |
 | Signature manuscrite (image) | Déclaré | **Fait** (sign-image) : dessinée au pavé, importée (PNG transparent ou photo à fond clair retiré par seuil) ou reprise de la bibliothèque locale (`%APPDATA%\SuniPDF\signatures`, PNG en clair, enregistrement facultatif), paraphe, date du jour ; objet image à masque alpha, modifiable et annulable ; CLI `add-image` ; **visuelle, jamais présentée comme certifiée** (encadré permanent, `digital_signature: false`) |
-| Signature numérique CMS/PKCS#12, horodatage | Déclaré | Planifié (P5) |
+| Signature numérique CMS/PKCS#12, horodatage | Déclaré | Intégrité/copie signée PFX/P12 **Faites** (tests avec certificat jetable) ; CLI `signatures`/`sign` ; PDF chiffré refusé. Confiance/révocation/horodatage fiable/LTV non vérifiés |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
 
 ## F. Formulaires et accessibilité
@@ -92,7 +95,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
-| Créer des champs | Non documenté | Planifié (feuille de route : lopdf seul, D066) ; « Préparer un formulaire » absent du hub |
+| Créer des champs | Non documenté | **Fait** : boîte numérique texte/case, noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
 | Import/export FDF/XFDF | Déclaré (xfdf) | **JSON fait** (`{ nom: valeur }`, export par tâche, import validé champ par champ) ; FDF/XFDF non (D064) |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
@@ -106,13 +109,13 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
-| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour 11 outils sur 14 (Exporter, Remplir et signer — remplir et signer —, Modifier, Créer, Combiner, Organiser, Commenter, Protéger, Caviarder, Compresser, Tampon) : panneau F9, cartes d'accueil, menu Outils, palette, barre d'outil avec Échap ; OCR, Formulaire, Certificat planifiés (absents tant que leur fonction n'existe pas) |
+| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour les 14 outils ; Numériser et OCR, Préparer un formulaire et Utiliser un certificat ont leurs commandes ; tests registre et activation sans fenêtre |
 | Workflows locaux, profils de conversion | Absent | Planifié (P5) |
 
 ## H. Distribution
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | Planifié (P6) ; CI écrite, non exécutée |
-| Windows ARM64 | Déclaré (workflow dédié) | Planifié (P6) ; binaires PDFium ARM64 disponibles |
+| Windows x64 | Déclaré (MSI, zip) | Distribution ZIP/MSI ; preuves par version dans PROJECT_STATUS ; installation réelle non vérifiée |
+| Windows ARM64 | Déclaré (workflow dédié) | ZIP portable construit en CI ; preuves par version dans PROJECT_STATUS ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

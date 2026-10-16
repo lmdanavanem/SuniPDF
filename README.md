@@ -26,15 +26,22 @@
 
 | Area | Features |
 |---|---|
-| Read | Tabs, continuous or single-page view, tiled rendering at high zoom, thumbnails, search, bookmarks, light/dark themes |
+| Read | Tabs, continuous/single-page/two-page/Book views, tiled high-zoom rendering, thumbnails, search, bookmarks, logical text selection across pages, double-click words and edge scrolling |
 | Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, clipboard across tabs, Objects panel, page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages |
 | Fill and sign | AcroForm filling, flattening and JSON import/export; handwritten/image signatures, initials and date (visual signatures, not digital certificates) |
+| Create forms | Named text fields and checkboxes through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
+| Recover | Automatic snapshots every 60 seconds and on tab suspension; original unchanged, PDF encryption preserved, no passwords stored, restore through Save As |
+| Print | Native Windows printer selection, page ranges/copies/orientation, current edits, bounded raster output, progress and cancellation |
 | Stamp | Text watermarks and page numbering |
-| Convert | Images to PDF, PDF to PNG, lossless optimization |
+| Convert | Images to PDF, PDF to PNG, lossless optimization; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo |
 | Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
-| Automate | `sunipdf-cli`: 42 commands with JSON output and stable exit codes |
+| Certificates | Saved-byte integrity verification and incremental PFX/P12 signing into a new copy; certificate trust, revocation and trusted timestamps are unchecked; encrypted PDF signing is refused |
+| Automate | `sunipdf-cli`: 46 commands with JSON output and stable exit codes, including `add-form-field`, `ocr`, `signatures` and `sign` |
+
+All 14 task tools have real commands. Reading follows PDFium's logical character order; arbitrary untagged columns
+are not reconstructed. Physical printing, ARM64 hardware and third-party signature interoperability remain separate QA checks.
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
@@ -53,6 +60,8 @@
 Download from [GitHub Releases](https://github.com/lmdanavanem/SuniPDF/releases): **Windows x64 MSI** or **portable ZIP**.
 An ARM64 portable ZIP is built in CI but has not been run on ARM64 hardware. SHA256 checksums are provided.
 No Visual C++ redistributable is required.
+Offline OCR includes Tesseract 5.5.3, Leptonica 1.87.0 and pinned English/French fast models; keep the bundled
+`licenses/` folder with the application. Recognition does not download models or send PDFs anywhere.
 
 From version 0.8.2, SuniPDF checks for updates at startup and shows a download/install button. You decide when to close your documents and install.
 Installed x64 copies use the MSI; portable copies update their own folder with a backup.
@@ -62,15 +71,17 @@ Older versions need one manual upgrade to obtain this feature. Automatic checks 
 
 ## Build
 
-Install [stable Rust](https://rustup.rs) and the **Visual Studio Build Tools** with the Desktop development with C++ workload.
+Install [stable Rust](https://rustup.rs), **Visual Studio Build Tools** with the Desktop development with C++ workload,
+and **CMake** on PATH. The first OCR setup builds pinned native sources and checks their SHA256 hashes.
 
 ```powershell
 git clone https://github.com/lmdanavanem/SuniPDF.git
 cd SuniPDF
 .\scripts\fetch-pdfium.ps1
+.\scripts\fetch-ocr.ps1 -Arch x64
 cargo test --workspace -j 2
-cargo run -p sunipdf-desktop -- document.pdf
-cargo run -p sunipdf-cli -- info document.pdf
+cargo run -p sunipdf-desktop -j 2 -- document.pdf
+cargo run -p sunipdf-cli -j 2 -- info document.pdf
 .\scripts\package-portable.ps1 -Arch x64
 .\scripts\package-msi.ps1 -Arch x64
 ```
@@ -83,4 +94,8 @@ SuniPDF is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE
 [Third-party notices](docs/THIRD_PARTY_NOTICES.md) accompany each distribution.
 Built with [PDFium](https://pdfium.googlesource.com/pdfium/), [pdfium-render](https://github.com/ajrcarey/pdfium-render),
 [lopdf](https://github.com/J-F-Liu/lopdf) and [egui/eframe](https://github.com/emilk/egui).
+OCR uses [Tesseract](https://github.com/tesseract-ocr/tesseract) (Apache-2.0),
+[Leptonica](https://github.com/DanBloomberg/leptonica) (BSD-2-Clause) and
+[tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) English/French models (Apache-2.0).
+Their licences, authors, copyright inventory and build notice ship in `licenses/`.
 SuniPDF is not affiliated with Adobe, Google or Foxit.

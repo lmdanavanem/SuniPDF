@@ -12,10 +12,10 @@
    The UI thread never blocks on a PDF operation.
 4. **Typed errors, text translated at the boundary.** `EngineError` carries a stable code (`code()`);
    only the UI maps it to an i18n key (`app.rs::error_key`), the CLI emits the code as JSON.
-5. **Atomic writes.** Neighbouring temporary file then `rename` (`settings.rs::save_atomic`); the same rule
-   applies to future PDF saves, with verification by an independent tool (qpdf) in CI.
-6. **Offline, no telemetry.** No network dependency at runtime. The PDFium download script is a build
-   tool, not an application feature.
+5. **Atomic writes.** Neighbouring temporary file then replacement (`sunipdf_core::write_atomic`) for PDF,
+   recovery and settings output. Independent qpdf validation remains a separate QA task.
+6. **Local PDF processing, no telemetry.** OCR and signatures run locally. The opt-out update check and
+   explicit release download contact GitHub without sending PDF content; this is the only application network feature.
 7. **No PDF JavaScript.** PDFium binaries compiled without V8 or XFA (`args.gn`: `pdf_enable_v8=false`).
 
 ## Current workspace
@@ -90,11 +90,11 @@ Request::Close ─────────────────────�
 | `sunipdf-editor` | annotations, text, images, watermarks | P2–P3 |
 | `sunipdf-forms` | not created (D061): AcroForm lives in `sunipdf-core::{forms, form_data}` (lopdf model and writing, PDFium appearances, JSON); FDF/XFDF not shipped | — |
 | `sunipdf-convert` | PDF↔images, text, Office via a detected external converter | P4 |
-| `sunipdf-ocr` | Tesseract (fra, eng) offline | P4 |
+| `sunipdf-ocr` | not created: offline OCR lives in `sunipdf-core::ocr`; bundled runtime and models | — |
 | `sunipdf-security` | encryption (outside PDFium), permissions, redaction, metadata | P5 |
-| `sunipdf-signatures` | CMS, PKCS#12, timestamping, verification | P5 |
+| `sunipdf-signatures` | not created: CMS/PKCS#12 verification and signing live in `sunipdf-core::certificate`; trusted timestamps remain planned | — |
 | `sunipdf-automation` | JSON-Schema command registry, batches, opt-in MCP | P5 |
-| `sunipdf-platform` | Windows Explorer, file associations, printing, DPI | P5 |
+| `sunipdf-platform` | not created: native printing lives in desktop `printing.rs`; further platform integration remains planned | — |
 | `sunipdf-ui` | reusable egui components (if the app grows) | P3 |
 
 ## Tabs (SUNI-012a)
@@ -106,6 +106,34 @@ selection, annotations, bookmarks, etc.) is exchanged through `tabs.rs::take_tab
 serialisation per tab switch; memory: one snapshot per inactive tab. The object clipboard
 (`ObjectClip`, a one-page PDF in memory) lives in the engine state, outside the document: it survives
 tab switches, which allows copying in one document and pasting in another.
+
+## 0.9.0 feature paths
+
+Implementation validation is tracked in `PROJECT_STATUS.md`; this section describes the design, not a test result.
+
+- **Recovery**: `recovery.rs` stores atomic PDF snapshots and JSON metadata in a per-process session under
+  `%LOCALAPPDATA%\SuniPDF\recovery`. An exclusive Windows lock excludes live sessions from the recovery list.
+  The worker snapshots modified documents every 60 seconds and on suspension; source bytes are not overwritten.
+  Protected snapshots remain encrypted, metadata contains no password, and restoration requires Save As.
+- **Printing**: desktop `printing.rs` obtains a native Windows printer DC and validated page selection.
+  The engine thread renders the current document into bounded raster bands, reports page progress and checks
+  an atomic cancellation flag. Printer handles have ownership/cleanup; aborting does not save the document.
+- **Reading and spreads**: core `annot.rs` resolves display points into PDFium character indices and returns
+  page-specific text/highlight rectangles. Requests and responses carry document epoch and selection generation;
+  the UI keeps one request pending and the latest pointer endpoints. `view.rs::Layout` groups spread rows,
+  cover-first Book and odd last pages; all modes reuse the 24-job planner, 192 MiB texture pool and 256 MiB engine cache.
+- **Field creation**: core `forms.rs::add_form_field` validates names and display rectangles before writing
+  AcroForm/Widget objects and generating appearances. Desktop `form_builder.rs` supplies a numeric dialog;
+  `EditOp` makes creation undoable. CLI `add-form-field` uses the same method.
+- **OCR**: core `ocr.rs` invokes only the bundled or explicitly selected Tesseract runtime, in a private
+  temporary directory, with `eng`/`fra` fast models, bounded image/TSV output, timeout and cancellation.
+  Recognition occurs on a scratch document; success commits once and the worker creates one undo step.
+  Existing text is skipped. Invisible word objects use the common rotation/CropBox geometry.
+- **Certificate signatures**: `certificate.rs` parses saved bytes and creates a CMS detached signature in an
+  incremental revision; `certificate_native.rs` delegates private-key operations to Windows Cryptography.
+  PFX/P12 credentials use cleared temporary buffers and no persistent key import. Verification reports integrity
+  and certificate metadata without establishing trust, revocation or a trusted timestamp. UI `certificate.rs`
+  and CLI `feature_cmd.rs` both require a new copy for signing; encrypted input is refused.
 
 ## Coordinates (SUNI-031c)
 

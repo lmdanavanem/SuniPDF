@@ -40,6 +40,8 @@ pub enum EngineError {
     /// Caviardage : flux de contenu non décodable strictement, ou texte encore extractible sous une zone.
     #[error("redaction could not be verified; the document was left unchanged")]
     RedactionIncomplete,
+    #[error("operation cancelled")]
+    Cancelled,
     #[error("engine error: {0}")]
     Other(String),
 }
@@ -64,6 +66,7 @@ impl EngineError {
             Self::FormValueInvalid(_) => "form_value_invalid",
             Self::FormXfa => "form_xfa",
             Self::RedactionIncomplete => "redaction_incomplete",
+            Self::Cancelled => "cancelled",
             Self::Other(_) => "other",
         }
     }

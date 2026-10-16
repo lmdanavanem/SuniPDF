@@ -7,6 +7,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-16
+
+Validation results and remaining hardware checks are recorded in `docs/PROJECT_STATUS.md`.
+
+### Added
+- Automatic recovery snapshots every 60 seconds and when suspending a modified tab. Recovery keeps the
+  original PDF unchanged, preserves PDF encryption without storing passwords and restores into a new copy.
+- Windows printing through the native printer dialog: current edits, page ranges, copies, raster output,
+  progress and cancellation. Physical printer validation remains pending.
+- Reading selection across pages in either direction, word selection by double-click and edge autoscroll;
+  copied text follows PDFium's logical character order, including on rotated and cropped pages.
+- Two-page and cover-first Book views with mixed page sizes, anchored zoom and the existing bounded tile cache.
+- Prepare a form: create named text fields and checkboxes with numeric page rectangles, undo, save and fill.
+- Bundled offline English/French OCR: Tesseract 5.5.3, Leptonica 1.87 and fast `eng`/`fra` models;
+  invisible searchable text, existing-text skipping, progress, cancellation and a single undo step.
+- Use a certificate: verify saved PDF signatures and create an incrementally signed copy using a PFX/P12
+  identity. Certificate identity trust, revocation and trusted timestamps are not established.
+- CLI `add-form-field`, `ocr`, `signatures` and `sign`. Certificate passwords come from an environment
+  variable or piped stdin, never a plaintext password argument. Signing cannot overwrite its source.
+
+### Changed
+- All 14 task tools have an implementation. Signed PDFs show a warning before a rewrite; encrypted PDFs
+  cannot be digitally signed. Office conversion, view rotation and advanced font work remain on the backlog.
+
 ## [0.8.3] — 2026-10-16
 
 ### Fixed

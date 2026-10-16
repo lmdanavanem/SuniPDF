@@ -410,7 +410,10 @@ fn annots_entries(pdf: &lopdf::Document, page: ObjectId) -> Vec<Object> {
         .unwrap_or_default()
 }
 
-fn annots_mut(pdf: &mut lopdf::Document, page: ObjectId) -> Result<&mut Vec<Object>, EngineError> {
+pub(crate) fn annots_mut(
+    pdf: &mut lopdf::Document,
+    page: ObjectId,
+) -> Result<&mut Vec<Object>, EngineError> {
     let indirect = pdf
         .get_dictionary(page)
         .map_err(lopdf_err)?
@@ -424,7 +427,7 @@ fn annots_mut(pdf: &mut lopdf::Document, page: ObjectId) -> Result<&mut Vec<Obje
             .map_err(lopdf_err),
         None => {
             let dict = pdf.get_dictionary_mut(page).map_err(lopdf_err)?;
-            if !matches!(dict.get(b"Annots"), Ok(Object::Array(_))) {
+            if dict.get(b"Annots").is_err() {
                 dict.set("Annots", Object::Array(vec![]));
             }
             dict.get_mut(b"Annots")

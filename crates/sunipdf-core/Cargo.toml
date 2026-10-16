@@ -16,6 +16,12 @@ image = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
+tempfile = "3"
+zeroize = "1"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
 
 [dev-dependencies]
 image = { workspace = true }

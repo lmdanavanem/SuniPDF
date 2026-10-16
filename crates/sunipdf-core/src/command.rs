@@ -17,6 +17,18 @@ pub enum Command {
     FitPage,
     ViewContinuous,
     ViewSinglePage,
+    ViewTwoPage,
+    ViewBook,
+    PrintDocument,
+    RecoverDocuments,
+    ToolAddTextField,
+    ToolAddCheckbox,
+    HubPrepareForm,
+    OcrDocument,
+    HubOcr,
+    VerifySignatures,
+    SignWithCertificate,
+    HubCertificate,
     ToggleThumbnails,
     Find,
     Save,
@@ -949,6 +961,88 @@ pub const REGISTRY: &[CommandInfo] = &[
         false,
         Tools
     ),
+    cmd!(
+        PrintDocument,
+        "file.print",
+        "menu.file.print",
+        Some("shortcut.print"),
+        true,
+        File
+    ),
+    cmd!(
+        RecoverDocuments,
+        "file.recover",
+        "menu.file.recover",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        ViewTwoPage,
+        "view.two_page",
+        "menu.view.two_page",
+        None,
+        true,
+        View
+    ),
+    cmd!(ViewBook, "view.book", "menu.view.book", None, true, View),
+    cmd!(
+        ToolAddTextField,
+        "form.add_text_field",
+        "menu.form.add_text_field",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        ToolAddCheckbox,
+        "form.add_checkbox",
+        "menu.form.add_checkbox",
+        None,
+        true,
+        Forms
+    ),
+    cmd!(
+        OcrDocument,
+        "convert.ocr",
+        "menu.convert.ocr",
+        None,
+        true,
+        Convert
+    ),
+    cmd!(
+        VerifySignatures,
+        "security.signatures",
+        "menu.security.signatures",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        SignWithCertificate,
+        "security.sign",
+        "menu.security.sign",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        HubPrepareForm,
+        "hub.prepare_form",
+        "hub.prepare_form.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(HubOcr, "hub.ocr", "hub.scan_ocr.name", None, true, Tools),
+    cmd!(
+        HubCertificate,
+        "hub.certificate",
+        "hub.certificate.name",
+        None,
+        true,
+        Tools
+    ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),
 ];
 
@@ -999,9 +1093,9 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 7);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 8);
-        assert_eq!(Command::in_menu(Menu::Forms).count(), 6);
+        assert_eq!(Command::in_menu(Menu::File).count(), 9);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 11);
+        assert_eq!(Command::in_menu(Menu::Forms).count(), 8);
     }
 
     #[test]

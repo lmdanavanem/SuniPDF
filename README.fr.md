@@ -20,7 +20,7 @@ Licence MIT ou Apache-2.0, au choix.
 
 ## Pourquoi SuniPDF
 - **Vos fichiers restent chez vous** : aucun PDF envoyé, aucun compte, aucune télémétrie, aucun traitement dans le cloud. La recherche de mises à jour contacte GitHub et peut être désactivée.
-- **Natif et léger** : Rust, interface egui, moteur de rendu PDFium ; un exécutable, un ZIP portable ou un MSI.
+- **Natif** : Rust, interface egui, moteur PDFium ; ZIP portable ou MSI, avec OCR embarqué.
 - **Complet** : lecture, annotation, édition du contenu, organisation des pages, formulaires, signature visuelle,
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
@@ -28,15 +28,22 @@ Licence MIT ou Apache-2.0, au choix.
 ## Fonctionnalités
 | Domaine | Détail |
 |---|---|
-| Lire | Onglets, défilement continu ou page unique, rendu en tuiles au zoom profond, miniatures, recherche, signets, thème clair / sombre |
-| Commenter | Surligner, souligner, barrer, notes, panneau des commentaires |
+| Lire | Onglets, vues continue/page unique/double page/Livre, tuiles au zoom profond, miniatures, recherche, signets, sélection logique entre pages, mots par double-clic et défilement au bord |
+| Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, copier-coller entre pages et onglets, panneau Objets, recadrage et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner (glisser-déposer), combiner, diviser, extraire, pages vierges |
 | Remplir et signer | Formulaires AcroForm (remplir, panneau, aplatir, import / export JSON), signature manuscrite ou image, paraphe, date (signature visuelle, non certifiée) |
+| Créer des formulaires | Champs texte et cases nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
+| Récupérer | Instantanés automatiques toutes les 60 secondes et à la suspension ; source intacte, chiffrement PDF conservé, aucun mot de passe stocké, restauration Enregistrer sous |
+| Imprimer | Sélection native Windows, plages/copies/orientation, modifications courantes, rendu tramé borné, progression et annulation |
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
-| Convertir | Images → PDF, PDF → images PNG, optimisation sans perte |
-| Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés |
-| Automatiser | `sunipdf-cli` : 42 commandes à sortie JSON et codes de retour stables |
+| Convertir | Images → PDF, PDF → PNG, optimisation sans perte ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo |
+| Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
+| Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
+| Automatiser | `sunipdf-cli` : 46 commandes JSON et codes stables, dont `add-form-field`, `ocr`, `signatures` et `sign` |
+
+Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes
+arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabilité des signatures restent des contrôles QA distincts.
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
@@ -55,18 +62,26 @@ Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.
 Page [Releases](https://github.com/lmdanavanem/SuniPDF/releases) : **MSI x64** (installation classique) ou
 **ZIP portable x64** (décompresser, lancer `sunipdf.exe`), avec empreintes SHA256. Un ZIP ARM64 est compilé en
 intégration continue mais n'a pas encore été exécuté sur du matériel ARM64. Aucun redistribuable Visual C++ n'est requis.
+L'OCR inclut Tesseract 5.5.3, Leptonica 1.87.0 et les modèles rapides anglais/français figés ; gardez le dossier
+`licenses/` avec l'application. Aucun modèle n'est téléchargé pendant la reconnaissance et aucun PDF n'est envoyé.
+
+Depuis la 0.8.2, une notification au démarrage permet de télécharger la mise à jour, puis de fermer et installer
+après confirmation. Le MSI met à jour une installation x64 ; les portables remplacent leur dossier avec une sauvegarde.
+La recherche automatique se désactive dans À propos ; les versions antérieures demandent une première mise à niveau manuelle.
 
 Guides : [`docs/USER_GUIDE.fr.md`](docs/USER_GUIDE.fr.md) · [`docs/USER_GUIDE.en.md`](docs/USER_GUIDE.en.md).
 
 ## Compiler
-Prérequis : [Rust stable](https://rustup.rs) et les **Build Tools pour Visual Studio** (charge « Développement Desktop en C++ »).
+Prérequis : [Rust stable](https://rustup.rs), **Build Tools pour Visual Studio** (charge « Développement Desktop en C++ »)
+et **CMake** dans PATH. La première préparation OCR compile les sources natives figées après contrôle SHA256.
 ```powershell
 git clone https://github.com/lmdanavanem/SuniPDF.git
 cd SuniPDF
 .\scripts\fetch-pdfium.ps1              # binaires PDFium (bblanchon/pdfium-binaries), empreinte vérifiée
+.\scripts\fetch-ocr.ps1 -Arch x64      # moteur OCR et modèles locaux, sources et empreintes figées
 cargo test --workspace -j 2              # moteur, interface, CLI, i18n
-cargo run -p sunipdf-desktop -- fichier.pdf
-cargo run -p sunipdf-cli -- info fichier.pdf
+cargo run -p sunipdf-desktop -j 2 -- fichier.pdf
+cargo run -p sunipdf-cli -j 2 -- info fichier.pdf
 .\scripts\package-portable.ps1 -Arch x64 # ZIP portable + SHA256
 .\scripts\package-msi.ps1 -Arch x64      # MSI (WiX 3.14, téléchargé automatiquement)
 ```
@@ -87,3 +102,7 @@ Code SuniPDF : [MIT](LICENSE-MIT) ou [Apache-2.0](LICENSE-APACHE), au choix. Com
 [pdfium-render](https://github.com/ajrcarey/pdfium-render), [lopdf](https://github.com/J-F-Liu/lopdf),
 [egui / eframe](https://github.com/emilk/egui) et les polices système Segoe UI. SuniPDF n'est affilié ni à Adobe,
 ni à Google ou Foxit (PDFium).
+L'OCR utilise [Tesseract](https://github.com/tesseract-ocr/tesseract) (Apache-2.0),
+[Leptonica](https://github.com/DanBloomberg/leptonica) (BSD-2-Clause) et les modèles anglais/français
+[tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) (Apache-2.0). Licences, auteurs, inventaire
+des copyrights et notice de compilation sont livrés dans `licenses/`.

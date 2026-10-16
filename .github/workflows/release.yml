@@ -19,12 +19,20 @@ jobs:
         with:
           targets: aarch64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
+      - name: Cache pinned offline OCR runtime
+        uses: actions/cache@v4
+        with:
+          path: third_party/ocr/win-${{ matrix.arch }}
+          key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
+      - name: Offline OCR (${{ matrix.arch }}, including English and French)
+        run: .\scripts\fetch-ocr.ps1 -Arch ${{ matrix.arch }}
       - name: Tests (x64)
         if: matrix.arch == 'x64'
         run: |
           .\scripts\fetch-pdfium.ps1 -Arch x64
           .\scripts\check-i18n.ps1
-          cargo test --workspace
+          cargo test --workspace --locked -j 2
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
           .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: Portable (${{ matrix.arch }})
         run: .\scripts\package-portable.ps1 -Arch ${{ matrix.arch }}
@@ -41,6 +49,7 @@ jobs:
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -match "x64" } | Select-Object -First 1 -ExpandProperty FullName
           $msi = (Get-ChildItem dist\*.msi).FullName
           & $signtool sign /f sign.pfx /p $env:SIGN_PFX_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $msi
+          if ($LASTEXITCODE -ne 0) { Remove-Item -LiteralPath sign.pfx -Force; throw 'MSI signing failed.' }
           Remove-Item sign.pfx
           # La signature modifie le fichier : recalculer l'empreinte publiée.
           $hash = (Get-FileHash $msi -Algorithm SHA256).Hash
@@ -65,7 +74,8 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
-          generate_release_notes: true
+          draft: true
+          generate_release_notes: false
           body: |
             Windows x64 packages (portable ZIP and MSI) tested in CI. The ARM64 ZIP is built in CI but
             has not been run on ARM64 hardware. SHA256 checksums are included (.sha256).

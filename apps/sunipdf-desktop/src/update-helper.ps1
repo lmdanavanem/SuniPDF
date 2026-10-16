@@ -191,12 +191,15 @@ function Invoke-SelfTest {
         catch { if ($_.Exception.Message -eq 'Boundary check failed.') { throw } }
         $source = Join-Path $workspace 'source'
         [IO.Directory]::CreateDirectory((Join-Path $source 'licenses')) | Out-Null
-        foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'README.txt', 'licenses/LICENSE.txt')) {
+        $payload = @('sunipdf.exe', 'sunipdf-cli.exe', 'README.txt', 'licenses/LICENSE.txt',
+            'licenses/tesseract.exe', 'licenses/eng.traineddata', 'licenses/fra.traineddata',
+            'licenses/ocr-NOTICE.txt', 'licenses/ocr-AUTHORS.txt', 'pdfium.dll')
+        foreach ($name in $payload) {
             [IO.File]::WriteAllText((Join-Path $source $name), "new:$name")
         }
         $package = Join-Path $workspace 'package.zip'
         $zip = [IO.Compression.ZipFile]::Open($package, [IO.Compression.ZipArchiveMode]::Create)
-        foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'README.txt', 'licenses/LICENSE.txt', 'pdfium.dll')) {
+        foreach ($name in $payload) {
             [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Join-Path $source $name), $name) | Out-Null
         }
         $zip.Dispose()
@@ -208,7 +211,8 @@ function Invoke-SelfTest {
         $files = @(Expand-Portable $package $stage)
         $target = Join-Path $workspace 'target'
         [IO.Directory]::CreateDirectory($target) | Out-Null
-        foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'document.pdf', 'settings.json')) {
+        [IO.Directory]::CreateDirectory((Join-Path $target 'licenses')) | Out-Null
+        foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'document.pdf', 'settings.json', 'licenses/tesseract.exe', 'licenses/eng.traineddata')) {
             [IO.File]::WriteAllText((Join-Path $target $name), "old:$name")
         }
         Assert-TargetDirectory $target 'sunipdf.exe' | Out-Null
@@ -229,16 +233,19 @@ function Invoke-SelfTest {
                 throw "Rollback check failed."
             } catch { if ($_.Exception.Message -eq 'Rollback check failed.') { throw } }
         } finally { $lock.Dispose() }
-        foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'document.pdf', 'settings.json')) {
+        foreach ($name in @('sunipdf.exe', 'sunipdf-cli.exe', 'pdfium.dll', 'document.pdf', 'settings.json', 'licenses/tesseract.exe', 'licenses/eng.traineddata')) {
             if ([IO.File]::ReadAllText((Join-Path $target $name)) -ne "old:$name") {
                 throw "Rollback did not preserve $name."
             }
         }
-        foreach ($name in @('README.txt', 'licenses/LICENSE.txt')) {
+        foreach ($name in @('README.txt', 'licenses/LICENSE.txt', 'licenses/fra.traineddata', 'licenses/ocr-NOTICE.txt', 'licenses/ocr-AUTHORS.txt')) {
             if (Test-Path -LiteralPath (Join-Path $target $name)) { throw "Rollback left a new file." }
         }
         if ([IO.File]::ReadAllText((Join-Path $workspace 'rollback/sunipdf.exe')) -ne 'old:sunipdf.exe') {
             throw "The recovery copy was not preserved."
+        }
+        if ([IO.File]::ReadAllText((Join-Path $workspace 'rollback/licenses/tesseract.exe')) -ne 'old:licenses/tesseract.exe') {
+            throw 'The previous OCR runtime recovery copy was not preserved.'
         }
         Install-Portable $stage $target (Join-Path $workspace 'backup') $files
         foreach ($name in $files) {
@@ -258,6 +265,13 @@ function Invoke-SelfTest {
         try { Expand-Portable $unsafe (Join-Path $workspace 'unsafe') | Out-Null; throw "Traversal check failed." }
         catch { if ($_.Exception.Message -eq 'Traversal check failed.') { throw } }
         if (Test-Path -LiteralPath (Join-Path $workspace 'unsafe')) { throw "An unsafe archive created output." }
+        $nested = Join-Path $workspace 'unexpected-ocr.zip'
+        $zip = [IO.Compression.ZipFile]::Open($nested, [IO.Compression.ZipArchiveMode]::Create)
+        $zip.CreateEntry('licenses/ocr/tesseract.exe') | Out-Null
+        $zip.Dispose()
+        try { Expand-Portable $nested (Join-Path $workspace 'unexpected-ocr') | Out-Null; throw 'Nested payload check failed.' }
+        catch { if ($_.Exception.Message -eq 'Nested payload check failed.') { throw } }
+        if (Test-Path -LiteralPath (Join-Path $workspace 'unexpected-ocr')) { throw 'An unexpected OCR subtree created output.' }
         $oversized = Join-Path $workspace 'too-many.zip'
         $zip = [IO.Compression.ZipFile]::Open($oversized, [IO.Compression.ZipArchiveMode]::Create)
         for ($i = 0; $i -lt 513; $i++) { $zip.CreateEntry("licenses/$i.txt") | Out-Null }
@@ -275,7 +289,7 @@ function Invoke-SelfTest {
         Assert-PortableArchitecture $pe 'x64'
         try { Assert-PortableArchitecture $pe 'arm64'; throw "Architecture check failed." }
         catch { if ($_.Exception.Message -eq 'Architecture check failed.') { throw } }
-        Write-Output 'Update helper self-test passed: path bounds, checksum, archive traversal/limits, architecture, full copy and rollback.'
+        Write-Output 'Update helper self-test passed: path bounds, checksum, archive traversal/limits, architecture, full copy and rollback including flat OCR payloads.'
     } finally {
         $checked = Assert-ChildPath $workspace ([IO.Path]::GetTempPath())
         Remove-Item -LiteralPath $checked -Recurse -Force

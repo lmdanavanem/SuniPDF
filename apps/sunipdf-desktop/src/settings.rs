@@ -13,6 +13,8 @@ pub struct Settings {
     pub show_tools: bool,
     /// Défilement continu (toutes les pages empilées) plutôt que page unique.
     pub continuous_view: bool,
+    pub view_mode: Option<String>,
+    pub autosave: bool,
     /// Fichiers récents, le plus récent en premier.
     pub recent: Vec<String>,
     /// Auteur écrit dans les annotations, réponses et statuts (vide : aucun nom écrit).
@@ -28,6 +30,8 @@ impl Default for Settings {
             show_thumbnails: true,
             show_tools: true,
             continuous_view: true,
+            view_mode: None,
+            autosave: true,
             recent: Vec::new(),
             author: String::new(),
             check_updates: true,
@@ -65,6 +69,7 @@ impl Settings {
             .unwrap_or_default()
     }
 
+    #[cfg_attr(test, allow(dead_code))]
     pub fn save(&self) -> std::io::Result<()> {
         let Some(path) = Self::path() else {
             return Ok(());

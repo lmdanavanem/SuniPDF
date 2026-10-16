@@ -10,6 +10,9 @@ Set-Location $root
 $version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
 $stage = Join-Path $root "dist\SuniPDF-$version-win-$Arch-portable"
 if (-not (Test-Path "$stage\sunipdf.exe")) { throw "Portable package missing: run package-portable.ps1 -Arch $Arch first." }
+foreach ($file in @('tesseract.exe', 'eng.traineddata', 'fra.traineddata', 'ocr-tesseract.txt', 'ocr-leptonica.txt', 'ocr-tessdata-fast.txt', 'ocr-AUTHORS.txt', 'ocr-NOTICE.txt')) {
+    if (-not (Test-Path -LiteralPath (Join-Path "$stage\licenses" $file))) { throw "Bundled OCR file missing: $file" }
+}
 
 $wixBin = $env:WIX_BIN
 if (-not $wixBin) {
@@ -30,7 +33,7 @@ $obj = Join-Path $root "target\wix"
 New-Item -ItemType Directory -Force $obj | Out-Null
 $msi = Join-Path $root "dist\SuniPDF-$version-win-$Arch.msi"
 
-# Licences et notices tierces : un composant par fichier du dossier licenses du paquet.
+# One component per flat license/OCR file, including the runtime required for offline recognition.
 $licenses = Get-ChildItem -File (Join-Path $stage "licenses") | Sort-Object Name
 if (-not $licenses) { throw "No licenses found in $stage\licenses" }
 $components = for ($i = 0; $i -lt $licenses.Count; $i++) {
@@ -54,6 +57,7 @@ $readme = "$obj\README.txt"
 $readmeText = "SuniPDF $version (Windows $Arch)`r`n" +
     "Installed in this directory. Preferences are stored in %APPDATA%\SuniPDF.`r`n" +
     "The optional startup update check contacts GitHub for release information. No PDF files are sent.`r`n" +
+    "English and French text recognition (OCR) works offline with its included engine and language data.`r`n" +
     "Command line: sunipdf-cli.exe --help`r`n" +
     "Licenses and third-party notices: licenses\`r`n"
 [System.IO.File]::WriteAllText($readme, $readmeText, (New-Object System.Text.UTF8Encoding $true))

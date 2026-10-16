@@ -14,6 +14,9 @@ n'est utilisée ; aucun code d'un autre lecteur n'a été copié.
 | chrono (date locale du jour, dépendance directe de `sunipdf-desktop` ; déjà dans l'arbre via lopdf et pdfium-render) | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
 | egui / eframe et polices par défaut (Ubuntu Light : Ubuntu Font Licence 1.0 ; Hack : MIT/Bitstream Vera ; Noto Emoji : OFL-1.1 ; emoji-icon-font : MIT) | voir colonne | généré par `cargo about` (P6) |
 | Dépendances HTTP/TLS et helper de mise à jour | Licences par crate, dont ISC, BSD-3-Clause et CDLA-Permissive-2.0 | `assets/licenses/update-dependencies.txt` → `licenses/update-dependencies.txt` |
+| Tesseract 5.5.3 (OCR hors ligne) | Apache-2.0 | `licenses/ocr-tesseract.txt`, `ocr-AUTHORS.txt`, `ocr-COPYRIGHTS.txt`, `ocr-NOTICE.txt` |
+| Leptonica 1.87.0 (décodage PNM) | BSD-2-Clause | `licenses/ocr-leptonica.txt` |
+| Modèles anglais et français tessdata_fast (révision figée) | Apache-2.0 | `licenses/ocr-tessdata-fast.txt`, `ocr-NOTICE.txt` |
 | Autres crates Rust | Consulter la licence de chaque crate | Inventaire complet via `cargo about generate` (P6) |
 
 Interdits : modèles OCR `ocrs` (CC-BY-SA-4.0) ; icônes/polices non vérifiées ; captures d'écran d'applications tierces.

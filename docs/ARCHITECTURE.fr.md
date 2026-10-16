@@ -12,10 +12,10 @@
    Le thread UI ne bloque jamais sur une opération PDF.
 4. **Erreurs typées, textes traduits à la frontière.** `EngineError` porte un code stable (`code()`) ;
    seule l'UI mappe vers une clé i18n (`app.rs::error_key`), la CLI émet le code en JSON.
-5. **Écritures atomiques.** Fichier temporaire voisin puis `rename` (`settings.rs::save_atomic`) ; même règle
-   pour les futurs enregistrements de PDF, avec vérification par un outil indépendant (qpdf) en CI.
-6. **Hors ligne, sans télémétrie.** Aucune dépendance réseau à l'exécution. Le script de téléchargement
-   de PDFium est un outil de build, pas une fonction de l'application.
+5. **Écritures atomiques.** Fichier temporaire voisin puis remplacement (`sunipdf_core::write_atomic`) pour
+   les PDF, la récupération et les réglages. La validation indépendante qpdf reste une tâche QA distincte.
+6. **Traitement PDF local, sans télémétrie.** OCR et signatures restent locaux. Recherche de mise à jour
+   désactivable et téléchargement explicite contactent GitHub sans envoyer de PDF ; seul parcours réseau de l'application.
 7. **Pas de JavaScript PDF.** Binaires PDFium compilés sans V8 ni XFA (`args.gn` : `pdf_enable_v8=false`).
 
 ## Workspace actuel
@@ -90,11 +90,11 @@ Request::Close ─────────────────────�
 | `sunipdf-editor` | annotations, texte, images, filigranes | P2–P3 |
 | `sunipdf-forms` | non créé (D061) : AcroForm vit dans `sunipdf-core::{forms, form_data}` (modèle et écriture lopdf, apparences PDFium, JSON) ; FDF/XFDF non livrés | — |
 | `sunipdf-convert` | PDF↔images, texte, Office via convertisseur externe détecté | P4 |
-| `sunipdf-ocr` | Tesseract (fra, eng) hors ligne | P4 |
+| `sunipdf-ocr` | non créé : OCR hors ligne dans `sunipdf-core::ocr`, moteur et modèles embarqués | — |
 | `sunipdf-security` | chiffrement (hors PDFium), permissions, caviardage, métadonnées | P5 |
-| `sunipdf-signatures` | CMS, PKCS#12, horodatage, vérification | P5 |
+| `sunipdf-signatures` | non créé : CMS/PKCS#12 dans `sunipdf-core::certificate` ; horodatage fiable encore prévu | — |
 | `sunipdf-automation` | registre de commandes JSON-Schema, lots, MCP opt-in | P5 |
-| `sunipdf-platform` | Explorateur Windows, associations, impression, DPI | P5 |
+| `sunipdf-platform` | non créé : impression native dans `printing.rs` ; autres intégrations Windows encore prévues | — |
 | `sunipdf-ui` | composants egui réutilisables (si l'app grossit) | P3 |
 
 ## Onglets (SUNI-012a)
@@ -106,6 +106,34 @@ sélection, annotations, signets…) est échangé par `tabs.rs::take_tab` / `pu
 PDFium par changement d'onglet ; mémoire : un instantané par onglet inactif. Le presse-papiers d'objets
 (`ObjectClip`, un PDF d'une page en mémoire) vit dans l'état du moteur, hors document : il survit aux
 changements d'onglet, ce qui permet de copier dans un document et de coller dans un autre.
+
+## Parcours fonctionnels 0.9.0
+
+La validation est suivie dans `PROJECT_STATUS.fr.md` ; cette section décrit la conception, pas un résultat de test.
+
+- **Récupération** : `recovery.rs` écrit des PDF et métadonnées JSON atomiques par session dans
+  `%LOCALAPPDATA%\SuniPDF\recovery`. Un verrou Windows exclusif écarte les sessions encore actives.
+  Le worker prend un instantané du document modifié toutes les 60 secondes et à la suspension, sans remplacer
+  la source. Le chiffrement du PDF est conservé, aucun mot de passe ne figure dans les métadonnées ; restauration par Enregistrer sous.
+- **Impression** : `printing.rs` obtient un DC d'imprimante natif et une sélection de pages validée.
+  Le thread moteur rend l'état courant par bandes tramées bornées, signale la progression par page et consulte
+  un drapeau atomique d'annulation. Les handles sont possédés/libérés ; l'annulation n'enregistre pas le PDF.
+- **Lecture et doubles pages** : `annot.rs` résout les points d'affichage en indices de caractères PDFium
+  et renvoie texte/rectangles par page. Époque du document et génération de sélection accompagnent les messages ;
+  l'UI garde une seule demande en attente et les dernières extrémités voulues. `view.rs::Layout` crée les lignes
+  doubles, couverture seule et dernière page isolée, avec le même planificateur de 24 tuiles, pool de 192 Mio et cache moteur de 256 Mio.
+- **Création de champs** : `forms.rs::add_form_field` valide nom et rectangle avant d'écrire AcroForm/Widget
+  et de générer les apparences. `form_builder.rs` propose une boîte numérique ; `EditOp` permet l'annulation.
+  La CLI `add-form-field` appelle la même méthode.
+- **OCR** : `ocr.rs` lance uniquement Tesseract embarqué ou le moteur explicitement choisi, dans un dossier
+  temporaire privé, avec modèles rapides `eng`/`fra`, sorties image/TSV bornées, délai maximal et annulation.
+  Le travail se fait sur un document temporaire ; succès validé en une opération et un niveau d'annulation.
+  Les pages déjà textuelles sont ignorées. Le texte invisible utilise la géométrie commune rotation/CropBox.
+- **Certificats** : `certificate.rs` analyse les octets enregistrés et ajoute une révision CMS détachée
+  incrémentale ; `certificate_native.rs` confie la clé privée à Windows Cryptography. Les buffers PFX/P12 et mots
+  de passe sont effacés, sans import persistant de clé. La vérification décrit intégrité et certificat sans établir
+  confiance, révocation ni horodatage fiable. UI `certificate.rs` et CLI `feature_cmd.rs` imposent une nouvelle copie
+  pour signer et refusent les PDF chiffrés.
 
 ## Coordonnées (SUNI-031c)
 

@@ -34,7 +34,8 @@ sur **+ Ouvrir** dans la barre d'onglets.
 
 Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
 outils par tâche : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
-des fichiers, Organiser les pages, Commenter, Protéger un PDF, Compresser un PDF, Ajouter un tampon. Le menu **Outils** et
+des fichiers, Organiser les pages, Commenter, Protéger un PDF, Caviarder un PDF, Compresser un PDF, Ajouter un tampon,
+Numériser et OCR, Préparer un formulaire, Utiliser un certificat. Le menu **Outils** et
 la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
 fichier puis démarre.
 
@@ -52,9 +53,9 @@ fichier puis démarre.
 - Chaque onglet garde son outil actif.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
 
-Les outils qui n'ont pas encore de fonction réelle dans SuniPDF (OCR, préparation de
-formulaire — création de champs —, certificat) n'apparaissent pas : ils arriveront avec leur fonctionnalité.
-Remplir et signer couvre le remplissage des formulaires AcroForm et la signature visuelle.
+Les 14 outils sont disponibles en 0.9.0, dont **Numériser et OCR**, **Préparer un formulaire** et
+**Utiliser un certificat**. Remplir et signer conserve le remplissage et la signature visuelle ;
+la signature numérique dispose de son propre outil.
 
 ## Onglets
 
@@ -63,6 +64,19 @@ pour le fermer, sur la maison pour revenir à l'accueil sans fermer. Ctrl+Tab et
 onglet à l'autre. Les modifications non enregistrées de chaque onglet sont signalées par un point et
 confirmées une à une à la fermeture de l'application.
 
+## Récupération automatique
+
+La récupération automatique est activée par défaut. Un document modifié reçoit un instantané toutes les
+60 secondes et à la suspension de son onglet, sans remplacer le PDF d'origine. Après un arrêt inattendu,
+le démarrage suivant propose les instantanés disponibles ; **Récupérer des documents** permet d'y revenir.
+Choisissez **Restaurer**, puis **Enregistrer sous** pour conserver le travail dans une nouvelle copie.
+Un instantané protégé redemande le mot de passe PDF : le chiffrement reste présent et aucun mot de passe
+n'est écrit dans les métadonnées. Le dossier est `%LOCALAPPDATA%\SuniPDF\recovery` ; les métadonnées
+contiennent le chemin d'origine et le nombre de pages. Un abandon explicite ou un enregistrement réussi
+retire la copie correspondante. Les modifications déjà appliquées sont couvertes, pas une saisie encore
+non validée dans une boîte de dialogue ; les brouillons de formulaire valides sont inclus.
+La case dans À propos désactive les instantanés automatiques. **Fichier → Récupérer des documents** rouvre la liste.
+
 ## Lire un document
 
 Par défaut les pages sont **empilées** : la molette, la barre de défilement ou le clavier font défiler tout le
@@ -70,7 +84,10 @@ document, et la page qui occupe l'écran devient la page courante (numéro du ra
 panneau des commentaires ; Pivoter, Supprimer et Extraire la visent ; un clic sur une page la rend courante).
 **F5**, le bouton à flèches du rail droit ou le menu Affichage basculent entre **Défilement continu** et **Page
 unique** ; le choix est mémorisé. Seules les pages visibles sont rendues : un document de plusieurs centaines de
-pages s'ouvre et défile sans tout charger.
+pages s'ouvre et défile sans tout charger. Le menu Affichage propose aussi **Deux pages** (paires à partir
+de la première page) et **Vue livre** (couverture seule, puis paires). Une dernière page non appariée est centrée.
+Les tailles mixtes partagent un zoom ; l'ajustement utilise la plus large double page et la page la plus haute.
+Ces modes conservent les mêmes plafonds de tuiles et de textures.
 
 | Action | Comment |
 |---|---|
@@ -83,11 +100,15 @@ pages s'ouvre et défile sans tout charger.
 | Miniatures | Panneau **Pages** à gauche (bouton grille du rail droit) ; glisser une miniature pour réordonner |
 | Signets | F6 ou bouton liste du rail droit |
 | Rechercher | Ctrl+F : saisie, respecter la casse, ▲ ▼, surbrillance des occurrences |
-| Sélectionner du texte | Tracer un rectangle sur le texte (curseur de lecture, V), puis Ctrl+C |
+| Sélectionner du texte | Curseur de lecture (V) : glisser au fil du texte, y compris entre pages dans les deux sens, puis Ctrl+C. Double-clic : un mot. Près du bord haut/bas : défilement automatique |
 | Thème clair / sombre | Icône lune / soleil en haut à droite |
 | Langue | Icône globe en haut à droite (français, anglais) |
 
 ## Annoter
+
+La sélection de lecture suit la séquence logique de caractères PDFium, normalise les fins de ligne et
+conserve les apostrophes de mots comme `l'amour` et `l’amour`. L'ordre voulu de colonnes arbitraires non
+balisées n'est pas déduit. Surlignage, soulignement et texte barré gardent leur geste de sélection rectangulaire.
 
 L'outil **Commenter** réunit deux familles. Le marquage du texte : sélectionner du texte (V), surligner (H),
 souligner (U), barrer (X), note (N) ; tracez un rectangle sur le texte pour appliquer un marquage, cliquez sur la
@@ -216,8 +237,8 @@ L'outil **Remplir et signer** (barre : **Signer (signature manuscrite)…** — 
 (initiales)…**, **Insérer la date du jour** ; aussi dans le menu Édition et la palette) pose une **signature
 visuelle** sur la page. **Ce que cette signature ne garantit pas** : c'est une image, elle ne prouve ni votre
 identité ni l'intégrité du document, et toute personne qui modifie le fichier peut la copier ou la retirer. Ce
-n'est **pas** une signature numérique certifiée (à venir avec l'outil Utiliser un certificat). La boîte le
-rappelle en permanence.
+n'est pas une preuve cryptographique. La boîte le rappelle en permanence. Le parcours de signature numérique
+distinct se trouve dans **Utiliser un certificat**, décrit plus bas.
 
 **Dessiner.** Dans la boîte, signez dans le pavé blanc à la souris, au pavé tactile ou au stylet (encre noire ou
 bleue, épaisseur réglable, **Annuler le dernier trait**, **Effacer**). **Importer une image** accepte un PNG
@@ -316,6 +337,50 @@ le fichier d'origine n'est jamais laissé dans un état partiel (données écrit
 remplacement). Un point après le nom de l'onglet signale des modifications non enregistrées ; annuler jusqu'à
 l'état enregistré l'efface ; SuniPDF demande confirmation avant de fermer ou de quitter.
 
+## Impression
+
+Choisissez **Fichier → Imprimer** pour ouvrir la boîte native Windows. Sélectionnez l'imprimante, la plage,
+la page courante ou les pages sélectionnées, les copies et l'orientation du pilote. L'état courant du document,
+y compris les modifications appliquées, annotations et valeurs de formulaire, est imprimé en pages tramées
+ajustées à la zone imprimable. La progression propose l'annulation ; un appel au pilote déjà lancé peut tarder à s'arrêter.
+Le rendu utilise jusqu'à 300 dpi par bandes bornées. Le pilote peut modifier l'échelle ou les couleurs.
+La sortie réelle Microsoft Print to PDF est couverte par un test automatisé. Imprimantes physiques et boîtes
+interactives du pilote restent à vérifier sur le poste cible.
+
+## Créer des champs de formulaire
+
+Ouvrez **Préparer un formulaire**, puis **Ajouter un champ texte** ou **Ajouter une case à cocher** sur la page courante.
+Saisissez un nom unique (sans point ni caractère de contrôle) et les limites gauche, bas, droite et haut du rectangle,
+en points PDF après rotation et recadrage. Chaque dimension doit mesurer au moins 4 points et le rectangle doit
+rester dans la page. Validez, puis utilisez Remplir et signer pour remplir le champ enregistré.
+La création s'annule et conserve le chiffrement. Dessin du champ à la souris, création de radios et de listes
+ne sont pas inclus ; la création XFA est refusée.
+
+## OCR hors ligne
+
+Ouvrez **Numériser et OCR**, choisissez anglais, français ou les deux, puis la page courante ou toutes les pages.
+Tesseract 5.5.3, Leptonica 1.87 et les modèles rapides `eng`/`fra` embarqués fonctionnent localement, sans
+téléchargement de modèle ni envoi du PDF. Les pages ayant déjà du texte extractible sont ignorées. Les mots reconnus
+forment une couche invisible recherchable et copiable, sans changer l'aspect de la page.
+La reconnaissance vise 300 dpi, réduits sur les grandes pages (16 millions de pixels, 8192 pixels par côté) ;
+les pages trop grandes sont refusées. La progression avance par page. Annulation ou erreur laisse le document intact ;
+une opération réussie forme un seul niveau d'annulation. Enregistrez le résultat et relisez le texte reconnu avant utilisation.
+
+## Signatures par certificat
+
+**Utiliser un certificat → Vérifier les signatures** contrôle les octets du PDF enregistré et affiche le résultat,
+le sujet, l'émetteur, les dates de validité et l'empreinte SHA256 du certificat. Les statuts distinguent révision signée
+valide, modification postérieure, contenu invalide, format non pris en charge et signature non vérifiable.
+La confiance de l'identité et la révocation ne sont pas établies ; aucun horodatage fiable ni LTV n'est fourni.
+L'heure affichée est celle déclarée par le signataire.
+
+Enregistrez d'abord les modifications, puis choisissez **Signer avec un certificat**, l'identité PFX/P12, son mot de passe,
+un motif/lieu éventuel et un nouveau PDF de sortie. Une révision CMS incrémentale est ajoutée sans réécrire les octets
+précédents. La source n'est jamais remplacée ; les PDF chiffrés ne peuvent pas être signés.
+Modifier et enregistrer un PDF signé peut invalider ses signatures : ne confirmez l'avertissement de réécriture que
+si c'est voulu. Les copies de la clé et du mot de passe sont effacées des buffers après usage ; SuniPDF n'enregistre
+pas le mot de passe et n'importe pas la clé dans un magasin persistant.
+
 ## Palette de commandes
 
 Ctrl+K ouvre la palette : tapez quelques lettres, choisissez avec ↑ ↓, validez avec Entrée. Chaque
@@ -350,11 +415,27 @@ qu'affichée** (après rotation et recadrage).
 uniquement `--opacity 1` ; les autres opacités d'annotation doivent être finies. Les valeurs invalides
 sont refusées avant l'enregistrement, y compris avec `--overwrite`.
 
+Nouvelles commandes 0.9.0 :
+
+```powershell
+sunipdf-cli add-form-field input.pdf --kind text --name FullName --page 1 --rect 40,40,220,65 --out form.pdf
+sunipdf-cli add-form-field form.pdf --kind checkbox --name Consent --rect 30,30,50,50 --out form-with-checkbox.pdf
+sunipdf-cli ocr scan.pdf --language eng+fra --pages 1,3-5 --out searchable.pdf
+sunipdf-cli signatures saved.pdf
+sunipdf-cli sign saved.pdf --certificate identity.pfx --certificate-password-env SUNIPDF_CERT_PASSWORD --out signed-copy.pdf
+```
+
+Pour `sign`, définissez la variable d'environnement de manière sûre avant l'exécution, ou choisissez
+`--certificate-password-stdin` avec une entrée UTF-8 redirigée. Les options s'excluent et l'une est obligatoire ;
+une fin de ligne finale est retirée de l'entrée standard. Aucun argument de mot de passe de certificat en clair
+n'existe. `--reason` et `--location` sont facultatifs. Le JSON indique toujours `identity_trusted: false`.
+Même `--overwrite` ne peut pas remplacer le PDF source de la signature. `ocr --language` accepte `eng`, `fra`
+ou `eng+fra` ; `--pages` vaut `all` par défaut. Sans texte ajouté, les octets source sont copiés à l'identique.
+
 ## Limites actuelles
 
-Pas de double page ni de rotation de la vue ; une sélection de texte reste sur sa page (pas de sélection à
-cheval sur deux pages, pas de défilement automatique en glissant au bord) ; en défilement continu, « Largeur »
-et « Page » ajustent la plus grande page du document. Pas d'OCR, pas de conversion Office, pas de signature
-numérique (la signature manuscrite est une image sans valeur cryptographique), pas de création de champs de
-formulaire ni de formulaires XFA modifiables (lecture seule ; les scripts des formulaires ne sont jamais
-exécutés), pas d'impression directe. Voir `docs/ROADMAP.md`.
+Pas de rotation de vue, de conversion Office ni de formulaires XFA modifiables ; leurs scripts ne sont jamais exécutés.
+L'ordre complexe de colonnes n'est pas déduit. La création de champs couvre texte et case à cocher uniquement.
+La précision OCR dépend de la numérisation et de la langue ; le texte existant n'est pas remplacé. Confiance du certificat,
+révocation, horodatage fiable et LTV ne sont pas vérifiés. Imprimante réelle, installation/mise à jour et matériel ARM64
+restent des validations séparées des tests automatisés. Voir `docs/KNOWN_ISSUES.fr.md` et `docs/ROADMAP.fr.md`.

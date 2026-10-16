@@ -75,6 +75,28 @@ pub struct TextSelection {
     pub rects: Vec<PointRect>,
 }
 
+/// A point in displayed page coordinates, after rotation and cropping.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ReadingPoint {
+    pub page: usize,
+    pub x: f32,
+    pub y: f32,
+}
+
+/// An index in PDFium's logical character sequence (not a UTF-8 byte offset).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TextPosition {
+    pub page: usize,
+    pub index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReadingSelection {
+    pub anchor: TextPosition,
+    pub focus: TextPosition,
+    pub pages: Vec<(usize, TextSelection)>,
+}
+
 fn to_pdf_rect(r: PointRect) -> PdfRect {
     PdfRect::new(
         PdfPoints::new(r.bottom.min(r.top)),
@@ -114,6 +136,136 @@ fn merge_lines(chars: &[PointRect]) -> Vec<PointRect> {
 }
 
 impl Document<'_> {
+    /// Selects a logical character range, including both endpoints, or the word at `anchor`.
+    /// PDFium's character order is retained; arbitrary multi-column order is not inferred.
+    pub fn reading_selection(
+        &self,
+        anchor: ReadingPoint,
+        focus: ReadingPoint,
+        word: bool,
+    ) -> Result<ReadingSelection, EngineError> {
+        let locate = |point: ReadingPoint| -> Result<TextPosition, EngineError> {
+            if !point.x.is_finite() || !point.y.is_finite() {
+                return Err(EngineError::Other("invalid reading coordinates".into()));
+            }
+            let page = self.page_handle(point.page)?;
+            let geo = geometry_of(&page)?;
+            let text = page.text()?;
+            let mut closest = None;
+            for ch in text.chars().iter() {
+                if ch.unicode_char().is_none_or(char::is_control) {
+                    continue;
+                }
+                let Ok(bounds) = ch.loose_bounds() else {
+                    continue;
+                };
+                let bounds = from_pdf_rect(bounds);
+                let crop = geo.bbox;
+                if bounds.right <= crop.left
+                    || bounds.left >= crop.right
+                    || bounds.top <= crop.bottom
+                    || bounds.bottom >= crop.top
+                {
+                    continue;
+                }
+                let r = geo.rect_to_display(bounds);
+                if r.right <= r.left || r.top <= r.bottom {
+                    continue;
+                }
+                let dx = point.x - point.x.clamp(r.left, r.right);
+                let dy = point.y - point.y.clamp(r.bottom, r.top);
+                let distance = dx * dx + dy * dy;
+                if closest.is_none_or(|(_, d)| distance < d) {
+                    closest = Some((ch.index(), distance));
+                }
+            }
+            Ok(TextPosition {
+                page: point.page,
+                index: closest.map_or(0, |(index, _)| index),
+            })
+        };
+        let anchor = locate(anchor)?;
+        let focus = if word { anchor } else { locate(focus)? };
+        let (mut start, mut end) = (anchor.min(focus), anchor.max(focus));
+        if word {
+            let page = self.page_handle(start.page)?;
+            let text = page.text()?;
+            let chars: Vec<char> = text
+                .chars()
+                .iter()
+                .map(|c| c.unicode_char().unwrap_or('\0'))
+                .collect();
+            let part = |i: usize| {
+                chars[i].is_alphanumeric()
+                    || chars[i] == '_'
+                    || (matches!(chars[i], '\'' | '’')
+                        && i > 0
+                        && i + 1 < chars.len()
+                        && chars[i - 1].is_alphanumeric()
+                        && chars[i + 1].is_alphanumeric())
+            };
+            if start.index < chars.len() && part(start.index) {
+                while start.index > 0 && part(start.index - 1) {
+                    start.index -= 1;
+                }
+                while end.index + 1 < chars.len() && part(end.index + 1) {
+                    end.index += 1;
+                }
+            }
+        }
+        let mut pages = Vec::new();
+        for page_index in start.page..=end.page {
+            let page = self.page_handle(page_index)?;
+            let geo = geometry_of(&page)?;
+            let text = page.text()?;
+            let chars = text.chars();
+            let first = if page_index == start.page {
+                start.index
+            } else {
+                0
+            };
+            let last = if page_index == end.page {
+                end.index.saturating_add(1)
+            } else {
+                chars.len()
+            };
+            let mut selection = TextSelection::default();
+            let mut boxes = Vec::new();
+            for ch in chars.iter().skip(first).take(last.saturating_sub(first)) {
+                let bounds = ch.loose_bounds().ok().map(from_pdf_rect);
+                if ch.unicode_char().is_some_and(|c| !c.is_control())
+                    && bounds.is_some_and(|r| {
+                        r.right <= geo.bbox.left
+                            || r.left >= geo.bbox.right
+                            || r.top <= geo.bbox.bottom
+                            || r.bottom >= geo.bbox.top
+                    })
+                {
+                    continue;
+                }
+                if let Some(c) = ch.unicode_char().filter(|c| *c != '\0') {
+                    selection.text.push(c);
+                }
+                if let Some(r) = bounds {
+                    if r.right > r.left && r.top > r.bottom {
+                        boxes.push(r);
+                    }
+                }
+            }
+            selection.text = selection.text.replace("\r\n", "\n").replace('\r', "\n");
+            selection.rects = merge_lines(&boxes)
+                .into_iter()
+                .map(|r| geo.rect_to_display(r))
+                .collect();
+            pages.push((page_index, selection));
+        }
+        Ok(ReadingSelection {
+            anchor,
+            focus,
+            pages,
+        })
+    }
+
     /// Texte contenu dans un rectangle d'affichage, avec ses rectangles de ligne (affichage).
     pub fn text_in_rect(
         &self,

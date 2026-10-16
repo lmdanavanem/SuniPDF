@@ -32,7 +32,8 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 
 The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
 task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Add
-comments, Protect a PDF, Compress a PDF, Add a stamp. The **Tools** menu and the Ctrl+K palette give the same access.
+comments, Protect a PDF, Redact a PDF, Compress a PDF, Add a stamp, Scan & OCR, Prepare a form and
+Use a certificate. The **Tools** menu and the Ctrl+K palette give the same access.
 Without an open document, a tool that needs one first asks for a file, then starts.
 
 - **Export, Create, Combine, Compress** open their dialog directly.
@@ -48,15 +49,26 @@ Without an open document, a tool that needs one first asks for a file, then star
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo and Redo.
 
-Tools that have no real feature in SuniPDF yet (OCR, form preparation — creating fields —,
-certificate) are not shown: they will come with their feature. Fill & Sign covers filling AcroForm forms and the
-visual signature.
+All 14 tools are available in 0.9.0, including **Scan & OCR**, **Prepare a form** and **Use a certificate**.
+Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
 
 ## Tabs
 
 Each open PDF gets a tab in the top strip. Click a tab to show it, its cross to close it, the home button to
 go back to the home screen without closing anything. Ctrl+Tab and Ctrl+Shift+Tab cycle through tabs.
 Unsaved changes are flagged with a dot per tab and confirmed one by one when you quit.
+
+## Automatic recovery
+
+Automatic recovery is enabled by default. A modified document gets a recovery snapshot every 60 seconds
+and when its tab is suspended. This does not save over the original PDF. If the application stops unexpectedly,
+the next startup offers the available snapshots; **Recover documents** also opens the list later.
+Choose **Restore**, then **Save as** to keep the recovered work in a new PDF. A protected snapshot requires
+its PDF password again: encryption is preserved and passwords are never written to recovery metadata.
+The recovery folder is `%LOCALAPPDATA%\SuniPDF\recovery`; metadata includes the original path and page count.
+Explicitly discarding changes or saving successfully removes the relevant recovery copy. Recovery covers
+completed document edits and valid form drafts, not text still being typed in an unconfirmed dialog.
+Disable automatic snapshots with the checkbox in About. **File → Recover documents** reopens the list.
 
 ## Reading
 
@@ -65,7 +77,9 @@ document, and the page that fills the screen becomes the current page (right-rai
 thumbnail, comments panel; Rotate, Delete and Extract act on it; clicking a page makes it current). **F5**, the
 arrows button of the right rail or the View menu switch between **Continuous Scrolling** and **Single Page**;
 the choice is remembered. Only visible pages are rendered: a document of several hundred pages opens and
-scrolls without loading everything.
+scrolls without loading everything. The View menu also offers **Two pages** (pairs from the first page) and
+**Book view** (cover alone, then pairs). An unpaired last page is centred. Mixed page sizes share one zoom;
+fit width/page uses the widest spread and tallest page in spread views. These modes use the same tile and texture caps.
 
 | Action | How |
 |---|---|
@@ -78,11 +92,15 @@ scrolls without loading everything.
 | Thumbnails | **Pages** panel on the left (grid button on the right rail); drag a thumbnail to reorder |
 | Bookmarks | F6 or the list button on the right rail |
 | Find | Ctrl+F: type, match case, ▲ ▼, matches highlighted |
-| Select text | Drag a rectangle over the text (reading cursor, V), then Ctrl+C |
+| Select text | With the reading cursor (V), drag along text, including across pages in either direction; Ctrl+C copies. Double-click selects a word. Drag near a top/bottom edge to scroll automatically |
 | Light / dark theme | Moon / sun icon, top right |
 | Language | Globe icon, top right (French, English) |
 
 ## Annotating
+
+Reading selection follows the PDFium logical character sequence, normalises line endings and keeps word
+apostrophes such as `l'amour` and `l’amour`. It does not infer the intended order of arbitrary untagged columns.
+Highlight, underline and strikethrough keep their rectangular selection gestures.
 
 The **Add comments** tool brings two families together. Text markup: select text (V), highlight (H), underline (U),
 strikethrough (X), note (N); drag a rectangle over text to apply a markup, click the page with the note tool to type a
@@ -200,8 +218,8 @@ document is filled like any other and stays protected. Ctrl+S confirms the entry
 The **Fill & Sign** tool (bar: **Sign (handwritten signature)…** — key **S** —, **Add Initials…**, **Insert
 Today's Date**; also in the Edit menu and the palette) places a **visual signature** on the page. **What this
 signature does not guarantee**: it is an image, it proves neither your identity nor the document's integrity, and
-anyone who edits the file can copy or remove it. It is **not** a certified digital signature (that comes with
-the Use a certificate tool). The dialog says so permanently.
+anyone who edits the file can copy or remove it. The dialog says so permanently. Use **Use a certificate**
+for the separate cryptographic signing workflow described below.
 
 **Draw.** In the dialog, sign in the white pad with the mouse, touchpad or pen (black or blue ink, adjustable
 thickness, **Undo last stroke**, **Clear**). **Import an image** takes a transparent PNG as is, or a photo of
@@ -291,6 +309,50 @@ Ctrl+S saves to the open file, Ctrl+Shift+S to a new file. Writes are atomic: th
 left half-written (data is flushed to disk before the replacement). A dot after the tab name signals unsaved
 changes; undoing back to the saved state clears it; SuniPDF asks before closing or quitting.
 
+## Printing
+
+Choose **File → Print** to open the native Windows printer dialog. Select a printer, page range, current
+page or selected pages, copies and printer orientation. SuniPDF prints the current document state,
+including applied edits, annotations and form values, as raster pages fitted inside the printer's printable
+area. A progress dialog offers cancellation; a driver operation already running may take time to stop.
+Output uses up to 300 dpi in bounded raster bands. Printer drivers may apply further scaling or colour changes.
+Actual Microsoft Print to PDF output is covered by an automated test. Physical printers and interactive
+driver dialogs still require checking on the target machine.
+
+## Creating form fields
+
+Open **Prepare a form**, then choose **Add text field** or **Add checkbox** on the current page.
+Enter a unique field name (no dots or control characters) and the rectangle's left, bottom, right and top
+in PDF points as displayed after rotation and cropping. Both dimensions must be at least 4 points and
+the rectangle must stay inside the page. Confirm, then use Fill & Sign to fill the saved field.
+Creation is undoable and preserves document encryption. Drawing a new field with the mouse, radio buttons
+and choice-list creation are not included; XFA creation is refused.
+
+## Offline OCR
+
+Open **Scan & OCR**, choose English, French or both, and the current page or all pages, then start recognition.
+The embedded Tesseract 5.5.3 / Leptonica 1.87 runtime and fast `eng`/`fra` models run locally; no model download
+or PDF upload is required. Pages already containing extractable text are skipped. Recognised words become
+an invisible text layer for search and copy, while the existing page appearance is retained.
+Recognition targets 300 dpi, reduced for large pages (16 million pixels, 8192 pixels per side); very large
+pages are refused. Progress is reported per page. Cancellation or an error leaves the document unchanged;
+a successful run is one undo step. Save to keep the result, and proofread recognised text before relying on it.
+
+## Certificate signatures
+
+**Use a certificate → Verify signatures** checks signatures over the saved PDF bytes and shows the result,
+certificate subject, issuer, validity dates and SHA256 fingerprint. Results distinguish a valid signed revision,
+changes after signing, invalid content, unsupported formats and unverifiable signatures.
+This proves neither certificate identity trust nor revocation status; no trusted timestamp or LTV is provided.
+The displayed signing time is the signer's declared time.
+
+Save edits first, then choose **Sign with a certificate**, select a PFX/P12 identity, enter its password and
+optional reason/location, and choose a new output PDF. Signing appends a CMS signature revision while preserving
+the preceding bytes. It never replaces the source, and encrypted PDFs cannot be signed.
+Editing and saving an already signed PDF can invalidate its signatures; confirm the application's rewrite warning
+only when that is intended. Private-key bytes and password copies are cleared from application buffers after use;
+SuniPDF does not save the password or import the key into a persistent key store.
+
 ## Command palette
 
 Ctrl+K opens the palette: type a few letters, pick with ↑ ↓, confirm with Enter. Each command carries
@@ -325,10 +387,27 @@ points, origin at the bottom-left of the page **as displayed** (after rotation a
 only `--opacity 1`; other annotation opacity values must be finite. Invalid values are rejected
 before saving, including when `--overwrite` is supplied.
 
+New 0.9.0 commands:
+
+```powershell
+sunipdf-cli add-form-field input.pdf --kind text --name FullName --page 1 --rect 40,40,220,65 --out form.pdf
+sunipdf-cli add-form-field form.pdf --kind checkbox --name Consent --rect 30,30,50,50 --out form-with-checkbox.pdf
+sunipdf-cli ocr scan.pdf --language eng+fra --pages 1,3-5 --out searchable.pdf
+sunipdf-cli signatures saved.pdf
+sunipdf-cli sign saved.pdf --certificate identity.pfx --certificate-password-env SUNIPDF_CERT_PASSWORD --out signed-copy.pdf
+```
+
+For `sign`, set the named environment variable securely before execution, or use `--certificate-password-stdin`
+with piped UTF-8 input instead. These options are mutually exclusive and one is required; one trailing line ending
+is removed from stdin. There is no plaintext certificate-password argument. `--reason` and `--location` are optional.
+Signature JSON always reports `identity_trusted: false`. Even `--overwrite` cannot replace the signing input.
+`ocr --language` accepts `eng`, `fra` or `eng+fra`; `--pages` defaults to `all`. If no text is added, the output
+copies the source bytes exactly.
+
 ## Current limits
 
-No two-page view or view rotation; a text selection stays on its page (no selection across two pages, no
-auto-scroll when dragging at the edge); in continuous scrolling, "Width" and "Page" fit the largest page of the
-document. No OCR, no Office conversion, no digital signatures (the handwritten signature is an image with no
-cryptographic value), no creation of form fields and no editable XFA forms (read-only; form scripts are never
-run), no direct printing. See `docs/ROADMAP.md`.
+No view rotation, Office conversion or editable XFA forms; form scripts are never run. Complex column reading
+order is not inferred. Field creation supports text and checkbox widgets only. OCR accuracy depends on the scan
+and language; existing text is not replaced. Certificate trust, revocation, trusted timestamps and LTV are unchecked.
+Real printer, installation/update and ARM64 hardware validation remain separate from automated tests.
+See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.

@@ -1,15 +1,42 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.8.3)
+# État du projet — mis à jour le 2026-10-16 (version 0.9.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Phase 0 — Audit et planification : terminée
+## Implémentation et validation 0.9.0
+
+Implémentés : récupération 60 s/suspension ; impression Windows ; sélection logique entre pages ;
+double page/Livre avec couverture seule ; création texte/case ; OCR FR/EN local embarqué ; signature/vérification CMS/PFX.
+Les 14 outils possèdent des commandes. La CLI compte 46 sous-commandes. Anglais par défaut ; français disponible.
+
+| Contrôle | Résultat actuel |
+|---|---|
+| Nouveaux tests d'intégration moteur | 10 réussis : plages/rotations, création de champs, OCR et signatures par certificat |
+| Nouveaux tests CLI de bout en bout | 3 réussis : champs, OCR réel, signatures des octets enregistrés et préservation source |
+| `cargo test --workspace --locked -j 2` | 318 réussis, 0 échec, 4 ignorés (deux mesures, updater réseau et impression native), dernière réexécution réussie |
+| `cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings` | Réussi sans avertissement |
+| `cargo fmt --all -- --check` | Réussi |
+| Catalogues bilingues | Réussi : 804 clés EN/FR identiques |
+| Autotest du helper de mise à jour | Réussi, y compris remplacement et retour arrière du paquet OCR à plat |
+| Microsoft Print to PDF natif | Test ignoré lancé explicitement réussi via le pilote Windows : sortie d'une page rouverte avec modifications non enregistrées ; objets/trailer source (hors ID généré) et octets d'origine inchangés |
+| Distribution 0.9.0 | ZIP x64/ARM64, MSI x64, six fichiers publics et contrôles SHA256 en attente |
+
+Non établis : impression physique, installation/mise à jour portable complète, matériel ARM64, nouvelles captures
+de l'UI native ou boîtes interactives d'imprimante, Narrateur, compatibilité de signature Acrobat/Foxit et confiance de l'identité. Horodatage fiable,
+révocation et LTV ne font pas partie de cette version.
+
+## Historique d'implémentation jusqu'à la 0.8.3
+
+Les phases et le tableau ci-dessous conservent leurs preuves propres aux anciennes versions. Anciens nombres
+de commandes/clés, observations CI et captures sont historiques, pas des résultats 0.9.0 courants.
+
+## Phase 0 — Audit et planification : terminée (historique)
 - [x] `FEATURE_MATRIX.fr.md`, `ARCHITECTURE.fr.md`,
       `TECH_STACK.fr.md`, `ROADMAP.fr.md`, `I18N.fr.md`, `DECISIONS.fr.md`, `KNOWN_ISSUES.fr.md`, `THIRD_PARTY_NOTICES.fr.md`.
 
-## Phase 1 — Fondations : terminée (critères atteints ; validation visuelle finale par l'utilisateur recommandée)
+## Phase 1 — Fondations : terminée (historique ; validation visuelle finale par l'utilisateur recommandée)
 - [x] Workspace Rust (`sunipdf-core`, `sunipdf-i18n`, `sunipdf-desktop`, `sunipdf-cli`), `cargo build` OK.
 - [x] Moteur PDFium intégré (`pdfium-render` 0.9.4, DLL chargée dynamiquement, 4 emplacements de recherche).
 - [x] Ouvrir / afficher / naviguer (clavier, barre d'outils, champ page) / zoom (ajuster largeur, page, paliers) / fermer.
@@ -47,11 +74,11 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 - [x] Captures d'écran réelles (accueil, document, palette) vérifiées par l'agent via `scripts/dev-screenshot.ps1` ; validation finale par l'utilisateur à faire.
 - [x] Compilation MSVC (cible de référence) : Build Tools installés le 13/10 au soir, `cargo test --workspace` et `cargo clippy --workspace --all-targets -D warnings` verts.
 - [x] Icône / ressources de version Windows (vérifié : `(Get-Item sunipdf.exe).VersionInfo` → SuniPDF, SuniWorks, 0.1.0).
-- [ ] CI GitHub Actions (`ci.yml`, `release.yml`) : déclenchées le 2026-10-14 par les push de `main` et des tags `v0.1.0` puis `v0.2.0` sur https://github.com/lmdanavanem/SuniPDF (dépôt privé : résultat à lire dans l'onglet Actions).
+- [ ] Observation CI historique (2026-10-14, v0.1.0/v0.2.0) : workflows déclenchés, résultat non consigné dans cette première liste. Les preuves de publication 0.8.x figurent dans le tableau historique ci-dessous.
 - [x] MSI x64 construit localement avec les binaires WiX 3.14 autonomes : `dist\SuniPDF-0.2.0-win-x64.msi` (11,0 Mo) + SHA256 (0.1.0 validé par `smoke.exe` et une extraction administrative ; 0.2.0 reconstruit le 14/10, même procédé).
-- [ ] ARM64 : tenté le 2026-10-14 (cible Rust ajoutée, PDFium ARM64 téléchargé), **édition de liens impossible** tant que le composant Visual Studio « outils de build ARM64 » manque (voir `KNOWN_ISSUES.fr.md` n° 12) ; construit en CI par `release.yml`.
+- [ ] Tentative ARM64 locale historique (2026-10-14) : outils Visual Studio ARM64 manquants, liaison impossible. Les paquets CI ultérieurs ne prouvent pas l'exécution sur matériel ARM64 (voir `KNOWN_ISSUES.fr.md` n° 12).
 
-## Dernière exécution (2026-10-16, cible **MSVC**, `-j 2`)
+## Validation historique 0.8.3 (2026-10-16, cible **MSVC**, `-j 2`)
 | Commande | Résultat |
 |---|---|
 | `cargo test --workspace --locked -j 2` | 276/276 OK, 3 ignorés (2 mesures et 1 contrôle réseau réel) : core 57 unitaires + 84 intégration + 7 protection, application 102, i18n 6, CLI 10 unitaires + 1 `add_image` + 6 `annotations_cli` + 2 `forms_cli` + 1 `redact_cli` |
@@ -69,9 +96,13 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 | `sunipdf-cli` | annotations (test `annotations_cli`) : `annotate` ×6 genres sur `two-pages.pdf` relus par `annotations` (indices, sous-types, rectangles, auteur, couleurs), réponse + statut + `annotation-delete --thread` (3 retirés), 10 erreurs typées (adresses `file:` et `javascript:` refusées), `already_exists` (code 6), document RC4 annoté puis `password_required` (code 3) ; forms (test `forms_cli` sur les fixtures) : `form-fields acroform.pdf` → 13 champs, `kind acroform`, `ville` « Élodie Müller », `pays` combo avec options et widget page 1 rect [150, 436, 350, 456] ; `--values-only` → `{ nom: valeur }` sans `signature` ; `fill-form --set nom=Jean --set accepte=true --set "langues=Français;Allemand"` → `applied 3` relus par `form-fields` ; `fill-form --values values.json --flatten` → `kind none`, `count 0`, rendu au pixel (> 300 pixels sombres dans « nom ») ; `--set inconnu=1` → `form_field_not_found` (code 1) sans fichier, `--ignore-unknown` → `skipped.unknown ["inconnu"]`, `skipped.invalid[0].field "ref"` ; `--set ref=x` → `form_value_invalid` ; `flatten` → `annotations ≥ 16`, puis sortie existante → `already_exists` (6) ; `acroform-xfa.pdf` → `form_xfa` ; `two-pages.pdf` → `kind none`. sign-image : `add-image two-pages.pdf --image signature-transparent.png --x 100 --y 520 --width 150` → `height_pt 50`, `digital_signature false`, rendu relu au pixel (621 pixels d'encre, 9 879 pixels bleus visibles entre les traits dans la zone, aucun autre) ; `--image signature-photo.jpg --remove-background 200` → `background_removed true`, rendu propre (fond et ombre retirés, 613 pixels d'encre) ; `--remove-background 1` → `other` « image is empty after background removal » (code 1) ; image absente → `io` (5) ; sortie existante sans `--overwrite` → `already_exists` (6) ; `--page 7` → `page_out_of_range` (1). review-fixes : `protect --aes128` avec « пароль » ou « œuvre » → `password_not_latin1` (code 1), avec « Été » → fichier rouvert par `properties --password` ; `extract` et `split` d'un fichier AES-256 → `"encryption_removed": true` (false sur un fichier clair) ; `rotate 90` puis `text --page 1` → « SuniPDF page 1 » (texte en y = 700 > 612, perdu avant) ; `add-text` « Привет » en Helvetica → `missing_glyphs` avec la liste des caractères. continuous-view : `render --page 1 --scale 40 --region 4000,7000,256,256` → PNG 256 x 256 uni bleu, `page_pixels` [24480, 31680] ; région hors page → `other` (code 1) ; page entière à ×40 → `render_too_large`. edit-advanced : `objects`, `add-text --font-name Arial` (cyrillique relu par `text`), `set-opacity`, `rotate-object`, `copy-objects --into`, `crop --unit mm`, `resize-pages --mode scale`, `insert-blank --like`, `info` (rotation), `fonts` (323 polices), refus `missing_glyphs` (code 1) et `already_exists` (code 6) exercés sur les fixtures ; autres commandes exercées par les tranches précédentes |
 
 ## Non réalisé (ne pas confondre avec « fait »)
-Double page et rotation de vue, sélection de texte sur plusieurs pages, sous-ensemble des polices incorporées (polices entières seulement), collage d'objets éditable, rotation/redimensionnement de groupe, création de champs de formulaire et FDF/XFDF (formulaires XFA en lecture seule), OCR, conversions Office, signatures numériques, impression, validation sur matériel ARM64 et benchmarks plus complets.
+Rotation de vue, ordre complexe de colonnes non balisées, sous-ensembles de polices/CFF/TTC (TrueType entières),
+collage d'objets éditable, transformation de groupes, autres types de champs et FDF/XFDF, XFA modifiable,
+conversion Office, confiance/révocation/horodatage fiable/LTV, matériel ARM64 et QA corpus/performances élargie.
 
 ## Journal
+- 2026-10-16 : la 0.9.0 implémente les sept fonctions demandées. Workspace : 318 réussis/4 ignorés, Clippy/formatage
+  réussis, 804 clés bilingues, autotest updater et sortie réelle Microsoft Print to PDF réussis ; distribution suivie en tête.
 - 2026-10-16 : version 0.8.3, quatre corrections P1/P2 terminées : coordonnées de texte finies, textures et
   demandes de miniatures bornées dans Organiser/le panneau avec gestion des résultats périmés et des échecs,
   tampons et modèles de numérotation sur une ligne, refus explicite de l'opacité non prise en charge du texte libre CLI.

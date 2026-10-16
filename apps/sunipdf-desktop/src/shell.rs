@@ -149,6 +149,8 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::Quit => (glyph::CLOSE, "✕"),
         Command::Save => (glyph::SAVE, "💾"),
         Command::SaveAs => (glyph::SAVE_AS, "💾"),
+        Command::PrintDocument => ("\u{E749}", "⎙"),
+        Command::RecoverDocuments => (glyph::UNDO, "↺"),
         Command::Find => (glyph::FIND, "🔍"),
         Command::ToggleThumbnails => (glyph::GRID, "▦"),
         Command::ToggleTools => (glyph::ALL_APPS, "▤"),
@@ -171,6 +173,8 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::FitPage => (glyph::FIT_PAGE, "▭"),
         Command::ViewContinuous => (glyph::SCROLL, "⇕"),
         Command::ViewSinglePage => (glyph::DOCUMENT, "▯"),
+        Command::ViewTwoPage => (glyph::PAGES, "◫"),
+        Command::ViewBook => (glyph::BOOKMARK, "▣"),
         Command::CopyText => (glyph::DOCUMENT, "⎘"),
         Command::ToolSelect => (glyph::SELECT, "I"),
         Command::ToolHighlight => (glyph::HIGHLIGHT, "▬"),
@@ -211,6 +215,9 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         | Command::HubComment
         | Command::HubProtect
         | Command::HubStamp
+        | Command::HubPrepareForm
+        | Command::HubOcr
+        | Command::HubCertificate
         | Command::HubRedact => {
             Workspace::from_command(command).map_or((glyph::ALL_APPS, "▤"), |w| w.info().icon)
         }
@@ -238,6 +245,11 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::FlattenForm => (glyph::COMBINE, "⧉"),
         Command::ExportFormData => (glyph::SAVE_AS, "⤴"),
         Command::ImportFormData => (glyph::IMPORT, "⤵"),
+        Command::ToolAddTextField => (glyph::FONT, "T+"),
+        Command::ToolAddCheckbox => (glyph::RECT, "☑"),
+        Command::OcrDocument => (glyph::FIND, "A"),
+        Command::VerifySignatures => (glyph::SHIELD, "✓"),
+        Command::SignWithCertificate => (glyph::SIGN, "✍"),
         Command::ToolSelectAnnot => (glyph::SELECT_ANNOT, "↖"),
         Command::ToolFreeText => (glyph::FREE_TEXT, "T"),
         Command::ToolInk => (glyph::INK, "✎"),
@@ -348,9 +360,8 @@ impl SuniApp {
                         .min_size(egui::vec2(32.0, 28.0)),
                 )
                 .on_hover_text(tr(lang, "tabs.home"));
-            if home.clicked() && !home_selected {
+            if home.clicked() && !home_selected && self.suspend_active() {
                 // Accueil sans fermer : le document actif est suspendu dans son onglet.
-                self.suspend_active();
                 self.update_title(ctx);
             }
             let mut switch = None;
@@ -1026,7 +1037,7 @@ impl SuniApp {
                             self.execute(ctx, Command::OrganizePages);
                         }
                         // Bascule de la vue : allumé = défilement continu (F5).
-                        let continuous = self.view.mode == crate::view::ViewMode::Continuous;
+                        let continuous = self.view.mode != crate::view::ViewMode::Single;
                         let view_toggle = ui
                             .add(Button::selectable(
                                 continuous,

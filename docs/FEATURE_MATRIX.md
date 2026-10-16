@@ -8,6 +8,9 @@
 SuniPDF statuses: **Done** = implemented **and** covered by executed tests; **In progress**; **Planned (Pn)** = roadmap
 phase; **Out of scope**. Update this column only with real results.
 
+The 0.9.0 features below have automated regression coverage. `PROJECT_STATUS.md` records the executed checks;
+these results do not establish physical printer, ARM64 or third-party reader compatibility.
+
 ## A. Reading
 
 | Feature | Expected | SuniPDF | Note |
@@ -18,17 +21,17 @@ phase; **Out of scope**. Update this column only with real results.
 | Zoom, fit width/page, actual size | Declared | **Done** (UI) | Rendering at physical resolution (DPI); Ctrl + wheel anchored under the pointer, 10 to 3200% |
 | Rendering off the UI thread | Declared | **Done** | Single engine thread, wanted-tile list replaced as a block, anti-staleness epochs |
 | Multi-document tabs | Declared | **Done** (inactive documents suspended, interface state kept) | |
-| Continuous display, two-page view, view rotation | Declared | Continuous display **Done** (virtualised, current page tracked, single page optional with F5); two-page view and view rotation planned | Tests `view.rs` (layout, virtualisation, zoom anchor), screenshots |
+| Continuous display, two-page view, view rotation | Declared | Continuous/two-page/cover-first Book **Done**; view rotation planned | Shared tile planner/cache, mixed sizes, odd last page and zoom regression tests |
 | Tiled rendering, capped cache | Declared | **Done** (1024 px tiles beyond 4096 px / 8 Mpx, 256 MB LRU cache, 192 MB textures) | `Document::render_region`, pixel tests (regions, stitching, ×40 zoom); CLI `render --region` |
 | Full-text search | Declared | **Done** | Ctrl+F, case, highlighting, CLI `search` |
-| Text selection / copy in reading order | Declared | **Done** (rectangular selection, merged lines) | complex reading order planned |
+| Text selection / copy in reading order | Declared | **Done**: logical character range, cross-page/reverse selection, double-click words, edge autoscroll | PDFium order; core/headless tests; arbitrary untagged column order not inferred |
 | Thumbnails | Declared | **Done** | Virtualised panel, shared cache |
 | Bookmarks (outline) | Declared | **Done** (panel, navigation; editing planned) | |
 | Page labels | Declared | Planned (P3) | |
 | Navigation history, reopened tabs | Declared | Recent files **Done** (home); navigation history planned (P3) | |
 | Reading mode / full screen | Declared | Planned (P3) | |
-| Windows printing | Declared (limited fidelity) | Planned (P5) | Windows API (`sunipdf-platform`) |
-| Crash recovery, autosave | Declared | Planned (P3) | |
+| Windows printing | Declared (limited fidelity) | **Done** (layout/range tests and actual Microsoft Print to PDF output reopened) | Native dialog, ranges/copies, bounded raster printing, progress/cancel; physical printer and interactive dialog unverified |
+| Crash recovery, autosave | Declared | **Done** (recovery/worker/tab regression tests) | 60-second and tab-suspend snapshots; source unchanged; encryption retained/no passwords; restore Save As |
 | Light/dark themes | Declared | **Done** | Design system `theme.rs`, toggle in the tab bar |
 | Translatable interface | Declared (EN, JA + 22 catalogues) | **Done** (en-US default, fr-FR available) | Hot switching, existing preferences preserved |
 
@@ -73,7 +76,7 @@ phase; **Out of scope**. Update this column only with real results.
 | PDF → Excel / PowerPoint | Absent / partial pptx export | Planned (P4) |
 | Office → PDF | Absent | Planned (P4) through an installed LibreOffice/Word if present; otherwise out of scope |
 | HTML → PDF | Absent | Planned (P5, optional) |
-| OCR | Partial (Latin, CC-BY-SA models) | Planned (P4): Tesseract (Apache-2.0) fra+eng, offline |
+| OCR | Partial (Latin, CC-BY-SA models) | **Done**: bundled offline Tesseract 5.5.3 / Leptonica 1.87, fast eng/fra models, invisible text, skip existing text, progress/cancel/one undo; core and real CLI recognition tests; CLI `ocr` |
 
 ## E. Security and signatures
 
@@ -84,7 +87,7 @@ phase; **Out of scope**. Update this column only with real results.
 | Irreversible redaction | Declared (redact crate) | **Done** (hub Redact tool: areas drawn with the mouse, text marking, confirmation, save guard; CLI `redact`): objects removed + blacked-out image patch, annotations / fields / metadata / earlier revisions removed, verification by reading back; absence proven by tests (extraction, decompressed bytes, pixels, rotated pages, encrypted document); limits `KNOWN_ISSUES.md` A40 |
 | Metadata cleanup | Declared | **Done** (Info, XMP of the catalog, pages and images, `/PieceInfo`; modified properties regenerate the XMP) |
 | Handwritten signature (image) | Declared | **Done** (sign-image): drawn on the pad, imported (transparent PNG or photo with the light background removed by threshold) or reused from the local library (`%APPDATA%\SuniPDF\signatures`, plain PNG, optional saving), initials, today's date; alpha-masked image object, editable and undoable; CLI `add-image`; **visual, never presented as certified** (permanent box, `digital_signature: false`) |
-| CMS/PKCS#12 digital signature, timestamping | Declared | Planned (P5) |
+| CMS/PKCS#12 digital signature, timestamping | Declared | Integrity verification/new-copy PFX/P12 signing **Done** (disposable-certificate tests); CLI `signatures`/`sign`; encrypted signing refused. Trust/revocation/trusted timestamps/LTV unchecked |
 | PKCS#11, online LTV, AATL/EUTL | Absent | Out of initial scope |
 
 ## F. Forms and accessibility
@@ -92,7 +95,7 @@ phase; **Out of scope**. Update this column only with real results.
 | Feature | Expected | SuniPDF |
 |---|---|---|
 | Fill AcroForm, regenerated appearances | Declared | **Done** (forms slice, D061–D063): text (single line, multiline, maximum length), checkbox, radio buttons, drop-down list, list box (multiple choice), hierarchical and multi-widget fields; values written by lopdf, appearances regenerated by PDFium and present in the file; on-page tool + accessible panel + flattening (fields and annotations) + clear; encrypted document kept encrypted; CLI `form-fields` / `fill-form` / `flatten`; scripts never executed (reported) |
-| Create fields | Not documented | Planned (roadmap: lopdf alone, D066); "Prepare a form" absent from the hub |
+| Create fields | Not documented | **Done**: numeric text/checkbox creation in Prepare a form, unique names, rotated/cropped/encrypted pages, undo; core/CLI tests; CLI `add-form-field` |
 | FDF/XFDF import/export | Declared (xfdf) | **JSON done** (`{ nom: valeur }`, export per task, import validated field by field); FDF/XFDF not (D064) |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
@@ -106,13 +109,13 @@ phase; **Out of scope**. Update this column only with real results.
 | Local MCP server, confined to `--root` | Declared | Planned (P5, opt-in) |
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
-| "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for 11 tools out of 14 (Export, Fill & Sign (fill and sign), Edit, Create, Combine, Organize, Comment, Protect, Redact, Compress, Stamp): F9 panel, home cards, Tools menu, palette, tool bar with Esc; OCR, Form, Certificate planned (absent as long as their feature does not exist) |
+| "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for all 14 tools; Scan & OCR, Prepare a form and Use a certificate have real commands; registry and headless activation tests |
 | Local workflows, conversion profiles | Absent | Planned (P5) |
 
 ## H. Distribution
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | Planned (P6); CI written, not executed |
-| Windows ARM64 | Declared (dedicated workflow) | Planned (P6); PDFium ARM64 binaries available |
+| Windows x64 | Declared (MSI, zip) | ZIP/MSI distribution; version-specific package evidence in PROJECT_STATUS; real installation unverified |
+| Windows ARM64 | Declared (dedicated workflow) | CI-built portable ZIP; version-specific package evidence in PROJECT_STATUS; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

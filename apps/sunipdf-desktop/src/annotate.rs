@@ -6,6 +6,7 @@ use crate::icons::glyph;
 use crate::theme;
 use crate::worker::{EditOp, Request};
 use egui::{Key, Stroke};
+use sunipdf_core::annot::{ReadingPoint, ReadingSelection};
 use sunipdf_core::{AnnotationInfo, Command, MarkupKind, PointRect, TextSelection};
 use sunipdf_i18n::tr;
 
@@ -120,6 +121,11 @@ pub struct AnnotateState {
     pub tool: Tool,
     pub drag: Option<Drag>,
     pub selection: Option<(usize, TextSelection)>,
+    pub reading: Option<ReadingSelection>,
+    pub(crate) reading_drag: Option<(ReadingPoint, ReadingPoint)>,
+    reading_generation: u64,
+    reading_pending: Option<(u64, u64)>,
+    reading_desired: Option<(ReadingPoint, ReadingPoint, bool)>,
     /// Annotation voulue par le glissement en cours de résolution (`TextInRect` envoyé) :
     /// changer d'outil avant la réponse ne change pas l'effet.
     pub pending_markup: Option<(MarkupKind, (u8, u8, u8))>,
@@ -136,6 +142,15 @@ pub struct AnnotateState {
     pub redact: crate::redact::RedactState,
 }
 
+impl AnnotateState {
+    pub fn clear_reading(&mut self) {
+        self.reading_generation = self.reading_generation.wrapping_add(1);
+        self.reading = None;
+        self.reading_drag = None;
+        self.reading_desired = None;
+    }
+}
+
 /// Point écran → point PDF.
 pub fn to_pdf(pos: egui::Pos2, page_rect: egui::Rect, zoom: f32, page_h_pt: f32) -> (f32, f32) {
     let k = zoom * SCREEN_PER_PDF_POINT;
@@ -145,6 +160,73 @@ pub fn to_pdf(pos: egui::Pos2, page_rect: egui::Rect, zoom: f32, page_h_pt: f32)
 }
 
 impl SuniApp {
+    pub(crate) fn start_reading(&mut self, point: ReadingPoint, word: bool) {
+        self.annotate.clear_reading();
+        self.annotate.selection = None;
+        self.annotate.pending_markup = None;
+        self.annotate.reading_drag = (!word).then_some((point, point));
+        self.annotate.reading_desired = Some((point, point, word));
+        self.send_reading();
+    }
+
+    pub(crate) fn move_reading(&mut self, point: ReadingPoint) {
+        let Some((anchor, focus)) = self.annotate.reading_drag else {
+            return;
+        };
+        if point == focus {
+            return;
+        }
+        self.annotate.reading_drag = Some((anchor, point));
+        self.annotate.reading_generation = self.annotate.reading_generation.wrapping_add(1);
+        self.annotate.reading_desired = Some((anchor, point, false));
+        self.send_reading();
+    }
+
+    fn send_reading(&mut self) {
+        if self
+            .annotate
+            .reading_pending
+            .is_some_and(|(epoch, _)| epoch != self.view.epoch)
+        {
+            self.annotate.reading_pending = None;
+        }
+        if self.annotate.reading_pending.is_some() {
+            return;
+        }
+        let Some((anchor, focus, word)) = self.annotate.reading_desired.take() else {
+            return;
+        };
+        let epoch = self.view.epoch;
+        let generation = self.annotate.reading_generation;
+        self.annotate.reading_pending = Some((epoch, generation));
+        self.worker.send(Request::ReadingSelection {
+            epoch,
+            generation,
+            anchor,
+            focus,
+            word,
+        });
+    }
+
+    pub fn on_reading_selected(
+        &mut self,
+        epoch: u64,
+        generation: u64,
+        result: Result<ReadingSelection, sunipdf_core::EngineError>,
+    ) {
+        if self.annotate.reading_pending != Some((epoch, generation)) {
+            return;
+        }
+        self.annotate.reading_pending = None;
+        if epoch == self.view.epoch && generation == self.annotate.reading_generation {
+            match result {
+                Ok(selection) => self.annotate.reading = Some(selection),
+                Err(error) => self.error = Some(crate::app::error_key(&error)),
+            }
+        }
+        self.send_reading();
+    }
+
     /// Dessine la sélection de texte et le rectangle de glissement en cours.
     pub fn paint_selection(
         &self,
@@ -163,6 +245,14 @@ impl SuniApp {
         if let Some((page, sel)) = &self.annotate.selection {
             if *page == page_index {
                 for r in &sel.rects {
+                    painter.rect_filled(to_screen(r), 2.0, theme::BLUE.gamma_multiply(0.3));
+                }
+            }
+        }
+        if let Some(reading) = &self.annotate.reading {
+            if let Some((_, selection)) = reading.pages.iter().find(|(page, _)| *page == page_index)
+            {
+                for r in &selection.rects {
                     painter.rect_filled(to_screen(r), 2.0, theme::BLUE.gamma_multiply(0.3));
                 }
             }
@@ -234,6 +324,19 @@ impl SuniApp {
     }
 
     pub fn copy_selection(&mut self, ctx: &egui::Context) {
+        if let Some(reading) = &self.annotate.reading {
+            let text = reading
+                .pages
+                .iter()
+                .map(|(_, selection)| selection.text.as_str())
+                .collect::<Vec<_>>()
+                .join("\n");
+            if !text.is_empty() {
+                ctx.copy_text(text);
+                self.status_msg = Some(tr(self.lang(), "status.copied").to_string());
+            }
+            return;
+        }
         if let Some((_, sel)) = &self.annotate.selection {
             if !sel.text.is_empty() {
                 ctx.copy_text(sel.text.clone());

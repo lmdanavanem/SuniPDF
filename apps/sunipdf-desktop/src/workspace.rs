@@ -196,8 +196,8 @@ pub static TABLE: [WsInfo; 14] = [
         desc_key: "hub.scan_ocr.desc",
         icon: (glyph::PICTURE, "🖼"),
         color: Color32::from_rgb(0x06, 0xB6, 0xD4),
-        entry: None,
-        groups: &[],
+        entry: Some(Entry::Mode(C::HubOcr)),
+        groups: &[&[C::OcrDocument]],
     },
     WsInfo {
         ws: Workspace::Protect,
@@ -240,8 +240,8 @@ pub static TABLE: [WsInfo; 14] = [
         desc_key: "hub.prepare_form.desc",
         icon: (glyph::RECT, "▭"),
         color: Color32::from_rgb(0x65, 0xA3, 0x0D),
-        entry: None,
-        groups: &[],
+        entry: Some(Entry::Mode(C::HubPrepareForm)),
+        groups: &[&[C::ToolAddTextField, C::ToolAddCheckbox]],
     },
     WsInfo {
         ws: Workspace::Stamp,
@@ -258,8 +258,8 @@ pub static TABLE: [WsInfo; 14] = [
         desc_key: "hub.certificate.desc",
         icon: (glyph::SHIELD, "◇"),
         color: Color32::from_rgb(0xDB, 0x27, 0x77),
-        entry: None,
-        groups: &[],
+        entry: Some(Entry::Mode(C::HubCertificate)),
+        groups: &[&[C::VerifySignatures, C::SignWithCertificate]],
     },
 ];
 
@@ -320,6 +320,7 @@ pub fn switch(
     if !keep {
         a.tool = Tool::Select;
         a.drag = None;
+        a.clear_reading();
         e.selection = None;
         a.adv.selected = None;
         a.adv.ink.clear();
@@ -514,6 +515,9 @@ impl SuniApp {
         if ws == Workspace::Organize && !self.organize.active {
             self.execute(ctx, Command::OrganizePages);
         }
+        if ws == Workspace::ScanOcr {
+            self.execute(ctx, Command::OcrDocument);
+        }
     }
 
     pub fn leave_workspace(&mut self) {
@@ -569,11 +573,17 @@ impl SuniApp {
             Command::ReplaceImage => {
                 single.is_some_and(|i| i.kind == sunipdf_core::ObjectKind::Image)
             }
-            Command::CopyText => self
-                .annotate
-                .selection
-                .as_ref()
-                .is_some_and(|(_, s)| !s.text.is_empty()),
+            Command::CopyText => {
+                self.annotate
+                    .selection
+                    .as_ref()
+                    .is_some_and(|(_, s)| !s.text.is_empty())
+                    || self
+                        .annotate
+                        .reading
+                        .as_ref()
+                        .is_some_and(|s| s.pages.iter().any(|(_, page)| !page.text.is_empty()))
+            }
             // Sans champ AcroForm, rien à remplir, effacer ni exporter (aplatir vaut aussi pour les
             // annotations : toujours proposé).
             Command::ToolFillForm
@@ -824,6 +834,10 @@ mod tests {
         C::FitPage,
         C::ViewContinuous,
         C::ViewSinglePage,
+        C::ViewTwoPage,
+        C::ViewBook,
+        C::PrintDocument,
+        C::RecoverDocuments,
         C::ToggleThumbnails,
         C::ToggleBookmarks,
         C::ToggleTools,
@@ -847,6 +861,9 @@ mod tests {
         C::HubProtect,
         C::HubStamp,
         C::HubRedact,
+        C::HubPrepareForm,
+        C::HubOcr,
+        C::HubCertificate,
         C::HubLeave,
     ];
 
@@ -879,7 +896,7 @@ mod tests {
 
     #[test]
     fn available_tools_are_wired() {
-        assert!(Workspace::available().count() >= 9);
+        assert_eq!(Workspace::available().count(), 14);
         for ws in Workspace::available() {
             let info = ws.info();
             match info.entry.unwrap() {
@@ -887,7 +904,7 @@ mod tests {
                     assert!(c.info().id.starts_with("hub."), "{:?}", ws);
                     assert!(c.info().needs_document);
                     assert_eq!(Workspace::from_command(c), Some(ws));
-                    assert!(info.commands().count() >= 2, "{:?}", ws);
+                    assert!(info.commands().count() >= 1, "{:?}", ws);
                     assert!(ws.is_mode());
                 }
                 Entry::Direct(c) => {
@@ -897,6 +914,26 @@ mod tests {
             }
             assert!(ws.activate().is_some());
         }
+    }
+
+    #[test]
+    fn new_hub_tools_open_real_feature_controls() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.execute(&ctx, Workspace::ScanOcr.activate().unwrap());
+        assert_eq!(app.annotate.workspace, Some(Workspace::ScanOcr));
+        assert!(app.ocr.open);
+        app.ocr.open = false;
+        app.execute(&ctx, Workspace::PrepareForm.activate().unwrap());
+        app.execute(&ctx, C::ToolAddTextField);
+        assert!(app.form_builder.visible);
+        app.form_builder.visible = false;
+        app.execute(&ctx, Workspace::Certificate.activate().unwrap());
+        app.execute(&ctx, C::VerifySignatures);
+        assert!(app.certificate.visible);
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, crate::worker::Request::VerifySignatures)));
     }
 
     #[test]

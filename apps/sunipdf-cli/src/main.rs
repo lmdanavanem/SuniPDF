@@ -2,6 +2,7 @@
 //! Même moteur que l'application de bureau : `sunipdf-core`.
 
 mod annot_cmd;
+mod feature_cmd;
 
 use clap::{Parser, Subcommand};
 use std::io::Write;
@@ -28,6 +29,65 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Add a fillable text field or checkbox and save to --out.
+    AddFormField {
+        file: PathBuf,
+        #[arg(long, value_parser = ["text", "checkbox"])]
+        kind: String,
+        #[arg(long)]
+        name: String,
+        /// Displayed page coordinates: left,bottom,right,top (PDF points).
+        #[arg(long, allow_hyphen_values = true)]
+        rect: String,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Add a searchable, invisible text layer using local English/French OCR; existing text is skipped.
+    Ocr {
+        file: PathBuf,
+        #[arg(long, default_value = "eng+fra", value_parser = ["eng", "fra", "eng+fra"])]
+        language: String,
+        /// 1-based page numbers, e.g. "1,3-5", or "all".
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Verify digital signatures over the saved PDF bytes; certificate identity is not trusted automatically.
+    Signatures {
+        file: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Sign saved PDF bytes with a PFX/P12 identity into a new copy (encrypted PDFs are unsupported).
+    Sign {
+        file: PathBuf,
+        #[arg(long)]
+        certificate: PathBuf,
+        /// Environment variable containing the certificate password (the value is never an argument).
+        #[arg(
+            long,
+            conflicts_with = "certificate_password_stdin",
+            required_unless_present = "certificate_password_stdin"
+        )]
+        certificate_password_env: Option<String>,
+        /// Read the certificate password from piped stdin; remove one trailing line ending.
+        #[arg(long, conflicts_with = "certificate_password_env")]
+        certificate_password_stdin: bool,
+        #[arg(long)]
+        reason: Option<String>,
+        #[arg(long)]
+        location: Option<String>,
+        /// New signed copy; the input file cannot be replaced, even with --overwrite.
+        #[arg(long)]
+        out: PathBuf,
+    },
     /// List the application's command registry (stable ids) as JSON.
     Commands,
     /// Extract text (all pages, or one page) to stdout as plain text.
@@ -713,9 +773,89 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             ));
         }
     }
+    match &cli.command {
+        Command::Signatures { file, password } => {
+            return feature_cmd::signatures(file, password.as_deref())
+        }
+        Command::Sign {
+            file,
+            certificate,
+            certificate_password_env,
+            certificate_password_stdin,
+            reason,
+            location,
+            out,
+        } => {
+            return feature_cmd::sign(
+                file,
+                certificate,
+                certificate_password_env.as_deref(),
+                *certificate_password_stdin,
+                sunipdf_core::certificate::CertSignOptions {
+                    reason: reason.clone(),
+                    location: location.clone(),
+                },
+                out,
+            );
+        }
+        _ => {}
+    }
     let engine = Engine::new()?;
     match cli.command {
-        Command::Commands | Command::Fonts { .. } => unreachable!(),
+        Command::Commands
+        | Command::Fonts { .. }
+        | Command::Signatures { .. }
+        | Command::Sign { .. } => unreachable!(),
+        Command::AddFormField {
+            file,
+            kind,
+            name,
+            rect,
+            page,
+            out,
+            password,
+        } => {
+            let rect = annot_cmd::parse_rect(&rect)?;
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let index = page_index(page, doc.page_count())?;
+            let field_kind = if kind == "checkbox" {
+                sunipdf_core::FieldKind::Checkbox
+            } else {
+                sunipdf_core::FieldKind::Text
+            };
+            doc.add_form_field(index, &name, field_kind, rect)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({"out":out,"page":page,"name":name,"kind":kind}))
+        }
+        Command::Ocr {
+            file,
+            language,
+            pages,
+            out,
+            password,
+        } => {
+            use sunipdf_core::ocr::{OcrLanguage, OcrOptions};
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let pages = unique(parse_pages(&pages, doc.page_count())?);
+            let language = match language.as_str() {
+                "eng" => OcrLanguage::English,
+                "fra" => OcrLanguage::French,
+                _ => OcrLanguage::EnglishFrench,
+            };
+            let report = doc.ocr(
+                &OcrOptions { pages, language },
+                &std::sync::atomic::AtomicBool::new(false),
+                |_, _| {},
+            )?;
+            if report.recognized_pages == 0 {
+                sunipdf_core::write_atomic(&out, &std::fs::read(&file)?)?;
+            } else {
+                doc.save_as(&out)?;
+            }
+            Ok(
+                serde_json::json!({"out":out,"recognized_pages":report.recognized_pages,"skipped_pages":report.skipped_pages,"words":report.words}),
+            )
+        }
         Command::Text {
             file,
             page,
@@ -1659,6 +1799,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
         Command::Merge { out, .. }
+        | Command::AddFormField { out, .. }
+        | Command::Ocr { out, .. }
+        | Command::Sign { out, .. }
         | Command::Extract { out, .. }
         | Command::Rotate { out, .. }
         | Command::Stamp { out, .. }

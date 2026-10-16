@@ -3433,18 +3433,21 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sunipdf-cli"
-version = "0.8.3"
+version = "0.9.0"
 dependencies = [
  "clap",
  "image",
  "serde_json",
  "sunipdf-core",
+ "tempfile",
+ "zeroize",
 ]
 
 [[package]]
 name = "sunipdf-core"
-version = "0.8.3"
+version = "0.9.0"
 dependencies = [
+ "chrono",
  "getrandom 0.3.4",
  "image",
  "log",
@@ -3452,12 +3455,15 @@ dependencies = [
  "pdfium-render",
  "serde_json",
  "stringprep",
+ "tempfile",
  "thiserror 2.0.21",
+ "windows",
+ "zeroize",
 ]
 
 [[package]]
 name = "sunipdf-desktop"
-version = "0.8.3"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -3465,6 +3471,7 @@ dependencies = [
  "env_logger",
  "image",
  "log",
+ "lopdf",
  "rfd",
  "semver",
  "serde",
@@ -3474,12 +3481,14 @@ dependencies = [
  "sunipdf-i18n",
  "tempfile",
  "ureq",
+ "windows-sys 0.61.2",
  "winresource",
+ "zeroize",
 ]
 
 [[package]]
 name = "sunipdf-i18n"
-version = "0.8.3"
+version = "0.9.0"
 dependencies = [
  "serde_json",
 ]

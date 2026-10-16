@@ -2,33 +2,33 @@
 
 [English](NEXT_TASKS.md)
 
-## Version 0.8.3 : backlog P1/P2 terminé
-Les six priorités précédentes de l'audit, les croix des onglets, les mises à jour intégrées et l'anglais par défaut
-restent livrés. Le français reste disponible. La 0.8.3 termine les quatre corrections restantes :
+## Version 0.9.0 : les sept fonctions demandées sont implémentées
 
-| Priorité | Correction | Couverture de régression |
-|---|---|---|
-| P1 | Refuser les coordonnées non finies lors de l'ajout de texte | NaN/infini refusés avant mutation ; sortie existante préservée |
-| P1 | Borner les miniatures de la grille Organiser | Plafonds des textures et demandes sur 5 000 pages ; résultats périmés écartés |
-| P2 | Refuser les tampons et modèles de numérotation multilignes | CR/LF refusés avant mutation, même sans page sélectionnée |
-| P2 | Refuser l'opacité non prise en charge du texte libre dans la CLI | Seule l'opacité 1 est acceptée ; opacité non finie refusée ; sortie préservée |
+Les sept fonctions demandées sont implémentées. Tests, paquets et publication sont suivis dans
+`PROJECT_STATUS.fr.md` ; ce tableau ne vaut pas résultat matériel ou compatibilité lecteur tiers.
 
-## Prochain backlog de développement (ordre proposé)
-Ces fonctions sont prévues et ne sont pas incluses dans la 0.8.3.
+| Fonction | Périmètre inclus |
+|---|---|
+| Sauvegarde et récupération | Instantanés 60 s/suspension, source intacte, PDF protégés toujours chiffrés, aucun mot de passe, restauration Enregistrer sous |
+| Impression Windows | Plages/copies/orientation natives, modifications courantes, rendu tramé borné, progression/annulation |
+| Sélection enrichie | Plages logiques PDFium entre pages, glissement inverse, double-clic sur mot et défilement au bord |
+| Double page/Livre | Tailles mixtes, couverture seule, dernière page isolée, zoom partagé et caches bornés |
+| Création de formulaires | Rectangles numériques texte/case, noms uniques, documents pivotés/recadrés/chiffrés, annulation/remplissage/enregistrement |
+| OCR local FR/EN | Tesseract 5.5.3/Leptonica 1.87 embarqués, modèles rapides eng/fra, texte invisible, pages textuelles ignorées, annulation atomique et un undo |
+| Signatures numériques | Intégrité des octets enregistrés, copie PFX/P12 incrémentale, avertissement de réécriture ; confiance/révocation/horodatage fiable non établis |
 
-| Ordre | Chantier | Critère de validation |
-|---|---|---|
-| 1 | Sauvegarde automatique et récupération | Restaurer les modifications après arrêt forcé ; original intact ; données protégées chiffrées ; aucun mot de passe enregistré |
-| 2 | Impression Windows | Imprimer les modifications courantes, plages et orientation ; progression/annulation ; sortie Print to PDF rouverte et contrôlée |
-| 3 | Sélection de texte enrichie | Sélection de mots, ordre de lecture, sélection entre pages et défilement au bord ; copie exacte sur pages pivotées |
-| 4 | Vue double page/livre | Navigation et zoom sur tailles mixtes ; dernière page impaire ; cache de rendu borné |
-| 5 | Création de champs | Texte et cases à cocher avec noms uniques sur pages pivotées ; remplir, enregistrer, rouvrir et annuler |
-| 6 | OCR local FR/EN | Texte recherchable/copiable sans modifier l'aspect ; langues disponibles, progression, annulation et undo |
-| 7 | Signatures numériques | Vérification d'intégrité, copie signée avec certificat, avertissement avant modification et limites de confiance explicites |
+Les corrections P1/P2 de la 0.8.3 restent incluses : coordonnées finies, miniatures Organiser bornées,
+tampons sur une ligne et opacité CLI valide. Anglais par défaut ; français disponible.
 
-Qualité restante : validation des sorties avec `qpdf`, corpus réel/fuzzing, mesures de performance reproductibles
-et signature du code lorsqu'un certificat sera disponible. Le choix du moteur OCR reste à réconcilier avec
-les anciens plans avant implémentation ; ce backlog ne fixe pas de moteur.
+## Backlog de développement restant
+
+1. QA indépendante : qpdf, corpus réel volumineux/hostile, mises à jour MSI/portable, matériel ARM64,
+   imprimantes/Print to PDF, Narrateur et interopérabilité Acrobat/Foxit/Chrome.
+2. Sous-ensembles de polices, CFF/OTF/TTC et édition enrichie des paragraphes/groupes.
+3. Ordre de lecture complexe de colonnes non balisées, rotation de vue et validation tactile.
+4. Autres types de champs, FDF/XFDF et activation clavier des widgets sur page.
+5. Conversion Office avec limites de fidélité explicites et convertisseurs locaux détectés.
+6. Confiance/révocation des certificats, horodatage fiable/LTV et signature du code/MSI si identité fournie.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
@@ -49,8 +49,7 @@ Pour rendre un outil visible, une tranche fait exactement :
 4. les noms, descriptions et couleurs des 14 outils existent déjà (`hub.*.name`, `hub.*.desc`).
 Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil ni place dans la liste système ;
 `bar_icons_are_distinct` échoue si une icône se répète dans une barre ou reprend celle d'un bouton d'accès rapide.
-Outils encore absents : Numériser et OCR, Préparer un formulaire (création de champs), Utiliser un
-certificat. « Remplir et signer » est complet : moitié « signer » (tranche sign-image) et moitié « remplir »
+Les 14 outils possèdent une implémentation en 0.9.0, dont Numériser et OCR, Préparer un formulaire et Utiliser un certificat. « Remplir et signer » est complet : moitié « signer » (tranche sign-image) et moitié « remplir »
 (tranche forms, groupe Remplir le formulaire / panneau / Effacer / Aplatir / Exporter / Importer).
 
 ## Après redaction (caviardage irréversible, tranche livrée)
@@ -68,11 +67,6 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
-- **création de champs** (texte, case à cocher) par lopdf seul : widget sans `/AP` dans `/Annots` et
-  `/AcroForm /Fields`, apparence générée par PDFium (constat V11 de `docs/plans/forms.md` §3.11), outils
-  `ToolAddTextField` / `ToolAddCheckbox` et boîte « Nouveau champ » → passe `Workspace::PrepareForm` à
-  `Entry::Mode` ; tests : nom unique sans `.`, rectangle ≥ 4 pt, pages pivotées (`rect_to_user`), document
-  sans AcroForm ;
 - export XFDF (sans dépendance) puis import XFDF/FDF (lecteur XML à choisir) ;
 - mode « Appliquer » groupé (plusieurs champs, un seul niveau d'annulation et un seul rechargement) ;
 - texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
@@ -80,14 +74,12 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
   posés, non écoutés) ;
 - aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
   `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
-- avertir quand le document porte une signature numérique (D056, toute modification l'invalide).
 
 ## Après sign-image (signature visuelle, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A35–A37, décisions D054–D060) :
 - signature **tapée** (nom rendu dans une police manuscrite) : dépend de l'incorporation de polices (A7) ;
 - parapher **toutes les pages** d'un coup (aujourd'hui Maj+clic, page par page) ;
 - chiffrement DPAPI des signatures enregistrées (ADR à écrire, D055) ;
-- avertir quand le document porte déjà une **signature numérique** (toute modification l'invalide, D056) ;
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
   ombre portée ; pression du stylet si egui l'expose un jour.
 
@@ -109,15 +101,14 @@ Reste, non bloquant :
 Fait : onglets (SUNI-012a) ; vue continue virtualisée, tuiles, zoom ancré, page unique en option (SUNI-012b,
 `docs/plans/continuous-view.md`, D038–D045).
 Reste (voir `KNOWN_ISSUES.fr.md` A25–A28) :
-- sélection de texte à cheval sur plusieurs pages et défilement automatique en glissant au bord ;
-- double page / mode livre, rotation de la vue ;
+- rotation de la vue ;
 - défilement animé des « aller à » ; pincement tactile à vérifier sur un écran tactile ;
 - si une page lourde fige le défilement : `Document::render_regions` (une page chargée pour 3 à 4 tuiles
   voisines), à n'ajouter qu'après mesure ; plafonds mémoire réglables si un besoin apparaît.
 
 ## SUNI-013b — Sélection et copie de texte (owner : UI-UX)
 Fait : sélection rectangulaire, copie (Ctrl+C réparé en SUNI-031c via l'événement Copier d'egui).
-Reste : sélection en ordre de lecture (glisser au fil du texte), double-clic sur un mot.
+Implémenté en 0.9.0 : plages logiques PDFium, mots, sélection entre pages et défilement au bord. Reste : déduire un ordre complexe de colonnes non balisées.
 
 ## SUNI-031d — Édition du contenu, suite (owner : PDF-EDITOR)
 Fait en SUNI-031/031b/032/031c : sélection simple et multiple (rectangle, Maj/Ctrl+clic, Ctrl+A), déplacement

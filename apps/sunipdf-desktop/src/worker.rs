@@ -9,12 +9,12 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
 use sunipdf_core::{
-    form_data, security, AnnotDetail, AnnotShape, AnnotStyle, AnnotationInfo, Bookmark, Document,
-    DocumentInfo, Engine, EngineError, FieldValue, FillMode, FormInfo, FreeTextStyle, LinkInfo,
-    LinkTarget, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle, PageMargins, PointRect,
-    Properties, Protection, RectMode, RedactMark, RedactOptions, RedactReport, RenderCache,
-    RenderedPage, ResizeMode, ReviewStatus, ShapeKind, ShapeStyle, Stamp, SystemFont, TextMatch,
-    TextSelection, TextStyle, TileJob, ZOrder,
+    form_data, security, write_new_copy, AnnotDetail, AnnotShape, AnnotStyle, AnnotationInfo,
+    Bookmark, Document, DocumentInfo, Engine, EngineError, FieldValue, FillMode, FormInfo,
+    FreeTextStyle, LinkInfo, LinkTarget, MarkupKind, Metadata, ObjectClip, ObjectInfo, ObjectStyle,
+    PageMargins, PointRect, Properties, Protection, RectMode, RedactMark, RedactOptions,
+    RedactReport, RenderCache, RenderedPage, ResizeMode, ReviewStatus, ShapeKind, ShapeStyle,
+    Stamp, SystemFont, TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
 };
 
 /// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
@@ -119,6 +119,12 @@ pub enum BytesOp {
 
 /// Modification de pages, appliquée sous instantané (annulable).
 pub enum EditOp {
+    AddFormField {
+        page: usize,
+        name: String,
+        kind: sunipdf_core::FieldKind,
+        rect: PointRect,
+    },
     Rotate {
         pages: Vec<usize>,
         delta_degrees: i32,
@@ -412,6 +418,27 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    Print {
+        job: crate::printing::PrintJob,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    },
+    Ocr {
+        options: sunipdf_core::ocr::OcrOptions,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    },
+    VerifySignatures,
+    SignCertificate {
+        pfx: PathBuf,
+        password: zeroize::Zeroizing<String>,
+        options: sunipdf_core::certificate::CertSignOptions,
+        output: PathBuf,
+    },
+    SetRecovery(Option<crate::recovery::Slot>),
+    Autosave,
+    MarkRecovered {
+        path: PathBuf,
+    },
+    AcknowledgeSuspendFailure,
     Open {
         path: PathBuf,
         password: Option<String>,
@@ -435,6 +462,13 @@ pub enum Request {
     TextInRect {
         page: usize,
         rect: PointRect,
+    },
+    ReadingSelection {
+        epoch: u64,
+        generation: u64,
+        anchor: sunipdf_core::annot::ReadingPoint,
+        focus: sunipdf_core::annot::ReadingPoint,
+        word: bool,
     },
     /// Zones de caviardage pour chaque occurrence d'un texte (espace d'affichage). `verify` :
     /// contrôle après application (les occurrences restantes sont signalées, pas ajoutées).
@@ -519,9 +553,34 @@ pub struct DocState {
     /// Modification de contenu seulement (`EditOp::keeps_pages`) : pages identiques en nombre,
     /// ordre et taille.
     pub pages_unchanged: bool,
+    pub has_signatures: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TaskKind {
+    Print,
+    Ocr,
 }
 
 pub enum Response {
+    TaskProgress {
+        kind: TaskKind,
+        done: usize,
+        total: usize,
+    },
+    TaskDone {
+        kind: TaskKind,
+        result: Result<(), EngineError>,
+    },
+    Signatures(Result<Vec<sunipdf_core::certificate::DigitalSignature>, EngineError>),
+    SignedCopy(Result<PathBuf, EngineError>),
+    RecoverySaved(Result<(), EngineError>),
+    SuspendFailed(EngineError),
+    ReadingSelected {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::annot::ReadingSelection, EngineError>,
+    },
     EngineReady,
     EngineFailed(EngineError),
     Opened(DocState),
@@ -659,6 +718,10 @@ impl Worker {
                 | Request::FormInfo
                 | Request::CopyObjects { cut: true, .. }
                 | Request::Save { .. }
+                | Request::Ocr { .. }
+                | Request::Print { .. }
+                | Request::SignCertificate { .. }
+                | Request::Autosave
         );
         if self.tx.send(request).is_ok() && mutation {
             self.pending_mutations.set(self.pending_mutations.get() + 1);
@@ -682,6 +745,7 @@ impl Worker {
 }
 
 struct State<'a> {
+    recovery: Option<crate::recovery::Slot>,
     document: Option<Document<'a>>,
     cache: RenderCache,
     /// Tuiles voulues par l'UI, rendues une à une quand aucune requête n'attend.
@@ -743,6 +807,7 @@ impl State<'_> {
             can_redo: !self.redo.is_empty(),
             modified: self.modified(),
             pages_unchanged: false,
+            has_signatures: d.signature_count() != 0,
         })
     }
 
@@ -881,6 +946,7 @@ mod save_point_tests {
 
     fn state() -> State<'static> {
         State {
+            recovery: None,
             document: None,
             cache: RenderCache::new(1024),
             wanted: WantedQueue::default(),
@@ -961,6 +1027,12 @@ fn checked_pages(mut pages: Vec<usize>, count: usize) -> Result<Vec<usize>, Engi
 
 fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Result<(), EngineError> {
     match op {
+        EditOp::AddFormField {
+            page,
+            name,
+            kind,
+            rect,
+        } => doc.add_form_field(page, &name, kind, rect),
         EditOp::Rotate {
             pages,
             delta_degrees,
@@ -1311,6 +1383,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     };
     ctx.request_repaint();
     let mut state = State {
+        recovery: None,
         document: None,
         cache: RenderCache::new(CACHE_BYTES),
         wanted: WantedQueue::default(),
@@ -1322,6 +1395,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         fonts: None,
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
+    let mut navigation_failed = false;
     loop {
         // 1. Travail suivant : file locale, sinon requête reçue, sinon une tuile voulue, sinon
         //    blocage. Entre deux tuiles le canal est relu : un nouveau `SetWanted` ou une édition
@@ -1352,6 +1426,156 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         };
         // 2. Traitement.
         let response = match request {
+            Request::AcknowledgeSuspendFailure => {
+                navigation_failed = false;
+                continue;
+            }
+            Request::Open { .. } | Request::Resume(_) | Request::ResumeDoc(_)
+                if navigation_failed =>
+            {
+                continue
+            }
+            Request::SetRecovery(slot) => {
+                state.recovery = slot;
+                continue;
+            }
+            Request::Autosave => {
+                let result = if state.modified() {
+                    match (state.document.as_ref(), state.recovery.as_ref()) {
+                        (Some(doc), Some(slot)) => doc
+                            .snapshot()
+                            .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from)),
+                        _ => Ok(()),
+                    }
+                } else {
+                    Ok(())
+                };
+                Response::RecoverySaved(result)
+            }
+            Request::MarkRecovered { path } => {
+                if let Some(doc) = &mut state.document {
+                    doc.set_path(path);
+                }
+                state.save_point = None;
+                match state.doc_state() {
+                    Some(doc) => Response::DocumentChanged(doc),
+                    None => continue,
+                }
+            }
+            Request::Print { job, cancel } => {
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| {
+                        crate::printing::print(
+                            doc,
+                            job,
+                            &doc.info().path.display().to_string(),
+                            &cancel,
+                            |done, total| {
+                                let _ = tx.send(Response::TaskProgress {
+                                    kind: TaskKind::Print,
+                                    done,
+                                    total,
+                                });
+                                ctx.request_repaint();
+                            },
+                        )
+                    })
+                    .map(|report| {
+                        log::debug!("Submitted {} pages to Windows printing", report.pages)
+                    });
+                Response::TaskDone {
+                    kind: TaskKind::Print,
+                    result,
+                }
+            }
+            Request::Ocr { options, cancel } => {
+                let result = (|| {
+                    let doc = state
+                        .document
+                        .as_mut()
+                        .ok_or_else(|| EngineError::Other("no document".into()))?;
+                    let snapshot = Snapshot {
+                        bytes: doc.snapshot()?,
+                        password: doc.password().map(str::to_owned),
+                    };
+                    let report = doc.ocr(&options, &cancel, |done, total| {
+                        let _ = tx.send(Response::TaskProgress {
+                            kind: TaskKind::Ocr,
+                            done,
+                            total,
+                        });
+                        ctx.request_repaint();
+                    })?;
+                    Ok::<_, EngineError>((snapshot, report))
+                })();
+                match result {
+                    Ok((snapshot, report)) => {
+                        if report.words != 0 {
+                            state.push_undo(snapshot);
+                            state.invalidate();
+                            state.last_nudge = None;
+                            let _ = tx.send(Response::TaskDone {
+                                kind: TaskKind::Ocr,
+                                result: Ok(()),
+                            });
+                            let mut changed = state.doc_state().expect("OCR document");
+                            changed.pages_unchanged = true;
+                            Response::DocumentChanged(changed)
+                        } else {
+                            Response::TaskDone {
+                                kind: TaskKind::Ocr,
+                                result: Ok(()),
+                            }
+                        }
+                    }
+                    Err(error) => Response::TaskDone {
+                        kind: TaskKind::Ocr,
+                        result: Err(error),
+                    },
+                }
+            }
+            Request::VerifySignatures => {
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| {
+                        let bytes = std::fs::read(&doc.info().path)?;
+                        sunipdf_core::certificate::verify_signatures(&bytes, doc.password())
+                    });
+                Response::Signatures(result)
+            }
+            Request::SignCertificate {
+                pfx,
+                password,
+                options,
+                output,
+            } => {
+                let result = (|| {
+                    let doc = state
+                        .document
+                        .as_ref()
+                        .ok_or_else(|| EngineError::Other("no document".into()))?;
+                    if state.modified() {
+                        return Err(EngineError::Other("save changes before signing".into()));
+                    }
+                    // A fresh path also excludes hard-link aliases of the source.
+                    if output.exists() {
+                        return Err(EngineError::AlreadyExists(output));
+                    }
+                    let source = std::fs::read(&doc.info().path)?;
+                    let identity = zeroize::Zeroizing::new(std::fs::read(pfx)?);
+                    let signed = sunipdf_core::certificate::sign_pdf(
+                        &source, &identity, &password, &options,
+                    )?;
+                    write_new_copy(&output, &signed)?;
+                    Ok(output)
+                })();
+                Response::SignedCopy(result)
+            }
             Request::Open { path, password } => match engine.open(&path, password.as_deref()) {
                 Ok(doc) => {
                     state.document = Some(doc);
@@ -1405,6 +1629,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             Request::Edit(op) => state.edit(op),
             Request::Redact { marks, options } => match state.redact(&marks, &options) {
                 Ok((report, doc_state)) => {
+                    if let Some(slot) = &state.recovery {
+                        let refreshed = state
+                            .document
+                            .as_ref()
+                            .expect("redacted document")
+                            .snapshot()
+                            .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from));
+                        if let Err(error) = refreshed {
+                            // A failed refresh must not retain a snapshot containing the removed data.
+                            if let Err(cleanup) = slot.remove() {
+                                log::error!("Redaction recovery cleanup failed: {cleanup}");
+                            }
+                            let _ = tx.send(Response::RecoverySaved(Err(error)));
+                        }
+                    }
                     if tx.send(Response::Redacted(report)).is_err() {
                         break;
                     }
@@ -1440,22 +1679,50 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     }
                 }
             }
+            Request::ReadingSelection {
+                epoch,
+                generation,
+                anchor,
+                focus,
+                word,
+            } => {
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.reading_selection(anchor, focus, word));
+                Response::ReadingSelected {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::Batch(op) => {
                 Response::BatchDone(run_batch(&engine, state.document.as_ref(), op))
             }
             Request::Suspend => {
-                let Some(doc) = state.document.take() else {
+                let Some(doc) = state.document.as_ref() else {
                     continue;
                 };
-                state.invalidate();
-                let suspended = SuspendedDoc {
-                    bytes: match doc.snapshot() {
-                        Ok(b) => b,
-                        Err(e) => {
-                            log::error!("suspension impossible : {e}");
-                            continue;
+                let bytes = match doc.snapshot() {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        navigation_failed = true;
+                        let _ = tx.send(Response::SuspendFailed(error));
+                        ctx.request_repaint();
+                        continue;
+                    }
+                };
+                if state.modified() {
+                    if let Some(slot) = &state.recovery {
+                        if let Err(error) = slot.save(&bytes) {
+                            let _ = tx.send(Response::RecoverySaved(Err(error.into())));
                         }
-                    },
+                    }
+                }
+                let doc = state.document.take().expect("snapshotted document");
+                let suspended = SuspendedDoc {
+                    bytes,
                     password: doc.password().map(str::to_owned),
                     path: doc.info().path.clone(),
                     modified: state.modified(),
@@ -1463,6 +1730,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     redo: std::mem::take(&mut state.redo),
                     save_point: state.save_point.replace(0),
                 };
+                state.recovery = None;
+                state.invalidate();
                 Response::Suspended(suspended)
             }
             Request::Resume(index) => {
@@ -1621,6 +1890,11 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         // Le prochain décalage clavier prend son propre instantané (sinon il serait
                         // fusionné avec celui d'avant l'enregistrement et passerait pour « intact »).
                         state.last_nudge = None;
+                        if let Some(slot) = &state.recovery {
+                            if let Err(error) = slot.remove() {
+                                let _ = tx.send(Response::RecoverySaved(Err(error.into())));
+                            }
+                        }
                         Response::Saved { path }
                     }
                     Err(e) => Response::SaveFailed(e),
@@ -1628,6 +1902,11 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::FinishMutation => Response::MutationFinished,
             Request::Close => {
+                if let Some(slot) = state.recovery.take() {
+                    if let Err(error) = slot.remove() {
+                        let _ = tx.send(Response::RecoverySaved(Err(error.into())));
+                    }
+                }
                 state.document = None;
                 state.invalidate();
                 state.undo.clear();
@@ -1687,6 +1966,167 @@ mod tests {
                     if failed_page == page && failed_width == width_px
             ));
         }
+        encrypted_recovery_after_redaction(&worker);
+    }
+
+    fn next_response(worker: &Worker) -> Response {
+        loop {
+            let response = worker
+                .rx
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .expect("worker response");
+            if matches!(response, Response::MutationFinished) {
+                worker.finish_mutation();
+            } else {
+                return response;
+            }
+        }
+    }
+
+    fn encrypted_recovery_after_redaction(worker: &Worker) {
+        let temp = tempfile::tempdir().unwrap();
+        let original = temp.path().join("original.pdf");
+        let bytes = sunipdf_core::security::protect(
+            include_bytes!("../../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            None,
+            &Protection {
+                user_password: "recovery-password".into(),
+                owner_password: "owner-password".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        std::fs::write(&original, &bytes).unwrap();
+        let session = crate::recovery::Session::create(temp.path().join("recovery")).unwrap();
+        let slot = session.slot(1, original.clone(), 2);
+        worker.send(Request::Open {
+            path: original.clone(),
+            password: Some("recovery-password".into()),
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::SetRecovery(Some(slot.clone())));
+        worker.send(Request::MarkRecovered {
+            path: original.clone(),
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { modified: true, .. })
+        ));
+        worker.send(Request::Autosave);
+        assert!(matches!(
+            next_response(worker),
+            Response::RecoverySaved(Ok(()))
+        ));
+        let before = std::fs::read(slot.base.with_extension("pdf")).unwrap();
+        assert!(lopdf_encrypted(&before));
+        worker.send(Request::RedactSearch {
+            query: "SuniPDF page 1".into(),
+            match_case: true,
+            verify: false,
+        });
+        let marks = match next_response(worker) {
+            Response::RedactMatches { marks, .. } => marks,
+            _ => panic!("redaction search response"),
+        };
+        assert_eq!(marks.len(), 1);
+        worker.send(Request::Redact {
+            marks: marks.clone(),
+            options: RedactOptions::default(),
+        });
+        assert!(matches!(next_response(worker), Response::Redacted(_)));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let recovered = slot.base.with_extension("pdf");
+        let after = std::fs::read(&recovered).unwrap();
+        assert!(lopdf_encrypted(&after));
+        assert_ne!(before, after, "redaction must refresh recovery immediately");
+        worker.send(Request::Open {
+            path: recovered.clone(),
+            password: None,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::OpenFailed {
+                error: EngineError::PasswordRequired,
+                ..
+            }
+        ));
+        worker.send(Request::Open {
+            path: recovered,
+            password: Some("recovery-password".into()),
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::RedactSearch {
+            query: "SuniPDF page 1".into(),
+            match_case: true,
+            verify: true,
+        });
+        assert!(
+            matches!(next_response(worker),Response::RedactMatches { marks,.. } if marks.is_empty())
+        );
+        assert_eq!(std::fs::read(&original).unwrap(), bytes);
+
+        // Force the first atomic write to fail while leaving the stale PDF deletable.
+        let failed_slot = session.slot(2, original.clone(), 2);
+        failed_slot.save(&bytes).unwrap();
+        let stale = failed_slot.base.with_extension("pdf");
+        let blocked = stale.with_file_name(format!(
+            "{}.{}.tmp",
+            stale.file_name().unwrap().to_string_lossy(),
+            std::process::id()
+        ));
+        std::fs::create_dir(blocked).unwrap();
+        worker.send(Request::Open {
+            path: original.clone(),
+            password: Some("recovery-password".into()),
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::SetRecovery(Some(failed_slot.clone())));
+        worker.send(Request::Redact {
+            marks,
+            options: RedactOptions::default(),
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::RecoverySaved(Err(_))
+        ));
+        assert!(matches!(next_response(worker), Response::Redacted(_)));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(
+            !stale.exists(),
+            "failed refresh must remove the unredacted recovery PDF"
+        );
+        assert!(!stale.with_extension("json").exists());
+        assert_eq!(std::fs::read(original).unwrap(), bytes);
+    }
+
+    fn lopdf_encrypted(bytes: &[u8]) -> bool {
+        // The raw encryption dictionary is detectable without a password or another PDFium engine.
+        bytes.windows(b"/Encrypt".len()).any(|w| w == b"/Encrypt")
+    }
+
+    #[test]
+    fn signed_copy_final_write_never_replaces_an_existing_file_or_hard_link() {
+        let temp = tempfile::tempdir().unwrap();
+        let output = temp.path().join("signed-copy.pdf");
+        write_new_copy(&output, b"first signed bytes").unwrap();
+        assert!(matches!(
+            write_new_copy(&output, b"second signed bytes"),
+            Err(EngineError::AlreadyExists(_))
+        ));
+        assert_eq!(std::fs::read(&output).unwrap(), b"first signed bytes");
+        let alias = temp.path().join("alias.pdf");
+        std::fs::hard_link(&output, &alias).unwrap();
+        assert!(matches!(
+            write_new_copy(&alias, b"replacement"),
+            Err(EngineError::AlreadyExists(_))
+        ));
+        assert_eq!(std::fs::read(output).unwrap(), b"first signed bytes");
     }
 
     fn job(page: usize) -> TileJob {

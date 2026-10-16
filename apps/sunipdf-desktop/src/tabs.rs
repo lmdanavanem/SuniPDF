@@ -30,6 +30,7 @@ pub struct TabState {
 pub struct Tab {
     pub path: PathBuf,
     pub dirty: bool,
+    pub recovery_id: u64,
     /// État d'interface conservé pendant la suspension (`None` pour l'onglet actif).
     pub ui: Option<TabState>,
     /// Document suspendu (`None` tant que le moteur ne l'a pas renvoyé, ou pour l'onglet actif).
@@ -65,6 +66,7 @@ impl SuniApp {
         self.edit.reset_for_tab();
         // Le placement d'une signature vise une page du document actif : il ne survit pas.
         self.cancel_placing();
+        self.annotate.clear_reading();
         let mut state = TabState {
             document: self.document.take(),
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),
@@ -114,6 +116,7 @@ impl SuniApp {
         self.status_msg = t.status_msg;
         self.organize = t.organize;
         self.annotate = t.annotate;
+        self.annotate.clear_reading();
         // Le moteur a rechargé le document : indices et zones de lien relus.
         self.annotate.adv.invalidate();
         self.annotate.annotations_page = None;
@@ -132,12 +135,16 @@ impl SuniApp {
     }
 
     /// Suspend le document actif dans un onglet (nouvel onglet ou onglet existant).
-    pub fn suspend_active(&mut self) {
+    pub fn suspend_active(&mut self) -> bool {
         if self.navigation_blocked() {
-            return;
+            return false;
         }
-        let Some(doc) = &self.document else { return };
-        let path = doc.info.path.clone();
+        let Some(path) = self.document.as_ref().map(|doc| doc.info.path.clone()) else {
+            return true;
+        };
+        if !self.commit_form_input() {
+            return false;
+        }
         let dirty = self.dirty;
         let state = self.take_tab();
         let index = match self.tabs.active {
@@ -152,6 +159,7 @@ impl SuniApp {
                 self.tabs.tabs.push(Tab {
                     path,
                     dirty,
+                    recovery_id: crate::recovery::next_id(),
                     ui: Some(state),
                     doc: None,
                 });
@@ -161,6 +169,7 @@ impl SuniApp {
         self.tabs.active = None;
         self.tabs.suspending = Some(index);
         self.worker.send(Request::Suspend);
+        true
     }
 
     /// Active l'onglet `index` (le document actif, s'il existe, est suspendu).
@@ -176,7 +185,9 @@ impl SuniApp {
             return;
         }
         let had_active = self.document.is_some();
-        self.suspend_active();
+        if !self.suspend_active() {
+            return;
+        }
         self.tabs.resuming = Some(index);
         self.worker.send(Request::Resume(index));
         if !had_active && self.tabs.suspending.is_none() {
@@ -262,6 +273,7 @@ impl SuniApp {
         self.tabs.tabs.push(Tab {
             path,
             dirty: false,
+            recovery_id: crate::recovery::next_id(),
             ui: None,
             doc: None,
         });
@@ -309,5 +321,58 @@ impl SuniApp {
         let current = self.tabs.active.map(|a| a as isize).unwrap_or(-1);
         let target = (current + delta).rem_euclid(n as isize) as usize;
         self.switch_to(target);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recovery_ids_survive_tab_reordering_and_removal() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let first = app.tabs.tabs[0].recovery_id;
+        app.register_opened_tab(PathBuf::from("second.pdf"));
+        let second = app.tabs.tabs[1].recovery_id;
+        app.register_opened_tab(PathBuf::from("third.pdf"));
+        let third = app.tabs.tabs[2].recovery_id;
+        assert!(first != second && second != third && first != third);
+        app.tabs.tabs.swap(0, 2);
+        app.tabs.tabs.remove(1);
+        assert_eq!(app.tabs.tabs[0].recovery_id, third);
+        assert_eq!(app.tabs.tabs[1].recovery_id, first);
+    }
+
+    #[test]
+    fn invalid_form_draft_prevents_tab_switch_without_losing_input() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.register_opened_tab(PathBuf::from("second.pdf"));
+        app.tabs.active = Some(0);
+        crate::app::tests::form_draft(&mut app, "too-long-value");
+        app.switch_to(1);
+        assert_eq!(app.tabs.active, Some(0));
+        assert!(app.tabs.resuming.is_none() && app.tabs.suspending.is_none());
+        assert!(app.document.is_some());
+        assert_eq!(app.forms.drafts["Name"], "too-long-value");
+        assert_eq!(app.error, Some("error.form_value_invalid"));
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn valid_form_draft_reaches_engine_before_suspension() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let id = app.tabs.tabs[0].recovery_id;
+        crate::app::tests::form_draft(&mut app, "New");
+        assert!(app.suspend_active());
+        let requests: Vec<_> = requests.try_iter().collect();
+        let edit = requests.iter().position(|r| matches!(r, Request::Edit(crate::worker::EditOp::FillForm { values }) if values[0].1 == sunipdf_core::FieldValue::Text("New".into()))).unwrap();
+        let suspend = requests
+            .iter()
+            .position(|r| matches!(r, Request::Suspend))
+            .unwrap();
+        assert!(edit < suspend);
+        assert_eq!(app.tabs.tabs[0].recovery_id, id);
+        assert!(app.document.is_none());
+        assert_eq!(app.tabs.suspending, Some(0));
     }
 }

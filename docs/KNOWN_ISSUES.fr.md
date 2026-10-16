@@ -90,10 +90,8 @@ A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans
 A10. **CI GitHub vérifiée pour la 0.8.3** : CI x64 et build ARM64 réussis. La seconde compilation x64 de release
      a été annulée ; le MSI provient des binaires CI vérifiés. Six fichiers publics et leurs SHA256 contrôlés.
      L'installation réelle et l'exécution sur matériel ARM64 restent à valider.
-A11. **Hub « Tous les outils » : 11 outils par tâche sur 14.** Numériser et OCR, Préparer un
-     formulaire (création de champs) et Utiliser un certificat n'ont pas de fonction réelle : ils sont absents
-     (entrée `None` dans `workspace::TABLE`), pas grisés. Exporter, Créer, Combiner et Compresser n'ont pas de
-     barre (une seule commande chacun, boîte de dialogue directe). Caviarder est livré.
+A11. **Hub « Tous les outils » : 14 outils implémentés en 0.9.0.** OCR, création de champs et certificat
+     ont désormais de vraies commandes. Couverture automatisée et matérielle dans `PROJECT_STATUS.fr.md`.
 A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
      dans les dépendances. Les tests couvrent les données (table, registre, contraste des glyphes), la bascule
      d'outil, la géométrie des lignes, l'arbre AccessKit et l'anneau de focus (passe egui sans fenêtre) ; le
@@ -154,8 +152,8 @@ A34. **Propriétés et PDF/A** : modifier les métadonnées régénère un paque
      l'identification PDF/A (`pdfaid:part`, `pdfaid:conformance`) ni les autres espaces de noms du paquet
      d'origine : un fichier PDF/A perd son identification après `set-metadata`, sans avertissement.
 A25. **Vue continue : limites (SUNI-012b)**.
-     - Une **sélection de texte reste sur sa page** (le glissement est borné à la page d'origine) : pas de
-       sélection à cheval sur deux pages, pas de défilement automatique quand on glisse près du bord.
+     - La sélection suit l’ordre logique PDFium, y compris entre pages et au bord de la vue ; l’ordre voulu
+       de colonnes arbitraires non balisées n’est pas déduit. Le marquage reste rectangulaire par page.
      - Défilement **sans animation ni inertie** pour les « aller à » et le clavier (saut direct).
      - **Pincement** (pavé tactile ou écran tactile) : même chemin que Ctrl + molette (`zoom_delta`), non testé
        (aucun test sur ce poste).
@@ -164,10 +162,11 @@ A25. **Vue continue : limites (SUNI-012b)**.
        la durée d'une tuile (mesurée : 1,2 ms par tuile 1024² sur `many-pages.pdf`, plus pour une page lourde).
      - Recollage des tuiles : les glyphes qui traversent un bord de tuile peuvent différer d'un pixel
        d'anticrénelage du rendu d'un seul tenant (121 pixels sur 1,9 million mesurés, D044).
-     - Double page, mode livre et rotation de la vue : non proposés (feuille de route).
+     - Double page et Livre utilisent les mêmes plafonds ; rotation de vue non proposée.
 A26. **« Ajuster » en défilement continu sur un document de tailles mixtes** : le zoom est commun à toutes les
      pages et ajuste la **plus grande** page (D041) ; une page portrait parmi des pages paysage est donc plus
-     étroite que l'écran. En page unique, l'ajustement suit la page courante.
+     étroite que l'écran. En page unique, l'ajustement suit la page courante. En double page/Livre, la plus large
+     paire et la page la plus haute déterminent le zoom partagé.
 A27. **Très longs documents** : positions en `f32` ; le zoom est plafonné pour que la hauteur totale reste
      <= 8 000 000 px logiques (message « Zoom maximal atteint pour ce document »). Un document de 5000 pages
      Lettre est ainsi limité à environ 150 %.
@@ -179,12 +178,9 @@ A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (
      300 « Page suiv. » puis Fin puis 300 « Page préc. » : mémoire privée stable vers 810-830 Mo (WorkingSet
      438 Mo) après 175 Mo à l'ouverture ; pas de croissance au-delà (pilote OpenGL NVIDIA, copies système des
      textures comprises). Plafonds en constantes (`view.rs`, `worker.rs`), pas de réglage utilisateur.
-A35. **Signature manuscrite = signature visuelle, sans valeur cryptographique** (tranche sign-image). C'est une image
-     posée sur la page : elle ne prouve ni l'identité du signataire ni l'intégrité du document, et quiconque modifie
-     le fichier peut la copier ou la retirer. Pas de certificat, de CMS/PAdES, d'horodatage ni de vérification
-     (crate `sunipdf-signatures`, P5). La boîte le dit en permanence ; la CLI `add-image` renvoie
-     `"digital_signature": false`. Aucun avertissement non plus si le document porte déjà une signature numérique,
-     que toute modification invalide (D056).
+A35. **Signature manuscrite = image sans preuve cryptographique** : copiable ou supprimable par un éditeur.
+     La CLI `add-image` indique `digital_signature: false`. La signature CMS/PFX est un autre parcours dans
+     Utiliser un certificat (A44) ; l’application avertit avant la réécriture d’un PDF signé.
 A36. **Signatures enregistrées en clair** : PNG dans `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
      `initials-<ms>.png`), protégés par les seules ACL du profil Windows : toute personne ayant accès à la session peut
      les réutiliser. Parade : décocher « Enregistrer sur cet ordinateur » (rien n'est écrit) ou supprimer la vignette
@@ -202,8 +198,8 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      (le contenu se resserre d'autant à l'image qui suit l'apparition de la barre).
 A38. **Formulaires AcroForm (tranche forms, D061–D066)** : **XFA** détecté et lu (champs AcroForm de secours),
      jamais rempli ni aplati (`form_xfa`) ; **scripts** (`/CO`, `/AA`, `/A` JavaScript) jamais exécutés, signalés
-     par un bandeau, les champs calculés et les formats restent tels quels ; **pas de création de champs**
-     (« Préparer un formulaire » absent du hub) ; **pas de FDF/XFDF** (JSON seulement) ; **un niveau d'annulation
+     par un bandeau, les champs calculés et les formats restent tels quels ; **création limitée aux champs texte et cases à cocher**
+     par boîte numérique (4 points minimum, nom unique sans point, pas de dessin à la souris) ; **pas de FDF/XFDF** (JSON seulement) ; **un niveau d'annulation
      par valeur validée** (un formulaire de 40 champs = 40 niveaux ; plafonds 50 niveaux / 512 Mo du journal) ;
      chaque validation = instantané complet + analyse lopdf + rechargement + rendu minuscule, acceptable sous
      5 Mo, lent au-delà (mode « Appliquer » groupé en feuille de route) ; polices : un texte hors Latin-1 reçoit de
@@ -260,9 +256,10 @@ A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone 
     6. **Balisage d'accessibilité** : supprimé pour tout le document quand « informations cachées » est coché (défaut)
        ; conservé sinon, avec le risque qu'un texte alternatif décrive le contenu caviardé.
     7. **Signatures numériques** : toute signature existante devient invalide (réécriture complète).
-    8. **Mémoire et disque** : l'historique d'annulation et les onglets suspendus gardent l'état d'avant en mémoire
-       vive (jamais écrit sur disque par SuniPDF) ; l'ancien fichier remplacé par l'enregistrement atomique n'est pas
-       effacé du support de façon sécurisée.
+    8. **Mémoire et disque** : annulation et onglets suspendus gardent les états antérieurs en mémoire. Le caviardage
+       réussi actualise immédiatement l'instantané courant (ou le retire si l'actualisation échoue), mais les copies
+       d'anciennes sessions interrompues peuvent contenir du texte non caviardé. L'original, les sauvegardes et les
+       copies supprimées ne sont pas effacés du support de façon sécurisée.
     9. **Hypothèse restante** : les limites d'objet de PDFium englobent l'encre de l'objet. Pour le texte, elles sont
        agrandies de 30 % et contrôlées à l'exécution (texte résiduel sous une zone = erreur, document inchangé) ; pour
        images et tracés elles sont géométriques.
@@ -274,3 +271,26 @@ A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone 
         zones dessinées n'ont pas de nœud d'accessibilité propre (leur nombre est annoncé dans la barre d'état).
     13. Non vérifié : `qpdf --check` des sorties (A4), corpus de PDF réels (numérisations, PDF balisés lourds), pages de
         plusieurs dizaines de milliers d'objets (`prune_objects` de lopdf est quadratique).
+
+
+## Limites des fonctions 0.9.0
+
+Les résultats de validation exécutés sont suivis dans `PROJECT_STATUS.fr.md`.
+
+A41. **Récupération** : instantanés toutes les 60 secondes et à la suspension d’un onglet, donc une modification
+     plus récente peut manquer après un arrêt forcé. Une saisie de dialogue non validée n’est pas un changement PDF.
+     Les instantanés protégés restent chiffrés, mais noms de fichiers/chemins et nombre de pages sont dans les métadonnées JSON.
+     Aucun mot de passe n’est conservé ; il faut le ressaisir pour restaurer. L’original n’est jamais remplacé par la récupération.
+A42. **Impression Windows** : rendu tramé jusqu’à 300 dpi par bandes bornées, ajusté à la zone imprimable ; pas de
+     sortie vectorielle ni de garantie de couleur professionnelle. Le pilote gère copies/orientation. Une opération native
+     déjà lancée peut retarder l’annulation. Sortie réelle Microsoft Print to PDF rouverte avec modifications non
+     enregistrées, source/octet/objets inchangés. Imprimantes physiques et boîte interactive non vérifiées.
+A43. **OCR local** : anglais/français uniquement, modèles rapides Tesseract ; qualité variable selon scan et langue.
+     Les pages ayant déjà du texte sont ignorées, même si cette couche est mauvaise. Images limitées à 16 Mpx et 8192 px/côté,
+     sortie TSV 16 Mio, 50 000 mots/page, délai 120 s/page ; très grandes pages refusées. Pas de reconstruction sémantique
+     des tableaux/colonnes. Annulation/échec ne valide aucune page ; succès en un undo. Autres lecteurs à vérifier.
+A44. **Signatures numériques** : CMS détaché `adbe.pkcs7.detached`/`ETSI.CAdES.detached` sur octets enregistrés ;
+     signature PFX/P12 incrémentale dans une nouvelle copie, pas sur PDF chiffré. Validité cryptographique ne signifie
+     pas confiance de l’identité : chaîne, révocation, AATL/EUTL, PKCS#11, horodatage fiable et LTV non vérifiés.
+     L’heure du PDF est déclarative. Les modifications/réécritures peuvent invalider une signature. Interopérabilité
+     Acrobat/Foxit et qualification PAdES non établies ; ne pas présenter le résultat comme signature qualifiée.

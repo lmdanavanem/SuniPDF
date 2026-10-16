@@ -10,6 +10,7 @@ use egui::{pos2, vec2, Pos2, Rect, Vec2};
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::sync::Arc;
+use sunipdf_core::annot::ReadingPoint;
 use sunipdf_core::{tiles, EngineError, PageSize, PixelRect, RenderedPage, TileJob, TileLimits};
 use sunipdf_i18n::{tr, tr_args};
 
@@ -40,6 +41,19 @@ const SETTLE_SECS: f64 = 0.15;
 pub enum ViewMode {
     Single,
     Continuous,
+    TwoPage,
+    Book,
+}
+
+impl ViewMode {
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Single => "single",
+            Self::Continuous => "continuous",
+            Self::TwoPage => "two_page",
+            Self::Book => "book",
+        }
+    }
 }
 
 /// Défilement demandé, résolu à la prochaine image où la vue document est dessinée.
@@ -165,7 +179,7 @@ impl ViewState {
     pub fn scroll_keys(&mut self, ctx: &egui::Context) {
         use egui::{Key, Modifiers};
         let screen = SCREEN_SCROLL * self.screen_height();
-        let continuous = self.mode == ViewMode::Continuous;
+        let continuous = self.mode != ViewMode::Single;
         let mut dy = 0.0;
         ctx.input_mut(|i| {
             let mut each = |m: Modifiers, k: Key, d: f32| {
@@ -223,22 +237,49 @@ pub struct Layout {
     pt: Vec<PageSize>,
     tops: Vec<f32>,
     sizes: Vec<Vec2>,
+    lefts: Vec<f32>,
+    rows: Vec<(Range<usize>, f32, f32)>,
     pub content: Vec2,
 }
 
 impl Layout {
     /// `k` : points logiques par point PDF. Un document plus petit que la zone y est centré.
+    #[cfg(test)]
     pub fn new(window: &[PageSize], first: usize, k: f32, viewport: Vec2) -> Self {
+        Self::for_mode(window, first, k, viewport, ViewMode::Continuous)
+    }
+
+    pub fn for_mode(
+        window: &[PageSize],
+        first: usize,
+        k: f32,
+        viewport: Vec2,
+        mode: ViewMode,
+    ) -> Self {
         let sizes: Vec<Vec2> = window
             .iter()
             .map(|s| vec2(s.width_pt, s.height_pt) * k)
             .collect();
-        let max_w = sizes.iter().map(|s| s.x).fold(0.0, f32::max);
-        let mut tops = Vec::with_capacity(sizes.len());
+        let mut tops = vec![0.0; sizes.len()];
+        let mut lefts = vec![0.0; sizes.len()];
+        let mut rows = Vec::new();
+        let mut max_w = 0.0f32;
         let mut y = PAGE_MARGIN;
-        for s in &sizes {
-            tops.push(y);
-            y += s.y + PAGE_GAP;
+        let mut i = 0;
+        while i < sizes.len() {
+            let pair = matches!(mode, ViewMode::TwoPage | ViewMode::Book)
+                && !(mode == ViewMode::Book && first + i == 0);
+            let end = (i + if pair { 2 } else { 1 }).min(sizes.len());
+            let row_width =
+                sizes[i..end].iter().map(|s| s.x).sum::<f32>() + PAGE_GAP * (end - i - 1) as f32;
+            let row_height = sizes[i..end].iter().map(|s| s.y).fold(0.0, f32::max);
+            max_w = max_w.max(row_width);
+            rows.push((i..end, y, row_height));
+            for top in &mut tops[i..end] {
+                *top = y;
+            }
+            y += row_height + PAGE_GAP;
+            i = end;
         }
         let total = if sizes.is_empty() {
             2.0 * PAGE_MARGIN
@@ -249,15 +290,25 @@ impl Layout {
         for t in &mut tops {
             *t += shift;
         }
+        let content_w = (max_w + 2.0 * PAGE_MARGIN).max(viewport.x);
+        for (range, top, _) in &mut rows {
+            *top += shift;
+            let width = sizes[range.clone()].iter().map(|s| s.x).sum::<f32>()
+                + PAGE_GAP * (range.len() - 1) as f32;
+            let mut x = (content_w - width) / 2.0;
+            for index in range.clone() {
+                lefts[index] = x;
+                x += sizes[index].x + PAGE_GAP;
+            }
+        }
         Self {
             first,
             pt: window.to_vec(),
             tops,
             sizes,
-            content: vec2(
-                (max_w + 2.0 * PAGE_MARGIN).max(viewport.x),
-                total.max(viewport.y),
-            ),
+            lefts,
+            rows,
+            content: vec2(content_w, total.max(viewport.y)),
         }
     }
 
@@ -286,7 +337,7 @@ impl Layout {
     }
 
     pub fn page_left(&self, page: usize) -> f32 {
-        (self.content.x - self.size(page).x) / 2.0
+        self.lefts[self.idx(page)]
     }
 
     /// Rectangle de la page dans le repère du contenu.
@@ -301,12 +352,20 @@ impl Layout {
     pub fn visible(&self, y0: f32, y1: f32) -> Range<usize> {
         // La dernière page qui commence avant y0 peut encore couper la bande ; on avance tant que
         // la page finit avant y0 (au plus une ou deux pages).
-        let mut start = self.tops.partition_point(|&t| t < y0).saturating_sub(1);
-        while start < self.tops.len() && self.tops[start] + self.sizes[start].y <= y0 {
-            start += 1;
-        }
-        let end = self.tops.partition_point(|&t| t < y1).max(start);
-        self.first + start..self.first + end
+        let start = self.rows.partition_point(|(_, top, h)| top + h <= y0);
+        let end = self
+            .rows
+            .partition_point(|(_, top, _)| *top < y1)
+            .max(start);
+        let first = self
+            .rows
+            .get(start)
+            .map_or(self.sizes.len(), |(r, _, _)| r.start);
+        let last = end
+            .checked_sub(1)
+            .and_then(|i| self.rows.get(i))
+            .map_or(first, |(r, _, _)| r.end);
+        self.first + first..self.first + last
     }
 
     /// Page qui occupe la plus grande hauteur visible (égalité : la plus petite) ; dans un
@@ -329,22 +388,37 @@ impl Layout {
         if self.tops.is_empty() {
             return (self.first, 0.0);
         }
-        let i = self.tops.partition_point(|&t| t <= y).saturating_sub(1);
-        let i = if i + 1 < self.tops.len() {
-            // Dans l'intervalle sous la page i : la plus proche des deux.
-            let bottom = self.tops[i] + self.sizes[i].y;
-            if y > bottom && (self.tops[i + 1] - y) < (y - bottom) {
-                i + 1
-            } else {
-                i
-            }
-        } else {
-            i
-        };
+        let i = self.idx(self.nearest_page(pos2(self.content.x / 2.0, y)));
         (
             self.first + i,
             (y - self.tops[i]) / self.sizes[i].y.max(f32::EPSILON),
         )
+    }
+
+    /// Nearest page to a content point, including page gaps and outside the viewport.
+    pub fn nearest_page(&self, point: Pos2) -> usize {
+        let mut row = self
+            .rows
+            .partition_point(|(_, top, h)| top + h < point.y)
+            .min(self.rows.len().saturating_sub(1));
+        if row > 0 && point.y < self.rows[row].1 {
+            let before = &self.rows[row - 1];
+            if point.y - (before.1 + before.2) < self.rows[row].1 - point.y {
+                row -= 1;
+            }
+        }
+        self.rows
+            .get(row)
+            .and_then(|(range, _, _)| {
+                range.clone().min_by(|&a, &b| {
+                    let distance = |index| {
+                        let r = self.page_rect(self.first + index);
+                        r.clamp(point).distance_sq(point)
+                    };
+                    distance(a).total_cmp(&distance(b))
+                })
+            })
+            .map_or(self.first, |index| self.first + index)
     }
 
     pub fn y_of(&self, page: usize, frac: f32) -> f32 {
@@ -368,8 +442,37 @@ pub fn effective_zoom(
         ViewMode::Continuous => pages.iter().fold((1.0f32, 1.0f32), |(w, h), s| {
             (w.max(s.width_pt), h.max(s.height_pt))
         }),
+        ViewMode::TwoPage | ViewMode::Book => {
+            let mut i = 0;
+            let mut w = 1.0f32;
+            let mut h = 1.0f32;
+            while i < pages.len() {
+                let end = (i + if mode == ViewMode::Book && i == 0 {
+                    1
+                } else {
+                    2
+                })
+                .min(pages.len());
+                w = w.max(pages[i..end].iter().map(|s| s.width_pt).sum());
+                h = h.max(
+                    pages[i..end]
+                        .iter()
+                        .map(|s| s.height_pt)
+                        .fold(0.0, f32::max),
+                );
+                i = end;
+            }
+            (w, h)
+        }
     };
-    let fit_w = (avail.x - 2.0 * PAGE_MARGIN) / (w * SCREEN_PER_PDF_POINT);
+    let gap = if (mode == ViewMode::TwoPage && pages.len() > 1)
+        || (mode == ViewMode::Book && pages.len() > 2)
+    {
+        PAGE_GAP
+    } else {
+        0.0
+    };
+    let fit_w = (avail.x - 2.0 * PAGE_MARGIN - gap) / (w * SCREEN_PER_PDF_POINT);
     match zoom {
         Zoom::FitWidth => fit_w.max(0.05),
         Zoom::FitPage => fit_w
@@ -388,7 +491,7 @@ pub fn clamp_zoom(z: f32, pages: &[PageSize], ppp: f32, mode: ViewMode) -> (f32,
         .fold(1.0f32, f32::max);
     let mut hi =
         ZOOM_MAX.min(tiles::MAX_TILED_SIDE_PX as f32 / (side * SCREEN_PER_PDF_POINT * ppp));
-    if mode == ViewMode::Continuous {
+    if mode != ViewMode::Single {
         let total: f32 = pages.iter().map(|s| s.height_pt).sum::<f32>().max(1.0);
         hi = hi.min(MAX_CONTENT_PX / (total * SCREEN_PER_PDF_POINT));
     }
@@ -731,7 +834,7 @@ impl SuniApp {
         let name = file_name(&doc.info.path);
         let mode = self.view.mode;
         let window = match mode {
-            ViewMode::Continuous => 0..count,
+            ViewMode::Continuous | ViewMode::TwoPage | ViewMode::Book => 0..count,
             ViewMode::Single => current..current + 1,
         };
         let ppp = ctx.pixels_per_point();
@@ -761,7 +864,7 @@ impl SuniApp {
         let scale = scale_milli as f32 / 1000.0;
 
         // 2. Mise en page, 3. décalage imposé (requête, ancre de zoom) seulement cette image.
-        let layout = Layout::new(&sizes[window.clone()], window.start, k, avail);
+        let layout = Layout::for_mode(&sizes[window.clone()], window.start, k, avail, mode);
         let forced = self.resolve_scroll(&layout, &sizes[window.clone()], avail, k);
         let pinned = self.pinned_pages();
 
@@ -817,7 +920,7 @@ impl SuniApp {
                 v.nav_lock = None;
             }
         }
-        if mode == ViewMode::Continuous && self.view.nav_lock.is_none() {
+        if mode != ViewMode::Single && self.view.nav_lock.is_none() {
             self.track_page(layout.dominant(viewport.min.y, viewport.max.y));
         }
         // Outil Sélection d'objet sans panneau Objets : objets de la page survolée (prise directe
@@ -847,6 +950,7 @@ impl SuniApp {
             let shift = ctx.input(|i| i.modifiers.shift);
             self.handle_page_event(page, ev, shift);
         }
+        self.reading_pointer(ctx, &layout, out.inner_rect);
         self.object_bar(ctx, doc_rect);
         self.annot_bar(ctx, doc_rect);
     }
@@ -1069,13 +1173,14 @@ impl SuniApp {
         if (kp - k).abs() <= 1e-4 || v.first_prev != layout.first || !v.inner.is_positive() {
             return None;
         }
-        let old = Layout::new(window, layout.first, kp, v.avail_prev);
+        let old = Layout::for_mode(window, layout.first, kp, v.avail_prev, v.mode);
         let screen = match (v.wheel_anchor, self.zoom) {
             (Some(p), _) => p - v.inner.min,
             (None, Zoom::Fixed(_)) => v.inner.size() / 2.0,
             (None, _) => vec2(v.inner.width() / 2.0, 0.0),
         };
-        let (page, fy) = old.anchor_at(off.y + screen.y);
+        let page = old.nearest_page((off + screen).to_pos2());
+        let fy = (off.y + screen.y - old.page_top(page)) / old.size(page).y.max(f32::EPSILON);
         let fx = (off.x + screen.x - old.page_left(page)) / old.size(page).x.max(f32::EPSILON);
         Some(
             vec2(
@@ -1138,7 +1243,7 @@ impl SuniApp {
 
     /// Un appui sur une page la rend courante (Pivoter, Supprimer, panneau Objets la visent).
     fn make_current(&mut self, page: usize) {
-        if self.view.mode != ViewMode::Continuous
+        if self.view.mode == ViewMode::Single
             || self.document.as_ref().is_none_or(|d| d.page == page)
         {
             return;
@@ -1176,6 +1281,7 @@ impl SuniApp {
         }
         self.view.mode = mode;
         self.settings.continuous_view = mode == ViewMode::Continuous;
+        self.settings.view_mode = Some(mode.key().to_string());
         self.persist_settings();
         if let Some(page) = self.document.as_ref().map(|d| d.page) {
             self.lock_on_page(page);
@@ -1252,6 +1358,20 @@ impl SuniApp {
         ) {
             self.make_current(page);
         }
+        if self.annotate.tool == crate::annotate::Tool::Select {
+            match ev {
+                DragEvent::Start((x, y)) => self.start_reading(ReadingPoint { page, x, y }, false),
+                DragEvent::DoubleClick((x, y)) => {
+                    self.start_reading(ReadingPoint { page, x, y }, true)
+                }
+                DragEvent::Click(_) => {
+                    self.annotate.clear_reading();
+                    self.annotate.selection = None;
+                }
+                DragEvent::Move(_) | DragEvent::Stop => {}
+            }
+            return;
+        }
         match ev {
             DragEvent::Start(pt) => {
                 self.edit_drag_start(page, pt);
@@ -1302,6 +1422,51 @@ impl SuniApp {
             }
         }
     }
+
+    fn reading_pointer(&mut self, ctx: &egui::Context, layout: &Layout, inner: Rect) {
+        if self.annotate.reading_drag.is_none() {
+            return;
+        }
+        let (position, down, dt) = ctx.input(|i| {
+            (
+                i.pointer.interact_pos(),
+                i.pointer.primary_down(),
+                i.stable_dt,
+            )
+        });
+        if let Some(position) = position {
+            let content = inner.clamp(position) - inner.min + self.view.offset;
+            let page = layout.nearest_page(content.to_pos2());
+            let rect = layout.page_rect(page);
+            let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
+            self.move_reading(ReadingPoint {
+                page,
+                x: ((content.x - rect.min.x) / k).clamp(0.0, layout.page_size_pt(page).width_pt),
+                y: (layout.page_size_pt(page).height_pt - (content.y - rect.min.y) / k)
+                    .clamp(0.0, layout.page_size_pt(page).height_pt),
+            });
+            let dy = reading_edge_scroll(position, inner, dt);
+            if down && dy != 0.0 {
+                self.view.scroll_by(dy);
+                ctx.request_repaint();
+            }
+        }
+        if !down {
+            self.annotate.reading_drag = None;
+        }
+    }
+}
+
+fn reading_edge_scroll(pointer: Pos2, inner: Rect, dt: f32) -> f32 {
+    let edge = 32.0;
+    let direction = if pointer.y < inner.top() + edge {
+        -((inner.top() + edge - pointer.y) / edge).clamp(0.0, 1.0)
+    } else if pointer.y > inner.bottom() - edge {
+        ((pointer.y - inner.bottom() + edge) / edge).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    direction * 720.0 * dt.clamp(0.0, 0.05)
 }
 
 #[cfg(test)]
@@ -1320,6 +1485,225 @@ mod tests {
             width_pt: 792.0,
             height_pt: 612.0,
         }
+    }
+
+    #[test]
+    fn spreads_cover_first_odd_last_and_mixed_sizes() {
+        let pages = [letter(), landscape(), letter(), letter(), landscape()];
+        let two = Layout::for_mode(&pages, 0, 1.0, vec2(1000.0, 800.0), ViewMode::TwoPage);
+        assert_eq!(two.page_top(0), two.page_top(1));
+        assert_eq!(two.page_top(2), two.page_top(3));
+        assert!(two.page_top(4) > two.page_top(3));
+        assert_eq!(two.page_left(1), two.page_rect(0).right() + PAGE_GAP);
+        assert_eq!(two.content.x, 612.0 + 792.0 + PAGE_GAP + 2.0 * PAGE_MARGIN);
+        assert_eq!(
+            two.visible(700.0, 750.0),
+            0..2,
+            "the tall page keeps the whole spread visible"
+        );
+        assert_eq!(two.dominant(700.0, 750.0), 0);
+        assert_eq!(two.nearest_page(two.page_rect(1).center()), 1);
+        let book = Layout::for_mode(&pages[..4], 0, 1.0, vec2(1000.0, 800.0), ViewMode::Book);
+        assert!(book.page_top(1) > book.page_top(0));
+        assert_eq!(book.page_top(1), book.page_top(2));
+        assert!(book.page_top(3) > book.page_top(2));
+        assert_eq!(book.visible(book.page_top(0), book.page_top(1)), 0..1);
+        assert_eq!(book.page_rect(0).center().x, book.content.x / 2.0);
+        assert_eq!(book.page_rect(3).center().x, book.content.x / 2.0);
+    }
+
+    #[test]
+    fn spread_fit_zoom_and_tile_cache_stay_bounded() {
+        let pages: Vec<_> = (0..600)
+            .map(|p| if p % 3 == 0 { landscape() } else { letter() })
+            .collect();
+        let avail = vec2(1300.0, 900.0);
+        for mode in [ViewMode::TwoPage, ViewMode::Book] {
+            let zoom = effective_zoom(Zoom::FitWidth, mode, &pages, 0, avail);
+            let fit = Layout::for_mode(&pages, 0, zoom * SCREEN_PER_PDF_POINT, avail, mode);
+            assert!((fit.content.x - avail.x).abs() < 0.01);
+            let zoom = effective_zoom(Zoom::FitPage, mode, &pages, 0, avail);
+            let fit = Layout::for_mode(&pages, 0, zoom * SCREEN_PER_PDF_POINT, avail, mode);
+            assert!(fit
+                .sizes
+                .iter()
+                .all(|s| s.y + 2.0 * PAGE_MARGIN <= avail.y + 0.01));
+            let layout = Layout::for_mode(&pages, 0, 8.0, avail, mode);
+            let mut pool = TexturePool::<()>::default();
+            for page in (0..600).step_by(17) {
+                pool.begin_frame();
+                let viewport = Rect::from_min_size(layout.page_rect(page).min, avail);
+                let jobs = wanted_jobs(
+                    &PlanInput {
+                        layout: &layout,
+                        scale_milli: 8000,
+                        viewport,
+                        pinned: &[],
+                        limits: TileLimits::for_texture_side(4096),
+                    },
+                    &|_| false,
+                );
+                assert!(jobs.len() <= MAX_WANTED && !jobs.is_empty());
+                for job in jobs {
+                    let bytes = job.region.width as usize * job.region.height as usize * 4;
+                    pool.insert(
+                        job.page,
+                        TileTex {
+                            scale_milli: job.scale_milli,
+                            region: job.region,
+                            page_px: tiles::page_pixels(pages[job.page], 8.0).unwrap(),
+                            handle: (),
+                            bytes,
+                            used: 0,
+                            stale: false,
+                        },
+                    );
+                }
+                pool.evict(POOL_BUDGET_BYTES);
+                assert!(pool.bytes() <= POOL_BUDGET_BYTES);
+            }
+        }
+    }
+
+    #[test]
+    fn reading_edge_scroll_is_bounded_and_reverses() {
+        let inner = Rect::from_min_size(pos2(100.0, 100.0), vec2(800.0, 600.0));
+        assert_eq!(reading_edge_scroll(inner.center(), inner, 0.016), 0.0);
+        assert!(reading_edge_scroll(pos2(200.0, 110.0), inner, 0.016) < 0.0);
+        assert!(reading_edge_scroll(pos2(200.0, 690.0), inner, 0.016) > 0.0);
+        assert_eq!(reading_edge_scroll(pos2(200.0, 10000.0), inner, 10.0), 36.0);
+    }
+
+    #[test]
+    fn headless_reading_drag_crosses_pages_and_discards_stale_results() {
+        use sunipdf_core::annot::{ReadingSelection, TextPosition};
+        use sunipdf_core::TextSelection;
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.document.as_mut().unwrap().info.page_sizes = vec![letter(); 3];
+        app.effective_zoom = 1.0;
+        let ctx = egui::Context::default();
+        let inner = Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 600.0));
+        let layout = Layout::for_mode(
+            &[letter(); 3],
+            0,
+            SCREEN_PER_PDF_POINT,
+            inner.size(),
+            ViewMode::Continuous,
+        );
+        app.handle_page_event(0, DragEvent::Start((100.0, 700.0)), false);
+        let Request::ReadingSelection {
+            epoch,
+            generation,
+            anchor,
+            ..
+        } = requests.recv().unwrap()
+        else {
+            panic!("reading request expected")
+        };
+        let pointer_frame = |app: &mut SuniApp, position: Pos2, pressed: bool| {
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(inner),
+                    events: vec![
+                        egui::Event::PointerMoved(position),
+                        egui::Event::PointerButton {
+                            pos: position,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                |ui| app.reading_pointer(ui.ctx(), &layout, inner),
+            );
+            out.textures_delta.clear();
+        };
+        pointer_frame(&mut app, pos2(250.0, 590.0), true);
+        assert!(matches!(app.view.pending, Some(ScrollRequest::By(dy)) if dy>0.0));
+        app.view.offset.y = layout.page_top(1) - 100.0;
+        pointer_frame(&mut app, pos2(250.0, 300.0), true);
+        assert_eq!(app.annotate.reading_drag.unwrap().1.page, 1);
+        assert!(
+            requests.try_recv().is_err(),
+            "one request stays in flight while the latest focus is queued"
+        );
+        let result = |text: &str| ReadingSelection {
+            anchor: TextPosition { page: 0, index: 0 },
+            focus: TextPosition { page: 1, index: 3 },
+            pages: vec![
+                (
+                    0,
+                    TextSelection {
+                        text: text.into(),
+                        rects: vec![],
+                    },
+                ),
+                (
+                    1,
+                    TextSelection {
+                        text: "Beta".into(),
+                        rects: vec![],
+                    },
+                ),
+            ],
+        };
+        app.on_reading_selected(epoch, generation, Ok(result("stale")));
+        assert!(app.annotate.reading.is_none());
+        let Request::ReadingSelection {
+            epoch,
+            generation,
+            anchor: next_anchor,
+            focus,
+            word,
+        } = requests.recv().unwrap()
+        else {
+            panic!("latest queued reading request expected")
+        };
+        assert_eq!(next_anchor, anchor);
+        assert_eq!(focus.page, 1);
+        assert!(!word);
+        app.on_reading_selected(epoch, generation, Ok(result("Alpha")));
+        pointer_frame(&mut app, pos2(250.0, 300.0), false);
+        assert!(app.annotate.reading_drag.is_none());
+        let out = ctx.run_ui(egui::RawInput::default(), |ui| app.copy_selection(ui.ctx()));
+        assert!(out
+            .platform_output
+            .commands
+            .iter()
+            .any(|c| matches!(c,egui::OutputCommand::CopyText(text) if text=="Alpha\nBeta")));
+        app.annotate.clear_reading();
+        app.on_reading_selected(epoch, generation, Ok(result("late")));
+        assert!(app.annotate.reading.is_none());
+    }
+
+    #[test]
+    fn reading_word_and_document_epochs_cannot_resurrect_cancelled_selection() {
+        use sunipdf_core::annot::{ReadingSelection, TextPosition};
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.handle_page_event(0, DragEvent::DoubleClick((80.0, 70.0)), false);
+        let Request::ReadingSelection {
+            epoch,
+            generation,
+            word,
+            ..
+        } = requests.recv().unwrap()
+        else {
+            panic!("word request expected")
+        };
+        assert!(word);
+        assert!(app.annotate.reading_drag.is_none());
+        app.view.bump_epoch();
+        app.on_reading_selected(
+            epoch,
+            generation,
+            Ok(ReadingSelection {
+                anchor: TextPosition { page: 0, index: 0 },
+                focus: TextPosition { page: 0, index: 2 },
+                pages: vec![],
+            }),
+        );
+        assert!(app.annotate.reading.is_none());
     }
 
     #[test]

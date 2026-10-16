@@ -7,6 +7,32 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.9.0] — 2026-10-16
+
+Résultats de validation et contrôles matériels restants dans `docs/PROJECT_STATUS.fr.md`.
+
+### Ajouté
+- Instantanés de récupération automatiques toutes les 60 secondes et à la suspension d'un onglet modifié.
+  Le PDF d'origine reste intact ; son chiffrement est conservé sans enregistrer de mot de passe,
+  et la restauration se termine par un enregistrement dans une nouvelle copie.
+- Impression Windows par la boîte native : modifications courantes, plages de pages, copies, rendu
+  tramé, progression et annulation. La validation sur imprimante physique reste à faire.
+- Sélection de lecture entre plusieurs pages dans les deux sens, double-clic sur un mot et défilement
+  automatique au bord ; la copie suit l'ordre logique PDFium, y compris sur pages pivotées et recadrées.
+- Vue double page et mode Livre avec couverture seule, tailles mixtes, zoom ancré et cache de tuiles borné.
+- Préparer un formulaire : création de champs texte et de cases nommés par coordonnées numériques,
+  avec annulation, enregistrement et remplissage.
+- OCR anglais/français embarqué et hors ligne : Tesseract 5.5.3, Leptonica 1.87 et modèles rapides `eng`/`fra` ;
+  texte invisible recherchable, pages déjà textuelles ignorées, progression, annulation et un seul undo.
+- Utiliser un certificat : vérification des signatures du fichier enregistré et création d'une copie signée
+  incrémentale avec une identité PFX/P12. Confiance de l'identité, révocation et horodatage fiable non établis.
+- CLI `add-form-field`, `ocr`, `signatures` et `sign`. Le mot de passe du certificat vient d'une variable
+  d'environnement ou de l'entrée standard, jamais d'un argument en clair. La signature ne remplace pas sa source.
+
+### Modifié
+- Les 14 outils disposent d'une implémentation. Un avertissement précède la réécriture d'un PDF signé ;
+  la signature numérique refuse les PDF chiffrés. Conversion Office, rotation de vue et polices avancées restent prévues.
+
 ## [0.8.3] — 2026-10-16
 
 ### Corrigé

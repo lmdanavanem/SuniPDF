@@ -2,33 +2,33 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## Version 0.8.3: P1/P2 backlog completed
-The six earlier audit priorities, tab close buttons, in-app updates and English by default remain delivered.
-French remains available. Version 0.8.3 completes the four remaining corrections:
+## Version 0.9.0: seven requested features implemented
 
-| Priority | Correction | Regression coverage |
-|---|---|---|
-| P1 | Reject non-finite coordinates when adding text | NaN/infinity rejected before PDF mutation; existing output preserved |
-| P1 | Bound thumbnails in the Organize grid | Texture and pending-request caps on a 5,000-page document; stale results discarded |
-| P2 | Reject multiline stamps and page-number templates | CR/LF refused before mutation, including empty page selections |
-| P2 | Reject unsupported free-text opacity in the CLI | Only opacity 1 accepted; non-finite annotation opacity rejected; output preserved |
+The seven requested features are implemented. Release tests, package checks and publication are tracked
+in `PROJECT_STATUS.md`; no hardware or third-party compatibility result is implied by this table.
 
-## Next development backlog (proposed order)
-These features are planned and are not included in 0.8.3.
+| Feature | Included scope |
+|---|---|
+| Autosave and recovery | 60-second/tab-suspend snapshots, original unchanged, protected snapshots encrypted, no passwords, restore through Save As |
+| Windows printing | Native ranges/copies/orientation, current edits, bounded raster output, progress/cancellation |
+| Richer selection | PDFium logical character ranges across pages, reverse drag, double-click words and edge scrolling |
+| Two-page/Book view | Mixed sizes, cover first, odd last page, shared zoom and bounded tile/texture caches |
+| Form creation | Numeric text/checkbox rectangles, unique names, rotated/cropped/encrypted documents, undo/fill/save |
+| Local FR/EN OCR | Bundled Tesseract 5.5.3/Leptonica 1.87, fast eng/fra models, invisible text, existing text skipped, atomic cancellation and one undo |
+| Digital signatures | Saved-byte integrity, incremental PFX/P12 signed copy, rewrite warning; identity trust/revocation/trusted timestamps unchecked |
 
-| Order | Work | Acceptance |
-|---|---|---|
-| 1 | Autosave and crash recovery | Recover unsaved edits after a forced stop; original unchanged; protected recovery data encrypted; no passwords stored |
-| 2 | Windows printing | Print current edits, page ranges and orientation; progress/cancellation; Print to PDF output reopened and checked |
-| 3 | Richer text selection | Word selection, reading order, selection across pages and edge scrolling; exact copied text on rotated pages |
-| 4 | Two-page/book view | Navigation and zoom on mixed page sizes; odd final page; bounded render cache |
-| 5 | Form-field creation | Text and checkbox fields with unique names on rotated pages; fill, save, reopen and undo |
-| 6 | Local FR/EN OCR | Searchable/copyable text without changing the page appearance; available languages, progress, cancellation and undo |
-| 7 | Digital signatures | Integrity verification, signed copy with a certificate, warning before edits and clear trust limits |
+The 0.8.3 P1/P2 corrections remain included: finite text coordinates, bounded Organize thumbnails,
+single-line stamps and valid CLI annotation opacity. English remains the default; French is available.
 
-Quality work remains: `qpdf` output validation, a real PDF corpus/fuzzing, reproducible performance measurements
-and code signing when a certificate is available. The OCR backend must be reconciled with the older plans
-before implementation; this backlog does not commit to a particular engine.
+## Remaining development backlog
+
+1. Independent QA: qpdf, real hostile/large PDF corpus, installed/portable upgrades, ARM64 hardware,
+   physical printers/Print to PDF, Narrator and Acrobat/Foxit/Chrome interoperability.
+2. Font subsetting, CFF/OTF/TTC support and richer paragraph/object-group editing.
+3. Complex untagged column reading order, view rotation and touch validation.
+4. More field types, FDF/XFDF interchange and keyboard activation of on-page widgets.
+5. Office conversion with explicit fidelity limits and detected local converters.
+6. Certificate trust/revocation, trusted timestamps/LTV and executable/MSI code signing when credentials are supplied.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
@@ -49,8 +49,7 @@ To make a tool visible, a slice does exactly this:
 4. the names, descriptions and colours of the 14 tools already exist (`hub.*.name`, `hub.*.desc`).
 The `every_registry_command_has_a_home` test fails if a command has neither a tool nor a place in the system list;
 `bar_icons_are_distinct` fails if an icon repeats within a bar or reuses that of a quick access button.
-Tools still absent: Scan & OCR, Prepare a form (field creation), Use a
-certificate. "Fill & Sign" is complete: "sign" half (sign-image slice) and "fill" half
+All 14 tools have an implementation in 0.9.0, including Scan & OCR, Prepare a form and Use a certificate. "Fill & Sign" is complete: "sign" half (sign-image slice) and "fill" half
 (forms slice, Fill form group / panel / Clear / Flatten / Export / Import).
 
 ## After redaction (irreversible redaction, slice delivered)
@@ -67,11 +66,6 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
-- **field creation** (text, checkbox) with lopdf alone: widget without `/AP` in `/Annots` and
-  `/AcroForm /Fields`, appearance generated by PDFium (finding V11 of `docs/plans/forms.md` §3.11),
-  `ToolAddTextField` / `ToolAddCheckbox` tools and "New field" dialog → switches `Workspace::PrepareForm` to
-  `Entry::Mode`; tests: unique name without `.`, rectangle ≥ 4 pt, rotated pages (`rect_to_user`), document
-  without AcroForm;
 - XFDF export (no dependency) then XFDF/FDF import (XML reader to choose);
 - grouped "Apply" mode (several fields, a single undo level and a single reload);
 - free text in an editable drop-down list; `/Opt` export values of radio buttons; keyboard activation
@@ -79,14 +73,12 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
   set, not listened to);
 - flattening: also keep the annotations without an appearance other than links (attachments without
   `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;
-- warn when the document carries a digital signature (D056, any edit invalidates it).
 
 ## After sign-image (visual signature, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060):
 - **typed** signature (name rendered in a handwriting font): depends on font embedding (A7);
 - initial **every page** at once (today Shift+click, page by page);
 - DPAPI encryption of the saved signatures (ADR to write, D055);
-- warn when the document already carries a **digital signature** (any edit invalidates it, D056);
 - stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
   cast shadow; pen pressure if egui ever exposes it.
 
@@ -108,15 +100,14 @@ Remaining, non-blocking:
 Done: tabs (SUNI-012a); virtualized continuous view, tiles, anchored zoom, single page as an option (SUNI-012b,
 `docs/plans/continuous-view.md`, D038–D045).
 Remaining (see `KNOWN_ISSUES.md` A25–A28):
-- text selection spanning several pages and auto-scroll when dragging at the edge;
-- two-page / book mode, view rotation;
+- view rotation;
 - animated scrolling for "go to"; touch pinch to check on a touch screen;
 - if a heavy page freezes scrolling: `Document::render_regions` (one page loaded for 3 to 4 neighbouring
   tiles), to be added only after measurement; adjustable memory caps if a need arises.
 
 ## SUNI-013b — Text selection and copy (owner: UI-UX)
 Done: rectangular selection, copy (Ctrl+C fixed in SUNI-031c through egui's Copy event).
-Remaining: selection in reading order (drag along the text), double-click on a word.
+Implemented for 0.9.0: PDFium logical ranges, words, cross-page selection and edge scrolling. Remaining: inference for complex untagged columns.
 
 ## SUNI-031d — Content editing, continued (owner: PDF-EDITOR)
 Done in SUNI-031/031b/032/031c: single and multiple selection (rectangle, Shift/Ctrl+click, Ctrl+A), group

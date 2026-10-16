@@ -14,7 +14,7 @@
 use crate::geometry::PageGeometry;
 use crate::security::lopdf_err;
 use crate::{Document, EngineError, PointRect};
-use lopdf::{Dictionary, Object, ObjectId};
+use lopdf::{dictionary, Dictionary, Object, ObjectId};
 use pdfium_render::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -878,6 +878,129 @@ pub(crate) fn kind_of(doc: &PdfDocument<'_>) -> FormKind {
 }
 
 impl Document<'_> {
+    /// Adds a fillable text field or checkbox in display coordinates, preserving protection.
+    pub fn add_form_field(
+        &mut self,
+        page_index: usize,
+        name: &str,
+        kind: FieldKind,
+        rect: PointRect,
+    ) -> Result<(), EngineError> {
+        if !matches!(kind, FieldKind::Text | FieldKind::Checkbox) {
+            return Err(EngineError::FormValueInvalid(
+                "only text fields and checkboxes can be created".into(),
+            ));
+        }
+        if name.trim().is_empty()
+            || name.chars().count() > 256
+            || name.chars().any(|c| c == '.' || c.is_control())
+        {
+            return Err(EngineError::FormValueInvalid("invalid field name".into()));
+        }
+        if self.form_kind() == FormKind::Xfa {
+            return Err(EngineError::FormXfa);
+        }
+        let geometry = self.page_geometry(page_index)?;
+        let (width, height) = geometry.display_size();
+        if [rect.left, rect.bottom, rect.right, rect.top]
+            .iter()
+            .any(|v| !v.is_finite())
+            || rect.left < 0.0
+            || rect.bottom < 0.0
+            || rect.right > width
+            || rect.top > height
+            || rect.right - rect.left < 4.0
+            || rect.top - rect.bottom < 4.0
+        {
+            return Err(EngineError::FormValueInvalid(
+                "field rectangle must be inside the page and at least 4 points wide and high"
+                    .into(),
+            ));
+        }
+        let mut pdf = crate::security::load(&self.snapshot()?, self.password())?;
+        let model = build_model(&pdf);
+        if model
+            .raws
+            .iter()
+            .any(|f| f.view.name == name || f.view.name.starts_with(&format!("{name}.")))
+        {
+            return Err(EngineError::FormValueInvalid(
+                "field name already exists".into(),
+            ));
+        }
+        let page_id = *pdf
+            .get_pages()
+            .get(&(page_index as u32 + 1))
+            .ok_or(EngineError::PageOutOfRange(page_index))?;
+        let mut acro = match pdf.catalog().map_err(lopdf_err)?.get(b"AcroForm") {
+            Ok(o) => deref(&pdf, o)
+                .and_then(|o| o.as_dict().ok())
+                .ok_or(EngineError::InvalidFormat)?
+                .clone(),
+            Err(_) => Dictionary::new(),
+        };
+        let mut fields = match acro.get(b"Fields") {
+            Ok(o) => deref(&pdf, o)
+                .and_then(|o| o.as_array().ok())
+                .ok_or(EngineError::InvalidFormat)?
+                .clone(),
+            Err(_) => Vec::new(),
+        };
+        let mut dr = match acro.get(b"DR") {
+            Ok(o) => deref(&pdf, o)
+                .and_then(|o| o.as_dict().ok())
+                .ok_or(EngineError::InvalidFormat)?
+                .clone(),
+            Err(_) => Dictionary::new(),
+        };
+        let mut fonts = match dr.get(b"Font") {
+            Ok(o) => deref(&pdf, o)
+                .and_then(|o| o.as_dict().ok())
+                .ok_or(EngineError::InvalidFormat)?
+                .clone(),
+            Err(_) => Dictionary::new(),
+        };
+        let mut font_name = "SuniPDFFormHelv".to_owned();
+        while fonts.has(font_name.as_bytes()) {
+            font_name.push('_');
+        }
+        let font = pdf.add_object(lopdf::dictionary! { "Type"=>"Font", "Subtype"=>"Type1", "BaseFont"=>"Helvetica", "Encoding"=>"WinAnsiEncoding" });
+        fonts.set(font_name.as_bytes(), font);
+        dr.set("Font", fonts);
+        acro.set("DR", dr);
+        let user = geometry.rect_to_user(rect);
+        let mut widget = lopdf::dictionary! {
+            "Type"=>"Annot", "Subtype"=>"Widget", "FT"=>if kind == FieldKind::Text { "Tx" } else { "Btn" },
+            "T"=>lopdf::text_string(name), "P"=>page_id, "F"=>4, "Ff"=>0,
+            "Rect"=>vec![user.left.into(),user.bottom.into(),user.right.into(),user.top.into()],
+            "DA"=>Object::string_literal(format!("/{font_name} 12 Tf 0 g")),
+            "MK"=>lopdf::dictionary! { "BC"=>vec![0.into(),0.into(),0.into()], "BG"=>vec![1.into(),1.into(),1.into()] },
+            "BS"=>lopdf::dictionary! { "W"=>1,"S"=>"S" },
+        };
+        if kind == FieldKind::Text {
+            widget.set("V", lopdf::text_string(""));
+        } else {
+            widget.set("V", Object::Name(b"Off".to_vec()));
+            widget.set("AS", Object::Name(b"Off".to_vec()));
+            widget
+                .get_mut(b"MK")
+                .and_then(Object::as_dict_mut)
+                .map_err(lopdf_err)?
+                .set("CA", Object::string_literal("4"));
+        }
+        let widget_id = pdf.add_object(widget);
+        crate::annot_write::annots_mut(&mut pdf, page_id)?.push(Object::Reference(widget_id));
+        fields.push(Object::Reference(widget_id));
+        acro.set("Fields", fields);
+        let acro_id = pdf.add_object(acro);
+        pdf.catalog_mut()
+            .map_err(lopdf_err)?
+            .set("AcroForm", acro_id);
+        let bytes = crate::security::save(pdf)?;
+        self.restore(bytes)?;
+        self.ensure_appearances(page_index)
+    }
+
     pub fn form_kind(&self) -> FormKind {
         kind_of(&self.inner)
     }

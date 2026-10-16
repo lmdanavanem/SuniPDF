@@ -90,10 +90,8 @@ A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same 
 A10. **GitHub CI verified for 0.8.3**: x64 CI and the ARM64 build passed. The duplicate x64 release build was
      cancelled; the MSI was packaged from verified CI binaries. Six public release files and their SHA256
      checksums were verified. Real installation and ARM64 hardware execution remain unverified.
-A11. **"All tools" hub: 11 task tools out of 14.** Scan & OCR, Prepare a
-     form (field creation) and Use a certificate have no real function: they are absent
-     (`None` entry in `workspace::TABLE`), not greyed out. Export, Create, Combine and Compress have no
-     bar (a single command each, direct dialog). Redact a PDF is delivered.
+A11. **All tools: 14 tools implemented for 0.9.0.** OCR, field creation and certificate signatures now have
+     real commands. Automated and hardware coverage is recorded in `PROJECT_STATUS.md`.
 A12. **Hub interface verified without automated pixel rendering**: no software renderer nor `egui_kittest`
      in the dependencies. The tests cover the data (table, registry, glyph contrast), tool
      switching, row geometry, the AccessKit tree and the focus ring (egui pass without a window); the
@@ -154,8 +152,8 @@ A34. **Properties and PDF/A**: editing the metadata regenerates a minimal XMP pa
      the PDF/A identification (`pdfaid:part`, `pdfaid:conformance`) nor the other namespaces of the original
      packet: a PDF/A file loses its identification after `set-metadata`, without a warning.
 A25. **Continuous view: limits (SUNI-012b)**.
-     - A **text selection stays on its page** (the drag is bounded to the original page): no
-       selection spanning two pages, no auto-scroll when dragging near the edge.
+     - Selection follows PDFium logical order across pages and scrolls near viewport edges; intended order
+       of arbitrary untagged columns is not inferred. Text markup keeps per-page rectangular gestures.
      - Scrolling **without animation or inertia** for "go to" and the keyboard (direct jump).
      - **Pinch** (touchpad or touch screen): same path as Ctrl + wheel (`zoom_delta`), untested
        (no test on this machine).
@@ -164,10 +162,11 @@ A25. **Continuous view: limits (SUNI-012b)**.
        the duration of one tile (measured: 1.2 ms per 1024² tile on `many-pages.pdf`, more for a heavy page).
      - Tile stitching: glyphs crossing a tile edge may differ by one anti-aliasing pixel
        from the one-piece rendering (121 pixels out of 1.9 million measured, D044).
-     - Two-page, book mode and view rotation: not offered (roadmap).
+     - Two-page/Book views share the existing caps; view rotation is not offered.
 A26. **"Fit" in continuous scrolling on a document of mixed sizes**: the zoom is shared by all the
      pages and fits the **largest** page (D041); a portrait page among landscape pages is therefore
-     narrower than the screen. In single page, the fit follows the current page.
+     narrower than the screen. In single page, the fit follows the current page. Two-page/Book fit uses the
+     widest spread and tallest page at one shared zoom.
 A27. **Very long documents**: positions in `f32`; the zoom is capped so that the total height stays
      <= 8,000,000 logical px ("Maximum zoom reached for this document" message). A 5000-page Letter
      document is thus limited to about 150%.
@@ -179,12 +178,9 @@ A28. **View memory**: bounded but notable. Page textures 192 MiB (excluding scre
      300 "Page Down" then End then 300 "Page Up": private memory stable around 810-830 MB (WorkingSet
      438 MB) after 175 MB at opening; no growth beyond (NVIDIA OpenGL driver, system copies of the
      textures included). Caps as constants (`view.rs`, `worker.rs`), no user setting.
-A35. **Handwritten signature = visual signature, with no cryptographic value** (sign-image slice). It is an image
-     placed on the page: it proves neither the signer's identity nor the document's integrity, and anyone editing
-     the file can copy or remove it. No certificate, CMS/PAdES, timestamp or verification
-     (`sunipdf-signatures` crate, P5). The dialog says so permanently; the CLI `add-image` returns
-     `"digital_signature": false`. No warning either if the document already carries a digital signature,
-     which any edit invalidates (D056).
+A35. **Handwritten signature = image without cryptographic proof**: another editor can copy or delete it.
+     CLI `add-image` reports `digital_signature: false`. CMS/PFX signing is a separate Use a certificate
+     workflow (A44); the application warns before rewriting a signed PDF.
 A36. **Signatures saved unencrypted**: PNG in `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
      `initials-<ms>.png`), protected only by the Windows profile ACLs: anyone with access to the session can
      reuse them. Countermeasure: untick "Save on this computer for reuse" (nothing is written) or delete the thumbnail
@@ -202,8 +198,8 @@ A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pr
      (the content tightens by as much on the frame following the bar's appearance).
 A38. **AcroForm forms (forms slice, D061–D066)**: **XFA** detected and read (fallback AcroForm fields),
      never filled or flattened (`form_xfa`); **scripts** (`/CO`, `/AA`, `/A` JavaScript) never run, flagged
-     by a banner, calculated fields and formats stay as they are; **no field creation**
-     ("Prepare a form" absent from the hub); **no FDF/XFDF** (JSON only); **one undo level
+     by a banner, calculated fields and formats stay as they are; **creation is limited to text fields and checkboxes**
+     through a numeric dialog (minimum 4 points, unique name without dots, no mouse drawing); **no FDF/XFDF** (JSON only); **one undo level
      per confirmed value** (a 40-field form = 40 levels; caps 50 levels / 512 MB of undo journal);
      each confirmation = full snapshot + lopdf analysis + reload + tiny rendering, acceptable under
      5 MB, slow beyond (grouped "Apply" mode on the roadmap); fonts: a text outside Latin-1 gets from
@@ -259,8 +255,9 @@ A40. **Redaction (redaction slice, D077–D082)**: content under an area is **re
     6. **Accessibility tags**: removed for the whole document when "hidden information" is checked (default); kept
        otherwise, with the risk that an alternate text describes the redacted content.
     7. **Digital signatures**: any existing signature becomes invalid (full rewrite).
-    8. **Memory and disk**: the undo history and suspended tabs keep the previous state in RAM (never written to disk
-       by SuniPDF); the old file replaced by the atomic save is not securely wiped from the storage medium.
+    8. **Memory and disk**: undo and suspended tabs keep previous states in RAM. Successful redaction immediately
+       refreshes the current recovery snapshot (or removes it if refresh fails), but older crash-session copies may
+       still contain unredacted content. The original, backups and deleted copies are not securely wiped from storage.
     9. **Remaining assumption**: PDFium object bounds enclose the object's ink. For text they are enlarged by 30 % and
        checked at run time (residual text under an area = error, document unchanged); for images and drawings they
        are geometric.
@@ -272,3 +269,25 @@ A40. **Redaction (redaction slice, D077–D082)**: content under an area is **re
         accessibility node of their own (their count is announced in the status bar).
     13. Not verified: `qpdf --check` of the outputs (A4), a corpus of real PDFs (scans, heavily tagged PDFs), pages with
         tens of thousands of objects (lopdf's `prune_objects` is quadratic).
+
+
+## 0.9.0 feature limits
+
+Executed validation results are tracked in `PROJECT_STATUS.md`.
+
+A41. **Recovery**: snapshots every 60 seconds and on tab suspension can miss more recent changes after a forced stop.
+     Unconfirmed dialog text is not a PDF edit. Protected snapshots stay encrypted, but filenames/paths and page counts
+     are present in JSON metadata. No passwords are saved; restoring requires the password again. Recovery never replaces the original.
+A42. **Windows printing**: raster output up to 300 dpi in bounded bands, fitted to the printable area; no vector output
+     or professional colour guarantee. The driver handles copies/orientation. A running native operation can delay
+     cancellation. Actual Microsoft Print to PDF output was reopened and checked with unsaved edits while source
+     bytes/objects stayed unchanged. Physical printers and the interactive printer dialog remain unverified.
+A43. **Local OCR**: English/French only, fast Tesseract models; accuracy varies by scan and language. Pages containing
+     any extractable text are skipped, even if that text layer is poor. Images capped at 16 Mpx and 8192 px/side,
+     TSV at 16 MiB, 50,000 words/page, 120 seconds/page; very large pages refused. No semantic table/column reconstruction.
+     Cancellation/failure commits no pages; success is one undo step. Other readers still need interoperability checks.
+A44. **Digital signatures**: detached CMS `adbe.pkcs7.detached`/`ETSI.CAdES.detached` over saved bytes;
+     incremental PFX/P12 signing into a new copy, no encrypted PDF signing. Cryptographic validity does not establish
+     identity trust: chain, revocation, AATL/EUTL, PKCS#11, trusted timestamps and LTV are unchecked. PDF signing time
+     is declared by the signer. Editing/rewriting may invalidate signatures. Acrobat/Foxit interoperability and PAdES
+     qualification are not established; do not present the result as a qualified signature.

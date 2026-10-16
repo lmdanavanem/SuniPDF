@@ -14,10 +14,10 @@
     <?define ProgramFilesFolder = "ProgramFiles64Folder" ?>
   <?endif ?>
 
-  <Product Id="*" Name="SuniPDF" Language="1036" Codepage="1252" Version="$(var.Version)" Manufacturer="Navanem"
+  <Product Id="*" Name="SuniPDF" Language="1033" Codepage="1252" Version="$(var.Version)" Manufacturer="Navanem"
            UpgradeCode="7C3C3E0E-5B6A-4C2B-9F1E-2A0F1D4B9C11">
     <Package InstallerVersion="500" Compressed="yes" InstallScope="perMachine" Platform="$(var.Platform)"
-             Description="SuniPDF — PDF reader and editor for Windows" Languages="1036" SummaryCodepage="1252" />
+             Description="SuniPDF — PDF reader and editor for Windows" Languages="1033" SummaryCodepage="1252" />
     <MajorUpgrade AllowSameVersionUpgrades="yes" Schedule="afterInstallInitialize"
                   DowngradeErrorMessage="A newer version of SuniPDF is already installed." />
     <MediaTemplate EmbedCab="yes" />
