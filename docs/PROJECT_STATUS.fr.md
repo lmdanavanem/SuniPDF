@@ -1,11 +1,30 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.9.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.9.1)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Version 0.9.0 publiée et validée
+## Version 0.9.1 de fiabilisation : validation en cours
+
+Implémentés : icône agrandie (environ 91 % de largeur visible contre 50 %), conservation du XMP PDF/A/personnalisé,
+refus du XMP malformé, longueur AES-256 explicite, résultat/erreurs de relance de l'updater,
+corpus QPDF figé et régressions réelles de mise à jour portable/MSI dans la CI Windows.
+
+Suite moteur réussie localement : espaces de noms/autres ressources/UTF-16 conservés, XMP compressé/chiffré,
+XML malformé refusé et tours AES. Six scénarios portables isolés ont réussi avec les anciens paquets conservés et 0.9.0 ;
+la régression finale vers 0.9.1 emploie les paquets publics précédents exactement figés. Les installations/rollback/upgrade/désinstallations
+MSI s'exécutent uniquement sur un runner GitHub jetable administrateur. Suite complète, QPDF, paquets finaux et publication restent à valider à ce commit.
+
+Compilation locale limitée à une commande Cargo avec `-j 2`. La reconstruction workspace a atteint l'erreur1455
+du fichier d'échange Windows ; les suites par crate passent séquentiellement avant le contrôle CI complet.
+Aucune installation ni profil utilisateur modifié localement.
+
+Contrôles indépendants restants : corpus réel client/hostile, matériel ARM64, imprimantes physiques, Narrateur,
+boîtes interactives de mise à jour/enregistrement et interopérabilité Acrobat/Foxit. Préserver l'identification PDF/A ne certifie pas la conformité.
+Confiance du certificat/révocation/horodatage fiable/LTV restent non implémentés.
+
+## Version 0.9.0 publiée et validée (version précédente)
 
 Implémentés : récupération 60 s/suspension ; impression Windows ; sélection logique entre pages ;
 double page/Livre avec couverture seule ; création texte/case ; OCR FR/EN local embarqué ; signature/vérification CMS/PFX.

@@ -7,6 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-10-16
+
+### Fixed
+- Larger red-ribbon application icon with much less transparent padding, shared by Windows, the installer and the interface.
+- Metadata edits preserve existing PDF/A identification and unrelated XMP properties. Malformed XMP is refused instead of silently discarded; this does not certify PDF/A conformance.
+- AES-256 encryption dictionaries explicitly declare their 256-bit key length for independent readers.
+- Update results are recorded after starting the new application, with backup details retained on installation or restart failure.
+
+### Changed
+- Pinned QPDF checks in Windows CI cover the synthetic regression corpus, generated edits, AES encryption, forms, redaction, OCR, digital signatures and malformed inputs. Structural warnings fail the gate.
+- Real portable-update regression and disposable Windows MSI installation/upgrade/rollback checks supplement the existing unit tests. Executed results and remaining hardware limits are recorded in `docs/PROJECT_STATUS.md`.
+
 ## [0.9.0] — 2026-10-16
 
 Validation results and remaining hardware checks are recorded in `docs/PROJECT_STATUS.md`.

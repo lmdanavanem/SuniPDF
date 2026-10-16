@@ -44,8 +44,10 @@ A3. ~~High-zoom rendering limited to 16,384 px~~ **Resolved for the screen (SUNI
     piece could exceed the GPU's maximum texture size (`egui_glow` panic if the driver limits to
     8192 px); no texture exceeds `max_texture_side` any more. The 16,384 px limit still holds for
     `Document::render_page`, image export and `sunipdf-cli render` without `--region`.
-A4. **Encryption**: AES-128/256 written by lopdf and re-read by PDFium in the tests (round trip); 40-bit RC4
-    through a fixture. No AES fixture produced by a third-party tool (qpdf): to be added with the qpdf verification.
+A4. **Encryption and independent QA**: AES-128/256 is written by lopdf and reopened by PDFium; 40-bit RC4 is covered
+    by a fixture. In 0.9.1, the shared helper explicitly writes AES-256 `/Encrypt /Length 256`, previously omitted and
+    reported by qpdf, including after re-encryption. Synthetic qpdf checks and qpdf-generated AES fixtures are added
+    to CI. Current outcomes are in `PROJECT_STATUS.md`; this is not a real-world/hostile PDF corpus.
 A5. **The open dialog (`rfd`) is modal and blocks the UI loop** for the duration of the choice:
     native Windows behaviour, acceptable.
 A6. **Content editing: editing an existing text reuses its original font.** If that font
@@ -66,7 +68,7 @@ A18. **System fonts embedded whole** (no subsetting): each font adds its size to
      "Optimize". Only `.ttf` fonts with TrueType outlines are offered (`.otf` PostScript, `.ttc` and
      fonts whose licence forbids embedding: typed refusal `font_not_embeddable`). List read through
      `reg.exe` (fallback: fonts folder); a non-ASCII name may display badly (OEM code page). Rendering
-     verified by PDFium only (no other reader nor qpdf on this machine).
+     verified by PDFium; other-reader visual compatibility remains unverified. qpdf does not validate rendering.
 A19. **Crop hides, it does not erase**: the content outside the frame stays in the file (this is not
      redaction; stated in the dialog). Mouse cropping not offered (numeric margins with preview).
 A20. **Text on the page**: the input field shows the text with the interface font (Segoe UI, or
@@ -87,9 +89,10 @@ A24. **Object clipboard and system clipboard**: Ctrl+V only pastes objects if th
      clipboard lives in memory for the session (lost when the application closes).
 A9. **Engine tests serialized**: PDFium cannot be reinitialized within the same process after
     `FPDF_DestroyLibrary`; the tests share a single engine that is never destroyed (`tests/engine.rs`).
-A10. **GitHub CI verified for 0.8.3**: x64 CI and the ARM64 build passed. The duplicate x64 release build was
-     cancelled; the MSI was packaged from verified CI binaries. Six public release files and their SHA256
-     checksums were verified. Real installation and ARM64 hardware execution remain unverified.
+A10. **Distribution validation**: current tests, CI, package and release evidence are recorded in `PROJECT_STATUS.md`.
+     Version 0.9.1 adds portable update/rollback and disposable-runner MSI installation/upgrade regressions;
+     implementation alone does not prove execution. Interactive flows, ARM64 hardware and physical printers remain
+     separate checks.
 A11. **All tools: 14 tools implemented for 0.9.0.** OCR, field creation and certificate signatures now have
      real commands. Automated and hardware coverage is recorded in `PROJECT_STATUS.md`.
 A12. **Hub interface verified without automated pixel rendering**: no software renderer nor `egui_kittest`
@@ -148,9 +151,11 @@ A32. **Added text**: a tab counts as four spaces (no PDF font has a tab glyph).
 A33. **Save point**: "modified" clears when undoing back to the saved state, unless an
      edit followed an undo (the saved state is then unreachable) or the saved snapshot
      has left the 50 history levels (D052).
-A34. **Properties and PDF/A**: editing the metadata regenerates a minimal XMP packet (D048) that does not carry over
-     the PDF/A identification (`pdfaid:part`, `pdfaid:conformance`) nor the other namespaces of the original
-     packet: a PDF/A file loses its identification after `set-metadata`, without a warning.
+A34. **Properties and PDF/A**: 0.9.1 preserves PDF/A identification (`pdfaid:part`, `pdfaid:conformance`) and unrelated
+     XMP properties/namespaces when updating the four standard editable properties. Malformed XML, DTDs and unreadable
+     streams are clearly refused, rather than silently replacing the packet. Preserving identification does not certify
+     PDF/A conformance. A dedicated conformance validator and real corpus remain future work; current executed checks
+     are recorded in `PROJECT_STATUS.md`.
 A25. **Continuous view: limits (SUNI-012b)**.
      - Selection follows PDFium logical order across pages and scrolls near viewport edges; intended order
        of arbitrary untagged columns is not inferred. Text markup keeps per-page rectangular gestures.
@@ -234,9 +239,8 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     moving another producer's annotation (frame without handles), dialogs (text box, link, address confirmation),
     Comments panel with a thread, light and dark themes; **not replayed in screenshots**: the text box placed after
     its dialog, editing by double-click, keyboard arrows, resizing an ink stroke, a line or a text box (all covered by
-    the engine tests and the pure tests of `annot_adv.rs`); `qpdf --check`
-    not run on the outputs (qpdf absent from this
-    machine, A4).
+    the engine tests and the pure tests of `annot_adv.rs`); synthetic structural qpdf checking is added for 0.9.1
+    (A4); reader interoperability remains unestablished.
 A40. **Redaction (redaction slice, D077–D082)**: content under an area is **removed** (objects deleted, file rewritten
     without any earlier revision, verified by reading it back), with these limits:
     1. **Granularity**: a text object touched by an area leaves the text layer entirely; what extends beyond the area
@@ -267,8 +271,8 @@ A40. **Redaction (redaction slice, D077–D082)**: content under an area is **re
         resource in the file; only the Redact tool sanitises and rewrites the document.
     12. Areas are **cleared whenever the document changes** (rotation, deleted page, undo…); drawn areas have no
         accessibility node of their own (their count is announced in the status bar).
-    13. Not verified: `qpdf --check` of the outputs (A4), a corpus of real PDFs (scans, heavily tagged PDFs), pages with
-        tens of thousands of objects (lopdf's `prune_objects` is quadratic).
+    13. Not verified: real scans/heavily tagged PDFs and pages with tens of thousands of objects (lopdf's
+        `prune_objects` is quadratic). Synthetic qpdf checking does not replace this corpus (A4).
 
 
 ## 0.9.0 feature limits
@@ -288,6 +292,6 @@ A43. **Local OCR**: English/French only, fast Tesseract models; accuracy varies 
      Cancellation/failure commits no pages; success is one undo step. Other readers still need interoperability checks.
 A44. **Digital signatures**: detached CMS `adbe.pkcs7.detached`/`ETSI.CAdES.detached` over saved bytes;
      incremental PFX/P12 signing into a new copy, no encrypted PDF signing. Cryptographic validity does not establish
-     identity trust: chain, revocation, AATL/EUTL, PKCS#11, trusted timestamps and LTV are unchecked. PDF signing time
+     identity trust: chain, revocation, AATL/EUTL, PKCS#11, trusted timestamps and LTV are not implemented. PDF signing time
      is declared by the signer. Editing/rewriting may invalidate signatures. Acrobat/Foxit interoperability and PAdES
      qualification are not established; do not present the result as a qualified signature.

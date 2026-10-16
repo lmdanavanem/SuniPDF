@@ -1,0 +1,271 @@
+# Real portable updates in temporary copies, never the installed app or the user's profile.
+param(
+    [Parameter(Mandatory = $true)] [string]$Package,
+    [string[]]$FromPackage = @(),
+    [string]$ReportPath = ''
+)
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$repo = Split-Path -Parent $PSScriptRoot
+$helperSource = Join-Path $repo 'apps/sunipdf-desktop/src/update-helper.ps1'
+$powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+
+function Assert([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
+function ChildPath([string]$Path, [string]$Root) {
+    $full = [IO.Path]::GetFullPath($Path)
+    $prefix = [IO.Path]::GetFullPath($Root).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    Assert ($full.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) 'Test path escaped its temporary workspace.'
+    return $full
+}
+function PackageInfo([string]$Path) {
+    $full = (Get-Item -LiteralPath $Path).FullName
+    Assert ((Split-Path -Leaf $full) -match '^SuniPDF-(\d+\.\d+\.\d+)-win-x64-portable\.zip$') 'An x64 portable release ZIP is required.'
+    $version = $Matches[1]
+    $hash = (Get-FileHash -LiteralPath $full -Algorithm SHA256).Hash
+    $sidecar = [IO.File]::ReadAllText("$full.sha256").Trim() -split '\s+', 2
+    Assert ($hash -ieq $sidecar[0]) 'Release ZIP SHA256 sidecar mismatch.'
+    return @{ path = $full; version = $version; hash = $hash }
+}
+function PreviousPackages([string]$Workspace) {
+    $pins = @{
+        '0.8.2' = 'B3A311CBB62803F9637E664C317999C1D0162358D7152E8C37223B3BF3C9EA4C'
+        '0.8.3' = '46AB7FC675DC1A43A955D629718924B717C7B935E0C5ECDBDDFC9E46578BA018'
+        '0.9.0' = 'E935A02D5DC98AB2AFC67C3CAC856AB10ACA6D4A090212CE084AA87A9398A9A2'
+    }
+    foreach ($version in @('0.8.2', '0.8.3', '0.9.0')) {
+        if ([version]$version -ge [version]$incoming.version) { continue }
+        $name = "SuniPDF-$version-win-x64-portable.zip"
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/lmdanavanem/SuniPDF/releases/tags/v$version" -Headers @{'User-Agent'='SuniPDF-update-regression'} -TimeoutSec 60
+        $asset = @($release.assets | Where-Object name -eq $name)
+        Assert ($asset.Count -eq 1 -and $asset[0].digest -ieq "sha256:$($pins[$version])") "Pinned release digest disagrees with the public GitHub API: $version"
+        $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content
+        if ($sidecarBody -is [byte[]]) { $sidecarBody = [Text.Encoding]::ASCII.GetString($sidecarBody) }
+        $sidecar = $sidecarBody.Trim() -split '\s+', 2
+        Assert ($sidecar[0] -ieq $pins[$version] -and $sidecar[1] -eq $name) "Pinned release digest disagrees with the published checksum: $version"
+        $path = Join-Path $repo "dist/$name"
+        if (-not (Test-Path -LiteralPath $path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $pins[$version]) {
+            $directory = Join-Path $Workspace 'previous'
+            [IO.Directory]::CreateDirectory($directory) | Out-Null
+            $path = Join-Path $directory $name
+            Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name" -OutFile $path -TimeoutSec 300
+            Assert ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ieq $pins[$version]) "Pinned previous public release checksum mismatch: $version"
+            [IO.File]::WriteAllText("$path.sha256", "$($pins[$version])  $name", [Text.Encoding]::ASCII)
+        }
+        Write-Output $path
+    }
+}
+function ExpandTestCopy([string]$Archive, [string]$Destination) {
+    [IO.Directory]::CreateDirectory($Destination) | Out-Null
+    $zip = [IO.Compression.ZipFile]::OpenRead($Archive)
+    try {
+        foreach ($entry in $zip.Entries) {
+            $path = ChildPath (Join-Path $Destination $entry.FullName) $Destination
+            if ($entry.FullName.EndsWith('/')) { [IO.Directory]::CreateDirectory($path) | Out-Null; continue }
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $path)) | Out-Null
+            [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $path, $false)
+        }
+    } finally { $zip.Dispose() }
+}
+function FileMap([string]$Directory) {
+    $files = @{}
+    foreach ($file in Get-ChildItem -LiteralPath $Directory -Recurse -File) {
+        $name = $file.FullName.Substring($Directory.TrimEnd('\').Length + 1)
+        $files[$name] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+    }
+    return $files
+}
+function AssertMap($Expected, [string]$Directory) {
+    $actual = FileMap $Directory
+    Assert ($actual.Count -eq $Expected.Count) 'Update failure changed the target file set.'
+    foreach ($name in $Expected.Keys) { Assert ($actual[$name] -eq $Expected[$name]) "Update failure changed $name." }
+}
+function StopOwned($Process, [string]$Executable) {
+    if ($null -eq $Process) { return }
+    try {
+        $Process.Refresh()
+        if (-not $Process.HasExited) {
+            Assert ($Process.Path -ieq $Executable) 'Refusing to stop a process outside the test application.'
+            Stop-Process -Id $Process.Id -Force
+            $Process.WaitForExit()
+        }
+    } catch {
+        if ($_.Exception -is [InvalidOperationException] -and $Process.HasExited) { return }
+        throw
+    }
+}
+function StartApp([string]$Target) {
+    $exe = Join-Path $Target 'sunipdf.exe'
+    $process = Start-Process -FilePath $exe -WorkingDirectory $Target -WindowStyle Hidden -PassThru
+    Start-Sleep -Milliseconds 1000
+    $process.Refresh()
+    Assert (-not $process.HasExited) 'The isolated released application did not stay running.'
+    return $process
+}
+function PrepareHelper([string]$Case, $TargetPackage) {
+    $work = Join-Path $Case 'helper'
+    [IO.Directory]::CreateDirectory($work) | Out-Null
+    Copy-Item -LiteralPath $helperSource -Destination (Join-Path $work 'update-helper.ps1')
+    Copy-Item -LiteralPath $TargetPackage.path -Destination (Join-Path $work (Split-Path -Leaf $TargetPackage.path))
+    return $work
+}
+function StartHelper([string]$Work, [string]$Target, [int]$OwnerPid, [string]$Hash, [string]$Architecture = 'x64', [bool]$Restart = $false) {
+    $zip = Join-Path $Work (Split-Path -Leaf $incoming.path)
+    $arguments = '-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + (Join-Path $Work 'update-helper.ps1') +
+        '" -Mode Portable -NonInteractive -ParentPid ' + $OwnerPid + ' -PackagePath "' + $zip + '" -ExpectedSha256 ' + $Hash +
+        ' -TargetDirectory "' + $Target + '" -Arch ' + $Architecture
+    if ($Restart) { $arguments += ' -Restart' }
+    $process = Start-Process -FilePath $powershell -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $Work 'stdout.log') -RedirectStandardError (Join-Path $Work 'stderr.log')
+    $process.Handle | Out-Null
+    return $process
+}
+function WaitHelper($Process, [string]$Work) {
+    $deadline = [DateTime]::UtcNow.AddSeconds(180)
+    while (-not $Process.WaitForExit(1000)) {
+        if ([DateTime]::UtcNow -gt $deadline) { throw 'Update helper did not finish within three minutes.' }
+    }
+    $Process.Refresh()
+    $result = Get-Content -LiteralPath (Join-Path $Work 'result.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert (($Process.ExitCode -eq 0) -eq [bool]$result.success) "Helper exit code $($Process.ExitCode) disagrees with result.json."
+    return $result
+}
+function WaitUpdateLock([string]$Target, $Process) {
+    $digest = [Security.Cryptography.SHA256]::Create()
+    try { $targetId = [BitConverter]::ToString($digest.ComputeHash([Text.Encoding]::UTF8.GetBytes($Target.ToLowerInvariant()))).Replace('-', '') }
+    finally { $digest.Dispose() }
+    $deadline = [DateTime]::UtcNow.AddSeconds(15)
+    do {
+        $probe = $null
+        try {
+            $probe = [Threading.Mutex]::OpenExisting("Local\SuniPDF-update-$targetId")
+            if (-not $probe.WaitOne(0)) { return }
+            $probe.ReleaseMutex()
+        } catch [Threading.WaitHandleCannotBeOpenedException] {
+            # The helper has not reached its update lock yet.
+        } finally { if ($null -ne $probe) { $probe.Dispose() } }
+        Assert (-not $Process.HasExited) 'The helper exited before acquiring its update lock.'
+        Start-Sleep -Milliseconds 100
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw 'The helper did not acquire its update lock.'
+}
+
+$incoming = PackageInfo $Package
+if (-not $ReportPath) { $ReportPath = Join-Path $repo "target/portable-update-$($incoming.version).json" }
+$workspace = Join-Path ([IO.Path]::GetTempPath()) ('SuniPDF-update-regression-' + [guid]::NewGuid())
+ChildPath $workspace ([IO.Path]::GetTempPath()) | Out-Null
+[IO.Directory]::CreateDirectory($workspace) | Out-Null
+$originalEnvironment = @{}
+foreach ($name in @('APPDATA', 'LOCALAPPDATA', 'SUNIPDF_RECOVERY_DIR')) { $originalEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+$results = [Collections.Generic.List[object]]::new()
+$owned = [Collections.Generic.List[object]]::new()
+$passed = $false
+try {
+    if ($FromPackage.Count -eq 0) { $FromPackage = @(PreviousPackages $workspace) }
+    $oldPackages = @($FromPackage | ForEach-Object { PackageInfo $_ })
+    Assert ($oldPackages.Count -gt 0) 'At least one previous portable release is required.'
+    $env:APPDATA = Join-Path $workspace 'profile/roaming'
+    $env:LOCALAPPDATA = Join-Path $workspace 'profile/local'
+    $env:SUNIPDF_RECOVERY_DIR = Join-Path $workspace 'profile/recovery'
+    [IO.Directory]::CreateDirectory((Join-Path $env:APPDATA 'SuniPDF')) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $env:APPDATA 'SuniPDF/settings.json'), '{"language":"en-US","check_updates":false,"autosave":false}')
+    $expected = Join-Path $workspace 'expected'
+    ExpandTestCopy $incoming.path $expected
+    $incomingFiles = FileMap $expected
+    $sequence = 0
+    foreach ($old in $oldPackages) {
+        foreach ($scenario in @('upgrade') + $(if ($old -eq $oldPackages[-1]) { @('bad-hash', 'wrong-architecture', 'rollback', 'close-timeout') } else { @() })) {
+            $sequence++
+            $case = Join-Path $workspace ("case-$sequence-$scenario")
+            $target = Join-Path $case ('SuniPDF space ' + [char]0x00E9)
+            ExpandTestCopy $old.path $target
+            Copy-Item -LiteralPath (Join-Path $repo 'crates/sunipdf-core/tests/fixtures/two-pages.pdf') -Destination (Join-Path $target 'document.pdf')
+            [IO.File]::WriteAllText((Join-Path $target 'settings.json'), 'unrelated portable settings')
+            [IO.File]::WriteAllText((Join-Path $target 'licenses/keep-user-license.txt'), 'unrelated license')
+            $before = FileMap $target
+            $work = PrepareHelper $case $incoming
+            $app = StartApp $target
+            $owned.Add(@{process=$app; exe=(Join-Path $target 'sunipdf.exe')})
+            $ownerPid = $app.Id
+            $helper = $null
+            $lock = $null
+            try {
+                if ($scenario -notin @('upgrade', 'close-timeout')) { StopOwned $app (Join-Path $target 'sunipdf.exe'); $app=$null }
+                if ($scenario -eq 'rollback') { $lock=[IO.File]::Open((Join-Path $target 'pdfium.dll'),[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read) }
+                $hash = if ($scenario -eq 'bad-hash') { '0' * 64 } else { $incoming.hash }
+                $architecture = if ($scenario -eq 'wrong-architecture') { 'arm64' } else { 'x64' }
+                $helper = StartHelper $work $target $ownerPid $hash $architecture ($scenario -eq 'upgrade')
+                $owned.Add(@{process=$helper; exe=$powershell})
+                if ($scenario -eq 'upgrade') {
+                    Start-Sleep -Milliseconds 1500
+                    AssertMap $before $target
+                    Assert (-not $helper.HasExited) 'Helper did not wait for the running application.'
+                    StopOwned $app (Join-Path $target 'sunipdf.exe'); $app=$null
+                }
+                if ($scenario -eq 'close-timeout') {
+                    WaitUpdateLock $target $helper
+                    $otherWork = Join-Path $case 'other'
+                    [IO.Directory]::CreateDirectory($otherWork) | Out-Null
+                    $otherWork = PrepareHelper $otherWork $incoming
+                    $other = StartHelper $otherWork $target $ownerPid $incoming.hash
+                    $owned.Add(@{process=$other; exe=$powershell})
+                    $busy = WaitHelper $other $otherWork
+                    Assert (-not $busy.success -and $busy.error -match 'already running') 'Concurrent update mutex did not block the second helper.'
+                    Write-Output 'Waiting for the real 120-second application-close cancellation guard...'
+                }
+                $result = WaitHelper $helper $work
+                if ($scenario -eq 'upgrade') {
+                    Assert ([bool]$result.success) "Real upgrade failed: $($result.error)"
+                    $after = FileMap $target
+                    foreach ($name in $incomingFiles.Keys) { Assert ($after[$name] -eq $incomingFiles[$name]) "Updated payload differs: $name" }
+                    foreach ($name in @('document.pdf','settings.json','licenses\keep-user-license.txt')) { Assert ($after[$name] -eq $before[$name]) "Update changed $name." }
+                    $backupFiles = @{}
+                    foreach ($name in $incomingFiles.Keys) {
+                        if ($before.ContainsKey($name)) { $backupFiles[$name] = $before[$name] }
+                    }
+                    AssertMap $backupFiles $result.backup
+                    $restarted = Get-Process -Id $result.restart_pid -ErrorAction Stop
+                    $owned.Add(@{process=$restarted; exe=(Join-Path $target 'sunipdf.exe')})
+                    Start-Sleep -Milliseconds 1000
+                    Assert ($restarted.Path -ieq (Join-Path $target 'sunipdf.exe')) 'The updated application was not relaunched from its target.'
+                    Assert ((Get-Item -LiteralPath $restarted.Path).VersionInfo.ProductVersion -like "$($incoming.version)*") 'Relaunch has the wrong product version.'
+                    $cliVersion = & (Join-Path $target 'sunipdf-cli.exe') --version
+                    Assert ($LASTEXITCODE -eq 0 -and $cliVersion -like "*$($incoming.version)*") 'Updated CLI version check failed.'
+                    StopOwned $restarted (Join-Path $target 'sunipdf.exe')
+                } else {
+                    Assert (-not $result.success) 'A rejected/failed upgrade reported success.'
+                    AssertMap $before $target
+                    if ($scenario -eq 'rollback') {
+                        Assert ($result.error -match 'previous application files were restored') 'Failed copy did not report a completed rollback.'
+                        foreach ($name in $incomingFiles.Keys) {
+                            if ($before.ContainsKey($name)) { Assert ((Get-FileHash -LiteralPath (Join-Path $result.backup $name)).Hash -eq $before[$name]) "Rollback backup differs: $name" }
+                        }
+                    }
+                    if ($scenario -eq 'close-timeout') { Assert ($result.error -match 'did not close') 'Close cancellation did not stop installation.' }
+                }
+                $results.Add(@{from=$old.version; to=$incoming.version; scenario=$scenario; success=$true; helper_success=[bool]$result.success; restart_pid=$result.restart_pid; source_sha256=$old.hash; package_sha256=$incoming.hash; target_files=$before.Count})
+                Write-Output "Passed: $($old.version) -> $($incoming.version), $scenario"
+            } finally {
+                if ($null -ne $lock) { $lock.Dispose() }
+                if ($null -ne $app) { StopOwned $app (Join-Path $target 'sunipdf.exe') }
+                if ($null -ne $helper) { StopOwned $helper $powershell }
+            }
+        }
+    }
+    $passed = $true
+} finally {
+    foreach ($process in Get-Process -Name sunipdf -ErrorAction SilentlyContinue) {
+        try {
+            $path = $process.Path
+            if ($path -and $path.StartsWith($workspace + '\', [StringComparison]::OrdinalIgnoreCase)) { StopOwned $process $path }
+        } finally { $process.Dispose() }
+    }
+    foreach ($item in $owned) {
+        try { StopOwned $item.process $item.exe } catch { Write-Warning $_.Exception.Message }
+        finally { $item.process.Dispose() }
+    }
+    foreach ($name in $originalEnvironment.Keys) { [Environment]::SetEnvironmentVariable($name,$originalEnvironment[$name],'Process') }
+    [IO.Directory]::CreateDirectory((Split-Path -Parent ([IO.Path]::GetFullPath($ReportPath)))) | Out-Null
+    @{success=$passed; package=$incoming.version; cases=$results.ToArray(); isolated_profile=$true; installed_app_untouched=$true; test_workspace=$workspace} |
+        ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $ReportPath -Encoding UTF8
+    if ($passed) { $checked=ChildPath $workspace ([IO.Path]::GetTempPath()); Remove-Item -LiteralPath $checked -Recurse -Force }
+}
+Write-Output "Portable update regression passed. Report: $ReportPath"

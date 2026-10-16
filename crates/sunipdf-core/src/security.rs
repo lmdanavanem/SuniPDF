@@ -204,6 +204,25 @@ pub(crate) fn save(mut doc: lopdf::Document) -> Result<Vec<u8>, EngineError> {
     if let Some(state) = doc.encryption_state.take() {
         doc.encrypt(&state).map_err(lopdf_err)?;
     }
+    if doc.is_encrypted() {
+        let id = doc
+            .trailer
+            .get(b"Encrypt")
+            .and_then(Object::as_reference)
+            .map_err(lopdf_err)?;
+        let encryption = doc
+            .get_object_mut(id)
+            .and_then(Object::as_dict_mut)
+            .map_err(lopdf_err)?;
+        if encryption
+            .get(b"V")
+            .and_then(Object::as_i64)
+            .is_ok_and(|v| v == 5)
+        {
+            // lopdf omits the V5 key length; strict readers require the explicit 256-bit value.
+            encryption.set("Length", 256);
+        }
+    }
     let mut out = Vec::new();
     doc.save_to(&mut out)
         .map_err(|e| EngineError::Other(format!("lopdf save: {e}")))?;
@@ -420,8 +439,132 @@ fn xmp_packet(m: &Metadata) -> String {
     )
 }
 
-/// Remplace titre, auteur, sujet et mots-clés (`None` = supprimer la clé). Un flux XMP du
-/// catalogue est régénéré (paquet minimal) pour rester cohérent avec /Info.
+const RDF_NS: &str = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+const DC_NS: &str = "http://purl.org/dc/elements/1.1/";
+const PDF_NS: &str = "http://ns.adobe.com/pdf/1.3/";
+const XMP_LIMIT: usize = 16 * 1024 * 1024;
+
+fn editable_xmp(name: &xml::name::OwnedName) -> bool {
+    match name.namespace.as_deref() {
+        Some(DC_NS) => matches!(
+            name.local_name.as_str(),
+            "title" | "creator" | "description"
+        ),
+        Some(PDF_NS) => name.local_name == "Keywords",
+        _ => false,
+    }
+}
+
+fn xmp_error(error: impl std::fmt::Display) -> EngineError {
+    EngineError::Other(format!("XMP metadata could not be updated: {error}"))
+}
+
+fn update_xmp(input: &[u8], m: &Metadata) -> Result<Vec<u8>, EngineError> {
+    use xml::reader::{ParserConfig2, XmlEvent};
+    let config = ParserConfig2::new()
+        .ignore_comments(false)
+        .ignore_root_level_whitespace(false)
+        .allow_multiple_root_elements(false)
+        .max_data_length(XMP_LIMIT)
+        .max_attribute_length(XMP_LIMIT)
+        .max_entity_expansion_length(1024 * 1024);
+    let mut reader = config.create_reader(input);
+    let mut writer = xml::writer::EmitterConfig::new()
+        .write_document_declaration(false)
+        .autopad_comments(false)
+        .create_writer(Vec::new());
+    let (mut depth, mut skipped) = (0, 0);
+    let (mut rdf_depth, mut description_depth) = (None, None);
+    let mut seen_rdf = false;
+    loop {
+        let mut event = reader.next().map_err(xmp_error)?;
+        if reader.doctype().is_some() {
+            return Err(xmp_error("DTD declarations are not supported"));
+        }
+        match &mut event {
+            XmlEvent::StartDocument { .. } => continue,
+            XmlEvent::StartElement {
+                name, attributes, ..
+            } => {
+                depth += 1;
+                if depth > 256 {
+                    return Err(xmp_error("XML nesting limit exceeded"));
+                }
+                if skipped != 0 {
+                    skipped += 1;
+                    continue;
+                }
+                if name.namespace.as_deref() == Some(RDF_NS) && name.local_name == "RDF" {
+                    if seen_rdf {
+                        return Err(xmp_error("multiple RDF containers"));
+                    }
+                    seen_rdf = true;
+                    rdf_depth = Some(depth);
+                } else if rdf_depth == Some(depth - 1)
+                    && name.namespace.as_deref() == Some(RDF_NS)
+                    && name.local_name == "Description"
+                    && !attributes.iter().any(|attribute| {
+                        attribute.name.namespace.as_deref() == Some(RDF_NS)
+                            && attribute.name.local_name == "about"
+                            && !attribute.value.is_empty()
+                    })
+                {
+                    description_depth = Some(depth);
+                    attributes.retain(|attribute| !editable_xmp(&attribute.name));
+                } else if description_depth == Some(depth - 1) && editable_xmp(name) {
+                    skipped = 1;
+                    continue;
+                }
+            }
+            XmlEvent::EndElement { .. } => {
+                if skipped != 0 {
+                    skipped -= 1;
+                    depth -= 1;
+                    continue;
+                }
+                if rdf_depth == Some(depth) {
+                    // A separate description keeps existing namespace bindings and custom properties intact.
+                    let mut writing = false;
+                    for field in xml::reader::EventReader::from_str(&xmp_packet(m)) {
+                        let field = field.map_err(xmp_error)?;
+                        if let XmlEvent::StartElement { name, .. } = &field {
+                            writing |= name.local_name == "Description";
+                        }
+                        if writing {
+                            if let Some(field) = field.as_writer_event() {
+                                writer.write(field).map_err(xmp_error)?;
+                            }
+                        }
+                        if let XmlEvent::EndElement { name } = &field {
+                            if name.local_name == "Description" {
+                                break;
+                            }
+                        }
+                    }
+                    rdf_depth = None;
+                }
+                if description_depth == Some(depth) {
+                    description_depth = None;
+                }
+                depth -= 1;
+            }
+            XmlEvent::EndDocument => break,
+            _ => {}
+        }
+        if skipped == 0 {
+            if let Some(event) = event.as_writer_event() {
+                writer.write(event).map_err(xmp_error)?;
+            }
+        }
+    }
+    if !seen_rdf {
+        return Err(xmp_error("RDF metadata container is missing"));
+    }
+    Ok(writer.into_inner())
+}
+
+/// Remplace titre, auteur, sujet et mots-clés (`None` = supprimer la clé), en conservant
+/// les autres propriétés et espaces de noms XMP du catalogue.
 pub fn set_metadata(
     input: &[u8],
     password: Option<&str>,
@@ -435,19 +578,29 @@ pub fn set_metadata(
         set_or_remove(info, "Subject", &m.subject);
         set_or_remove(info, "Keywords", &m.keywords);
     }
-    let xmp_id = doc
+    let metadata = doc
         .catalog()
+        .map_err(lopdf_err)?
+        .get(b"Metadata")
         .ok()
-        .and_then(|c| c.get(b"Metadata").ok())
-        .and_then(|o| o.as_reference().ok());
-    if let Some(id) = xmp_id {
-        let mut dict = Dictionary::new();
-        dict.set("Type", Object::Name(b"Metadata".to_vec()));
-        dict.set("Subtype", Object::Name(b"XML".to_vec()));
-        doc.objects.insert(
-            id,
-            Object::Stream(lopdf::Stream::new(dict, xmp_packet(m).into_bytes())),
-        );
+        .cloned();
+    if let Some(metadata) = metadata {
+        let (id, object) = doc.dereference(&metadata).map_err(xmp_error)?;
+        if !matches!(object, Object::Null) {
+            let mut stream = object.as_stream().map_err(xmp_error)?.clone();
+            let input = stream
+                .get_plain_content_with_limit(XMP_LIMIT)
+                .map_err(xmp_error)?;
+            stream.set_plain_content(update_xmp(&input, m)?);
+            if let Some(id) = id {
+                doc.objects.insert(id, Object::Stream(stream));
+            } else {
+                let id = doc.add_object(stream);
+                doc.catalog_mut()
+                    .map_err(lopdf_err)?
+                    .set("Metadata", Object::Reference(id));
+            }
+        }
     }
     save(doc)
 }
@@ -642,5 +795,147 @@ mod tests {
         });
         assert!(xmp.contains("A &amp; B &lt;c&gt;") && xmp.contains("<rdf:li>Jean</rdf:li>"));
         assert!(!xmp.contains("dc:description"));
+    }
+
+    #[test]
+    fn xmp_edit_preserves_pdfa_custom_properties_and_namespace_aliases() {
+        let original = r#"<?xpacket begin="" id="keep-packet"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/">
+<r:RDF xmlns:r="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<r:Description r:about="" xmlns:a="http://purl.org/dc/elements/1.1/"
+ xmlns:p="http://ns.adobe.com/pdf/1.3/" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"
+ xmlns:c="urn:example:custom" a:title="old attribute title" p:Keywords="old keywords"
+ pdfaid:part="2" c:flag="keep &amp; stay">
+ <pdfaid:conformance>B</pdfaid:conformance><!--keep-comment-->
+ <a:title><r:Alt><r:li xml:lang="fr">old translated title</r:li></r:Alt></a:title>
+ <a:creator><r:Seq><r:li>old author</r:li></r:Seq></a:creator>
+ <a:description>old subject</a:description>
+ <c:record><a:title>custom nested title</a:title><c:value>été &amp; hiver</c:value></c:record>
+</r:Description></r:RDF></x:xmpmeta><?xpacket end="w"?>"#;
+        let edited = update_xmp(
+            original.as_bytes(),
+            &Metadata {
+                title: Some("New <title> & été".into()),
+                keywords: Some("new keywords".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let text = String::from_utf8(edited).unwrap();
+        for kept in [
+            "pdfaid:part=\"2\"",
+            "<pdfaid:conformance>B</pdfaid:conformance>",
+            "urn:example:custom",
+            "c:flag=\"keep &amp; stay\"",
+            "<!--keep-comment-->",
+            "<a:title>custom nested title</a:title>",
+            "été &amp; hiver",
+            "keep-packet",
+            "New &lt;title&gt; &amp; été",
+            "new keywords",
+        ] {
+            assert!(text.contains(kept), "missing {kept}: {text}");
+        }
+        for removed in [
+            "old attribute title",
+            "old translated title",
+            "old author",
+            "old subject",
+            "old keywords",
+            "dc:creator",
+            "dc:description",
+        ] {
+            assert!(!text.contains(removed), "retained {removed}: {text}");
+        }
+        for event in xml::reader::EventReader::from_str(&text) {
+            event.unwrap();
+        }
+    }
+
+    #[test]
+    fn xmp_edit_handles_utf16_and_refuses_malformed_xml_and_dtd() {
+        let original = xmp_packet(&Metadata {
+            title: Some("Original".into()),
+            ..Default::default()
+        });
+        let utf16: Vec<u8> = [0xff, 0xfe]
+            .into_iter()
+            .chain(original.encode_utf16().flat_map(u16::to_le_bytes))
+            .collect();
+        let edited = update_xmp(
+            &utf16,
+            &Metadata {
+                title: Some("Updated".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(String::from_utf8(edited).unwrap().contains("Updated"));
+        for invalid in [
+            "<x:xmpmeta/>",
+            "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><unclosed></x:xmpmeta>",
+            "<RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\" a=\"1\" a=\"2\"/>",
+            "<RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/><other/>",
+            "<xmpmeta xmlns=\"adobe:ns:meta/\" xmlns:r=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><r:RDF/><r:RDF/></xmpmeta>",
+            "<!DOCTYPE RDF [<!ENTITY external SYSTEM 'file:///does-not-exist'>]><RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/>",
+            "<!DOCTYPE RDF [<!ENTITY broken ]><RDF/>",
+            "<RDF xmlns=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">&unknown;</RDF>",
+            "<xmpmeta xmlns=\"adobe:ns:meta/\"/>",
+        ] {
+            let error = update_xmp(invalid.as_bytes(), &Metadata::default()).unwrap_err();
+            assert!(error.to_string().contains("XMP metadata could not be updated"), "{error}");
+        }
+        let invalid_value = Metadata {
+            title: Some("invalid\0value".into()),
+            ..Default::default()
+        };
+        assert!(update_xmp(original.as_bytes(), &invalid_value).is_err());
+    }
+
+    #[test]
+    fn xmp_edit_changes_only_document_subjects_inside_the_rdf_container() {
+        let original = br#"<x:xmpmeta xmlns:x="adobe:ns:meta/"
+ xmlns:r="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+ xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:p="http://ns.adobe.com/pdf/1.3/"
+ xmlns:c="urn:custom">
+<r:RDF>
+ <r:Description r:about="" dc:title="old document attribute"><dc:creator>old author</dc:creator></r:Description>
+ <r:Description><dc:title>old implicit document title</dc:title></r:Description>
+ <r:Description r:about="urn:other-resource" dc:title="other subject attribute" p:Keywords="other subject keywords">
+  <dc:title>other subject title</dc:title><dc:creator>other subject author</dc:creator>
+ </r:Description>
+</r:RDF>
+<c:extra><r:Description r:about="" dc:title="outside RDF attribute"><dc:title>outside RDF title</dc:title></r:Description></c:extra>
+</x:xmpmeta>"#;
+        let edited = update_xmp(
+            original,
+            &Metadata {
+                title: Some("new document title".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let text = String::from_utf8(edited).unwrap();
+        for kept in [
+            "other subject attribute",
+            "other subject keywords",
+            "other subject title",
+            "other subject author",
+            "outside RDF attribute",
+            "outside RDF title",
+        ] {
+            assert!(text.contains(kept), "missing {kept}: {text}");
+        }
+        for removed in [
+            "old document attribute",
+            "old author",
+            "old implicit document title",
+        ] {
+            assert!(!text.contains(removed), "retained {removed}: {text}");
+        }
+        assert_eq!(text.matches("new document title").count(), 1, "{text}");
+        for event in xml::reader::EventReader::from_str(&text) {
+            event.unwrap();
+        }
     }
 }

@@ -7,6 +7,18 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.9.1] — 2026-10-16
+
+### Corrigé
+- Icône au ruban rouge plus grande, avec beaucoup moins de marge transparente, commune à Windows, au MSI et à l'interface.
+- La modification des métadonnées conserve l'identification PDF/A et les propriétés XMP indépendantes. Le XMP malformé est refusé au lieu d'être supprimé silencieusement ; cela ne certifie pas la conformité PDF/A.
+- Les dictionnaires de chiffrement AES-256 indiquent explicitement la longueur de clé de 256 bits pour les lecteurs indépendants.
+- Le résultat de mise à jour est enregistré après la relance de l'application, avec le chemin de sauvegarde conservé en cas d'échec d'installation ou de relance.
+
+### Modifié
+- Contrôles QPDF figés dans la CI Windows : corpus synthétique, modifications, chiffrement AES, formulaires, caviardage, OCR, signatures numériques et entrées malformées. Les avertissements structurels font échouer le contrôle.
+- Régressions de mise à jour portable réelle et d'installation/upgrade/rollback MSI sur Windows jetable, en complément des tests existants. Résultats exécutés et limites matérielles dans `docs/PROJECT_STATUS.fr.md`.
+
 ## [0.9.0] — 2026-10-16
 
 Résultats de validation et contrôles matériels restants dans `docs/PROJECT_STATUS.fr.md`.

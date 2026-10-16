@@ -7,6 +7,7 @@ param(
     [ValidateSet("x64", "arm64")] [string]$Arch,
     [ValidateSet("sunipdf.exe")] [string]$ExecutableName = "sunipdf.exe",
     [switch]$Restart,
+    [switch]$NonInteractive,
     [switch]$SelfTest
 )
 
@@ -302,6 +303,9 @@ $resultPath = $null
 $mutex = $null
 $ownsMutex = $false
 $packageLock = $null
+$backup = $null
+$applied = $false
+$restartPid = $null
 try {
     if (-not $Mode -or -not $Arch -or $ParentPid -le 0 -or $ParentPid -eq $PID) {
         throw "An update mode and a valid parent process are required."
@@ -341,7 +345,6 @@ try {
     $packageLock = [IO.File]::Open($package, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
     Assert-PackageHash $package $ExpectedSha256
     Assert-NoReparsePoint $target
-    $backup = $null
     $rebootRequired = $false
     if ($Mode -eq 'Portable') {
         $stage = Join-Path $workspace ('stage-' + [guid]::NewGuid())
@@ -358,23 +361,31 @@ try {
             $rebootRequired = $installer.ExitCode -eq 3010
         } finally { $installer.Dispose() }
     }
-    @{ success = $true; reboot_required = $rebootRequired; backup = $backup } |
-        ConvertTo-Json | Set-Content -LiteralPath $resultPath -Encoding UTF8
-    if ($rebootRequired) {
+    $applied = $true
+    if ($rebootRequired -and -not $NonInteractive) {
         Add-Type -AssemblyName System.Windows.Forms
         [Windows.Forms.MessageBox]::Show('SuniPDF was updated. Restart Windows before opening it again.',
             'SuniPDF update', 'OK', 'Information') | Out-Null
-    } elseif ($Restart) {
-        Start-Process -FilePath (Join-Path $target $ExecutableName) -WorkingDirectory $target | Out-Null
+    } elseif ($Restart -and -not $rebootRequired) {
+        $windowStyle = if ($NonInteractive) { 'Hidden' } else { 'Normal' }
+        $restarted = Start-Process -FilePath (Join-Path $target $ExecutableName) -WorkingDirectory $target -WindowStyle $windowStyle -PassThru
+        try { $restartPid = $restarted.Id } finally { $restarted.Dispose() }
     }
+    @{ success = $true; reboot_required = $rebootRequired; backup = $backup; restart_pid = $restartPid } |
+        ConvertTo-Json | Set-Content -LiteralPath $resultPath -Encoding UTF8
 } catch {
     $message = $_.Exception.Message
+    if ($applied) { $message = "SuniPDF was updated, but could not finish restarting. $message Previous files: $backup" }
     if ($resultPath) {
-        @{ success = $false; error = $message } | ConvertTo-Json |
+        @{ success = $false; error = $message; backup = $backup } | ConvertTo-Json |
             Set-Content -LiteralPath $resultPath -Encoding UTF8 -ErrorAction SilentlyContinue
     }
-    Add-Type -AssemblyName System.Windows.Forms
-    [Windows.Forms.MessageBox]::Show($message, 'SuniPDF update', 'OK', 'Error') | Out-Null
+    if ($NonInteractive) {
+        Write-Error -Message $message -ErrorAction Continue
+    } else {
+        Add-Type -AssemblyName System.Windows.Forms
+        [Windows.Forms.MessageBox]::Show($message, 'SuniPDF update', 'OK', 'Error') | Out-Null
+    }
     exit 1
 } finally {
     if ($null -ne $packageLock) { $packageLock.Dispose() }

@@ -10,6 +10,7 @@ de la roadmap ; **Hors périmètre**. Mettre à jour cette colonne uniquement av
 
 Les nouveautés 0.9.0 sont couvertes par des régressions automatisées. `PROJECT_STATUS.fr.md` suit les contrôles exécutés ;
 ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou lecteur tiers.
+Les changements 0.9.1 sont implémentés, en attente des résultats de validation/publication consignés dans ce suivi.
 
 ## A. Lecture
 
@@ -59,7 +60,7 @@ ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou l
 | Redimensionner les pages | Déclaré | **Fait** (A3–Legal ou personnalisé, contenu conservé ou mis à l'échelle ; CLI `resize-pages`) ; annotations non mises à l'échelle |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
-| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; d'un document protégé : résultat non chiffré, annoncé (D046) ; préservation à vérifier avec qpdf |
+| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; d'un document protégé : résultat non chiffré, annoncé (D046) ; préservation sémantique à vérifier au-delà du contrôle structurel qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
@@ -83,11 +84,11 @@ ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou l
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Ouvrir chiffré, honorer les permissions | Déclaré | **Fait** (ouverture ; permissions affichées dans les propriétés) |
-| Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; vérification qpdf à ajouter |
+| Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; longueur AES-256 explicite et contrôle qpdf synthétique ajoutés pour 0.9.1 ; résultats dans `PROJECT_STATUS.fr.md` |
 | Caviardage irréversible | Déclaré (crate redact) | **Fait** (outil Caviarder du hub : zones à la souris, marquage d'un texte, confirmation, garde d'enregistrement ; CLI `redact`) : objets retirés + vignette noircie, annotations / champs / métadonnées / révisions antérieures supprimés, vérification par relecture ; absence prouvée par tests (extraction, octets décompressés, pixels, pages pivotées, document chiffré) ; limites `KNOWN_ISSUES.fr.md` A40 |
-| Nettoyage des métadonnées | Déclaré | **Fait** (Info, XMP du catalogue, des pages et des images, `/PieceInfo` ; les propriétés modifiées régénèrent le XMP) |
+| Nettoyage des métadonnées | Déclaré | **Fait** (Info, XMP du catalogue, des pages et des images, `/PieceInfo`) ; l'édition 0.9.1 préserve l'identification PDF/A et le XMP indépendant, refuse les XML malformés, validation dans `PROJECT_STATUS.fr.md` ; conformité PDF/A non certifiée |
 | Signature manuscrite (image) | Déclaré | **Fait** (sign-image) : dessinée au pavé, importée (PNG transparent ou photo à fond clair retiré par seuil) ou reprise de la bibliothèque locale (`%APPDATA%\SuniPDF\signatures`, PNG en clair, enregistrement facultatif), paraphe, date du jour ; objet image à masque alpha, modifiable et annulable ; CLI `add-image` ; **visuelle, jamais présentée comme certifiée** (encadré permanent, `digital_signature: false`) |
-| Signature numérique CMS/PKCS#12, horodatage | Déclaré | Intégrité/copie signée PFX/P12 **Faites** (tests avec certificat jetable) ; CLI `signatures`/`sign` ; PDF chiffré refusé. Confiance/révocation/horodatage fiable/LTV non vérifiés |
+| Signature numérique CMS/PKCS#12, horodatage | Déclaré | Intégrité/copie signée PFX/P12 **Faites** (tests avec certificat jetable) ; CLI `signatures`/`sign` ; PDF chiffré refusé. Confiance/révocation/horodatage fiable/LTV non implémentés ; interopérabilité Acrobat/Foxit non vérifiée |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
 
 ## F. Formulaires et accessibilité
@@ -116,6 +117,6 @@ ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou l
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.9.0 publiés, SHA256/contenu public contrôlés, OCR/champs/lecture/rendu vérifiés ; installation réelle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.9.0 publiés, SHA256/contenu public contrôlés, OCR/champs/lecture/rendu vérifiés ; régression MSI réelle ajoutée pour 0.9.1, résultat dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
 | Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.9.0 compilé en CI et publié, SHA256/architectures/modèles contrôlés ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

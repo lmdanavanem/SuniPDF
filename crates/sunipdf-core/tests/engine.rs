@@ -658,6 +658,17 @@ fn protect_unprotect_and_metadata() {
             ..Default::default()
         };
         let bytes = security::protect(&input, None, &p).unwrap();
+        let parsed = lopdf::Document::load_mem(&bytes).unwrap();
+        assert_eq!(
+            parsed
+                .get_encrypted()
+                .unwrap()
+                .get(b"Length")
+                .unwrap()
+                .as_i64()
+                .unwrap(),
+            if aes256 { 256 } else { 128 },
+        );
         let path = dir.join(format!("protected-{aes256}.pdf"));
         std::fs::write(&path, &bytes).unwrap();
         assert!(
@@ -1426,6 +1437,18 @@ fn lopdf_round_trips_keep_encryption_and_unprotect_needs_owner_password() {
             ),
         ];
         for (name, bytes) in outputs {
+            let parsed = lopdf::Document::load_mem(&bytes).unwrap();
+            assert_eq!(
+                parsed
+                    .get_encrypted()
+                    .unwrap()
+                    .get(b"Length")
+                    .unwrap()
+                    .as_i64()
+                    .unwrap(),
+                if aes256 { 256 } else { 128 },
+                "{name} aes256={aes256}: explicit encryption key length",
+            );
             let path = dir.join(format!("{name}-{aes256}.pdf"));
             std::fs::write(&path, &bytes).unwrap();
             assert!(
@@ -3146,6 +3169,121 @@ fn review_aes128_latin1_passwords_round_trip_through_pdfium() {
 }
 
 #[test]
+fn metadata_edit_preserves_pdfa_and_custom_xmp_in_compressed_and_encrypted_pdfs() {
+    use sunipdf_core::{security, Metadata, Protection};
+    let xmp = br#"<x:xmpmeta xmlns:x="adobe:ns:meta/">
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<rdf:Description rdf:about="" xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/"
+ xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:custom="urn:preserved:custom"
+ pdfaid:part="2" custom:record="retained">
+ <pdfaid:conformance>B</pdfaid:conformance>
+ <dc:title><rdf:Alt><rdf:li xml:lang="x-default">Old title</rdf:li></rdf:Alt></dc:title>
+ <dc:creator><rdf:Seq><rdf:li>Old author</rdf:li></rdf:Seq></dc:creator>
+ <custom:data><rdf:Seq><rdf:li>keep this value</rdf:li></rdf:Seq></custom:data>
+</rdf:Description></rdf:RDF></x:xmpmeta>"#;
+    let mut doc = lopdf::Document::load(fixture("two-pages.pdf")).unwrap();
+    let mut stream = lopdf::Stream::new(
+        lopdf::dictionary! { "Type" => "Metadata", "Subtype" => "XML", "CustomMarker" => 42 },
+        xmp.to_vec(),
+    );
+    stream.compress().unwrap();
+    assert!(!stream.filters().unwrap().is_empty());
+    let id = doc.add_object(stream);
+    doc.catalog_mut()
+        .unwrap()
+        .set("Metadata", lopdf::Object::Reference(id));
+    let mut original = Vec::new();
+    doc.save_to(&mut original).unwrap();
+    for encrypted in [false, true] {
+        let input = if encrypted {
+            security::protect(
+                &original,
+                None,
+                &Protection {
+                    user_password: "user".into(),
+                    owner_password: "owner".into(),
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        } else {
+            original.clone()
+        };
+        let edited = security::set_metadata(
+            &input,
+            encrypted.then_some("user"),
+            &Metadata {
+                title: Some("New title".into()),
+                author: None,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            lopdf::Document::load_mem(&edited).unwrap().is_encrypted(),
+            encrypted
+        );
+        let parsed = if encrypted {
+            // Decrypt during parsing: a password-less load can skip encrypted objects permanently.
+            lopdf::Document::load_mem_with_options(
+                &edited,
+                lopdf::LoadOptions::with_password("user"),
+            )
+            .unwrap()
+        } else {
+            lopdf::Document::load_mem(&edited).unwrap()
+        };
+        let id = parsed
+            .catalog()
+            .unwrap()
+            .get(b"Metadata")
+            .unwrap()
+            .as_reference()
+            .unwrap();
+        let stream = parsed.get_object(id).unwrap().as_stream().unwrap();
+        assert_eq!(
+            stream.dict.get(b"CustomMarker").unwrap().as_i64().unwrap(),
+            42
+        );
+        let text = String::from_utf8(stream.get_plain_content().unwrap()).unwrap();
+        for kept in [
+            "pdfaid:part=\"2\"",
+            "<pdfaid:conformance>B</pdfaid:conformance>",
+            "custom:record=\"retained\"",
+            "keep this value",
+            "New title",
+        ] {
+            assert!(text.contains(kept), "missing {kept}: {text}");
+        }
+        assert!(!text.contains("Old title") && !text.contains("Old author"));
+    }
+
+    let mut malformed = lopdf::Document::load_mem(&original).unwrap();
+    let id = malformed
+        .catalog()
+        .unwrap()
+        .get(b"Metadata")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    malformed
+        .get_object_mut(id)
+        .unwrap()
+        .as_stream_mut()
+        .unwrap()
+        .set_plain_content(b"<x:xmpmeta><rdf:RDF/></x:xmpmeta>".to_vec());
+    let mut input = Vec::new();
+    malformed.save_to(&mut input).unwrap();
+    let path = temp_dir("malformed-xmp").join("original.pdf");
+    std::fs::write(&path, &input).unwrap();
+    let error = security::set_metadata(&input, None, &Metadata::default()).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("XMP metadata could not be updated"));
+    assert_eq!(std::fs::read(&path).unwrap(), input);
+}
+
+#[test]
 fn review_metadata_edits_reach_xmp_and_strip_cleans_pages_and_images() {
     use sunipdf_core::{security, Metadata};
     let engine = engine();
@@ -3155,7 +3293,7 @@ fn review_metadata_edits_reach_xmp_and_strip_cleans_pages_and_images() {
     let xmp = |who: &str| {
         lopdf::Stream::new(
             lopdf::dictionary! { "Type" => "Metadata", "Subtype" => "XML" },
-            format!("<x:xmpmeta><dc:creator><rdf:li>{who}</rdf:li></dc:creator></x:xmpmeta>")
+            format!("<x:xmpmeta xmlns:x=\"adobe:ns:meta/\"><rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"><rdf:Description rdf:about=\"\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:creator><rdf:Seq><rdf:li>{who}</rdf:li></rdf:Seq></dc:creator></rdf:Description></rdf:RDF></x:xmpmeta>")
                 .into_bytes(),
         )
     };

@@ -4,9 +4,9 @@
 
 ## Version 0.9.0 : les sept fonctions demandées sont publiées
 
-Les sept fonctions sont dans la [0.9.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
-sous `lmdanavanem`. 318 tests réussis ; six fichiers publics/SHA256, OCR français/formulaires distribués et téléchargement
-updater réel vérifiés. `PROJECT_STATUS.fr.md` consigne les preuves et les limites matérielles/d'interopérabilité restantes.
+Les sept fonctions sont dans la [release 0.9.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
+sous `lmdanavanem`. [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md) consigne les contrôles exécutés, preuves de publication
+et limites matérielles/d'interopérabilité. Les anciens nombres de tests ne sont pas le critère de publication actuel.
 
 | Fonction | Périmètre inclus |
 |---|---|
@@ -16,20 +16,33 @@ updater réel vérifiés. `PROJECT_STATUS.fr.md` consigne les preuves et les lim
 | Double page/Livre | Tailles mixtes, couverture seule, dernière page isolée, zoom partagé et caches bornés |
 | Création de formulaires | Rectangles numériques texte/case, noms uniques, documents pivotés/recadrés/chiffrés, annulation/remplissage/enregistrement |
 | OCR local FR/EN | Tesseract 5.5.3/Leptonica 1.87 embarqués, modèles rapides eng/fra, texte invisible, pages textuelles ignorées, annulation atomique et un undo |
-| Signatures numériques | Intégrité des octets enregistrés, copie PFX/P12 incrémentale, avertissement de réécriture ; confiance/révocation/horodatage fiable non établis |
+| Signatures numériques | Intégrité des octets enregistrés, copie PFX/P12 incrémentale, avertissement de réécriture ; confiance de chaîne/révocation/horodatage fiable/LTV non implémentés |
 
 Les corrections P1/P2 de la 0.8.3 restent incluses : coordonnées finies, miniatures Organiser bornées,
 tampons sur une ligne et opacité CLI valide. Anglais par défaut ; français disponible.
 
+## Version 0.9.1 : fiabilité en attente de validation/publication
+
+- Conserver les identifiants PDF/A et le XMP indépendant en modifiant les propriétés standard ; refuser clairement les XML malformés/DTD.
+  Cela ne certifie pas la conformité PDF/A.
+- Écrire explicitement la longueur AES-256 à l'enregistrement, y compris après métadonnées/nettoyage/optimisation.
+- Contrôles qpdf figés en CI sur fixtures synthétiques/sorties ; le corpus réel ou hostile reste un travail distinct.
+- Régressions de mise à jour/restauration portable et d'installation/mise à niveau MSI réelle sur runners Windows jetables.
+- Icône Windows dédiée dérivée du visuel fourni par l'auteur et retouché.
+
+L'implémentation est présente ; lire les résultats actuels des tests, CI, paquets et publication dans `PROJECT_STATUS.fr.md`.
+Ces contrôles ne prouvent pas l'exécution ARM64, les imprimantes physiques, les lecteurs tiers ni l'UX interactive de mise à jour.
+
 ## Backlog de développement restant
 
-1. QA indépendante : qpdf, corpus réel volumineux/hostile, mises à jour MSI/portable, matériel ARM64,
-   imprimantes/Print to PDF, Narrateur et interopérabilité Acrobat/Foxit/Chrome.
+1. **P1 — QA indépendante :** corpus réel volumineux/hostile, enregistrements interrompus/disque plein, mises à jour
+   MSI/portable interactives, matériel ARM64, imprimantes physiques, Narrateur et Acrobat/Foxit/Chrome.
 2. Sous-ensembles de polices, CFF/OTF/TTC et édition enrichie des paragraphes/groupes.
 3. Ordre de lecture complexe de colonnes non balisées, rotation de vue et validation tactile.
 4. Autres types de champs, FDF/XFDF et activation clavier des widgets sur page.
 5. Conversion Office avec limites de fidélité explicites et convertisseurs locaux détectés.
-6. Confiance/révocation des certificats, horodatage fiable/LTV et signature du code/MSI si identité fournie.
+6. Confiance/révocation des certificats et horodatage fiable/LTV (non implémentés) ; signature du code/MSI si identité
+   fournie. Versions et dates futures demandent un périmètre défini séparément.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
@@ -55,7 +68,7 @@ Les 14 outils possèdent une implémentation en 0.9.0, dont Numériser et OCR, P
 
 ## Après redaction (caviardage irréversible, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
-- `qpdf --check` des sorties et essai sur un corpus réel (numérisations avec couche OCR, PDF balisés lourds,
+- contrôles indépendants sur un corpus réel (numérisations avec couche OCR, PDF balisés lourds,
   formulaires XObject imbriqués, polices Type 3) ; mesure sur une page de plusieurs dizaines de milliers d'objets
   (`prune_objects` quadratique : accessibilité maison par `BTreeSet` si lent) ;
 - découpe fine du texte (garder sélectionnable la partie non caviardée d'une ligne) : demande de recréer des
@@ -68,7 +81,7 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
-- export XFDF (sans dépendance) puis import XFDF/FDF (lecteur XML à choisir) ;
+- export XFDF puis import XFDF/FDF (réutiliser le lecteur XML existant lorsque pertinent) ;
 - mode « Appliquer » groupé (plusieurs champs, un seul niveau d'annulation et un seul rechargement) ;
 - texte libre dans une liste déroulante modifiable ; valeurs d'export `/Opt` des radios ; activation clavier
   (Espace / Entrée) des rectangles de champs de la page ; vérification Narrateur Windows (noms `labelled_by`
@@ -91,10 +104,9 @@ validation visuelle finale par l'utilisateur. Le chevauchement du rail droit en 
 Les 39 constats de `docs/plans/review-fixes.md` sont corrigés ou déjà couverts (tests moteur et application).
 Reste, non bloquant :
 - rechiffrer automatiquement les extraits et les parties d'une division d'un document protégé (D046, A29) ;
-- vérifier avec qpdf les fichiers AES produits (fixture tierce, A4) et les XMP régénérés (lecture par un
-  indexeur XMP) ;
-- reprendre `pdfaid:*` et les autres espaces de noms du XMP d'origine dans le paquet régénéré par
-  `set_metadata` (A34) ;
+- élargir le corpus d'interopérabilité AES/XMP au-delà du contrôle qpdf synthétique (A4) ;
+- contrôler les métadonnées PDF/A préservées avec un validateur dédié (A34) ; la correction de préservation 0.9.1
+  est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;
 - incorporer les JPEG d'orientation EXIF 5 et 7 sans décodage (A31) ; limiter la mémoire des lots de PNG ;
 - aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
 
@@ -131,7 +143,7 @@ Livré (D067–D076) : encre, zone de texte libre, rectangle, ellipse, ligne, fl
 déplacement / redimensionnement / recoloration / suppression, fils de réponses et statuts, auteur mémorisé, CLI
 `annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
 - **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
-  Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; `qpdf --check` des sorties (SUNI-025) ;
+  Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
 - regroupement des traits d'encre (une annotation pour N traits, validée à l'inactivité) avec écriture garantie à
   l'enregistrement et à la fermeture ; gomme ;
 - polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
@@ -141,10 +153,13 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
 
 ## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
-Rééchantillonnage des images (PDFium : objets image → DynamicImage → réencodage JPEG), vérification qpdf en CI, fixtures AES produites par qpdf, test « sauvegarde interrompue ».
+Restent le rééchantillonnage (PDFium : objets image → DynamicImage → JPEG), le corpus réel/hostile et les scénarios
+d'enregistrement interrompu/disque plein. Le contrôle qpdf synthétique figé en CI et la longueur AES-256 explicite
+sont implémentés pour 0.9.1 ; résultats d'exécution dans `PROJECT_STATUS.fr.md`.
 
 ## SUNI-015 — Identité visuelle et ressources Windows (owner : WINDOWS-RELEASE)
-Livrés : icône originale (SVG → ICO), manifeste DPI-aware et ressources de version.
+Livrés : manifeste DPI-aware et ressources de version. L'icône Windows 0.9.1 dérive du visuel dédié fourni par l'auteur
+et retouché `assets/icon/sunipdf-source.png` (ICO + tailles PNG).
 Reste : signature du code des exécutables/MSI lorsqu'un certificat sera disponible.
 
 ## SUNI-016 — QA indépendante (owner : QA-PERFORMANCE)

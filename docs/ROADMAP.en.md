@@ -1,3 +1,3 @@
 # English documentation
 
-This document is maintained in [ROADMAP.md](ROADMAP.md).
+The current roadmap is maintained in [ROADMAP.md](ROADMAP.md).

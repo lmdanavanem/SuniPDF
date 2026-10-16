@@ -4,9 +4,9 @@
 
 ## Version 0.9.0: seven requested features published
 
-The seven requested features are included in [0.9.0, published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
-under `lmdanavanem`. 318 tests passed; all six public files and SHA256 checks, packaged French OCR/forms and the live
-updater download were verified. `PROJECT_STATUS.md` records the evidence and remaining hardware/interoperability limits.
+The seven requested features are included in the [0.9.0 release](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
+under `lmdanavanem`. [PROJECT_STATUS.md](PROJECT_STATUS.md) records executed checks, release evidence and remaining
+hardware/interoperability limits. Historical test counts are not the current release gate.
 
 | Feature | Included scope |
 |---|---|
@@ -16,20 +16,33 @@ updater download were verified. `PROJECT_STATUS.md` records the evidence and rem
 | Two-page/Book view | Mixed sizes, cover first, odd last page, shared zoom and bounded tile/texture caches |
 | Form creation | Numeric text/checkbox rectangles, unique names, rotated/cropped/encrypted documents, undo/fill/save |
 | Local FR/EN OCR | Bundled Tesseract 5.5.3/Leptonica 1.87, fast eng/fra models, invisible text, existing text skipped, atomic cancellation and one undo |
-| Digital signatures | Saved-byte integrity, incremental PFX/P12 signed copy, rewrite warning; identity trust/revocation/trusted timestamps unchecked |
+| Digital signatures | Saved-byte integrity, incremental PFX/P12 signed copy, rewrite warning; chain trust/revocation/trusted timestamps/LTV not implemented |
 
 The 0.8.3 P1/P2 corrections remain included: finite text coordinates, bounded Organize thumbnails,
 single-line stamps and valid CLI annotation opacity. English remains the default; French is available.
 
+## Version 0.9.1: reliability changes awaiting validation/publication
+
+- Preserve PDF/A identifiers and unrelated XMP when editing standard properties; clearly refuse malformed XML/DTD.
+  This does not certify PDF/A conformance.
+- Emit the explicit AES-256 key length before saving, including metadata/cleanup/optimisation round trips.
+- Pinned qpdf checks of synthetic fixtures/generated output in CI; a real or hostile PDF corpus remains separate work.
+- Portable update/rollback regressions and a real MSI install/upgrade regression on disposable Windows runners.
+- Dedicated Windows icon derived from the retouched author-provided source.
+
+Implementation is present; current test, CI, package and publication outcomes must be read in `PROJECT_STATUS.md`.
+Do not infer ARM64, physical printer, reader interoperability or interactive updater validation from these checks.
+
 ## Remaining development backlog
 
-1. Independent QA: qpdf, real hostile/large PDF corpus, installed/portable upgrades, ARM64 hardware,
-   physical printers/Print to PDF, Narrator and Acrobat/Foxit/Chrome interoperability.
+1. **P1 — Independent QA:** real hostile/large PDF corpus, interrupted/full-disk saves, interactive installed/portable
+   updates, ARM64 hardware, physical printers, Narrator and Acrobat/Foxit/Chrome interoperability.
 2. Font subsetting, CFF/OTF/TTC support and richer paragraph/object-group editing.
 3. Complex untagged column reading order, view rotation and touch validation.
 4. More field types, FDF/XFDF interchange and keyboard activation of on-page widgets.
 5. Office conversion with explicit fidelity limits and detected local converters.
-6. Certificate trust/revocation, trusted timestamps/LTV and executable/MSI code signing when credentials are supplied.
+6. Certificate trust/revocation and trusted timestamps/LTV (not implemented); executable/MSI code signing when
+   credentials are supplied. Future release numbers/dates require separate scope decisions.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
@@ -55,7 +68,7 @@ All 14 tools have an implementation in 0.9.0, including Scan & OCR, Prepare a fo
 
 ## After redaction (irreversible redaction, slice delivered)
 Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
-- `qpdf --check` of the outputs and a run on a real corpus (scans with an OCR layer, heavily tagged PDFs, nested
+- independent checks of a real corpus (scans with an OCR layer, heavily tagged PDFs, nested
   form XObjects, Type 3 fonts); measurement on a page with tens of thousands of objects (quadratic
   `prune_objects`: own reachability with a `BTreeSet` if slow);
 - fine text splitting (keep the unredacted part of a line selectable): requires recreating fragments with the
@@ -67,7 +80,7 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
-- XFDF export (no dependency) then XFDF/FDF import (XML reader to choose);
+- XFDF export then XFDF/FDF import (reuse the existing XML parser where appropriate);
 - grouped "Apply" mode (several fields, a single undo level and a single reload);
 - free text in an editable drop-down list; `/Opt` export values of radio buttons; keyboard activation
   (Space / Enter) of the page's field rectangles; Windows Narrator check (`labelled_by` names
@@ -90,10 +103,9 @@ final visual validation by the user. The short-window right-rail overlap is alre
 The 39 findings of `docs/plans/review-fixes.md` are fixed or already covered (engine and application tests).
 Remaining, non-blocking:
 - automatically re-encrypt the extracts and the parts of a split of a protected document (D046, A29);
-- check the produced AES files with qpdf (third-party fixture, A4) and the regenerated XMP (reading by an
-  XMP indexer);
-- carry over `pdfaid:*` and the other namespaces of the original XMP into the packet regenerated by
-  `set_metadata` (A34);
+- expand the independent AES/XMP interoperability corpus beyond the synthetic qpdf gate (A4);
+- validate preserved PDF/A metadata with a dedicated conformance validator (A34); the 0.9.1 preservation fix
+  itself is implemented, and current execution evidence belongs in `PROJECT_STATUS.md`;
 - embed JPEGs with EXIF orientation 5 and 7 without decoding (A31); limit the memory of PNG batches;
 - CLI help for `stamp` / `page-numbers` (A16, clap replaces `{n}`).
 
@@ -130,7 +142,7 @@ Delivered (D067–D076): ink, free text box, rectangle, ellipse, line, arrow, cl
 recolour / delete, reply threads and statuses, remembered author, CLI `annotations` / `annotate` / `reply` /
 `review-state` / `annotation-delete`. What remains:
 - **verify interoperability** of replies and statuses, ink, free text and shape appearances in Acrobat, Foxit and
-  Chrome (not available on the development machine); `qpdf --check` of the outputs (SUNI-025);
+  Chrome (not available on the development machine); structural checking alone does not prove visual interoperability;
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
 - polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
@@ -139,10 +151,13 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 
 ## SUNI-025 — Lossy compression and qpdf verification (owner: OCR-CONVERSION + QA)
-Image resampling (PDFium: image objects → DynamicImage → JPEG re-encoding), qpdf verification in CI, AES fixtures produced by qpdf, "interrupted save" test.
+Image resampling (PDFium: image objects → DynamicImage → JPEG re-encoding), real/hostile corpus and interrupted/full-disk
+save scenarios remain. The pinned synthetic qpdf CI gate and AES-256 key-length correction are implemented for 0.9.1;
+execution results are tracked in `PROJECT_STATUS.md`.
 
 ## SUNI-015 — Visual identity and Windows resources (owner: WINDOWS-RELEASE)
-Delivered: original icon (SVG → ICO), DPI-aware manifest and version resources.
+Delivered: DPI-aware manifest and version resources. The 0.9.1 Windows icon is derived from the dedicated,
+retouched author-provided `assets/icon/sunipdf-source.png` (ICO + PNG sizes).
 Remaining: executable/MSI code signing when a certificate is available.
 
 ## SUNI-016 — Independent QA (owner: QA-PERFORMANCE)

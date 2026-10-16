@@ -276,7 +276,7 @@ def acroform(path, with_ap=True, xfa=False, links=False):
                              b"/FT /Btn /Ff 65536 /T (envoyer) /MK << /BC [0 0 0] /BG [0.8 0.8 0.8] /CA (Envoyer) >> /DA (/Helv 12 Tf 0 g)"))
     if links:
         fields.append(new_widget((150, 150, 350, 170), b"/FT /Tx /Ff 8192 /T (secret) " + BOX, apref(200, 20)))
-        page2 = add(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>")
+        page2 = add(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> >>")
         objs[1] = b"<< /Type /Pages /Kids [3 0 R %s] /Count 2 >>" % ref(page2)
         annots.append(add(b"<< /Type /Annot /Subtype /Link /F 4 /Rect [40 740 200 760] /Border [0 0 0] "
                           b"/A << /S /URI /URI (https://example.org/suni) >> >>"))

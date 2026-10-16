@@ -33,6 +33,7 @@ Copy-Item "third_party\pdfium\win-$Arch\LICENSE" "$stage\licenses\pdfium-binarie
 Copy-Item "third_party\pdfium\win-$Arch\licenses\*" "$stage\licenses\"
 Copy-Item "docs\THIRD_PARTY_NOTICES.md", "docs\THIRD_PARTY_NOTICES.fr.md" "$stage\licenses\"
 Copy-Item "assets\licenses\update-dependencies.txt" "$stage\licenses\"
+Copy-Item "assets\licenses\xml-rs-MIT.txt" "$stage\licenses\"
 # Flat licenses payloads keep updates compatible with the 0.8.x portable updater allowlist.
 $ocr = Join-Path $root "third_party/ocr/win-$Arch"
 Copy-Item -LiteralPath (Join-Path $ocr 'tesseract.exe'), (Join-Path $ocr 'tessdata/eng.traineddata'), (Join-Path $ocr 'tessdata/fra.traineddata') -Destination "$stage\licenses\"

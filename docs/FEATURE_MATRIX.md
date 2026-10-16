@@ -10,6 +10,7 @@ phase; **Out of scope**. Update this column only with real results.
 
 The 0.9.0 features below have automated regression coverage. `PROJECT_STATUS.md` records the executed checks;
 these results do not establish physical printer, ARM64 or third-party reader compatibility.
+The 0.9.1 changes are implemented, awaiting the validation/publication outcomes recorded in that status document.
 
 ## A. Reading
 
@@ -59,7 +60,7 @@ these results do not establish physical printer, ARM64 or third-party reader com
 | Resize pages | Declared | **Done** (A3–Legal or custom, content kept or scaled; CLI `resize-pages`); annotations not scaled |
 | Merge N PDFs with bookmarks | Declared | Merge **Done** (UI "Combine files", CLI `merge`); merge bookmarks planned |
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
-| Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); from a protected document: unencrypted result, announced (D046); preservation to verify with qpdf |
+| Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); from a protected document: unencrypted result, announced (D046); semantic preservation to verify beyond qpdf structural checking |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
@@ -83,11 +84,11 @@ these results do not establish physical printer, ARM64 or third-party reader com
 | Feature | Expected | SuniPDF |
 |---|---|---|
 | Open encrypted, honour permissions | Declared | **Done** (opening; permissions shown in the properties) |
-| Add/change password, AES-256 | Declared | **Done** (AES-128/256, permissions; AES-128 limited to Latin-1 passwords, typed refusal; accessibility always granted) through `lopdf`, re-read by PDFium; qpdf verification to add |
+| Add/change password, AES-256 | Declared | **Done** (AES-128/256, permissions; AES-128 limited to Latin-1 passwords, typed refusal; accessibility always granted) through `lopdf`, re-read by PDFium; explicit AES-256 key length and synthetic qpdf gate added for 0.9.1; results in `PROJECT_STATUS.md` |
 | Irreversible redaction | Declared (redact crate) | **Done** (hub Redact tool: areas drawn with the mouse, text marking, confirmation, save guard; CLI `redact`): objects removed + blacked-out image patch, annotations / fields / metadata / earlier revisions removed, verification by reading back; absence proven by tests (extraction, decompressed bytes, pixels, rotated pages, encrypted document); limits `KNOWN_ISSUES.md` A40 |
-| Metadata cleanup | Declared | **Done** (Info, XMP of the catalog, pages and images, `/PieceInfo`; modified properties regenerate the XMP) |
+| Metadata cleanup | Declared | **Done** (Info, XMP of the catalog, pages and images, `/PieceInfo`); 0.9.1 property editing preserves PDF/A identification/unrelated XMP and refuses malformed XML, validation tracked in `PROJECT_STATUS.md`; PDF/A conformance not certified |
 | Handwritten signature (image) | Declared | **Done** (sign-image): drawn on the pad, imported (transparent PNG or photo with the light background removed by threshold) or reused from the local library (`%APPDATA%\SuniPDF\signatures`, plain PNG, optional saving), initials, today's date; alpha-masked image object, editable and undoable; CLI `add-image`; **visual, never presented as certified** (permanent box, `digital_signature: false`) |
-| CMS/PKCS#12 digital signature, timestamping | Declared | Integrity verification/new-copy PFX/P12 signing **Done** (disposable-certificate tests); CLI `signatures`/`sign`; encrypted signing refused. Trust/revocation/trusted timestamps/LTV unchecked |
+| CMS/PKCS#12 digital signature, timestamping | Declared | Integrity verification/new-copy PFX/P12 signing **Done** (disposable-certificate tests); CLI `signatures`/`sign`; encrypted signing refused. Trust/revocation/trusted timestamps/LTV not implemented; Acrobat/Foxit interoperability unverified |
 | PKCS#11, online LTV, AATL/EUTL | Absent | Out of initial scope |
 
 ## F. Forms and accessibility
@@ -116,6 +117,6 @@ these results do not establish physical printer, ARM64 or third-party reader com
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.9.0 ZIP/MSI published, public SHA256/payloads checked, packaged OCR/forms/read/render verified; real installation unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.9.0 ZIP/MSI published, public SHA256/payloads checked, packaged OCR/forms/read/render verified; real MSI regression added for 0.9.1, result in `PROJECT_STATUS.md`; interactive UX unverified |
 | Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.9.0 CI-built portable ZIP published, public SHA256/architecture/models checked; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

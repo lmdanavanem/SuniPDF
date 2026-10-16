@@ -44,8 +44,10 @@ A3. ~~Rendu à fort zoom limité à 16 384 px~~ **Résolu pour l'écran (SUNI-01
     tenant pouvait dépasser la taille de texture maximale du GPU (panique d'`egui_glow` si le pilote limite à
     8192 px) ; aucune texture ne dépasse plus `max_texture_side`. La limite de 16 384 px reste vraie pour
     `Document::render_page`, l'export d'images et `sunipdf-cli render` sans `--region`.
-A4. **Chiffrement** : AES-128/256 écrit par lopdf et relu par PDFium dans les tests (aller-retour) ; RC4 40 bits
-    par fixture. Aucune fixture AES produite par un outil tiers (qpdf) : à ajouter avec la vérification qpdf.
+A4. **Chiffrement et QA indépendante** : AES-128/256 est écrit par lopdf et relu par PDFium ; RC4 40 bits est couvert
+    par fixture. En 0.9.1, le helper partagé écrit explicitement `/Encrypt /Length 256` pour AES-256, valeur omise
+    auparavant et signalée par qpdf, y compris après rechiffrement. Des contrôles qpdf synthétiques et fixtures AES
+    générées par qpdf sont ajoutés en CI. Résultats actuels dans `PROJECT_STATUS.fr.md` ; ce n'est pas un corpus réel/hostile.
 A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle UI** le temps du choix :
     comportement natif Windows, acceptable.
 A6. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
@@ -66,7 +68,7 @@ A18. **Polices système incorporées en entier** (pas de sous-ensemble) : chaque
      « Optimiser ». Seules les polices `.ttf` à contours TrueType sont proposées (`.otf` PostScript, `.ttc` et
      polices dont la licence interdit l'incorporation : refus typé `font_not_embeddable`). Liste lue par
      `reg.exe` (repli : dossier des polices) ; un nom non ASCII peut s'afficher mal (page de code OEM). Rendu
-     vérifié par PDFium seulement (aucun autre lecteur ni qpdf sur ce poste).
+     vérifié par PDFium ; compatibilité visuelle des autres lecteurs non vérifiée. qpdf ne valide pas le rendu.
 A19. **Recadrer masque, n'efface pas** : le contenu hors cadre reste dans le fichier (ce n'est pas un
      caviardage ; dit dans le dialogue). Recadrage à la souris non proposé (marges numériques avec aperçu).
 A20. **Texte sur la page** : le champ de saisie affiche le texte avec la police de l'interface (Segoe UI ou
@@ -87,9 +89,10 @@ A24. **Presse-papiers d'objets et presse-papiers système** : Ctrl+V ne colle le
      d'objets vit en mémoire le temps de la session (perdu à la fermeture de l'application).
 A9. **Tests moteur sérialisés** : PDFium ne peut pas être réinitialisé dans un même processus après
     `FPDF_DestroyLibrary` ; les tests partagent un moteur unique jamais détruit (`tests/engine.rs`).
-A10. **CI GitHub vérifiée pour la 0.8.3** : CI x64 et build ARM64 réussis. La seconde compilation x64 de release
-     a été annulée ; le MSI provient des binaires CI vérifiés. Six fichiers publics et leurs SHA256 contrôlés.
-     L'installation réelle et l'exécution sur matériel ARM64 restent à valider.
+A10. **Validation de distribution** : l'état courant des tests, CI, paquets et releases est consigné dans
+     `PROJECT_STATUS.fr.md`. La 0.9.1 ajoute des régressions portable/restauration et d'installation/mise à niveau MSI
+     sur runners jetables ; leur implémentation seule ne prouve pas leur exécution. Parcours interactifs, matériel ARM64
+     et imprimantes physiques restent des contrôles distincts.
 A11. **Hub « Tous les outils » : 14 outils implémentés en 0.9.0.** OCR, création de champs et certificat
      ont désormais de vraies commandes. Couverture automatisée et matérielle dans `PROJECT_STATUS.fr.md`.
 A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
@@ -148,9 +151,11 @@ A32. **Texte ajouté** : une tabulation vaut quatre espaces (aucune police PDF n
 A33. **Point d'enregistrement** : « modifié » s'efface en annulant jusqu'à l'état enregistré, sauf si une
      modification a suivi une annulation (l'état enregistré est alors inatteignable) ou si l'instantané
      enregistré est sorti des 50 niveaux d'historique (D052).
-A34. **Propriétés et PDF/A** : modifier les métadonnées régénère un paquet XMP minimal (D048) qui ne reprend pas
-     l'identification PDF/A (`pdfaid:part`, `pdfaid:conformance`) ni les autres espaces de noms du paquet
-     d'origine : un fichier PDF/A perd son identification après `set-metadata`, sans avertissement.
+A34. **Propriétés et PDF/A** : la 0.9.1 conserve l'identification PDF/A (`pdfaid:part`, `pdfaid:conformance`) et les
+     propriétés/espaces de noms XMP indépendants lors de la modification des quatre propriétés standard. Les XML
+     malformés, DTD et flux illisibles sont refusés clairement ; aucune sortie ne remplace silencieusement le paquet.
+     Conservation de l'identification ne signifie pas certification de conformité PDF/A. Validateur dédié et corpus
+     réels restent à ajouter ; preuves d'exécution actuelles dans `PROJECT_STATUS.fr.md`.
 A25. **Vue continue : limites (SUNI-012b)**.
      - La sélection suit l’ordre logique PDFium, y compris entre pages et au bord de la vue ; l’ordre voulu
        de colonnes arbitraires non balisées n’est pas déduit. Le marquage reste rectangulaire par page.
@@ -236,8 +241,8 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     dialogue (zone de texte, lien, confirmation d'adresse), panneau Commentaires avec fil, thèmes clair et sombre ;
     **non rejoués en capture** : la zone de texte posée après sa boîte, la modification par double-clic, les flèches du
     clavier, le redimensionnement d'une encre, d'une ligne ou d'une zone de texte (tous couverts par les tests moteur et
-    les tests purs de `annot_adv.rs`) ; `qpdf --check` non
-    exécuté sur les sorties (qpdf absent de ce poste, A4).
+    les tests purs de `annot_adv.rs`) ; contrôle structurel qpdf synthétique ajouté pour 0.9.1 (A4) ;
+    interopérabilité des lecteurs toujours non établie.
 A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone est **supprimé** (objets retirés, fichier
     réécrit sans révision antérieure, vérifié par relecture), mais avec ces limites :
     1. **Granularité** : un objet texte touché par une zone quitte la couche texte en entier ; ce qui dépasse de la
@@ -269,8 +274,8 @@ A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone 
         la ressource dans le fichier ; seul l'outil Caviarder assainit et réécrit le document.
     12. Les zones sont **effacées à toute modification du document** (rotation, page supprimée, annulation…) ; les
         zones dessinées n'ont pas de nœud d'accessibilité propre (leur nombre est annoncé dans la barre d'état).
-    13. Non vérifié : `qpdf --check` des sorties (A4), corpus de PDF réels (numérisations, PDF balisés lourds), pages de
-        plusieurs dizaines de milliers d'objets (`prune_objects` de lopdf est quadratique).
+    13. Non vérifiés : numérisations/PDF balisés lourds réels et pages de plusieurs dizaines de milliers d'objets
+        (`prune_objects` de lopdf est quadratique). Le contrôle qpdf synthétique ne remplace pas ce corpus (A4).
 
 
 ## Limites des fonctions 0.9.0
@@ -291,6 +296,6 @@ A43. **OCR local** : anglais/français uniquement, modèles rapides Tesseract ; 
      des tableaux/colonnes. Annulation/échec ne valide aucune page ; succès en un undo. Autres lecteurs à vérifier.
 A44. **Signatures numériques** : CMS détaché `adbe.pkcs7.detached`/`ETSI.CAdES.detached` sur octets enregistrés ;
      signature PFX/P12 incrémentale dans une nouvelle copie, pas sur PDF chiffré. Validité cryptographique ne signifie
-     pas confiance de l’identité : chaîne, révocation, AATL/EUTL, PKCS#11, horodatage fiable et LTV non vérifiés.
+     pas confiance de l’identité : chaîne, révocation, AATL/EUTL, PKCS#11, horodatage fiable et LTV non implémentés.
      L’heure du PDF est déclarative. Les modifications/réécritures peuvent invalider une signature. Interopérabilité
      Acrobat/Foxit et qualification PAdES non établies ; ne pas présenter le résultat comme signature qualifiée.

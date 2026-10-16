@@ -1,11 +1,29 @@
-# Project status - updated 2026-10-16 (version 0.9.0)
+# Project status - updated 2026-10-16 (version 0.9.1)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.9.0 published and validated
+## 0.9.1 reliability release: validation in progress
+
+Implemented: larger application icon (about 91% visible width instead of 50%), preservation of PDF/A/custom XMP,
+strict malformed-XMP refusal, explicit AES-256 key length, update-helper restart/error reporting,
+pinned QPDF corpus checks and real portable/MSI upgrade regression scripts in Windows CI.
+
+The core test suite passed locally, including namespace/other-resource/UTF-16 preservation, compressed and encrypted XMP,
+malformed XML refusal and AES round trips. Six isolated portable scenarios passed with prior retained packages and 0.9.0;
+the final 0.9.1 regression uses exact pinned public previous packages. MSI install/rollback/upgrade/uninstall runs only
+on an elevated disposable GitHub runner. Full workspace, QPDF, final packages and publication remain pending at this commit.
+
+Local compilation is limited to one Cargo command with `-j 2`. A workspace rebuild hit Windows paging-file error1455;
+crate suites are being run sequentially before the complete CI gate. No installation or user profile was modified locally.
+
+Remaining independent checks: real customer/hostile corpus, ARM64 hardware, physical printers, Narrator,
+interactive update/save dialogs and Acrobat/Foxit interoperability. PDF/A identification preservation is not conformance certification.
+Certificate trust/revocation/trusted timestamps/LTV remain unimplemented.
+
+## 0.9.0 published and validated (previous release)
 
 Implemented: 60-second/tab-suspend recovery; Windows printing; logical text selection across pages;
 two-page/cover-first Book views; text/checkbox creation; bundled local FR/EN OCR; CMS/PFX signing and verification.

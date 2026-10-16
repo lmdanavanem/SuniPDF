@@ -1,3 +1,3 @@
 # English documentation
 
-This document is maintained in [NEXT_TASKS.md](NEXT_TASKS.md).
+The current prioritised backlog is maintained in [NEXT_TASKS.md](NEXT_TASKS.md).

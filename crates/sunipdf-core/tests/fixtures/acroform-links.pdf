@@ -214,7 +214,7 @@ endobj
 << /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /Rect [150 150 350 170] /FT /Tx /Ff 8192 /T (secret) /MK << /BC [0 0 0] /BG [0.95 0.95 1] >> /DA (/Helv 12 Tf 0 g) /AP << /N 46 0 R >> >>
 endobj
 48 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> >>
 endobj
 49 0 obj
 << /Type /Annot /Subtype /Link /F 4 /Rect [40 740 200 760] /Border [0 0 0] /A << /S /URI /URI (https://example.org/suni) >> >>
@@ -276,11 +276,11 @@ xref
 0000008063 00000 n 
 0000008227 00000 n 
 0000008428 00000 n 
-0000008500 00000 n 
-0000008643 00000 n 
-0000008691 00000 n 
+0000008517 00000 n 
+0000008660 00000 n 
+0000008708 00000 n 
 trailer
 << /Size 52 /Root 1 0 R  >>
 startxref
-8796
+8813
 %%EOF
