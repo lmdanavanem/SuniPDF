@@ -124,7 +124,7 @@ A16. **CLI help for `stamp` and `page-numbers`**: clap replaces any `{n}` sequen
 A17. ~~"Modified" indicator after undo~~ **Fixed (review-fixes, D052)**: save point in
      the history; lost only if one edits after an undo or if the saved snapshot leaves the 50
      levels (the document then stays "modified" until the next save).
-A29. ~~Extraction/split removed PDF protection~~ **Implementation resolved for 0.11.0; local gates passed**:
+A29. ~~Extraction/split removed PDF protection~~ **Resolved in 0.11.0**:
      copies retain original encryption, passwords and permissions through the shared protected writer (D097 replaces
      D046). Output at the resolved source path is refused. CLI reports `encryption_removed: false` and adds `encrypted`.
      Existing document-permission policy is unchanged; current validation belongs in `PROJECT_STATUS.md`.
@@ -211,7 +211,7 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      FDF supports normal xref tables and text/name/array values only; streams, actions, attachments, rich text and
      FDF export are unsupported. XML DTDs, processing instructions, unknown elements, duplicate names and excessive
      size/depth are refused; referenced document paths are never opened. Input cap: 16 MiB.
-     0.11.0 editable-combo free text in the panel/on page passed local gates; CI/packages/publication are pending.
+     0.11.0 delivers editable-combo free text in the panel/on page; local, CI and packaged checks passed.
      Existing limits: no mouse-drawn field creation or editable-combo flag authoring; widget state is the
      radio value, not arbitrary legacy /Opt mappings; rich text becomes plain text; password fields never stored/exported.
      Partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear. Unicode
@@ -306,10 +306,10 @@ A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a kil
      synthetic corpus: 31 synthetic qpdf checks and all four real documents (744 pages) passed for 0.10.0.
      They do not establish broad customer/hostile/large-file compatibility; executed evidence is in `PROJECT_STATUS.md`.
 
-## 0.11.0 release preparation
+## 0.11.0 published changes and limits
 
-These additions passed 0.11.0 local gates. They are not part of published 0.10.0; CI/packages/publication remain
-pending in `PROJECT_STATUS.md`.
+These additions are published in [0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0). Local, CI, package and upgrade regression
+gates passed; public-download/live-updater checks also passed; evidence and remaining limits are recorded in `PROJECT_STATUS.md`.
 
 A48. **Page-label reading**: labels are optional metadata, not editable page numbering. Blank/unreadable labels,
      labels over 4096 UTF-8 bytes and labels containing control characters fall back to physical indices.

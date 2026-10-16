@@ -124,7 +124,7 @@ A16. **Aide de la CLI pour `stamp` et `page-numbers`** : clap remplace toute sé
 A17. ~~Indicateur « modifié » après annulation~~ **Corrigé (review-fixes, D052)** : point d'enregistrement dans
      l'historique ; perdu seulement si l'on modifie après une annulation ou si l'instantané enregistré sort des 50
      niveaux (le document reste alors « modifié » jusqu'au prochain enregistrement).
-A29. ~~Extraction/division retirant la protection PDF~~ **Implémentation résolue pour 0.11.0 ; contrôles locaux réussis** :
+A29. ~~Extraction/division retirant la protection PDF~~ **Résolu en 0.11.0** :
      les copies conservent chiffrement, mots de passe et permissions d'origine via le writer protégé (D097 remplace
      D046). Sortie au chemin source résolu refusée. CLI `encryption_removed: false`, ajout `encrypted`.
      Politique des permissions inchangée ; validations courantes dans `PROJECT_STATUS.fr.md`.
@@ -211,7 +211,7 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      FDF limité aux tables xref ordinaires et valeurs texte/nom/tableau ; flux, actions, pièces jointes, texte enrichi
      et export FDF non pris en charge. XML DTD/instructions de traitement/éléments inconnus/doublons/taille/profondeur
      excessives refusés ; chemins de document référencés jamais ouverts. Import limité à 16 Mio.
-     Le texte libre des combos déjà modifiables dans le panneau/sur la page réussit les contrôles locaux 0.11.0 ; CI/paquets/publication en attente.
+     La 0.11.0 livre le texte libre des combos déjà modifiables dans le panneau/sur la page ; contrôles locaux, CI et paquets réussis.
      Limites conservées : pas de dessin de champ souris ni de création du drapeau combo modifiable ; état du widget
      comme valeur radio, pas de correspondance /Opt historique arbitraire ; texte enrichi remplacé par texte simple ;
      champs mot de passe jamais stockés/exportés. Aplatissement partiel : champs orphelins possibles ; annotations sans
@@ -308,10 +308,10 @@ A47. **Sauvegardes/corpus 0.10.0** : erreurs de stockage injectées et arrêt fo
      complètent les fixtures synthétiques : 31 contrôles qpdf synthétiques et quatre documents réels (744 pages) réussis en 0.10.0.
      Cela ne prouve pas une couverture client/hostile/volumineuse universelle ; preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
-## Publication 0.11.0 en préparation
+## Changements publiés et limites 0.11.0
 
-Ces ajouts réussissent les contrôles locaux 0.11.0 et ne font pas partie de la 0.10.0 publiée. CI/paquets/publication
-restent en attente dans `PROJECT_STATUS.fr.md`.
+Ces ajouts sont publiés en [0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0). Contrôles locaux, CI, paquets et mises
+à niveau réussis ; contrôles publics/mise à jour aussi réussis ; preuves et limites dans `PROJECT_STATUS.fr.md`.
 
 A48. **Lecture des libellés de page** : métadonnées facultatives, sans modification de la numérotation. Un libellé
      vide/illisible, dépassant 4096 octets UTF-8 ou contenant un caractère de contrôle revient à l'indice physique.

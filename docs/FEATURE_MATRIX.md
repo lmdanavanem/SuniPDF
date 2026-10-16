@@ -16,10 +16,17 @@ The 0.9.1 workspace, qpdf and real portable/MSI regressions passed; package/publ
 The 362 workspace tests, 31 synthetic qpdf checks, four real NIST documents (744 pages), eight portable scenarios,
 two MSI baselines and all six public assets passed verification; evidence is recorded in `PROJECT_STATUS.md`.
 
-0.11.0 local gates passed: 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
-`-D warnings`, 858 EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four NIST documents (744 pages; 91.59 s,
-peak child memory 329,347,072 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`.
-Published 0.10.0 packages remain unchanged.
+[0.11.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
+
+The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
+`-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
+(744 pages; 91.59 seconds, peak child memory 329,347,072 bytes). [Final Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) and
+[same-source ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) passed, as did nine real portable scenarios from
+0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, three MSI baselines (0.8.0/0.9.1/0.10.0) and all six staged asset checks. Packaged
+checks include owner-opened AES-128/256 copies, decoded content/qpdf, page labels, metadata, OCR, forms and compression.
+Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six unauthenticated public downloads match API/sidecar/staged hashes; enhanced checks passed again on public
+binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
+and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
 ## A. Reading
 
@@ -36,9 +43,9 @@ Published 0.10.0 packages remain unchanged.
 | Full-text search | Declared | **Done** | Ctrl+F, case, highlighting, CLI `search` |
 | Text selection / copy in reading order | Declared | **Done**: logical character range, cross-page/reverse selection, double-click words, edge autoscroll | PDFium order; core/headless tests; arbitrary untagged column order not inferred |
 | Thumbnails | Declared | **Done** | Virtualised panel, shared cache |
-| Bookmarks (outline) | Declared | **Done** (panel, page navigation; editing planned); precise destinations **implemented, unreleased** | Named, XYZ/Fit/nonzero FitH; local tests passed |
-| Page labels | Declared | **Implemented, unreleased** (read-only) | PDFium labels, toolbar/thumbnails/CLI info; exact unique label or physical `#N`; invalid labels fall back; local tests passed |
-| Navigation history, reopened tabs | Declared | Recent files and per-tab 256-entry history **Done**; same-page/zoom history **implemented, unreleased** | Local tests passed |
+| Bookmarks (outline) | Declared | **Done** (panel, page navigation; editing planned); precise destinations **delivered in 0.11.0** | Named, XYZ/Fit/nonzero FitH; local tests passed |
+| Page labels | Declared | **Delivered in 0.11.0** (read-only) | PDFium labels, toolbar/thumbnails/CLI info; exact unique label or physical `#N`; invalid labels fall back; local tests passed |
+| Navigation history, reopened tabs | Declared | Recent files and per-tab 256-entry history **Done**; same-page/zoom history **delivered in 0.11.0** | Local tests passed |
 | Reading mode / full screen | Declared | **Done in 0.10.0** | View mode is a shared preference; rotation/history are retained per tab; editing returns to upright view |
 | Windows printing | Declared (limited fidelity) | **Done** (layout/range tests and actual Microsoft Print to PDF output reopened) | Native dialog, ranges/copies, bounded raster printing, progress/cancel; physical printer and interactive dialog unverified |
 | Crash recovery, autosave | Declared | **Done** (recovery/worker/tab regression tests) | 60-second and tab-suspend snapshots; source unchanged; encryption retained/no passwords; restore Save As |
@@ -56,7 +63,7 @@ Published 0.10.0 packages remain unchanged.
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
 | Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing delivered in 0.10.0 (single undo) |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
-| Links | Declared | **Done**: page/URI creation, confirmed allow-listed external addresses; **implemented, unreleased**: PDFium-resolved named/XYZ/Fit/nonzero FitH destinations with crop/rotation/null-axis handling and additive CLI JSON; local tests passed. FitH zero/null and other fit modes fall back to page navigation. Launch / JavaScript / remote GoTo are never executed; existing-link target editing remains planned |
+| Links | Declared | **Done**: page/URI creation, confirmed allow-listed external addresses; **delivered in 0.11.0**: PDFium-resolved named/XYZ/Fit/nonzero FitH destinations with crop/rotation/null-axis handling and additive CLI JSON; local tests passed. FitH zero/null and other fit modes fall back to page navigation. Launch / JavaScript / remote GoTo are never executed; existing-link target editing remains planned |
 | Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
 | Custom stamps | Not documented | Planned (P3) |
 
@@ -69,7 +76,7 @@ Published 0.10.0 packages remain unchanged.
 | Resize pages | Declared | **Done** (A3–Legal or custom, content kept or scaled; CLI `resize-pages`); annotations not scaled |
 | Merge N PDFs with bookmarks | Declared | Merge **Done** (UI "Combine files", CLI `merge`); merge bookmarks planned |
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
-| Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); **implemented for 0.11.0, local gates passed; CI/packages/publication pending**: retain source encryption/passwords/permissions and refuse output at the source path (D097 supersedes D046). Existing permission policy unchanged; CLI `encryption_removed: false`, additive `encrypted`; semantic preservation to verify beyond qpdf structural checking |
+| Extraction preserving links, fields, layers, attachments | Declared | Extraction **Done** (UI + CLI, `FPDF_ImportPages`); **implemented for 0.11.0, published; local, CI, package and upgrade gates passed**: retain source encryption/passwords/permissions and refuse output at the source path (D097 supersedes D046). Existing permission policy unchanged; CLI `encryption_removed: false`, additive `encrypted`; semantic preservation to verify beyond qpdf structural checking |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
@@ -108,8 +115,8 @@ Published 0.10.0 packages remain unchanged.
 | Fill AcroForm, regenerated appearances | Declared | **Done** (forms slice, D061–D063): text (single line, multiline, maximum length), checkbox, radio buttons, drop-down list, list box (multiple choice), hierarchical and multi-widget fields; values written by lopdf, appearances regenerated by PDFium and present in the file; on-page tool + accessible panel + flattening (fields and annotations) + clear; encrypted document kept encrypted; CLI `form-fields` / `fill-form` / `flatten`; scripts never executed (reported) |
 | Create fields | Not documented | **Done**: numeric text/checkbox creation in Prepare a form; radio/combo/list creation delivered in 0.10.0; unique names, rotated/cropped/encrypted pages, undo; core/CLI tests; CLI `add-form-field` |
 | FDF/XFDF import/export | Declared | **Done in 0.10.0**: JSON/XFDF export, strict bounded JSON/XFDF/FDF value import and grouped panel Apply/Discard with one undo; value-only FDF subset, no scripts/attachments/rich text |
-| Form-read failure recovery | Not documented | **Implemented, unreleased**: explicit error/retry preserves drafts and pending actions; local tests passed |
-| Existing editable drop-down free text | Not documented | **Implemented for 0.11.0, local gates passed; CI/packages/publication pending**: panel/on-page custom text plus listed choices, Apply/Discard/Save and undo; creating an editable flag is outside this slice |
+| Form-read failure recovery | Not documented | **Delivered in 0.11.0**: explicit error/retry preserves drafts and pending actions; local tests passed |
+| Existing editable drop-down free text | Not documented | **Implemented for 0.11.0, published; local, CI, package and upgrade gates passed**: panel/on-page custom text plus listed choices, Apply/Discard/Save and undo; creating an editable flag is outside this slice |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
 
@@ -129,6 +136,6 @@ Published 0.10.0 packages remain unchanged.
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.10.0 ZIP/MSI published, public SHA256/payloads verified, packaged OCR/forms/XFDF/compression/group transforms/read/render and eight real portable scenarios passed; two MSI baselines passed actual install/transactional rollback/upgrade/downgrade rejection/uninstall; live updater passed; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.10.0 CI-built portable ZIP published, public SHA256/architecture/models/notices/icon resources checked; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.11.0 ZIP/MSI published as Latest; nine real portable scenarios and three MSI baselines (install/rollback/upgrade/downgrade rejection/uninstall) passed; six public files/SHA256 and packaged checks verified; production live updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.11.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

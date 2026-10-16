@@ -16,10 +16,18 @@ Workspace, qpdf et régressions réelles portable/MSI 0.9.1 réussis ; résultat
 Les 362 tests du workspace, 31 contrôles qpdf synthétiques, quatre documents NIST réels (744 pages), huit scénarios portables,
 deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
-La 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec `-D warnings`,
-858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST (744 pages ; 91,59 s, pic mémoire
-enfant 329 347 072 octets). CI/paquets/publication restent en attente dans `PROJECT_STATUS.fr.md`.
-Les paquets 0.10.0 publiés restent inchangés.
+[0.11.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem`.
+
+La source 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
+`-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST réels
+(744 pages ; 91,59 s, pic mémoire enfant 329 347 072 octets). [CI Windows finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) et
+[build ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) réussis, ainsi que neuf scénarios portables réels
+depuis 0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, trois bases MSI (0.8.0/0.9.1/0.10.0) et les six fichiers préparés.
+Contrôles embarqués : copies AES-128/256 ouvertes comme propriétaire, contenu déchiffré/qpdf, libellés, métadonnées,
+OCR, formulaires et compression. Source immuable : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. Les six
+téléchargements publics concordent avec les empreintes API/SHA256/paquets ; contrôles renforcés réussis sur les
+binaires publics. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 687 375 octets sans installation.
+Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
 ## A. Lecture
 
@@ -36,9 +44,9 @@ Les paquets 0.10.0 publiés restent inchangés.
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
-| Signets (outline) | Déclaré | **Fait** (panneau, saut de page ; édition planifiée) ; destinations précises **implémentées, non publiées** | Nommées, XYZ/Fit/FitH non nul ; tests locaux réussis |
-| Étiquettes de pages | Déclaré | **Implémentées, non publiées** (lecture seule) | PDFium, barre/miniatures/CLI info ; étiquette exacte et unique ou page physique `#N` ; repli si invalide ; tests locaux réussis |
-| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents et historique borné à 256 **Faits** ; historique même page/zoom **implémenté, non publié** | Tests locaux réussis |
+| Signets (outline) | Déclaré | **Fait** (panneau, saut de page ; édition planifiée) ; destinations précises **livrées en 0.11.0** | Nommées, XYZ/Fit/FitH non nul ; tests locaux réussis |
+| Étiquettes de pages | Déclaré | **Livrées en 0.11.0** (lecture seule) | PDFium, barre/miniatures/CLI info ; étiquette exacte et unique ou page physique `#N` ; repli si invalide ; tests locaux réussis |
+| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents et historique borné à 256 **Faits** ; historique même page/zoom **livré en 0.11.0** | Tests locaux réussis |
 | Mode lecture / plein écran | Déclaré | **Fait en 0.10.0** | Mode de vue partagé comme préférence ; rotation/historique conservés par onglet ; retour à une vue droite pour éditer |
 | Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
 | Récupération après plantage, autosave | Déclaré | **Fait** (régressions récupération/worker/onglets) | Instantanés 60 s/suspension d'onglet ; source intacte ; chiffrement conservé/sans mots de passe ; restauration Enregistrer sous |
@@ -56,7 +64,7 @@ Les paquets 0.10.0 publiés restent inchangés.
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés livrés en 0.10.0, une annulation |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
-| Liens | Déclaré | **Fait** : création page/URI, adresses externes autorisées confirmées ; **implémenté, non publié** : destinations nommées/XYZ/Fit/FitH non nul résolues par PDFium, recadrage/rotation/axes nuls et JSON CLI additif ; tests locaux réussis. FitH zéro/null et autres modes gardent le saut de page. Launch / JavaScript / GoTo distant jamais exécutés ; édition de cible existante planifiée |
+| Liens | Déclaré | **Fait** : création page/URI, adresses externes autorisées confirmées ; **livré en 0.11.0** : destinations nommées/XYZ/Fit/FitH non nul résolues par PDFium, recadrage/rotation/axes nuls et JSON CLI additif ; tests locaux réussis. FitH zéro/null et autres modes gardent le saut de page. Launch / JavaScript / GoTo distant jamais exécutés ; édition de cible existante planifiée |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | Planifié (P3) |
 
@@ -69,7 +77,7 @@ Les paquets 0.10.0 publiés restent inchangés.
 | Redimensionner les pages | Déclaré | **Fait** (A3–Legal ou personnalisé, contenu conservé ou mis à l'échelle ; CLI `resize-pages`) ; annotations non mises à l'échelle |
 | Fusion de N PDF avec signets | Déclaré | Fusion **Faite** (UI « Combiner », CLI `merge`) ; signets de fusion planifiés |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
-| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; **implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente** : conserver chiffrement/mots de passe/permissions et refuser une sortie au chemin source (D097 remplace D046). Politique des permissions inchangée ; CLI `encryption_removed: false`, ajout `encrypted` ; préservation sémantique à vérifier au-delà de qpdf |
+| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | Extraction **Faite** (UI + CLI, `FPDF_ImportPages`) ; **implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis** : conserver chiffrement/mots de passe/permissions et refuser une sortie au chemin source (D097 remplace D046). Politique des permissions inchangée ; CLI `encryption_removed: false`, ajout `encrypted` ; préservation sémantique à vérifier au-delà de qpdf |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
@@ -108,8 +116,8 @@ Les paquets 0.10.0 publiés restent inchangés.
 | Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
 | Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes livrés en 0.10.0 ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
 | Import/export FDF/XFDF | Déclaré | **Fait en 0.10.0** : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
-| Récupération après erreur de lecture des champs | Non documenté | **Implémentée, non publiée** : erreur/relance explicites préservent brouillons et actions en attente ; tests locaux réussis |
-| Texte libre des listes déroulantes déjà modifiables | Non documenté | **Implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente** : texte libre/choix dans le panneau et sur la page, Appliquer/Abandonner/Enregistrer et annulation ; création du drapeau modifiable hors de cette tranche |
+| Récupération après erreur de lecture des champs | Non documenté | **Livrée en 0.11.0** : erreur/relance explicites préservent brouillons et actions en attente ; tests locaux réussis |
+| Texte libre des listes déroulantes déjà modifiables | Non documenté | **Implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis** : texte libre/choix dans le panneau et sur la page, Appliquer/Abandonner/Enregistrer et annulation ; création du drapeau modifiable hors de cette tranche |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 
@@ -129,6 +137,6 @@ Les paquets 0.10.0 publiés restent inchangés.
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.10.0 publiés en Latest, SHA256/contenu public vérifiés, OCR/champs/XFDF/compression/transformations groupées/lecture/rendu et huit scénarios portables réels réussis ; deux bases MSI réussies pour installation/rollback transactionnel/mise à niveau/refus de downgrade/désinstallation ; mise à jour en ligne vérifiée ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.10.0 compilé en CI et publié, SHA256 public/architectures/modèles/notices/icônes contrôlés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.11.0 ZIP/MSI publiés en Latest ; neuf scénarios portables et trois bases MSI (installation/rollback/mise à niveau/refus de downgrade/désinstallation) réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.11.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

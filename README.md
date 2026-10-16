@@ -26,11 +26,11 @@
 
 | Area | Features |
 |---|---|
-| Read | Tabs, continuous/single-page/two-page/Book views, view rotation, full screen, per-tab navigation history, tiled high-zoom rendering, thumbnails, search, bookmarks, logical text selection across pages, double-click words and edge scrolling |
+| Read | Tabs, continuous/single-page/two-page/Book views, page labels and physical `#N` navigation, precise link/bookmark destinations, view rotation, full screen, per-tab position/zoom history, tiled rendering, search and logical cross-page selection |
 | Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
-| Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages |
-| Fill and sign | AcroForm filling, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; handwritten/image signatures, initials and date (visual signatures, not digital certificates) |
+| Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages; extraction/split preserve source encryption, passwords and permissions |
+| Fill and sign | AcroForm filling, custom text in existing editable drop-downs, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; visual signatures, initials and date |
 | Create forms | Named text fields, checkboxes, radio groups, drop-downs and single/multiple-selection lists through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
 | Recover | Automatic snapshots every 60 seconds and on tab suspension; original unchanged, PDF encryption preserved, no passwords stored, restore through Save As |
 | Print | Native Windows printer selection, page ranges/copies/orientation, current edits, bounded raster output, progress and cancellation |
@@ -45,10 +45,12 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**0.11.0 passed local gates:** PDF page labels and precise link/bookmark navigation with zoom/history, preserved drafts
-after form-read errors, custom text in existing editable drop-downs, and protected extraction/split copies retaining
-original passwords and permissions. CI/packages/publication remain pending in [project status](docs/PROJECT_STATUS.md).
-Published 0.10.0 packages remain unchanged.
+**[0.11.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0)** under `lmdanavanem`.
+390 workspace tests, formatting/Clippy, 858 EN/FR keys, 44 qpdf checks across 42 distinct PDFs, four real NIST documents
+(744 pages), final Windows CI, ARM64 compilation, nine portable scenarios and three MSI upgrade baselines passed.
+Staged package checks include protected owner-opened AES-128/256 copies, page labels, OCR, forms and compression.
+All six public downloads and enhanced public-binary checks passed; the production updater verified the Latest x64
+ZIP without installation. [Project status](docs/PROJECT_STATUS.md) records evidence and hardware/interoperability limits.
 
 ## Screenshots
 

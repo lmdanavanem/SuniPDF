@@ -5,7 +5,31 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.11.0 : navigation, formulaires et copies protégées (validation locale réussie)
+## 0.11.0 : navigation, formulaires et copies protégées (publiée en Latest)
+
+[SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) est stable **Latest** sous `lmdanavanem`,
+release ID `414626617`, avec six fichiers. Tag/source immuable : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.
+[CI Windows x64 finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) et
+[job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) réussis.
+Le build x64/publication automatique en doublon a été annulé après réussite ARM64 ; les artefacts x64 de la CI main
+réussie et l’artefact ARM64 ont servi à publier. Auteur, tag, empreintes des fichiers et état API Latest stable vérifiés.
+
+Neuf scénarios portables réels réussis : mises à jour depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1 et 0.10.0, checksum invalide,
+mauvaise architecture, rollback sur fichier verrouillé et délai réel de fermeture/mutex. Installation MSI réelle,
+rollback transactionnel, mise à jour, refus du downgrade, empreintes des fichiers, désinstallation et conservation
+des données réussis depuis 0.8.0, 0.9.1 et 0.10.0 sur runners Windows jetables. Tests automatisés isolés, pas preuve
+interactive matérielle. Les six fichiers préparés passent architecture/version/icône/licences/OCR et égalité MSI/ZIP ;
+binaires x64 vérifiés sur libellés, copies/métadonnées AES-128/256 ouvertes propriétaire, deux mots de passe, qpdf/texte
+lisible, compression, formulaires/XFDF, transformations groupées et OCR français. Les originaux sont restés inchangés.
+
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 687 375 | `6A08A518619D89D450332F8AE1BA31FB336C3DF88910D5471183B25C173B2421` |
+| ZIP portable ARM64 | 18 279 249 | `8A6B958F2211BC95666DE10342E3338BBE80170667BBBB1D5DBD012584D04C33` |
+| MSI x64 | 19 255 296 | `E99FE4416DA5E55086059884CCBE770EA1D9AB437D8E3BE26D49D696B5C9C4BD` |
+
+Les six téléchargements publics sans authentification correspondent aux empreintes API, fichiers SHA256 et paquets CI de même source ; copies vérifiées dans `dist/`. Contrôles renforcés réussis sur les binaires publics, dont contenu/métadonnées AES-128/256 ouverts propriétaire. L'updater de production télécharge et vérifie le ZIP x64 Latest de 19 687 375 octets sans installation. Paquets non signés.
+ARM64 réel, imprimantes physiques, Narrateur, dialogues Windows interactifs et lecteurs tiers non vérifiés.
 
 - Libellés PDF en cache, navigation par libellé exact unique et positions physiques explicites `#N` ; miniatures,
   statut, accessibilité et ajout CLI `info.pages[].label`. Un libellé illisible, contenant des contrôles ou dépassant
@@ -23,21 +47,21 @@ le mot de passe)**, avec refus des entrées malformées. Les **quatre documents 
 en 91,59 secondes ; pic mémoire enfant échantillonné 329 347 072 octets. Les tests couvrent panneau/saisie en place des
 combos éditables, valeurs d’export ambiguës, première saisie clavier, échecs/réessais, huit cas cadres/rotations/chiffrement,
 JSON/XFDF, extraction/découpage protégés, deux mots de passe, RC4/AES-128/AES-256, préservation source/collisions,
-sorties du vrai worker et rotations non enregistrées. CI GitHub, paquets et publication restent à vérifier.
+sorties du vrai worker et rotations non enregistrées. CI Windows, ARM64 de même source, paquets préparés et publication réussis ; contrôles publics et updater de production réussis.
 
 Avant publication, qpdf sur le candidat `1714846` a détecté des flux AES-128 illisibles après ouverture avec un
 mot de passe propriétaire distinct. Ces paquets n’ont jamais été publiés. lopdf est fixé à la révision officielle
 `6ce451328c5caa65d50462daaf4ee8db9c85bb8e`, avec récupération de clé/encodage corrigés et licence MIT incluse.
 Les résultats locaux finaux ci-dessus couvrent cette dépendance corrigée et les deux rôles à l’ouverture, y compris
 texte/flux déchiffrés, métadonnées et déprotection. Builds Windows et contrôles des paquets doivent utiliser cette
-source corrigée ; les anciens artefacts du candidat sont exclus.
+source corrigée `0b7a22b2cf293c2908e8e6c6107c3f89bde01862` ; les anciens artefacts du candidat ont été exclus.
 Tranche navigation/lecture des formulaires antérieure au lot élargi 0.11.0 : **383 tests workspace réussis, zéro échec, sept ignorés par défaut** ; formatage, Clippy sans
 avertissement et **857 clés EN/FR** validés. Le contrôle qpdf explicite valide **34 PDF** et refuse ses entrées malformées.
 Les **quatre documents réels sous licence (744 pages)** passent en 63,01 secondes ; pic mémoire enfant échantillonné
 328 953 856 octets. Tests moteur/CLI : destinations nommées/directes/actions, rotations/cadres, AES-256 et relecture.
 Tests UI sans fenêtre native : libellés, clics sur liens, historique avec zoom sur une même page, enchaînements rapides
 Retour/lien et lectures de formulaire échouées. Les vrais binaires GUI/CLI de développement locaux sont construits.
-La CI GitHub reste distincte. Contrôles finaux du lot élargi 0.11.0 et publication en attente ; fichiers 0.10.0 inchangés. Usage natif interactif, Narrateur
+La CI GitHub reste distincte. Source corrigée 0.11.0 publiée ; fichiers historiques 0.10.0 inchangés. Usage natif interactif, Narrateur
 et lecteurs tiers non vérifiés.
 
 Le lot élargi ajoute la saisie libre dans les listes déjà éditables, par panneau ou sur la page, avec conservation

@@ -5,7 +5,31 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.11.0: navigation, forms and protected copies (local validation passed)
+## 0.11.0: navigation, forms and protected copies (published as Latest)
+
+[SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) is stable **Latest** under `lmdanavanem`,
+release ID `414626617`, with six assets. Immutable tag/source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.
+[Final Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) and the same-source
+[ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) passed.
+The duplicate release x64 build/automatic publication was cancelled after ARM64 succeeded; the successful main-CI
+x64 artifacts and ARM64 artifact were used. The author, tag, asset digests and stable Latest API state were checked.
+
+Nine actual portable scenarios passed: upgrades from 0.8.2, 0.8.3, 0.9.0, 0.9.1 and 0.10.0, plus bad checksum,
+wrong architecture, locked-file rollback and the real close-timeout/mutex scenario. Actual MSI installation,
+transactional rollback, upgrade, downgrade rejection, payload hashes, uninstall and user-data preservation passed
+from 0.8.0, 0.9.1 and 0.10.0 on disposable Windows runners. These are isolated automated tests, not an interactive
+hardware claim. All six staged assets passed architecture/version/icon/license/OCR and MSI/ZIP payload checks;
+packaged x64 labels, owner-opened AES-128/256 copies and metadata, both passwords, qpdf/readable content, compression,
+forms/XFDF, grouped transforms and French OCR passed. The original files stayed unchanged.
+
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,687,375 | `6A08A518619D89D450332F8AE1BA31FB336C3DF88910D5471183B25C173B2421` |
+| ARM64 portable ZIP | 18,279,249 | `8A6B958F2211BC95666DE10342E3338BBE80170667BBBB1D5DBD012584D04C33` |
+| x64 MSI | 19,255,296 | `E99FE4416DA5E55086059884CCBE770EA1D9AB437D8E3BE26D49D696B5C9C4BD` |
+
+All six unauthenticated public downloads match API digests, SHA256 sidecars and the same-source CI packages; verified copies are in `dist/`. Enhanced checks passed on public binaries, including owner-opened AES-128/256 content and metadata. The production live updater downloaded and verified the Latest 19,687,375-byte x64 ZIP without installation. Packages remain unsigned.
+ARM64 hardware, physical printers, Narrator, interactive Windows dialogs and third-party readers remain unverified.
 
 - Cached PDF page labels, exact unique-label navigation and explicit `#N` physical positions; thumbnails/status,
   accessibility and additive CLI `info.pages[].label`. Unreadable, control-containing or over-4096-byte labels use
@@ -22,21 +46,21 @@ PDFs (44 password-specific checks)**, plus malformed-input refusal. The **four l
 passed in 91.59 seconds with peak sampled child working set 329,347,072 bytes. Tests exercise editable combo panel/page
 input, ambiguous export labels, first-frame keyboard input, failed reads/retries, eight crop/rotation/encryption cases,
 JSON/XFDF round trips, protected extraction/split, both passwords, RC4/AES-128/AES-256, source/collision preservation,
-actual worker output and unsaved page rotations. GitHub CI, packages and publication are the remaining release gates.
+actual worker output and unsaved page rotations. Final Windows CI, same-source ARM64, staged package checks and publication passed; public downloads and the production live updater passed.
 
 Before publication, independent checks of candidate `1714846` caught corrupt AES-128 streams after opening with a
 distinct owner password. Those candidate packages were never published. Existing lopdf is now pinned to official
 revision `6ce451328c5caa65d50462daaf4ee8db9c85bb8e`, with upstream owner-key/password-encoding fixes and its MIT
 license included. The final local results above cover this corrected dependency and both source-opening roles,
 including decoded text/streams, metadata rewrites and unprotect. Windows builds and package gates must use this
-corrected source; earlier candidate artifacts are excluded.
+corrected source `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`; earlier candidate artifacts were excluded.
 Historical navigation/form-read slice, before the expanded 0.11.0 source: **383 workspace tests passed, zero failed, seven default ignored**; formatting, Clippy with warnings
 denied and **857 EN/FR keys** passed. The explicit qpdf gate passed **34 PDFs** and rejected its malformed samples.
 All **four licensed real documents (744 pages)** passed in 63.01 seconds; peak sampled child working set was
 328,953,856 bytes. Core/CLI tests cover named/direct/action destinations, rotations/crops, AES-256 and save/reopen;
 headless UI tests cover label navigation, link clicks, same-page zoom history, rapid Back/link sequences and failed
 form reads. The actual local GUI and CLI development binaries were built successfully. GitHub CI is separate.
-The expanded 0.11.0 final gates and publication are pending; published 0.10.0 files are unchanged. Native interactive use, Narrator and third-party
+The corrected 0.11.0 source is published; historical 0.10.0 files remain unchanged. Native interactive use, Narrator and third-party
 readers remain unverified.
 
 The expanded lot also implements custom text in existing editable drop-downs from the fields panel or page,
@@ -62,7 +86,7 @@ warnings denied and all 853 matching EN/FR catalogue keys passed. The two indepe
 executed explicitly: **31 synthetic/generated PDFs** passed qpdf, and **four authentic public research PDFs,
 744 pages in total**, passed bounded CLI regression checks. Final-source GitHub CI, builds, staged packages and actual
 portable/MSI update regressions passed as detailed below. [SuniPDF 0.10.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0)
-is published as **Latest** under `lmdanavanem`, with six assets (release ID `414522111`), neither draft nor prerelease.
+was published as **Latest** at that time under `lmdanavanem`, with six assets (release ID `414522111`), neither draft nor prerelease.
 
 [Final main x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38848137022) passed for immutable
 tag/source `f7510afd314846079bbdd838525cd28372fd3100`, including the workspace, Clippy, independent corpora and actual

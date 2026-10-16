@@ -8,6 +8,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 ## [0.11.0] — 2026-10-16
 
 Validation et preuves de publication figurent dans `docs/PROJECT_STATUS.fr.md`.
+Publiée en Latest sous `lmdanavanem`, avec six fichiers publics vérifiés dans `dist/`. Validation réussie : 390 tests
+workspace, formatage/Clippy, 42 PDF distincts qpdf (44 contrôles), quatre documents réels (744 pages), CI Windows finale
+et ARM64 de même source. Neuf scénarios portables, trois bases MSI, binaires publics renforcés et updater de production
+réussis. Source immuable de la release : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.
 
 ### Ajouts
 - Libellés PDF dans la barre de navigation, les miniatures, le statut et `info` CLI. Accès par libellé exact unique

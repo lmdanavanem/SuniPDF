@@ -58,12 +58,19 @@ verified the 19,651,167-byte Latest x64 ZIP without installation. The requested 
 the independent hardware/interoperability work below remains open.
 Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` release source are recorded in status.
 
-## 0.11.0: navigation, forms and protected copies (local gates passed)
+## 0.11.0: navigation, forms and protected copies (published)
 
-The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting, Clippy with
-`-D warnings`, 858 matching EN/FR keys, 44 independent qpdf checks across 42 distinct PDFs and four NIST documents
-(744 pages; 91.59 seconds, peak child memory 329,347,072 bytes). CI, package and publication gates remain pending;
-current evidence belongs in `PROJECT_STATUS.md`. Published 0.10.0 tags and packages remain unchanged.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
+
+The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
+`-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
+(744 pages; 91.59 seconds, peak child memory 329,347,072 bytes). [Final Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) and
+[same-source ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) passed, as did nine real portable scenarios from
+0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, three MSI baselines (0.8.0/0.9.1/0.10.0) and all six staged asset checks. Packaged
+checks include owner-opened AES-128/256 copies, decoded content/qpdf, page labels, metadata, OCR, forms and compression.
+Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six unauthenticated public downloads match API/sidecar/staged hashes; enhanced checks passed again on public
+binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
+and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
 - Read PDF page labels through PDFium in the toolbar, thumbnails and CLI `info`. Go to accepts an exact unique
   label; `#N` always selects the physical page. Labels remain read-only; invalid labels fall back to physical numbering.
@@ -75,7 +82,7 @@ current evidence belongs in `PROJECT_STATUS.md`. Published 0.10.0 tags and packa
   Apply/Discard, Save and undo. Creating the editable flag on a new field is outside this slice.
 - Preserve original encryption, passwords and permissions when extracting/splitting protected PDFs; refuse an output
   that resolves to the source path. CLI keeps `encryption_removed: false` and adds `encrypted`; the existing
-  document-permission policy is unchanged. Local regression gates passed; CI/package/publication checks remain pending.
+  document-permission policy is unchanged. Local, CI, package and upgrade regression gates passed; evidence is in `PROJECT_STATUS.md`.
 
 ## Remaining work beyond this lot
 
@@ -129,7 +136,7 @@ Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 - JSON/XFDF/FDF interchange and grouped panel Apply are implemented for 0.10.0; validation is tracked in `PROJECT_STATUS.md`.
-- Editable drop-down free text is implemented for 0.11.0, local gates passed; CI/package/publication checks pending; `/Opt` export values of radio buttons remain;
+- Editable drop-down free text is implemented for 0.11.0, published; local, CI, package and upgrade gates passed; `/Opt` export values of radio buttons remain;
   keyboard activation
   (Space / Enter) of the page's field rectangles is implemented in 0.10.0; Windows Narrator check (`labelled_by` names
   set, not listened to);
@@ -150,7 +157,6 @@ final visual validation by the user. The short-window right-rail overlap is alre
 ## After review-fixes (findings of the 14/10 adversarial reviews, slice delivered)
 The 39 findings of `docs/plans/review-fixes.md` are fixed or already covered (engine and application tests).
 Remaining, non-blocking:
-- Protected extraction/split re-encryption is implemented for 0.11.0, local gates passed; CI/package/publication checks pending (D097 supersedes D046; A29).
 - expand the independent AES/XMP interoperability corpus beyond the synthetic qpdf gate (A4);
 - validate preserved PDF/A metadata with a dedicated conformance validator (A34); the 0.9.1 preservation fix
   itself is implemented, and current execution evidence belongs in `PROJECT_STATUS.md`;

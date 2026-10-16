@@ -58,12 +58,20 @@ et l'updater de production valide le ZIP x64 Latest de 19 651 167 octets sans in
 du lot P1/P2 demandé sont remplis ; les contrôles matériels/d'interopérabilité indépendants ci-dessous restent ouverts.
 Provenance et source de release immuable `f7510afd314846079bbdd838525cd28372fd3100` figurent dans l'état du projet.
 
-## 0.11.0 : navigation, formulaires et copies protégées (contrôles locaux réussis)
+## 0.11.0 : navigation, formulaires et copies protégées (publiée)
 
-La source 0.11.0 élargie réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
-`-D warnings`, 858 clés EN/FR identiques, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST
-(744 pages ; 91,59 s, pic mémoire enfant 329 347 072 octets). CI, paquets et publication restent en attente ;
-preuves dans `PROJECT_STATUS.fr.md`. Le tag et les paquets publiés 0.10.0 restent inchangés.
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem`.
+
+La source 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
+`-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST réels
+(744 pages ; 91,59 s, pic mémoire enfant 329 347 072 octets). [CI Windows finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) et
+[build ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) réussis, ainsi que neuf scénarios portables réels
+depuis 0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, trois bases MSI (0.8.0/0.9.1/0.10.0) et les six fichiers préparés.
+Contrôles embarqués : copies AES-128/256 ouvertes comme propriétaire, contenu déchiffré/qpdf, libellés, métadonnées,
+OCR, formulaires et compression. Source immuable : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. Les six
+téléchargements publics concordent avec les empreintes API/SHA256/paquets ; contrôles renforcés réussis sur les
+binaires publics. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 687 375 octets sans installation.
+Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
 - Lire les étiquettes de pages via PDFium dans la barre, les miniatures et la CLI `info`. Aller à accepte une
   étiquette exacte et unique ; `#N` désigne toujours la page physique. Lecture seule ; étiquettes invalides remplacées par le numéro physique.
@@ -75,7 +83,7 @@ preuves dans `PROJECT_STATUS.fr.md`. Le tag et les paquets publiés 0.10.0 reste
   Appliquer/Abandonner, Enregistrer et l'annulation. La création de ce drapeau sur un nouveau champ reste hors de cette tranche.
 - Conserver chiffrement, mots de passe et permissions d'origine en extrayant/divisant un PDF protégé ; refuser une sortie
   résolue au chemin source. La CLI garde `encryption_removed: false` et ajoute `encrypted` ; la politique existante
-  des permissions ne change pas. Les contrôles finaux de régression/paquets restent nécessaires pour ces ajouts.
+  des permissions ne change pas. Contrôles locaux, CI, paquets et régressions de mise à niveau réussis ; preuves dans `PROJECT_STATUS.fr.md`.
 
 ## Travail restant au-delà de ce lot
 
@@ -130,7 +138,7 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 - échanges JSON/XFDF/FDF et panneau Appliquer groupé implémentés en 0.10.0 ; validation dans `PROJECT_STATUS.fr.md` ;
-- Texte libre des listes déroulantes modifiables implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente ; valeurs d'export `/Opt` des radios restantes ; activation clavier
+- Texte libre des listes déroulantes modifiables implémenté pour 0.11.0, publié ; contrôles locaux, CI, paquets et mises à niveau réussis ; valeurs d'export `/Opt` des radios restantes ; activation clavier
   (Espace / Entrée) implémentée en 0.10.0 ; vérification Narrateur Windows (noms `labelled_by`
   posés, non écoutés) ;
 - aplatissement : conserver aussi les annotations sans apparence autres que les liens (pièces jointes sans
@@ -150,7 +158,6 @@ validation visuelle finale par l'utilisateur. Le chevauchement du rail droit en 
 ## Après review-fixes (constats des revues adverses du 14/10, tranche livrée)
 Les 39 constats de `docs/plans/review-fixes.md` sont corrigés ou déjà couverts (tests moteur et application).
 Reste, non bloquant :
-- Rechiffrement des extraits/divisions protégés implémenté pour 0.11.0, contrôles locaux réussis ; CI/paquets/publication en attente (D097 remplace D046 ; A29).
 - élargir le corpus d'interopérabilité AES/XMP au-delà du contrôle qpdf synthétique (A4) ;
 - contrôler les métadonnées PDF/A préservées avec un validateur dédié (A34) ; la correction de préservation 0.9.1
   est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;

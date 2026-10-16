@@ -8,6 +8,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 ## [0.11.0] - 2026-10-16
 
 Release validation and publication evidence are recorded in `docs/PROJECT_STATUS.md`.
+Published as Latest under `lmdanavanem`, with six verified public files in `dist/`. Validation passed: 390 workspace
+tests, formatting/Clippy, 42 distinct qpdf PDFs (44 checks), four real documents (744 pages), final Windows CI and the
+same-source ARM64 build. Nine portable scenarios, three MSI baselines, enhanced public-binary checks and the production
+live updater passed. Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`.
 
 ### Added
 - Read PDF page labels in the toolbar, thumbnails, status and CLI `info`. Go to a unique exact label or use `#N`

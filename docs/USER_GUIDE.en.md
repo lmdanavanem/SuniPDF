@@ -3,8 +3,8 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This source guide includes the locally verified 0.11.0 changes. CI/packages/publication remain pending in
-[project status](PROJECT_STATUS.md); published 0.10.0 packages do not include these additions.
+This guide covers [SuniPDF 0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0), published as Latest
+under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
 
 ## Installation
 

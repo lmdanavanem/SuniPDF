@@ -49,7 +49,7 @@ huit scénarios portables de mise à jour/échec/restauration et deux bases MSI 
 vérifiés, y compris CLI/OCR embarqués, icônes, contenu MSI et mise à jour en ligne ; preuves dans `PROJECT_STATUS.fr.md`.
 Matériel, dialogues natifs interactifs, Narrateur, lecteurs tiers et corpus client/hostile élargi restent indépendants.
 
-## 0.11.0 : navigation, formulaires et copies protégées (contrôles locaux réussis)
+## 0.11.0 : navigation, formulaires et copies protégées (publiée)
 
 Implémentés et validés localement : étiquettes en lecture seule, navigation par étiquette exacte et unique ou
 indice physique `#N` ; destinations nommées et `/XYZ`, `/Fit`, `/FitH` non nul des liens/signets ; historique des sauts
@@ -59,9 +59,18 @@ déroulantes déjà modifiables dans le panneau/sur la page, et copies d'extract
 mots de passe et permissions, avec refus du chemin source. Politique des permissions inchangée ; création du
 drapeau de liste modifiable à venir.
 
-La source élargie réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
-`-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST (744 pages ; 91,59 s,
-pic mémoire enfant 329 347 072 octets). CI/paquets/publication restent en attente dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) sous `lmdanavanem`.
+
+La source 0.11.0 réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
+`-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST réels
+(744 pages ; 91,59 s, pic mémoire enfant 329 347 072 octets). [CI Windows finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) et
+[build ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) réussis, ainsi que neuf scénarios portables réels
+depuis 0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, trois bases MSI (0.8.0/0.9.1/0.10.0) et les six fichiers préparés.
+Contrôles embarqués : copies AES-128/256 ouvertes comme propriétaire, contenu déchiffré/qpdf, libellés, métadonnées,
+OCR, formulaires et compression. Source immuable : `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. Les six
+téléchargements publics concordent avec les empreintes API/SHA256/paquets ; contrôles renforcés réussis sur les
+binaires publics. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 687 375 octets sans installation.
+Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
 ## Phases 0–1 : planification et fondations — livrées
 

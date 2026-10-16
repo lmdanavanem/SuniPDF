@@ -28,11 +28,11 @@ Licence MIT ou Apache-2.0, au choix.
 ## Fonctionnalités
 | Domaine | Détail |
 |---|---|
-| Lire | Onglets, vues continue/page unique/double page/Livre, rotation de vue, plein écran, historique par onglet, tuiles au zoom profond, miniatures, recherche, signets, sélection logique entre pages, mots par double-clic et défilement au bord |
+| Lire | Onglets, vues continue/page unique/double page/Livre, libellés et page physique `#N`, destinations précises des liens/signets, rotation de vue, plein écran, historique de position/zoom, tuiles, recherche et sélection logique entre pages |
 | Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
-| Organiser | Pivoter, supprimer, insérer, réordonner (glisser-déposer), combiner, diviser, extraire, pages vierges |
-| Remplir et signer | Formulaires AcroForm, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signature manuscrite ou image, paraphe, date (signature visuelle, non certifiée) |
+| Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
+| Remplir et signer | AcroForm, texte libre des listes déjà modifiables, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles, paraphe, date |
 | Créer des formulaires | Champs texte, cases, groupes radio et listes simples/multiples nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
 | Récupérer | Instantanés automatiques toutes les 60 secondes et à la suspension ; source intacte, chiffrement PDF conservé, aucun mot de passe stocké, restauration Enregistrer sous |
 | Imprimer | Sélection native Windows, plages/copies/orientation, modifications courantes, rendu tramé borné, progression et annulation |
@@ -47,10 +47,12 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**0.11.0 vérifiée localement :** libellés de pages, liens/signets précis avec zoom/historique, brouillons conservés après
-échec de lecture des champs, texte libre dans les listes déroulantes déjà modifiables et copies d'extraction/division
-conservant mots de passe et permissions. CI/paquets/publication en attente dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
-Les paquets 0.10.0 publiés restent inchangés.
+**[0.11.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0)** sous `lmdanavanem`.
+390 tests du workspace, formatage/Clippy, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts, quatre documents NIST
+(744 pages), CI Windows finale, compilation ARM64, neuf scénarios portables et trois bases de mise à niveau MSI réussis.
+Les paquets préparés passent aussi copies AES-128/256 ouvertes comme propriétaire, libellés, OCR, formulaires et compression.
+Six téléchargements publics, contrôles renforcés des binaires et vérification du ZIP Latest x64 par le metteur à jour
+réussis sans installation. Preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

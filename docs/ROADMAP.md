@@ -49,7 +49,7 @@ update/failure/rollback cases and two MSI baselines passed. Final CI and all six
 including packaged CLI/OCR, icons, MSI payloads and the live updater. Evidence is recorded in `PROJECT_STATUS.md`.
 Hardware, native interactive flows, Narrator, third-party readers and broader customer/hostile corpus coverage remain independent work.
 
-## 0.11.0: navigation, forms and protected copies (local gates passed)
+## 0.11.0: navigation, forms and protected copies (published)
 
 Implemented and locally validated: read-only page labels with exact unique-label navigation and `#N` physical
 indices; named destinations and `/XYZ`, `/Fit`, nonzero `/FitH` for links/bookmarks; same-page and zoom-aware history;
@@ -58,9 +58,17 @@ to page navigation. Also implemented for 0.11.0: free text in existing editable 
 editor, and extraction/split copies retaining source encryption/passwords/permissions with same-source-path refusal.
 The existing permission policy is unchanged; creating editable drop-down flags remains future work.
 
-Local gates passed: 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with `-D warnings`,
-858 EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four NIST documents (744 pages; 91.59 s, peak child
-memory 329,347,072 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`.
+
+The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
+`-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
+(744 pages; 91.59 seconds, peak child memory 329,347,072 bytes). [Final Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) and
+[same-source ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) passed, as did nine real portable scenarios from
+0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, three MSI baselines (0.8.0/0.9.1/0.10.0) and all six staged asset checks. Packaged
+checks include owner-opened AES-128/256 copies, decoded content/qpdf, page labels, metadata, OCR, forms and compression.
+Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six unauthenticated public downloads match API/sidecar/staged hashes; enhanced checks passed again on public
+binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
+and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
 ## Phase 0–1: planning and foundations — delivered
 
