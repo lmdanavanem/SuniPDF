@@ -4,16 +4,16 @@ SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
 Ce guide couvre SuniPDF 0.21.0. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
-Les instructions s'appliquent aussi à 0.20.0 ; ses preuves de publication vérifiées ci-dessous sont
-historiques et ne valident pas le candidat 0.21.0.
+0.21.0 est publiée en Latest stable ; contrôles locaux, CodeQL, CI/mises à niveau,
+paquets préparés/publics et metteur à jour de production réussis.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`, release `415294715`,
-source `54054b101282a7688dde778b24090af6d6e1e6a6`. Validation locale : 468 tests réussis, zéro échec, sept ignorés par défaut ;
-formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).
-[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950447258) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950446650/job/117140185977) réussis :
-18 scénarios portables, 12 bases MSI et 60 journaux MSI vérifiés. Six fichiers préparés/publics, empreintes API/SHA256 et contrôles des paquets réussis,
-dont FreeText multiligne sur PDF simples/AES-128/AES-256 avec les deux mots de passe et sources inchangées.
-Copies vérifiées dans `dist/` ; le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 841 217 octets sans installation sur l'hôte.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
+source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Validation locale : 471 tests réussis, zéro échec, sept ignorés par défaut ;
+formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre PDF/744 pages.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) réussis :
+19 scénarios portables, 13 bases MSI et 65 journaux vérifiés. Six fichiers préparés/publics et copies `dist/` correspondent aux empreintes API/SHA256 ; contrôles complets des paquets réussis.
+Le metteur à jour de production a vérifié le ZIP Latest x64 de 19,846,878 octets en 1.76 s, sans installation sur l'hôte.
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) a corrigé #3/#119 sur cette source ; aucune alerte ouverte après triage individuel des 115 critiques.
 Preuves détaillées et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre et FreeText non validés sans récupération après plantage.

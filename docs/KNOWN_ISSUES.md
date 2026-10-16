@@ -2,25 +2,23 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.21.0: Code Scanning remediation (in preparation)
+## 0.21.0: Code Scanning remediation (published stable Latest)
 
-The 0.21.0 lot hardens the native signer-certificate boundary with an explicit null check before
-certificate metadata access and a malformed-CMS regression. The release workflow declares root
-`contents: read`; only its separate Publish job retains `contents: write` (D112).
+Explicit native signer-certificate null checks and malformed-CMS regression; release root
+`contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
+retain bounds and reject DTD events; UTF-8/UTF-16 XMP/XFDF regressions passed. Deterministic fixtures
+and complete scanning coverage are preserved.
 
-The 117-alert review distinguishes 114 deterministic test inputs, one intentional empty PDF user-password
-attempt, the native pointer path and the workflow permission gap. Triage keeps per-alert evidence and
-deterministic fixtures; no query, test directory or scanning coverage is disabled. All 115 critical alerts
-were individually dismissed by `lmdanavanem`: 114 as `used in tests`, #13 as `false positive`, between
-2026-10-16 19:34:00 and 19:38:10 UTC. The fresh API snapshot has zero open criticals and two open alerts:
-high #3 and medium #119 (the reindexed release-permissions finding; old #1 is fixed). Fresh CodeQL must
-verify those source fixes. Local validation passed: 471 tests, zero failures, seven default ignored;
-formatting, all-target Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks and update-helper self-test.
-The four-document/744-page licensed corpus passed with unchanged inputs. The XML 1.0 API migration
-retains bounded parsing and explicitly rejects DTD events for XMP/XFDF; the new UTF-8/UTF-16 regressions
-passed. CI (19 portable cases, 13 MSI baselines/65 logs), packages/public downloads and updater remain
-pending. 0.20.0 remains stable Latest. See [Code Scanning review](CODE_SCANNING_REVIEW.md)
-and [Project status](PROJECT_STATUS.md) for observed results. CLI commands and document behavior are unchanged.
+471 tests, zero failures, seven default ignored; formatting/Clippy, 912 EN/FR keys, 75 qpdf checks,
+four-document/744-page corpus and helper passed. CI, 19 portable cases (15 upgrades/four guards), 13 MSI
+baselines/65 logs, same-source ARM64, six staged/public files, `dist/` copies and production updater verified.
+CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were individually dismissed with
+evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
+
+The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
+with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+See [Code Scanning review](CODE_SCANNING_REVIEW.md)
+and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
 ## Build environment (this machine)
 
@@ -321,7 +319,7 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     retains text. The editor draft is memory-only and excluded from crash recovery. Helvetica WinAnsi,
     plain text and downward wrap growth remain the same; no embedded-font/rich-text expansion. Local review,
     workspace, formatting, i18n and Clippy passed; CI/upgrade, staged/public packages and production updater
-    verification passed. 0.20.0 is stable Latest. Native interaction/reader QA is separate.
+    verification passed. 0.20.0 was stable Latest at publication. Native interaction/reader QA is separate.
 
     No eraser, polygon, cloud, stamp or attachment; caps:
     64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,

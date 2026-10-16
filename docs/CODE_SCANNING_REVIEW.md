@@ -2,27 +2,27 @@
 
 [Français](CODE_SCANNING_REVIEW.fr.md) · [Per-alert critical inventory (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
-## 0.21.0 remediation follow-up
+## Verified 0.21.0 remediation
 
-The user authorized correction and publication of the reviewed findings. The 0.21.0 source now makes
-the signer-certificate null check explicit before metadata access and adds malformed-CMS verification
-coverage. The release workflow receives explicit root `contents: read`, retaining Publish's separate
-`contents: write`. Fresh CodeQL results must establish that high #3 and medium #119 (the reindexed
-release-permissions finding) are fixed; they are not to be dismissed to substitute for that verification.
-Old #1 is now fixed in GitHub after workflow reindexing, which does not by itself prove the new permission
-guard; the fresh scan must also close #119.
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) passed all Rust/Actions/Python jobs
+on source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. The unfiltered authenticated API confirms **zero open alerts** at `2026-10-16T19:59:54.8976555Z`.
+**High #3 fixed at `2026-10-16T19:58:04Z`; medium #119 fixed at `2026-10-16T19:49:12Z`.**
+Neither was dismissed: fresh analysis verified the explicit native certificate check and root `contents: read` permissions.
+#119 is the reindexed release finding #1; #1 and #2 remain separate historical fixes.
 
-All **115 critical alerts were individually dismissed** by `lmdanavanem` between **2026-10-16 19:34:00 and
-19:38:10 UTC**: **114 `used in tests`**, with their existing scope evidence, and **#13 `false positive`**
-because an empty-password authentication attempt embeds no secret. The authenticated follow-up API
-snapshot contains **zero open criticals and two open alerts (#3 and #119)**. The CSV retains all original
-review fields and adds the verified state, reason, author, timestamp and individual comment. Local gates
-passed: 471 tests, zero failures, seven default ignored; formatting, all-target Clippy with warnings denied,
-912 matching EN/FR keys, 75 qpdf checks, update-helper self-test and the four-document/744-page licensed
-corpus. Fresh CodeQL, CI/upgrade, package/public and updater checks remain pending. Deterministic fixtures and scanning coverage are preserved; no folder
-or query is excluded. XML 1.0 reader migration also keeps parsing bounds and explicitly refuses DTD events
-for XMP/XFDF; both new UTF-8/UTF-16 entity-input regressions and the malformed-CMS regression passed. The original snapshot below remains historical evidence;
-its open-alert statements describe that snapshot rather than a current GitHub state.
+All **115 criticals** were individually dismissed by **`lmdanavanem`** on 2026-10-16 between 19:34:00 and
+19:38:10 UTC: **114 `used in tests`**, **#13 `false positive`** (empty authentication probe, no embedded secret).
+The [CSV](qa/CODE_SCANNING_2026-10-16.csv) retains every historical field and adds the verified state, reason,
+author, timestamp and comment. Fixtures and queries remain enabled; no directory is excluded.
+Rust analysis still contains **115 already-triaged findings**, Actions/Python zero; this does not establish a vulnerability-free project.
+
+471 local/CI tests, formatting/Clippy, 912 keys, 75 qpdf checks, 4/744 corpus, helper, 19 portable cases,
+13 MSI baselines/65 logs, ARM64, six public packages/sidecars and updater passed. Three new CMS and UTF-8/UTF-16
+XMP/XFDF DTD/entity regressions passed; bounded XML 1.0 parsing and accurate license notices are retained.
+[0.21.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) is stable Latest. See [Project status](PROJECT_STATUS.md) for evidence.
+Exhaustive fuzzing, certificate trust/revocation/timestamps and hardware remain unchecked.
+
+The initial snapshot below is historical: its open states describe the original review rather than the current state.
 
 ## Original reviewed snapshot
 

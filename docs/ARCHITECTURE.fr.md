@@ -2,26 +2,23 @@
 
 [English](ARCHITECTURE.md)
 
-## 0.21.0 : traitement des alertes Code Scanning (en préparation)
+## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
 
-Le lot 0.21.0 renforce la frontière du certificat signataire natif par un contrôle explicite du pointeur
-avant l'accès aux métadonnées et une régression CMS malformé. Le workflow de release déclare
-`contents: read` à la racine ; seul son job Publish distinct conserve `contents: write` (D112).
+Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
+`contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0
+migrés vers `ParserConfig`, bornes conservées et DTD refusées ; régressions XMP/XFDF UTF-8/UTF-16 réussies.
+Les fixtures déterministes et toute la couverture de scanning sont conservées.
 
-La revue des 117 alertes distingue 114 entrées de test déterministes, un essai intentionnel de mot de passe
-utilisateur PDF vide, le parcours du pointeur natif et les permissions du workflow. Le triage conserve
-preuves individuelles et fixtures déterministes ; aucune requête, dossier de tests ni couverture de scanning
-n'est désactivé. Les 115 alertes critiques ont été écartées individuellement par `lmdanavanem` : 114 comme
-`used in tests`, #13 comme `false positive`, le 2026-10-16 entre 19:34:00 et 19:38:10 UTC. Le nouvel instantané
-API n'a aucune critique ouverte et conserve deux alertes ouvertes : élevée #3 et moyenne #119 (permissions
-de release réindexées ; ancienne #1 corrigée). La nouvelle analyse CodeQL doit vérifier ces corrections.
-Validation locale réussie : 471 tests, zéro échec, sept ignorés par défaut ; formatage, Clippy toutes cibles
-sans avertissement, 912 clés EN/FR, 75 contrôles qpdf et autotest du metteur à jour. Le corpus licencié de
-quatre documents/744 pages a réussi avec sources inchangées. La migration API XML 1.0 garde les bornes
-et refuse les DTD XMP/XFDF ; nouvelles régressions UTF-8/UTF-16 réussies. CI (19 scénarios portables,
-13 bases MSI/65 journaux), paquets/téléchargements publics et metteur à jour restent en attente.
-0.20.0 reste Latest stable. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) et l'[état du projet](PROJECT_STATUS.fr.md)
-pour les résultats observés. Commandes CLI et comportement des documents inchangés.
+471 tests, zéro échec, sept ignorés par défaut ; formatage/Clippy, 912 clés EN/FR, 75 qpdf, corpus 4/744 et
+autotest réussis. CI, 19 scénarios portables (15 mises à niveau/quatre gardes), 13 bases MSI/65 journaux,
+ARM64 de même source, six fichiers préparés/publics, copies `dist/` et metteur à jour de production vérifiés.
+CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont été écartées individuellement
+par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
+
+Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
+avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
+du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 ## Principes
 
@@ -288,7 +285,7 @@ Implémentation, tests locaux, formatage et Clippy réussis ; contrôles CI/paqu
 0.19.0 était la Latest stable à sa publication.
 Souris/stylet/tactile natifs et Narrateur restent distincts. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
-## 0.20.0 : éditeur FreeText sur la page (publiée en Latest stable)
+## 0.20.0 : éditeur FreeText sur la page (publiée ; Latest à cette date)
 
 Le bureau réutilise le placement d'annotation clic/tracé, les coordonnées affichées et l'état de brouillon/style
 FreeText existants (D111). L'éditeur multiligne ancré envoie seulement AddFreeText ou UpdateFreeText existant après
@@ -302,7 +299,7 @@ Le worker existant fournit une étape Annuler, protection, apparence Helvetica W
 le bas au renvoi. Brouillon non validé sans récupération après plantage.
 
 Implémentation/relecture, 468 tests workspace, formatage et 912 clés EN/FR réussis en local.
-Clippy sans avertissement et contrôles CI/paquets/publication/metteur à jour réussis ; 0.20.0 est Latest stable. Preuves dans
+Clippy sans avertissement et contrôles CI/paquets/publication/metteur à jour réussis ; 0.20.0 était Latest stable à sa publication. Preuves dans
 `PROJECT_STATUS.fr.md` ; QA souris/stylet/tactile natifs, Narrateur et lecteurs tiers distincte.
 
 ## Coordonnées (SUNI-031c)

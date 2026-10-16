@@ -2,30 +2,27 @@
 
 [English](CODE_SCANNING_REVIEW.md) · [Inventaire critique par alerte (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
-## Suivi des corrections 0.21.0
+## Corrections 0.21.0 vérifiées
 
-L'utilisateur a autorisé correction et publication des constats examinés. La source 0.21.0 rend explicite
-le contrôle du certificat signataire non nul avant les métadonnées et ajoute une régression CMS malformé.
-Le workflow de release reçoit `contents: read` à la racine, avec `contents: write` conservé sur Publish.
-Les nouveaux résultats CodeQL doivent établir la correction de l'élevée #3 et de la moyenne #119
-(permissions de release réindexées) ; leur exclusion ne doit pas remplacer cette vérification. L'ancienne
-#1 est maintenant corrigée dans GitHub après réindexation du workflow, ce qui ne prouve pas à lui seul la
-nouvelle garde de permissions ; l'analyse doit aussi fermer #119.
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) a réussi ses trois jobs Rust/Actions/Python
+sur la source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. L'API authentifiée non filtrée confirme **zéro alerte ouverte** au `2026-10-16T19:59:54.8976555Z`.
+**#3 élevée corrigée à `2026-10-16T19:58:04Z` ; #119 moyenne corrigée à `2026-10-16T19:49:12Z`.**
+Elles n'ont pas été écartées : contrôle natif du certificat explicite et permissions root `contents: read` vérifiés par une nouvelle analyse.
+#119 est la réindexation du constat de release #1 ; #1 et #2 restent des corrections historiques distinctes.
 
-Les **115 critiques ont toutes été écartées individuellement** par `lmdanavanem` le **2026-10-16 entre
-19:34:00 et 19:38:10 UTC** : **114 `used in tests`**, avec les preuves de périmètre existantes, et **#13
-`false positive`**, car un essai d'authentification par mot de passe vide ne contient pas de secret.
-Le nouvel instantané API authentifié contient **zéro critique ouverte et deux alertes ouvertes (#3 et #119)**.
-Le CSV conserve tous les champs de revue initiaux et ajoute état, motif, auteur, horodatage et commentaire
-individuel vérifiés. Contrôles locaux réussis : 471 tests, zéro échec, sept ignorés par défaut ; formatage,
-Clippy toutes cibles sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et
-corpus licencié de quatre documents/744 pages. CodeQL, CI/mises à niveau, paquets/publics et metteur à jour
-restent en attente. Fixtures
-déterministes et couverture du scanning conservées ; aucun dossier ni requête exclu. La migration des
-lecteurs XML 1.0 garde aussi les bornes et refuse explicitement les DTD XMP/XFDF ; régressions avec entités
-UTF-8/UTF-16 et régression CMS malformé réussies. L'instantané
-initial ci-dessous reste une preuve historique ; ses états ouverts décrivent cet instantané et non
-l'état GitHub actuel.
+Les **115 critiques** ont été écartées individuellement par **`lmdanavanem`** le 2026-10-16 entre 19:34:00 et
+19:38:10 UTC : **114 `used in tests`**, **#13 `false positive`** (essai d'authentification vide, aucun secret incorporé).
+Le [CSV](qa/CODE_SCANNING_2026-10-16.csv) conserve chaque champ historique et ajoute état, motif, auteur,
+horodatage et commentaire vérifiés. Les fixtures et requêtes sont conservées ; aucune exclusion de dossier.
+L'analyse Rust contient encore **115 constats déjà triés**, Actions/Python zéro ; ce résultat ne signifie pas zéro vulnérabilité dans le projet.
+
+471 tests locaux et CI, formatage/Clippy, 912 clés, 75 qpdf, corpus 4/744, autotest, 19 scénarios portables,
+13 bases MSI/65 journaux, ARM64, six paquets/sidecars publics et metteur à jour réussis. Trois nouvelles régressions
+CMS et DTD/entités XMP/XFDF UTF-8/UTF-16 réussies ; parsing XML 1.0 borné et notices conservés.
+[0.21.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) est Latest stable. Preuves dans l'[état du projet](PROJECT_STATUS.fr.md).
+Fuzzing exhaustif, confiance/révocation/horodatage des certificats et matériel restent non vérifiés.
+
+L'instantané initial ci-dessous est historique : ses états ouverts décrivent la revue initiale, et non l'état actuel.
 
 ## Instantané initial examiné
 

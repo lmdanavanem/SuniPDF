@@ -1,46 +1,57 @@
-# Project status - updated 2026-10-16 (0.21.0 in preparation; 0.20.0 stable Latest)
+# Project status - updated 2026-10-16 (0.21.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.21.0: Code Scanning remediation (in preparation)
+## 0.21.0: Code Scanning remediation (published stable Latest)
 
-The 0.21.0 lot hardens the native signer-certificate boundary with an explicit null check before
-certificate metadata access and a malformed-CMS regression. The release workflow declares root
-`contents: read`; only its separate Publish job retains `contents: write` (D112).
+Explicit native signer-certificate null checks and malformed-CMS regression; release root
+`contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
+retain bounds and reject DTD events; UTF-8/UTF-16 XMP/XFDF regressions passed. Deterministic fixtures
+and complete scanning coverage are preserved.
 
-The 117-alert review distinguishes 114 deterministic test inputs, one intentional empty PDF user-password
-attempt, the native pointer path and the workflow permission gap. Triage keeps per-alert evidence and
-deterministic fixtures; no query, test directory or scanning coverage is disabled. All 115 critical alerts
-were individually dismissed by `lmdanavanem`: 114 as `used in tests`, #13 as `false positive`, between
-2026-10-16 19:34:00 and 19:38:10 UTC. The fresh API snapshot has zero open criticals and two open alerts:
-high #3 and medium #119 (the reindexed release-permissions finding; old #1 is fixed). Fresh CodeQL must
-verify those source fixes. Local validation passed: 471 tests, zero failures, seven default ignored;
-formatting, all-target Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks and update-helper self-test.
-The four-document/744-page licensed corpus passed with unchanged inputs. The XML 1.0 API migration
-retains bounded parsing and explicitly rejects DTD events for XMP/XFDF; the new UTF-8/UTF-16 regressions
-passed. CI (19 portable cases, 13 MSI baselines/65 logs), packages/public downloads and updater remain
-pending. 0.20.0 remains stable Latest. See [Code Scanning review](CODE_SCANNING_REVIEW.md)
-and [Project status](PROJECT_STATUS.md) for observed results. CLI commands and document behavior are unchanged.
+471 tests, zero failures, seven default ignored; formatting/Clippy, 912 EN/FR keys, 75 qpdf checks,
+four-document/744-page corpus and helper passed. CI, 19 portable cases (15 upgrades/four guards), 13 MSI
+baselines/65 logs, same-source ARM64, six staged/public files, `dist/` copies and production updater verified.
+CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were individually dismissed with
+evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
 
-### Observed 0.21.0 local evidence
+The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
+with saved category filters. The 0.21.0 security item is Done; the other items remain future work.
+See [Code Scanning review](CODE_SCANNING_REVIEW.md)
+and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
-The workspace passed **471 tests, zero failures and seven default ignored**. Formatting and all-target
-Clippy with `-D warnings` passed (Clippy: 22.36 seconds); **912 matching EN/FR keys**, **75 qpdf checks**
-and the update-helper path/checksum/rollback self-test passed. Four licensed NIST/NBS PDFs (**744 pages**)
-passed in **67.304 seconds**, with sampled peak child memory **329,601,024 bytes**; all source files stayed
-unchanged. Independent core and release-file review passed. The three added regressions cover empty/
-malformed CMS and XMP/XFDF DTD/entity refusal for UTF-8 and UTF-16. XML notices accurately cover the
-direct/reexported/transitive packages; the existing MIT license file is byte-identical to XML 1.4's license.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) under `lmdanavanem`, release `415338013`,
+source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Local validation: 471 passed tests, zero failures, seven default ignored;
+formatting/Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks, update-helper self-test and four PDFs/744 pages.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) passed:
+19 portable cases, 13 MSI baselines and 65 verified logs. Six staged/public files and `dist/` copies match API/SHA256 digests; complete package checks passed.
+The production updater verified the 19,846,878-byte Latest x64 ZIP in 1.76 seconds without installing on the host.
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) fixed #3/#119 on this source; zero alerts remain open after individual triage of 115 criticals.
+Detailed evidence and limits are in [Project status](PROJECT_STATUS.md).
 
-The 115 critical-alert dismissals are verified independently of source fixes. High #3 and medium #119
-still await fresh CodeQL on the release source. Planned CI covers **19 portable cases** and **13 MSI
-baselines/65 logs**; these, same-source ARM64, staged/public files and production updater have not yet
-been validated for 0.21.0. Earlier release proof below does not validate this candidate.
+Local corpus: 67.304 seconds, sampled peak child memory 329,601,024 bytes; CI corpus: 32.195 seconds,
+sampled peak child memory 320,372,736 bytes. Sources unchanged. ARM64: 891 seconds,
+artifact `12071194275`; upload/post-cache verified before cancelling the duplicate workflow.
+CodeQL fixed #3 at `2026-10-16T19:58:04Z` and #119 at `2026-10-16T19:49:12Z`; neither was dismissed.
+The analysis still contains 115 Rust test findings with verified triage; zero open alerts does not mean zero findings.
+Three new CMS/XML regressions passed. XML notices are accurate; the unchanged MIT license matches XML 1.4 byte for byte.
+The [GitHub project](https://github.com/users/lmdanavanem/projects/1) has 42 read-back drafts, saved Bugs/Roadmap/Suggestions filters and the 0.21.0 security item Done.
+Other items are planned; no repository issue or comment was created.
 
-## 0.20.0: on-page FreeText creation and editing (published stable Latest)
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.21.0-win-x64-portable.zip` | 19846878 | `7D5DC36F467970891E5BD094791A8E0B0D8AFFDD7BFC36B106E9EE0409B2A956` |
+| `SuniPDF-0.21.0-win-arm64-portable.zip` | 18434585 | `91B99CFADD4E2547A42D915B653A7075EF5485984E1EE650726CDA7C2D5E7F31` |
+| `SuniPDF-0.21.0-win-x64.msi` | 19386368 | `4FEAA78595E289D381DAEBEFE0E036E36142A0CCDD54DCC31F34C36730BD6E85` |
+
+MSI ProductCode: `{BFFBDEB1-7C9A-4D74-B97C-5C9E69684FE9}`; version `0.21.0`, language `1033`.
+
+Packages are unsigned; native interactive UI, printers, Narrator, ARM64 hardware, independent readers and exhaustive fuzzing remain separate QA.
+
+## 0.20.0: on-page FreeText creation and editing (published; Latest at the time)
 
 The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
 Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
@@ -58,7 +69,7 @@ Implementation and independent review passed. Local workspace: 468 passed tests,
 default ignored; formatting, all-target Clippy with warnings denied and 912 matching EN/FR keys passed.
 The 75-check qpdf gate, four-document/744-page real corpus and update-helper self-test passed. Windows CI,
 18 portable cases, 12 MSI baselines/60 logs, same-source ARM64, all six staged/public files and the production
-updater passed. **0.20.0 is published as stable Latest**; [Project status](PROJECT_STATUS.md) records the executed evidence.
+updater passed. **0.20.0 was published as stable Latest at the time**; [Project status](PROJECT_STATUS.md) records the executed evidence.
 
 Observed 0.20.0 local evidence so far: 75 qpdf checks passed. Four licensed NIST/NBS documents
 (744 pages) passed in 58.260 seconds, with sampled peak child memory of 331,800,576 bytes; source files
@@ -68,7 +79,7 @@ save/reopen, protected-document and failure regression. Headless UI cases cover 
 coordinates, long text with visible Cancel, explicit submission, lifecycle guards, failure retention and
 blocked search navigation. Quick rectangle drags now use the release position.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) under `lmdanavanem`,
+[Published as stable Latest at the time](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) under `lmdanavanem`,
 release `415294715`, on 2026-10-16 at 19:09:50 UTC. Immutable tag/source:
 `54054b101282a7688dde778b24090af6d6e1e6a6`.
 [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950447258) passed all 32 steps in 751 seconds,

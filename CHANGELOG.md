@@ -16,12 +16,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
   Migrate the two XML readers to `ParserConfig` and explicitly reject DTD events before entity processing;
   preserve parsing bounds, with new UTF-8/UTF-16 XMP/XFDF refusal regressions and accurate XML license notices.
 - Verify individual triage of all 115 criticals by `lmdanavanem`: 114 `used in tests`, #13 `false positive`.
-  No critical remains open; high #3 and reindexed medium #119 await fresh CodeQL. Old #1 is fixed.
+  No critical remains open; high #3 and reindexed medium #119 are fixed by fresh CodeQL. Old #1 is historical.
 - Local gates passed: 471 tests, zero failures, seven default ignored; formatting, Clippy with warnings
   denied, 912 matching EN/FR keys, 75 qpdf checks, update-helper self-test and the four-document/744-page corpus.
   New regression coverage includes one malformed-CMS and two UTF-8/UTF-16 XML entity-refusal tests.
-- Fresh CodeQL, CI (19 portable cases, 13 MSI baselines/65 logs), package/public and updater gates remain pending;
-  0.20.0 remains stable Latest.
+- Fresh [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) fixed high #3 and medium #119; zero open alerts, with no scanning exclusions.
+- Published 0.21.0 as stable Latest under `lmdanavanem`; Windows CI, same-source ARM64, 19 portable cases,
+  13 MSI baselines/65 logs, six staged/public files and production-updater verification passed.
+- Populate the GitHub project's Bugs, Roadmap and Suggestions views with 42 prioritised drafts and saved category filters;
+  the completed 0.21.0 security item is Done.
   Actual results and alert states belong in `docs/PROJECT_STATUS.md` and `docs/CODE_SCANNING_REVIEW.md`.
 
 ## [0.20.0] - 2026-10-16

@@ -1,49 +1,57 @@
-# État du projet — mis à jour le 2026-10-16 (0.21.0 en préparation ; 0.20.0 Latest stable)
+# État du projet — mis à jour le 2026-10-16 (0.21.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.21.0 : traitement des alertes Code Scanning (en préparation)
+## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
 
-Le lot 0.21.0 renforce la frontière du certificat signataire natif par un contrôle explicite du pointeur
-avant l'accès aux métadonnées et une régression CMS malformé. Le workflow de release déclare
-`contents: read` à la racine ; seul son job Publish distinct conserve `contents: write` (D112).
+Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
+`contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0
+migrés vers `ParserConfig`, bornes conservées et DTD refusées ; régressions XMP/XFDF UTF-8/UTF-16 réussies.
+Les fixtures déterministes et toute la couverture de scanning sont conservées.
 
-La revue des 117 alertes distingue 114 entrées de test déterministes, un essai intentionnel de mot de passe
-utilisateur PDF vide, le parcours du pointeur natif et les permissions du workflow. Le triage conserve
-preuves individuelles et fixtures déterministes ; aucune requête, dossier de tests ni couverture de scanning
-n'est désactivé. Les 115 alertes critiques ont été écartées individuellement par `lmdanavanem` : 114 comme
-`used in tests`, #13 comme `false positive`, le 2026-10-16 entre 19:34:00 et 19:38:10 UTC. Le nouvel instantané
-API n'a aucune critique ouverte et conserve deux alertes ouvertes : élevée #3 et moyenne #119 (permissions
-de release réindexées ; ancienne #1 corrigée). La nouvelle analyse CodeQL doit vérifier ces corrections.
-Validation locale réussie : 471 tests, zéro échec, sept ignorés par défaut ; formatage, Clippy toutes cibles
-sans avertissement, 912 clés EN/FR, 75 contrôles qpdf et autotest du metteur à jour. Le corpus licencié de
-quatre documents/744 pages a réussi avec sources inchangées. La migration API XML 1.0 garde les bornes
-et refuse les DTD XMP/XFDF ; nouvelles régressions UTF-8/UTF-16 réussies. CI (19 scénarios portables,
-13 bases MSI/65 journaux), paquets/téléchargements publics et metteur à jour restent en attente.
-0.20.0 reste Latest stable. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) et l'[état du projet](PROJECT_STATUS.fr.md)
-pour les résultats observés. Commandes CLI et comportement des documents inchangés.
+471 tests, zéro échec, sept ignorés par défaut ; formatage/Clippy, 912 clés EN/FR, 75 qpdf, corpus 4/744 et
+autotest réussis. CI, 19 scénarios portables (15 mises à niveau/quatre gardes), 13 bases MSI/65 journaux,
+ARM64 de même source, six fichiers préparés/publics, copies `dist/` et metteur à jour de production vérifiés.
+CodeQL a corrigé #3 et #119 ; aucune alerte ouverte. Les 115 critiques ont été écartées individuellement
+par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun dossier ni requête exclu.
 
-### Preuves locales 0.21.0 observées
+Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
+avec filtres de catégorie enregistrés. L'élément de sécurité 0.21.0 est Terminé ; les autres éléments restent
+du travail futur. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
+et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
-Workspace : **471 tests réussis, zéro échec et sept ignorés par défaut**. Formatage et Clippy toutes cibles
-avec `-D warnings` réussis (Clippy : 22,36 secondes) ; **912 clés EN/FR correspondantes**, **75 contrôles qpdf**
-et autotest chemins/checksum/rollback du metteur à jour réussis. Quatre PDF NIST/NBS licenciés (**744 pages**)
-ont réussi en **67,304 secondes**, avec pic de mémoire enfant échantillonné de **329 601 024 octets** ; toutes
-les sources sont inchangées. Relectures indépendantes moteur et fichiers de release réussies. Les trois
-régressions ajoutées couvrent CMS vide/malformé et refus DTD/entités XMP/XFDF en UTF-8 et UTF-16. Les notices
-XML couvrent exactement paquets directs/réexportés/transitifs ; fichier de licence MIT existant identique
-octet pour octet à celui de XML 1.4.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
+source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Validation locale : 471 tests réussis, zéro échec, sept ignorés par défaut ;
+formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre PDF/744 pages.
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) réussis :
+19 scénarios portables, 13 bases MSI et 65 journaux vérifiés. Six fichiers préparés/publics et copies `dist/` correspondent aux empreintes API/SHA256 ; contrôles complets des paquets réussis.
+Le metteur à jour de production a vérifié le ZIP Latest x64 de 19,846,878 octets en 1.76 s, sans installation sur l'hôte.
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) a corrigé #3/#119 sur cette source ; aucune alerte ouverte après triage individuel des 115 critiques.
+Preuves détaillées et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
-Les 115 exclusions d'alertes critiques sont vérifiées indépendamment des corrections source. Élevée #3
-et moyenne #119 attendent encore CodeQL sur la source de release. CI prévue : **19 scénarios portables** et
-**13 bases MSI/65 journaux** ; ces contrôles, ARM64 de même source, fichiers préparés/publics et metteur à
-jour de production n'ont pas encore été validés pour 0.21.0. Les preuves antérieures ci-dessous ne valident
-pas ce candidat.
+Corpus local : 67,304 s, pic enfant échantillonné 329 601 024 octets ; corpus CI : 32.195 s,
+pic enfant 320,372,736 octets. Sources inchangées. ARM64 : 891 s,
+artefact `12071194275` ; chargement et post-cache vérifiés avant annulation du workflow dupliqué.
+CodeQL #3 corrigée à `2026-10-16T19:58:04Z`, #119 à `2026-10-16T19:49:12Z` ; aucune des deux écartée.
+Les 115 constats Rust de test restent présents dans l'analyse, avec triage vérifié ; zéro alerte ouverte ne signifie pas zéro constat.
+Trois nouvelles régressions CMS/XML réussies. Notices XML exactes, licence MIT existante inchangée et identique à celle de XML 1.4.
+Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) a 42 brouillons relus, filtres Bugs/Roadmap/Suggestions enregistrés et sécurité 0.21.0 Terminé.
+Les autres éléments sont planifiés ; aucun ticket ou commentaire du dépôt créé.
 
-## 0.20.0 : création et édition FreeText sur la page (publiée en Latest stable)
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.21.0-win-x64-portable.zip` | 19846878 | `7D5DC36F467970891E5BD094791A8E0B0D8AFFDD7BFC36B106E9EE0409B2A956` |
+| `SuniPDF-0.21.0-win-arm64-portable.zip` | 18434585 | `91B99CFADD4E2547A42D915B653A7075EF5485984E1EE650726CDA7C2D5E7F31` |
+| `SuniPDF-0.21.0-win-x64.msi` | 19386368 | `4FEAA78595E289D381DAEBEFE0E036E36142A0CCDD54DCC31F34C36730BD6E85` |
+
+MSI ProductCode: `{BFFBDEB1-7C9A-4D74-B97C-5C9E69684FE9}`; version `0.21.0`, language `1033`.
+
+Paquets non signés ; QA native interactive, imprimantes, Narrator, matériel ARM64, lecteurs tiers et fuzzing exhaustif restent distincts.
+
+## 0.20.0 : création et édition FreeText sur la page (publiée ; Latest à cette date)
 
 Le lot 0.20.0 implémenté crée et modifie les annotations FreeText directement sur la page (D111/A39).
 Cliquer ou tracer la boîte existante, saisir dans un éditeur multiligne ancré et utiliser **Ajouter** /
@@ -61,7 +69,7 @@ Implémentation et relecture indépendante réussies. Workspace local : 468 test
 ignorés par défaut ; formatage, Clippy toutes cibles sans avertissement et 912 clés EN/FR correspondantes réussis.
 Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest du metteur à jour ont réussi.
 CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
-et metteur à jour de production réussis. **0.20.0 est publiée en Latest stable** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
+et metteur à jour de production réussis. **0.20.0 était publiée en Latest stable à cette date** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
 
 Preuves locales 0.20.0 observées : 75 contrôles qpdf réussis. Quatre documents NIST/NBS licenciés
 (744 pages) réussis en 58,260 secondes, pic mémoire enfant échantillonné de 331 800 576 octets ; sources
@@ -72,7 +80,7 @@ coordonnées de vrais événements souris, texte long avec Annuler visible, vali
 texte conservé après échec et navigation de recherche bloquée. Les tracés rapides de rectangle reprennent
 la position de relâchement.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`,
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.20.0) sous `lmdanavanem`,
 release `415294715`, le 2026-10-16 à 19:09:50 UTC. Tag/source immuable :
 `54054b101282a7688dde778b24090af6d6e1e6a6`.
 [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38950447258) : 32 étapes réussies en 751 secondes,
