@@ -5,7 +5,7 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.9.0 implementation and validation
+## 0.9.0 published and validated
 
 Implemented: 60-second/tab-suspend recovery; Windows printing; logical text selection across pages;
 two-page/cover-first Book views; text/checkbox creation; bundled local FR/EN OCR; CMS/PFX signing and verification.
@@ -21,7 +21,12 @@ All 14 tools have commands. The CLI has 46 subcommands. English is the default; 
 | Bilingual catalogue check | Passed: 804 matching EN/FR keys |
 | Update helper self-test | Passed, including flat OCR payload replacement and rollback |
 | Native Microsoft Print to PDF | Explicit ignored test passed using the Windows driver: reopened one-page output contains unsaved edits; all source PDF objects/trailer (except generated ID) and original bytes remain unchanged |
-| 0.9.0 distribution | x64/ARM64 ZIP, x64 MSI, six public files and SHA256 checks pending |
+| 0.9.0 publication | [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0) under `lmdanavanem`; tag/source `dbeafdf6b484c784a0dab26fe6698049ec2e49ca` |
+| CI build provenance | [Main x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38830535213) passed; [ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38830543193/job/116748068977) passed. The duplicate release x64 build was cancelled after both artifacts were ready; the automated publisher was skipped and the owner published six verified files |
+| Public release files | All six files downloaded and verified against API digests and SHA256 sidecars, then copied to `dist/`: x64/ARM64 ZIP, x64 MSI and their three checksums. GUI/CLI/PDFium/Tesseract architecture, English GUI version, pinned eng/fra models and full OCR notices checked |
+| Packaged x64 application/CLI | Actual public binaries passed PDF reading/rendering, French OCR (`Bonjour`, `français`, `bientôt`) and field creation/fill/reopen checks |
+| MSI x64 | Built locally from the exact main-CI ZIP; every MSI payload hash matches that ZIP. Language 1033, unrestricted upgrade language and rollback sequence checked. WiX smoke passed with the existing ICE61 same-version-upgrade warning |
+| Live production updater | Explicit ignored network test passed against the public 0.9.0 x64 ZIP: production HTTPS/redirection, size and SHA256 checks; no installation performed |
 
 Not established: physical printer output, complete installer/portable update execution, ARM64 hardware,
 new native UI visual coverage or interactive printer dialogs, Narrator, Acrobat/Foxit signature compatibility or certificate identity trust.
@@ -102,7 +107,8 @@ trust/revocation/trusted timestamps/LTV, ARM64 hardware validation and broader r
 
 ## Log
 - 2026-10-16: 0.9.0 implements the seven requested features. Workspace: 318 passed/4 ignored, Clippy and formatting
-  passed, 804 bilingual keys, updater self-test and actual Microsoft Print to PDF output test passed; distribution checks are tracked above.
+  passed, 804 bilingual keys, updater self-test and actual Microsoft Print to PDF output test passed. Published as Latest
+  under `lmdanavanem`; all six public files/SHA256, package payloads, French OCR, fields and live updater download verified.
 - 2026-10-16: version 0.8.3 completes the four P1/P2 backlog fixes: finite text coordinates, bounded
   Organize/sidebar thumbnail textures and requests with stale/failure handling, single-line stamps and
   page-number templates, and explicit CLI rejection of unsupported free-text opacity.

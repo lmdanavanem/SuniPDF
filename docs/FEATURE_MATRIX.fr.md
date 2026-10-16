@@ -116,6 +116,6 @@ ces résultats ne prouvent pas la compatibilité imprimante physique, ARM64 ou l
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | Distribution ZIP/MSI ; preuves par version dans PROJECT_STATUS ; installation réelle non vérifiée |
-| Windows ARM64 | Déclaré (workflow dédié) | ZIP portable construit en CI ; preuves par version dans PROJECT_STATUS ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : ZIP/MSI 0.9.0 publiés, SHA256/contenu public contrôlés, OCR/champs/lecture/rendu vérifiés ; installation réelle non vérifiée |
+| Windows ARM64 | Déclaré (workflow dédié) | **Fait** : ZIP portable 0.9.0 compilé en CI et publié, SHA256/architectures/modèles contrôlés ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

@@ -2,10 +2,11 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## Version 0.9.0: seven requested features implemented
+## Version 0.9.0: seven requested features published
 
-The seven requested features are implemented. Release tests, package checks and publication are tracked
-in `PROJECT_STATUS.md`; no hardware or third-party compatibility result is implied by this table.
+The seven requested features are included in [0.9.0, published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
+under `lmdanavanem`. 318 tests passed; all six public files and SHA256 checks, packaged French OCR/forms and the live
+updater download were verified. `PROJECT_STATUS.md` records the evidence and remaining hardware/interoperability limits.
 
 | Feature | Included scope |
 |---|---|

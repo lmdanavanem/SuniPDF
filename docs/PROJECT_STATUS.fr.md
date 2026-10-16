@@ -5,7 +5,7 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Implémentation et validation 0.9.0
+## Version 0.9.0 publiée et validée
 
 Implémentés : récupération 60 s/suspension ; impression Windows ; sélection logique entre pages ;
 double page/Livre avec couverture seule ; création texte/case ; OCR FR/EN local embarqué ; signature/vérification CMS/PFX.
@@ -21,7 +21,12 @@ Les 14 outils possèdent des commandes. La CLI compte 46 sous-commandes. Anglais
 | Catalogues bilingues | Réussi : 804 clés EN/FR identiques |
 | Autotest du helper de mise à jour | Réussi, y compris remplacement et retour arrière du paquet OCR à plat |
 | Microsoft Print to PDF natif | Test ignoré lancé explicitement réussi via le pilote Windows : sortie d'une page rouverte avec modifications non enregistrées ; objets/trailer source (hors ID généré) et octets d'origine inchangés |
-| Distribution 0.9.0 | ZIP x64/ARM64, MSI x64, six fichiers publics et contrôles SHA256 en attente |
+| Publication 0.9.0 | [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0) sous `lmdanavanem` ; tag/source `dbeafdf6b484c784a0dab26fe6698049ec2e49ca` |
+| Provenance des compilations | [CI main x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38830535213) réussie ; [build ARM64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38830543193/job/116748068977) réussi. Seconde compilation x64 de release annulée après disponibilité des deux artefacts ; publisher automatique ignoré et six fichiers vérifiés publiés par le propriétaire |
+| Fichiers publics | Six fichiers téléchargés et vérifiés par empreintes API et SHA256, puis copiés dans `dist/` : ZIP x64/ARM64, MSI x64 et trois empreintes. Architectures GUI/CLI/PDFium/Tesseract, version GUI anglaise, modèles eng/fra figés et notices OCR complètes contrôlés |
+| Application/CLI x64 distribuées | Binaires publics vérifiés : lecture/rendu PDF, OCR français (`Bonjour`, `français`, `bientôt`) et création/remplissage/réouverture de champs |
+| MSI x64 | Produit localement depuis le ZIP exact de la CI main ; empreintes de tous les fichiers MSI identiques au ZIP. Langue 1033, mise à niveau sans filtre de langue et séquence de rollback vérifiées. WiX smoke réussi avec l'avertissement ICE61 existant sur les mises à niveau de version identique |
+| Updater réel de production | Test réseau ignoré lancé explicitement réussi sur le ZIP public x64 0.9.0 : HTTPS/redirections, taille et SHA256 de production ; aucune installation exécutée |
 
 Non établis : impression physique, installation/mise à jour portable complète, matériel ARM64, nouvelles captures
 de l'UI native ou boîtes interactives d'imprimante, Narrateur, compatibilité de signature Acrobat/Foxit et confiance de l'identité. Horodatage fiable,
@@ -102,7 +107,8 @@ conversion Office, confiance/révocation/horodatage fiable/LTV, matériel ARM64 
 
 ## Journal
 - 2026-10-16 : la 0.9.0 implémente les sept fonctions demandées. Workspace : 318 réussis/4 ignorés, Clippy/formatage
-  réussis, 804 clés bilingues, autotest updater et sortie réelle Microsoft Print to PDF réussis ; distribution suivie en tête.
+  réussis, 804 clés bilingues, autotest updater et sortie réelle Microsoft Print to PDF réussis. Publiée en Latest
+  sous `lmdanavanem` ; six fichiers publics/SHA256, contenu des paquets, OCR français, champs et téléchargement updater vérifiés.
 - 2026-10-16 : version 0.8.3, quatre corrections P1/P2 terminées : coordonnées de texte finies, textures et
   demandes de miniatures bornées dans Organiser/le panneau avec gestion des résultats périmés et des échecs,
   tampons et modèles de numérotation sur une ligne, refus explicite de l'opacité non prise en charge du texte libre CLI.

@@ -116,6 +116,6 @@ these results do not establish physical printer, ARM64 or third-party reader com
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | ZIP/MSI distribution; version-specific package evidence in PROJECT_STATUS; real installation unverified |
-| Windows ARM64 | Declared (dedicated workflow) | CI-built portable ZIP; version-specific package evidence in PROJECT_STATUS; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.9.0 ZIP/MSI published, public SHA256/payloads checked, packaged OCR/forms/read/render verified; real installation unverified |
+| Windows ARM64 | Declared (dedicated workflow) | **Done**: 0.9.0 CI-built portable ZIP published, public SHA256/architecture/models checked; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

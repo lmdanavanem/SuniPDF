@@ -2,10 +2,11 @@
 
 [English](NEXT_TASKS.md)
 
-## Version 0.9.0 : les sept fonctions demandées sont implémentées
+## Version 0.9.0 : les sept fonctions demandées sont publiées
 
-Les sept fonctions demandées sont implémentées. Tests, paquets et publication sont suivis dans
-`PROJECT_STATUS.fr.md` ; ce tableau ne vaut pas résultat matériel ou compatibilité lecteur tiers.
+Les sept fonctions sont dans la [0.9.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.0)
+sous `lmdanavanem`. 318 tests réussis ; six fichiers publics/SHA256, OCR français/formulaires distribués et téléchargement
+updater réel vérifiés. `PROJECT_STATUS.fr.md` consigne les preuves et les limites matérielles/d'interopérabilité restantes.
 
 | Fonction | Périmètre inclus |
 |---|---|
