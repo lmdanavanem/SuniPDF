@@ -61,8 +61,8 @@ Provenance et source de release immuable `f7510afd314846079bbdd838525cd28372fd31
 ## 0.11.0 : navigation, formulaires et copies protégées (contrôles locaux réussis)
 
 La source 0.11.0 élargie réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
-`-D warnings`, 858 clés EN/FR identiques, 42 contrôles qpdf sur 40 PDF distincts et quatre documents NIST
-(744 pages ; 76,05 s, pic mémoire enfant 332 398 592 octets). CI, paquets et publication restent en attente ;
+`-D warnings`, 858 clés EN/FR identiques, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST
+(744 pages ; 91,59 s, pic mémoire enfant 329 347 072 octets). CI, paquets et publication restent en attente ;
 preuves dans `PROJECT_STATUS.fr.md`. Le tag et les paquets publiés 0.10.0 restent inchangés.
 
 - Lire les étiquettes de pages via PDFium dans la barre, les miniatures et la CLI `info`. Aller à accepte une

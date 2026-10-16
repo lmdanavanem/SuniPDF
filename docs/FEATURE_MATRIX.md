@@ -17,8 +17,8 @@ The 362 workspace tests, 31 synthetic qpdf checks, four real NIST documents (744
 two MSI baselines and all six public assets passed verification; evidence is recorded in `PROJECT_STATUS.md`.
 
 0.11.0 local gates passed: 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
-`-D warnings`, 858 EN/FR keys, 42 qpdf checks across 40 distinct PDFs and four NIST documents (744 pages; 76.05 s,
-peak child memory 332,398,592 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`.
+`-D warnings`, 858 EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four NIST documents (744 pages; 91.59 s,
+peak child memory 329,347,072 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`.
 Published 0.10.0 packages remain unchanged.
 
 ## A. Reading

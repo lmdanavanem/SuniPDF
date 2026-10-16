@@ -59,8 +59,8 @@ editor, and extraction/split copies retaining source encryption/passwords/permis
 The existing permission policy is unchanged; creating editable drop-down flags remains future work.
 
 Local gates passed: 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with `-D warnings`,
-858 EN/FR keys, 42 qpdf checks across 40 distinct PDFs and four NIST documents (744 pages; 76.05 s, peak child
-memory 332,398,592 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
+858 EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four NIST documents (744 pages; 91.59 s, peak child
+memory 329,347,072 bytes). CI/packages/publication remain pending in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
 ## Phase 0–1: planning and foundations — delivered
 

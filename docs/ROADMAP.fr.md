@@ -60,8 +60,8 @@ mots de passe et permissions, avec refus du chemin source. Politique des permiss
 drapeau de liste modifiable à venir.
 
 La source élargie réussit 390 tests du workspace (zéro échec, sept ignorés par défaut), formatage/Clippy avec
-`-D warnings`, 858 clés EN/FR, 42 contrôles qpdf sur 40 PDF distincts et quatre documents NIST (744 pages ; 76,05 s,
-pic mémoire enfant 332 398 592 octets). CI/paquets/publication restent en attente dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
+`-D warnings`, 858 clés EN/FR, 44 contrôles qpdf sur 42 PDF distincts et quatre documents NIST (744 pages ; 91,59 s,
+pic mémoire enfant 329 347 072 octets). CI/paquets/publication restent en attente dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
 ## Phases 0–1 : planification et fondations — livrées
 

@@ -26,10 +26,11 @@ fn extract_and_split_report_and_retain_original_protection() {
     use sunipdf_core::{security, Protection};
     let temp = tempfile::tempdir().unwrap();
     let input = std::fs::read(fixture()).unwrap();
-    for (name, aes256) in [
-        ("plain", None),
-        ("aes128", Some(false)),
-        ("aes256", Some(true)),
+    for (name, aes256, user, owner) in [
+        ("plain", None, "", ""),
+        ("aes128", Some(false), "package-user", "package-owner"),
+        ("aes128-latin1", Some(false), "été", "propriétaire"),
+        ("aes256", Some(true), "package-user", "package-owner"),
     ] {
         let encrypted = aes256.is_some();
         let original = if let Some(aes256) = aes256 {
@@ -37,9 +38,10 @@ fn extract_and_split_report_and_retain_original_protection() {
                 &input,
                 None,
                 &Protection {
-                    user_password: "secret".into(),
-                    owner_password: "owner".into(),
+                    user_password: user.into(),
+                    owner_password: owner.into(),
                     allow_copy: false,
+                    allow_print: false,
                     aes256,
                     ..Default::default()
                 },
@@ -50,51 +52,79 @@ fn extract_and_split_report_and_retain_original_protection() {
         };
         let source = temp.path().join(format!("{name}.pdf"));
         std::fs::write(&source, &original).unwrap();
-        let out = temp.path().join(format!("{name}-extract.pdf"));
-        let mut extract = cli("extract", &source);
-        extract.args(["--pages", "2,1", "--out"]).arg(&out);
-        if encrypted {
-            extract.args(["--password", "secret"]);
-        }
-        let report = success(extract.output().unwrap());
-        assert_eq!(report["page_count"], 2);
-        assert_eq!(report["encryption_removed"], false);
-        assert_eq!(report["encrypted"], encrypted);
-        let mut split = cli("split", &source);
-        split
-            .args(["--every", "1", "--out-dir"])
-            .arg(temp.path().join(format!("{name}-parts")));
-        if encrypted {
-            split.args(["--password", "secret"]);
-        }
-        let report = success(split.output().unwrap());
-        assert_eq!(report["count"], 2);
-        assert_eq!(report["encryption_removed"], false);
-        assert_eq!(report["encrypted"], encrypted);
-        let files: Vec<PathBuf> = report["files"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|value| PathBuf::from(value.as_str().unwrap()))
-            .chain(std::iter::once(out))
-            .collect();
-        for file in files {
-            let mut properties = cli("properties", &file);
+        let opening_passwords = if encrypted {
+            vec![user, owner]
+        } else {
+            vec![""]
+        };
+        for (role, opening_password) in opening_passwords.into_iter().enumerate() {
+            let out = temp.path().join(format!("{name}-{role}-extract.pdf"));
+            let mut extract = cli("extract", &source);
+            extract.args(["--pages", "2,1", "--out"]).arg(&out);
             if encrypted {
-                properties.args(["--password", "secret"]);
-                let without_password = cli("info", &file).output().unwrap();
-                assert!(!without_password.status.success());
-                assert_eq!(
-                    serde_json::from_slice::<serde_json::Value>(&without_password.stderr).unwrap()
-                        ["error"],
-                    "password_required"
-                );
+                extract.args(["--password", opening_password]);
             }
-            let properties = success(properties.output().unwrap());
-            assert_eq!(properties["encrypted"], encrypted);
-            assert_eq!(properties["permissions"]["copy"], !encrypted);
+            let report = success(extract.output().unwrap());
+            assert_eq!(report["page_count"], 2);
+            assert_eq!(report["encryption_removed"], false);
+            assert_eq!(report["encrypted"], encrypted);
+            let mut split = cli("split", &source);
+            split
+                .args(["--every", "1", "--out-dir"])
+                .arg(temp.path().join(format!("{name}-{role}-parts")));
+            if encrypted {
+                split.args(["--password", opening_password]);
+            }
+            let report = success(split.output().unwrap());
+            assert_eq!(report["count"], 2);
+            assert_eq!(report["encryption_removed"], false);
+            assert_eq!(report["encrypted"], encrypted);
+            let metadata = temp.path().join(format!("{name}-{role}-metadata.pdf"));
+            let mut rewrite = cli("set-metadata", &source);
+            rewrite
+                .args(["--title", "Owner stream regression", "--out"])
+                .arg(&metadata);
+            if encrypted {
+                rewrite.args(["--password", opening_password]);
+            }
+            success(rewrite.output().unwrap());
+            let files: Vec<PathBuf> = report["files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|value| PathBuf::from(value.as_str().unwrap()))
+                .chain(std::iter::once(out))
+                .chain(std::iter::once(metadata))
+                .collect();
+            for file in files {
+                let mut properties = cli("properties", &file);
+                if encrypted {
+                    properties.args(["--password", user]);
+                    let without_password = cli("info", &file).output().unwrap();
+                    assert!(!without_password.status.success());
+                    assert_eq!(
+                        serde_json::from_slice::<serde_json::Value>(&without_password.stderr)
+                            .unwrap()["error"],
+                        "password_required"
+                    );
+                }
+                let properties = success(properties.output().unwrap());
+                assert_eq!(properties["encrypted"], encrypted);
+                assert_eq!(properties["permissions"]["copy"], !encrypted);
+                assert_eq!(properties["permissions"]["print"], !encrypted);
+                let mut text = cli("text", &file);
+                if encrypted {
+                    text.args(["--password", user]);
+                }
+                let text = text.output().unwrap();
+                assert!(text.status.success());
+                assert!(
+                String::from_utf8_lossy(&text.stdout).contains("SuniPDF page"),
+                "{name} source opening role {role}: derived content stream must remain readable"
+            );
+            }
+            assert_eq!(std::fs::read(&source).unwrap(), original);
         }
-        assert_eq!(std::fs::read(&source).unwrap(), original);
     }
 }
 

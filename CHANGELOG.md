@@ -25,6 +25,8 @@ Release validation and publication evidence are recorded in `docs/PROJECT_STATUS
 - Actual Windows upgrade regressions now include portable and MSI upgrades from 0.10.0.
 
 ### Fixed
+- Pin the official lopdf corrections for legacy owner-password key derivation and password encoding on load.
+  Owner-opened protected copies and metadata edits retain readable content; both credential roles are regression-tested.
 - The text-selection tool now follows link clicks while preserving the confirmation and scheme checks for external URLs.
 - A failed form-model read preserves text and choice drafts, blocks changes based on stale values, and offers explicit Retry.
 - Cache page rotations during the label scan, update only the affected metadata when rotating a page, and refresh

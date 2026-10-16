@@ -11,6 +11,7 @@ n'est utilisée ; aucun code d'un autre lecteur n'a été copié.
 | Bibliothèques incluses dans pdfium.dll (abseil, agg23, fast_float, freetype, icu, lcms, libjpeg-turbo, openjpeg, libpng, libtiff, llvm-libc, simdutf, zlib) | diverses (BSD, MIT, Apache-2.0, FreeType, IJG, zlib) | `third_party/pdfium/win-*/licenses/*` à copier dans le dossier `licenses/` de la distribution |
 | pdfium-binaries (packaging, Benoit Blanchon) | MIT | `third_party/pdfium/win-*/LICENSE` → `LICENSE-pdfium-binaries.txt` |
 | pdfium-render | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
+| lopdf 0.45.0, révision officielle `6ce451328c5caa65d50462daaf4ee8db9c85bb8e` (mot de passe propriétaire et encodage) | MIT | `assets/licenses/lopdf-MIT.txt` → `licenses/lopdf-MIT.txt` |
 | chrono (date locale du jour, dépendance directe de `sunipdf-desktop` ; déjà dans l'arbre via lopdf et pdfium-render) | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
 | egui / eframe et polices par défaut (Ubuntu Light : Ubuntu Font Licence 1.0 ; Hack : MIT/Bitstream Vera ; Noto Emoji : OFL-1.1 ; emoji-icon-font : MIT) | voir colonne | généré par `cargo about` (P6) |
 | Dépendances HTTP/TLS et helper de mise à jour | Licences par crate, dont ISC, BSD-3-Clause et CDLA-Permissive-2.0 | `assets/licenses/update-dependencies.txt` → `licenses/update-dependencies.txt` |

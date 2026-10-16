@@ -18,12 +18,19 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
   sur modèle périmé bloquée, réessai explicite et aucune boucle de relecture. Un formulaire vide confirmé reste valide.
 
 Contrôles locaux finaux du lot élargi 0.11.0 réussis : **390 tests workspace, zéro échec, sept ignorés par défaut**,
-formatage, Clippy sans avertissement et **858 clés EN/FR identiques**. qpdf valide **40 PDF distincts (42 contrôles selon
+formatage, Clippy sans avertissement et **858 clés EN/FR identiques**. qpdf valide **42 PDF distincts (44 contrôles selon
 le mot de passe)**, avec refus des entrées malformées. Les **quatre documents NIST/NBS sous licence, 744 pages**, passent
-en 76,05 secondes ; pic mémoire enfant échantillonné 332 398 592 octets. Les tests couvrent panneau/saisie en place des
+en 91,59 secondes ; pic mémoire enfant échantillonné 329 347 072 octets. Les tests couvrent panneau/saisie en place des
 combos éditables, valeurs d’export ambiguës, première saisie clavier, échecs/réessais, huit cas cadres/rotations/chiffrement,
 JSON/XFDF, extraction/découpage protégés, deux mots de passe, RC4/AES-128/AES-256, préservation source/collisions,
 sorties du vrai worker et rotations non enregistrées. CI GitHub, paquets et publication restent à vérifier.
+
+Avant publication, qpdf sur le candidat `1714846` a détecté des flux AES-128 illisibles après ouverture avec un
+mot de passe propriétaire distinct. Ces paquets n’ont jamais été publiés. lopdf est fixé à la révision officielle
+`6ce451328c5caa65d50462daaf4ee8db9c85bb8e`, avec récupération de clé/encodage corrigés et licence MIT incluse.
+Les résultats locaux finaux ci-dessus couvrent cette dépendance corrigée et les deux rôles à l’ouverture, y compris
+texte/flux déchiffrés, métadonnées et déprotection. Builds Windows et contrôles des paquets doivent utiliser cette
+source corrigée ; les anciens artefacts du candidat sont exclus.
 Tranche navigation/lecture des formulaires antérieure au lot élargi 0.11.0 : **383 tests workspace réussis, zéro échec, sept ignorés par défaut** ; formatage, Clippy sans
 avertissement et **857 clés EN/FR** validés. Le contrôle qpdf explicite valide **34 PDF** et refuse ses entrées malformées.
 Les **quatre documents réels sous licence (744 pages)** passent en 63,01 secondes ; pic mémoire enfant échantillonné

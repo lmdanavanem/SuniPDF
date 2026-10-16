@@ -25,6 +25,8 @@ Validation et preuves de publication figurent dans `docs/PROJECT_STATUS.fr.md`.
 - Les tests Windows réels incluent désormais les mises à jour portables et MSI depuis 0.10.0.
 
 ### Corrections
+- Révision officielle de lopdf fixée pour le calcul de clé avec mot de passe propriétaire ancien et son encodage.
+  Copies protégées et métadonnées restent lisibles après ouverture propriétaire ; les deux rôles sont testés.
 - L’outil de sélection de texte suit les clics sur les liens, avec confirmation et contrôle des adresses externes conservés.
 - Une lecture de formulaire échouée conserve textes et choix, bloque les changements fondés sur un modèle périmé
   et propose un réessai explicite.

@@ -166,9 +166,11 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         command
             .args([
                 "--user-password",
-                "qa-user",
+                "package-user",
                 "--owner-password",
-                "qa-owner",
+                "package-owner",
+                "--no-copy",
+                "--no-print",
                 "--out",
             ])
             .arg(&encrypted);
@@ -176,29 +178,58 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
             command.arg("--aes128");
         }
         success(command);
-        check(&qpdf, &encrypted, Some("qa-user"));
-        let opened = success(cli(&["properties", "--password", "qa-user"], &[&encrypted]));
+        check(&qpdf, &encrypted, Some("package-user"));
+        let opened = success(cli(
+            &["properties", "--password", "package-user"],
+            &[&encrypted],
+        ));
         assert!(opened.is_object());
+        assert_eq!(opened["permissions"]["copy"], false);
+        assert_eq!(opened["permissions"]["print"], false);
         let extracted = temp.path().join(format!("{name}-extract.pdf"));
         let mut command = cli(&["extract"], &[&encrypted]);
         command
-            .args(["--password", "qa-user", "--pages", "2,1", "--out"])
+            .args(["--password", "package-owner", "--pages", "2,1", "--out"])
             .arg(&extracted);
         let report = success(command);
         assert_eq!(report["encryption_removed"], false);
         assert_eq!(report["encrypted"], true);
-        check(&qpdf, &extracted, Some("qa-user"));
-        check(&qpdf, &extracted, Some("qa-owner"));
+        check(&qpdf, &extracted, Some("package-user"));
+        check(&qpdf, &extracted, Some("package-owner"));
         let mut command = cli(&["split"], &[&encrypted]);
         command
-            .args(["--password", "qa-user", "--every", "1", "--out-dir"])
+            .args(["--password", "package-owner", "--every", "1", "--out-dir"])
             .arg(temp.path().join(format!("{name}-parts")));
         let report = success(command);
         assert_eq!(report["encryption_removed"], false);
         assert_eq!(report["encrypted"], true);
         for part in report["files"].as_array().unwrap() {
-            check(&qpdf, Path::new(part.as_str().unwrap()), Some("qa-user"));
+            check(
+                &qpdf,
+                Path::new(part.as_str().unwrap()),
+                Some("package-user"),
+            );
         }
+        let metadata = temp.path().join(format!("{name}-owner-metadata.pdf"));
+        let mut command = cli(&["set-metadata"], &[&encrypted]);
+        command
+            .args([
+                "--password",
+                "package-owner",
+                "--title",
+                "Owner stream regression",
+                "--out",
+            ])
+            .arg(&metadata);
+        success(command);
+        check(&qpdf, &metadata, Some("package-user"));
+        let text = bounded(
+            cli(&["text", "--password", "package-user"], &[&metadata]),
+            None,
+        );
+        assert!(text.status.success());
+        assert!(String::from_utf8_lossy(&text.stdout).contains("SuniPDF page 1"));
+        assert!(String::from_utf8_lossy(&text.stdout).contains("SuniPDF page 2"));
     }
     let field = temp.path().join("field.pdf");
     let mut command = cli(&["add-form-field"], &[&original]);

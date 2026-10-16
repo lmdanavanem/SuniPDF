@@ -17,12 +17,19 @@ Rule: a ticked box = code present **and** command executed with a result observe
   stale values, show Retry, and do not retry continuously. A confirmed empty form is still a valid successful read.
 
 Final local gates for the expanded 0.11.0 source passed: **390 workspace tests, zero failed, seven default ignored**,
-formatting, Clippy with warnings denied and **858 matching EN/FR keys**. Independent qpdf checks passed for **40 distinct
-PDFs (42 password-specific checks)**, plus malformed-input refusal. The **four licensed NIST/NBS documents, 744 pages**,
-passed in 76.05 seconds with peak sampled child working set 332,398,592 bytes. Tests exercise editable combo panel/page
+formatting, Clippy with warnings denied and **858 matching EN/FR keys**. Independent qpdf checks passed for **42 distinct
+PDFs (44 password-specific checks)**, plus malformed-input refusal. The **four licensed NIST/NBS documents, 744 pages**,
+passed in 91.59 seconds with peak sampled child working set 329,347,072 bytes. Tests exercise editable combo panel/page
 input, ambiguous export labels, first-frame keyboard input, failed reads/retries, eight crop/rotation/encryption cases,
 JSON/XFDF round trips, protected extraction/split, both passwords, RC4/AES-128/AES-256, source/collision preservation,
 actual worker output and unsaved page rotations. GitHub CI, packages and publication are the remaining release gates.
+
+Before publication, independent checks of candidate `1714846` caught corrupt AES-128 streams after opening with a
+distinct owner password. Those candidate packages were never published. Existing lopdf is now pinned to official
+revision `6ce451328c5caa65d50462daaf4ee8db9c85bb8e`, with upstream owner-key/password-encoding fixes and its MIT
+license included. The final local results above cover this corrected dependency and both source-opening roles,
+including decoded text/streams, metadata rewrites and unprotect. Windows builds and package gates must use this
+corrected source; earlier candidate artifacts are excluded.
 Historical navigation/form-read slice, before the expanded 0.11.0 source: **383 workspace tests passed, zero failed, seven default ignored**; formatting, Clippy with warnings
 denied and **857 EN/FR keys** passed. The explicit qpdf gate passed **34 PDFs** and rejected its malformed samples.
 All **four licensed real documents (744 pages)** passed in 63.01 seconds; peak sampled child working set was

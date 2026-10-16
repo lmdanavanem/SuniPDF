@@ -3568,15 +3568,31 @@ fn extract_and_split_preserve_protection_passwords_permissions_and_current_pages
     let mut rc4 = lopdf::Document::load_mem(&input).unwrap();
     rc4.trailer
         .set("ID", legacy.trailer.get(b"ID").unwrap().clone());
-    rc4.encrypt(legacy.encryption_state.as_ref().unwrap())
+    let rc4_state =
+        lopdf::encryption::EncryptionState::try_from(lopdf::encryption::EncryptionVersion::V1 {
+            document: &rc4,
+            owner_password: "package-owner",
+            user_password: "package-user",
+            permissions: lopdf::encryption::Permissions::all().difference(
+                lopdf::encryption::Permissions::COPYABLE
+                    | lopdf::encryption::Permissions::PRINTABLE,
+            ),
+        })
         .unwrap();
+    rc4.encrypt(&rc4_state).unwrap();
     let mut rc4_bytes = Vec::new();
     rc4.save_to(&mut rc4_bytes).unwrap();
-    cases.push(("rc4", rc4_bytes, Some("secret"), None));
-    for (name, aes256, user) in [
-        ("aes128", false, "secret"),
-        ("aes256", true, "secret"),
-        ("owner-only", true, ""),
+    cases.push((
+        "rc4",
+        rc4_bytes,
+        Some("package-user"),
+        Some("package-owner"),
+    ));
+    for (name, aes256, user, owner) in [
+        ("aes128", false, "package-user", "package-owner"),
+        ("aes128-latin1", false, "été", "propriétaire"),
+        ("aes256", true, "package-user", "package-owner"),
+        ("owner-only", true, "", "package-owner"),
     ] {
         cases.push((
             name,
@@ -3585,7 +3601,7 @@ fn extract_and_split_preserve_protection_passwords_permissions_and_current_pages
                 None,
                 &Protection {
                     user_password: user.into(),
-                    owner_password: "owner".into(),
+                    owner_password: owner.into(),
                     allow_print: false,
                     allow_copy: false,
                     allow_modify: false,
@@ -3595,106 +3611,147 @@ fn extract_and_split_preserve_protection_passwords_permissions_and_current_pages
             )
             .unwrap(),
             (!user.is_empty()).then_some(user),
-            Some("owner"),
+            Some(owner),
         ));
     }
     for (name, original, password, owner) in cases {
         let path = dir.path().join(format!("{name}.pdf"));
         std::fs::write(&path, &original).unwrap();
-        let mut doc = engine.open(&path, password).unwrap();
-        let encrypted = doc.is_encrypted();
-        let props = doc.properties();
-        doc.set_page_rotation(1, sunipdf_core::Rotation::R90)
+        let openings = if let Some(owner) = owner {
+            vec![password, Some(owner)]
+        } else {
+            vec![password]
+        };
+        for (role, opening_password) in openings.into_iter().enumerate() {
+            let mut doc = engine.open(&path, opening_password).unwrap();
+            let encrypted = doc.is_encrypted();
+            let props = doc.properties();
+            let metadata = security::set_metadata(
+                &original,
+                opening_password,
+                &sunipdf_core::Metadata {
+                    title: Some("Owner and user stream regression".into()),
+                    ..Default::default()
+                },
+            )
             .unwrap();
-        let out = dir.path().join(format!("{name}-extract.pdf"));
-        assert_eq!(doc.extract_to(&[1, 0, 1], &out).unwrap(), 3);
-        let parts = doc
-            .split_to(1, dir.path(), &format!("{name}-part"), false)
+            let parsed = lopdf::Document::load_mem_with_options(
+                &metadata,
+                lopdf::LoadOptions::with_password(password.unwrap_or("")),
+            )
             .unwrap();
-        assert_eq!(parts.len(), 2);
-        for output in std::iter::once(&out).chain(&parts) {
-            let copy = engine.open(output, password).unwrap();
-            let copy_props = copy.properties();
-            assert_eq!(copy_props.encrypted, encrypted, "{name}");
-            assert_eq!(copy_props.can_print, props.can_print, "{name}");
-            assert_eq!(copy_props.can_copy, props.can_copy, "{name}");
-            assert_eq!(copy_props.can_modify, props.can_modify, "{name}");
-            assert_eq!(copy_props.can_annotate, props.can_annotate, "{name}");
-            if encrypted && password.is_some() {
-                assert!(matches!(
-                    engine.open(output, None),
-                    Err(EngineError::PasswordRequired)
-                ));
-                assert!(matches!(
-                    engine.open(output, Some("wrong")),
-                    Err(EngineError::PasswordRequired)
-                ));
-            }
-            if let Some(owner) = owner {
-                assert!(engine.open(output, Some(owner)).is_ok(), "{name}");
-            }
-            if encrypted {
-                let read = |bytes: &[u8]| {
-                    lopdf::Document::load_mem_with_options(
-                        bytes,
-                        lopdf::LoadOptions::with_password(password.unwrap_or("")),
-                    )
-                    .unwrap()
-                };
-                let source = read(&original);
-                let copied = read(&std::fs::read(output).unwrap());
-                let source_state = source.encryption_state.as_ref().unwrap();
-                let copy_state = copied.encryption_state.as_ref().unwrap();
+            let plain = lopdf::Document::load_mem(&input).unwrap();
+            for ((_, actual), (_, expected)) in
+                parsed.get_pages().into_iter().zip(plain.get_pages())
+            {
                 assert_eq!(
-                    copy_state.file_encryption_key(),
-                    source_state.file_encryption_key(),
-                    "{name}"
-                );
-                let source_security = source_state.encode().unwrap();
-                let copy_security = copy_state.encode().unwrap();
-                for key in ["V", "R", "P", "O", "U", "OE", "UE", "Perms", "CF"] {
+                parsed.get_page_content(actual),
+                plain.get_page_content(expected),
+                "{name} opening role {role}: metadata rewrite must preserve decoded content streams"
+            );
+            }
+            let rewritten = engine.open_bytes(metadata, password, &path).unwrap();
+            assert!(rewritten.page_text(0).unwrap().contains("SuniPDF page 1"));
+            assert!(rewritten.page_text(1).unwrap().contains("SuniPDF page 2"));
+            if let Some(owner) = owner {
+                let clear = security::unprotect(&original, owner).unwrap();
+                let clear = engine.open_bytes(clear, None, &path).unwrap();
+                assert!(!clear.is_encrypted());
+                assert!(clear.page_text(0).unwrap().contains("SuniPDF page 1"));
+                assert!(clear.page_text(1).unwrap().contains("SuniPDF page 2"));
+            }
+            doc.set_page_rotation(1, sunipdf_core::Rotation::R90)
+                .unwrap();
+            let out = dir.path().join(format!("{name}-{role}-extract.pdf"));
+            assert_eq!(doc.extract_to(&[1, 0, 1], &out).unwrap(), 3);
+            let parts = doc
+                .split_to(1, dir.path(), &format!("{name}-{role}-part"), false)
+                .unwrap();
+            assert_eq!(parts.len(), 2);
+            for output in std::iter::once(&out).chain(&parts) {
+                let copy = engine.open(output, password).unwrap();
+                let copy_props = copy.properties();
+                assert_eq!(copy_props.encrypted, encrypted, "{name}");
+                assert_eq!(copy_props.can_print, props.can_print, "{name}");
+                assert_eq!(copy_props.can_copy, props.can_copy, "{name}");
+                assert_eq!(copy_props.can_modify, props.can_modify, "{name}");
+                assert_eq!(copy_props.can_annotate, props.can_annotate, "{name}");
+                if encrypted && password.is_some() {
+                    assert!(matches!(
+                        engine.open(output, None),
+                        Err(EngineError::PasswordRequired)
+                    ));
+                    assert!(matches!(
+                        engine.open(output, Some("wrong")),
+                        Err(EngineError::PasswordRequired)
+                    ));
+                }
+                if let Some(owner) = owner {
+                    assert!(engine.open(output, Some(owner)).is_ok(), "{name}");
+                }
+                if encrypted {
+                    let read = |bytes: &[u8]| {
+                        lopdf::Document::load_mem_with_options(
+                            bytes,
+                            lopdf::LoadOptions::with_password(password.unwrap_or("")),
+                        )
+                        .unwrap()
+                    };
+                    let source = read(&original);
+                    let copied = read(&std::fs::read(output).unwrap());
+                    let source_state = source.encryption_state.as_ref().unwrap();
+                    let copy_state = copied.encryption_state.as_ref().unwrap();
                     assert_eq!(
-                        copy_security.get(key.as_bytes()).ok(),
-                        source_security.get(key.as_bytes()).ok(),
-                        "{name} /{key}"
+                        copy_state.file_encryption_key(),
+                        source_state.file_encryption_key(),
+                        "{name}"
+                    );
+                    let source_security = source_state.encode().unwrap();
+                    let copy_security = copy_state.encode().unwrap();
+                    for key in ["V", "R", "P", "O", "U", "OE", "UE", "Perms", "CF"] {
+                        assert_eq!(
+                            copy_security.get(key.as_bytes()).ok(),
+                            source_security.get(key.as_bytes()).ok(),
+                            "{name} /{key}"
+                        );
+                    }
+                    assert_eq!(
+                        copied
+                            .trailer
+                            .get(b"ID")
+                            .unwrap()
+                            .as_array()
+                            .unwrap()
+                            .first(),
+                        source
+                            .trailer
+                            .get(b"ID")
+                            .unwrap()
+                            .as_array()
+                            .unwrap()
+                            .first(),
+                        "{name} permanent file ID used by legacy encryption"
                     );
                 }
-                assert_eq!(
-                    copied
-                        .trailer
-                        .get(b"ID")
-                        .unwrap()
-                        .as_array()
-                        .unwrap()
-                        .first(),
-                    source
-                        .trailer
-                        .get(b"ID")
-                        .unwrap()
-                        .as_array()
-                        .unwrap()
-                        .first(),
-                    "{name} permanent file ID used by legacy encryption"
-                );
             }
+            let extracted = engine.open(&out, password).unwrap();
+            assert!(extracted.page_text(0).unwrap().contains("SuniPDF page 2"));
+            assert!(extracted.page_text(1).unwrap().contains("SuniPDF page 1"));
+            assert!(extracted.page_text(2).unwrap().contains("SuniPDF page 2"));
+            assert_eq!(
+                extracted.page_rotation(0).unwrap(),
+                sunipdf_core::Rotation::R90
+            );
+            assert_eq!(
+                engine
+                    .open(&parts[1], password)
+                    .unwrap()
+                    .page_rotation(0)
+                    .unwrap(),
+                sunipdf_core::Rotation::R90
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), original, "{name} source");
         }
-        let extracted = engine.open(&out, password).unwrap();
-        assert!(extracted.page_text(0).unwrap().contains("SuniPDF page 2"));
-        assert!(extracted.page_text(1).unwrap().contains("SuniPDF page 1"));
-        assert!(extracted.page_text(2).unwrap().contains("SuniPDF page 2"));
-        assert_eq!(
-            extracted.page_rotation(0).unwrap(),
-            sunipdf_core::Rotation::R90
-        );
-        assert_eq!(
-            engine
-                .open(&parts[1], password)
-                .unwrap()
-                .page_rotation(0)
-                .unwrap(),
-            sunipdf_core::Rotation::R90
-        );
-        assert_eq!(std::fs::read(&path).unwrap(), original, "{name} source");
     }
 }
 

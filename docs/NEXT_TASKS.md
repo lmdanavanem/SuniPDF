@@ -61,8 +61,8 @@ Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` re
 ## 0.11.0: navigation, forms and protected copies (local gates passed)
 
 The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting, Clippy with
-`-D warnings`, 858 matching EN/FR keys, 42 independent qpdf checks across 40 distinct PDFs and four NIST documents
-(744 pages; 76.05 seconds, peak child memory 332,398,592 bytes). CI, package and publication gates remain pending;
+`-D warnings`, 858 matching EN/FR keys, 44 independent qpdf checks across 42 distinct PDFs and four NIST documents
+(744 pages; 91.59 seconds, peak child memory 329,347,072 bytes). CI, package and publication gates remain pending;
 current evidence belongs in `PROJECT_STATUS.md`. Published 0.10.0 tags and packages remain unchanged.
 
 - Read PDF page labels through PDFium in the toolbar, thumbnails and CLI `info`. Go to accepts an exact unique
