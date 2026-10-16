@@ -41,6 +41,10 @@ jobs:
         run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: "Portable x64 package (including licenses and notices)"
         run: .\scripts\package-portable.ps1 -Arch x64
+      - name: Test-only software OpenGL checksum self-test
+        run: .\scripts\fetch-test-opengl.ps1 -SelfTest
+      - name: Test-only software OpenGL for the isolated application
+        run: .\scripts\fetch-test-opengl.ps1
       - name: Real isolated portable upgrades, rollback and close cancellation
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence

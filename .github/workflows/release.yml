@@ -42,6 +42,12 @@ jobs:
         run: cargo test -p sunipdf-cli --test qpdf_corpus --locked -j 2 -- --ignored --nocapture
       - name: Portable (${{ matrix.arch }})
         run: .\scripts\package-portable.ps1 -Arch ${{ matrix.arch }}
+      - name: Test-only software OpenGL checksum self-test (x64)
+        if: matrix.arch == 'x64'
+        run: .\scripts\fetch-test-opengl.ps1 -SelfTest
+      - name: Test-only software OpenGL for the isolated application (x64)
+        if: matrix.arch == 'x64'
+        run: .\scripts\fetch-test-opengl.ps1
       - name: Real isolated portable upgrades, rollback and close cancellation (x64)
         if: matrix.arch == 'x64'
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)

@@ -30,6 +30,10 @@ jobs:
           $sidecar = [IO.File]::ReadAllText($package + '.sha256').Trim() -split '\s+', 2
           if ($sidecar[0] -ine $expected -or $sidecar[1] -ne $name) { throw 'Public 0.9.0 target sidecar mismatch.' }
           "SUNIPDF_TEST_PACKAGE=$package" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Test-only software OpenGL checksum self-test
+        run: .\scripts\fetch-test-opengl.ps1 -SelfTest
+      - name: Test-only software OpenGL for the isolated application
+        run: .\scripts\fetch-test-opengl.ps1
       - name: Real portable regression with startup diagnostics
         shell: pwsh
         run: .\scripts\test-portable-update.ps1 -Package $env:SUNIPDF_TEST_PACKAGE
@@ -41,4 +45,36 @@ jobs:
           path: |
             target/portable-update-*.json
             target/portable-update-diagnostics-*/**/*
+          if-no-files-found: ignore
+  msi:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned public MSI and matching payload without building
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'sunipdf-msi-target'
+          [IO.Directory]::CreateDirectory($directory) | Out-Null
+          $base = 'https://github.com/lmdanavanem/SuniPDF/releases/download/v0.9.0/'
+          $pins = @{
+            'SuniPDF-0.9.0-win-x64-portable.zip' = 'E935A02D5DC98AB2AFC67C3CAC856AB10ACA6D4A090212CE084AA87A9398A9A2'
+            'SuniPDF-0.9.0-win-x64.msi' = 'B2AA6E7E52D8C4F50DA3294ADA4E6DA5828EF24BD6DD43A141B1B9B8311ACDAA'
+          }
+          foreach ($name in $pins.Keys) {
+            $file = Join-Path $directory $name
+            Invoke-WebRequest -Uri ($base + $name) -OutFile $file -TimeoutSec 300
+            if ((Get-FileHash -LiteralPath $file).Hash -ine $pins[$name]) { throw "Public package digest mismatch: $name" }
+          }
+          Expand-Archive -LiteralPath (Join-Path $directory 'SuniPDF-0.9.0-win-x64-portable.zip') -DestinationPath 'dist/SuniPDF-0.9.0-win-x64-portable'
+          "SUNIPDF_TEST_MSI=$(Join-Path $directory 'SuniPDF-0.9.0-win-x64.msi')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Real MSI regression on disposable elevated runner
+        shell: pwsh
+        run: .\scripts\test-msi-upgrade.ps1 -MsiPath $env:SUNIPDF_TEST_MSI
+      - name: MSI regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi-regression-diagnostics
+          path: target/msi-upgrade-*/*.log
           if-no-files-found: ignore
