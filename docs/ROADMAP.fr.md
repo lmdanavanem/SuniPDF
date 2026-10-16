@@ -5,12 +5,15 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
-## Travail actuel : 0.21.1 en préparation
+## 0.21.1 : conservation des documents (publiée en Latest stable)
 
-Correctifs P1 glyphes absents/récupération du brouillon et conservation non-Link implémentés et contrôlés
-sur leur source antérieure localement et par GitHub CI/CodeQL. Contrôles de la source de release et
-publication 0.21.1 en attente. Projet : 39 Todo, zéro In Progress, trois Done. Source et preuves dans
-l'[état du projet](PROJECT_STATUS.fr.md) ; paquets 0.21.0 publiés inchangés.
+Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
+sans perdre le bon brouillon, et conservation des annotations non-widget sans apparence utilisable à
+l'aplatissement. 476 tests, 84 contrôles qpdf, 20 scénarios portables et 14 bases MSI réussis ; six fichiers
+publics et mise à jour en ligne vérifiés. Voir l'[état du projet](PROJECT_STATUS.fr.md).
+
+Prochain lot autorisé **0.30.0** : cinq Bugs ouverts et les 14 P2 Roadmap. P1 Roadmap reportés ;
+Suggestions hors de ce lot. Projet : 38 Todo, un In Progress, trois Done.
 
 ## Base livrée : 0.9.0
 
@@ -223,7 +226,7 @@ Les 75 contrôles qpdf, corpus réel de quatre documents/744 pages et autotest d
 CI Windows, 18 scénarios portables, 12 bases MSI/60 journaux, ARM64 de même source, six fichiers préparés/publics
 et metteur à jour de production réussis. **0.20.0 était publiée en Latest stable à cette date** ; l'[état du projet](PROJECT_STATUS.fr.md) consigne les preuves exécutées.
 
-## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
+## 0.21.0 : traitement des alertes Code Scanning (publiée ; Latest à cette date)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
 `contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0

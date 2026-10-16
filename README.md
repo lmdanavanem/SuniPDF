@@ -22,12 +22,12 @@
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
-## 0.21.1: document preservation (in preparation)
+## 0.21.1: document preservation (published stable Latest)
 
-Two P1 fixes passed local and GitHub CI/CodeQL checks on the earlier implementation source: refuse unsupported glyphs in existing text without
-losing the draft, and preserve non-Link annotations without usable appearances when flattening.
-Release-source validation and publication of 0.21.1 are pending. Published 0.21.0 packages do not contain
-these fixes. See [current status](docs/PROJECT_STATUS.md).
+The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
+draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
+84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
+were verified. See [Project status](docs/PROJECT_STATUS.md).
 
 ## Features
 
@@ -52,7 +52,7 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-## 0.21.0: Code Scanning remediation (published stable Latest)
+## 0.21.0: Code Scanning remediation (published; Latest at the time)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
 `contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
@@ -71,7 +71,7 @@ status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](docs/CODE_SCANNING_REVIEW.md)
 and [Project status](docs/PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) under `lmdanavanem`, release `415338013`,
+[Previous stable release](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) under `lmdanavanem`, release `415338013`,
 source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Local validation: 471 passed tests, zero failures, seven default ignored;
 formatting/Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks, update-helper self-test and four PDFs/744 pages.
 [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) passed:

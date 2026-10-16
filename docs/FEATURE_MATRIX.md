@@ -2,12 +2,14 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.21.1: document preservation (in preparation)
+## 0.21.1: document preservation (published stable Latest)
 
-The missing-glyph refusal/draft-recovery and annotation-preserving flattening fixes are implemented.
-Release-source validation and publication are pending; see [Project status](PROJECT_STATUS.md).
+The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
+draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
+84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
+were verified. See [Project status](PROJECT_STATUS.md).
 
-## 0.21.0: Code Scanning remediation (published stable Latest)
+## 0.21.0: Code Scanning remediation (published; Latest at the time)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
 `contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
@@ -166,7 +168,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Group several freehand strokes | Declared | **Delivered in 0.18.0** (D109): page-bound draft, explicit Finish/Cancel, one AddInk/Undo; failure retention, guards and 64-stroke/4,000-points-per-stroke bounds. Local/CI/upgrade, staged/public package and production updater gates passed. No eraser, idle auto-commit or draft crash recovery |
 | On-page FreeText creation and editing | Declared | **Published in 0.20.0** (D111/A39): existing click/drawn box, anchored multiline editor, size/colour/background/border, explicit Add/Save/Cancel, one existing worker edit/Undo, original-page binding, stale-state/pending guards and failure retention. No rich text or new core/CLI API; local/CI/upgrade, staged/public package and production updater gates passed |
 | Adding text / images | Declared | **Done** (text typed on the page, several lines, Helvetica/Times/Courier bold/italic or **embedded system TrueType font** (Unicode, missing character refused), size, colour, opacity; PNG/JPEG/BMP/GIF/TIFF/WebP image with opacity; rectangle/ellipse/line shapes with colours, thickness and opacity; upright on screen on rotated pages); font subsetting and `.otf`/`.ttc` planned |
-| Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed in published 0.21.0). **0.21.1 in preparation:** atomic missing-glyph refusal and correct draft recovery; earlier implementation-source checks passed, release checks pending; [executed checks](PROJECT_STATUS.md) |
+| Modifying existing text | Partial (weak in CJK/bidi) | **Done** for simple text objects (editing on the page or F2: text, size, colour; original font kept, missing characters not guaranteed in published 0.21.0). **Published in 0.21.1:** atomic missing-glyph refusal and correct draft recovery; release-source and public-package checks passed; [executed checks](PROJECT_STATUS.md) |
 | Object transformation | Declared | **Done**: move, resize, **free rotation** (handle, typed angle), duplication, Z-order (to the extreme or by one step), recolouring, **opacity**, deletion, **image replacement**; rendering tests on normal, rotated and cropped pages |
 | Multiple selection, cut/copy/paste of objects | Declared | **Done**: rectangle, Shift/Ctrl+click, Ctrl+A, grouped move; clipboard across pages and tabs (pasted = group not editable as text); group rotation/resizing delivered in 0.10.0 (single undo) |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
@@ -228,7 +230,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Create editable drop-downs | Not documented | **Delivered in 0.12.0**: desktop checkbox and CLI `add-form-field --kind combo --editable`; nonempty predefined choices still required; local, CI, package and upgrade gates passed |
 | Radio `/Opt` export values | Not documented | **Delivered in 0.12.0**: separate export values from raw widget states across filling/JSON/XFDF/FDF; additive CLI `widgets[].export_value`; malformed/duplicate mappings keep that field read-only; no-`/Opt` behaviour unchanged; local, CI, package and upgrade gates passed |
 | XFA | Partial | **Detected, read-only** (AcroForm fields listed; filling and flattening refused, `form_xfa`) |
-| Preserve non-Link annotations without usable appearances during flattening | Not documented | **0.21.1 in preparation:** raw non-widget graphs, attachments and shared references preserved; widgets/drawable appearances still flatten, retained annotations excluded from the count, failures atomic. Earlier implementation-source checks passed; release checks pending; absent from 0.21.0 packages; [limits and evidence](PROJECT_STATUS.md) |
+| Preserve non-Link annotations without usable appearances during flattening | Not documented | **Published in 0.21.1:** raw non-widget graphs, attachments and shared references preserved; widgets/drawable appearances still flatten, retained annotations excluded from the count, failures atomic. Release-source and public-package checks passed; absent from 0.21.0 packages; [limits and evidence](PROJECT_STATUS.md) |
 | Tagging, PDF/UA checks | Partial / absent | Planned (P6, checks only) |
 
 ## G. Automation and integration

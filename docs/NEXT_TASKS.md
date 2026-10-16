@@ -2,12 +2,15 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## Current lot: 0.21.1 in preparation
+## 0.21.1: document preservation (published stable Latest)
 
-Done implementation, checked on the earlier source locally and in GitHub CI/CodeQL: the P1 missing-glyph refusal/draft-recovery and
-non-Link flatten-preservation fixes. The project now has 39 Todo, zero In Progress and three Done;
-see [Project status](PROJECT_STATUS.md) for source and evidence. 0.21.1 release-source checks and publication
-are pending; published 0.21.0 packages are unchanged.
+The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
+draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
+84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
+were verified. See [Project status](PROJECT_STATUS.md).
+
+Next authorized batch **0.30.0**: five open Bugs and all 14 P2 Roadmap items. P1 Roadmap work is deferred;
+Suggestions are outside this batch. Project: 38 Todo, one In Progress, three Done.
 
 ## Version 0.9.0: seven requested features published
 
@@ -271,7 +274,7 @@ The initial [Code Scanning review](CODE_SCANNING_REVIEW.md) covered 117 then-ope
 no production secret was confirmed. At that snapshot, no alert had been dismissed and the release-workflow
 permission declaration remained future work. The verified 0.21.0 outcome is recorded below.
 
-## 0.21.0: Code Scanning remediation (published stable Latest)
+## 0.21.0: Code Scanning remediation (published; Latest at the time)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
 `contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
@@ -346,8 +349,7 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
   Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
   (`labelled_by` names set, not listened to).
 - flattening: preserving non-Link annotations without usable appearances, including attachments and shared
-  references, passed local and GitHub CI/CodeQL checks on its implementation source. 0.21.1 release checks
-  and publication are pending; published 0.21.0 is unchanged;
+  references, ships in 0.21.1; release-source, package and CodeQL checks passed;
   [executed checks and limits](PROJECT_STATUS.md).
 
 ## After sign-image (visual signature, slice delivered)

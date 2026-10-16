@@ -1,58 +1,60 @@
-# État du projet — mis à jour le 2026-10-17 (0.21.1 en préparation ; 0.21.0 publiée en Latest stable)
+# État du projet — mis à jour le 2026-10-17 (0.21.1 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.21.1 : conservation des documents (en préparation)
+## 0.21.1 : conservation des documents (publiée en Latest stable)
 
-0.21.1 distribue les deux correctifs P1 existants ci-dessous. Validation de la source de release, paquets
-et publication en attente. Les contrôles suivants portent sur la source d'implémentation antérieure,
-pas sur la source de release 0.21.1.
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) sous `lmdanavanem`, release `415426148`, source immuable
+`358a73fa08ab7ea02adbbb022c1ffa6d54fd9826`. Les deux correctifs P1 sont inclus dans les paquets publics.
 
-Les deux bugs P1 ont passé les contrôles locaux et GitHub CI/CodeQL sur la source
-[`3ee794dac84617b17cddf73147ee2cefd279c138`](https://github.com/lmdanavanem/SuniPDF/commit/3ee794dac84617b17cddf73147ee2cefd279c138).
-**0.21.0 reste la Latest publiée**. Sa source, ses paquets et les validations ci-dessous sont inchangés ;
-ces correctifs sont en préparation pour 0.21.1 et absents des paquets 0.21.0.
-
-| Élément P1 | Comportement implémenté | État actuel |
+| Élément P1 | Comportement livré | État |
 |---|---|---|
-| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | Implémentation Done ; contrôles de release 0.21.1 en attente |
-| Aplatir sans perdre les annotations non-Link sans apparence utilisable | Conserver graphes bruts des annotations non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables, exclure les annotations conservées du compte et valider via document temporaire atomique | Implémentation Done ; contrôles de release 0.21.1 en attente |
+| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | Livré en 0.21.1 |
+| Aplatissement sans apparence utilisable | Conserver graphes bruts non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables ; un échec garde le PDF actif inchangé | Livré en 0.21.1 |
 
-Preuves locales : **476 tests réussis, zéro échec, sept ignorés par défaut sur 37 suites** ; formatage,
-Clippy toutes cibles avec `-D warnings`, **912 clés EN/FR** et **84 contrôles qpdf** réussis. Quatre PDF
-licenciés (**744 pages**) réussis en **60.419 secondes**, pic enfant échantillonné
-**330,194,944 octets** ; toutes les sources inchangées. Les régressions ont
-d'abord reproduit le texte incompatible accepté, le brouillon d'ajout périmé et les annotations perdues
-à l'aplatissement, puis réussi avec les corrections. Régression native de conservation à l'aplatissement
-également exécutée séparément avec succès.
+Le [workflow de release du tag](https://github.com/lmdanavanem/SuniPDF/actions/runs/38975043085) a réussi ses
+trois jobs sur cette source : **476 tests, zéro échec, sept ignorés par défaut sur 37 suites**, **912 clés EN/FR**,
+**84 contrôles qpdf**, quatre PDF licenciés/**744 pages**, **20 scénarios portables** (16 mises à niveau/quatre
+gardes) et **14 bases MSI/70 journaux transactionnels**. Corpus réussi en **35,299 secondes**, pic enfant
+échantillonné **321 392 640 octets**, sources inchangées. ARM64 compilé et empaqueté en compilation croisée.
 
-[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614776) : 32 étapes réussies sur cette source,
-476 tests, zéro échec, sept ignorés par défaut, 912 clés, 84 contrôles qpdf, **19 scénarios portables**
-(15 mises à niveau/quatre gardes) et **13 bases MSI/65 journaux vérifiés**. Corpus quatre documents/744 pages
-réussi en **32,900 secondes**, pic enfant échantillonné **321 556 480 octets**, toutes les sources inchangées.
-Les trois petites archives de preuves ont été téléchargées et vérifiées avec leur source, taille API et SHA256 ;
-métadonnées du paquet vérifiées, sans télécharger ni publier de nouveau paquet.
+Les 11 étapes qualité requises, dont formatage et Clippy toutes cibles avec `-D warnings`, ont réussi dans
+la [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38975040303). À la vérification de publication,
+ce workflow séparé exécutait encore son étape MSI en doublon ; son résultat global n'est pas enregistré comme
+réussi. Les preuves MSI complètes du workflow de release ont été téléchargées et leurs codes vérifiés.
+Formatage, métadonnées, i18n et helper de la source de release réussis localement. Clippy/tests locaux complets
+interrompus par manque de mémoire ; les tests complets ci-dessus ont tourné sur le runner Windows jetable GitHub.
 
-[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614334) : Rust, Python et Actions réussis sur
-la même source. **Aucune alerte ouverte sur cette source** après classement individuel par `lmdanavanem` des quatre nouveaux
-constats de test #120–123 en `used in tests` ; voir l'[inventaire de quatre lignes](qa/CODE_SCANNING_P1_2026-10-16.csv).
-L'analyse Rust conserve **119 constats bruts**, dont les 115 déjà traités ; Python et Actions ont zéro résultat.
-Aucun dossier ni requête exclu ; zéro alerte ouverte ne signifie pas zéro constat.
+Les six téléchargements publics concordent avec les fichiers préparés, empreintes API et SHA256 ; copies
+`dist/` vérifiées. Contrôles CLI/édition/formulaires/chiffrement/OCR/images des paquets préparés réussis, puis
+CLI/rendu/formulaire/OCR français hors ligne et lecture du contenu MSI publics réussis. Le code du metteur à jour
+de production a vérifié le ZIP Latest x64 de **19 861 719 octets** en **0,59 seconde**, sans installation sur
+ce poste. Binaire de test de la source d'implémentation utilisé ; source du metteur à jour inchangée dans la release.
+Voir les [preuves structurées](qa/RELEASE_0.21.1.json).
 
-Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) garde 42 brouillons : Bugs (8), Roadmap (23),
-Suggestions (11) ; **39 Todo, zéro In Progress et trois Done**. Les deux P1 et leurs descriptions ont été
-relus Done ; la sécurité 0.21.0 reste Done. Filtres de catégorie enregistrés et 42 éléments uniques
-conservés. API, dépendances et 53 commandes CLI inchangées ; publication 0.21.1 en attente.
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38975039927) : Rust, Python et Actions réussis sur
+la source de release. **Aucune alerte ouverte** ; 119 constats Rust bruts restent classés individuellement par
+`lmdanavanem` (118 `used in tests`, un `false positive`). Élevée #3 et moyenne #119 corrigées, aucune exclusion.
+Les [quatre constats de test ultérieurs](qa/CODE_SCANNING_P1_2026-10-16.csv) gardent leurs preuves.
 
-Limites restantes : pas de corpus hostile/fuzzing exhaustif ni de contrôle d'interopérabilité avec les
-lecteurs tiers ; graphes au-delà de la limite de copie existante de 32 niveaux refusés atomiquement.
-Interface native visuelle et matériel ARM64 non exercés pour ce lot. Le nettoyage des champs orphelins
-après aplatissement partiel reste une tâche distincte.
+La source d'implémentation antérieure `3ee794dac84617b17cddf73147ee2cefd279c138` avait également réussi les
+contrôles locaux complets et la [CI GitHub](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614776).
+Les régressions d'échec/relance et d'aplatissement sont conservées. La release ajoute les bases 0.21.0 figées.
 
-## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
+Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) garde **42 brouillons uniques** : Bugs (8),
+Roadmap (23), Suggestions (11) ; **38 Todo, un In Progress, trois Done**. Les deux descriptions P1 indiquent
+la livraison 0.21.1. Prochain lot autorisé : **0.30.0**, cinq Bugs ouverts et 14 P2 Roadmap ; P1 Roadmap reportés
+et Suggestions hors de ce lot. API et 53 commandes CLI inchangées.
+
+Paquets non signés. Exécution ARM64, impression physique, interface native manuelle et lecteurs tiers non
+vérifiés. Graphes au-delà de 32 niveaux refusés atomiquement ; nettoyage des champs orphelins distinct.
+Les guides embarqués gardent leur texte antérieur à la publication ; les guides en ligne reflètent l'état
+publié. Sources et paquets des versions antérieures inchangés.
+
+## 0.21.0 : traitement des alertes Code Scanning (publiée ; Latest à cette date)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
 `contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0
@@ -70,7 +72,7 @@ avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité
 des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
+[Version stable précédente](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
 source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Validation locale : 471 tests réussis, zéro échec, sept ignorés par défaut ;
 formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre PDF/744 pages.
 [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) réussis :

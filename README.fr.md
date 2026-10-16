@@ -25,12 +25,12 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## 0.21.1 : conservation des documents (en préparation)
+## 0.21.1 : conservation des documents (publiée en Latest stable)
 
-Deux correctifs P1 validés localement et par GitHub CI/CodeQL sur leur source d'implémentation antérieure : refuser les glyphes absents du texte existant sans
-perdre le brouillon, et conserver les annotations non-Link sans apparence utilisable à l'aplatissement.
-Validation de la source de release et publication de 0.21.1 en attente. Les paquets 0.21.0 publiés ne
-contiennent pas ces correctifs. Voir l'[état actuel](docs/PROJECT_STATUS.fr.md).
+Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
+sans perdre le bon brouillon, et conservation des annotations non-widget sans apparence utilisable à
+l'aplatissement. 476 tests, 84 contrôles qpdf, 20 scénarios portables et 14 bases MSI réussis ; six fichiers
+publics et mise à jour en ligne vérifiés. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Fonctionnalités
 | Domaine | Détail |
@@ -54,7 +54,7 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
+## 0.21.0 : traitement des alertes Code Scanning (publiée ; Latest à cette date)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
 `contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0
@@ -72,7 +72,7 @@ avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité
 des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](docs/CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](docs/PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
+[Version stable précédente](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
 source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Validation locale : 471 tests réussis, zéro échec, sept ignorés par défaut ;
 formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre PDF/744 pages.
 [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) réussis :

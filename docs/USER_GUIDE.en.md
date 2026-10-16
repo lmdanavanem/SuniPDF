@@ -3,11 +3,11 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers published SuniPDF 0.21.0 and the fixes being prepared for 0.21.1. Publication status and executed release checks are recorded in
-[Project status](PROJECT_STATUS.md). 0.21.0 is published as stable Latest; local, CodeQL, CI/upgrade,
-staged/public package and production-updater checks passed.
+This guide covers published SuniPDF 0.21.1. Publication status and executed release checks are recorded in
+[Project status](PROJECT_STATUS.md). 0.21.1 is published as stable Latest; release-source, CodeQL, upgrade,
+staged/public package and production-updater checks passed. Previous-release evidence follows.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) under `lmdanavanem`, release `415338013`,
+[Previous stable release](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) under `lmdanavanem`, release `415338013`,
 source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Local validation: 471 passed tests, zero failures, seven default ignored;
 formatting/Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks, update-helper self-test and four PDFs/744 pages.
 [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) passed:
@@ -255,14 +255,14 @@ Limits: a pasted or duplicated group can no longer be edited as text; group rota
 (no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
 keeps its original font, which may not contain every character you type.
 
-**0.21.1 in preparation, implementation checked on its earlier source:** unsupported replacement text is refused before changing the PDF,
+**Published in 0.21.1:** unsupported replacement text is refused before changing the PDF,
 with the correct on-page or rotated-text draft reopened. Published 0.21.0 packages
 still have the original limitation above.
 
-**0.21.1 flattening fix in preparation, implementation checked on its earlier source:** non-widget annotations with no usable appearance
+**Flattening fix published in 0.21.1:** non-widget annotations with no usable appearance
 retain their raw data, attachments and shared references. Widgets and drawable appearances still flatten;
 retained annotations are excluded from the count. Scratch-document failure leaves the active PDF unchanged.
-This change is absent from 0.21.0 packages; 0.21.1 release checks and publication are pending.
+This fix ships in 0.21.1; previous 0.21.0 packages are unchanged.
 See [executed checks and limits](PROJECT_STATUS.md).
 
 ## Filling a form

@@ -3,11 +3,11 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.21.0 publiée et les correctifs en préparation pour 0.21.1. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
-0.21.0 est publiée en Latest stable ; contrôles locaux, CodeQL, CI/mises à niveau,
-paquets préparés/publics et metteur à jour de production réussis.
+Ce guide couvre SuniPDF 0.21.1 publiée. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
+0.21.1 est publiée en Latest stable ; contrôles de la source de release, CodeQL, mises à niveau,
+paquets préparés/publics et metteur à jour de production réussis. Les preuves de la version précédente suivent.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
+[Version stable précédente](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
 source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Validation locale : 471 tests réussis, zéro échec, sept ignorés par défaut ;
 formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre PDF/744 pages.
 [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) réussis :
@@ -274,14 +274,14 @@ ne sont pas proposées ; la police est incorporée entière (pas de sous-ensembl
 page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
 police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
-**0.21.1 en préparation, implémentation contrôlée sur sa source antérieure :** remplacement incompatible refusé avant modification du PDF,
+**Livré en 0.21.1 :** remplacement incompatible refusé avant modification du PDF,
 avec réouverture du bon brouillon sur la page ou du texte pivoté. Les
 paquets 0.21.0 gardent la limite ci-dessus.
 
-**Correctif d'aplatissement 0.21.1 en préparation, implémentation contrôlée sur sa source antérieure :** annotations non-widget sans apparence
+**Correctif d'aplatissement livré en 0.21.1 :** annotations non-widget sans apparence
 utilisable conservant données brutes, pièces jointes et références partagées. Widgets/apparences dessinables
 restent aplatis ; annotations conservées exclues du compte. Un échec du document temporaire garde le PDF
-actif inchangé. Changement absent des paquets 0.21.0 ; contrôles de release et publication 0.21.1 en attente.
+actif inchangé. Correctif livré en 0.21.1 ; anciens paquets 0.21.0 inchangés.
 Voir les [contrôles exécutés et limites](PROJECT_STATUS.fr.md).
 
 ## Remplir un formulaire

@@ -5,12 +5,15 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## Current work: 0.21.1 in preparation
+## 0.21.1: document preservation (published stable Latest)
 
-The missing-glyph refusal/draft-recovery and non-Link flatten-preservation P1 fixes are implemented and
-checked on their earlier source locally and in GitHub CI/CodeQL. Release-source checks and publication
-of 0.21.1 are pending. Project: 39 Todo, zero In Progress, three Done. Source and evidence in
-[Project status](PROJECT_STATUS.md); published 0.21.0 packages are unchanged.
+The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
+draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
+84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
+were verified. See [Project status](PROJECT_STATUS.md).
+
+Next authorized batch **0.30.0**: five open Bugs and all 14 P2 Roadmap items. P1 Roadmap work is deferred;
+Suggestions are outside this batch. Project: 38 Todo, one In Progress, three Done.
 
 ## Delivered baseline: 0.9.0
 
@@ -217,7 +220,7 @@ The 75-check qpdf gate, four-document/744-page real corpus and update-helper sel
 18 portable cases, 12 MSI baselines/60 logs, same-source ARM64, all six staged/public files and the production
 updater passed. **0.20.0 was published as stable Latest at the time**; [Project status](PROJECT_STATUS.md) records the executed evidence.
 
-## 0.21.0: Code Scanning remediation (published stable Latest)
+## 0.21.0: Code Scanning remediation (published; Latest at the time)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
 `contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,

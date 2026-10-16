@@ -2,13 +2,14 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.21.1 : conservation des documents (en préparation)
+## 0.21.1 : conservation des documents (publiée en Latest stable)
 
-Les correctifs de refus des glyphes absents/récupération du brouillon et de conservation des annotations
-à l'aplatissement sont implémentés. Validation de la source de release et publication en attente ;
-voir l'[état du projet](PROJECT_STATUS.fr.md).
+Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
+sans perdre le bon brouillon, et conservation des annotations non-widget sans apparence utilisable à
+l'aplatissement. 476 tests, 84 contrôles qpdf, 20 scénarios portables et 14 bases MSI réussis ; six fichiers
+publics et mise à jour en ligne vérifiés. Voir l'[état du projet](PROJECT_STATUS.fr.md).
 
-## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
+## 0.21.0 : traitement des alertes Code Scanning (publiée ; Latest à cette date)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
 `contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0
@@ -169,7 +170,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Regrouper plusieurs traits à main levée | Déclaré | **Livré en 0.18.0** (D109) : brouillon lié à une page, Terminer/Annuler explicites, un AddInk/Annuler ; conservé après erreur, gardes et limites 64 traits/4 000 points par trait. Contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour réussis. Aucune gomme, validation à l'inactivité ni récupération du brouillon après plantage |
 | Création et édition FreeText sur la page | Déclaré | **Publié en 0.20.0** (D111/A39) : boîte cliquée/tracée existante, éditeur multiligne ancré, taille/couleur/fond/bordure, Ajouter/Enregistrer/Annuler explicites, une édition worker/Annuler, page d'origine, gardes d'état périmé/opérations en attente et texte conservé après échec. Aucun texte enrichi ni nouvelle API moteur/CLI ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis |
 | Ajout de texte / d'images | Déclaré | **Fait** (texte saisi sur la page, plusieurs lignes, Helvetica/Times/Courier gras/italique ou **police TrueType du système incorporée** (Unicode, caractère absent refusé), taille, couleur, opacité ; image PNG/JPEG/BMP/GIF/TIFF/WebP avec opacité ; formes rectangle/ellipse/ligne avec couleurs, épaisseur et opacité ; droits à l'écran sur les pages pivotées) ; sous-ensemble de polices et `.otf`/`.ttc` planifiés |
-| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis en 0.21.0 publiée). **0.21.1 en préparation :** refus atomique des glyphes absents et récupération du bon brouillon ; contrôles de la source d'implémentation antérieure réussis, contrôles de release en attente ; [contrôles exécutés](PROJECT_STATUS.fr.md) |
+| Modification de texte existant | Partiel (faible en CJK/bidi) | **Fait** pour les objets texte simples (édition sur la page ou F2 : texte, taille, couleur ; police d'origine conservée, caractères absents non garantis en 0.21.0 publiée). **Livré en 0.21.1 :** refus atomique des glyphes absents et récupération du bon brouillon ; contrôles de la source de release et des paquets publics réussis ; [contrôles exécutés](PROJECT_STATUS.fr.md) |
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés livrés en 0.10.0, une annulation |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
@@ -231,7 +232,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Créer des listes déroulantes modifiables | Non documenté | **Livré en 0.12.0** : case de l'interface et CLI `add-form-field --kind combo --editable` ; choix prédéfinis non vides requis ; contrôles locaux, CI, paquets et mises à niveau réussis |
 | Exports radio `/Opt` | Non documenté | **Livrés en 0.12.0** : valeurs d'export distinctes des états des widgets pour remplissage/JSON/XFDF/FDF ; ajout CLI `widgets[].export_value` ; correspondances malformées/dupliquées : champ en lecture seule ; radios sans `/Opt` inchangés ; contrôles locaux, CI, paquets et mises à niveau réussis |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
-| Conserver les annotations non-Link sans apparence utilisable à l'aplatissement | Non documenté | **0.21.1 en préparation :** graphes bruts non-widget, pièces jointes et références partagées conservés ; widgets/apparences dessinables aplatis, annotations conservées exclues du compte, échecs atomiques. Contrôles de la source d'implémentation antérieure réussis ; contrôles de release en attente ; absent des paquets 0.21.0 ; [limites et preuves](PROJECT_STATUS.fr.md) |
+| Conserver les annotations non-Link sans apparence utilisable à l'aplatissement | Non documenté | **Livré en 0.21.1 :** graphes bruts non-widget, pièces jointes et références partagées conservés ; widgets/apparences dessinables aplatis, annotations conservées exclues du compte, échecs atomiques. Contrôles de la source de release et des paquets publics réussis ; absent des paquets 0.21.0 ; [limites et preuves](PROJECT_STATUS.fr.md) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 
 ## G. Automatisation et intégration

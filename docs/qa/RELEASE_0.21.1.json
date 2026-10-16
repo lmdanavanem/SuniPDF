@@ -1,0 +1,174 @@
+{
+  "version": "0.21.1",
+  "source": "358a73fa08ab7ea02adbbb022c1ffa6d54fd9826",
+  "release_id": 415426148,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1",
+  "author": "lmdanavanem",
+  "author_id": 287339505,
+  "stable_latest": true,
+  "verified_at": "2026-10-16T23:17:12.7705461Z",
+  "release_workflow": {
+    "run": 38975043085,
+    "runUrl": "https://github.com/lmdanavanem/SuniPDF/actions/runs/38975043085",
+    "conclusion": "success",
+    "tests": 476,
+    "failed": 0,
+    "ignored": 7,
+    "i18n": 912,
+    "qpdf": 84,
+    "portableScenarios": 20,
+    "msiBaselines": 14,
+    "msiLogs": 70,
+    "corpusDocuments": 4,
+    "corpusPages": 744
+  },
+  "quality_job": {
+    "source": "358a73fa08ab7ea02adbbb022c1ffa6d54fd9826",
+    "conclusion": "success",
+    "scope": "required quality steps only; complete release packaging is verified separately",
+    "run": 38975040303,
+    "job": 117222330963,
+    "runUrl": "https://github.com/lmdanavanem/SuniPDF/actions/runs/38975040303",
+    "verifiedAt": "2026-10-16T23:16:46.9334379Z",
+    "requiredSteps": [
+      {
+        "name": "Translation catalog parity",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Format",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Clippy",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "QPDF archive checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Synthetic corpus and generated PDF structural checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real corpus checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real PDFs and independent output regression",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Update helper checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Test-only software OpenGL checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real isolated portable upgrades, rollback and close cancellation",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "completeCiStatus": "in_progress",
+    "completeCiConclusion": null
+  },
+  "code_scanning": {
+    "run": 38975039927,
+    "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/38975039927",
+    "conclusion": "success",
+    "openAlerts": 0,
+    "triageCount": 119,
+    "triageUsedInTests": 118,
+    "triageFalsePositive": 1
+  },
+  "public_assets": [
+    {
+      "name": "SuniPDF-0.21.1-win-arm64-portable.zip",
+      "sha256": "FC898031EB7709E3A5EEB80F16A694838F4972F7E45F1A1B06BB19274B12B004",
+      "size": 18448764,
+      "uploader": "github-actions[bot]",
+      "uploader_id": 41898282
+    },
+    {
+      "name": "SuniPDF-0.21.1-win-arm64-portable.zip.sha256",
+      "sha256": "DD86DEB2A63F57B33A2365E4B1FC8CBA0BAA12A61FBB606DAFFE4BC58CE20DFB",
+      "size": 105,
+      "uploader": "github-actions[bot]",
+      "uploader_id": 41898282
+    },
+    {
+      "name": "SuniPDF-0.21.1-win-x64-portable.zip",
+      "sha256": "F00AD8124906B4259C0F4EF96CDECE8A1C28788609384DD151C340AFBDF80BBE",
+      "size": 19861719,
+      "uploader": "github-actions[bot]",
+      "uploader_id": 41898282
+    },
+    {
+      "name": "SuniPDF-0.21.1-win-x64-portable.zip.sha256",
+      "sha256": "AE7390C5C8B896F65F745CDADAE820E7AB4531B45D682872D229369E747EF012",
+      "size": 103,
+      "uploader": "github-actions[bot]",
+      "uploader_id": 41898282
+    },
+    {
+      "name": "SuniPDF-0.21.1-win-x64.msi",
+      "sha256": "67AA35BD8FE0C6F36715F9EBEDCF2ADE079361BF46604595AEEABFF05874B806",
+      "size": 19394560,
+      "uploader": "github-actions[bot]",
+      "uploader_id": 41898282
+    },
+    {
+      "name": "SuniPDF-0.21.1-win-x64.msi.sha256",
+      "sha256": "51395AB3EC146568ABB4B6F1F99BB067DCC3BAE00EEFF6012E73D4278CB6A3DD",
+      "size": 94,
+      "uploader": "github-actions[bot]",
+      "uploader_id": 41898282
+    }
+  ],
+  "public_assets_match_staged": true,
+  "public_package_smoke_checks": [
+    "public six-asset downloads and SHA256",
+    "x64/ARM64 PE architecture including OCR",
+    "pinned English/French models",
+    "0.8.x portable ZIP allowlist",
+    "GUI/CLI English metadata and versions",
+    "packaged CLI info/render/form field",
+    "packaged local French OCR",
+    "MSI read-only language/upgrade transaction",
+    "MSI/ZIP executable and complete license/OCR payload hashes"
+  ],
+  "dist_copies_verified": true,
+  "production_updater": {
+    "verified": true,
+    "installation_performed": false,
+    "bytes": 19861719,
+    "seconds": 0.59,
+    "sha256": "f00ad8124906b4259c0f4ef96cdece8a1c28788609384dd151c340afbdf80bbe",
+    "test_binary": "existing implementation-source binary; updater source unchanged in release"
+  },
+  "not_verified": [
+    "ARM64 execution",
+    "physical printer",
+    "manual third-party-reader interoperability",
+    "manual native GUI QA"
+  ],
+  "unsigned_packages": true
+}

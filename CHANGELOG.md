@@ -9,6 +9,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [0.21.1] - 2026-10-17
 
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) under `lmdanavanem`,
+with x64 MSI and x64/ARM64 portable ZIPs plus SHA256 files. Release-source tests, upgrade evidence,
+public downloads and the live updater passed; [evidence and limits](docs/PROJECT_STATUS.md).
+
 ### Fixed
 
 - Refuse lossy edits when an existing text object's original font cannot represent the replacement;

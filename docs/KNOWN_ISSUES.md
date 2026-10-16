@@ -2,12 +2,14 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.21.1: document preservation (in preparation)
+## 0.21.1: document preservation (published stable Latest)
 
-The existing-text and flatten-preservation corrections below are implemented; release-source validation
-and publication remain pending. Published 0.21.0 packages are unchanged. See [Project status](PROJECT_STATUS.md).
+The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
+draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
+84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
+were verified. See [Project status](PROJECT_STATUS.md).
 
-## 0.21.0: Code Scanning remediation (published stable Latest)
+## 0.21.0: Code Scanning remediation (published; Latest at the time)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
 `contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
@@ -77,7 +79,7 @@ A5. **The open dialog (`rfd`) is modal and blocks the UI loop** for the duration
 A6. **Content editing: editing an existing text reuses its original font.** If that font
     (often an embedded subset) does not contain a typed character, PDFium substitutes or omits it.
     Workaround in published 0.21.0: delete the object and add a new one (Helvetica, Latin accents supported).
-    **0.21.1 in preparation, implementation checked on its earlier source:** keep that original font, atomically refuse
+    **Published in 0.21.1:** keep that original font, atomically refuse
     unsupported text and reopen the correct draft. This fix is absent from 0.21.0 packages; see [executed checks](PROJECT_STATUS.md).
 A7. ~~Rotation in 90° steps, no system font~~ **Resolved (SUNI-031c)**: free rotation and system TrueType
     fonts. Group rotation/resizing is implemented for 0.10.0 with a single undo; validation is tracked in `PROJECT_STATUS.md`. Remaining: an object rotated by an angle that is not a multiple of 90° no longer has corner handles
@@ -265,7 +267,7 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. 0.19.0 was stable Latest at publication.
      Rich text becomes plain text; password fields never stored/exported.
      Published 0.21.0: partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear.
-     **0.21.1 in preparation, implementation checked on its earlier source:** preserve raw non-widget graphs, attachments and shared references
+     **Published in 0.21.1:** preserve raw non-widget graphs, attachments and shared references
      when no usable appearance exists, while widgets/drawable appearances still flatten; excluded count
      and scratch-document atomicity are retained. Malformed entries or graphs beyond the 32-level copy limit
      refuse the operation without changing the active PDF. Orphan-field behavior is separate. Unicode

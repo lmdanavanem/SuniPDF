@@ -9,6 +9,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [0.21.1] — 2026-10-17
 
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) sous `lmdanavanem`,
+avec MSI x64, ZIP portables x64/ARM64 et SHA256. Tests de la source de release, preuves de mise à niveau,
+téléchargements publics et mise à jour en ligne réussis ; [preuves et limites](docs/PROJECT_STATUS.fr.md).
+
 ### Corrections
 
 - Refuser les modifications avec perte quand la police d'origine d'un objet texte ne peut pas représenter
@@ -32,7 +36,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
   avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre documents/744 pages.
   Trois nouvelles régressions : CMS malformé et deux refus d'entités XML UTF-8/UTF-16.
 - Nouveau [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) : élevée #3 et moyenne #119 corrigées ; zéro alerte ouverte, aucune exclusion du scanning.
-- 0.21.0 publiée en Latest stable sous `lmdanavanem` ; CI Windows, ARM64 de même source, 19 scénarios portables,
+- 0.21.0 publiée (Latest à cette date) sous `lmdanavanem` ; CI Windows, ARM64 de même source, 19 scénarios portables,
   13 bases MSI/65 journaux, six fichiers préparés/publics et mise à jour de production vérifiés.
 - Remplir les vues Bugs, Roadmap et Suggestions du projet GitHub avec 42 brouillons priorisés et filtres de catégorie enregistrés ;
   l'élément de sécurité 0.21.0 terminé est Terminé.
