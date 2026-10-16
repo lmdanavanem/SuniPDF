@@ -236,7 +236,7 @@ sont bloqués. Échap abandonne un brouillon non envoyé. Navigation/zoom/modes 
 le relâchement global termine aussi le geste après un saut en vue simple. Les changements différés de formulaire
 et marqueurs de récupération doivent finir avant de commencer.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
 formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
 Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
@@ -250,7 +250,7 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.19.0 : tracé des rectangles de formulaire (en développement)
+## 0.19.0 : tracé des rectangles de formulaire (publiée en Latest)
 
 `form_builder.rs` du bureau, les interactions de page de `view.rs` et les gardes de document/outil
 d'`app.rs` réutilisent le `FormFieldDraft` numérique, la géométrie affichée et l'opération worker existants (D110).
@@ -263,8 +263,8 @@ et relâchement hors page bornés à la page initiale. Gestes minuscules conserv
 la boîte sans écriture. Zoom/navigation conservent le geste, avec finalisation globale au relâchement primaire
 si la navigation en page unique masque l'origine. API moteur/CLI et 53 commandes inchangées.
 
-Implémentation, tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication en attente.
-0.18.0 reste la Latest stable.
+Implémentation, tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis.
+0.19.0 est la Latest stable.
 Souris/stylet/tactile natifs et Narrateur restent distincts. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 
 ## Coordonnées (SUNI-031c)

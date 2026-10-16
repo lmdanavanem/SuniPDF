@@ -213,7 +213,7 @@ jusqu'à Terminer, absent de la récupération après plantage. Aucune validatio
 L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
 Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
 formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
 Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
@@ -227,7 +227,7 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.19.0 : placement de champs à la souris (implémenté ; validation de publication en attente)
+## 0.19.0 : placement de champs à la souris (publiée en Latest)
 
 1. Réutiliser **Préparer un formulaire** et les cinq types existants. **Dessiner sur la page** masque la boîte
    numérique ; le geste rouvre le même brouillon avec nom, choix et options modifiable/sélection multiple conservés.
@@ -237,9 +237,9 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
    Création numérique et API moteur/CLI conservées ; toujours 53 commandes, aucun nouveau type ni dépendance.
 4. Interactions sans fenêtre, paramètres conservés, gestes minuscules/hors page, cibles périmées, sauvegarde automatique
    et régression étendue création/annulation des cinq types réussis dans le workspace. Revue indépendante, formatage et Clippy réussis.
-   Terminer les contrôles CI/paquets/mise à jour/publication avant publication. Résultats exécutés dans l'état du projet.
+   Contrôles CI/mises à niveau, paquets préparés/publics et metteur à jour réussis ; six fichiers vérifiés publiés. Résultats exécutés dans l'état du projet.
 
-**0.18.0 reste la Latest stable.** D110/A38 définissent le périmètre ; création XFA et édition de la géométrie/des types
+**0.19.0 est la Latest stable.** D110/A38 définissent le périmètre ; création XFA et édition de la géométrie/des types
 de champs existants exclues. Souris/stylet/tactile natifs et Narrateur restent distincts.
 Preuves exécutées dans `PROJECT_STATUS.fr.md`.
 

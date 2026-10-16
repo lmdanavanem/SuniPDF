@@ -169,7 +169,7 @@ jusqu'à Terminer, absent de la récupération après plantage. Aucune validatio
 L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
 Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
 formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
 Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
@@ -183,7 +183,7 @@ et contrôles existants conversion, formulaires, étiquettes, liens, tirets, com
 Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
 sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
-## 0.19.0 : placement à la souris des types de formulaire existants (implémenté ; non publié)
+## 0.19.0 : placement à la souris des types de formulaire existants (publiée en Latest)
 
 Ajouter **Dessiner sur la page** au builder numérique, en conservant texte/case/radio/listes déroulantes/zones
 de liste, noms, choix et options. Tracer un rectangle fini borné à une page, d'au moins 4 pt par dimension,
@@ -192,7 +192,7 @@ l'édition worker existante fournit une étape Annuler, validation et chiffremen
 
 Réticule/aperçu, exclusion des widgets et gardes de document/onglet/outil périmés inclus. Création numérique,
 API moteur/CLI et 53 commandes inchangés ; aucune dépendance ni type ajouté. Implémentation et tests locaux
-réussis, avec formatage/Clippy ; contrôles CI/paquets/mise à jour/publication en attente. **0.18.0 reste la Latest stable**.
+réussis, avec formatage/Clippy ; contrôles CI/paquets/mise à jour/publication réussis. **0.19.0 est la Latest stable**.
 Preuves réelles dans `PROJECT_STATUS.fr.md`.
 Édition de la géométrie existante, création XFA et contrôles matériels natifs restent distincts.
 

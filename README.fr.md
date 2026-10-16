@@ -33,7 +33,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
 | Remplir et signer | AcroForm, texte libre des listes modifiables, exports radio `/Opt`, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles/paraphes dessinés, saisis ou importés, pose atomique sur toutes les pages/la sélection, date |
-| Créer des formulaires | Champs texte, cases, groupes radio, listes déroulantes ordinaires/modifiables et zones de liste simples/multiples nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
+| Créer des formulaires | Champs texte, cases, groupes radio, listes déroulantes ordinaires/modifiables et zones de liste simples/multiples nommés par rectangles à la souris ou numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
 | Récupérer | Instantanés automatiques toutes les 60 secondes et à la suspension ; source intacte, chiffrement PDF conservé, aucun mot de passe stocké, restauration Enregistrer sous |
 | Imprimer | Sélection native Windows, plages/copies/orientation, modifications courantes, rendu tramé borné, progression et annulation |
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
@@ -47,19 +47,13 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
-source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
-formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
-Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
-329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
-étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
-[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
-avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
-enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
-réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
-et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
-Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
-sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release `415214602`,
+source `903181fee3bba5794b39714106e5814bca753fb3`. Validation locale : 460 tests réussis, zéro échec, sept ignorés par défaut ;
+formatage/Clippy sans avertissement, 909 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) réussis :
+17 scénarios portables, 11 bases MSI et 55 journaux MSI vérifiés. Six fichiers préparés/publics, empreintes API/SHA256 et contrôles des paquets réussis.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 837 875 octets sans installation sur l'hôte.
+Preuves détaillées et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 Depuis **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
 double-clic ou `set-link-target`, en conservant zone, apparence et commentaires. Choisir une adresse web/mail
@@ -88,13 +82,13 @@ jusqu'à Terminer, absent de la récupération après plantage. Aucune validatio
 L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
 Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
 
-### En développement : 0.19.0
+### Nouveautés 0.19.0
 
 Le lot implémenté ajoute le placement à la souris dans **Préparer un formulaire** pour les types existants : texte,
 case, radio, liste déroulante et zone de liste. **Dessiner sur la page** masque temporairement la boîte numérique ;
 tracer un rectangle la rouvre en conservant nom, choix et options. Seul **Créer le champ** modifie le PDF par le parcours
 existant avec annulation. La création numérique reste disponible ; aucun nouveau type, dépendance ou commande CLI.
-Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication en attente. **0.18.0 reste la Latest stable**. Voir les
+Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis. **0.19.0 est la Latest stable**. Voir les
 [prochaines tâches](docs/NEXT_TASKS.fr.md) et l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Captures d'écran

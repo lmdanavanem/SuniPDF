@@ -164,7 +164,7 @@ At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Fini
 recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
 through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+[Published as stable Latest at the time](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
 formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
 Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
@@ -178,7 +178,7 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.19.0: mouse placement of existing form types (implemented; unpublished)
+## 0.19.0: mouse placement of existing form types (published as Latest)
 
 Add **Draw on page** to the current numeric form builder, preserving text/checkbox/radio/drop-down/list-box
 types, names, choices and flags. Draw a finite rectangle clamped to one page, at least 4 pt wide/high, then
@@ -187,7 +187,7 @@ the existing worker edit supplies one Undo step, validation and encryption (D110
 
 Crosshair/preview, widget exclusion and stale document/tab/tool guards are included. Numeric creation,
 core/CLI APIs and 53 commands remain unchanged; no dependency or field type is added. Implementation and local tests
-passed, along with formatting/Clippy; CI/package/updater/publication gates remain pending. **0.18.0 remains stable Latest**. Actual evidence belongs in
+passed, along with formatting/Clippy; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 is stable Latest**. Actual evidence belongs in
 `PROJECT_STATUS.md`. Existing-field geometry editing, XFA creation and native hardware checks remain separate.
 
 ## Phase 0–1: planning and foundations — delivered

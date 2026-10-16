@@ -31,7 +31,7 @@
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages; extraction/split preserve source encryption, passwords and permissions |
 | Fill and sign | AcroForm filling, editable drop-down text, radio `/Opt` export values, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; drawn/typed/imported visual signatures and initials, atomic all/selected-page placement, date |
-| Create forms | Named text fields, checkboxes, radio groups, ordinary/editable drop-downs and single/multiple-selection lists through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
+| Create forms | Named text fields, checkboxes, radio groups, ordinary/editable drop-downs and single/multiple-selection lists through mouse-drawn or numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
 | Recover | Automatic snapshots every 60 seconds and on tab suspension; original unchanged, PDF encryption preserved, no passwords stored, restore through Save As |
 | Print | Native Windows printer selection, page ranges/copies/orientation, current edits, bounded raster output, progress and cancellation |
 | Stamp | Text watermarks and page numbering |
@@ -45,19 +45,13 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
-source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
-formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
-Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
-329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
-grouped Undo/Redo/failure regression and the CLI help regression passed.
-[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
-with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
-sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
-package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
-checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
-Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
-installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) under `lmdanavanem`, release `415214602`,
+source `903181fee3bba5794b39714106e5814bca753fb3`. Local validation: 460 passed tests, zero failures, seven default ignored;
+formatting/Clippy with warnings denied, 909 EN/FR keys, 75 qpdf checks, update-helper self-test and four NIST/NBS PDFs (744 pages).
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) passed:
+17 portable cases, 11 MSI baselines and 55 verified MSI logs. All six staged/public files, API/SHA256 digests and packaged checks passed.
+Verified copies are in `dist/`; the production updater downloaded and verified the 19,837,875-byte Latest x64 ZIP without installing it on the host.
+Detailed evidence and limits are in [Project status](docs/PROJECT_STATUS.md).
 
 Available since **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
 `set-link-target`, preserving its area, appearance and comments. Choose a safe web/mail address or a physical
@@ -85,13 +79,13 @@ At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Fini
 recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
 through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
 
-### In development: 0.19.0
+### New in 0.19.0
 
 The implemented lot adds mouse placement to **Prepare a form** for the existing text, checkbox, radio,
 drop-down and list-box types. **Draw on page** temporarily hides the numeric dialog; drawing a rectangle
 reopens it with the name, choices and flags retained. Only **Create Field** changes the PDF, through the existing
 undoable creation path. Numeric creation remains available; no new field type, dependency or CLI command.
-Local tests, formatting and Clippy passed; CI/package/updater/publication gates remain pending. **0.18.0 remains stable Latest**. See
+Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 is stable Latest**. See
 [next tasks](docs/NEXT_TASKS.md) and [project status](docs/PROJECT_STATUS.md).
 
 ## Screenshots

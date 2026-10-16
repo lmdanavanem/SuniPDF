@@ -210,7 +210,7 @@ At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Fini
 recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
 through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+[Published as stable Latest at the time](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
 formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
 Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
@@ -224,7 +224,7 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.19.0: mouse placement of form fields (implemented; release validation pending)
+## 0.19.0: mouse placement of form fields (published as Latest)
 
 1. Reuse **Prepare a form** and its five existing types. **Draw on page** hides the numeric dialog;
    a rectangle gesture reopens the same draft with name, choices and editable/multiple-selection flags retained.
@@ -234,9 +234,9 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
    Numeric creation and core/CLI APIs remain available; still 53 commands and no new dependency or field type.
 4. Headless interactions, settings retention, tiny/out-of-page gestures, stale targets, autosave and the extended
    five-type creation/undo regression passed in the workspace suite. Independent review, formatting and Clippy passed.
-   Complete CI/package/update/publication gates before publishing. Executed results belong in status.
+   CI/upgrade, staged/public package and production updater gates passed; six verified files are published. Executed results belong in status.
 
-**0.18.0 remains stable Latest.** D110/A38 define the selected scope; XFA authoring and editing existing field
+**0.19.0 is stable Latest.** D110/A38 define the selected scope; XFA authoring and editing existing field
 geometry/types are not included. Native mouse/pen/touch and Narrator checks remain separate.
 Executed evidence belongs in `PROJECT_STATUS.md`.
 

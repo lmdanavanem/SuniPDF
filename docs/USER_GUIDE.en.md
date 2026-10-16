@@ -3,21 +3,15 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [SuniPDF 0.18.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0), published as Latest under `lmdanavanem`.
+This guide covers [SuniPDF 0.19.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0), published as Latest under `lmdanavanem`.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
-source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
-formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
-Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
-329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
-grouped Undo/Redo/failure regression and the CLI help regression passed.
-[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
-with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
-sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
-package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
-checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
-Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
-installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) under `lmdanavanem`, release `415214602`,
+source `903181fee3bba5794b39714106e5814bca753fb3`. Local validation: 460 passed tests, zero failures, seven default ignored;
+formatting/Clippy with warnings denied, 909 EN/FR keys, 75 qpdf checks, update-helper self-test and four NIST/NBS PDFs (744 pages).
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) passed:
+17 portable cases, 11 MSI baselines and 55 verified MSI logs. All six staged/public files, API/SHA256 digests and packaged checks passed.
+Verified copies are in `dist/`; the production updater downloaded and verified the 19,837,875-byte Latest x64 ZIP without installing it on the host.
+Detailed evidence and limits are in [Project status](PROJECT_STATUS.md).
 
 Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unfinished ink drafts have no crash recovery.
 
@@ -485,7 +479,7 @@ labels appear in the fields panel and are not inserted as PDF page text. Creatio
 both predefined choices and typed values. Keep at least one predefined choice with a unique, nonempty export value.
 This setting applies only to new drop-downs; changing the flag on an existing field is not offered.
 
-**Implemented for 0.19.0 (unpublished):** choose **Draw on page** to hide this dialog, drag a rectangle on one
+**Available in 0.19.0:** choose **Draw on page** to hide this dialog, drag a rectangle on one
 page and reopen it with the field name, choices and flags retained. Review the numeric rectangle, then choose
 **Create Field**; drawing alone does not create a field. Rectangles stay inside one page and must be at least
 4 PDF points wide/high. Reverse dragging is allowed; a click or tiny rectangle stays in drawing mode so you
@@ -493,7 +487,7 @@ can retry. Release outside the page clamps to the original page. **Escape** canc
 Document revision/tab/tool/workspace changes cancel stale placement; zoom/navigation remain possible, including
 release finalization when a Single-page jump hides the original page. In that case the last known rectangle
 reopens in the numeric dialog for review; only **Create Field** creates it. Numeric creation remains available.
-Local tests, formatting and Clippy passed; release gates remain pending. 0.18.0 remains stable Latest. This adds no new field type or editor
+Local tests, formatting and Clippy passed; release gates passed. 0.19.0 is stable Latest. This adds no new field type or editor
 for existing fields. Native mouse/pen/touch and Narrator checks remain separate.
 
 XFA creation is unsupported. FDF import accepts normal xref text/name/array values;

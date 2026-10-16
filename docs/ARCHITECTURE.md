@@ -232,7 +232,7 @@ Esc discards an unsubmitted draft. Navigation/zoom/view modes retain the origina
 finalizes a gesture after Single-page navigation. Deferred form changes and recovery markers must finish before
 a new drawing can start.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+[Published as stable Latest at the time](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
 formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
 Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
@@ -246,7 +246,7 @@ checks and existing conversion, forms, labels, links, dashes, compression, OCR a
 Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
 installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
-## 0.19.0 form rectangle drawing (in development)
+## 0.19.0 form rectangle drawing (published as Latest)
 
 Desktop `form_builder.rs`, the page interaction in `view.rs` and document/tool lifecycle guards in
 `app.rs` reuse the current numeric `FormFieldDraft`, display-space geometry and worker creation operation (D110).
@@ -259,8 +259,8 @@ and outside-page release clamp to the original page. Tiny gestures remain active
 the builder without writing. Zoom/navigation retain the gesture, with global primary-release finalization
 when Single-page navigation hides its original page. Core/CLI APIs and 53 commands remain unchanged.
 
-Implementation, local tests, formatting and Clippy passed; CI/package/updater/publication gates remain pending.
-0.18.0 remains stable Latest.
+Implementation, local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed.
+0.19.0 is stable Latest.
 Native mouse/pen/touch and Narrator checks remain separate. Executed evidence belongs in `PROJECT_STATUS.md`.
 
 ## Coordinates (SUNI-031c)

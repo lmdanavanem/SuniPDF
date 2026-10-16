@@ -1,11 +1,11 @@
-# État du projet — mis à jour le 2026-10-16 (0.19.0 en développement ; 0.18.0 Latest)
+# État du projet — mis à jour le 2026-10-16 (0.19.0 Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.19.0 : placement à la souris des champs existants (en développement)
+## 0.19.0 : placement à la souris des champs existants (publiée en Latest stable)
 
 Le lot retenu ajoute **Dessiner sur la page** à **Préparer un formulaire** pour texte, case, radio, liste déroulante
 et zone de liste. La boîte numérique se masque pendant le tracé, puis se rouvre avec nom, choix et options conservés.
@@ -21,12 +21,38 @@ Le contrôle qpdf local a réussi 75 vérifications ; autotest du metteur à jou
 Quatre documents NIST/NBS licenciés (744 pages) ont réussi le contrôle local du corpus réel en 76,762 s, avec
 un pic mémoire enfant échantillonné de 331 276 288 octets ; tous les fichiers source sont restés inchangés.
 Formatage (`cargo fmt --all -- --check`) et Clippy toutes cibles avec `-D warnings` réussis.
-CI, paquets, mise à jour de production et publication en attente.
-API moteur/CLI et 53 commandes inchangés ; aucune dépendance ni type ajouté. Souris/stylet/tactile natifs,
-Narrateur, impression, matériel ARM64 et lecteurs tiers restent distincts. **0.18.0 reste la Latest stable** ;
-les preuves complètes ci-dessous concernent cette source publiée, pas la source 0.19.0 en développement.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release
+`415214602`, le 2026-10-16 à 17:35:42 UTC. Tag/source immuable : `903181fee3bba5794b39714106e5814bca753fb3`.
+La [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) a réussi ses 32 étapes en 844 s,
+dont les mêmes contrôles tests/traductions/qpdf, 17 cas portables (13 mises à niveau et quatre gardes), et onze
+bases MSI avec 55 journaux d'installation vérifiés. Son corpus de quatre documents termine en 47,721 s, avec
+un pic mémoire enfant échantillonné de 321 085 440 octets. Le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633)
+a réussi en 680 s, upload et post-cache inclus ; le workflow en double a ensuite été annulé. Artefact ARM64
+`12062064636` ; paquets x64 de la CI principale réussie et cet artefact ARM64 vérifié publiés.
 
-## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (base publiée ; toujours Latest)
+Les six fichiers préparés/publics et les copies `dist/` concordent avec les empreintes API et sidecars SHA256.
+Contrôles renforcés des paquets publics réussis : architectures, versions anglaises, images exactes d'icône,
+OCR/modèles/licences, contenu MSI/ZIP, formulaires, chiffrement, signatures, compression, étiquettes, liens,
+formes en tirets, encre groupée et OCR français hors ligne. Les contrôles indépendants de conversion passent
+35 sous-processus avec les treize sources inchangées. Le metteur à jour de production a téléchargé le ZIP x64
+Latest public (19 837 875 octets) et vérifié son SHA256 via le binaire de test du workspace déjà validé, sans
+installation sur l'hôte. Les scénarios réels de mise à jour/installation portable et MSI ont réussi séparément
+sur le runner Windows jetable de la CI.
+
+| Fichier | Octets | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.19.0-win-x64-portable.zip` | 19837875 | `C713DC4495D024E0BCBC715A29832FD5C49B164EFE165907496E8A1F9690E3BB` |
+| `SuniPDF-0.19.0-win-arm64-portable.zip` | 18428126 | `D40E8EA991674FF790F356BA054D8FADC01CB5C596305FD99E5C33B13C712313` |
+| `SuniPDF-0.19.0-win-x64.msi` | 19378176 | `E1CD1E6894B09A107238F96DFEFB5F7075E94D31DCC4FDFE3CCDF01100EE0EEE` |
+
+Trois sidecars SHA256 complètent les six fichiers publiés. ProductCode MSI
+`{AA82CB16-BEC5-40FD-83D3-C86852E44676}`, langue 1033. API moteur/CLI et 53 commandes inchangés ; aucune
+dépendance ni type ajouté. Paquets toujours non signés. Souris/stylet/tactile natifs, Narrateur, imprimantes
+physiques, matériel ARM64 et lecteurs tiers restent sans vérification manuelle. Le brouillon de champ reste
+uniquement en mémoire jusqu'à **Créer le champ**. Si la vue simple masque sa page d'origine avant le relâchement,
+vérifier le dernier rectangle connu dans la boîte rouverte avant de créer le champ.
+
+## 0.18.0 : dessins à main levée groupés et modèles CLI lisibles (publiée ; Latest à cette date)
 
 L'application regroupe plusieurs traits à main levée sur une page dans une seule annotation Ink, via
 l'édition moteur/worker existante. Le brouillon dispose de Terminer/Annuler, d'un seul Annuler, de bornes
@@ -39,7 +65,7 @@ bloqué après un saut en vue simple. Les changements de formulaire et marqueurs
 doivent finir avant de dessiner. Le brouillon reste uniquement en mémoire jusqu'à Terminer, sans récupération
 après plantage.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
 formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
 Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné

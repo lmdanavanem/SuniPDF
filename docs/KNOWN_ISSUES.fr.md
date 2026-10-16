@@ -230,13 +230,13 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      en lecture seule se réimportent inchangées, y compris `Off` littéral ou chaîne vide. Remplir un autre champ
      préserve `/V` et `/AS` bruts ; PDFium peut régénérer une apparence manquante et retirer la lecture seule déduite
      une fois le champ valide. Sans `/Opt`, noms d'état conservés. Contrôles locaux, CI, paquets/publics et mises à niveau réussis. Modification du drapeau d'un champ existant
-     indisponible. Création souris implémentée pour 0.19.0 (D110), non publiée : cinq types et boîte numérique
+     indisponible. Création souris publiée en 0.19.0 (D110) : cinq types et boîte numérique
      existants, paramètres conservés, rectangle fini borné à une page (minimum 4 pt par dimension), puis
      Créer le champ explicite/un Annuler. Changement de révision/onglet/outil : placement périmé annulé ; aucune
      édition de champ existant par le tracé. Si la navigation en page unique masque la page initiale pendant le geste,
      le relâchement conserve le dernier rectangle connu et rouvre la boîte numérique ; aucun champ créé sans
-     Créer le champ explicite. Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication en attente.
-     0.18.0 reste la Latest stable.
+     Créer le champ explicite. Tests locaux, formatage et Clippy réussis ; contrôles CI/paquets/mise à jour/publication réussis.
+     0.19.0 est la Latest stable.
      Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
      Aplatissement partiel : champs orphelins possibles ; annotations sans
      apparence autres que Link parfois perdues. Apparences Unicode susceptibles d’utiliser une police système non
@@ -282,7 +282,7 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     jusqu'à Terminer, absent de la récupération après plantage. Aucune validation à l'inactivité ni gomme.
     L'aide de `stamp` / `page-numbers` conserve `{n}` / `{total}` littéraux via le modèle clap existant (A16).
     Aucune nouvelle dépendance ni commande CLI ; 53 commandes.
-    [Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+    [Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
     source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
     formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
     Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné

@@ -5,7 +5,7 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.19.0] — En développement
+## [0.19.0] — 2026-10-16
 
 - Ajouté : tracer sur la page un rectangle pour les cinq types de champ existants, puis le relire dans
   la boîte numérique existante avant **Créer le champ** explicite. Conserver nom, choix, options modifiable/sélection multiple,
@@ -13,12 +13,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 - Gardes ajoutées : géométrie finie dans la page et minimum de quatre points, annulation si document/onglet/outil périmé,
   réticule/aperçu et aucune interaction avec les widgets existants pendant le tracé.
 - Aucun nouveau type, dépendance ou commande CLI. Implémentation, tests locaux, formatage et Clippy réussis ;
-  contrôles CI/paquets/mise à jour/publication en attente ;
-  **0.18.0 reste la Latest stable**. Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
+  contrôles CI/paquets/mise à jour/publication réussis ;
+  **0.19.0 est la Latest stable**. Preuves exécutées dans `docs/PROJECT_STATUS.fr.md`.
 
 ## [0.18.0] — 2026-10-16
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
+[Publiée en Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
 formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
 Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné

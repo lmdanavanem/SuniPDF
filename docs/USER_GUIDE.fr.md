@@ -3,21 +3,15 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.18.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0), publiée en Latest sous `lmdanavanem`.
+Ce guide couvre [SuniPDF 0.19.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0), publiée en Latest sous `lmdanavanem`.
 
-[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) sous `lmdanavanem`, release `415140702`,
-source `7e52de82244faf9a020ed3ed233176775c007e97`. Contrôles locaux réussis : 452 tests workspace (zéro échec, sept ignorés par défaut),
-formatage/Clippy sans avertissement, 907 clés EN/FR correspondantes, 75 qpdf et autotest du metteur à jour.
-Quatre documents NIST/NBS licenciés (744 pages) réussis en 50,796 s, pic mémoire enfant échantillonné
-329 445 376 octets ; toutes les sources inchangées. Six nouveaux tests UI sans fenêtre, régression worker native
-étendue Annuler/Rétablir groupés/échec et régression d'aide CLI réussis.
-[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) réussis,
-avec seize scénarios portables, dix bases MSI et 50 journaux MSI vérifiés. Corpus CI : 44,494 s, pic mémoire
-enfant échantillonné 320 299 008 octets. Six fichiers préparés/publics, empreintes API/sidecars et contrôles renforcés
-réussis : cinq relectures Ink groupé (clair/AES-128/AES-256 avec les deux mots de passe), quatre aides littérales
-et contrôles existants conversion, formulaires, étiquettes, liens, tirets, compression, OCR et contenu MSI.
-Copies vérifiées dans `dist/` ; le metteur à jour de production a vérifié le ZIP Latest x64 de 19 834 488 octets
-sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
+[Publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) sous `lmdanavanem`, release `415214602`,
+source `903181fee3bba5794b39714106e5814bca753fb3`. Validation locale : 460 tests réussis, zéro échec, sept ignorés par défaut ;
+formatage/Clippy sans avertissement, 909 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et quatre PDF NIST/NBS (744 pages).
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633) réussis :
+17 scénarios portables, 11 bases MSI et 55 journaux MSI vérifiés. Six fichiers préparés/publics, empreintes API/SHA256 et contrôles des paquets réussis.
+Copies vérifiées dans `dist/` ; le metteur à jour de production a téléchargé et vérifié le ZIP Latest x64 de 19 837 875 octets sans installation sur l'hôte.
+Preuves détaillées et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre non validés sans récupération après plantage.
 
@@ -515,7 +509,7 @@ Pour les choix, une ligne `valeur exportée | libellé affiché` par option, val
 plusieurs sélections. Le rectangle radio contient les boutons verticaux ; libellés dans le panneau, pas comme texte ajouté
 à la page PDF. Création annulable, chiffrement conservé. Création XFA non prise en charge.
 
-**Implémenté pour 0.19.0 (non publié) :** **Dessiner sur la page** masque cette boîte ; tracer un rectangle
+**Disponible en 0.19.0 :** **Dessiner sur la page** masque cette boîte ; tracer un rectangle
 sur une page la rouvre en conservant nom, choix et options. Relisez le rectangle numérique, puis choisissez
 **Créer le champ** ; le tracé seul ne crée aucun champ. Le rectangle reste dans une page et mesure au moins
 4 points PDF par dimension. Glissement inverse accepté ; clic simple ou rectangle minuscule : mode dessin
@@ -523,7 +517,7 @@ conservé pour réessayer. Relâcher hors page borne le rectangle à la page ini
 Révision du document/changement d'onglet/outil/espace de travail : placement périmé annulé ; zoom/navigation restent
 possibles, avec finalisation au relâchement si un saut en page unique masque l'origine. Dans ce cas, le dernier rectangle
 connu revient dans la boîte numérique pour relecture ; seul **Créer le champ** le crée. Création numérique conservée.
-Tests locaux, formatage et Clippy réussis ; contrôles de publication en attente. 0.18.0 reste la Latest stable. Aucun nouveau type ni éditeur de champs
+Tests locaux, formatage et Clippy réussis ; contrôles de publication réussis. 0.19.0 est la Latest stable. Aucun nouveau type ni éditeur de champs
 existants. Souris/stylet/tactile natifs et Narrateur restent distincts.
 
 **0.12.0 :** pour une liste déroulante, cochez **Autoriser du texte libre en plus des options proposées**

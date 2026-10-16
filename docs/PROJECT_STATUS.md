@@ -1,11 +1,11 @@
-# Project status - updated 2026-10-16 (0.19.0 in development; 0.18.0 Latest)
+# Project status - updated 2026-10-16 (0.19.0 stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.19.0: mouse placement of existing form fields (in development)
+## 0.19.0: mouse placement of existing form fields (published stable Latest)
 
 The selected lot adds **Draw on page** to **Prepare a form** for text, checkbox, radio, drop-down and list-box
 fields. The numeric dialog hides while drawing, then reopens with name, choices and flags retained. Drawing
@@ -21,12 +21,37 @@ The local qpdf gate passed 75 checks; the update-helper self-test passed path/ch
 Four licensed NIST/NBS documents (744 pages) passed the local real-corpus gate in 76.762 seconds, with sampled
 peak child memory of 331,276,288 bytes; all source files stayed unchanged.
 Formatting (`cargo fmt --all -- --check`) and all-target Clippy with `-D warnings` passed.
-CI, packages, live updater and publication remain pending.
-Core/CLI APIs and 53 commands remain unchanged; no dependency or field type is added. Native mouse/pen/touch,
-Narrator, printing, ARM64 hardware and third-party readers remain separate checks. **0.18.0 remains stable Latest**;
-the completed evidence below describes that published source, not the developing 0.19.0 source.
+[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.19.0) under `lmdanavanem`, release
+`415214602`, on 2026-10-16 at 17:35:42 UTC. Immutable tag/source: `903181fee3bba5794b39714106e5814bca753fb3`.
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938525308) passed all 32 steps in 844 seconds,
+including the same test/translation/qpdf gates, 17 portable cases (13 upgrades and four guards), and 11 MSI
+baselines with 55 verified installer logs. Its four-document corpus took 47.721 seconds, with sampled peak
+child memory of 321,085,440 bytes. The [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38938524836/job/117100003633)
+passed in 680 seconds, including upload/post-cache; the duplicate workflow was then cancelled. ARM64 artifact
+`12062064636`; successful main-CI x64 packages and this verified ARM64 artifact were published.
 
-## 0.18.0: grouped freehand drawings and readable CLI templates (published baseline; still Latest)
+All six staged/public files and `dist/` copies match API digests and SHA256 sidecars. Enhanced public package
+checks passed for architecture, English version metadata, exact icon frames, OCR/models/licenses, MSI/ZIP
+payload, forms, encryption, signatures, compression, labels, links, dashed shapes, grouped ink and offline
+French OCR. Independent conversion checks passed 35 subprocesses with all thirteen sources unchanged.
+The production updater downloaded the public Latest x64 ZIP (19,837,875 bytes) and verified its SHA256 using
+the already validated workspace test binary, without installing on the host. Real portable/MSI update and
+install scenarios passed separately on the disposable Windows CI runner.
+
+| File | Bytes | SHA256 |
+|---|---:|---|
+| `SuniPDF-0.19.0-win-x64-portable.zip` | 19837875 | `C713DC4495D024E0BCBC715A29832FD5C49B164EFE165907496E8A1F9690E3BB` |
+| `SuniPDF-0.19.0-win-arm64-portable.zip` | 18428126 | `D40E8EA991674FF790F356BA054D8FADC01CB5C596305FD99E5C33B13C712313` |
+| `SuniPDF-0.19.0-win-x64.msi` | 19378176 | `E1CD1E6894B09A107238F96DFEFB5F7075E94D31DCC4FDFE3CCDF01100EE0EEE` |
+
+Three SHA256 sidecars complete the six published files. MSI ProductCode
+`{AA82CB16-BEC5-40FD-83D3-C86852E44676}`, language 1033. Core/CLI APIs and 53 commands remain unchanged;
+no dependency or field type is added. Packages remain unsigned. Native mouse/pen/touch, Narrator, physical
+printers, ARM64 hardware and third-party readers remain manually unverified. The field draft exists only in
+memory until **Create Field**. When Single view hides its origin page before release, review the last known
+rectangle in the reopened dialog before creating the field.
+
+## 0.18.0: grouped freehand drawings and readable CLI templates (published; Latest at the time)
 
 The desktop groups multiple freehand strokes on one page into one Ink annotation through the existing
 core/worker edit. The desktop draft has explicit Finish/Cancel, one undo, bounded strokes/points and guards
@@ -38,7 +63,7 @@ global pointer-release finalization prevents a stroke becoming stuck after a Sin
 form changes and recovery markers must complete before drawing can begin. The draft exists only in memory
 until Finish: it is not included in crash recovery. Implementation/local validation passed.
 
-[Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
+[Published as stable Latest at the time](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
 source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
 formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
 Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
