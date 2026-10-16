@@ -5,6 +5,30 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.17.0] - Unreleased
+
+Local validation passed: 445 workspace tests (zero failed, seven default ignored), formatting/Clippy all-targets
+with warnings denied, 896 EN/FR keys, 74 qpdf checks and four licensed documents (744 pages; 48.187 seconds,
+peak child memory 330,264,576 bytes). The update-helper self-test passed. The independent debug-CLI conversion
+gate passed: eight orientations, nine exact JPEG streams including the maximum-DPI round trip, 32 JPEG/four
+PNG corner comparisons and soft mask, three qpdf checks, two budget refusals before decoding, ten invalid-DPI
+refusals and thirteen unchanged sources (35 subprocesses, 1.063 seconds). CI, packages, upgrades and publication
+remain pending; fifteen portable cases and nine MSI baselines are expected, not executed. 0.16.0 stays published
+Latest. Executed evidence and remaining limits belong in `docs/PROJECT_STATUS.md`.
+
+### Changed
+- Images → PDF embeds JPEG EXIF orientations 5 and 7 directly, completing all eight orientations without
+  image decoding or recompression. The object matrix applies the orientation; original JPEG bytes are retained.
+- Before raster decoding, check a cumulative estimate of at most 512 MiB for non-JPEG inputs: sum of
+  `max(decoder.total_bytes(), width × height × 4)`, with checked arithmetic. Repeat checks at loading to catch
+  simple input-file changes. Reject nonfinite/nonpositive physical page geometry.
+- Budget excess/overflow reports `image_batch_too_large` with a localized desktop explanation; invalid physical
+  geometry retains `other`. One EN/FR error key is added; all other existing error/output guards remain.
+
+The budget is a conservative raster-data estimate, not a native/process RSS ceiling or a compressed-JPEG limit.
+Other formats still decode with their quality/transparency preserved. Existing UI/CLI callers, conversion method signature and
+53 commands remain unchanged; no new dependency. Source/output guards remain in place (D108).
+
 ## [0.16.0] - 2026-10-16
 
 Local validation passed: 439 workspace tests (zero failed, seven default ignored), formatting/Clippy,

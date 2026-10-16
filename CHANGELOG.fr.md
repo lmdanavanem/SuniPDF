@@ -5,6 +5,30 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.17.0] — Non publiée
+
+Validation locale réussie : 445 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy all-targets
+sans avertissement, 896 clés EN/FR, 74 contrôles qpdf et quatre documents licenciés (744 pages ; 48,187 s,
+pic mémoire enfant 330 264 576 octets). Autotest du helper de mise à jour réussi. Contrôle indépendant de la CLI
+debug réussi : huit orientations, neuf flux JPEG exacts dont aller-retour au DPI maximal, 32 coins JPEG/quatre
+PNG et masque alpha, trois contrôles qpdf, deux refus de budget avant décodage, dix refus de DPI invalides,
+treize sources inchangées (35 sous-processus, 1,063 s). CI, paquets, mises à niveau et publication en attente ;
+quinze scénarios portables et neuf bases MSI attendus, non exécutés. 0.16.0 reste Latest publiée.
+Preuves exécutées et limites dans `docs/PROJECT_STATUS.fr.md`.
+
+### Modifications
+- Images → PDF incorpore directement les JPEG d'orientations EXIF 5 et 7 : les huit orientations sont ainsi
+  prises en charge sans décodage d'image ni recompression. La matrice applique l'orientation ; octets JPEG conservés.
+- Avant décodage raster, contrôler une estimation cumulée de 512 Mio au plus pour les non-JPEG : somme de
+  `max(decoder.total_bytes(), largeur × hauteur × 4)`, avec arithmétique vérifiée. Répéter les contrôles au chargement
+  pour détecter les changements simples des fichiers. Refuser une géométrie physique non finie/non positive.
+- Dépassement/overflow du budget : `image_batch_too_large`, avec explication localisée dans l'application ;
+  géométrie physique invalide : `other` conservé. Une clé d'erreur EN/FR ajoutée ; autres protections conservées.
+
+Budget conservateur de données raster, pas plafond RSS natif/processus ni limite des JPEG comprimés.
+Autres formats toujours décodés avec qualité/transparence conservées. Accès UI/CLI, signature de méthode et 53 commandes inchangés ;
+aucune nouvelle dépendance. Protections des sources/sorties conservées (D108).
+
 ## [0.16.0] — 2026-10-16
 
 Validation locale réussie : 439 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy,

@@ -1,9 +1,42 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.16.0 publiée)
+# État du projet — mis à jour le 2026-10-16 (version 0.17.0 en développement)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.17.0 : conversion JPEG orientée sans recompression et contrôle des lots raster (en développement)
+
+Images vers PDF incorpore désormais les JPEG sans décodage des pixels ni recompression pour les huit orientations
+EXIF, y compris les rotations avec miroir 5 et 7. Les dimensions de page suivent l’image orientée. L’API moteur
+partagée et les appels bureau/CLI existants sont conservés ; les formats décodés gardent leur transparence.
+
+Avant de créer un bitmap, la conversion contrôle tous les en-têtes et refuse un lot dont les images non-JPEG ont
+un coût raster cumulé estimé dépassant 512 Mio. Chacune compte le maximum entre ses octets décodés annoncés et largeur ×
+hauteur × 4, avec arithmétique vérifiée. Le décodeur réellement chargé est contrôlé de nouveau avant décodage.
+Ce n’est pas un plafond mémoire du processus : tampons natifs PDFium, métadonnées JPEG encodées, copies temporaires
+et PDF sérialisé restent hors estimation. Les dimensions physiques des pages doivent être finies et positives.
+
+Dépassement ou overflow du budget renvoie `image_batch_too_large` ; le bureau affiche une erreur EN/FR exploitable
+et conserve le document courant et ses modifications non enregistrées. Gardes de sortie et écritures atomiques
+existantes conservées. Aucune dépendance, option, commande ou outil ajouté ; toujours 53 commandes CLI et
+896 clés de traduction EN/FR concordantes.
+
+Validation locale réussie : 445 tests workspace, aucun échec, sept ignorés par défaut ; formatage, Clippy sans
+avertissement, 896 clés EN/FR concordantes, 74 contrôles qpdf indépendants et quatre documents NIST/NBS sous
+licence (744 pages ; 48,187 secondes, pic mémoire échantillonné du processus enfant 330 264 576 octets).
+Self-test de l’assistant de mise à jour réussi. Revue indépendante sans blocage. Tests natifs/CLI : huit orientations,
+flux JPEG exacts, coins asymétriques, repli EXIF malformé, transparence, bornes cumulées/overflow/en-têtes,
+DPI extrêmes, entrées inchangées et gardes de sortie. Le test de réponse bureau conserve le document modifié au refus.
+
+Un contrôle indépendant Python/Pillow/qpdf passe sur la CLI debug : neuf comparaisons de flux JPEG exacts,
+32 coins JPEG orientés, quatre coins PNG avec masque alpha, trois contrôles qpdf, deux refus de budget sur
+en-têtes seuls avant décodage, dix refus de DPI invalides et géométrie positive/finie après sauvegarde au DPI f32
+maximum. Les 13 empreintes d’entrée restent inchangées. Ce résultat debug ne prouve ni paquet publié ni GUI manuelle.
+
+CI, binaires empaquetés, téléchargements publics, publication et updater de production restent à valider. Les mises
+à niveau incluent le ZIP/MSI 0.16.0 vérifiés indépendamment, pour 15 scénarios portables et neuf baselines MSI.
+La 0.16.0 reste stable Latest.
 
 ## 0.16.0 : annotations de forme en pointillés (publiée en Latest)
 

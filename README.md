@@ -63,6 +63,13 @@ New in **0.16.0**: dashed borders for rectangle, ellipse, line and arrow annotat
 geometry edits; only explicitly toggling the checkbox changes the pattern. Invalid styles are refused rather
 than silently replaced. See [Project status](docs/PROJECT_STATUS.md) for validation and remaining limits.
 
+In development for **0.17.0**: embed JPEGs with all eight EXIF orientations without recompression, including
+the previously decoded orientations 5 and 7. Images → PDF also checks a cumulative **512 MiB estimated raster
+budget** before decoding non-JPEG inputs. This estimates decoded image data, not total process memory.
+UI/CLI entry points and 53 commands are unchanged. Local checks passed: 445 workspace tests, formatting/Clippy,
+896 EN/FR keys, 74 qpdf checks, four licensed documents/744 pages (48.187 seconds) and the independent debug
+conversion gate. CI, packages/publication and fifteen portable/nine MSI checks remain pending; 0.16.0 stays Latest.
+
 ## Screenshots
 
 | Dark home screen | Light home screen |

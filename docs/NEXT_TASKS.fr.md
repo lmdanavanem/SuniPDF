@@ -179,6 +179,24 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   copies vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP x64 de 19 821 719 octets sans
   installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.17.0 : fiabilité de la conversion d'images (en développement)
+
+- Incorporer directement les JPEG EXIF 5 et 7 sans recompression : huit orientations via les matrices existantes.
+  Conserver qualité/transparence des non-JPEG et les accès bureau/CLI (D108).
+- Avant allocation raster, borner à 512 Mio l'estimation non-JPEG cumulée :
+  `somme(max(decoder.total_bytes(), largeur × hauteur × 4))`, arithmétique vérifiée et tailles physiques finies/
+  positives. Répéter les contrôles au chargement pour les changements simples de fichiers. Aucun plafond RSS
+  natif/processus ni limite JPEG comprimé ; coût du décodeur, de PDFium et de sortie distinct.
+- Méthode de conversion/accès et 53 commandes CLI conservés ; aucune nouvelle dépendance. Dépassement/overflow
+  du budget : `image_batch_too_large`, avec une clé d'erreur EN/FR ; géométrie invalide : `other` conservé.
+- Contrôles locaux réussis : 445 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy all-targets,
+  896 clés EN/FR, 74 contrôles qpdf, quatre documents licenciés/744 pages (48,187 s ; pic mémoire enfant
+  330 264 576 octets) et autotest du helper de mise à jour. Conversion debug indépendante réussie : huit orientations,
+  neuf flux JPEG exacts, 32 coins JPEG/quatre PNG et masque alpha, trois contrôles qpdf, deux refus budget/dix DPI,
+  treize sources inchangées (35 sous-processus, 1,063 s). CI, paquets/publication et mises à niveau en attente ;
+  quinze scénarios portables et neuf bases MSI dont 0.16.0 attendus, non exécutés. 0.16.0 reste Latest.
+  Preuves et limites dans `PROJECT_STATUS.fr.md`.
+
 ## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -256,7 +274,8 @@ Reste, non bloquant :
 - élargir le corpus d'interopérabilité AES/XMP au-delà du contrôle qpdf synthétique (A4) ;
 - contrôler les métadonnées PDF/A préservées avec un validateur dédié (A34) ; la correction de préservation 0.9.1
   est implémentée et les preuves d'exécution actuelles sont dans `PROJECT_STATUS.fr.md` ;
-- incorporer les JPEG d'orientation EXIF 5 et 7 sans décodage (A31) ; limiter la mémoire des lots de PNG ;
+- incorporation directe JPEG EXIF 5/7 et estimation PNG/raster cumulée en développement pour 0.17.0 (A31/D108) ;
+  mesure de la mémoire native/processus et entrées licenciées volumineuses restent distinctes ;
 - aide CLI de `stamp` / `page-numbers` (A16, clap remplace `{n}`).
 
 ## SUNI-012c — Affichage, suite (owner : UI-UX)

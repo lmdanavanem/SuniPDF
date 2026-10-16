@@ -390,9 +390,19 @@ Batch files do not prompt for passwords; files requiring one are reported as err
 ## Converting
 
 - **Create PDF from images** (PNG, JPEG, BMP, GIF, TIFF, WebP): one page per image, 150 dpi; the EXIF
-  orientation of photos is honoured and JPEG files are embedded without recompression.
+  orientation of photos is honoured. In published 0.16.0, JPEGs are embedded without recompression except
+  orientations 5 and 7, which use the decoded image path.
 - **Export pages as images**: one PNG per page (150 dpi) in the chosen folder.
 - **Optimize file size**: lossless recompression; the gain depends on the file and may be small.
+
+**0.17.0 in development:** all eight JPEG EXIF orientations, including 5 and 7, are embedded directly without
+recompression. Before decoding the other formats, Images → PDF checks a cumulative estimated raster budget
+of 512 MiB: the sum of the larger of each decoder's announced size and `width × height × 4` bytes. The checks
+repeat at loading and reject invalid physical page sizes. Image quality/transparency remain preserved; this
+budget estimates raster data, not total/native process memory, and does not limit compressed JPEGs. Existing
+UI and CLI `images2pdf` usage is unchanged. An oversized raster batch reports `image_batch_too_large`; choose
+fewer or smaller images. Local workspace, qpdf/corpus and independent debug conversion checks passed;
+CI/packages/publication and upgrades remain pending. See [Project status](PROJECT_STATUS.md) for evidence and limits.
 
 ## Security
 

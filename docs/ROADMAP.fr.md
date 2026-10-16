@@ -141,6 +141,20 @@ documents licenciés/744 pages (53,542 s localement), quatorze scénarios portab
 préparés/publics et contrôles renforcés réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a
 vérifié le ZIP x64 de 19 821 719 octets sans installation. Preuves et limites dans `PROJECT_STATUS.fr.md`.
 
+## 0.17.0 : fiabilité de la conversion d'images (en développement)
+
+Compléter l'incorporation directe JPEG EXIF 5 et 7 : les huit orientations évitent décodage/recompression d'image.
+Contrôler les non-JPEG avant allocation avec une estimation raster cumulée de 512 Mio :
+`somme(max(decoder.total_bytes(), largeur × hauteur × 4))`, arithmétique vérifiée, géométrie physique finie/positive
+et contrôles répétés au chargement pour les changements simples de fichiers (D108). Qualité/transparence et
+UI/CLI/API existantes conservées. Estimation distincte d'un plafond RSS natif/processus ou d'une limite JPEG
+comprimé. Aucune dépendance ni commande ajoutée ; erreur localisée `image_batch_too_large` pour dépassement/overflow
+du budget, `other` conservé pour géométrie invalide. Validation locale réussie : 445 tests workspace, formatage/
+Clippy, 896 clés EN/FR, 74 contrôles qpdf et quatre documents licenciés/744 pages (48,187 s ; pic mémoire enfant
+330 264 576 octets), autotest du helper de mise à jour et contrôle de conversion debug indépendant. CI, paquets/
+publication et quinze scénarios portables/neuf bases MSI en attente. 0.16.0 reste Latest publiée ; preuves et
+limites dans `PROJECT_STATUS.fr.md`.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -174,6 +188,9 @@ Critère : rendu, enregistrement et réouverture couverts pour chaque opération
 ## Phase 4 : conversion et OCR — partiellement livrée
 
 Livrés : images ↔ PDF, PDF → texte/PNG, optimisation sans perte, lots CLI et OCR anglais/français local embarqué.
+
+En développement pour 0.17.0 : huit orientations JPEG EXIF incorporées directement et estimation raster cumulée ;
+mesure des limites de mémoire native/processus distincte (D108).
 
 Restent : Office → PDF via convertisseur local détecté, PDF → Word/Excel/PowerPoint avec limites de fidélité mesurées
 et explicites, profils réutilisables. Compression des images et lots compression/OCR livrés en 0.10.0.

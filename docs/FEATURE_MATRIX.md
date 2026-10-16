@@ -130,7 +130,7 @@ installation. Evidence and remaining hardware/interoperability limits are in `PR
 |---|---|---|
 | PDF → images | Declared (CLI render) | **Done** (UI 150 dpi PNG export, CLI `render`, `export-images`) |
 | PDF → text | Declared | **Done** (CLI `text`) |
-| Images → PDF | Declared (create) | **Done** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP; EXIF orientation applied, JPEGs embedded as is) |
+| Images → PDF | Declared (create) | **Done** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP; EXIF orientation applied; published 0.16.0 decodes JPEG orientations 5/7, otherwise embeds JPEGs as is). **In development for 0.17.0**: direct embedding for all eight JPEG orientations; 512 MiB cumulative non-JPEG raster estimate `sum(max(decoded bytes, width × height × 4))` before allocation, checked arithmetic and finite/positive page geometry (D108). Quality/transparency and callers retained; estimate is not a process/native RSS ceiling or compressed-JPEG limit. Local workspace, qpdf/corpus and independent debug conversion checks passed; CI/packages/publication and upgrades pending in `PROJECT_STATUS.md` |
 | PDF → Word | Partial (loses the layout) | Planned (P4), fidelity to be announced honestly |
 | PDF → Excel / PowerPoint | Absent / partial pptx export | Planned (P4) |
 | Office → PDF | Absent | Planned (P4) through an installed LibreOffice/Word if present; otherwise out of scope |

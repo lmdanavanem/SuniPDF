@@ -64,6 +64,13 @@ Nouveautés **0.16.0** : bordures en tirets des annotations rectangle, ellipse, 
 recoloration et modification géométrique ; seul un changement explicite de case remplace le motif. Les styles
 invalides sont refusés sans remplacement silencieux. Validation et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
+En développement pour **0.17.0** : incorporer les JPEG des huit orientations EXIF sans recompression, dont
+les orientations 5 et 7 auparavant décodées. Images → PDF contrôle aussi un **budget raster cumulé estimé de
+512 Mio** avant de décoder les entrées non-JPEG. Cette estimation porte sur les images décodées, pas la mémoire
+totale du processus. Accès UI/CLI et 53 commandes inchangés. Contrôles locaux réussis : 445 tests workspace,
+formatage/Clippy, 896 clés EN/FR, 74 contrôles qpdf, quatre documents licenciés/744 pages (48,187 s) et contrôle
+de conversion debug indépendant. CI, paquets/publication et quinze scénarios portables/neuf bases MSI en attente ; 0.16.0 reste Latest.
+
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |
 |---|---|

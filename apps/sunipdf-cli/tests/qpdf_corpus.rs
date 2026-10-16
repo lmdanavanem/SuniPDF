@@ -15,6 +15,9 @@ mod destinations_fixture;
 #[path = "../../../crates/sunipdf-core/tests/fixtures/radio_exports.rs"]
 mod radio_exports;
 
+#[path = "../../../crates/sunipdf-core/tests/support/conversion_images.rs"]
+mod conversion_images;
+
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../crates/sunipdf-core/tests/fixtures")
@@ -613,6 +616,40 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     command.args(["--dpi", "144", "--out"]).arg(&scan);
     success(command);
     check(&qpdf, &scan, None);
+    let jpeg5 = temp.path().join("exif-5.jpg");
+    let jpeg7 = temp.path().join("exif-7.jpg");
+    let transparent = temp.path().join("transparent.png");
+    conversion_images::jpeg(&jpeg5, 5);
+    conversion_images::jpeg(&jpeg7, 7);
+    conversion_images::transparent_png(&transparent);
+    let source_bytes = [
+        std::fs::read(&jpeg5).unwrap(),
+        std::fs::read(&jpeg7).unwrap(),
+        std::fs::read(&transparent).unwrap(),
+    ];
+    let converted = temp.path().join("oriented-transparent-images.pdf");
+    let mut command = cli(&["images2pdf"], &[&jpeg5, &jpeg7, &transparent]);
+    command.args(["--dpi", "72", "--out"]).arg(&converted);
+    assert_eq!(success(command)["page_count"], 3);
+    check(&qpdf, &converted, None);
+    let converted_pdf = lopdf::Document::load(&converted).unwrap();
+    conversion_images::assert_jpeg_bytes(&converted_pdf, 0, &source_bytes[0]);
+    conversion_images::assert_jpeg_bytes(&converted_pdf, 1, &source_bytes[1]);
+    for (path, bytes) in [&jpeg5, &jpeg7, &transparent].into_iter().zip(source_bytes) {
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+    let header = temp.path().join("allocation-guard.png");
+    std::fs::write(&header, conversion_images::png_header(4096, 4096, 8, 6)).unwrap();
+    let rejected = temp.path().join("allocation-guard.pdf");
+    let mut command = cli(&["images2pdf"], &[header.as_path(); 9]);
+    command.arg("--out").arg(&rejected);
+    let error = bounded(command, None);
+    assert_eq!(error.status.code(), Some(1));
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&error.stderr).unwrap()["error"],
+        "image_batch_too_large"
+    );
+    assert!(!rejected.exists());
     let compression_seed = temp.path().join("compression-seed.pdf");
     write_rgb_seed(&compression_seed);
     check(&qpdf, &compression_seed, None);

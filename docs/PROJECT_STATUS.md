@@ -1,9 +1,41 @@
-# Project status - updated 2026-10-16 (version 0.16.0 published)
+# Project status - updated 2026-10-16 (version 0.17.0 in development)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.17.0: lossless oriented JPEG conversion and raster batch checks (in development)
+
+Images to PDF now embeds JPEGs without pixel decoding or recompression for all eight EXIF orientations,
+including mirrored rotations 5 and 7. Page dimensions follow the oriented image. The shared core API and
+existing desktop/CLI callers are retained; transparency is preserved for decoded image formats.
+
+Before creating any bitmap, the conversion checks all image headers and rejects a batch whose non-JPEG images'
+cumulative estimated raster cost exceeds 512 MiB. Each such image charges the greater of its decoder byte count
+and width × height × 4, using checked arithmetic. The actual loading decoder is checked again before decoding.
+This is not a process-memory ceiling: native PDFium buffers, encoded JPEG metadata, temporary copies and the
+serialized PDF remain outside the estimate. Physical page dimensions must be finite and positive.
+
+Budget overflow/excess returns `image_batch_too_large`; the desktop shows an actionable EN/FR error and keeps
+the current document and unsaved changes. Existing output guards and atomic file writes remain. No dependency,
+option, command or tool was added; there are still 53 CLI commands and 896 matching EN/FR translation keys.
+
+Local validation passed: 445 workspace tests, zero failures, seven default ignored; formatting, Clippy with
+warnings denied, 896 matching EN/FR keys, 74 independent qpdf checks and four licensed NIST/NBS documents
+(744 pages; 48.187 seconds, peak sampled child working set 330,264,576 bytes). The update-helper self-test passed.
+Independent code review found no blocker. Native and CLI tests cover all eight orientations, exact JPEG streams,
+asymmetric corners, malformed EXIF fallback, transparency, cumulative/overflow/header bounds, extreme DPI,
+unchanged inputs and existing-output guards. The desktop response test keeps the modified document on a refusal.
+
+An independent Python/Pillow/qpdf check passed against the debug CLI: nine exact JPEG stream comparisons,
+32 oriented JPEG corners, four PNG corners with a soft mask, three qpdf checks, two header-only budget refusals
+before pixel decoding, ten invalid-DPI refusals and positive finite geometry after saving at f32 maximum DPI.
+All 13 input hashes stayed unchanged. This is debug-runtime evidence, not released-package or manual GUI proof.
+
+CI, packaged binaries, public downloads, publication and the live production updater remain pending. Upgrade
+coverage includes the independently verified 0.16.0 ZIP/MSI baseline, for 15 portable scenarios and nine MSI
+baselines. Version 0.16.0 remains stable Latest.
 
 ## 0.16.0: dashed shape annotations (published as Latest)
 

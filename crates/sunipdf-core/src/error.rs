@@ -20,6 +20,10 @@ pub enum EngineError {
     PageOutOfRange(usize),
     #[error("requested render size exceeds limits")]
     RenderTooLarge,
+    #[error(
+        "image batch exceeds the 512 MiB estimated raster budget; use fewer or smaller images"
+    )]
+    ImageBatchTooLarge,
     #[error("output already exists: {0}")]
     AlreadyExists(PathBuf),
     /// Caractères absents de la police (liste dédoublonnée, sans espaces).
@@ -58,6 +62,7 @@ impl EngineError {
             Self::SecurityRestricted => "security_restricted",
             Self::PageOutOfRange(_) => "page_out_of_range",
             Self::RenderTooLarge => "render_too_large",
+            Self::ImageBatchTooLarge => "image_batch_too_large",
             Self::AlreadyExists(_) => "already_exists",
             Self::MissingGlyphs(_) => "missing_glyphs",
             Self::PasswordNotLatin1 => "password_not_latin1",

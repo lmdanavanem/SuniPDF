@@ -417,9 +417,19 @@ restent après erreur/annulation. Pas de demande de mot de passe par fichier : c
 ## Convertir
 
 - **Créer un PDF à partir d'images** (PNG, JPEG, BMP, GIF, TIFF, WebP) : une page par image, 150 ppp ;
-  l'orientation EXIF des photos est respectée et les JPEG sont incorporés sans recompression.
+  l'orientation EXIF des photos est respectée. Dans la 0.16.0 publiée, les JPEG sont incorporés sans
+  recompression sauf les orientations 5 et 7, qui passent par le décodage.
 - **Exporter les pages en images** : un PNG par page (150 ppp) dans le dossier choisi.
 - **Optimiser la taille du fichier** : recompression sans perte ; le gain dépend du fichier et peut être faible.
+
+**0.17.0 en développement :** les huit orientations EXIF JPEG, dont 5 et 7, sont incorporées directement sans
+recompression. Avant de décoder les autres formats, Images → PDF contrôle un budget raster cumulé estimé de
+512 Mio : somme du maximum entre taille annoncée par chaque décodeur et `largeur × hauteur × 4` octets.
+Contrôles répétés au chargement, tailles physiques invalides refusées. Qualité/transparence conservées ; ce budget
+estime les données raster, pas la mémoire totale/native du processus, et ne limite pas les JPEG comprimés.
+Usage UI et CLI `images2pdf` inchangé. Lot raster excessif : `image_batch_too_large` ; choisissez moins d'images
+ou des images plus petites. Workspace local, qpdf/corpus et contrôle de conversion debug indépendant réussis ;
+CI/paquets/publication et mises à niveau en attente. Preuves et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 ## Sécurité
 

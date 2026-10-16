@@ -28,7 +28,7 @@ fn reader(path: &Path) -> Result<ImageReader<std::io::BufReader<std::fs::File>>,
 }
 
 /// Décode une image en appliquant son orientation EXIF (photos de téléphone en portrait) :
-/// chargeur unique des images insérées, remplacées ou converties en pages. Allocation bornée
+/// chargeur des images insérées ou remplacées. Allocation bornée
 /// à 512 Mio (`image::Limits::default`), dimensions libres.
 pub(crate) fn load_image(path: &Path) -> Result<DynamicImage, EngineError> {
     decode(path, image::Limits::default())
@@ -53,57 +53,93 @@ pub(crate) fn decode(path: &Path, limits: image::Limits) -> Result<DynamicImage,
 }
 
 /// Matrice PDF qui affiche une image de `w` × `h` points (dimensions brutes, avant orientation)
-/// avec son orientation EXIF appliquée, coin bas-gauche en (0, 0) ; `None` pour les deux
-/// combinaisons rotation + miroir (passage par le décodage).
-fn oriented_matrix(o: Orientation, w: f32, h: f32) -> Option<[f32; 6]> {
-    Some(match o {
+/// avec son orientation EXIF appliquée, coin bas-gauche en (0, 0).
+fn oriented_matrix(o: Orientation, w: f32, h: f32) -> [f32; 6] {
+    match o {
         Orientation::NoTransforms => [w, 0.0, 0.0, h, 0.0, 0.0],
         Orientation::Rotate90 => [0.0, -w, h, 0.0, 0.0, w],
         Orientation::Rotate180 => [-w, 0.0, 0.0, -h, w, h],
         Orientation::Rotate270 => [0.0, w, -h, 0.0, h, 0.0],
         Orientation::FlipHorizontal => [-w, 0.0, 0.0, h, w, 0.0],
         Orientation::FlipVertical => [w, 0.0, 0.0, -h, 0.0, h],
-        Orientation::Rotate90FlipH | Orientation::Rotate270FlipH => return None,
-    })
+        Orientation::Rotate90FlipH => [0.0, -w, -h, 0.0, h, w],
+        Orientation::Rotate270FlipH => [0.0, w, h, 0.0, 0.0, 0.0],
+    }
 }
 
-/// JPEG incorporé tel quel (`FPDFImageObj_LoadJpegFileInline`) : ni décodage en mémoire ni
+fn page_dimensions(width: u32, height: u32, dpi: f32) -> Result<(f32, f32), EngineError> {
+    let (w, h) = (width as f32 * 72.0 / dpi, height as f32 * 72.0 / dpi);
+    if !(w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0) {
+        return Err(EngineError::Other(
+            "image page size must be finite and positive".into(),
+        ));
+    }
+    Ok((w, h))
+}
+
+fn reserve_raster(
+    budget: &mut image::Limits,
+    width: u32,
+    height: u32,
+    decoded_bytes: u64,
+) -> Result<(), EngineError> {
+    let rgba_bytes = u64::from(width)
+        .checked_mul(u64::from(height))
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or(EngineError::ImageBatchTooLarge)?;
+    budget
+        .reserve(decoded_bytes.max(rgba_bytes))
+        .map_err(|_| EngineError::ImageBatchTooLarge)
+}
+
+fn preflight_images(images: &[PathBuf], dpi: f32) -> Result<(), EngineError> {
+    let mut budget = image::Limits::default();
+    for path in images {
+        let reader = reader(path)?;
+        let jpeg = reader.format() == Some(ImageFormat::Jpeg);
+        let decoder = reader.into_decoder().map_err(|e| image_err(path, e))?;
+        let (width, height) = decoder.dimensions();
+        page_dimensions(width, height, dpi)?;
+        if !jpeg {
+            reserve_raster(&mut budget, width, height, decoder.total_bytes())?;
+        }
+    }
+    Ok(())
+}
+
+/// JPEG incorporé tel quel (`FPDFImageObj_LoadJpegFileInline`) : ni décodage des pixels ni
 /// recompression ; renvoie l'objet et la taille de page (points) après orientation.
 fn jpeg_object<'a>(
     doc: &PdfDocument<'a>,
     path: &Path,
-    dpi: f32,
-) -> Result<Option<(PdfPageImageObject<'a>, f32, f32)>, EngineError> {
-    let mut decoder = reader(path)?;
-    if decoder.format() != Some(ImageFormat::Jpeg) {
-        return Ok(None);
-    }
-    let (pw, ph) = decoder.into_dimensions().map_err(|e| image_err(path, e))?;
-    decoder = reader(path)?;
-    let orientation = decoder
-        .into_decoder()
-        .map_err(|e| image_err(path, e))?
-        .orientation()
-        .unwrap_or(Orientation::NoTransforms);
-    let (w, h) = (pw as f32 * 72.0 / dpi, ph as f32 * 72.0 / dpi);
-    let Some(m) = oriented_matrix(orientation, w, h) else {
-        return Ok(None);
-    };
+    w: f32,
+    h: f32,
+    orientation: Orientation,
+) -> Result<(PdfPageImageObject<'a>, f32, f32), EngineError> {
+    let m = oriented_matrix(orientation, w, h);
     let mut object = PdfPageImageObject::new_from_jpeg_reader(doc, std::fs::File::open(path)?)?;
     object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
-    let swapped = matches!(orientation, Orientation::Rotate90 | Orientation::Rotate270);
-    Ok(Some(if swapped {
+    let swapped = matches!(
+        orientation,
+        Orientation::Rotate90
+            | Orientation::Rotate270
+            | Orientation::Rotate90FlipH
+            | Orientation::Rotate270FlipH
+    );
+    Ok(if swapped {
         (object, h, w)
     } else {
         (object, w, h)
-    }))
+    })
 }
 
 impl Engine {
     /// Crée un PDF d'une page par image (PNG, JPEG, BMP, GIF, TIFF, WebP). La taille de page
     /// correspond à l'image à `dpi` points par pouce, orientation EXIF appliquée. Un JPEG est
-    /// incorporé tel quel (fichier de la taille des JPEG d'entrée, mémoire constante) ; les
-    /// autres formats sont décodés. Renvoie le nombre de pages.
+    /// incorporé tel quel, sans recompression ; les autres formats sont décodés. Leur coût cumulé
+    /// estimé (max des octets décodés et RGBA8) est limité à 512 Mio avant tout bitmap.
+    /// Ce budget n'est pas un plafond de mémoire native, de copies temporaires ou du PDF sérialisé.
+    /// Renvoie le nombre de pages.
     pub fn images_to_pdf(
         &self,
         images: &[PathBuf],
@@ -116,24 +152,34 @@ impl Engine {
         if !(dpi.is_finite() && dpi > 0.0) {
             return Err(EngineError::Other("dpi must be positive".into()));
         }
+        preflight_images(images, dpi)?;
+        let mut budget = image::Limits::default();
         let mut doc = self.pdfium.create_new_pdf()?;
         for path in images {
-            let (object, w, h) = match jpeg_object(&doc, path, dpi)? {
-                Some(ready) => ready,
-                None => {
-                    let img = load_image(path)?;
-                    let (w, h) = (
-                        img.width() as f32 * 72.0 / dpi,
-                        img.height() as f32 * 72.0 / dpi,
-                    );
-                    let object = PdfPageImageObject::new_with_size(
-                        &doc,
-                        &img,
-                        PdfPoints::new(w),
-                        PdfPoints::new(h),
-                    )?;
-                    (object, w, h)
-                }
+            let reader = reader(path)?;
+            let jpeg = reader.format() == Some(ImageFormat::Jpeg);
+            let mut decoder = reader.into_decoder().map_err(|e| image_err(path, e))?;
+            let (width, height) = decoder.dimensions();
+            let (w, h) = page_dimensions(width, height, dpi)?;
+            let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+            let (object, w, h) = if jpeg {
+                // JPEG metadata parsing owns compressed bytes; release them before PDFium's copy.
+                drop(decoder);
+                jpeg_object(&doc, path, w, h, orientation)?
+            } else {
+                // Revalidate the decoder used for loading if a file changed after preflight.
+                reserve_raster(&mut budget, width, height, decoder.total_bytes())?;
+                let mut img =
+                    DynamicImage::from_decoder(decoder).map_err(|e| image_err(path, e))?;
+                img.apply_orientation(orientation);
+                let (w, h) = page_dimensions(img.width(), img.height(), dpi)?;
+                let object = PdfPageImageObject::new_with_size(
+                    &doc,
+                    &img,
+                    PdfPoints::new(w),
+                    PdfPoints::new(h),
+                )?;
+                (object, w, h)
             };
             let mut page = doc
                 .pages_mut()
@@ -244,8 +290,10 @@ mod tests {
             (Orientation::Rotate270, h, w),
             (Orientation::FlipHorizontal, w, h),
             (Orientation::FlipVertical, w, h),
+            (Orientation::Rotate90FlipH, h, w),
+            (Orientation::Rotate270FlipH, h, w),
         ] {
-            let m = oriented_matrix(o, w, h).unwrap();
+            let m = oriented_matrix(o, w, h);
             let mut seen: Vec<(i32, i32)> = corners
                 .iter()
                 .map(|&(x, y)| apply(m, x, y))
@@ -256,8 +304,53 @@ mod tests {
             assert_eq!(seen, vec![(0, 0), (0, bh), (bw, 0), (bw, bh)], "{o:?}");
         }
         // Rotation 90° horaire (EXIF 6) : le coin haut-gauche brut (0, 1) passe en haut à droite.
-        let m = oriented_matrix(Orientation::Rotate90, w, h).unwrap();
+        let m = oriented_matrix(Orientation::Rotate90, w, h);
         assert_eq!(apply(m, 0.0, 1.0), (h, w));
-        assert!(oriented_matrix(Orientation::Rotate90FlipH, w, h).is_none());
+        assert_eq!(
+            apply(oriented_matrix(Orientation::Rotate90FlipH, w, h), 0.0, 1.0),
+            (0.0, w)
+        );
+        assert_eq!(
+            apply(oriented_matrix(Orientation::Rotate270FlipH, w, h), 0.0, 1.0),
+            (h, 0.0)
+        );
+    }
+
+    #[test]
+    fn raster_budget_counts_normalized_pixels_decoded_bytes_and_cumulative_limits() {
+        let mut budget = image::Limits::default();
+        assert_eq!(budget.max_alloc, Some(512 * 1024 * 1024));
+        reserve_raster(&mut budget, 4096, 4096, 4096 * 4096).unwrap();
+        assert_eq!(budget.max_alloc, Some(448 * 1024 * 1024));
+        reserve_raster(&mut budget, 4096, 4096, 4096 * 4096 * 8).unwrap();
+        assert_eq!(budget.max_alloc, Some(320 * 1024 * 1024));
+        reserve_raster(&mut budget, 1, 1, 320 * 1024 * 1024).unwrap();
+        assert_eq!(budget.max_alloc, Some(0));
+        assert!(matches!(
+            reserve_raster(&mut budget, 1, 1, 1),
+            Err(EngineError::ImageBatchTooLarge)
+        ));
+        assert_eq!(budget.max_alloc, Some(0));
+        assert!(matches!(
+            reserve_raster(&mut image::Limits::default(), u32::MAX, u32::MAX, 0),
+            Err(EngineError::ImageBatchTooLarge)
+        ));
+        assert!(matches!(
+            reserve_raster(&mut image::Limits::default(), 1, 1, u64::MAX),
+            Err(EngineError::ImageBatchTooLarge)
+        ));
+    }
+
+    #[test]
+    fn image_page_geometry_refuses_zero_and_overflow_without_losing_normal_dpi() {
+        assert_eq!(page_dimensions(300, 150, 150.0).unwrap(), (144.0, 72.0));
+        for (w, h, dpi) in [
+            (0, 1, 72.0),
+            (1, 0, 72.0),
+            (1, 1, f32::from_bits(1)),
+            (1, 1, f32::NAN),
+        ] {
+            assert!(page_dimensions(w, h, dpi).is_err());
+        }
     }
 }

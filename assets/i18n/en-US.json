@@ -116,6 +116,7 @@
   "error.io": "The file cannot be found or read.",
   "error.page_range": "Page number out of range.",
   "error.render_too_large": "The requested zoom level exceeds the maximum image size.",
+  "error.image_batch_too_large": "This image batch is too large. Use fewer or smaller images (estimated raster budget: 512 MiB).",
   "error.unknown": "Internal PDF engine error.",
   "error.not_pdf_dropped": "Only .pdf files can be dropped here.",
   "error.retry": "Retry",

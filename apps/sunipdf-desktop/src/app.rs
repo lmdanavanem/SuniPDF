@@ -2970,6 +2970,7 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::SecurityRestricted => "error.security",
         EngineError::PageOutOfRange(_) => "error.page_range",
         EngineError::RenderTooLarge => "error.render_too_large",
+        EngineError::ImageBatchTooLarge => "error.image_batch_too_large",
         EngineError::AlreadyExists(_) => "error.already_exists",
         EngineError::MissingGlyphs(_) => "error.missing_glyphs",
         EngineError::FontNotEmbeddable => "error.font_not_embeddable",
@@ -4342,6 +4343,7 @@ pub(crate) mod tests {
             EngineError::SecurityRestricted,
             EngineError::PageOutOfRange(0),
             EngineError::RenderTooLarge,
+            EngineError::ImageBatchTooLarge,
             EngineError::AlreadyExists(PathBuf::new()),
             EngineError::MissingGlyphs(String::new()),
             EngineError::FontNotEmbeddable,
@@ -4357,6 +4359,37 @@ pub(crate) mod tests {
             for lang in Language::ALL {
                 assert_ne!(tr(lang, key), key, "clé {key} absente en {}", lang.code());
             }
+        }
+    }
+
+    #[test]
+    fn oversized_image_batch_reports_a_localized_error_without_changing_the_document() {
+        assert_eq!(
+            EngineError::ImageBatchTooLarge.code(),
+            "image_batch_too_large"
+        );
+        for lang in Language::ALL {
+            let (mut app, requests, responses) = test_app();
+            app.settings.language = lang.code().to_owned();
+            app.dirty = true;
+            app.tools.running = Some("tools.running.images");
+            let path = app.document.as_ref().unwrap().info.path.clone();
+            responses
+                .send(Response::BatchDone(crate::worker::BatchResult::Failed(
+                    EngineError::ImageBatchTooLarge,
+                )))
+                .unwrap();
+            app.handle_responses(&egui::Context::default());
+            assert_eq!(app.error, Some("error.image_batch_too_large"));
+            assert_ne!(
+                app.t("error.image_batch_too_large"),
+                "error.image_batch_too_large"
+            );
+            assert!(app.t("error.image_batch_too_large").contains("512"));
+            assert_eq!(app.document.as_ref().unwrap().info.path, path);
+            assert!(app.dirty);
+            assert!(app.tools.running.is_none());
+            assert!(requests.try_recv().is_err());
         }
     }
 

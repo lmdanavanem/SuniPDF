@@ -138,6 +138,19 @@ documents/744 pages (53.542 seconds locally), fourteen portable cases and eight 
 files and enhanced checks passed; verified copies are in `dist/`. The production updater verified the
 19,821,719-byte x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.17.0: image conversion reliability (in development)
+
+Complete direct JPEG embedding for EXIF orientations 5 and 7, so all eight orientations avoid image decoding/
+recompression. Preflight non-JPEG inputs against a cumulative 512 MiB raster-data estimate:
+`sum(max(decoder.total_bytes(), width × height × 4))`, with checked arithmetic, finite/positive physical geometry
+and repeated loading checks for simple file changes (D108). Quality/transparency and existing UI/CLI/API remain.
+The estimate is not a native/process RSS ceiling or compressed-JPEG limit. No dependency or command
+is added. Budget excess/overflow has a localized `image_batch_too_large` error; invalid geometry retains `other`.
+Local validation passed: 445 workspace tests, formatting/Clippy, 896 EN/FR keys, 74 qpdf checks and four licensed
+documents/744 pages (48.187 seconds; peak child memory 330,264,576 bytes), the update-helper self-test and
+independent debug conversion gate. CI, packages/publication and fifteen portable/nine MSI checks remain pending.
+0.16.0 stays published Latest; executed evidence and remaining limits belong in `PROJECT_STATUS.md`.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -172,6 +185,9 @@ Acceptance: rendering, saving and reopening covered for each added operation, wi
 ## Phase 4: conversion and OCR — partially delivered
 
 Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches and bundled local English/French OCR.
+
+In development for 0.17.0: all eight JPEG EXIF orientations embedded directly and cumulative raster-data estimates;
+measured native/process memory limits remain separate work (D108).
 
 Remaining: Office → PDF through a detected local converter, PDF → Word/Excel/PowerPoint with explicit measured
 fidelity limits and reusable conversion profiles. Image compression and sequential compression/OCR batch UI are delivered in 0.10.0.

@@ -132,7 +132,7 @@ réussis ; copies vérifiées dans `dist/`. Le metteur à jour de production a v
 |---|---|---|
 | PDF → images | Déclaré (CLI render) | **Fait** (UI export PNG 150 ppp, CLI `render`, `export-images`) |
 | PDF → texte | Déclaré | **Fait** (CLI `text`) |
-| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP ; orientation EXIF appliquée, JPEG incorporés tels quels) |
+| Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP ; orientation EXIF appliquée ; la 0.16.0 publiée décode les orientations JPEG 5/7, autres JPEG incorporés tels quels). **En développement pour 0.17.0** : incorporation directe des huit orientations JPEG ; estimation raster non-JPEG cumulée de 512 Mio `somme(max(octets décodés, largeur × hauteur × 4))` avant allocation, arithmétique vérifiée et géométrie finie/positive (D108). Qualité/transparence et accès conservés ; estimation distincte d'un plafond RSS natif/processus ou d'une limite JPEG comprimé. Workspace local, qpdf/corpus et conversion debug indépendante réussis ; CI/paquets/publication et mises à niveau en attente dans `PROJECT_STATUS.fr.md` |
 | PDF → Word | Partiel (perd la mise en page) | Planifié (P4), fidélité à annoncer honnêtement |
 | PDF → Excel / PowerPoint | Absent / export pptx partiel | Planifié (P4) |
 | Office → PDF | Absent | Planifié (P4) via LibreOffice/Word installé si présent ; sinon hors périmètre |

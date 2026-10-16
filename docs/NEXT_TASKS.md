@@ -177,6 +177,24 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   verified copies are in `dist/`. The production updater verified the 19,821,719-byte x64 ZIP without installing
   it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.17.0: image conversion reliability (in development)
+
+- Embed JPEG EXIF orientations 5 and 7 directly without recompression, completing all eight orientations through
+  the existing object matrix path. Keep non-JPEG quality/transparency and existing desktop/CLI callers (D108).
+- Before raster allocation, bound the cumulative non-JPEG estimate to 512 MiB:
+  `sum(max(decoder.total_bytes(), width × height × 4))`, with checked arithmetic and finite/positive physical
+  page sizes. Repeat checks at loading for simple input changes. This is not a native/process RSS ceiling or
+  compressed-JPEG limit; decoder, PDFium and output overhead remain separate.
+- Conversion method/callers and 53 CLI commands remain unchanged; no new dependency. Budget excess/overflow
+  uses `image_batch_too_large` with one localized EN/FR error key; invalid geometry retains `other`.
+- Local gates passed: 445 workspace tests (zero failed, seven default ignored), formatting/Clippy all-targets,
+  896 EN/FR keys, 74 qpdf checks, four licensed documents/744 pages (48.187 seconds; peak child memory
+  330,264,576 bytes) and the update-helper self-test. Independent debug conversion checks passed: eight orientations,
+  nine exact JPEG streams, 32 JPEG/four PNG corners and alpha mask, three qpdf checks, two budget/ten DPI refusals,
+  thirteen unchanged sources (35 subprocesses, 1.063 seconds). CI, package/publication and upgrades remain pending;
+  fifteen portable cases and nine MSI baselines including 0.16.0 are expected, not executed. 0.16.0 stays Latest.
+  Evidence and remaining limits belong in `PROJECT_STATUS.md`.
+
 ## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -253,7 +271,8 @@ Remaining, non-blocking:
 - expand the independent AES/XMP interoperability corpus beyond the synthetic qpdf gate (A4);
 - validate preserved PDF/A metadata with a dedicated conformance validator (A34); the 0.9.1 preservation fix
   itself is implemented, and current execution evidence belongs in `PROJECT_STATUS.md`;
-- embed JPEGs with EXIF orientation 5 and 7 without decoding (A31); limit the memory of PNG batches;
+- JPEG EXIF 5/7 direct embedding and cumulative PNG/raster estimates are in development for 0.17.0 (A31/D108);
+  measured native/process memory and larger licensed inputs remain separate work;
 - CLI help for `stamp` / `page-numbers` (A16, clap replaces `{n}`).
 
 ## SUNI-012c — Display, continued (owner: UI-UX)

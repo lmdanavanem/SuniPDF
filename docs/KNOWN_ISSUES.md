@@ -140,9 +140,14 @@ A30. **AES-128 and passwords**: only printable Latin-1 is accepted (0x20–0x7E,
      (verified by `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choose AES-256 for these
      passwords. AES-128 uses the first 32 encoded bytes, padded according to the PDF format; since 0.8.0,
      owner/user differences are checked on these effective bytes.
-A31. **Images → PDF**: JPEGs are embedded as is except for EXIF orientations 5 and 7 (rotation +
-     mirror), which are decoded; PNG, TIFF, BMP, GIF and WebP are decoded in memory and stored as compressed pixels
-     (Flate), hence heavier than the original. A very large batch of PNGs remains limited by the machine's memory.
+A31. **Images → PDF**: published 0.16.0 embeds JPEGs as is except for EXIF orientations 5 and 7 (rotation +
+     mirror), which are decoded. **0.17.0 in development** embeds all eight orientations directly without
+     recompression and preflights a cumulative non-JPEG raster estimate of 512 MiB before allocation:
+     `sum(max(decoder.total_bytes(), width × height × 4))`. Arithmetic is checked, physical page dimensions must
+     be finite/positive and loading repeats checks for simple file changes (D108). Local workspace, qpdf/corpus and independent debug conversion checks passed; CI/packages/publication and upgrades remain pending in `PROJECT_STATUS.md`.
+     PNG, TIFF, BMP, GIF and WebP still decode with quality/transparency preserved and are stored as compressed
+     pixels (Flate); the PDF can be larger than the original. The estimate is not a process/native RSS ceiling
+     or a limit on compressed JPEGs; decoder/PDFium/output overhead and machine memory remain separate constraints.
      A CMYK JPEG embedded as is is converted to RGB by PDFium at rendering (pure red → 238,29,35):
      normal conversion of a DCT stream, not an inversion.
 A32. **Added text**: a tab counts as four spaces (no PDF font has a tab glyph).
@@ -195,7 +200,7 @@ A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pr
      without smoothing; background removal by a **global luminance threshold** with a soft ramp (a very unevenly
      lit photo would need an adaptive threshold: judge on the preview, lower or raise the threshold, or prefer a
      transparent PNG); imported images limited to 16,384 px per side and 512 MiB decoded (refused when reading
-     the header, same 512 MiB bound for Insert Image, Replace Image and Images → PDF), then reduced
+     the header, same per-image 512 MiB bound for Insert Image, Replace Image and Images → PDF), then reduced
      to 1600 px per side; the placed date is kept inside the page over an **estimated** width (0.556 em per
      character, Helvetica digits), not measured. **0.13.0** adds typed name/initials with explicit
      native preview (one line, 256 characters, 1600 px/side; Times italic default, existing standard/system

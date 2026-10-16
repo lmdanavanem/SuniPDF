@@ -202,6 +202,23 @@ de la case choisit `[6, 3]` ou continu. CLI `annotate --dashed` fournit le même
 existantes réutilisées, sans nouvelle dépendance. Publiée en 0.16.0 ; contrôles locaux/CI/mises à niveau,
 paquets préparés/publics et metteur à jour de production réussis. Source, preuves et limites dans `PROJECT_STATUS.fr.md`.
 
+## Bornes de conversion d'images 0.17.0 (en développement)
+
+`convert.rs` garde l'API `Engine::images_to_pdf` partagée par bureau et CLI. Les huit orientations EXIF JPEG
+utilisent la matrice d'objet et le flux comprimé original ; 5 et 7 ne passent plus par le parcours raster décodé.
+Les non-JPEG conservent le décodeur borné respectant EXIF et la transparence (D108).
+
+Contrôler les en-têtes non-JPEG avant allocation raster avec une estimation cumulée de 512 Mio :
+`somme(max(decoder.total_bytes(), largeur × hauteur × 4))`, arithmétique vérifiée. Le chargement répète les
+contrôles applicables pour les changements simples de fichiers ; dimensions physiques finies et positives.
+Estimation des données raster décodées, pas borne RSS du processus/natif ; JPEG comprimés hors de ce budget.
+Elle n'élimine pas le coût du décodeur, de PDFium ou du tampon de sortie. Accès UI/CLI et protections de sortie
+réutilisés, sans nouvelle dépendance ni commande. Dépassement/overflow du budget : `ImageBatchTooLarge` /
+`image_batch_too_large`, associé à une nouvelle clé d'erreur EN/FR ; géométrie invalide : `Other` conservé.
+Validation locale réussie : 445 tests workspace, 896 clés EN/FR, formatage/Clippy, 74 contrôles qpdf, quatre
+documents licenciés/744 pages et contrôle de conversion debug indépendant. CI/paquets/publication et mises à
+niveau en attente ; preuves et limites dans `PROJECT_STATUS.fr.md`. 0.16.0 reste Latest publiée.
+
 ## Coordonnées (SUNI-031c)
 
 Toute coordonnée qui franchit la frontière moteur ↔ interface/CLI est en **espace d'affichage** : points,

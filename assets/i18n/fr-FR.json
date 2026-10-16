@@ -116,6 +116,7 @@
   "error.io": "Le fichier est introuvable ou illisible.",
   "error.page_range": "Numéro de page hors limites.",
   "error.render_too_large": "Le niveau de zoom demandé dépasse la taille d'image maximale.",
+  "error.image_batch_too_large": "Ce lot d’images est trop volumineux. Utilisez moins d’images ou réduisez leur taille (budget raster estimé : 512 Mio).",
   "error.unknown": "Erreur interne du moteur PDF.",
   "error.not_pdf_dropped": "Seuls les fichiers .pdf peuvent être déposés ici.",
   "error.retry": "Réessayer",

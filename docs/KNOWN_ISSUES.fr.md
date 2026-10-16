@@ -140,9 +140,14 @@ A30. **AES-128 et mots de passe** : seul le Latin-1 imprimable est accepté (0x2
      (vérifié par `review_aes128_latin1_passwords_round_trip_through_pdfium`). Choisir AES-256 pour ces
      mots de passe. AES-128 utilise les 32 premiers octets encodés, complétés selon le format PDF ; depuis 0.8.0,
      la différence propriétaire/utilisateur est vérifiée sur ces octets effectifs.
-A31. **Images → PDF** : les JPEG sont incorporés tels quels sauf pour les orientations EXIF 5 et 7 (rotation +
-     miroir), décodées ; PNG, TIFF, BMP, GIF et WebP sont décodés en mémoire et stockés en pixels compressés
-     (Flate), donc plus lourds que l'original. Un très grand lot de PNG reste limité par la mémoire du poste.
+A31. **Images → PDF** : la 0.16.0 publiée incorpore les JPEG tels quels sauf les orientations EXIF 5 et 7 (rotation +
+     miroir), décodées. **0.17.0 en développement** incorpore les huit orientations directement sans recompression
+     et contrôle avant allocation une estimation raster non-JPEG cumulée de 512 Mio :
+     `somme(max(decoder.total_bytes(), largeur × hauteur × 4))`. Arithmétique vérifiée, dimensions physiques finies/
+     positives, contrôles répétés au chargement pour les changements simples de fichiers (D108). Workspace local, qpdf/corpus et conversion debug indépendante réussis ; CI/paquets/publication et mises à niveau en attente dans `PROJECT_STATUS.fr.md`.
+     PNG, TIFF, BMP, GIF et WebP restent décodés avec qualité/transparence conservées, puis stockés en pixels
+     comprimés (Flate) ; le PDF peut être plus lourd que l'original. Estimation distincte d'un plafond RSS natif/
+     processus ou d'une limite JPEG comprimé ; coût du décodeur/de PDFium/de sortie et mémoire du poste restent distincts.
      Un JPEG CMJN incorporé tel quel est converti en RVB par PDFium au rendu (rouge pur → 238,29,35) :
      conversion normale d'un flux DCT, pas d'inversion.
 A32. **Texte ajouté** : une tabulation vaut quatre espaces (aucune police PDF n'a de glyphe de tabulation).
@@ -195,7 +200,7 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      sans lissage ; suppression du fond par **seuil de luminance global** à rampe douce (une photo très inégalement
      éclairée demanderait un seuil adaptatif : juger sur l'aperçu, baisser ou monter le seuil, ou préférer un PNG
      transparent) ; images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
-     l'en-tête, même borne de 512 Mio pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
+     l'en-tête, même borne de 512 Mio par image pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
      à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
      caractère, chiffres Helvetica), non mesurée. **0.13.0** : nom/paraphe saisi et aperçu natif
      explicite (une ligne, 256 caractères, 1600 px/côté ; Times italique par défaut, contrôles existants des glyphes
