@@ -4,9 +4,9 @@
 
 ## Lot actuel main/non publié
 
-Correctifs P1 validés localement, éléments du projet In Progress : refus des glyphes absents/récupération
-du brouillon et conservation non-Link à l'aplatissement. GitHub CI/CodeQL en attente ; voir l'[état du projet](PROJECT_STATUS.fr.md).
-Paquets 0.21.0 inchangés.
+Done sur main après contrôles locaux et GitHub CI/CodeQL : refus P1 des glyphes absents/récupération du
+brouillon et conservation non-Link à l'aplatissement. Le projet compte 39 Todo, zéro In Progress et trois Done ;
+source et preuves dans l'[état du projet](PROJECT_STATUS.fr.md). Paquets 0.21.0 publiés inchangés.
 
 ## Version 0.9.0 : les sept fonctions demandées sont publiées
 
@@ -348,7 +348,8 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
   Activation clavier livrée en 0.10.0 ; Narrateur Windows non vérifié
   (noms `labelled_by` posés, non écoutés).
 - aplatissement : conservation des annotations non-Link sans apparence utilisable, pièces jointes et
-  références partagées validée localement sur main. GitHub CI/CodeQL en attente ; 0.21.0 publiée inchangée.
+  références partagées vérifiée localement et par GitHub CI/CodeQL sur main. 0.21.0 publiée inchangée ;
+  [contrôles exécutés et limites](PROJECT_STATUS.fr.md).
 
 ## Après sign-image (signature visuelle, tranche livrée)
 

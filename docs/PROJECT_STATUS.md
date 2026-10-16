@@ -7,14 +7,15 @@ Rule: a ticked box = code present **and** command executed with a result observe
 
 ## Main/unreleased P1 fixes
 
-Both existing P1 bugs are implemented and locally validated; **0.21.0 remains the published Latest**.
-The release source, packages and its validation below are unchanged. GitHub CI/CodeQL integration checks
-are pending; these fixes are not included in the published packages and no version change is claimed.
+Both existing P1 bugs passed local and GitHub CI/CodeQL checks on source
+[`3ee794dac84617b17cddf73147ee2cefd279c138`](https://github.com/lmdanavanem/SuniPDF/commit/3ee794dac84617b17cddf73147ee2cefd279c138).
+**0.21.0 remains the published Latest**. Its release source, packages and validation below are unchanged;
+these fixes are on main, absent from the published packages, with no version change.
 
 | P1 item | Implemented behavior | Current state |
 |---|---|---|
-| Missing glyphs in existing text | Keep the original font; atomically refuse unsupported text and reopen the correct editing draft without changing the PDF | In Progress; local checks passed, CI/CodeQL pending |
-| Flattening non-Link annotations without a usable appearance | Preserve raw non-widget annotation graphs, attachments and shared references; keep widget/drawable-appearance flattening, exclude preserved annotations from the count and commit through an atomic scratch document | In Progress; local checks passed, CI/CodeQL pending |
+| Missing glyphs in existing text | Keep the original font; atomically refuse unsupported text and reopen the correct editing draft without changing the PDF | Done on main/unreleased; local/CI/CodeQL checks passed |
+| Flattening non-Link annotations without a usable appearance | Preserve raw non-widget annotation graphs, attachments and shared references; keep widget/drawable-appearance flattening, exclude preserved annotations from the count and commit through an atomic scratch document | Done on main/unreleased; local/CI/CodeQL checks passed |
 
 Local evidence: **476 passed tests, zero failures, seven default ignored across 37 suites**; formatting,
 all-target Clippy with `-D warnings`, **912 EN/FR keys** and **84 qpdf checks** passed. Four licensed PDFs
@@ -23,9 +24,27 @@ all-target Clippy with `-D warnings`, **912 EN/FR keys** and **84 qpdf checks** 
 reproduced accepted unsupported text, the stale add-text draft and lost flattening annotations, then passed
 with the fixes. The full native flatten-preservation regression passed separately.
 
+[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614776) passed all 32 steps on that source:
+476 tests, zero failures, seven default ignored, 912 keys, 84 qpdf checks, **19 portable scenarios**
+(15 upgrades/four guards) and **13 MSI baselines/65 verified logs**. Its four-document/744-page corpus
+passed in **32.900 seconds**, sampled peak child memory **321,556,480 bytes**, all inputs unchanged.
+The three small evidence archives were downloaded and checked against their source, API size and SHA256;
+the package artifact's metadata was verified, without downloading or publishing a new package.
+
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614334) passed Rust, Python and Actions on the
+same source. **Zero alerts remain open** after `lmdanavanem` individually dismissed the four new test-only
+findings #120–123 as `used in tests`; see the [four-row inventory](qa/CODE_SCANNING_P1_2026-10-16.csv).
+The Rust analysis retains **119 raw findings**, including the previously triaged 115; Python and Actions
+have zero results. No folder or query was excluded; zero open alerts does not mean zero findings.
+
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) retains 42 drafts: Bugs (8), Roadmap (23),
-Suggestions (11); 39 Todo, these two In Progress and the 0.21.0 security item Done. APIs, dependencies and
-CLI commands remain unchanged. Completion awaits GitHub source checks; no release publication is planned for this lot.
+Suggestions (11); **39 Todo, zero In Progress and three Done**. Both P1 items and their descriptions were
+reloaded as Done; the 0.21.0 security item stays Done. Saved category filters and all 42 unique items are
+preserved. APIs, dependencies and the 53 CLI commands remain unchanged; no new release was published.
+
+Remaining limits: no exhaustive hostile-corpus/fuzzing or third-party-reader interoperability check;
+graphs beyond the existing 32-level copy limit are refused atomically. Native visual UI and ARM64 hardware
+were not exercised for this lot. Partial-flatten orphan-field cleanup remains a separate task.
 
 ## 0.21.0: Code Scanning remediation (published stable Latest)
 
@@ -62,7 +81,7 @@ CodeQL fixed #3 at `2026-10-16T19:58:04Z` and #119 at `2026-10-16T19:49:12Z`; ne
 The analysis still contains 115 Rust test findings with verified triage; zero open alerts does not mean zero findings.
 Three new CMS/XML regressions passed. XML notices are accurate; the unchanged MIT license matches XML 1.4 byte for byte.
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) has 42 read-back drafts, saved Bugs/Roadmap/Suggestions filters and the 0.21.0 security item Done.
-Other items are planned; no repository issue or comment was created.
+At 0.21.0 publication, the other items were planned; no repository issue or comment was created.
 
 | Package | Bytes | SHA256 |
 |---|---:|---|

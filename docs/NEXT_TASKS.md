@@ -4,8 +4,9 @@
 
 ## Current main/unreleased lot
 
-Locally validated, project items In Progress: the P1 missing-glyph refusal/draft-recovery and non-Link
-flatten-preservation fixes. GitHub CI/CodeQL is pending; see [Project status](PROJECT_STATUS.md). 0.21.0 packages are unchanged.
+Done on main after local and GitHub CI/CodeQL checks: the P1 missing-glyph refusal/draft-recovery and
+non-Link flatten-preservation fixes. The project now has 39 Todo, zero In Progress and three Done;
+see [Project status](PROJECT_STATUS.md) for source and evidence. Published 0.21.0 packages are unchanged.
 
 ## Version 0.9.0: seven requested features published
 
@@ -344,7 +345,8 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
   Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
   (`labelled_by` names set, not listened to).
 - flattening: preserving non-Link annotations without usable appearances, including attachments and shared
-  references, is locally validated on main. GitHub CI/CodeQL is pending; published 0.21.0 is unchanged.
+  references, passed local and GitHub CI/CodeQL checks on main. Published 0.21.0 is unchanged;
+  [executed checks and limits](PROJECT_STATUS.md).
 
 ## After sign-image (visual signature, slice delivered)
 

@@ -7,8 +7,9 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 
 ## Current main/unreleased work
 
-The missing-glyph refusal/draft-recovery and non-Link flatten-preservation P1 fixes are locally validated.
-GitHub CI/CodeQL is pending, both project items In Progress. See [Project status](PROJECT_STATUS.md); 0.21.0 remains unchanged.
+The missing-glyph refusal/draft-recovery and non-Link flatten-preservation P1 fixes are Done on main after
+local and GitHub CI/CodeQL checks. Project: 39 Todo, zero In Progress, three Done. Source and evidence in
+[Project status](PROJECT_STATUS.md); published 0.21.0 packages are unchanged.
 
 ## Delivered baseline: 0.9.0
 

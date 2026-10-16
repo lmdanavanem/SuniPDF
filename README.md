@@ -24,9 +24,9 @@
 
 ## Work on main
 
-Two P1 fixes are implemented and locally validated: refuse unsupported glyphs in existing text without
-losing the draft, and preserve non-Link annotations without usable appearances when flattening. GitHub
-CI/CodeQL checks are pending; these fixes are absent from 0.21.0 packages. See [current status](docs/PROJECT_STATUS.md).
+Two P1 fixes passed local and GitHub CI/CodeQL checks: refuse unsupported glyphs in existing text without
+losing the draft, and preserve non-Link annotations without usable appearances when flattening.
+These fixes are on main, absent from 0.21.0 packages. See [current status](docs/PROJECT_STATUS.md).
 
 ## Features
 

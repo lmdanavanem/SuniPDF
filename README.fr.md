@@ -27,9 +27,9 @@ Licence MIT ou Apache-2.0, au choix.
 
 ## Travail sur main
 
-Deux correctifs P1 implémentés et validés localement : refuser les glyphes absents du texte existant sans
+Deux correctifs P1 validés localement et par GitHub CI/CodeQL : refuser les glyphes absents du texte existant sans
 perdre le brouillon, et conserver les annotations non-Link sans apparence utilisable à l'aplatissement.
-Contrôles GitHub CI/CodeQL en attente ; correctifs absents des paquets 0.21.0. Voir l'[état actuel](docs/PROJECT_STATUS.fr.md).
+Ces correctifs sont sur main, absents des paquets 0.21.0. Voir l'[état actuel](docs/PROJECT_STATUS.fr.md).
 
 ## Fonctionnalités
 | Domaine | Détail |

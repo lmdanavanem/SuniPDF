@@ -72,8 +72,8 @@ A5. **The open dialog (`rfd`) is modal and blocks the UI loop** for the duration
 A6. **Content editing: editing an existing text reuses its original font.** If that font
     (often an embedded subset) does not contain a typed character, PDFium substitutes or omits it.
     Workaround in published 0.21.0: delete the object and add a new one (Helvetica, Latin accents supported).
-    **Main/unreleased, locally validated:** keep that original font, atomically refuse unsupported text
-    and reopen the correct draft. GitHub CI/CodeQL is pending; this fix is absent from 0.21.0 packages.
+    **Main/unreleased, verified locally and in GitHub CI/CodeQL:** keep that original font, atomically refuse
+    unsupported text and reopen the correct draft. This fix is absent from 0.21.0 packages; see [executed checks](PROJECT_STATUS.md).
 A7. ~~Rotation in 90° steps, no system font~~ **Resolved (SUNI-031c)**: free rotation and system TrueType
     fonts. Group rotation/resizing is implemented for 0.10.0 with a single undo; validation is tracked in `PROJECT_STATUS.md`. Remaining: an object rotated by an angle that is not a multiple of 90° no longer has corner handles
     (resizing it would distort it); pivot = centre of the bounding box, so an asymmetric path may
@@ -260,9 +260,10 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      Local tests, formatting and Clippy passed; CI/upgrade, staged/public package and production updater checks passed. 0.19.0 was stable Latest at publication.
      Rich text becomes plain text; password fields never stored/exported.
      Published 0.21.0: partial flattening can leave orphan fields, and non-Link annotations without appearances may disappear.
-     **Main/unreleased, locally validated:** preserve raw non-widget graphs, attachments and shared references
+     **Main/unreleased, verified locally and in GitHub CI/CodeQL:** preserve raw non-widget graphs, attachments and shared references
      when no usable appearance exists, while widgets/drawable appearances still flatten; excluded count
-     and scratch-document atomicity are retained. GitHub CI/CodeQL is pending. Orphan-field behavior is separate. Unicode
+     and scratch-document atomicity are retained. Malformed entries or graphs beyond the 32-level copy limit
+     refuse the operation without changing the active PDF. Orphan-field behavior is separate. Unicode
      field appearances can use a non-embedded system font, so other-machine rendering can differ. Narrator and
      third-party-reader interoperability remain unverified. Current executed evidence belongs in `PROJECT_STATUS.md`.
 

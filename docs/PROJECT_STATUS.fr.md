@@ -7,14 +7,15 @@ Règle : une case cochée = code présent **et** commande exécutée avec résul
 
 ## Correctifs P1 main/non publiés
 
-Les deux bugs P1 sont implémentés et validés localement ; **0.21.0 reste la Latest publiée**.
-Source de release, paquets et validations ci-dessous sont inchangés. Contrôles d'intégration GitHub
-CI/CodeQL en attente ; ces correctifs sont absents des paquets publiés et la version n'est pas modifiée.
+Les deux bugs P1 ont passé les contrôles locaux et GitHub CI/CodeQL sur la source
+[`3ee794dac84617b17cddf73147ee2cefd279c138`](https://github.com/lmdanavanem/SuniPDF/commit/3ee794dac84617b17cddf73147ee2cefd279c138).
+**0.21.0 reste la Latest publiée**. Sa source, ses paquets et les validations ci-dessous sont inchangés ;
+ces correctifs sont sur main, absents des paquets publiés, sans changement de version.
 
 | Élément P1 | Comportement implémenté | État actuel |
 |---|---|---|
-| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | In Progress ; contrôles locaux réussis, CI/CodeQL en attente |
-| Aplatir sans perdre les annotations non-Link sans apparence utilisable | Conserver graphes bruts des annotations non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables, exclure les annotations conservées du compte et valider via document temporaire atomique | In Progress ; contrôles locaux réussis, CI/CodeQL en attente |
+| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | Done sur main/non publié ; contrôles locaux/CI/CodeQL réussis |
+| Aplatir sans perdre les annotations non-Link sans apparence utilisable | Conserver graphes bruts des annotations non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables, exclure les annotations conservées du compte et valider via document temporaire atomique | Done sur main/non publié ; contrôles locaux/CI/CodeQL réussis |
 
 Preuves locales : **476 tests réussis, zéro échec, sept ignorés par défaut sur 37 suites** ; formatage,
 Clippy toutes cibles avec `-D warnings`, **912 clés EN/FR** et **84 contrôles qpdf** réussis. Quatre PDF
@@ -24,9 +25,28 @@ d'abord reproduit le texte incompatible accepté, le brouillon d'ajout périmé 
 à l'aplatissement, puis réussi avec les corrections. Régression native de conservation à l'aplatissement
 également exécutée séparément avec succès.
 
+[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614776) : 32 étapes réussies sur cette source,
+476 tests, zéro échec, sept ignorés par défaut, 912 clés, 84 contrôles qpdf, **19 scénarios portables**
+(15 mises à niveau/quatre gardes) et **13 bases MSI/65 journaux vérifiés**. Corpus quatre documents/744 pages
+réussi en **32,900 secondes**, pic enfant échantillonné **321 556 480 octets**, toutes les sources inchangées.
+Les trois petites archives de preuves ont été téléchargées et vérifiées avec leur source, taille API et SHA256 ;
+métadonnées du paquet vérifiées, sans télécharger ni publier de nouveau paquet.
+
+[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614334) : Rust, Python et Actions réussis sur
+la même source. **Aucune alerte ouverte** après classement individuel par `lmdanavanem` des quatre nouveaux
+constats de test #120–123 en `used in tests` ; voir l'[inventaire de quatre lignes](qa/CODE_SCANNING_P1_2026-10-16.csv).
+L'analyse Rust conserve **119 constats bruts**, dont les 115 déjà traités ; Python et Actions ont zéro résultat.
+Aucun dossier ni requête exclu ; zéro alerte ouverte ne signifie pas zéro constat.
+
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) garde 42 brouillons : Bugs (8), Roadmap (23),
-Suggestions (11) ; 39 Todo, ces deux In Progress et la sécurité 0.21.0 Done. API, dépendances et commandes
-CLI inchangées. Finalisation après contrôles GitHub sur la source ; aucune publication de release prévue pour ce lot.
+Suggestions (11) ; **39 Todo, zéro In Progress et trois Done**. Les deux P1 et leurs descriptions ont été
+relus Done ; la sécurité 0.21.0 reste Done. Filtres de catégorie enregistrés et 42 éléments uniques
+conservés. API, dépendances et 53 commandes CLI inchangées ; aucune nouvelle release publiée.
+
+Limites restantes : pas de corpus hostile/fuzzing exhaustif ni de contrôle d'interopérabilité avec les
+lecteurs tiers ; graphes au-delà de la limite de copie existante de 32 niveaux refusés atomiquement.
+Interface native visuelle et matériel ARM64 non exercés pour ce lot. Le nettoyage des champs orphelins
+après aplatissement partiel reste une tâche distincte.
 
 ## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
 
@@ -62,7 +82,7 @@ CodeQL #3 corrigée à `2026-10-16T19:58:04Z`, #119 à `2026-10-16T19:49:12Z` ; 
 Les 115 constats Rust de test restent présents dans l'analyse, avec triage vérifié ; zéro alerte ouverte ne signifie pas zéro constat.
 Trois nouvelles régressions CMS/XML réussies. Notices XML exactes, licence MIT existante inchangée et identique à celle de XML 1.4.
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) a 42 brouillons relus, filtres Bugs/Roadmap/Suggestions enregistrés et sécurité 0.21.0 Terminé.
-Les autres éléments sont planifiés ; aucun ticket ou commentaire du dépôt créé.
+À la publication 0.21.0, les autres éléments étaient planifiés ; aucun ticket ou commentaire du dépôt créé.
 
 | Paquet | Octets | SHA256 |
 |---|---:|---|

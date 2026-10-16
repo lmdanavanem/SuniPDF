@@ -71,8 +71,8 @@ A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle U
 A6. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
     (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
     Contournement en 0.21.0 publiée : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
-    **Main/non publié, validé localement :** garder cette police, refuser atomiquement le texte incompatible
-    et rouvrir le bon brouillon. GitHub CI/CodeQL en attente ; correctif absent des paquets 0.21.0.
+    **Main/non publié, vérifié localement et par GitHub CI/CodeQL :** garder cette police, refuser atomiquement
+    le texte incompatible et rouvrir le bon brouillon. Correctif absent des paquets 0.21.0 ; voir les [contrôles exécutés](PROJECT_STATUS.fr.md).
 A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
     du système. Rotation/redimensionnement groupés implémentés en 0.10.0 avec une annulation ; validation dans `PROJECT_STATUS.fr.md`. Restent : un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
     (le redimensionner le déformerait) ; pivot = centre de la boîte englobante, donc un tracé asymétrique peut
@@ -259,9 +259,10 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      0.19.0 était la Latest stable à sa publication.
      Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
      En 0.21.0 publiée, l'aplatissement partiel peut laisser des champs orphelins ; les annotations autres que liens sans apparence peuvent disparaître.
-     **Main/non publié, validé localement :** conserver graphes bruts non-widget, pièces jointes et références
+     **Main/non publié, vérifié localement et par GitHub CI/CodeQL :** conserver graphes bruts non-widget, pièces jointes et références
      partagées sans apparence utilisable ; widgets/apparences dessinables restent aplatis, annotations
-     conservées exclues du compte et document temporaire atomique. GitHub CI/CodeQL en attente. Champs orphelins distincts. Apparences Unicode susceptibles d’utiliser une police système non
+     conservées exclues du compte et document temporaire atomique. Entrées malformées ou graphes au-delà de
+     la limite de copie de 32 niveaux : opération refusée sans modifier le PDF actif. Champs orphelins distincts. Apparences Unicode susceptibles d’utiliser une police système non
      embarquée, donc rendu variable ailleurs. Narrateur et lecteurs tiers non vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
 

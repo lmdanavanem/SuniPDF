@@ -7,8 +7,9 @@ Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr
 
 ## Travail actuel main/non publié
 
-Correctifs P1 glyphes absents/récupération du brouillon et conservation non-Link validés localement.
-GitHub CI/CodeQL en attente, les deux éléments In Progress. Voir l'[état du projet](PROJECT_STATUS.fr.md) ; 0.21.0 inchangée.
+Correctifs P1 glyphes absents/récupération du brouillon et conservation non-Link Done sur main après contrôles
+locaux et GitHub CI/CodeQL. Projet : 39 Todo, zéro In Progress, trois Done. Source et preuves dans
+l'[état du projet](PROJECT_STATUS.fr.md) ; paquets 0.21.0 publiés inchangés.
 
 ## Base livrée : 0.9.0
 

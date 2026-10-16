@@ -255,14 +255,14 @@ Limits: a pasted or duplicated group can no longer be edited as text; group rota
 (no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
 keeps its original font, which may not contain every character you type.
 
-**Main/unreleased, locally validated:** unsupported replacement text is refused before changing the PDF,
-with the correct on-page or rotated-text draft reopened. GitHub CI/CodeQL is pending; 0.21.0 packages
+**Main/unreleased, verified locally and in GitHub CI/CodeQL:** unsupported replacement text is refused before changing the PDF,
+with the correct on-page or rotated-text draft reopened. Published 0.21.0 packages
 still have the original limitation above.
 
-**Main/unreleased flattening fix, locally validated:** non-widget annotations with no usable appearance
+**Main/unreleased flattening fix, verified locally and in GitHub CI/CodeQL:** non-widget annotations with no usable appearance
 retain their raw data, attachments and shared references. Widgets and drawable appearances still flatten;
 retained annotations are excluded from the count. Scratch-document failure leaves the active PDF unchanged.
-GitHub CI/CodeQL is pending; this change is absent from 0.21.0 packages.
+This change is absent from 0.21.0 packages; see [executed checks and limits](PROJECT_STATUS.md).
 
 ## Filling a form
 
