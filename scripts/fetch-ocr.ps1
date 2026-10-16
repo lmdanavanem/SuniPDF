@@ -11,7 +11,7 @@ $build = Join-Path $root "target/ocr-build-$Arch"
 $install = Join-Path $build 'install'
 $stage = Join-Path $root "third_party/ocr/win-$Arch"
 $marker = Join-Path $stage 'VERSION'
-$version = "TESSERACT=5.5.3;LEPTONICA=1.87.0;TESSDATA=87416418657359cb625c412a48b6e1d6d41c29bd;PNM_ONLY=1;STDINT_PATCH=1;NOTICES=1;ARCH=$Arch"
+$version = "TESSERACT=5.5.3;LEPTONICA=1.87.0;TESSDATA=87416418657359cb625c412a48b6e1d6d41c29bd;PNM_ONLY=1;STDINT_PATCH=1;MSVC_ARM64_PATCH=1;NOTICES=1;ARCH=$Arch"
 if ((Test-Path -LiteralPath $marker) -and -not $Force) {
     if ([IO.File]::ReadAllText($marker).Trim() -ne $version) { throw 'Unexpected OCR build version; rerun with -Force.' }
     foreach ($file in @('tesseract.exe', 'tessdata/eng.traineddata', 'tessdata/fra.traineddata', 'licenses/AUTHORS.txt', 'licenses/COPYRIGHTS.txt', 'SHA256SUMS')) {
@@ -75,6 +75,35 @@ $imageSource = [IO.File]::ReadAllText($imageHeader)
 if (-not $imageSource.Contains('#include <stdint.h>')) {
     [IO.File]::WriteAllText($imageHeader, $imageSource.Replace('#include <allheaders.h>', "#include <stdint.h>`n#include <allheaders.h>"), [Text.UTF8Encoding]::new($false))
 }
+function Set-SourcePatch([string]$Path, [string]$Before, [string]$After, [int]$Count = 1) {
+    $text = [IO.File]::ReadAllText($Path)
+    $patched = [regex]::Matches($text, [regex]::Escape($After)).Count
+    $original = [regex]::Matches($text, [regex]::Escape($Before)).Count
+    if ($patched -eq $Count -and $original -eq $Count * [regex]::Matches($After, [regex]::Escape($Before)).Count) { return }
+    if ($patched -ne 0 -or $original -ne $Count) { throw "Unexpected pinned Tesseract source pattern: $Path" }
+    $text = $text.Replace($Before, $After)
+    if ([regex]::Matches($text, [regex]::Escape($After)).Count -ne $Count) { throw "Tesseract source patch failed: $Path" }
+    [IO.File]::WriteAllText($Path, $text, [Text.UTF8Encoding]::new($false))
+}
+# Visual Studio reports the x64 host processor for -A ARM64; use its target and native NEON macros.
+$processorLine = 'message(STATUS "CMAKE_SYSTEM_PROCESSOR=<${CMAKE_SYSTEM_PROCESSOR}>")'
+$armProcessor = 'if(MSVC AND CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")' + "`n" + '  set(CMAKE_SYSTEM_PROCESSOR "arm64")' + "`n" + 'endif()' + "`n" + $processorLine
+Set-SourcePatch $cmakeFile $processorLine $armProcessor
+$simdSource = Join-Path $tessSource 'src/arch/simddetect.cpp'
+Set-SourcePatch $simdSource '#if defined(HAVE_AVX) || defined(HAVE_AVX2) || defined(HAVE_FMA) || defined(HAVE_SSE4_1)' '#if !defined(_M_ARM64) && (defined(HAVE_AVX) || defined(HAVE_AVX2) || defined(HAVE_FMA) || defined(HAVE_SSE4_1))'
+Set-SourcePatch $simdSource '#if defined(__aarch64__)' '#if defined(__aarch64__) || defined(_M_ARM64)'
+Set-SourcePatch $simdSource '#if defined(HAVE_NEON) && !defined(__aarch64__)' '#if defined(HAVE_NEON) && !defined(__aarch64__) && !defined(_M_ARM64)' 2
+$dotNeon = Join-Path $tessSource 'src/arch/dotproductneon.cpp'
+Set-SourcePatch $dotNeon '#if defined(__ARM_NEON)' '#if defined(__ARM_NEON) || defined(_M_ARM64)'
+Set-SourcePatch $dotNeon '#include <arm_neon.h>' ('#if defined(_M_ARM64)' + "`n" + '#include <arm64_neon.h>' + "`n" + '#else' + "`n" + '#include <arm_neon.h>' + "`n" + '#endif')
+Set-SourcePatch $dotNeon '#if defined(FAST_FLOAT) && defined(__ARM_ARCH_ISA_A64)' '#if defined(FAST_FLOAT) && (defined(__ARM_ARCH_ISA_A64) || defined(_M_ARM64))'
+$matrixNeon = Join-Path $tessSource 'src/arch/intsimdmatrixneon.cpp'
+Set-SourcePatch $matrixNeon '#if defined(__ARM_NEON)' '#if defined(__ARM_NEON) || defined(_M_ARM64)'
+Set-SourcePatch $matrixNeon '#  include "arm_neon.h"' ('#  if defined(_M_ARM64)' + "`n" + '#    include <arm64_neon.h>' + "`n" + '#  else' + "`n" + '#    include "arm_neon.h"' + "`n" + '#  endif')
+# MSVC NEON vectors are unions rather than GNU vectors; initialize their lanes through intrinsics.
+Set-SourcePatch $matrixNeon 'int32x4_t result0123 = {0, 0, 0, 0};' 'int32x4_t result0123 = vdupq_n_s32(0);'
+Set-SourcePatch $matrixNeon 'int32x4_t result4567 = {0, 0, 0, 0};' 'int32x4_t result4567 = vdupq_n_s32(0);'
+Set-SourcePatch $matrixNeon 'int8x8_t bias_scale = {127, 127, 127, 127, 127, 127, 127, 127};' 'int8x8_t bias_scale = vdup_n_s8(127);'
 $tessBuild = Join-Path $build 'tesseract'
 Invoke-CMake @('-S', $tessSource, '-B', $tessBuild, '-G', $Generator, '-A', $platform, "-DCMAKE_PREFIX_PATH=$install", "-DCMAKE_INSTALL_PREFIX=$install", '-DBUILD_SHARED_LIBS=OFF', '-DWIN32_MT_BUILD=ON', '-DSW_BUILD=OFF', '-DOPENMP_BUILD=OFF', '-DGRAPHICS_DISABLED=ON', '-DDISABLED_LEGACY_ENGINE=ON', '-DENABLE_LTO=OFF', '-DENABLE_NATIVE=OFF', '-DBUILD_TRAINING_TOOLS=OFF', '-DBUILD_TESTS=OFF', '-DDISABLE_TIFF=ON', '-DDISABLE_ARCHIVE=ON', '-DDISABLE_CURL=ON', '-DENABLE_PRECOMPILED_HEADERS=OFF')
 Invoke-CMake @('--build', $tessBuild, '--config', 'Release', '--target', 'tesseract', '--parallel', '2')
@@ -102,7 +131,7 @@ foreach ($source in (Get-ChildItem -LiteralPath (Join-Path $tessSource 'src'), (
     }
 }
 [IO.File]::WriteAllText((Join-Path $stage 'licenses/COPYRIGHTS.txt'), $copyrights.ToString(), [Text.UTF8Encoding]::new($false))
-$notice = "Tesseract 5.5.3: https://github.com/tesseract-ocr/tesseract`nLeptonica 1.87.0: https://github.com/DanBloomberg/leptonica`nEnglish/French tessdata_fast: https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd`nStatic MSVC runtime; PNM input only; no network support, training tools or legacy OCR engine.`nSource patches: explicit stdint.h include in ccstruct/image.h; MSVC /MP capped at two jobs.`n"
+$notice = "Tesseract 5.5.3: https://github.com/tesseract-ocr/tesseract`nLeptonica 1.87.0: https://github.com/DanBloomberg/leptonica`nEnglish/French tessdata_fast: https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd`nStatic MSVC runtime; PNM input only; no network support, training tools or legacy OCR engine.`nSource patches: explicit stdint.h include in ccstruct/image.h; MSVC /MP capped at two jobs; MSVC ARM64 target detection and native NEON header/guards/initializers, with x86-only CPUID detection.`n"
 [IO.File]::WriteAllText((Join-Path $stage 'NOTICE.txt'), $notice, [Text.UTF8Encoding]::new($false))
 $checksums = foreach ($file in (Get-ChildItem -LiteralPath $stage -File -Recurse | Where-Object { $_.Name -notin @('VERSION', 'SHA256SUMS') } | Sort-Object FullName)) { (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash + '  ' + $file.FullName.Substring($stage.Length + 1).Replace('\', '/') }
 [IO.File]::WriteAllLines((Join-Path $stage 'SHA256SUMS'), $checksums, [Text.UTF8Encoding]::new($false))
