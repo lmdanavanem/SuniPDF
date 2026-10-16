@@ -7,6 +7,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+### Added
+- Read PDF page labels in the toolbar, thumbnails, status and CLI `info`. Go to a unique exact label or use `#N`
+  for a physical page; ambiguous labels leave navigation unchanged.
+- Follow internal links and bookmarks to supported XYZ positions/zoom, Fit and nonzero FitH destinations,
+  including names resolved by PDFium. Back/forward keeps same-page positions and zoom, including rapid jumps.
+
+### Fixed
+- The text-selection tool now follows link clicks while preserving the confirmation and scheme checks for external URLs.
+- A failed form-model read preserves text and choice drafts, blocks changes based on stale values, and offers explicit Retry.
+- Cache page rotations during the label scan, update only the affected metadata when rotating a page, and refresh
+  grouped-deletion metadata once. CLI `info` avoids its previous duplicate page-loading loop.
+
+### Limits
+- Page-label authoring and semantic rebasing after structural edits remain unimplemented. Unreadable, control-containing
+  or over-4096-byte labels use physical page numbers. Unsupported destination fit modes and ambiguous FitH zero/null
+  fall back to page navigation. These changes are not included in the published 0.10.0 packages.
+
 ## [0.10.0] - 2026-10-16
 
 Validation and publication are tracked in `docs/PROJECT_STATUS.md`; implementation alone is not a passed release gate.

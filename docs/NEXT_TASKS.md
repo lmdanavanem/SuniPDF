@@ -58,6 +58,19 @@ verified the 19,651,167-byte Latest x64 ZIP without installation. The requested 
 the independent hardware/interoperability work below remains open.
 Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` release source are recorded in status.
 
+## Current development: reading and form reliability (unreleased)
+
+Implemented and locally validated: 383 workspace tests passed, zero failed, seven default ignored; formatting,
+Clippy, 34 qpdf PDFs, four real documents (744 pages), 857 matching EN/FR keys and development CLI/GUI builds passed.
+This lot remains unreleased; CI has not yet run for these changes. Published 0.10.0 tags and packages remain unchanged.
+
+- Read PDF page labels through PDFium in the toolbar, thumbnails and CLI `info`. Go to accepts an exact unique
+  label; `#N` always selects the physical page. Labels remain read-only; invalid labels fall back to physical numbering.
+- Resolve named destinations and `/XYZ`, `/Fit` and nonzero `/FitH` positions for links and bookmarks, including
+  crop/rotation transforms, retained null axes and zoom. History includes same-page destinations and zoom changes.
+  `/FitH` zero/null and other fit modes retain page-only navigation; PDFium cannot distinguish FitH null from zero.
+- Preserve form drafts and pending actions when reading fields fails, show the failure and require an explicit retry.
+
 ## Remaining work beyond this lot
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -67,7 +80,8 @@ Build provenance and the immutable `f7510afd314846079bbdd838525cd28372fd3100` re
 3. Font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 4. Local Office conversion and additional batch conversion operations, with measured output fidelity.
 5. Certificate-chain trust/revocation, trusted timestamps/LTV and executable/MSI signing when an identity is supplied.
-6. Page labels, complex untagged-column reading order, touch validation and optional integrations.
+6. Page-label authoring and semantic rebasing after page changes, complex untagged-column reading order,
+   touch validation and optional integrations.
 
 No future version/date is committed by this remaining list.
 
@@ -173,14 +187,14 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
 - polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
-- change the target of an existing link, resolve named destinations, honour `/XYZ` (position and zoom);
+- change the target of an existing link; named destinations and `/XYZ` reading are implemented in the unreleased lot above;
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 
 ## SUNI-025 — Lossy compression and qpdf verification (owner: OCR-CONVERSION + QA)
-Image resampling (PDFium: image objects → DynamicImage → JPEG re-encoding), real/hostile corpus and interrupted/full-disk
-save scenarios remain. The pinned synthetic qpdf CI gate and AES-256 key-length correction are implemented for 0.9.1;
-execution results are tracked in `PROJECT_STATUS.md`.
+Delivered in 0.10.0: bounded image-stream resampling/JPEG re-encoding, four pinned public NIST documents and
+interrupted/full-disk/failed-save regressions. Pinned synthetic qpdf checks and the AES-256 key-length correction
+remain included. Expand coverage to licensed customer/hostile/large documents; execution evidence is in `PROJECT_STATUS.md`.
 
 ## SUNI-015 — Visual identity and Windows resources (owner: WINDOWS-RELEASE)
 Delivered: DPI-aware manifest and version resources. The 0.9.1 Windows icon is derived from the dedicated,

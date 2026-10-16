@@ -55,7 +55,7 @@ pub use forms::{
     FormKind,
 };
 pub use geometry::PageGeometry;
-pub use links::{is_safe_external_uri, LinkInfo};
+pub use links::{is_safe_external_uri, Destination, DestinationView, LinkInfo};
 pub use pages::{write_atomic, write_new_copy, Rotation};
 pub use redact::{RedactMark, RedactOptions, RedactReport};
 pub use security::{Bookmark, Metadata, Properties, Protection, ProtectionProblem};
@@ -91,6 +91,7 @@ pub struct DocumentInfo {
     pub path: PathBuf,
     pub title: Option<String>,
     pub page_sizes: Vec<PageSize>,
+    pub page_labels: Vec<Option<String>>,
     /// Formulaire du document (`None` pour la plupart des PDF) ; mis à jour à chaque rechargement.
     pub form: FormKind,
 }
@@ -99,6 +100,74 @@ impl DocumentInfo {
     pub fn page_count(&self) -> usize {
         self.page_sizes.len()
     }
+
+    pub fn page_label(&self, page: usize) -> Option<&str> {
+        self.page_labels.get(page).and_then(Option::as_deref)
+    }
+
+    /// Exact unique labels take precedence; `#N` always means the physical one-based index.
+    pub fn resolve_page_input(&self, input: &str) -> Option<usize> {
+        let physical = |number: &str| {
+            number
+                .trim()
+                .parse::<usize>()
+                .ok()
+                .and_then(|n| n.checked_sub(1))
+                .filter(|page| *page < self.page_count())
+        };
+        if let Some(number) = input.trim().strip_prefix('#') {
+            return physical(number);
+        }
+        let mut matches = self
+            .page_labels
+            .iter()
+            .enumerate()
+            .filter_map(|(page, label)| {
+                (label.as_deref() == Some(input) && page < self.page_count()).then_some(page)
+            });
+        match (matches.next(), matches.next()) {
+            (Some(page), None) => Some(page),
+            (Some(_), Some(_)) => None,
+            _ => physical(input),
+        }
+    }
+
+    pub fn page_input(&self, page: usize) -> String {
+        if let Some(label) = self.page_label(page) {
+            if self.resolve_page_input(label) == Some(page) {
+                return label.to_owned();
+            }
+        }
+        let number = (page + 1).to_string();
+        if self.resolve_page_input(&number) == Some(page) {
+            number
+        } else {
+            format!("#{number}")
+        }
+    }
+}
+
+fn page_labels_and_rotations(
+    inner: &PdfDocument<'_>,
+) -> (Vec<Option<String>>, Vec<Option<Rotation>>) {
+    let pages = inner.pages();
+    (0..pages.len())
+        .map(|index| {
+            // Optional labels must not prevent opening a document with a damaged page.
+            let Ok(page) = pages.get(index) else {
+                return (None, None);
+            };
+            let label = page
+                .label()
+                .filter(|label| {
+                    label.len() <= 4096
+                        && !label.trim().is_empty()
+                        && !label.chars().any(char::is_control)
+                })
+                .map(str::to_owned);
+            (label, page.rotation().ok().map(Rotation::from_pdfium))
+        })
+        .unzip()
 }
 
 /// Instance du moteur (bibliothèque PDFium chargée).
@@ -111,6 +180,7 @@ pub struct Document<'a> {
     inner: PdfDocument<'a>,
     pdfium: &'a Pdfium,
     info: DocumentInfo,
+    page_rotations: Vec<Option<Rotation>>,
     /// Mot de passe d'ouverture, réutilisé pour recharger un instantané (undo/redo).
     password: Option<String>,
     /// Polices système déjà incorporées dans ce document (vidé à chaque rechargement).
@@ -246,8 +316,10 @@ impl Engine {
             .map(|t| t.value().to_string())
             .filter(|s| !s.trim().is_empty());
         let form = forms::kind_of(&inner);
+        let (page_labels, page_rotations) = page_labels_and_rotations(&inner);
         Ok(Document {
             inner,
+            page_rotations,
             pdfium: &self.pdfium,
             password: password.map(str::to_owned),
             font_cache: Default::default(),
@@ -255,6 +327,7 @@ impl Engine {
                 path: path.to_path_buf(),
                 title,
                 page_sizes,
+                page_labels,
                 form,
             },
         })
@@ -367,5 +440,85 @@ impl Document<'_> {
             height: bitmap.height() as u32,
             rgba: bitmap.as_rgba_bytes(),
         })
+    }
+}
+
+#[cfg(test)]
+mod document_info_tests {
+    use super::*;
+
+    #[test]
+    fn page_input_resolves_exact_unique_labels_and_explicit_physical_indices() {
+        let mut info = DocumentInfo {
+            path: PathBuf::new(),
+            title: None,
+            page_sizes: vec![
+                PageSize {
+                    width_pt: 612.0,
+                    height_pt: 792.0
+                };
+                9
+            ],
+            page_labels: [
+                Some("i"),
+                Some("ii"),
+                Some("1"),
+                Some("2"),
+                Some("AA"),
+                Some("Annexe-É7"),
+                Some("Repeat"),
+                Some("Repeat"),
+                None,
+            ]
+            .into_iter()
+            .map(|label| label.map(str::to_owned))
+            .collect(),
+            form: FormKind::None,
+        };
+        for (input, page) in [
+            ("i", 0),
+            ("ii", 1),
+            ("1", 2),
+            ("2", 3),
+            ("AA", 4),
+            ("Annexe-É7", 5),
+            ("#1", 0),
+            ("#2", 1),
+            ("9", 8),
+        ] {
+            assert_eq!(info.resolve_page_input(input), Some(page), "{input}");
+        }
+        for input in [
+            "",
+            "0",
+            "#0",
+            "#10",
+            "10",
+            "Repeat",
+            "II",
+            "missing",
+            "1.5",
+            "-1",
+            "999999999999999999999999999",
+        ] {
+            assert_eq!(info.resolve_page_input(input), None, "{input}");
+        }
+        for page in 0..info.page_count() {
+            assert_eq!(info.resolve_page_input(&info.page_input(page)), Some(page));
+        }
+        info.page_labels[3] = Some("1".to_owned());
+        assert_eq!(
+            info.resolve_page_input("1"),
+            None,
+            "duplicate numeric labels must not fall back to a physical index"
+        );
+        assert_eq!(info.resolve_page_input("#3"), Some(2));
+        info.page_labels[0] = Some(" i ".to_owned());
+        assert_eq!(info.resolve_page_input(" i "), Some(0));
+        assert_eq!(info.page_input(0), " i ");
+        info.page_labels.clear();
+        assert_eq!(info.page_label(0), None);
+        assert_eq!(info.page_input(0), "1");
+        assert_eq!(info.resolve_page_input("2"), Some(1));
     }
 }

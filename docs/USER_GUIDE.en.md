@@ -77,7 +77,7 @@ document, and the page that fills the screen becomes the current page (right-rai
 thumbnail, comments panel; Rotate, Delete and Extract act on it; clicking a page makes it current). **F5**, the
 arrows button of the right rail or the View menu switch between **Continuous Scrolling** and **Single Page**;
 the choice is remembered. Only visible pages are rendered: a document of several hundred pages opens and
-scrolls without loading everything. The View menu also offers **Two pages** (pairs from the first page) and
+scrolls without rendering every page. The View menu also offers **Two pages** (pairs from the first page) and
 **Book view** (cover alone, then pairs). An unpaired last page is centred. Mixed page sizes share one zoom;
 fit width/page uses the widest spread and tallest page in spread views. These modes use the same tile and texture caps.
 
@@ -213,6 +213,10 @@ with Ctrl+Z while the document is open; flattening every page removes the form f
 **password** field is neither fillable nor exported (its value must never be stored). A password-protected
 document is filled like any other and stays protected. Ctrl+S confirms the entry in progress first.
 
+**Unreleased local build:** a failed form read shows an error and a **Retry** button in the fields panel.
+Your pending text and panel changes remain available; a read failure is not treated as an empty form.
+Retry reads the current fields again before applying a waiting import or clear operation. Nothing is retried in a loop.
+
 ## Signing and initialing
 
 The **Fill & Sign** tool (bar: **Sign (handwritten signature)…** — key **S** —, **Add Initials…**, **Insert
@@ -274,6 +278,26 @@ Stamp text and page-number templates must fit on one line; CR/LF line breaks are
 Use **View** for view-only quarter-turn rotation and full screen. These controls do not alter PDF page rotation;
 starting an editing tool returns to upright view. Back/Forward navigation (Alt+Left/Alt+Right) keeps up to 256 positions
 per tab, including page and scroll anchors. View state/history belongs to each tab and is not PDF content.
+
+### Next local build (unreleased)
+
+PDF page labels such as `iv`, `1` or `Annexe-É7` appear alongside physical page indices in thumbnails, the status bar
+and accessibility descriptions. Type an exact, case-sensitive, unique label into the page box and press Enter.
+A matching label takes priority over a number: if label `1` belongs to physical page 3, entering `1` opens page 3.
+Enter `#1` to select physical page 1 explicitly. Without a matching label, a number selects the physical page.
+Unknown, duplicate or out-of-range input leaves the current page unchanged and displays an explanation.
+
+Page labels are read only. There is no label creation/editing or semantic renumbering after inserting, deleting,
+moving or extracting pages; existing label ranges can remain tied to physical positions, and extracted files may
+have no labels. Blank, unreadable, control-containing or over-4096-byte UTF-8 labels fall back to physical indices.
+CLI `info` exposes an optional `pages[].label`; all CLI page numbers remain physical and one-based.
+
+Internal links and bookmarks also follow supported PDF destinations: `/XYZ` positions and zoom, `/Fit` page fit,
+and `/FitH` width fit with a usable position. Crop and page rotation are taken into account. An omitted `/XYZ` axis
+or zero/omitted zoom keeps the current viewport value; zoom stays within the application's limits. Alt+Left/Alt+Right
+returns through the tab's page, position and zoom history, including destinations on the same page. Finish pending
+text or form edits before following a destination. Unsupported fit modes, unreadable destination details and
+`/FitH` zero/null positions fall back to the target page without applying destination zoom or position.
 
 ## Image compression and batches
 

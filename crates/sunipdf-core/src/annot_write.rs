@@ -79,7 +79,7 @@ pub enum LinkTarget {
     /// Page de destination (index à partir de 0).
     Page(usize),
     Uri(String),
-    /// Action non prise en charge (lancement, JavaScript, destination nommée…) : jamais exécutée.
+    /// Unsupported action (launch, JavaScript, remote destination): never executed.
     Unsupported,
 }
 

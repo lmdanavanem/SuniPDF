@@ -88,7 +88,7 @@ Request::Close ─────────────────────�
 | `sunipdf-render` | non créé (D038) : tuiles et cache vivent dans `sunipdf-core::{tiles, cache}` ; à extraire si un second consommateur apparaît | — |
 | `sunipdf-pages` | fusion, division, extraction, rotation, réorganisation (PDFium `FPDF_ImportPages`, `FPDFPage_*`) | P2 |
 | `sunipdf-editor` | annotations, texte, images, filigranes | P2–P3 |
-| `sunipdf-forms` | non créé (D061) : AcroForm vit dans `sunipdf-core::{forms, form_data}` (modèle et écriture lopdf, apparences PDFium, JSON) ; FDF/XFDF non livrés | — |
+| `sunipdf-forms` | non créé (D061) : AcroForm vit dans `sunipdf-core::{forms, form_data}` (modèle et écriture lopdf, apparences PDFium, JSON/XFDF et import FDF de valeurs) | — |
 | `sunipdf-convert` | PDF↔images, texte, Office via convertisseur externe détecté | P4 |
 | `sunipdf-ocr` | non créé : OCR hors ligne dans `sunipdf-core::ocr`, moteur et modèles embarqués | — |
 | `sunipdf-security` | chiffrement (hors PDFium), permissions, caviardage, métadonnées | P5 |

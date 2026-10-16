@@ -7,6 +7,24 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Ajouts
+- Libellés PDF dans la barre de navigation, les miniatures, le statut et `info` CLI. Accès par libellé exact unique
+  ou `#N` pour la position physique ; un libellé ambigu ne change pas la page.
+- Liens internes et signets vers les positions/zooms XYZ, Fit et FitH non nul pris en charge, y compris les noms
+  résolus par PDFium. Retour/avance conserve positions sur une même page et zoom, même lors de sauts rapides.
+
+### Corrections
+- L’outil de sélection de texte suit les clics sur les liens, avec confirmation et contrôle des adresses externes conservés.
+- Une lecture de formulaire échouée conserve textes et choix, bloque les changements fondés sur un modèle périmé
+  et propose un réessai explicite.
+- Rotations mises en cache avec les libellés, mise à jour ciblée lors d’une rotation de page et une seule relecture
+  des métadonnées par suppression groupée. `info` CLI évite sa précédente double boucle de chargement des pages.
+
+### Limites
+- Création de libellés et recalage sémantique après réorganisation non implémentés. Les libellés illisibles, contenant
+  des contrôles ou dépassant 4096 octets utilisent les numéros physiques. Les modes de destination non pris en charge
+  et FitH zéro/null ambigus reviennent à la navigation par page. Ces changements ne sont pas dans les paquets 0.10.0 publiés.
+
 ## [0.10.0] — 2026-10-16
 
 Validation et publication sont suivies dans `docs/PROJECT_STATUS.fr.md` ; le code présent ne prouve pas une release validée.

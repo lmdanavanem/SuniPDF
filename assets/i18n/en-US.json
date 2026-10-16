@@ -1,4 +1,7 @@
 {
+  "reading.page_label": "Page label: {label}",
+  "reading.page_input_hint": "Enter an exact page label or a physical page number. Use #N to select physical page N when labels overlap. Labels must be unique.",
+  "reading.page_label_invalid": "Unknown or ambiguous page label. Use #N for a physical page number.",
   "processing.finish_redaction": "Apply or clear the pending redaction marks before exporting a compressed copy.",
   "forms.panel.apply": "Apply changes",
   "forms.panel.discard": "Discard pending changes",
@@ -650,6 +653,7 @@
   "tools.running.form_export": "Exporting values…",
   "tools.done.form_export": "Values exported to {name} ({count} fields)",
   "error.form_field_not_found": "This field does not exist in the form.",
+  "error.form_read_failed": "The form fields could not be read. Your pending input is preserved. Retry before applying values or saving.",
   "error.form_value_invalid": "Value rejected: read-only field, length exceeded, unknown choice or incompatible type.",
   "error.form_xfa": "XFA forms are not supported.",
   "error.form_import_invalid": "The form values file is invalid or unsupported. The whole import was refused; no fields were changed.",

@@ -75,6 +75,205 @@ fn opens_two_page_fixture_with_sizes_and_title() {
 }
 
 #[test]
+fn page_labels_with_control_characters_or_excessive_prefixes_use_physical_numbers() {
+    use lopdf::{dictionary, Object};
+    let engine = engine();
+    let mut pdf = lopdf::Document::load(fixture("two-pages.pdf")).unwrap();
+    let catalog = pdf.trailer.get(b"Root").unwrap().as_reference().unwrap();
+    for length in [4097, 4096] {
+        pdf.get_dictionary_mut(catalog).unwrap().set("PageLabels", dictionary! {
+            "Nums" => vec![0.into(), dictionary! {"P" => Object::string_literal("x".repeat(length))}.into(),
+                           1.into(), dictionary! {"P" => Object::string_literal("bad\nlabel")}.into()]
+        });
+        let mut bytes = Vec::new();
+        pdf.save_to(&mut bytes).unwrap();
+        let doc = engine
+            .open_bytes(bytes, None, &fixture("two-pages.pdf"))
+            .unwrap();
+        assert_eq!(
+            doc.info().page_label(0).map(str::len),
+            (length == 4096).then_some(4096)
+        );
+        assert_eq!(doc.info().page_label(1), None);
+        assert_eq!(doc.info().resolve_page_input("#2"), Some(1));
+        assert_eq!(doc.page_count(), 2);
+    }
+}
+
+#[test]
+fn page_labels_read_nested_ranges_without_changing_source_bytes() {
+    let engine = engine();
+    let path = fixture("page-labels.pdf");
+    let original = std::fs::read(&path).unwrap();
+    let doc = engine.open(&path, None).unwrap();
+    let labels: Vec<_> = doc
+        .info()
+        .page_labels
+        .iter()
+        .map(Option::as_deref)
+        .collect();
+    assert_eq!(
+        labels,
+        vec![
+            Some("i"),
+            Some("ii"),
+            Some("1"),
+            Some("2"),
+            Some("AA"),
+            Some("Annexe-É7"),
+            Some("Repeat"),
+            Some("Repeat"),
+            None
+        ]
+    );
+    assert!(doc.page_text(2).unwrap().contains("physical page 3"));
+    assert_eq!(doc.info().resolve_page_input("1"), Some(2));
+    assert_eq!(doc.info().resolve_page_input("#1"), Some(0));
+    assert_eq!(std::fs::read(path).unwrap(), original);
+}
+
+#[test]
+fn page_labels_survive_crop_rotation_encryption_save_and_restore() {
+    use sunipdf_core::{security, PageMargins, Protection, Rotation};
+    let engine = engine();
+    let temp = tempfile::tempdir().unwrap();
+    let original = std::fs::read(fixture("page-labels.pdf")).unwrap();
+    for encrypted in [false, true] {
+        let bytes = if encrypted {
+            security::protect(
+                &original,
+                None,
+                &Protection {
+                    user_password: "user".into(),
+                    owner_password: "owner".into(),
+                    aes256: true,
+                    ..Default::default()
+                },
+            )
+            .unwrap()
+        } else {
+            original.clone()
+        };
+        let password = encrypted.then_some("owner");
+        let mut doc = engine
+            .open_bytes(bytes, password, &fixture("page-labels.pdf"))
+            .unwrap();
+        let labels = doc.info().page_labels.clone();
+        let before = doc.snapshot().unwrap();
+        for rotation in [Rotation::R90, Rotation::R180, Rotation::R270, Rotation::R0] {
+            doc.set_page_rotation(0, rotation).unwrap();
+            assert_eq!(doc.page_rotation(0).unwrap(), rotation);
+            assert_eq!(doc.info().page_labels, labels);
+        }
+        doc.crop_page(
+            1,
+            PageMargins {
+                left: 10.0,
+                top: 10.0,
+                right: 10.0,
+                bottom: 10.0,
+            },
+        )
+        .unwrap();
+        assert_eq!(doc.info().page_labels, labels);
+        assert_eq!(doc.page_rotation(1).unwrap(), Rotation::R0);
+        let out = temp.path().join(format!("labels-{encrypted}.pdf"));
+        doc.save_as(&out).unwrap();
+        let reopened = engine.open(&out, password).unwrap();
+        assert_eq!(reopened.info().page_labels, labels);
+        assert_eq!(reopened.page_rotation(0).unwrap(), Rotation::R0);
+        assert_eq!(reopened.properties().encrypted, encrypted);
+        doc.restore(before).unwrap();
+        assert_eq!(doc.page_rotation(0).unwrap(), Rotation::R0);
+        assert!(matches!(
+            doc.page_rotation(9),
+            Err(EngineError::PageOutOfRange(9))
+        ));
+        assert_eq!(doc.info().page_labels, labels);
+    }
+    assert_eq!(std::fs::read(fixture("page-labels.pdf")).unwrap(), original);
+}
+
+#[test]
+fn grouped_page_deletion_validates_before_mutation_and_refreshes_metadata_once() {
+    let engine = engine();
+    let mut doc = engine.open(&fixture("page-labels.pdf"), None).unwrap();
+    let before = doc.info().page_labels.clone();
+    assert!(doc.delete_pages(&[0, 99]).is_err());
+    assert_eq!(doc.page_count(), 9);
+    assert_eq!(doc.info().page_labels, before);
+    doc.delete_pages(&[1, 3, 1]).unwrap();
+    assert_eq!(doc.page_count(), 7);
+    assert!(doc.page_text(1).unwrap().contains("physical page 3"));
+    let reopened = engine
+        .open_bytes(doc.snapshot().unwrap(), None, &fixture("page-labels.pdf"))
+        .unwrap();
+    assert_eq!(doc.info().page_labels, reopened.info().page_labels);
+    for page in 0..doc.page_count() {
+        assert_eq!(
+            doc.page_rotation(page).unwrap(),
+            reopened.page_rotation(page).unwrap()
+        );
+    }
+    assert!(doc.delete_pages(&(0..7).collect::<Vec<_>>()).is_err());
+    assert_eq!(doc.page_count(), 7);
+}
+
+#[test]
+fn page_labels_refresh_after_structural_changes_matches_saved_document() {
+    use sunipdf_core::Rotation;
+    let engine = engine();
+    let temp = tempfile::tempdir().unwrap();
+    let mut doc = engine.open(&fixture("page-labels.pdf"), None).unwrap();
+    doc.set_page_rotation(0, Rotation::R90).unwrap();
+    doc.set_page_rotation(3, Rotation::R180).unwrap();
+    let before = doc.snapshot().unwrap();
+    doc.move_page(0, 2).unwrap();
+    assert_eq!(doc.page_rotation(2).unwrap(), Rotation::R90);
+    assert!(doc.page_text(2).unwrap().contains("physical page 1"));
+    assert_eq!(
+        doc.info().page_label(0),
+        Some("i"),
+        "existing number-tree ranges remain attached to physical indices"
+    );
+    doc.delete_page(1).unwrap();
+    doc.insert_pages_from(&fixture("two-pages.pdf"), None, &[0], 0)
+        .unwrap();
+    assert_eq!(doc.page_rotation(2).unwrap(), Rotation::R90);
+    assert_eq!(doc.page_rotation(3).unwrap(), Rotation::R180);
+    assert_eq!(doc.info().page_labels.len(), doc.page_count());
+    let out = temp.path().join("reordered.pdf");
+    doc.save_as(&out).unwrap();
+    assert_eq!(
+        engine.open(&out, None).unwrap().info().page_labels,
+        doc.info().page_labels
+    );
+    let reopened = engine.open(&out, None).unwrap();
+    for page in 0..doc.page_count() {
+        assert_eq!(
+            reopened.page_rotation(page).unwrap(),
+            doc.page_rotation(page).unwrap()
+        );
+    }
+    eprintln!(
+        "Page-label ranges after move/delete/insert: {:?}",
+        doc.info().page_labels
+    );
+    let extracted = temp.path().join("extracted.pdf");
+    doc.extract_to(&[0, 2], &extracted).unwrap();
+    let extracted = engine.open(&extracted, None).unwrap();
+    assert_eq!(extracted.info().page_labels.len(), 2);
+    assert_eq!(extracted.page_rotation(1).unwrap(), Rotation::R90);
+    eprintln!(
+        "Page labels after extract: {:?}",
+        extracted.info().page_labels
+    );
+    doc.restore(before).unwrap();
+    assert_eq!(doc.page_rotation(0).unwrap(), Rotation::R90);
+    assert_eq!(doc.page_rotation(3).unwrap(), Rotation::R180);
+}
+
+#[test]
 fn renders_page_with_expected_dimensions_and_content() {
     let engine = engine();
     let doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();

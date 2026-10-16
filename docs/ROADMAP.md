@@ -49,6 +49,16 @@ update/failure/rollback cases and two MSI baselines passed. Final CI and all six
 including packaged CLI/OCR, icons, MSI payloads and the live updater. Evidence is recorded in `PROJECT_STATUS.md`.
 Hardware, native interactive flows, Narrator, third-party readers and broader customer/hostile corpus coverage remain independent work.
 
+## Current development: reading and form reliability (unreleased)
+
+Implemented and locally validated: read-only page labels with exact unique-label navigation and `#N` physical
+indices; named destinations and `/XYZ`, `/Fit`, nonzero `/FitH` for links/bookmarks; same-page and zoom-aware history;
+form-read errors that preserve inputs and require an explicit retry. `/FitH` zero/null and other fit modes fall back
+to page navigation. The published 0.10.0 source and packages remain unchanged; no new release version is assigned.
+
+Local gates passed: 383 workspace tests, formatting/Clippy, 34 qpdf PDFs, four real documents (744 pages), 857 matching
+EN/FR keys and development CLI/GUI builds. Seven tests remain ignored by default; CI for this lot is still pending.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -61,8 +71,9 @@ Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views
 search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
 
 Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
-Remaining: page labels and intended reading order
-for complex untagged columns. qpdf structural checks do not prove preservation of every link, field, layer or attachment.
+Implemented in current development: page-label reading and precise internal navigation. Remaining: page-label
+authoring/semantic rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
+prove preservation of every link, field, layer or attachment.
 
 ## Phase 3: professional editing — partially delivered
 

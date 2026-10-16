@@ -469,8 +469,9 @@ impl SuniApp {
         if let Some(doc) = &self.document {
             self.view.reading.history.jump(
                 doc.page,
-                self.view.offset,
+                (!self.view.navigation_pending()).then_some(self.view.offset),
                 page.min(doc.info.page_count().saturating_sub(1)),
+                self.effective_zoom,
             );
         }
         if let Some(doc) = &mut self.document {
@@ -491,9 +492,20 @@ impl SuniApp {
                     self.edit.text_prompt = None;
                 }
             }
-            self.page_input = (clamped + 1).to_string();
+            self.page_input = doc.info.page_input(clamped);
             // Toujours défiler, même vers la page courante (on peut être au milieu de la page).
             self.lock_on_page(clamped);
+        }
+    }
+
+    pub fn submit_page_input(&mut self) {
+        let Some(doc) = &self.document else { return };
+        if let Some(page) = doc.info.resolve_page_input(&self.page_input) {
+            self.status_msg = None;
+            self.go_to_page(page);
+        } else {
+            self.page_input = doc.info.page_input(doc.page);
+            self.status_msg = Some(self.t("reading.page_label_invalid").to_owned());
         }
     }
 
@@ -698,7 +710,7 @@ impl SuniApp {
                     }
                     self.opening = None;
                     self.password_prompt = None;
-                    self.page_input = "1".into();
+                    self.page_input = info.page_input(0);
                     self.settings.push_recent(&info.path);
                     self.persist_settings();
                     self.can_undo = false;
@@ -812,7 +824,7 @@ impl SuniApp {
                         let same_sizes = doc.info.page_sizes == info.page_sizes;
                         doc.info = info;
                         doc.page = doc.page.min(doc.info.page_count().saturating_sub(1));
-                        self.page_input = (doc.page + 1).to_string();
+                        self.page_input = doc.info.page_input(doc.page);
                         // Retouche : l'image reste affichée jusqu'aux nouvelles tuiles.
                         self.view
                             .on_document_changed(pages_unchanged, same_sizes, doc.page);
@@ -901,7 +913,10 @@ impl SuniApp {
                     details,
                 } => self.on_annotations(page, list, details),
                 Response::Links { page, list } => self.on_links(page, list),
-                Response::FormInfo(info) => self.on_form_info(info),
+                Response::FormInfo(result) => match result {
+                    Ok(info) => self.on_form_info(info),
+                    Err(e) => self.on_form_read_failed(e),
+                },
                 Response::BatchDone(result) => self.on_batch_done(result),
                 Response::ObjectSelected { page, info } => self.on_object_selected(page, info),
                 Response::ObjectsSelected { page, infos, mode } => {
@@ -1786,7 +1801,9 @@ impl SuniApp {
             Command::ToolFillForm => self.enter_fill_tool(),
             Command::ToggleForms => {
                 self.forms.panel_open = !self.forms.panel_open;
-                self.forms.stale = true;
+                if self.forms.panel_open {
+                    self.forms.stale = true;
+                }
             }
             Command::ClearForm => {
                 self.forms.editing = None;
@@ -2004,6 +2021,7 @@ impl SuniApp {
             .max(0.1);
         let row_h = thumb_w * max_ratio + 24.0;
         let sizes = doc.info.page_sizes.clone();
+        let labels = doc.info.page_labels.clone();
         let mut clicked = None;
         let mut moved: Option<(usize, usize)> = None;
         let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
@@ -2023,11 +2041,24 @@ impl SuniApp {
         let out = area.show_rows(ui, row_h, count, |ui, rows| {
             self.retain_thumbnail_window(rows.clone());
             for page in rows {
+                let page_number = (page + 1).to_string();
+                let label = labels.get(page).and_then(Option::as_deref);
+                let caption = label.map_or_else(
+                    || page_number.clone(),
+                    |label| format!("{label} (#{page_number})"),
+                );
                 let ratio = sizes[page].height_pt / sizes[page].width_pt;
                 let size = egui::vec2(thumb_w, thumb_w * ratio);
                 self.request_thumbnail(page, px);
                 ui.vertical_centered(|ui| {
                     let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
+                    resp.widget_info(|| {
+                        egui::WidgetInfo::labeled(
+                            egui::WidgetType::Image,
+                            true,
+                            tr_args(lang, "a11y.thumbnail", &[("page", &caption)]),
+                        )
+                    });
                     resp.dnd_set_drag_payload(page);
                     if let Some(payload) = resp.dnd_hover_payload::<usize>() {
                         if *payload != page {
@@ -2071,11 +2102,7 @@ impl SuniApp {
                         ui.put(
                             rect,
                             egui::Image::new(egui::load::SizedTexture::new(tex.id(), size))
-                                .alt_text(tr_args(
-                                    lang,
-                                    "a11y.thumbnail",
-                                    &[("page", &(page + 1).to_string())],
-                                )),
+                                .alt_text(tr_args(lang, "a11y.thumbnail", &[("page", &caption)])),
                         );
                     }
                     ui.painter()
@@ -2083,7 +2110,8 @@ impl SuniApp {
                     if resp.clicked() {
                         clicked = Some(page);
                     }
-                    ui.label((page + 1).to_string());
+                    ui.add(egui::Label::new(&caption).truncate())
+                        .on_hover_text(caption);
                 });
             }
         });
@@ -3002,12 +3030,63 @@ pub(crate) mod tests {
         DocumentInfo {
             path: PathBuf::from(path),
             title: None,
+            page_labels: vec![],
             page_sizes: vec![sunipdf_core::PageSize {
                 width_pt: 612.0,
                 height_pt: 792.0,
             }],
             form: sunipdf_core::FormKind::AcroForm,
         }
+    }
+
+    #[test]
+    fn labelled_navigation_rejects_ambiguity_and_preserves_each_tab_input() {
+        let (mut app, requests, _) = test_app();
+        let doc = app.document.as_mut().unwrap();
+        doc.info.page_sizes = vec![doc.info.page_sizes[0]; 5];
+        doc.info.page_labels = ["i", "ii", "1", "Repeat", "Repeat"]
+            .into_iter()
+            .map(|label| Some(label.to_owned()))
+            .collect();
+        for (input, page, field) in [("ii", 1, "ii"), ("1", 2, "1"), ("#1", 0, "i")] {
+            app.page_input = input.to_owned();
+            app.submit_page_input();
+            assert_eq!(app.document.as_ref().unwrap().page, page);
+            assert_eq!(app.page_input, field);
+        }
+        for input in ["Repeat", "unknown", "#6", "0"] {
+            app.page_input = input.to_owned();
+            app.submit_page_input();
+            assert_eq!(app.document.as_ref().unwrap().page, 0);
+            assert_eq!(app.page_input, "i");
+            assert_eq!(
+                app.status_msg.as_deref(),
+                Some(app.t("reading.page_label_invalid"))
+            );
+        }
+        app.page_input = "ii".to_owned();
+        app.submit_page_input();
+        let first = app.take_tab();
+        app.document = Some(OpenDocument {
+            info: test_info("test/second.pdf"),
+            page: 0,
+        });
+        app.page_input = "1".to_owned();
+        let second = app.take_tab();
+        app.put_tab(first);
+        assert_eq!(app.page_input, "ii");
+        assert_eq!(
+            app.document.as_ref().unwrap().info.page_label(1),
+            Some("ii")
+        );
+        app.put_tab(second);
+        assert_eq!(app.page_input, "1");
+        assert_eq!(app.document.as_ref().unwrap().info.page_label(0), None);
+        assert!(!app.dirty);
+        assert!(
+            requests.try_iter().next().is_none(),
+            "reading labels must not mutate the worker document"
+        );
     }
 
     fn organize_frame(app: &mut SuniApp, ctx: &egui::Context, offset: f32) {

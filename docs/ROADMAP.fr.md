@@ -49,6 +49,17 @@ huit scénarios portables de mise à jour/échec/restauration et deux bases MSI 
 vérifiés, y compris CLI/OCR embarqués, icônes, contenu MSI et mise à jour en ligne ; preuves dans `PROJECT_STATUS.fr.md`.
 Matériel, dialogues natifs interactifs, Narrateur, lecteurs tiers et corpus client/hostile élargi restent indépendants.
 
+## Développement courant : lecture et fiabilité des formulaires (non publié)
+
+Implémentés et validés localement : étiquettes en lecture seule, navigation par étiquette exacte et unique ou
+indice physique `#N` ; destinations nommées et `/XYZ`, `/Fit`, `/FitH` non nul des liens/signets ; historique des sauts
+dans la même page et du zoom ; erreurs de lecture de formulaire préservant les saisies avec relance explicite.
+`/FitH` zéro/null et les autres modes gardent le saut de page. Source et paquets 0.10.0 publiés restent inchangés ;
+aucun nouveau numéro de release n'est attribué.
+
+Critères locaux réussis : 383 tests du workspace, formatage/Clippy, 34 PDF qpdf, quatre documents réels (744 pages),
+857 clés EN/FR identiques et builds CLI/GUI de développement. Sept tests ignorés par défaut ; CI de ce lot encore en attente.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -61,8 +72,9 @@ Livrés : onglets, caches de rendu/miniatures bornés, vues continue/double page
 recherche, signets, fusion/division/extraction/rotation/réorganisation, enregistrement atomique, annulation/rétablissement et annotations.
 
 Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
-Restent : labels de pages et ordre voulu des
-colonnes complexes non balisées. qpdf ne prouve pas la préservation de chaque lien, champ, calque ou pièce jointe.
+Implémentés en développement : lecture des étiquettes et navigation interne précise. Restent : création/recalage
+sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
+chaque lien, champ, calque ou pièce jointe.
 
 ## Phase 3 : édition professionnelle — partiellement livrée
 

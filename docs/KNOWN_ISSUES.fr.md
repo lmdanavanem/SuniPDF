@@ -305,3 +305,22 @@ A47. **Sauvegardes/corpus 0.10.0** : erreurs de stockage injectées et arrêt fo
      la préservation de la source. Ce ne sont pas toutes les pannes physiques/coupures possibles. Quatre PDF NIST publics
      complètent les fixtures synthétiques : 31 contrôles qpdf synthétiques et quatre documents réels (744 pages) réussis en 0.10.0.
      Cela ne prouve pas une couverture client/hostile/volumineuse universelle ; preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
+## Modifications locales non publiées
+
+Ces ajouts ne font pas partie de la release 0.10.0 publiée. Les validations exécutées sont suivies dans `PROJECT_STATUS.fr.md`.
+
+A48. **Lecture des libellés de page** : métadonnées facultatives, sans modification de la numérotation. Un libellé
+     vide/illisible, dépassant 4096 octets UTF-8 ou contenant un caractère de contrôle revient à l'indice physique.
+     Le libellé exact et unique prime sur une saisie numérique ; `#N` choisit la page physique N. Un doublon exige
+     un indice physique. Aucun recalage sémantique après une opération structurelle : les plages peuvent rester
+     attachées aux positions physiques ; l'extraction peut omettre les libellés. Les indices CLI restent physiques, à partir de 1.
+A49. **Navigation vers les destinations** : liens internes/signets avec `/XYZ`, `/Fit` et positions `/FitH` exploitables,
+     historique de position/zoom par onglet. Les autres ajustements conservent la navigation à la page seule.
+     PDFium ne distingue pas une position `/FitH` absente de zéro ; les deux reviennent à la page seule. Des détails
+     illisibles/invalides font de même. Axes `/XYZ` absents et zoom nul/omis conservent les valeurs courantes ; un zoom
+     explicite est borné par l'application. Cela n'établit pas l'interopérabilité Acrobat/Foxit ni celle des lecteurs d'écran natifs.
+A50. **Échec de lecture du formulaire** : distinct d'un formulaire vide, avec une nouvelle tentative explicite depuis
+     le panneau. Brouillons et valeurs en attente sont conservés pendant l'échec. Un import/effacement en attente
+     reprend seulement après une lecture réussie ; les nouvelles tentatives automatiques répétées sont bloquées.
+     Ces modifications locales ne constituent pas encore une release.

@@ -7,8 +7,31 @@
 
 use crate::annot_write::LinkTarget;
 use crate::geometry::geometry_of;
-use crate::{Document, EngineError, PointRect};
+use crate::{Document, EngineError, PageGeometry, PointRect, Rotation};
 use pdfium_render::prelude::*;
+
+/// An internal destination, with coordinates in the target page's display space.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Destination {
+    pub page: usize,
+    pub view: DestinationView,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum DestinationView {
+    /// Missing axes and zoom retain the current viewport values.
+    Xyz {
+        x: Option<f32>,
+        y: Option<f32>,
+        zoom: Option<f32>,
+    },
+    FitPage,
+    /// Fit the displayed page width, with an optional transformed PDF `/FitH` position.
+    FitWidth {
+        x: Option<f32>,
+        y: Option<f32>,
+    },
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LinkInfo {
@@ -17,6 +40,7 @@ pub struct LinkInfo {
     /// Zone cliquable, espace d'affichage.
     pub rect: PointRect,
     pub target: LinkTarget,
+    pub destination: Option<Destination>,
 }
 
 /// Longueur maximale d'une adresse acceptée.
@@ -45,32 +69,105 @@ pub fn is_safe_external_uri(uri: &str) -> bool {
     }
 }
 
-fn target_of(link: &PdfLink<'_>) -> LinkTarget {
-    if let Some(p) = link.destination().and_then(|d| d.page_index().ok()) {
-        return LinkTarget::Page(p as usize);
+fn display_axes(geo: PageGeometry, x: Option<f32>, y: Option<f32>) -> (Option<f32>, Option<f32>) {
+    let b = geo.bbox;
+    match geo.rotation {
+        Rotation::R0 => (x.map(|v| v - b.left), y.map(|v| v - b.bottom)),
+        Rotation::R90 => (y.map(|v| v - b.bottom), x.map(|v| b.right - v)),
+        Rotation::R180 => (x.map(|v| b.right - v), y.map(|v| b.top - v)),
+        Rotation::R270 => (y.map(|v| b.top - v), x.map(|v| v - b.left)),
     }
-    let Some(action) = link.action() else {
-        return LinkTarget::Unsupported;
-    };
-    if let Some(p) = action
-        .as_local_destination_action()
-        .and_then(|a| a.destination().ok())
-        .and_then(|d| d.page_index().ok())
-    {
-        return LinkTarget::Page(p as usize);
+}
+
+fn destination_view(
+    geo: PageGeometry,
+    settings: PdfDestinationViewSettings,
+) -> Option<DestinationView> {
+    let finite = |v: Option<f32>| v.is_none_or(f32::is_finite);
+    match settings {
+        PdfDestinationViewSettings::SpecificCoordinatesAndZoom(x, y, zoom) => {
+            let (x, y) = (x.map(|v| v.value), y.map(|v| v.value));
+            if !finite(x) || !finite(y) || !finite(zoom) || zoom.is_some_and(|v| v < 0.0) {
+                return None;
+            }
+            let (x, y) = display_axes(geo, x, y);
+            (finite(x) && finite(y)).then_some(DestinationView::Xyz {
+                x,
+                y,
+                zoom: zoom.filter(|v| *v > 0.0),
+            })
+        }
+        PdfDestinationViewSettings::FitPageToWindow => Some(DestinationView::FitPage),
+        PdfDestinationViewSettings::FitPageHorizontallyToWindow(y) => {
+            let y = y.map(|v| v.value);
+            // shortcut: PDFium collapses FitH null to zero; use page-only fallback until it exposes nullness.
+            if !finite(y) || y == Some(0.0) {
+                return None;
+            }
+            let (x, y) = display_axes(geo, None, y);
+            (finite(x) && finite(y)).then_some(DestinationView::FitWidth { x, y })
+        }
+        // shortcut: other fit modes retain page navigation until their viewport behavior is supported.
+        _ => None,
     }
-    if let Some(uri) = action.as_uri_action().and_then(|a| a.uri().ok()) {
-        return LinkTarget::Uri(uri);
+}
+
+fn target_of(doc: &Document<'_>, link: &PdfLink<'_>) -> (LinkTarget, Option<Destination>) {
+    if let Some(action) = link.action() {
+        if let Some(uri) = action.as_uri_action().and_then(|a| a.uri().ok()) {
+            return (LinkTarget::Uri(uri), None);
+        }
+        let (page, destination) = doc.resolve_local_action(&action);
+        return (
+            page.map_or(LinkTarget::Unsupported, LinkTarget::Page),
+            destination,
+        );
     }
-    LinkTarget::Unsupported
+    if let Some(d) = link.destination() {
+        if let (Some(page), destination) = doc.resolve_destination(&d) {
+            return (LinkTarget::Page(page), destination);
+        }
+    }
+    (LinkTarget::Unsupported, None)
 }
 
 impl Document<'_> {
+    pub(crate) fn resolve_local_action(
+        &self,
+        action: &PdfAction<'_>,
+    ) -> (Option<usize>, Option<Destination>) {
+        // PDFium's generic destination getter also accepts remote actions; discriminate first.
+        action
+            .as_local_destination_action()
+            .and_then(|a| a.destination().ok())
+            .map(|d| self.resolve_destination(&d))
+            .unwrap_or((None, None))
+    }
+
+    pub(crate) fn resolve_destination(
+        &self,
+        destination: &PdfDestination<'_>,
+    ) -> (Option<usize>, Option<Destination>) {
+        let Some(page) = destination
+            .page_index()
+            .ok()
+            .and_then(|page| usize::try_from(page).ok())
+            .filter(|page| *page < self.page_count())
+        else {
+            return (None, None);
+        };
+        let view = self
+            .page_geometry(page)
+            .ok()
+            .zip(destination.view_settings().ok())
+            .and_then(|(geo, settings)| destination_view(geo, settings));
+        (Some(page), view.map(|view| Destination { page, view }))
+    }
+
     /// Zones de lien de la page, dans l'ordre de `/Annots`.
     pub fn page_links(&self, page_index: usize) -> Result<Vec<LinkInfo>, EngineError> {
         let page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;
-        let count = self.page_count();
         let annotations = page.annotations();
         let mut out = Vec::new();
         for index in 0..annotations.len() {
@@ -81,12 +178,9 @@ impl Document<'_> {
                 continue;
             };
             let Ok(r) = a.bounds() else { continue };
-            let target = match l.link() {
-                Ok(link) => match target_of(&link) {
-                    LinkTarget::Page(p) if p >= count => LinkTarget::Unsupported,
-                    t => t,
-                },
-                Err(_) => LinkTarget::Unsupported,
+            let (target, destination) = match l.link() {
+                Ok(link) => target_of(self, &link),
+                Err(_) => (LinkTarget::Unsupported, None),
             };
             out.push(LinkInfo {
                 index,
@@ -97,6 +191,7 @@ impl Document<'_> {
                     top: r.top().value,
                 }),
                 target,
+                destination,
             });
         }
         Ok(out)
@@ -106,6 +201,64 @@ impl Document<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn destination_axes_preserve_missing_values_and_reject_invalid_numbers() {
+        for rotation in [Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270] {
+            let geo = PageGeometry {
+                bbox: PointRect {
+                    left: 100.0,
+                    bottom: 50.0,
+                    right: 500.0,
+                    top: 650.0,
+                },
+                rotation,
+            };
+            let settings = |x: Option<f32>, y: Option<f32>, zoom: Option<f32>| {
+                PdfDestinationViewSettings::SpecificCoordinatesAndZoom(
+                    x.map(PdfPoints::new),
+                    y.map(PdfPoints::new),
+                    zoom,
+                )
+            };
+            let expected = display_axes(geo, None, Some(400.0));
+            assert_eq!(
+                destination_view(geo, settings(None, Some(400.0), Some(0.0))),
+                Some(DestinationView::Xyz {
+                    x: expected.0,
+                    y: expected.1,
+                    zoom: None
+                })
+            );
+            for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+                assert_eq!(
+                    destination_view(geo, settings(Some(invalid), None, None)),
+                    None
+                );
+                assert_eq!(
+                    destination_view(geo, settings(None, Some(invalid), None)),
+                    None
+                );
+                assert_eq!(
+                    destination_view(geo, settings(None, None, Some(invalid))),
+                    None
+                );
+            }
+            assert_eq!(
+                destination_view(geo, settings(None, None, Some(-1.0))),
+                None
+            );
+            assert_eq!(
+                destination_view(
+                    geo,
+                    PdfDestinationViewSettings::FitPageHorizontallyToWindow(Some(PdfPoints::new(
+                        0.0
+                    )))
+                ),
+                None
+            );
+        }
+    }
 
     #[test]
     fn accepts_only_web_and_mail_addresses() {

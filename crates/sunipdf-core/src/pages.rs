@@ -209,6 +209,12 @@ impl Document<'_> {
     }
 
     pub fn page_rotation(&self, page_index: usize) -> Result<Rotation, EngineError> {
+        if page_index >= self.page_count() {
+            return Err(EngineError::PageOutOfRange(page_index));
+        }
+        if let Some(rotation) = self.page_rotations.get(page_index).copied().flatten() {
+            return Ok(rotation);
+        }
         let page = self.page_handle(page_index)?;
         Ok(Rotation::from_pdfium(page.rotation()?))
     }
@@ -222,20 +228,39 @@ impl Document<'_> {
     ) -> Result<(), EngineError> {
         let mut page = self.page_handle(page_index)?;
         page.set_rotation(rotation.to_pdfium());
+        let size = PageSize {
+            width_pt: page.width().value,
+            height_pt: page.height().value,
+        };
         drop(page);
-        self.refresh_page_sizes()?;
+        self.info.page_sizes[page_index] = size;
+        self.page_rotations[page_index] = Some(rotation);
         Ok(())
     }
 
     /// Supprime une page. Le document doit en conserver au moins une.
     pub fn delete_page(&mut self, page_index: usize) -> Result<(), EngineError> {
-        if self.page_count() <= 1 {
+        self.delete_pages(&[page_index])
+    }
+
+    pub fn delete_pages(&mut self, pages: &[usize]) -> Result<(), EngineError> {
+        let mut pages = pages.to_vec();
+        pages.sort_unstable();
+        pages.dedup();
+        if pages.is_empty() {
+            return Ok(());
+        }
+        if pages.len() >= self.page_count() {
             return Err(EngineError::Other(
                 "a document must keep at least one page".into(),
             ));
         }
-        let page = self.page_handle(page_index)?;
-        page.delete()?;
+        if let Some(&page) = pages.iter().find(|&&page| page >= self.page_count()) {
+            return Err(EngineError::PageOutOfRange(page));
+        }
+        for page in pages.into_iter().rev() {
+            self.page_handle(page)?.delete()?;
+        }
         self.refresh_page_sizes()?;
         Ok(())
     }
@@ -403,6 +428,8 @@ impl Document<'_> {
                 height_pt: r.height().value,
             })
             .collect();
+        (self.info.page_labels, self.page_rotations) =
+            crate::page_labels_and_rotations(&self.inner);
         Ok(())
     }
 }

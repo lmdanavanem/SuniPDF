@@ -9,6 +9,9 @@ use std::time::{Duration, Instant};
 #[path = "../../../crates/sunipdf-core/tests/support/certificate_identity.rs"]
 mod test_identity;
 
+#[path = "../../../crates/sunipdf-core/tests/fixtures/destinations.rs"]
+mod destinations_fixture;
+
 fn fixture(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../crates/sunipdf-core/tests/fixtures")
@@ -135,10 +138,21 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         "redact.pdf",
         "redact-incremental.pdf",
         "many-pages.pdf",
+        "page-labels.pdf",
     ] {
         check(&qpdf, &fixture(name), None);
     }
     check(&qpdf, &fixture("encrypted-rc4.pdf"), Some("secret"));
+    let destinations = temp.path().join("destinations.pdf");
+    std::fs::write(&destinations, destinations_fixture::document()).unwrap();
+    check(&qpdf, &destinations, None);
+    let destinations_saved = temp.path().join("destinations-rewritten.pdf");
+    let mut command = cli(&["set-metadata"], &[&destinations]);
+    command
+        .args(["--title", "Destination round trip", "--out"])
+        .arg(&destinations_saved);
+    success(command);
+    check(&qpdf, &destinations_saved, None);
     let original = fixture("two-pages.pdf");
     let original_bytes = std::fs::read(&original).unwrap();
     let edited = temp.path().join("edited.pdf");

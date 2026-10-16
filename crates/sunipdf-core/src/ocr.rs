@@ -310,6 +310,7 @@ impl Document<'_> {
                 .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
             pdfium: self.pdfium,
             info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
         };

@@ -667,7 +667,7 @@ impl SuniApp {
         }
     }
 
-    fn link_at(&self, page: usize, pt: (f32, f32)) -> Option<&LinkInfo> {
+    pub(crate) fn link_at(&self, page: usize, pt: (f32, f32)) -> Option<&LinkInfo> {
         if self.annotate.adv.links_page != Some(page) {
             return None;
         }
@@ -681,12 +681,16 @@ impl SuniApp {
 
     /// Suit le lien sous le pointeur : saut de page, ou adresse après confirmation.
     fn follow_link_at(&mut self, page: usize, pt: (f32, f32)) {
-        let Some(target) = self.link_at(page, pt).map(|l| l.target.clone()) else {
+        let Some(link) = self.link_at(page, pt).cloned() else {
             return;
         };
         let lang = self.lang();
-        match link_action(&target) {
-            LinkAction::GoTo(n) => self.go_to_page(n),
+        match link_action(&link.target) {
+            LinkAction::GoTo(n) => match link.destination {
+                Some(destination) => self.go_to_destination(destination),
+                None if self.reading_navigation_ready() => self.go_to_page(n),
+                None => {}
+            },
             LinkAction::Confirm(u) => self.annotate.adv.url_confirm = Some(u),
             LinkAction::Blocked => {
                 self.status_msg = Some(tr(lang, "status.link_blocked").to_string());

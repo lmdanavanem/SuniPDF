@@ -95,13 +95,17 @@ impl SuniApp {
                             None => resp,
                         };
                         if resp.clicked() {
-                            go = b.page;
+                            go = b.page.map(|page| (page, b.destination));
                         }
                     });
                 }
             });
-        if let Some(page) = go {
-            self.go_to_page(page);
+        if let Some((page, destination)) = go {
+            match destination {
+                Some(destination) => self.go_to_destination(destination),
+                None if self.reading_navigation_ready() => self.go_to_page(page),
+                None => {}
+            }
         }
     }
 

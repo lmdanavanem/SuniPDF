@@ -149,6 +149,7 @@ pub struct Bookmark {
     pub title: String,
     pub page: Option<usize>,
     pub depth: usize,
+    pub destination: Option<crate::Destination>,
 }
 
 pub(crate) fn lopdf_err(e: lopdf::Error) -> EngineError {
@@ -724,13 +725,16 @@ impl Document<'_> {
                     depth += 1;
                     parent = p.parent();
                 }
+                let resolved = b
+                    .action()
+                    .map(|action| self.resolve_local_action(&action))
+                    .or_else(|| b.destination().map(|d| self.resolve_destination(&d)))
+                    .unwrap_or((None, None));
                 Bookmark {
                     title: b.title().unwrap_or_default(),
-                    page: b
-                        .destination()
-                        .and_then(|d| d.page_index().ok())
-                        .map(|i| i as usize),
+                    page: resolved.0,
                     depth,
+                    destination: resolved.1,
                 }
             })
             .collect()

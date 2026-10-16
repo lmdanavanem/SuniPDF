@@ -170,7 +170,10 @@ fn annotate_list_reply_status_and_delete_round_trip() {
     assert_eq!(list[3]["opacity"], 1.0);
     assert!(list[3]["rect"][3].as_f64().unwrap() == 520.0);
     assert!(list[3]["contents"].as_str().unwrap().starts_with("Bonjour"));
-    assert_eq!(list[4]["link"], serde_json::json!({ "page": 2 }));
+    assert_eq!(
+        list[4]["link"],
+        serde_json::json!({ "page": 2, "destination": {"page": 2, "view": "Fit"} })
+    );
     assert_eq!(
         list[5]["link"],
         serde_json::json!({ "uri": "https://example.org" })

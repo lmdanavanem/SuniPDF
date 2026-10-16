@@ -22,6 +22,7 @@ fn state(path: PathBuf, modified: bool) -> DocState {
                 width_pt: 612.0,
                 height_pt: 792.0,
             }],
+            page_labels: vec![],
             form: sunipdf_core::FormKind::AcroForm,
         },
         can_undo: modified,
@@ -283,10 +284,184 @@ fn field_creation_commands_open_dialog_and_document_change_refreshes_the_form_mo
     assert!(requests.try_iter().any(|r| matches!(r, Request::FormInfo)));
     assert!(app.forms.requested);
     responses
-        .send(Response::FormInfo(sunipdf_core::FormInfo::default()))
+        .send(Response::FormInfo(Ok(sunipdf_core::FormInfo::default())))
         .unwrap();
     app.handle_responses(&ctx);
     assert!(!app.forms.requested);
+}
+
+#[test]
+fn failed_form_read_preserves_input_and_actions_until_explicit_successful_retry() {
+    use sunipdf_core::{FieldKind, FieldValue, FormField, FormInfo, FormKind};
+
+    let (mut app, requests, responses) = test_app();
+    let ctx = egui::Context::default();
+    let field = |name: &str, kind, value| FormField {
+        name: name.into(),
+        kind,
+        value,
+        tooltip: None,
+        read_only: false,
+        required: false,
+        multiline: false,
+        password: false,
+        comb: false,
+        max_len: None,
+        multi_select: false,
+        editable: false,
+        no_toggle_off: false,
+        options: vec![],
+        widgets: vec![],
+    };
+    let confirmed = FormInfo {
+        kind: FormKind::AcroForm,
+        has_scripts: false,
+        fields: vec![
+            field(
+                "Confirmed",
+                FieldKind::Text,
+                FieldValue::Text("saved".into()),
+            ),
+            field(
+                "Changed",
+                FieldKind::Text,
+                FieldValue::Text("original".into()),
+            ),
+            field("Approved", FieldKind::Checkbox, FieldValue::Bool(false)),
+        ],
+    };
+    let mut optimistic = confirmed.clone();
+    optimistic.fields[2].value = FieldValue::Bool(true);
+    app.forms.info = Some(optimistic.clone());
+    app.forms.panel_open = true;
+    app.forms.requested = true;
+    app.forms.drafts.insert("Confirmed".into(), "saved".into());
+    app.forms.drafts.insert("Changed".into(), "draft".into());
+    app.forms
+        .staged
+        .insert("Approved".into(), FieldValue::Bool(true));
+    app.forms.editing = Some(crate::forms::InPlace {
+        page: 0,
+        field: "Changed".into(),
+        widget: 0,
+        text: "in-place draft".into(),
+        multiline: false,
+        max_len: None,
+        focus: false,
+        armed: true,
+    });
+    app.forms.pending_import = Some(serde_json::json!({}));
+    app.forms.pending_clear = true;
+    responses
+        .send(Response::FormInfo(Err(EngineError::Other(
+            "read failed".into(),
+        ))))
+        .unwrap();
+    app.handle_responses(&ctx);
+    assert!(app.forms.read_failed && !app.forms.requested);
+    assert_eq!(app.error, Some("error.form_read_failed"));
+    assert_eq!(app.forms.info.as_ref(), Some(&optimistic));
+    assert_eq!(app.forms.drafts.len(), 2);
+    assert_eq!(
+        app.forms.staged.get("Approved"),
+        Some(&FieldValue::Bool(true))
+    );
+    assert_eq!(app.forms.editing.as_ref().unwrap().text, "in-place draft");
+    assert!(app.forms.pending_import.is_some() && app.forms.pending_clear);
+    for _ in 0..3 {
+        app.refresh_forms_if_needed();
+    }
+    app.execute(&ctx, Command::ToggleForms);
+    assert!(!app.forms.panel_open);
+    app.refresh_forms_if_needed();
+    assert!(!app.commit_form_input());
+    assert!(app.commit_editor().is_none());
+    app.commit_form("Approved".into(), FieldValue::Bool(false));
+    app.dirty = true;
+    app.save_document(false);
+    assert!(!app.saving && app.pending_save.is_none());
+    assert!(
+        requests.try_recv().is_err(),
+        "failed reads must neither loop nor apply an optimistic model"
+    );
+    assert_eq!(app.forms.info.as_ref(), Some(&optimistic));
+    assert_eq!(app.forms.editing.as_ref().unwrap().text, "in-place draft");
+    app.retry_form_read();
+    assert!(matches!(requests.try_recv().unwrap(), Request::FormInfo));
+    assert!(matches!(
+        requests.try_recv().unwrap(),
+        Request::FinishMutation
+    ));
+    assert!(app.forms.read_failed && app.forms.requested);
+    assert!(
+        !app.commit_form_input(),
+        "retry must finish before values can be applied"
+    );
+    responses
+        .send(Response::FormInfo(Ok(confirmed.clone())))
+        .unwrap();
+    responses.send(Response::MutationFinished).unwrap();
+    app.handle_responses(&ctx);
+    assert!(!app.forms.read_failed && !app.forms.requested);
+    assert!(app.error.is_none());
+    assert_eq!(app.forms.info.as_ref(), Some(&confirmed));
+    assert!(!app.forms.drafts.contains_key("Confirmed"));
+    assert_eq!(
+        app.forms.drafts.get("Changed").map(String::as_str),
+        Some("draft")
+    );
+    assert_eq!(
+        app.forms.staged.get("Approved"),
+        Some(&FieldValue::Bool(true))
+    );
+    assert_eq!(app.forms.editing.as_ref().unwrap().text, "in-place draft");
+    assert!(app.forms.pending_import.is_none() && !app.forms.pending_clear);
+    assert!(matches!(
+        requests.try_recv().unwrap(),
+        Request::Edit(EditOp::ClearForm)
+    ));
+    assert!(matches!(
+        requests.try_recv().unwrap(),
+        Request::FinishMutation
+    ));
+    assert!(requests.try_recv().is_err());
+}
+
+#[test]
+fn fill_tool_retries_failed_initial_reads_and_accepts_a_confirmed_empty_form() {
+    let (mut app, requests, responses) = test_app();
+    let ctx = egui::Context::default();
+    app.forms.panel_open = true;
+    app.forms.requested = true;
+    responses
+        .send(Response::FormInfo(Err(EngineError::Other(
+            "initial read failed".into(),
+        ))))
+        .unwrap();
+    app.handle_responses(&ctx);
+    for _ in 0..3 {
+        app.refresh_forms_if_needed();
+    }
+    assert!(requests.try_recv().is_err());
+    assert!(app.forms.info.is_none() && app.forms.read_failed);
+    app.execute(&ctx, Command::ToolFillForm);
+    app.refresh_forms_if_needed();
+    assert!(matches!(requests.try_recv().unwrap(), Request::FormInfo));
+    assert!(matches!(
+        requests.try_recv().unwrap(),
+        Request::FinishMutation
+    ));
+    assert!(app.forms.requested && app.forms.read_failed);
+    responses
+        .send(Response::FormInfo(Ok(sunipdf_core::FormInfo::default())))
+        .unwrap();
+    responses.send(Response::MutationFinished).unwrap();
+    app.handle_responses(&ctx);
+    assert!(!app.forms.read_failed && !app.forms.requested);
+    assert_eq!(app.forms.info, Some(sunipdf_core::FormInfo::default()));
+    assert!(app.error.is_none());
+    app.refresh_forms_if_needed();
+    assert!(requests.try_recv().is_err());
 }
 
 #[derive(Debug)]

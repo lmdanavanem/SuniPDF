@@ -2,7 +2,7 @@
 //! sortie. Les coordonnées sont des points de page affichée (origine en bas à gauche, rotation et
 //! rognage appliqués) ; les pages sont en base 1, les indices d'annotation en base 0.
 
-use sunipdf_core::{AnnotDetail, EngineError, LinkTarget, PointRect};
+use sunipdf_core::{AnnotDetail, Destination, DestinationView, EngineError, LinkTarget, PointRect};
 
 fn number(s: &str) -> Result<f32, EngineError> {
     s.trim()
@@ -50,6 +50,20 @@ pub fn link_json(t: &LinkTarget) -> serde_json::Value {
         LinkTarget::Uri(u) => serde_json::json!({ "uri": u }),
         LinkTarget::Unsupported => serde_json::json!({ "unsupported": true }),
     }
+}
+
+pub fn destination_json(destination: Destination) -> serde_json::Value {
+    let mut value = match destination.view {
+        DestinationView::Xyz { x, y, zoom } => {
+            serde_json::json!({"view":"XYZ","x":x,"y":y,"zoom":zoom})
+        }
+        DestinationView::FitPage => serde_json::json!({"view":"Fit"}),
+        DestinationView::FitWidth { x, y } => {
+            serde_json::json!({"view":"FitH","x":x,"y":y})
+        }
+    };
+    value["page"] = (destination.page + 1).into();
+    value
 }
 
 pub fn detail_json(d: &AnnotDetail) -> serde_json::Value {

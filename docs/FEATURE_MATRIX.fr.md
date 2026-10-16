@@ -16,6 +16,10 @@ Workspace, qpdf et régressions réelles portable/MSI 0.9.1 réussis ; résultat
 Les 362 tests du workspace, 31 contrôles qpdf synthétiques, quatre documents NIST réels (744 pages), huit scénarios portables,
 deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
+Le développement courant n'est pas publié. Critères locaux réussis : 383 tests du workspace (sept ignorés par défaut),
+formatage/Clippy, 34 PDF qpdf, quatre documents réels (744 pages), 857 clés EN/FR identiques et builds CLI/GUI de développement.
+CI de ce lot en attente ; les paquets 0.10.0 publiés restent inchangés.
+
 ## A. Lecture
 
 | Fonction | Attendu | SuniPDF | Note |
@@ -31,9 +35,9 @@ deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJ
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
-| Signets (outline) | Déclaré | **Fait** (panneau, navigation ; édition planifiée) | |
-| Étiquettes de pages | Déclaré | Planifié (P3) | |
-| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents **Faits** (accueil) ; historique de 256 positions par onglet **fait en 0.10.0** | |
+| Signets (outline) | Déclaré | **Fait** (panneau, saut de page ; édition planifiée) ; destinations précises **implémentées, non publiées** | Nommées, XYZ/Fit/FitH non nul ; tests locaux réussis |
+| Étiquettes de pages | Déclaré | **Implémentées, non publiées** (lecture seule) | PDFium, barre/miniatures/CLI info ; étiquette exacte et unique ou page physique `#N` ; repli si invalide ; tests locaux réussis |
+| Historique de navigation, onglets rouverts | Déclaré | Fichiers récents et historique borné à 256 **Faits** ; historique même page/zoom **implémenté, non publié** | Tests locaux réussis |
 | Mode lecture / plein écran | Déclaré | **Fait en 0.10.0** | Mode de vue partagé comme préférence ; rotation/historique conservés par onglet ; retour à une vue droite pour éditer |
 | Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
 | Récupération après plantage, autosave | Déclaré | **Fait** (régressions récupération/worker/onglets) | Instantanés 60 s/suspension d'onglet ; source intacte ; chiffrement conservé/sans mots de passe ; restauration Enregistrer sous |
@@ -51,7 +55,7 @@ deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJ
 | Transformation d'objets | Déclaré | **Fait** : déplacement, redimensionnement, **rotation libre** (poignée, angle saisi), duplication, ordre Z (extrême ou d'un cran), recoloration, **opacité**, suppression, **remplacement d'image** ; tests au rendu sur pages normales, pivotées et rognées |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Fait** : rectangle, Maj/Ctrl+clic, Ctrl+A, déplacement groupé ; presse-papiers entre pages et onglets (collé = groupe non éditable comme texte) ; rotation/redimensionnement groupés livrés en 0.10.0, une annulation |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
-| Liens | Déclaré | **Fait** : création (aller à une page, adresse `http` / `https` / `mailto`), clic sur un lien interne (saut de page), **adresse externe seulement après confirmation** montrant l'adresse complète ; actions Launch / JavaScript jamais exécutées ; destinations nommées non résolues ; CLI `annotate --kind link` |
+| Liens | Déclaré | **Fait** : création page/URI, adresses externes autorisées confirmées ; **implémenté, non publié** : destinations nommées/XYZ/Fit/FitH non nul résolues par PDFium, recadrage/rotation/axes nuls et JSON CLI additif ; tests locaux réussis. FitH zéro/null et autres modes gardent le saut de page. Launch / JavaScript / GoTo distant jamais exécutés ; édition de cible existante planifiée |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | Planifié (P3) |
 
@@ -103,6 +107,7 @@ deux bases MSI et six fichiers publics ont été vérifiés ; preuves dans `PROJ
 | Remplir AcroForm, apparences régénérées | Déclaré | **Fait** (tranche forms, D061–D063) : texte (une ligne, multiligne, longueur maximale), case à cocher, boutons radio, liste déroulante, zone de liste (choix multiple), champs hiérarchiques et à plusieurs widgets ; valeurs écrites par lopdf, apparences régénérées par PDFium et présentes dans le fichier ; outil sur la page + panneau accessible + aplatissement (champs et annotations) + effacer ; document chiffré conservé chiffré ; CLI `form-fields` / `fill-form` / `flatten` ; scripts jamais exécutés (signalés) |
 | Créer des champs | Non documenté | **Fait** : boîte numérique texte/case ; radio/listes livrés en 0.10.0 ; noms uniques, pages pivotées/recadrées/chiffrées, annulation ; tests moteur/CLI ; CLI `add-form-field` |
 | Import/export FDF/XFDF | Déclaré | **Fait en 0.10.0** : export JSON/XFDF, import strict borné JSON/XFDF/FDF de valeurs, Appliquer/Abandonner groupés et une annulation ; sous-ensemble FDF, aucun script/pièce jointe/texte enrichi |
+| Récupération après erreur de lecture des champs | Non documenté | **Implémentée, non publiée** : erreur/relance explicites préservent brouillons et actions en attente ; tests locaux réussis |
 | XFA | Partiel | **Détecté, lecture seule** (champs AcroForm listés ; remplissage et aplatissement refusés, `form_xfa`) |
 | Balisage, vérifications PDF/UA | Partiel / absent | Planifié (P6, vérifications seulement) |
 

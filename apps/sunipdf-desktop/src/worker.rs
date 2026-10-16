@@ -636,7 +636,7 @@ pub enum Response {
         page: usize,
         list: Vec<LinkInfo>,
     },
-    FormInfo(FormInfo),
+    FormInfo(Result<FormInfo, EngineError>),
     Properties(Properties),
     Bookmarks(Vec<Bookmark>),
     BatchDone(BatchResult),
@@ -1066,20 +1066,7 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             }
             Ok(())
         }
-        EditOp::Delete { mut pages } => {
-            pages.sort_unstable();
-            pages.dedup();
-            if pages.len() >= doc.page_count() {
-                return Err(EngineError::Other(
-                    "a document must keep at least one page".into(),
-                ));
-            }
-            // Du plus grand au plus petit pour garder les indices valides.
-            for page in pages.into_iter().rev() {
-                doc.delete_page(page)?;
-            }
-            Ok(())
-        }
+        EditOp::Delete { pages } => doc.delete_pages(&pages),
         EditOp::Insert {
             source,
             password,
@@ -1898,11 +1885,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::FormInfo => {
                 let Some(doc) = &state.document else { continue };
-                // Une lecture impossible renvoie un formulaire vide (pas de boucle de relectures).
-                Response::FormInfo(doc.form_info().unwrap_or_else(|e| {
-                    log::warn!("lecture du formulaire impossible : {e}");
-                    FormInfo::default()
-                }))
+                Response::FormInfo(doc.form_info())
             }
             Request::Undo => match state.undo_redo(true) {
                 Some(r) => r,
@@ -1992,6 +1975,16 @@ mod tests {
             worker.rx.recv_timeout(timeout).unwrap(),
             Response::Opened(_)
         ));
+        worker.send(Request::FormInfo);
+        assert!(matches!(
+            worker.rx.recv_timeout(timeout).unwrap(),
+            Response::FormInfo(Ok(info)) if info == FormInfo::default()
+        ));
+        assert!(matches!(
+            worker.rx.recv_timeout(timeout).unwrap(),
+            Response::MutationFinished
+        ));
+        worker.finish_mutation();
         for (page, width_px) in [(usize::MAX, 144), (0, u32::MAX)] {
             worker.send(Request::Thumbnail { page, width_px });
             assert!(matches!(

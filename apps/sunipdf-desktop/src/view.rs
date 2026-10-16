@@ -68,6 +68,11 @@ pub enum ScrollRequest {
         x_pt: f32,
         y_from_top_pt: f32,
     },
+    Destination {
+        page: usize,
+        x_pt: f32,
+        y_from_top_pt: f32,
+    },
     /// Décalage absolu (restauration d'un onglet).
     Offset(Vec2),
     /// Défilement relatif en points logiques (clavier).
@@ -979,7 +984,6 @@ impl SuniApp {
         }
         if self.view.k_prev.is_some_and(|p| (p - k).abs() > 1e-4) {
             self.view.settle_at = Some(now + SETTLE_SECS);
-            self.view.reading.history.invalidate_offsets();
         }
         let scale_milli = tiles::quantize_milli(k * ppp);
         let scale = scale_milli as f32 / 1000.0;
@@ -1056,7 +1060,7 @@ impl SuniApp {
             self.view
                 .reading
                 .history
-                .observe(doc.page, self.view.offset);
+                .observe(doc.page, self.view.offset, self.effective_zoom);
         }
         // Outil Sélection d'objet sans panneau Objets : objets de la page survolée (prise directe
         // sur n'importe quelle page visible) ; sinon ceux de la page courante.
@@ -1162,6 +1166,17 @@ impl SuniApp {
                 ("name", s.name),
             ],
         );
+        let alt = match self
+            .document
+            .as_ref()
+            .and_then(|d| d.info.page_label(s.page))
+        {
+            Some(label) => format!(
+                "{alt}. {}",
+                tr_args(self.lang(), "reading.page_label", &[("label", label)])
+            ),
+            None => alt,
+        };
         interact.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &alt));
         let (rect, zoom) = (s.rect, self.effective_zoom);
         let to_pdf = |pos: Pos2| {
@@ -1277,8 +1292,67 @@ impl SuniApp {
         }
     }
 
-    /// Résout la requête de défilement en attente, sinon garde le point ancré si l'échelle a
-    /// changé (molette : sous le pointeur ; boutons : centre ; ajustements : haut de la zone).
+    /// Current viewport origin in the page's unrotated display coordinates.
+    pub(crate) fn reading_page_origin(&self) -> Pos2 {
+        let Some(doc) = &self.document else {
+            return Pos2::ZERO;
+        };
+        let Some(size) = doc.info.page_sizes.get(doc.page) else {
+            return Pos2::ZERO;
+        };
+        if let Some(ScrollRequest::Destination {
+            x_pt,
+            y_from_top_pt,
+            ..
+        }) = self.view.pending
+        {
+            return pos2(x_pt, y_from_top_pt);
+        }
+        if matches!(self.view.pending, Some(ScrollRequest::Page(_))) {
+            return self
+                .view
+                .reading
+                .rotation
+                .inverse_point(Pos2::ZERO, vec2(size.width_pt, size.height_pt));
+        }
+        let (offset, k) = match (self.view.pending, self.zoom) {
+            (Some(ScrollRequest::Offset(offset)), Zoom::Fixed(zoom)) => {
+                (offset, zoom * SCREEN_PER_PDF_POINT)
+            }
+            _ => {
+                let Some(k) = self.view.k_prev.filter(|k| *k > 0.0) else {
+                    return Pos2::ZERO;
+                };
+                (self.view.offset, k)
+            }
+        };
+        let window = if self.view.mode == ViewMode::Single {
+            doc.page..doc.page + 1
+        } else {
+            0..doc.info.page_count()
+        };
+        let layout = Layout::for_rotation(
+            &doc.info.page_sizes[window.clone()],
+            window.start,
+            k,
+            self.view.avail_prev,
+            self.view.mode,
+            self.view.reading.rotation,
+        );
+        let point =
+            ((offset - vec2(layout.page_left(doc.page), layout.page_top(doc.page))) / k).to_pos2();
+        let origin = self
+            .view
+            .reading
+            .rotation
+            .inverse_point(point, vec2(size.width_pt, size.height_pt));
+        pos2(
+            origin.x.clamp(0.0, size.width_pt),
+            origin.y.clamp(0.0, size.height_pt),
+        )
+    }
+
+    /// Resolves explicit navigation before the usual anchored zoom adjustment.
     fn resolve_scroll(
         &mut self,
         layout: &Layout,
@@ -1332,6 +1406,22 @@ impl SuniApp {
                     let seen_x = off.x..=off.x + 0.9 * screen.x;
                     (!(seen_y.contains(&y) && seen_x.contains(&x)))
                         .then(|| vec2(x_for(p, x - screen.x / 4.0), (y - screen.y / 3.0).max(0.0)))
+                }
+                ScrollRequest::Destination {
+                    page,
+                    x_pt,
+                    y_from_top_pt,
+                } => {
+                    let p = page.clamp(layout.first, layout.pages().end - 1);
+                    let size = layout.page_size_pt(p);
+                    let point = layout.rotation.point(
+                        pos2(x_pt, y_from_top_pt),
+                        vec2(size.width_pt, size.height_pt),
+                    );
+                    Some(vec2(
+                        x_for(p, layout.page_left(p) + point.x * k),
+                        (layout.page_top(p) + point.y * k).max(0.0),
+                    ))
                 }
                 ScrollRequest::Offset(o) => Some(o),
                 ScrollRequest::By(dy) => Some(vec2(off.x, (off.y + dy).max(0.0))),
@@ -1410,7 +1500,7 @@ impl SuniApp {
         if let Some(doc) = &mut self.document {
             if doc.page != page {
                 doc.page = page;
-                self.page_input = (page + 1).to_string();
+                self.page_input = doc.info.page_input(page);
                 self.view.follow_thumb = true;
             }
         }
@@ -1540,6 +1630,10 @@ impl SuniApp {
                 DragEvent::DoubleClick((x, y)) => {
                     self.start_reading(ReadingPoint { page, x, y }, true)
                 }
+                DragEvent::Click(pt) if self.link_at(page, pt).is_some() => {
+                    self.annotate.clear_reading();
+                    self.adv_click(page, pt);
+                }
                 DragEvent::Click(_) => {
                     self.annotate.clear_reading();
                     self.annotate.selection = None;
@@ -1665,6 +1759,152 @@ mod tests {
             width_pt: 792.0,
             height_pt: 612.0,
         }
+    }
+
+    #[test]
+    fn destination_positions_use_reading_rotation_and_align_even_visible_points() {
+        for rotation in [
+            ViewRotation::Upright,
+            ViewRotation::Clockwise,
+            ViewRotation::UpsideDown,
+            ViewRotation::Counterclockwise,
+        ] {
+            for mode in [
+                ViewMode::Single,
+                ViewMode::Continuous,
+                ViewMode::TwoPage,
+                ViewMode::Book,
+            ] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                let pages = [letter(), landscape(), letter()];
+                app.document.as_mut().unwrap().info.page_sizes = pages.to_vec();
+                app.view.reading.rotation = rotation;
+                app.view.mode = mode;
+                let avail = vec2(200.0, 180.0);
+                app.view.inner = Rect::from_min_size(Pos2::ZERO, avail);
+                let layout = Layout::for_rotation(&pages, 0, 1.0, avail, mode, rotation);
+                app.go_to_destination(sunipdf_core::Destination {
+                    page: 0,
+                    view: sunipdf_core::DestinationView::Xyz {
+                        x: Some(20.0),
+                        y: Some(762.0),
+                        zoom: None,
+                    },
+                });
+                let offset = app.resolve_scroll(&layout, &pages, avail, 1.0).unwrap();
+                let point = match rotation {
+                    ViewRotation::Upright => pos2(20.0, 30.0),
+                    ViewRotation::Clockwise => pos2(762.0, 20.0),
+                    ViewRotation::UpsideDown => pos2(592.0, 762.0),
+                    ViewRotation::Counterclockwise => pos2(30.0, 592.0),
+                };
+                assert!((offset.y - (layout.page_top(0) + point.y)).abs() < 0.001);
+                let max_x = layout.page_left(0) + layout.size(0).x + PAGE_MARGIN - avail.x;
+                let expected_x = (layout.page_left(0) + point.x).clamp(0.0, max_x);
+                assert!(
+                    (offset.x - expected_x).abs() < 0.001,
+                    "{rotation:?} {mode:?}"
+                );
+                app.go_to_destination(sunipdf_core::Destination {
+                    page: 0,
+                    view: sunipdf_core::DestinationView::FitPage,
+                });
+                assert_eq!(app.zoom, Zoom::FitPage);
+                let offset = app.resolve_scroll(&layout, &pages, avail, 1.0).unwrap();
+                assert_eq!(
+                    offset.y, 0.0,
+                    "FitPage must show the whole rotated page from its top"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn destination_zoom_frames_restore_same_page_offsets_in_both_directions() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        app.zoom = Zoom::Fixed(1.0);
+        app.view.mode = ViewMode::Single;
+        let ctx = egui::Context::default();
+        let frame = |app: &mut SuniApp| {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 800.0))),
+                    ..Default::default()
+                },
+                |ui| app.document_view(&ctx, ui),
+            );
+            output.textures_delta.clear();
+        };
+        frame(&mut app);
+        app.view.scroll_by(200.0);
+        frame(&mut app);
+        let original = app.view.offset;
+        assert!(original.y > 100.0);
+        app.go_to_destination(sunipdf_core::Destination {
+            page: 0,
+            view: sunipdf_core::DestinationView::Xyz {
+                x: Some(0.0),
+                y: Some(100.0),
+                zoom: Some(2.0),
+            },
+        });
+        frame(&mut app);
+        let destination = app.view.offset;
+        assert_eq!(app.effective_zoom, 2.0);
+        assert!(destination.y > original.y);
+        app.navigate_reading_history(true);
+        frame(&mut app);
+        assert_eq!(app.effective_zoom, 1.0);
+        assert!((app.view.offset - original).length() < 1.0);
+        app.navigate_reading_history(false);
+        frame(&mut app);
+        assert_eq!(app.effective_zoom, 2.0);
+        assert!((app.view.offset - destination).length() < 1.0);
+        assert!(!app.dirty);
+    }
+
+    #[test]
+    fn text_selection_tool_follows_internal_links_and_only_confirms_safe_external_links() {
+        use sunipdf_core::{
+            annot_write::LinkTarget, Destination, DestinationView, LinkInfo, PointRect,
+        };
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.annotate.tool = crate::annotate::Tool::Select;
+        app.annotate.adv.links_page = Some(0);
+        app.annotate.adv.links = vec![LinkInfo {
+            index: 0,
+            rect: PointRect {
+                left: 10.0,
+                bottom: 10.0,
+                right: 40.0,
+                top: 40.0,
+            },
+            target: LinkTarget::Page(0),
+            destination: Some(Destination {
+                page: 0,
+                view: DestinationView::Xyz {
+                    x: Some(100.0),
+                    y: Some(600.0),
+                    zoom: Some(2.0),
+                },
+            }),
+        }];
+        app.handle_page_event(0, DragEvent::Click((20.0, 20.0)), false);
+        assert_eq!(app.zoom, Zoom::Fixed(2.0));
+        assert_eq!(app.reading_page_origin(), pos2(100.0, 192.0));
+        assert!(app.view.reading.history.can_back());
+        app.annotate.adv.links[0].target = LinkTarget::Uri("https://example.org".into());
+        app.handle_page_event(0, DragEvent::Click((20.0, 20.0)), false);
+        assert_eq!(
+            app.annotate.adv.url_confirm.as_deref(),
+            Some("https://example.org")
+        );
+        app.annotate.adv.url_confirm = None;
+        app.annotate.adv.links[0].target = LinkTarget::Uri("file:///C:/private.pdf".into());
+        app.handle_page_event(0, DragEvent::Click((20.0, 20.0)), false);
+        assert!(app.annotate.adv.url_confirm.is_none());
+        assert!(!app.dirty);
+        assert!(requests.try_recv().is_err());
     }
 
     #[test]

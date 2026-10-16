@@ -84,7 +84,7 @@ document, et la page qui occupe l'écran devient la page courante (numéro du ra
 panneau des commentaires ; Pivoter, Supprimer et Extraire la visent ; un clic sur une page la rend courante).
 **F5**, le bouton à flèches du rail droit ou le menu Affichage basculent entre **Défilement continu** et **Page
 unique** ; le choix est mémorisé. Seules les pages visibles sont rendues : un document de plusieurs centaines de
-pages s'ouvre et défile sans tout charger. Le menu Affichage propose aussi **Deux pages** (paires à partir
+pages s'ouvre et défile sans rendre toutes les pages. Le menu Affichage propose aussi **Deux pages** (paires à partir
 de la première page) et **Vue livre** (couverture seule, puis paires). Une dernière page non appariée est centrée.
 Les tailles mixtes partagent un zoom ; l'ajustement utilise la plus large double page et la page la plus haute.
 Ces modes conservent les mêmes plafonds de tuiles et de textures.
@@ -231,6 +231,11 @@ document). Un champ **mot de passe** n'est ni remplissable ni exporté (sa valeu
 document protégé par mot de passe se remplit comme les autres et reste protégé. Ctrl+S valide d'abord la saisie
 en cours.
 
+**Version locale non publiée :** un échec de lecture du formulaire affiche une erreur et un bouton **Réessayer**
+dans le panneau des champs. Vos textes et modifications en attente restent disponibles ; l'échec n'est pas traité
+comme un formulaire vide. Réessayer relit les champs courants avant un import ou un effacement en attente.
+Aucune nouvelle tentative ne tourne en boucle.
+
 ## Signer et parapher
 
 L'outil **Remplir et signer** (barre : **Signer (signature manuscrite)…** — touche **S** —, **Parapher
@@ -297,6 +302,28 @@ Les textes de tampon et modèles de numérotation tiennent sur une seule ligne ;
 Le menu **Affichage** propose rotation de vue par quarts de tour et plein écran, sans modifier la rotation des pages PDF.
 L’activation d’un outil d’édition revient à une vue droite. Retour/Avance (Alt+Gauche/Alt+Droite) conserve 256 positions
 maximum par onglet, avec page et position de défilement. Cet historique n’est pas du contenu PDF.
+
+### Prochaine version locale (non publiée)
+
+Les libellés PDF tels que `iv`, `1` ou `Annexe-É7` apparaissent avec les indices physiques dans les miniatures,
+la barre d'état et les descriptions d'accessibilité. Saisissez un libellé exact, sensible à la casse et unique,
+puis Entrée. Un libellé correspondant prime sur le numéro : si le libellé `1` désigne la page physique 3,
+saisir `1` ouvre la page 3. Saisissez `#1` pour choisir explicitement la page physique 1. Sans libellé correspondant,
+un nombre désigne la page physique. Une saisie inconnue, ambiguë ou hors limites conserve la page et affiche une explication.
+
+Les libellés sont uniquement lus. Leur création/modification et leur renumérotation sémantique après insertion,
+suppression, déplacement ou extraction ne sont pas proposées : les plages existantes peuvent rester liées aux
+positions physiques, et les fichiers extraits peuvent perdre leurs libellés. Un libellé vide, illisible, contenant
+un caractère de contrôle ou dépassant 4096 octets UTF-8 revient à l'indice physique. La commande CLI `info` fournit
+`pages[].label` lorsqu'il existe ; tous les numéros de page CLI restent physiques et commencent à 1.
+
+Les liens internes et signets suivent aussi les destinations PDF prises en charge : position et zoom `/XYZ`,
+page entière `/Fit`, largeur `/FitH` avec une position exploitable. Recadrage et rotation sont pris en compte.
+Un axe `/XYZ` omis ou un zoom nul/omis conserve la valeur courante ; le zoom reste dans les limites de l'application.
+Alt+Gauche/Alt+Droite parcourt l'historique de page, position et zoom de l'onglet, y compris les destinations sur
+la même page. Terminez les saisies de texte ou formulaire en attente avant de suivre une destination. Les modes
+d'ajustement non pris en charge, les détails illisibles et une position `/FitH` nulle/absente reviennent à la page
+cible sans appliquer le zoom ni la position de destination.
 
 ## Compression des images et lots
 

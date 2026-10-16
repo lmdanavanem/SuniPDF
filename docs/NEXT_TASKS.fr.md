@@ -58,6 +58,19 @@ et l'updater de production valide le ZIP x64 Latest de 19 651 167 octets sans in
 du lot P1/P2 demandé sont remplis ; les contrôles matériels/d'interopérabilité indépendants ci-dessous restent ouverts.
 Provenance et source de release immuable `f7510afd314846079bbdd838525cd28372fd3100` figurent dans l'état du projet.
 
+## Développement courant : lecture et fiabilité des formulaires (non publié)
+
+Implémenté et validé localement : 383 tests du workspace réussis, zéro échec, sept ignorés par défaut ; formatage,
+Clippy, 34 PDF qpdf, quatre documents réels (744 pages), 857 clés EN/FR identiques et builds CLI/GUI de développement réussis.
+Lot non publié ; la CI n'a pas encore validé ces changements. Le tag et les paquets publiés 0.10.0 restent inchangés.
+
+- Lire les étiquettes de pages via PDFium dans la barre, les miniatures et la CLI `info`. Aller à accepte une
+  étiquette exacte et unique ; `#N` désigne toujours la page physique. Lecture seule ; étiquettes invalides remplacées par le numéro physique.
+- Résoudre les destinations nommées et positions `/XYZ`, `/Fit`, `/FitH` non nulles des liens et signets, avec
+  recadrage/rotation et conservation des axes nuls et du zoom. L'historique couvre les sauts dans la même page et le zoom.
+  `/FitH` zéro/null et les autres modes gardent le saut de page ; PDFium ne distingue pas FitH null de zéro.
+- Conserver les brouillons et actions de formulaire en cas d'échec de lecture, afficher l'erreur et demander une relance explicite.
+
 ## Travail restant au-delà de ce lot
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -67,7 +80,8 @@ Provenance et source de release immuable `f7510afd314846079bbdd838525cd28372fd31
 3. Sous-ensembles de polices/CFF/OTF/TTC, édition de paragraphes et objets collés éditables.
 4. Conversion Office locale et autres lots de conversion, avec fidélité mesurée.
 5. Confiance/révocation des certificats, horodatage fiable/LTV et signature du code/MSI si identité fournie.
-6. Labels de pages, colonnes complexes non balisées, tactile et intégrations facultatives.
+6. Création d'étiquettes de pages et recalage sémantique après changement de pages, colonnes complexes non balisées,
+   tactile et intégrations facultatives.
 
 Aucune date/version future n’est engagée par cette liste.
 
@@ -175,14 +189,14 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   l'enregistrement et à la fermeture ; gomme ;
 - polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
   incorporée) ;
-- modifier la cible d'un lien existant, résoudre les destinations nommées, respecter `/XYZ` (position et zoom) ;
+- modifier la cible d'un lien existant ; lecture des destinations nommées et `/XYZ` implémentée dans le lot non publié ci-dessus ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
 
 ## SUNI-025 — Compression avec perte et vérification qpdf (owner : OCR-CONVERSION + QA)
-Restent le rééchantillonnage (PDFium : objets image → DynamicImage → JPEG), le corpus réel/hostile et les scénarios
-d'enregistrement interrompu/disque plein. Le contrôle qpdf synthétique figé en CI et la longueur AES-256 explicite
-sont implémentés pour 0.9.1 ; résultats d'exécution dans `PROJECT_STATUS.fr.md`.
+Livrés en 0.10.0 : rééchantillonnage borné des flux image/JPEG, quatre documents NIST publics figés et régressions
+d'enregistrement interrompu/disque plein/échec. qpdf synthétique figé et longueur AES-256 explicite restent inclus.
+Élargir aux documents clients/hostiles/volumineux licenciés ; preuves d'exécution dans `PROJECT_STATUS.fr.md`.
 
 ## SUNI-015 — Identité visuelle et ressources Windows (owner : WINDOWS-RELEASE)
 Livrés : manifeste DPI-aware et ressources de version. L'icône Windows 0.9.1 dérive du visuel dédié fourni par l'auteur

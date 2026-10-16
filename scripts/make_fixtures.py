@@ -356,6 +356,28 @@ def incremental_fixture(path):
     data += f"trailer\n<< /Size 6 /Root 1 0 R /Prev {prev} >>\nstartxref\n{xref}\n%%EOF\n".encode()
     open(path, "wb").write(bytes(data))
 
+def page_labels(path):
+    """Nested page-label ranges: Roman, decimal, alphabetic, Unicode, duplicate and empty labels."""
+    count = 9
+    kids = " ".join(f"{4 + 2 * i} 0 R" for i in range(count)).encode()
+    label_root = 4 + 2 * count
+    objs = [
+        f"<< /Type /Catalog /Pages 2 0 R /PageLabels {label_root} 0 R >>".encode(),
+        b"<< /Type /Pages /Kids [" + kids + b"] /Count 9 >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    for i in range(count):
+        objs.append(f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents {5 + 2 * i} 0 R /Resources << /Font << /F1 3 0 R >> >> >>".encode())
+        objs.append(stream(f"BT /F1 18 Tf 72 700 Td (Label fixture physical page {i + 1}) Tj ET\n".encode()))
+    prefix = (b"\xfe\xff" + "Annexe-É".encode("utf-16-be")).hex().encode()
+    objs.extend([
+        f"<< /Kids [{label_root + 1} 0 R {label_root + 2} 0 R {label_root + 3} 0 R] >>".encode(),
+        b"<< /Limits [0 2] /Nums [0 << /S /r >> 2 << /S /D /St 1 >>] >>",
+        b"<< /Limits [4 5] /Nums [4 << /S /A /St 27 >> 5 << /P <" + prefix + b"> /S /D /St 7 >>] >>",
+        b"<< /Limits [6 8] /Nums [6 << /P (Repeat) >> 7 << /P (Repeat) >> 8 << /P () >>] >>",
+    ])
+    open(path, "wb").write(build(objs))
+
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "--many":
         # Fichier long à la demande (non versionné) : --many 500 %TEMP%\many-500.pdf
@@ -374,4 +396,5 @@ if __name__ == "__main__":
     acroform(os.path.join(out, "acroform-links.pdf"), links=True)
     redact_fixture(os.path.join(out, "redact.pdf"))
     incremental_fixture(os.path.join(out, "redact-incremental.pdf"))
+    page_labels(os.path.join(out, "page-labels.pdf"))
     print("ok")

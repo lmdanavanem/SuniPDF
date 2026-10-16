@@ -1118,6 +1118,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 .iter()
                 .map(|b| serde_json::json!({
                     "title": b.title, "page": b.page.map(|p| p + 1), "depth": b.depth,
+                    "destination": b.destination.map(annot_cmd::destination_json),
                 }))
                 .collect::<Vec<_>>()))
         }
@@ -1314,6 +1315,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "page_count": info.page_count(),
                 "pages": info.page_sizes.iter().enumerate().map(|(i, s)| serde_json::json!({
                     "index": i + 1, "width_pt": s.width_pt, "height_pt": s.height_pt,
+                    "label": info.page_label(i),
                     "rotation": doc.page_rotation(i).map(|r| r.degrees()).unwrap_or(0),
                 })).collect::<Vec<_>>(),
             }))
@@ -1706,10 +1708,21 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let mut out = Vec::new();
             for p in pages {
+                let links = doc.page_links(p)?;
                 let list: Vec<_> = doc
                     .annotation_details(p)?
                     .iter()
-                    .map(annot_cmd::detail_json)
+                    .map(|detail| {
+                        let mut value = annot_cmd::detail_json(detail);
+                        if let Some(link) = links.iter().find(|link| link.index == detail.index) {
+                            value["link"] = annot_cmd::link_json(&link.target);
+                            if let Some(destination) = link.destination {
+                                value["link"]["destination"] =
+                                    annot_cmd::destination_json(destination);
+                            }
+                        }
+                        value
+                    })
                     .collect();
                 out.push(serde_json::json!({ "page": p + 1, "annotations": list }));
             }

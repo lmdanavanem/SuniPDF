@@ -303,3 +303,21 @@ A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a kil
      preservation. They do not simulate every physical disk/power-loss failure. Four public NIST PDFs supplement the
      synthetic corpus: 31 synthetic qpdf checks and all four real documents (744 pages) passed for 0.10.0.
      They do not establish broad customer/hostile/large-file compatibility; executed evidence is in `PROJECT_STATUS.md`.
+
+## Unreleased local changes
+
+These additions are not part of the published 0.10.0 release. Executed validation belongs in `PROJECT_STATUS.md`.
+
+A48. **Page-label reading**: labels are optional metadata, not editable page numbering. Blank/unreadable labels,
+     labels over 4096 UTF-8 bytes and labels containing control characters fall back to physical indices.
+     Exact unique labels take precedence over numeric input; `#N` selects physical page N. Duplicate labels require
+     a physical index. No semantic rebasing is performed after structural changes: ranges can stay attached to
+     physical positions; extraction can omit labels. CLI indices remain physical and one-based.
+A49. **Destination navigation**: internal links/bookmarks support `/XYZ`, `/Fit` and usable `/FitH` positions,
+     with per-tab position/zoom history. Other fit modes retain page-only navigation. PDFium cannot distinguish
+     a `/FitH` null position from zero; both use the page-only fallback. Unreadable/invalid view details also fall
+     back to the page. Missing `/XYZ` axes and zero/missing zoom retain viewport values; explicit zoom is clamped
+     to application limits. This does not establish Acrobat/Foxit or native screen-reader interoperability.
+A50. **Form-read failures**: an error is kept distinct from an empty form, and the panel offers an explicit retry.
+     Pending drafts and staged values are retained while the read fails. A waiting import/clear operation resumes
+     only after a successful read; repeated automatic retries are suppressed. The local changes are not yet a release.

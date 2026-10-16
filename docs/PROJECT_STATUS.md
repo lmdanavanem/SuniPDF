@@ -5,6 +5,32 @@
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
+## Current development: navigation and form-read safety (unreleased)
+
+- Cached PDF page labels, exact unique-label navigation and explicit `#N` physical positions; thumbnails/status,
+  accessibility and additive CLI `info.pages[].label`. Unreadable, control-containing or over-4096-byte labels use
+  physical positions. Label authoring and semantic rebasing after structural edits are not implemented.
+- Resolved local XYZ/Fit/nonzero-FitH destinations for links and bookmarks, using target CropBox/PDF rotation and
+  reading rotation. Same-page and rapid back/forward navigation keep zoom and positions. Text-selection clicks now
+  reach links. URI confirmation remains; remote, embedded, Launch and JavaScript actions are not followed.
+- Typed form-read failures preserve text, choices, in-place input and pending actions. They block commits based on
+  stale values, show Retry, and do not retry continuously. A confirmed empty form is still a valid successful read.
+
+Executed locally: **383 workspace tests passed, zero failed, seven default ignored**; formatting, Clippy with warnings
+denied and **857 EN/FR keys** passed. The explicit qpdf gate passed **34 PDFs** and rejected its malformed samples.
+All **four licensed real documents (744 pages)** passed in 63.01 seconds; peak sampled child working set was
+328,953,856 bytes. Core/CLI tests cover named/direct/action destinations, rotations/crops, AES-256 and save/reopen;
+headless UI tests cover label navigation, link clicks, same-page zoom history, rapid Back/link sequences and failed
+form reads. The actual local GUI and CLI development binaries were built successfully. GitHub CI is separate.
+These changes are unreleased; published 0.10.0 files are unchanged. Native interactive use, Narrator and third-party
+readers remain unverified.
+
+Page labels and rotations share one cached metadata pass. Page rotation updates only the affected cache entries;
+grouped deletion validates all indices before mutation and refreshes metadata once. A 492-page CLI `info` measurement
+on AMD Ryzen 7 6800HS took 2.332/2.848/2.869 seconds in the optimized dev build, versus 2.387/2.455/2.536 seconds
+in the published release build. Profiles differ: these are whole-command observations, not an isolated opening-cost
+benchmark or a performance guarantee. Eager label reading still adds work when opening or rebuilding document state.
+
 ## 0.10.0: requested P1/P2 lot published and verified
 
 The six requested backlog areas are implemented: data-safety/corpus checks, real image compression, reading controls,

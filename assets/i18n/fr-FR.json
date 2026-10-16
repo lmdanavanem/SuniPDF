@@ -1,4 +1,7 @@
 {
+  "reading.page_label": "Libellé de page : {label}",
+  "reading.page_input_hint": "Saisissez un libellé exact ou un numéro physique. Utilisez #N pour la page physique N si les libellés se chevauchent. Le libellé doit être unique.",
+  "reading.page_label_invalid": "Libellé inconnu ou ambigu. Utilisez #N pour un numéro de page physique.",
   "processing.finish_redaction": "Appliquez ou effacez les marques de caviardage en attente avant d’exporter une copie compressée.",
   "forms.panel.apply": "Appliquer les modifications",
   "forms.panel.discard": "Abandonner les modifications en attente",
@@ -650,6 +653,7 @@
   "tools.running.form_export": "Export des valeurs…",
   "tools.done.form_export": "Valeurs exportées dans {name} ({count} champs)",
   "error.form_field_not_found": "Ce champ n'existe pas dans le formulaire.",
+  "error.form_read_failed": "La lecture des champs a échoué. Vos saisies en attente sont conservées. Réessayez avant d’appliquer les valeurs ou d’enregistrer.",
   "error.form_value_invalid": "Valeur refusée : champ en lecture seule, longueur dépassée, choix inexistant ou type incompatible.",
   "error.form_xfa": "Les formulaires XFA ne sont pas pris en charge.",
   "error.form_import_invalid": "Le fichier de valeurs est invalide ou non pris en charge. L’import complet a été refusé ; aucun champ n’a changé.",

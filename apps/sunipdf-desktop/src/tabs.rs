@@ -248,11 +248,11 @@ impl SuniApp {
                 self.put_tab(ui);
             }
             None => {
+                self.page_input = state.info.page_input(0);
                 self.document = Some(OpenDocument {
                     info: state.info,
                     page: 0,
                 });
-                self.page_input = "1".into();
                 // La zone de défilement est partagée entre onglets : repartir du haut.
                 self.view.request(crate::view::ScrollRequest::Page(0));
             }
@@ -345,7 +345,10 @@ mod tests {
     fn view_rotation_and_history_survive_tab_suspension_without_leaking() {
         let (mut app, _, _) = crate::app::tests::test_app();
         app.view.reading.rotation = crate::reading::ViewRotation::Counterclockwise;
-        app.view.reading.history.jump(0, egui::vec2(0.0, 42.0), 4);
+        app.view
+            .reading
+            .history
+            .jump(0, Some(egui::vec2(0.0, 42.0)), 4, 1.0);
         let first = app.take_tab();
         assert_eq!(
             app.view.reading.rotation,
@@ -369,8 +372,11 @@ mod tests {
         app.document.as_mut().unwrap().page = 1;
         app.zoom = Zoom::Fixed(1.0);
         app.view.offset = egui::vec2(0.0, 900.0);
-        app.view.reading.history.jump(0, egui::Vec2::ZERO, 1);
-        app.view.reading.history.observe(1, app.view.offset);
+        app.view
+            .reading
+            .history
+            .jump(0, Some(egui::Vec2::ZERO), 1, 1.0);
+        app.view.reading.history.observe(1, app.view.offset, 1.0);
         let previous = app.take_tab();
         app.view.mode = crate::view::ViewMode::Single;
         app.put_tab(previous);

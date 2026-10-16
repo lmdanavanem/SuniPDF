@@ -1179,18 +1179,46 @@ impl SuniApp {
                         .size(12.0)
                         .color(p.text_muted),
                 );
+                let page_hint = self.document.as_ref().map_or_else(
+                    || tr(lang, "reading.page_input_hint").to_owned(),
+                    |doc| {
+                        let physical = tr_args(
+                            lang,
+                            "status.page_of",
+                            &[
+                                ("current", &(page + 1).to_string()),
+                                ("total", &count.to_string()),
+                            ],
+                        );
+                        let caption = doc.info.page_label(page).map_or(physical.clone(), |label| {
+                            format!(
+                                "{} — {physical}",
+                                tr_args(lang, "reading.page_label", &[("label", label)])
+                            )
+                        });
+                        format!("{caption}\n{}", tr(lang, "reading.page_input_hint"))
+                    },
+                );
+                let previous_input = self.page_input.clone();
                 let field = ui.add(
                     egui::TextEdit::singleline(&mut self.page_input)
-                        .desired_width(34.0)
+                        .desired_width(48.0)
                         .horizontal_align(Align::Center)
                         .font(egui::TextStyle::Small),
                 );
-                field.clone().on_hover_text(tr(lang, "toolbar.page_field"));
+                field.widget_info(|| {
+                    let mut info = egui::WidgetInfo::text_edit(
+                        true,
+                        &previous_input,
+                        &self.page_input,
+                        &page_hint,
+                    );
+                    info.label = Some(page_hint.clone());
+                    info
+                });
+                field.clone().on_hover_text(page_hint);
                 if field.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-                    match self.page_input.trim().parse::<usize>() {
-                        Ok(n) if n >= 1 => self.go_to_page(n - 1),
-                        _ => self.page_input = (page + 1).to_string(),
-                    }
+                    self.submit_page_input();
                 }
             });
             let used = bottom.response.rect.height();
@@ -1335,6 +1363,14 @@ impl SuniApp {
                     )));
                 }
                 (_, Some(doc), None) => {
+                    if let Some(label) = doc.info.page_label(doc.page) {
+                        ui.label(muted(tr_args(
+                            lang,
+                            "reading.page_label",
+                            &[("label", label)],
+                        )));
+                        ui.separator();
+                    }
                     ui.label(muted(tr_args(
                         lang,
                         "status.page_of",

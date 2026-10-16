@@ -5,6 +5,34 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
+## Développement courant : navigation et sécurité de lecture des formulaires (non publié)
+
+- Libellés PDF en cache, navigation par libellé exact unique et positions physiques explicites `#N` ; miniatures,
+  statut, accessibilité et ajout CLI `info.pages[].label`. Un libellé illisible, contenant des contrôles ou dépassant
+  4096 octets utilise la position physique. Création de libellés et recalage sémantique après réorganisation non implémentés.
+- Destinations locales XYZ/Fit/FitH non nul pour liens et signets, avec CropBox/rotation PDF de la page cible puis
+  rotation de lecture. Retour/avance conserve positions sur une même page et zoom, même lors de sauts rapides.
+  La sélection de texte laisse désormais passer les clics sur les liens. Confirmation des URI conservée ; actions
+  distantes, embarquées, Launch et JavaScript non suivies.
+- Échecs de lecture typés des formulaires : textes, choix, saisies en place et actions en attente conservés, validation
+  sur modèle périmé bloquée, réessai explicite et aucune boucle de relecture. Un formulaire vide confirmé reste valide.
+
+Exécuté localement : **383 tests workspace réussis, zéro échec, sept ignorés par défaut** ; formatage, Clippy sans
+avertissement et **857 clés EN/FR** validés. Le contrôle qpdf explicite valide **34 PDF** et refuse ses entrées malformées.
+Les **quatre documents réels sous licence (744 pages)** passent en 63,01 secondes ; pic mémoire enfant échantillonné
+328 953 856 octets. Tests moteur/CLI : destinations nommées/directes/actions, rotations/cadres, AES-256 et relecture.
+Tests UI sans fenêtre native : libellés, clics sur liens, historique avec zoom sur une même page, enchaînements rapides
+Retour/lien et lectures de formulaire échouées. Les vrais binaires GUI/CLI de développement locaux sont construits.
+La CI GitHub reste distincte. Lot non publié, fichiers 0.10.0 publiés inchangés ; usage natif interactif, Narrateur
+et lecteurs tiers non vérifiés.
+
+Libellés et rotations partagent une seule lecture mise en cache. Une rotation de page met à jour les seules entrées
+concernées ; une suppression groupée valide les indices avant mutation et relit les métadonnées une fois.
+Sur AMD Ryzen 7 6800HS, `info` CLI d’un PDF de 492 pages prend 2,332/2,848/2,869 secondes avec le build dev optimisé,
+contre 2,387/2,455/2,536 secondes avec la release publiée. Profils différents : observations de la commande entière,
+pas mesure isolée de l’ouverture ni garantie de performance. La lecture initiale des libellés ajoute toujours du
+travail à l’ouverture ou à la reconstruction de l’état du document.
+
 ## Version 0.10.0 : lot P1/P2 publié et vérifié
 
 Les six domaines demandés sont implémentés : sauvegardes/corpus, compression réelle, lecture, formulaires,

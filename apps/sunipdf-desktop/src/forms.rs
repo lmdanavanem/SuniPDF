@@ -15,7 +15,8 @@ use crate::worker::{BatchOp, EditOp, Request};
 use egui::{Align, Button, Color32, Frame, Key, Layout, Margin, RichText, Stroke, StrokeKind};
 use std::collections::HashMap;
 use sunipdf_core::{
-    form_data, Command, FieldKind, FieldValue, FormField, FormInfo, FormKind, PointRect,
+    form_data, Command, EngineError, FieldKind, FieldValue, FormField, FormInfo, FormKind,
+    PointRect,
 };
 use sunipdf_i18n::{tr, tr_args, Language};
 
@@ -50,6 +51,7 @@ pub struct FormsState {
     /// Relecture nécessaire (document modifié) ; `requested` : relecture en vol.
     pub stale: bool,
     pub requested: bool,
+    pub read_failed: bool,
     /// Saisies du panneau non validées, par nom de champ.
     pub drafts: HashMap<String, String>,
     pub staged: HashMap<String, FieldValue>,
@@ -168,8 +170,19 @@ fn ordered_choice(f: &FormField, wanted: &[String]) -> FieldValue {
 }
 
 impl SuniApp {
+    fn require_form_model(&mut self) -> bool {
+        if self.forms.read_failed {
+            self.error = Some("error.form_read_failed");
+            return false;
+        }
+        true
+    }
+
     /// Valide toutes les saisies avant d'en envoyer une ; une erreur garde les textes intacts.
     pub fn commit_form_input(&mut self) -> bool {
+        if !self.require_form_model() {
+            return false;
+        }
         let mut drafts = self.forms.drafts.clone();
         if let Some(e) = &self.forms.editing {
             drafts.insert(e.field.clone(), e.text.clone());
@@ -218,6 +231,9 @@ impl SuniApp {
         );
         self.forms.panel_open = true;
         self.forms.stale = true;
+        if self.error == Some("error.form_read_failed") {
+            self.error = None;
+        }
     }
 
     /// Demande le modèle au moteur s'il est utile (panneau, outil, import) et périmé.
@@ -230,6 +246,7 @@ impl SuniApp {
                 f.info = Some(FormInfo::default());
             }
             f.stale = false;
+            f.read_failed = false;
             f.pending_import = None;
             f.pending_clear = false;
             f.editing = None;
@@ -247,17 +264,39 @@ impl SuniApp {
             || f.editing.is_some()
             || f.pending_import.is_some()
             || f.pending_clear;
-        if wanted && (f.stale || f.info.is_none()) && !f.requested {
+        if wanted && (f.stale || (f.info.is_none() && !f.read_failed)) && !f.requested {
             f.requested = true;
             f.stale = false;
             self.worker.send(Request::FormInfo);
-        } else if f.pending_clear && !f.stale && f.info.is_some() {
+        } else if f.pending_clear && !f.stale && !f.requested && !f.read_failed && f.info.is_some()
+        {
             self.clear_form_now();
         }
     }
 
+    pub fn on_form_read_failed(&mut self, error: EngineError) {
+        log::warn!("form read failed: {error}");
+        self.forms.requested = false;
+        self.forms.stale = false;
+        self.forms.read_failed = true;
+        self.error = Some("error.form_read_failed");
+    }
+
+    pub fn retry_form_read(&mut self) {
+        if self.error == Some("error.form_read_failed") {
+            self.error = None;
+        }
+        self.forms.stale = true;
+        self.refresh_forms_if_needed();
+    }
+
     pub fn on_form_info(&mut self, info: FormInfo) {
         self.forms.requested = false;
+        self.forms.stale = false;
+        self.forms.read_failed = false;
+        if self.error == Some("error.form_read_failed") {
+            self.error = None;
+        }
         // Un brouillon égal au modèle n'a plus de raison d'être ; un brouillon refusé reste.
         self.forms.drafts.retain(|name, draft| {
             info.field(name)
@@ -291,6 +330,9 @@ impl SuniApp {
     /// Envoie des valeurs validées en une seule opération annulable ; la valeur locale est mise à
     /// jour aussitôt (surcouche et panneau) en attendant la relecture.
     fn commit_many(&mut self, values: Vec<(String, FieldValue)>) {
+        if !self.require_form_model() {
+            return;
+        }
         let lang = self.lang();
         let Some(info) = &mut self.forms.info else {
             return;
@@ -356,7 +398,7 @@ impl SuniApp {
         page: usize,
         page_h_pt: f32,
     ) -> Option<(usize, usize)> {
-        if self.annotate.tool != Tool::FillForm {
+        if self.annotate.tool != Tool::FillForm || self.forms.read_failed || self.forms.requested {
             return None;
         }
         let info = self.forms.info.as_ref()?;
@@ -474,6 +516,9 @@ impl SuniApp {
 
     /// Clic sur un widget : bascule (case, radio), éditeur (texte) ou liste (choix).
     pub fn forms_activate(&mut self, page: usize, fi: usize, wi: usize) {
+        if !self.require_form_model() {
+            return;
+        }
         let lang = self.lang();
         let Some(info) = &self.forms.info else { return };
         let Some(f) = info.fields.get(fi) else { return };
@@ -535,6 +580,9 @@ impl SuniApp {
     /// le ferme ; renvoie l'éditeur fermé. Appelé par Entrée, Tab, un clic ailleurs, la sortie
     /// du widget de la zone visible et l'enregistrement (Ctrl+S).
     pub fn commit_editor(&mut self) -> Option<InPlace> {
+        if !self.require_form_model() {
+            return None;
+        }
         let e = self.forms.editing.as_ref()?;
         let value = FieldValue::Text(e.text.clone());
         if self
@@ -572,7 +620,7 @@ impl SuniApp {
         page: usize,
         page_h_pt: f32,
     ) {
-        if self.forms.info.is_none() {
+        if self.forms.info.is_none() || self.forms.read_failed || self.forms.requested {
             return;
         }
         let lang = self.lang();
@@ -734,6 +782,9 @@ impl SuniApp {
         page: usize,
         page_h_pt: f32,
     ) {
+        if self.forms.read_failed || self.forms.requested {
+            return;
+        }
         let lang = self.lang();
         let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
         let Some(p) = self.forms.popup.as_ref().filter(|p| p.page == page) else {
@@ -971,6 +1022,26 @@ impl SuniApp {
                 });
             ui.add_space(4.0);
         };
+        if self.forms.read_failed {
+            banner(ui, "error.form_read_failed");
+            let retry = ui
+                .add_enabled(!self.forms.requested, Button::new(tr(lang, "error.retry")))
+                .clicked();
+            if self.forms.requested {
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label(tr(lang, "forms.panel.loading"));
+                });
+            }
+            self.forms.info = info;
+            if close {
+                self.execute(ctx, Command::ToggleForms);
+            }
+            if retry {
+                self.retry_form_read();
+            }
+            return;
+        }
         match &info {
             None if form_kind == FormKind::None => {
                 ui.label(RichText::new(tr(lang, "forms.panel.empty_doc")).color(p.text_muted));
@@ -1186,6 +1257,9 @@ impl SuniApp {
             },
         );
         if submit {
+            if !self.require_form_model() {
+                return;
+            }
             self.forms.flatten_open = false;
             self.forms.editing = None;
             self.forms.popup = None;
