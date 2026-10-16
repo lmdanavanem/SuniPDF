@@ -1,21 +1,25 @@
-# État du projet — mis à jour le 2026-10-16 (0.21.0 publiée en Latest stable)
+# État du projet — mis à jour le 2026-10-17 (0.21.1 en préparation ; 0.21.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Correctifs P1 main/non publiés
+## 0.21.1 : conservation des documents (en préparation)
+
+0.21.1 distribue les deux correctifs P1 existants ci-dessous. Validation de la source de release, paquets
+et publication en attente. Les contrôles suivants portent sur la source d'implémentation antérieure,
+pas sur la source de release 0.21.1.
 
 Les deux bugs P1 ont passé les contrôles locaux et GitHub CI/CodeQL sur la source
 [`3ee794dac84617b17cddf73147ee2cefd279c138`](https://github.com/lmdanavanem/SuniPDF/commit/3ee794dac84617b17cddf73147ee2cefd279c138).
 **0.21.0 reste la Latest publiée**. Sa source, ses paquets et les validations ci-dessous sont inchangés ;
-ces correctifs sont sur main, absents des paquets publiés, sans changement de version.
+ces correctifs sont en préparation pour 0.21.1 et absents des paquets 0.21.0.
 
 | Élément P1 | Comportement implémenté | État actuel |
 |---|---|---|
-| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | Done sur main/non publié ; contrôles locaux/CI/CodeQL réussis |
-| Aplatir sans perdre les annotations non-Link sans apparence utilisable | Conserver graphes bruts des annotations non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables, exclure les annotations conservées du compte et valider via document temporaire atomique | Done sur main/non publié ; contrôles locaux/CI/CodeQL réussis |
+| Glyphes absents du texte existant | Garder la police d'origine ; refuser atomiquement le texte incompatible et rouvrir le bon brouillon sans modifier le PDF | Implémentation Done ; contrôles de release 0.21.1 en attente |
+| Aplatir sans perdre les annotations non-Link sans apparence utilisable | Conserver graphes bruts des annotations non-widget, pièces jointes et références partagées ; aplatir widgets/apparences dessinables, exclure les annotations conservées du compte et valider via document temporaire atomique | Implémentation Done ; contrôles de release 0.21.1 en attente |
 
 Preuves locales : **476 tests réussis, zéro échec, sept ignorés par défaut sur 37 suites** ; formatage,
 Clippy toutes cibles avec `-D warnings`, **912 clés EN/FR** et **84 contrôles qpdf** réussis. Quatre PDF
@@ -33,7 +37,7 @@ Les trois petites archives de preuves ont été téléchargées et vérifiées a
 métadonnées du paquet vérifiées, sans télécharger ni publier de nouveau paquet.
 
 [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614334) : Rust, Python et Actions réussis sur
-la même source. **Aucune alerte ouverte** après classement individuel par `lmdanavanem` des quatre nouveaux
+la même source. **Aucune alerte ouverte sur cette source** après classement individuel par `lmdanavanem` des quatre nouveaux
 constats de test #120–123 en `used in tests` ; voir l'[inventaire de quatre lignes](qa/CODE_SCANNING_P1_2026-10-16.csv).
 L'analyse Rust conserve **119 constats bruts**, dont les 115 déjà traités ; Python et Actions ont zéro résultat.
 Aucun dossier ni requête exclu ; zéro alerte ouverte ne signifie pas zéro constat.
@@ -41,7 +45,7 @@ Aucun dossier ni requête exclu ; zéro alerte ouverte ne signifie pas zéro con
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) garde 42 brouillons : Bugs (8), Roadmap (23),
 Suggestions (11) ; **39 Todo, zéro In Progress et trois Done**. Les deux P1 et leurs descriptions ont été
 relus Done ; la sécurité 0.21.0 reste Done. Filtres de catégorie enregistrés et 42 éléments uniques
-conservés. API, dépendances et 53 commandes CLI inchangées ; aucune nouvelle release publiée.
+conservés. API, dépendances et 53 commandes CLI inchangées ; publication 0.21.1 en attente.
 
 Limites restantes : pas de corpus hostile/fuzzing exhaustif ni de contrôle d'interopérabilité avec les
 lecteurs tiers ; graphes au-delà de la limite de copie existante de 32 niveaux refusés atomiquement.

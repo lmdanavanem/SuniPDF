@@ -1,21 +1,24 @@
-# Project status - updated 2026-10-16 (0.21.0 published stable Latest)
+# Project status - updated 2026-10-17 (0.21.1 in preparation; 0.21.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## Main/unreleased P1 fixes
+## 0.21.1: document preservation (in preparation)
+
+0.21.1 packages the two existing P1 fixes below. Release-source validation, packaging and publication are
+pending. The following checks belong to the earlier implementation source, not the 0.21.1 release source.
 
 Both existing P1 bugs passed local and GitHub CI/CodeQL checks on source
 [`3ee794dac84617b17cddf73147ee2cefd279c138`](https://github.com/lmdanavanem/SuniPDF/commit/3ee794dac84617b17cddf73147ee2cefd279c138).
 **0.21.0 remains the published Latest**. Its release source, packages and validation below are unchanged;
-these fixes are on main, absent from the published packages, with no version change.
+these fixes are being prepared for 0.21.1 and are absent from 0.21.0 packages.
 
 | P1 item | Implemented behavior | Current state |
 |---|---|---|
-| Missing glyphs in existing text | Keep the original font; atomically refuse unsupported text and reopen the correct editing draft without changing the PDF | Done on main/unreleased; local/CI/CodeQL checks passed |
-| Flattening non-Link annotations without a usable appearance | Preserve raw non-widget annotation graphs, attachments and shared references; keep widget/drawable-appearance flattening, exclude preserved annotations from the count and commit through an atomic scratch document | Done on main/unreleased; local/CI/CodeQL checks passed |
+| Missing glyphs in existing text | Keep the original font; atomically refuse unsupported text and reopen the correct editing draft without changing the PDF | Done implementation; 0.21.1 release checks pending |
+| Flattening non-Link annotations without a usable appearance | Preserve raw non-widget annotation graphs, attachments and shared references; keep widget/drawable-appearance flattening, exclude preserved annotations from the count and commit through an atomic scratch document | Done implementation; 0.21.1 release checks pending |
 
 Local evidence: **476 passed tests, zero failures, seven default ignored across 37 suites**; formatting,
 all-target Clippy with `-D warnings`, **912 EN/FR keys** and **84 qpdf checks** passed. Four licensed PDFs
@@ -32,7 +35,7 @@ The three small evidence archives were downloaded and checked against their sour
 the package artifact's metadata was verified, without downloading or publishing a new package.
 
 [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614334) passed Rust, Python and Actions on the
-same source. **Zero alerts remain open** after `lmdanavanem` individually dismissed the four new test-only
+same source. **Zero alerts were open on that source** after `lmdanavanem` individually dismissed the four new test-only
 findings #120–123 as `used in tests`; see the [four-row inventory](qa/CODE_SCANNING_P1_2026-10-16.csv).
 The Rust analysis retains **119 raw findings**, including the previously triaged 115; Python and Actions
 have zero results. No folder or query was excluded; zero open alerts does not mean zero findings.
@@ -40,7 +43,7 @@ have zero results. No folder or query was excluded; zero open alerts does not me
 The [GitHub project](https://github.com/users/lmdanavanem/projects/1) retains 42 drafts: Bugs (8), Roadmap (23),
 Suggestions (11); **39 Todo, zero In Progress and three Done**. Both P1 items and their descriptions were
 reloaded as Done; the 0.21.0 security item stays Done. Saved category filters and all 42 unique items are
-preserved. APIs, dependencies and the 53 CLI commands remain unchanged; no new release was published.
+preserved. APIs, dependencies and the 53 CLI commands remain unchanged; 0.21.1 publication is pending.
 
 Remaining limits: no exhaustive hostile-corpus/fuzzing or third-party-reader interoperability check;
 graphs beyond the existing 32-level copy limit are refused atomically. Native visual UI and ARM64 hardware

@@ -7,6 +7,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.21.1] — 2026-10-17
+
 ### Corrections
 
 - Refuser les modifications avec perte quand la police d'origine d'un objet texte ne peut pas représenter

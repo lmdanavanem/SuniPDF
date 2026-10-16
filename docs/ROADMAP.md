@@ -5,10 +5,11 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## Current main/unreleased work
+## Current work: 0.21.1 in preparation
 
-The missing-glyph refusal/draft-recovery and non-Link flatten-preservation P1 fixes are Done on main after
-local and GitHub CI/CodeQL checks. Project: 39 Todo, zero In Progress, three Done. Source and evidence in
+The missing-glyph refusal/draft-recovery and non-Link flatten-preservation P1 fixes are implemented and
+checked on their earlier source locally and in GitHub CI/CodeQL. Release-source checks and publication
+of 0.21.1 are pending. Project: 39 Todo, zero In Progress, three Done. Source and evidence in
 [Project status](PROJECT_STATUS.md); published 0.21.0 packages are unchanged.
 
 ## Delivered baseline: 0.9.0

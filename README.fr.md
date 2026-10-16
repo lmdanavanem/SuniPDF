@@ -25,11 +25,12 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## Travail sur main
+## 0.21.1 : conservation des documents (en préparation)
 
-Deux correctifs P1 validés localement et par GitHub CI/CodeQL : refuser les glyphes absents du texte existant sans
+Deux correctifs P1 validés localement et par GitHub CI/CodeQL sur leur source d'implémentation antérieure : refuser les glyphes absents du texte existant sans
 perdre le brouillon, et conserver les annotations non-Link sans apparence utilisable à l'aplatissement.
-Ces correctifs sont sur main, absents des paquets 0.21.0. Voir l'[état actuel](docs/PROJECT_STATUS.fr.md).
+Validation de la source de release et publication de 0.21.1 en attente. Les paquets 0.21.0 publiés ne
+contiennent pas ces correctifs. Voir l'[état actuel](docs/PROJECT_STATUS.fr.md).
 
 ## Fonctionnalités
 | Domaine | Détail |

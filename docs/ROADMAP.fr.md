@@ -5,10 +5,11 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
-## Travail actuel main/non publié
+## Travail actuel : 0.21.1 en préparation
 
-Correctifs P1 glyphes absents/récupération du brouillon et conservation non-Link Done sur main après contrôles
-locaux et GitHub CI/CodeQL. Projet : 39 Todo, zéro In Progress, trois Done. Source et preuves dans
+Correctifs P1 glyphes absents/récupération du brouillon et conservation non-Link implémentés et contrôlés
+sur leur source antérieure localement et par GitHub CI/CodeQL. Contrôles de la source de release et
+publication 0.21.1 en attente. Projet : 39 Todo, zéro In Progress, trois Done. Source et preuves dans
 l'[état du projet](PROJECT_STATUS.fr.md) ; paquets 0.21.0 publiés inchangés.
 
 ## Base livrée : 0.9.0

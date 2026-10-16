@@ -22,11 +22,12 @@
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
-## Work on main
+## 0.21.1: document preservation (in preparation)
 
-Two P1 fixes passed local and GitHub CI/CodeQL checks: refuse unsupported glyphs in existing text without
+Two P1 fixes passed local and GitHub CI/CodeQL checks on the earlier implementation source: refuse unsupported glyphs in existing text without
 losing the draft, and preserve non-Link annotations without usable appearances when flattening.
-These fixes are on main, absent from 0.21.0 packages. See [current status](docs/PROJECT_STATUS.md).
+Release-source validation and publication of 0.21.1 are pending. Published 0.21.0 packages do not contain
+these fixes. See [current status](docs/PROJECT_STATUS.md).
 
 ## Features
 

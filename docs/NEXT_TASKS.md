@@ -2,11 +2,12 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## Current main/unreleased lot
+## Current lot: 0.21.1 in preparation
 
-Done on main after local and GitHub CI/CodeQL checks: the P1 missing-glyph refusal/draft-recovery and
+Done implementation, checked on the earlier source locally and in GitHub CI/CodeQL: the P1 missing-glyph refusal/draft-recovery and
 non-Link flatten-preservation fixes. The project now has 39 Todo, zero In Progress and three Done;
-see [Project status](PROJECT_STATUS.md) for source and evidence. Published 0.21.0 packages are unchanged.
+see [Project status](PROJECT_STATUS.md) for source and evidence. 0.21.1 release-source checks and publication
+are pending; published 0.21.0 packages are unchanged.
 
 ## Version 0.9.0: seven requested features published
 
@@ -345,7 +346,8 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
   Keyboard activation shipped in 0.10.0; Windows Narrator remains unchecked
   (`labelled_by` names set, not listened to).
 - flattening: preserving non-Link annotations without usable appearances, including attachments and shared
-  references, passed local and GitHub CI/CodeQL checks on main. Published 0.21.0 is unchanged;
+  references, passed local and GitHub CI/CodeQL checks on its implementation source. 0.21.1 release checks
+  and publication are pending; published 0.21.0 is unchanged;
   [executed checks and limits](PROJECT_STATUS.md).
 
 ## After sign-image (visual signature, slice delivered)

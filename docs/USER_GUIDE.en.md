@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.21.0. Publication status and executed release checks are recorded in
+This guide covers published SuniPDF 0.21.0 and the fixes being prepared for 0.21.1. Publication status and executed release checks are recorded in
 [Project status](PROJECT_STATUS.md). 0.21.0 is published as stable Latest; local, CodeQL, CI/upgrade,
 staged/public package and production-updater checks passed.
 
@@ -255,14 +255,15 @@ Limits: a pasted or duplicated group can no longer be edited as text; group rota
 (no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
 keeps its original font, which may not contain every character you type.
 
-**Main/unreleased, verified locally and in GitHub CI/CodeQL:** unsupported replacement text is refused before changing the PDF,
+**0.21.1 in preparation, implementation checked on its earlier source:** unsupported replacement text is refused before changing the PDF,
 with the correct on-page or rotated-text draft reopened. Published 0.21.0 packages
 still have the original limitation above.
 
-**Main/unreleased flattening fix, verified locally and in GitHub CI/CodeQL:** non-widget annotations with no usable appearance
+**0.21.1 flattening fix in preparation, implementation checked on its earlier source:** non-widget annotations with no usable appearance
 retain their raw data, attachments and shared references. Widgets and drawable appearances still flatten;
 retained annotations are excluded from the count. Scratch-document failure leaves the active PDF unchanged.
-This change is absent from 0.21.0 packages; see [executed checks and limits](PROJECT_STATUS.md).
+This change is absent from 0.21.0 packages; 0.21.1 release checks and publication are pending.
+See [executed checks and limits](PROJECT_STATUS.md).
 
 ## Filling a form
 

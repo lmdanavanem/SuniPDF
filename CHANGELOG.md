@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-10-17
+
 ### Fixed
 
 - Refuse lossy edits when an existing text object's original font cannot represent the replacement;

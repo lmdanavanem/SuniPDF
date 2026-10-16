@@ -2,6 +2,12 @@
 
 [English](KNOWN_ISSUES.md)
 
+## 0.21.1 : conservation des documents (en préparation)
+
+Les corrections du texte existant et de conservation à l'aplatissement ci-dessous sont implémentées ;
+validation de la source de release et publication en attente. Paquets 0.21.0 publiés inchangés.
+Voir l'[état du projet](PROJECT_STATUS.fr.md).
+
 ## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
@@ -71,7 +77,7 @@ A5. **La boîte de dialogue d'ouverture (`rfd`) est modale et bloque la boucle U
 A6. **Édition du contenu : la modification d'un texte existant réutilise sa police d'origine.** Si cette police
     (souvent un sous-ensemble incorporé) ne contient pas un caractère saisi, PDFium le remplace ou l'omet.
     Contournement en 0.21.0 publiée : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
-    **Main/non publié, vérifié localement et par GitHub CI/CodeQL :** garder cette police, refuser atomiquement
+    **0.21.1 en préparation, implémentation contrôlée sur sa source antérieure :** garder cette police, refuser atomiquement
     le texte incompatible et rouvrir le bon brouillon. Correctif absent des paquets 0.21.0 ; voir les [contrôles exécutés](PROJECT_STATUS.fr.md).
 A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
     du système. Rotation/redimensionnement groupés implémentés en 0.10.0 avec une annulation ; validation dans `PROJECT_STATUS.fr.md`. Restent : un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
@@ -259,7 +265,7 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      0.19.0 était la Latest stable à sa publication.
      Texte enrichi remplacé par texte simple ; mots de passe jamais stockés/exportés.
      En 0.21.0 publiée, l'aplatissement partiel peut laisser des champs orphelins ; les annotations autres que liens sans apparence peuvent disparaître.
-     **Main/non publié, vérifié localement et par GitHub CI/CodeQL :** conserver graphes bruts non-widget, pièces jointes et références
+     **0.21.1 en préparation, implémentation contrôlée sur sa source antérieure :** conserver graphes bruts non-widget, pièces jointes et références
      partagées sans apparence utilisable ; widgets/apparences dessinables restent aplatis, annotations
      conservées exclues du compte et document temporaire atomique. Entrées malformées ou graphes au-delà de
      la limite de copie de 32 niveaux : opération refusée sans modifier le PDF actif. Champs orphelins distincts. Apparences Unicode susceptibles d’utiliser une police système non

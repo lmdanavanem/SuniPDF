@@ -3,7 +3,7 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.21.0. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
+Ce guide couvre SuniPDF 0.21.0 publiée et les correctifs en préparation pour 0.21.1. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
 0.21.0 est publiée en Latest stable ; contrôles locaux, CodeQL, CI/mises à niveau,
 paquets préparés/publics et metteur à jour de production réussis.
 
@@ -274,14 +274,15 @@ ne sont pas proposées ; la police est incorporée entière (pas de sous-ensembl
 page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
 police d'origine, qui peut ne pas contenir tous les caractères saisis.
 
-**Main/non publié, vérifié localement et par GitHub CI/CodeQL :** remplacement incompatible refusé avant modification du PDF,
+**0.21.1 en préparation, implémentation contrôlée sur sa source antérieure :** remplacement incompatible refusé avant modification du PDF,
 avec réouverture du bon brouillon sur la page ou du texte pivoté. Les
 paquets 0.21.0 gardent la limite ci-dessus.
 
-**Correctif d'aplatissement main/non publié, vérifié localement et par GitHub CI/CodeQL :** annotations non-widget sans apparence
+**Correctif d'aplatissement 0.21.1 en préparation, implémentation contrôlée sur sa source antérieure :** annotations non-widget sans apparence
 utilisable conservant données brutes, pièces jointes et références partagées. Widgets/apparences dessinables
 restent aplatis ; annotations conservées exclues du compte. Un échec du document temporaire garde le PDF
-actif inchangé. Changement absent des paquets 0.21.0 ; voir les [contrôles exécutés et limites](PROJECT_STATUS.fr.md).
+actif inchangé. Changement absent des paquets 0.21.0 ; contrôles de release et publication 0.21.1 en attente.
+Voir les [contrôles exécutés et limites](PROJECT_STATUS.fr.md).
 
 ## Remplir un formulaire
 
