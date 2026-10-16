@@ -197,7 +197,7 @@ A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pr
      transparent PNG); imported images limited to 16,384 px per side and 512 MiB decoded (refused when reading
      the header, same 512 MiB bound for Insert Image, Replace Image and Images → PDF), then reduced
      to 1600 px per side; the placed date is kept inside the page over an **estimated** width (0.556 em per
-     character, Helvetica digits), not measured. **0.13.0 development** adds typed name/initials with explicit
+     character, Helvetica digits), not measured. **0.13.0** adds typed name/initials with explicit
      native preview (one line, 256 characters, 1600 px/side; Times italic default, existing standard/system
      TrueType glyph/embedding checks), and current/all/selected-page placement. Preview is invalidated by
      edits, mode changes or dialog/document cancellation. Multi-page marks share a display-space centre in
@@ -205,7 +205,8 @@ A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pr
      Cancellation is checked between targets, never inside a native PDFium call; large batches also require
      a document snapshot and temporary in-memory copy. One undo restores the whole operation; source files
      change only on Save. CLI fitting is opt-in through `add-image --pages`; old `--page` semantics stay unchanged.
-     Validation/publication is ongoing; 0.12.0 remains Latest. Full library: the dialog body scrolls and its floating bar gets a 10 px gutter
+     Published in 0.13.0; executed checks and remaining limits are in `PROJECT_STATUS.md`. Full library:
+     the dialog body scrolls and its floating bar gets a 10 px gutter
      (the content tightens by as much on the frame following the bar's appearance).
 A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calculations and actions never run.
      0.10.0 implements text/checkbox/radio/combo/list creation, XFDF export and strict bounded JSON/XFDF/FDF value import.

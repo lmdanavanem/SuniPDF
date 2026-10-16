@@ -32,7 +32,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Commenter | Surligner, souligner, barrer, notes, encre, texte libre, formes, liens, fils de réponses et panneau des commentaires |
 | Modifier | Texte (polices standard et polices système incorporées), images, formes, sélection / déplacement / redimensionnement / rotation / opacité des objets existants, rotation/redimensionnement groupés, copier-coller entre pages et onglets, panneau Objets, recadrage souris et redimensionnement des pages |
 | Organiser | Pivoter, supprimer, insérer, réordonner, combiner, diviser, extraire, pages vierges ; extraction/division conservent chiffrement, mots de passe et permissions |
-| Remplir et signer | AcroForm, texte libre des listes modifiables, exports radio `/Opt`, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles, paraphe, date |
+| Remplir et signer | AcroForm, texte libre des listes modifiables, exports radio `/Opt`, brouillons conservés/relance après erreur de lecture, Appliquer/Abandonner groupés, clavier, aplatissement, export JSON/XFDF et import JSON/XFDF/FDF de valeurs ; signatures visuelles/paraphes dessinés, saisis ou importés, pose atomique sur toutes les pages/la sélection, date |
 | Créer des formulaires | Champs texte, cases, groupes radio, listes déroulantes ordinaires/modifiables et zones de liste simples/multiples nommés par rectangles numériques, documents pivotés/recadrés/protégés, annulation et remplissage/enregistrement |
 | Récupérer | Instantanés automatiques toutes les 60 secondes et à la suspension ; source intacte, chiffrement PDF conservé, aucun mot de passe stocké, restauration Enregistrer sous |
 | Imprimer | Sélection native Windows, plages/copies/orientation, modifications courantes, rendu tramé borné, progression et annulation |
@@ -47,19 +47,16 @@ arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabil
 
 Détail fait / planifié : `docs/FEATURE_MATRIX.fr.md`, `docs/PROJECT_STATUS.fr.md`, `docs/ROADMAP.fr.md` ; nouveautés : `CHANGELOG.fr.md`.
 
-**[0.12.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0)** sous `lmdanavanem`.
-398 tests du workspace, formatage/Clippy, 859 clés EN/FR, 48 contrôles qpdf et quatre documents NIST/NBS réels
-(744 pages ; 59,68 s) réussis, ainsi que CI Windows finale, compilation ARM64, dix scénarios portables et quatre
+**[0.13.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0)** sous `lmdanavanem`.
+410 tests du workspace, formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents NIST/NBS réels
+(744 pages ; 76,40 s localement) réussis, ainsi que CI Windows finale, compilation ARM64, onze scénarios portables et cinq
 bases de mise à niveau MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis ; copies
-vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
+vérifiées dans `dist/`. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 730 578 octets sans installation.
 Source, preuves et limites dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
-Nouveautés 0.12.0 : création de listes déroulantes modifiables et exports radio `/Opt` cohérents entre interface et
-échanges JSON/XFDF/FDF. Les radios malformés ou ambigus restent en lecture seule ; voir la [roadmap](docs/ROADMAP.fr.md).
-
-En développement pour **0.13.0** : signatures visuelles saisies avec aperçu local explicite, pose en un clic sur
-la page courante/toutes les pages/la sélection, géométrie ajustée, annulation du lot et un undo. Ces fonctions ne
-figurent pas dans les paquets 0.12.0 publiés ; contrôles et publication suivis dans l'[état du projet](docs/PROJECT_STATUS.fr.md).
+Nouveautés **0.13.0** : signatures visuelles saisies avec aperçu local explicite, pose en un clic sur la page
+courante/toutes les pages/la sélection, géométrie ajustée, annulation atomique du lot et un undo. Création de listes
+modifiables et exports radio `/Opt` cohérents restent disponibles depuis 0.12.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

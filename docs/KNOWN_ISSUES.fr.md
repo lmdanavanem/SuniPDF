@@ -197,15 +197,15 @@ A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la
      transparent) ; images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
      l'en-tête, même borne de 512 Mio pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
      à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
-     caractère, chiffres Helvetica), non mesurée. **Développement 0.13.0** : nom/paraphe saisi et aperçu natif
+     caractère, chiffres Helvetica), non mesurée. **0.13.0** : nom/paraphe saisi et aperçu natif
      explicite (une ligne, 256 caractères, 1600 px/côté ; Times italique par défaut, contrôles existants des glyphes
      et droits d'incorporation TrueType standard/système), pose courante/toutes/sélection. Saisie, changement de mode
      ou annulation de boîte/document invalident l'aperçu. Même centre en points PDF affichés, ajusté aux bords visibles,
      réduction seulement si trop grand ; aucun positionnement relatif proportionnel. L'annulation est vérifiée entre
      les pages, pas pendant un appel natif PDFium ; un lot volumineux demande aussi un instantané et une copie temporaire
      en mémoire. Un undo rétablit le lot entier ; la source change seulement à Enregistrer. CLI : ajustement opt-in
-     par `add-image --pages`, sémantique historique de `--page` conservée. Validation/publication en cours ; 0.12.0
-     reste Latest. Bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
+     par `add-image --pages`, sémantique historique de `--page` conservée. Publié en 0.13.0 ; contrôles exécutés et
+     limites restantes dans `PROJECT_STATUS.fr.md`. Bibliothèque pleine : le corps de la boîte défile et sa barre flottante reçoit une gouttière de 10 px
      (le contenu se resserre d'autant à l'image qui suit l'apparition de la barre).
 A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calculs et actions jamais exécutés.
      La 0.10.0 implémente création texte/case/radio/listes, export XFDF et import strict borné JSON/XFDF/FDF de valeurs.

@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0), published as Latest
+This guide covers [SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0), published as Latest
 under `lmdanavanem`. [Project status](PROJECT_STATUS.md) records executed checks and remaining limits.
 
 ## Installation
@@ -243,13 +243,13 @@ the preview (lower it if the background remains visible, raise it if strokes dis
 closes the dialog; a ghost follows the pointer, a **click** places the signature (centred under the click, kept
 inside the page), **Shift+click** places it several times, **Esc** cancels.
 
-**Type — 0.13.0 in development.** Choose **Type**, enter your name or initials, choose a standard or installed
+**Type — available in 0.13.0.** Choose **Type**, enter your name or initials, choose a standard or installed
 TrueType font and black or blue ink, then click **Preview**. Times italic is the default. The preview is rendered
 locally before placement; changing the text, font or ink requires another preview. Input must fit on one line of
 at most 256 characters. Unsupported glyphs or restricted font embedding are reported as errors. The result is a
 transparent image, using the same placement and optional saving as drawing/import.
 
-**Page targets — 0.13.0 in development.** Choose **Current page**, **All pages** or **Selected pages** before
+**Page targets — available in 0.13.0.** Choose **Current page**, **All pages** or **Selected pages** before
 placing. For a selection, first select pages in **Organize pages**, then open Sign/Initials; otherwise Selected
 pages is disabled. One click places the same mark on each target at the same centre in PDF points. Its physical
 size and proportions stay fixed unless a smaller page requires shrinking; placement is clamped inside each
@@ -257,7 +257,7 @@ visible page, including rotated/cropped pages. This is not proportional position
 The batch shows progress; **Cancel** or **Esc** discards the entire batch, checked between pages. One **Ctrl+Z**
 undoes the completed batch. Page insertion/deletion/reordering discards a pending dialog or captured targets, so
 reopen it after changing the page structure. Save the document explicitly to keep the marks. These additions are
-under validation and are not included in the published 0.12.0 packages; see [Project status](PROJECT_STATUS.md).
+included in the published 0.13.0 packages; executed checks and limits are in [Project status](PROJECT_STATUS.md).
 
 **Reuse.** With **Save on this computer for reuse** (ticked by default), the trimmed signature is written as a
 PNG in `%APPDATA%\SuniPDF\signatures` and then appears in the dialog, on a white card: click it to start placement; the
@@ -464,12 +464,12 @@ points, origin at the bottom-left of the page **as displayed** (after rotation a
 only `--opacity 1`; other annotation opacity values must be finite. Invalid values are rejected
 before saving, including when `--overwrite` is supplied.
 
-**0.13.0 in development:** `add-image --pages all` or `--pages "1,3-5"` places the image once per selected
+**Available in 0.13.0:** `add-image --pages all` or `--pages "1,3-5"` places the image once per selected
 physical page. This conflicts with explicit `--page`; omitting both keeps the existing single-page default.
 `--x`, `--y` and `--width` describe the requested lower-left corner and size in displayed PDF points. Batch
 placement fits/clamps that request on each page and keeps the source protection; existing single-page placement
 is unchanged. Batch JSON adds `pages` and `count`; its coordinates/size describe the request, not each fitted
-rectangle. Example, after the 0.13.0 validation/publication gates pass:
+rectangle. Example:
 
 ```powershell
 sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf

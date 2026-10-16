@@ -1,36 +1,66 @@
-# Project status - updated 2026-10-16 (version 0.13.0 in validation)
+# Project status - updated 2026-10-16 (version 0.13.0)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.13.0: typed and multi-page visual signatures (validation in progress)
+## 0.13.0: typed and multi-page visual signatures (published as Latest)
+
+[SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) is stable **Latest** under
+`lmdanavanem`, release ID `414763678`, with six verified assets. Immutable tag/source:
+`b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. [Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
+and the same-source [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
+passed. The duplicate release x64 build/automatic draft publication was cancelled after ARM64 succeeded;
+the successful main-CI x64 packages and ARM64 artifact were used. No previous tag or release asset was replaced.
 
 Create a visual signature or initials by typing one line, choosing an existing standard or installed TrueType
 font and black/blue ink, then explicitly previewing a native transparent PNG. Times italic is the default.
 Text, font, ink and mode changes invalidate old previews; switching documents discards pending responses.
 The optional local library reuses its existing PNG format; it remains unencrypted and does not prove identity.
-Certificate-based CMS/PFX signing is a separate existing function.
+Certificate-based CMS/PFX signing is a separate existing function. Input is bounded to 256 characters and
+1600 pixels per side; existing glyph coverage and embedding restrictions are checked. No new dependency was added.
 
 Choose Current page, All pages or a captured Organize selection. A single batch validates all targets, works on
 a temporary document and commits once, with cooperative cancellation and one Undo/Redo. Signature previews and
 actual placement share fitted geometry: preserve aspect and physical size, shrinking only for a smaller page.
 The same displayed-page centre in PDF points is used on every target. Structural edits discard captured targets.
 CLI `add-image --pages` is additive; the existing single-page command and JSON remain compatible.
+Cancellation/failure leaves no partial page set and clears stale placement hints; explicit saving is still required.
 
-Local workspace validation passed: **410 tests, zero failed, seven default ignored**, and **870 matching EN/FR
-keys**. Native core tests cover typed transparency/font checks, crop/rotation/protected PDFs, cancelled and failed
-batches, save/reopen and independent qpdf checks. Real worker tests verify non-mutating preview, progress and a
-single Undo/Redo; headless app tests check selected-page requests, stale previews, cancellation and status retention.
-Formatting, Clippy with warnings denied, **53 independent qpdf checks**, and all **four licensed NIST/NBS PDFs
-(744 pages)** passed in 76.40 seconds; peak sampled child working set was 331,522,048 bytes. Windows CI, packages,
-upgrades and publication are still being finalized. Version 0.12.0 remains stable Latest until those gates pass. No new dependency was added.
-Snapshots and the temporary document increase peak memory; native page calls cannot be cancelled mid-call.
+Final local gates passed: **410 workspace tests, zero failed, seven default ignored**, formatting, Clippy with
+warnings denied, **870 matching EN/FR keys**, **53 independent qpdf checks** and all **four licensed NIST/NBS
+PDFs (744 pages)** in 76.40 seconds. Peak sampled child working set was 331,522,048 bytes. Native core tests cover
+typed transparency/font checks, crop/rotation/protected PDFs, cancellation, save/reopen and qpdf. Real worker tests
+verify non-mutating preview, progress and single Undo/Redo; headless app tests cover selected-page requests, stale
+previews, structural invalidation, close cancellation and success/failure status retention.
 
-## 0.12.0: form creation and radio export compatibility (published as Latest)
+Eleven actual portable scenarios passed: upgrades from 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0 and 0.12.0,
+plus bad checksum, wrong architecture, locked-file rollback and the real 120-second close-timeout/concurrent-update
+guard. Actual MSI installation, transactional rollback, upgrade, downgrade rejection, payload hashes, uninstall and
+user-data preservation passed from 0.8.0, 0.9.1, 0.10.0, 0.11.0 and 0.12.0 on disposable Windows runners.
+CI real-corpus evidence recorded 32.09 seconds and peak sampled child working set 320,385,024 bytes.
 
-[SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) is stable **Latest** under
+| Package | Bytes | SHA256 |
+|---|---:|---|
+| x64 portable ZIP | 19,730,578 | `B5CC0CBAB1A1ABE4CFF346093A984760ECE458C2986CBF650C6EC3769C2A3FDD` |
+| ARM64 portable ZIP | 18,320,921 | `C14B8F70E21ED3A811556868A267B1A862B31E55EBF71C6044EFF7C3B06F069D` |
+| x64 MSI | 19,292,160 | `0727828749D235CCCD52BE6440C34F980F59FCABC7AB2B1027D2A77228D65C63` |
+
+All six unauthenticated public downloads match API digests, SHA256 sidecars and staged CI files; verified copies
+are in `dist/`. Both staged and public binaries passed architecture, English metadata/version, exact seven-frame
+icon, licenses/OCR, MSI/ZIP payload and existing forms/compression/grouped-transform/protected-copy checks.
+New packaged checks cover fitted signature batches on plain and owner-opened AES-128/256 PDFs, both passwords,
+independent qpdf, readable text and unchanged originals. The production updater downloaded and verified the Latest
+19,730,578-byte x64 ZIP without installation. Package fitting checks use each original page's dimensions, including the landscape fixture page.
+
+Native interactive dialogs, ARM64 hardware, physical printing, Narrator and third-party readers remain unverified;
+packages remain unsigned. Snapshots and the temporary document increase peak memory; native page calls cannot be
+cancelled mid-call. Scripted CI installation is not an interactive hardware claim.
+
+## 0.12.0: form creation and radio export compatibility (published as Latest at that time)
+
+[SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) was published as stable **Latest** under
 `lmdanavanem`, release ID `414674886`, with six verified assets. Immutable tag/source:
 `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. [Final Windows x64 CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688)
 and the same-source [ARM64 build job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878)

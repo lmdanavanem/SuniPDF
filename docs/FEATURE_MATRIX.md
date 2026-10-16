@@ -28,7 +28,7 @@ Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six un
 binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
 and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
-[0.12.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release
+[0.12.0 is published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (Latest at the time), release
 `414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation passed: 398 workspace tests (zero failed,
 seven default ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages;
 59.68 seconds). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) and the
@@ -36,6 +36,14 @@ seven default ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and fo
 ten portable scenarios, four MSI baselines, all six staged/public files and enhanced binary checks. Verified files
 are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
 Hardware, interactive UI and reader limits remain in `PROJECT_STATUS.md`.
+
+[0.13.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`,
+release `414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation passed: 410 workspace tests
+(zero failed, seven default ignored), formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed documents
+(744 pages; 76.40 seconds locally), Windows CI and same-source ARM64 compilation, eleven portable scenarios and
+five MSI baselines. Six staged/public files and enhanced binary checks passed, including protected signature
+batches and both passwords. Verified copies are in `dist/`; the production updater verified the 19,730,578-byte
+Latest x64 ZIP without installation. Detailed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
 ## A. Reading
 
@@ -113,7 +121,7 @@ Hardware, interactive UI and reader limits remain in `PROJECT_STATUS.md`.
 | Add/change password, AES-256 | Declared | **Done** (AES-128/256, permissions; AES-128 limited to Latin-1 passwords, typed refusal; accessibility always granted) through `lopdf`, re-read by PDFium; explicit AES-256 key length and synthetic qpdf gate added for 0.9.1; results in `PROJECT_STATUS.md` |
 | Irreversible redaction | Declared (redact crate) | **Done** (hub Redact tool: areas drawn with the mouse, text marking, confirmation, save guard; CLI `redact`): objects removed + blacked-out image patch, annotations / fields / metadata / earlier revisions removed, verification by reading back; absence proven by tests (extraction, decompressed bytes, pixels, rotated pages, encrypted document); limits `KNOWN_ISSUES.md` A40 |
 | Metadata cleanup | Declared | **Done** (Info, XMP of the catalog, pages and images, `/PieceInfo`); 0.9.1 property editing preserves PDF/A identification/unrelated XMP and refuses malformed XML, validation tracked in `PROJECT_STATUS.md`; PDF/A conformance not certified |
-| Visual signature (image) | Declared | **Done**: draw, import or reuse a local plain PNG, initials/date, editable alpha-masked image and undo. **In development for 0.13.0**: typed name/initials with explicit native preview and existing font checks; current/all/Organize-selected targets, fitted geometry, atomic cancel/one undo; additive CLI `add-image --pages`. Validation ongoing; 0.12.0 stays published Latest. **Visual, without identity/integrity proof**; separate CMS/PFX workflow unchanged |
+| Visual signature (image) | Declared | **Done**: draw, type, import or reuse a local plain PNG, initials/date, editable alpha-masked image and undo. **Delivered in 0.13.0**: typed name/initials with explicit native preview and existing font checks; current/all/Organize-selected targets, fitted geometry, atomic cancel/one undo; additive CLI `add-image --pages`. Local, CI, package/public and upgrade checks passed. **Visual, without identity/integrity proof**; separate CMS/PFX workflow unchanged |
 | CMS/PKCS#12 digital signature, timestamping | Declared | Integrity verification/new-copy PFX/P12 signing **Done** (disposable-certificate tests); CLI `signatures`/`sign`; encrypted signing refused. Trust/revocation/trusted timestamps/LTV not implemented; Acrobat/Foxit interoperability unverified |
 | PKCS#11, online LTV, AATL/EUTL | Absent | Out of initial scope |
 
@@ -147,6 +155,6 @@ Hardware, interactive UI and reader limits remain in `PROJECT_STATUS.md`.
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Done**: 0.12.0 ZIP/MSI published as Latest; ten real portable scenarios and four MSI baselines (install/rollback/upgrade/downgrade rejection/uninstall) passed; six public files/SHA256 and packaged checks verified; production live updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
-| Windows ARM64 | Declared | **Done**: same-source 0.12.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
+| Windows x64 | Declared (MSI, zip) | **Done**: 0.13.0 ZIP/MSI published as Latest; eleven real portable scenarios and five MSI baselines passed; six public files/SHA256 and packaged checks verified; production live updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
+| Windows ARM64 | Declared | **Done**: same-source 0.13.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |

@@ -3,7 +3,7 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0), publiée en Latest
+Ce guide couvre [SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0), publiée en Latest
 sous `lmdanavanem`. L'[état du projet](PROJECT_STATUS.fr.md) consigne contrôles exécutés et limites restantes.
 
 ## Installation
@@ -264,14 +264,14 @@ disparaissent). **Placer sur la page** ferme la boîte ; un fantôme suit le poi
 signature (centrée sous le clic, maintenue dans la page), **Maj+clic** la pose plusieurs fois, **Échap**
 annule.
 
-**Saisir — 0.13.0 en développement.** Choisissez **Saisir**, entrez votre nom ou vos initiales, choisissez une
+**Saisir — disponible en 0.13.0.** Choisissez **Saisir**, entrez votre nom ou vos initiales, choisissez une
 police standard ou TrueType installée et une encre noire ou bleue, puis cliquez sur **Aperçu**. Times italique
 est la police par défaut. L'aperçu est rendu localement avant la pose ; changer texte, police ou encre demande un
 nouvel aperçu. La saisie tient sur une ligne de 256 caractères au plus. Glyphes absents ou incorporation de police
 interdite : une erreur est affichée. Le résultat est une image transparente, avec le même placement et
 enregistrement facultatif que le dessin/import.
 
-**Pages ciblées — 0.13.0 en développement.** Choisissez **Page courante**, **Toutes les pages** ou **Pages
+**Pages ciblées — disponible en 0.13.0.** Choisissez **Page courante**, **Toutes les pages** ou **Pages
 sélectionnées** avant de placer. Pour une sélection, sélectionnez les pages dans **Organiser les pages**, puis
 ouvrez Signer/Parapher ; sinon Pages sélectionnées reste désactivé. Un clic appose la même marque sur chaque
 cible, au même centre en points PDF. Taille physique et proportions sont conservées sauf si une petite page
@@ -279,8 +279,8 @@ impose une réduction ; la pose est maintenue dans chaque page visible, y compri
 d'un placement proportionnel relatif à la taille des pages. Le lot affiche sa progression ; **Annuler** ou
 **Échap** abandonne le lot entier, avec vérification entre les pages. Un **Ctrl+Z** annule le lot terminé.
 Insertion/suppression/réorganisation des pages abandonne la boîte ou les cibles capturées : rouvrez-la après une
-modification de structure. Enregistrez explicitement le document pour conserver les marques. Ces ajouts sont en
-validation et absents des paquets 0.12.0 publiés ; voir l'[état du projet](PROJECT_STATUS.fr.md).
+modification de structure. Enregistrez explicitement le document pour conserver les marques. Ces ajouts figurent
+dans les paquets 0.13.0 publiés ; contrôles exécutés et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 **Réutiliser.** Avec **Enregistrer sur cet ordinateur pour la réutiliser** (coché par défaut), la signature
 rognée est écrite en PNG dans `%APPDATA%\SuniPDF\signatures` et apparaît ensuite dans la boîte, sur fond
@@ -496,12 +496,12 @@ qu'affichée** (après rotation et recadrage).
 uniquement `--opacity 1` ; les autres opacités d'annotation doivent être finies. Les valeurs invalides
 sont refusées avant l'enregistrement, y compris avec `--overwrite`.
 
-**0.13.0 en développement :** `add-image --pages all` ou `--pages "1,3-5"` place l'image une fois par page
+**Disponible en 0.13.0 :** `add-image --pages all` ou `--pages "1,3-5"` place l'image une fois par page
 physique sélectionnée. Cette option exclut `--page` explicite ; sans les deux, le placement historique reste sur
 une page par défaut. `--x`, `--y` et `--width` décrivent le coin bas-gauche et la taille demandés en points PDF
 affichés. Le lot ajuste cette demande dans chaque page et conserve la protection source ; la pose historique
 sur une page reste inchangée. Le JSON de lot ajoute `pages` et `count` ; coordonnées/taille décrivent la demande,
-pas chaque rectangle ajusté. Exemple, après réussite de la validation/publication 0.13.0 :
+pas chaque rectangle ajusté. Exemple :
 
 ```powershell
 sunipdf-cli add-image input.pdf --image signature.png --pages "1,3-5" --x 100 --y 40 --width 150 --out initialled.pdf

@@ -70,14 +70,14 @@ Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six un
 binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
 and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
 
-## 0.12.0: editable field creation and radio exports (published as Latest)
+## 0.12.0: editable field creation and radio exports (published; Latest at the time)
 
 Create editable drop-downs from Prepare a form or `add-form-field --kind combo --editable`, with predefined choices
 still required. Radio `/Opt` export values are separated from widget appearance states for filling and JSON/XFDF/FDF
 interchange; CLI information adds `widgets[].export_value`. Malformed or duplicate mappings keep the affected
 field read-only; no-`/Opt` radios retain state-name values (D100–D101).
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (Latest at the time), release
 `414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. The 398 workspace tests (zero failed, seven default
 ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages; 59.68 seconds)
 passed. [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688), the
@@ -86,13 +86,17 @@ scenarios and four MSI baselines passed. All six staged/public files and enhance
 files are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
 Executed evidence and hardware/interoperability limits are recorded in `PROJECT_STATUS.md`.
 
-## 0.13.0: visual signature improvements (in development)
+## 0.13.0: visual signature improvements (published as Latest)
 
 Typed name/initials use an explicit native preview and the existing font/image/library paths. Current/all/selected
 pages share fitted display-space geometry; multi-page placement is atomic, cancellable between targets and one
 undo. CLI `add-image --pages` is additive; legacy `--page` behaviour remains compatible (D102–D103).
-Local/release validation is ongoing; 0.12.0 remains the published Latest. No hardware or third-party reader
-validation is inferred from implementation; see `PROJECT_STATUS.md`.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`, release
+`414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Local validation passed: 410 workspace tests,
+formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed documents (744 pages; 76.40 seconds locally).
+Windows CI, same-source ARM64 compilation, eleven portable scenarios, five MSI baselines and all six staged/public
+files with enhanced binary checks passed. Verified copies are in `dist/`; the production updater verified the
+19,730,578-byte Latest x64 ZIP without installation. Evidence and hardware/reader limits: `PROJECT_STATUS.md`.
 
 ## Phase 0–1: planning and foundations — delivered
 
@@ -119,7 +123,7 @@ text/checkbox creation and autosave/recovery.
 Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
 FDF/XFDF interchange and keyboard page widgets.
 Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
-In development for 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
+Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
@@ -151,7 +155,7 @@ published benchmarks with hardware, complete dependency licence inventory, Narra
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-## Next work after the 0.12.0 lot
+## Next work after the 0.13.0 lot
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

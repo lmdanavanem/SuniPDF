@@ -1,37 +1,72 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.13.0 en validation)
+# État du projet — mis à jour le 2026-10-16 (version 0.13.0)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.13.0 : signatures visuelles saisies et multipages (validation en cours)
+## 0.13.0 : signatures visuelles saisies et multipages (publiée en Latest)
+
+[SuniPDF 0.13.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) est stable **Latest** sous
+`lmdanavanem`, release ID `414763678`, avec six fichiers vérifiés. Tag/source immuable :
+`b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. La [CI Windows x64](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
+et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
+ont réussi. Le build x64 en double et la publication automatique en brouillon ont été annulés après le succès
+ARM64 ; les paquets x64 de la CI principale et l'artefact ARM64 ont été utilisés. Aucun ancien tag ou fichier publié
+n'a été remplacé.
 
 Création d'une signature visuelle ou d'un paraphe en saisissant une ligne, avec une police standard ou TrueType
 installée et une encre noire/bleue, puis aperçu explicite en PNG transparent natif. Times italique est le défaut.
 Toute modification du texte, de la police, de l'encre ou du mode invalide l'ancien aperçu ; changer de document
 écarte les réponses en attente. La bibliothèque locale facultative conserve son format PNG non chiffré, sans
-preuve d'identité. La signature CMS/PFX par certificat reste une fonction distincte déjà existante.
+preuve d'identité. La signature CMS/PFX par certificat reste une fonction distincte déjà existante. Limites :
+256 caractères, 1600 pixels par côté ; contrôle des glyphes et restrictions d'incorporation existantes.
+Aucune nouvelle dépendance.
 
 Choix entre page courante, toutes les pages ou sélection capturée dans Organiser. Le lot valide toutes les cibles,
 travaille sur un document temporaire et valide une seule fois, avec annulation coopérative et un seul Undo/Redo.
 L'aperçu et la pose partagent une géométrie ajustée : proportions et taille physique conservées, réduction seulement
 pour une page plus petite. Même centre en points PDF affichés sur chaque cible ; les modifications structurelles
 écartent les cibles capturées. `add-image --pages` est un ajout compatible avec la commande et le JSON monopages.
+Annulation/erreur sans lot partiel ni ancien rappel de placement ; la sauvegarde reste explicite.
 
-Validation locale réussie : **410 tests, aucun échec, sept ignorés par défaut**, **870 clés EN/FR identiques**.
-Les tests natifs couvrent aperçu/polices/transparence, recadrage/rotation/protection, annulation/erreur atomiques,
-sauvegarde/réouverture et qpdf. Le worker réel vérifie aperçu sans mutation, progression et Undo/Redo unique ;
-les tests applicatifs sans fenêtre vérifient sélection, réponses périmées, annulation et messages d'état.
-Formatage, Clippy sans avertissement, **53 contrôles qpdf** et les **quatre PDF NIST/NBS sous licence (744 pages)**
-ont réussi en 76,40 secondes ; mémoire de pointe échantillonnée des processus enfants : 331 522 048 octets.
-CI Windows, paquets, mises à jour et publication restent en cours.
-La 0.12.0 reste stable Latest jusque-là. Aucune nouvelle dépendance. Les instantanés et le document temporaire
-augmentent la mémoire de pointe ; un appel natif de page ne peut pas être interrompu en cours d'exécution.
+Contrôles locaux finaux réussis : **410 tests, aucun échec, sept ignorés par défaut**, formatage, Clippy sans
+avertissement, **870 clés EN/FR identiques**, **53 contrôles qpdf indépendants**, **quatre PDF NIST/NBS sous licence
+(744 pages)** en 76,40 secondes. Mémoire de pointe échantillonnée des processus enfants : 331 522 048 octets.
+Les tests natifs couvrent aperçu/polices/transparence, recadrage/rotation/protection, annulation, sauvegarde/réouverture
+et qpdf. Le worker réel vérifie aperçu sans mutation, progression et Undo/Redo unique ; les tests applicatifs sans
+fenêtre vérifient sélection, réponses périmées, invalidation structurelle, fermeture et messages de réussite/échec.
 
-## 0.12.0 : création de formulaires et exports radio (publiée en Latest)
+Onze scénarios portables réels réussis : mises à niveau depuis 0.8.2, 0.8.3, 0.9.0, 0.9.1, 0.10.0, 0.11.0 et 0.12.0,
+plus mauvaise empreinte, mauvaise architecture, restauration après fichier verrouillé et attente réelle de fermeture
+120 secondes/garde contre les mises à jour concurrentes. Installation MSI, rollback transactionnel, mise à niveau,
+refus de downgrade, empreintes des fichiers, désinstallation et conservation des données réussis depuis 0.8.0,
+0.9.1, 0.10.0, 0.11.0 et 0.12.0 sur runners Windows jetables. Corpus réel CI : 32,09 secondes, pic enfant
+320 385 024 octets.
 
-[SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) est stable **Latest** sous
+| Paquet | Octets | SHA256 |
+|---|---:|---|
+| ZIP portable x64 | 19 730 578 | `B5CC0CBAB1A1ABE4CFF346093A984760ECE458C2986CBF650C6EC3769C2A3FDD` |
+| ZIP portable ARM64 | 18 320 921 | `C14B8F70E21ED3A811556868A267B1A862B31E55EBF71C6044EFF7C3B06F069D` |
+| MSI x64 | 19 292 160 | `0727828749D235CCCD52BE6440C34F980F59FCABC7AB2B1027D2A77228D65C63` |
+
+Les six téléchargements publics non authentifiés correspondent aux empreintes API, aux fichiers SHA256 et aux
+paquets CI ; copies vérifiées dans `dist/`. Les binaires préparés et publics ont passé les contrôles architecture,
+métadonnées/version anglaises, sept images d'icône exactes, licences/OCR, contenus MSI/ZIP et fonctions existantes
+(formulaires/compression/transformation groupée/copies protégées). Nouveaux contrôles : pose ajustée de signatures
+sur PDF simples et AES-128/256 ouverts avec mot de passe propriétaire, réouverture avec les deux mots de passe,
+qpdf, texte lisible et originaux inchangés. Le mécanisme de mise à jour a téléchargé et vérifié le ZIP x64 Latest
+de 19 730 578 octets, sans installation. Le contrôle de pose utilise les dimensions de chaque page d'origine,
+y compris la page paysage du PDF de test.
+
+Dialogues interactifs natifs, matériel ARM64, impression physique, Narrator et lecteurs tiers restent non vérifiés ;
+les paquets restent non signés. Instantanés et document temporaire augmentent la mémoire de pointe ; un appel natif
+de page ne peut pas être interrompu en cours d'exécution. Les installations automatisées CI ne prouvent pas l'usage
+interactif sur matériel réel.
+
+## 0.12.0 : création de formulaires et exports radio (Latest à cette date)
+
+[SuniPDF 0.12.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) a été publiée en stable **Latest** sous
 `lmdanavanem`, release ID `414674886`, avec six fichiers vérifiés. Tag/source immuable :
 `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. La [CI Windows x64 finale](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688)
 et le [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878)

@@ -84,14 +84,14 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   that resolves to the source path. CLI keeps `encryption_removed: false` and adds `encrypted`; the existing
   document-permission policy is unchanged. Local, CI, package and upgrade regression gates passed; evidence is in `PROJECT_STATUS.md`.
 
-## 0.12.0: form authoring and radio export values (published as Latest)
+## 0.12.0: form authoring and radio export values (published; Latest at the time)
 
 - Create editable drop-downs through the desktop checkbox or CLI `add-form-field --kind combo --editable`;
   retain required predefined choices, unique names, existing geometry/protection checks and undo.
 - Map radio `/Opt` export values independently of widget appearance states, including JSON/XFDF/FDF interchange.
   Add `widgets[].export_value` to CLI information without changing `on_state`; fields with malformed or duplicate
   export mappings stay read-only. Radios without `/Opt` retain state-name values.
-- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (release
+- [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (Latest at the time; release
   `414674886`), source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation passed: 398 workspace tests (zero failed,
   seven default ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages;
   59.68 seconds). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) and the
@@ -100,7 +100,7 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   enhanced binary checks. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
   Verified files are in `dist/`; evidence and limits are in `PROJECT_STATUS.md` (D100–D101).
 
-## 0.13.0: typed visual signatures and page batches (in development)
+## 0.13.0: typed visual signatures and page batches (published as Latest)
 
 - Local explicit preview of a typed name/initials, using the existing standard/system TrueType font picker,
   glyph/embedding checks and transparent PNG/library flow (D102). Times italic is the portable default;
@@ -108,8 +108,16 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
 - Current/all/Organize-selected targets, captured before leaving the grid; one common display-space centre,
   aspect-preserving fitting, atomic cancellation/rollback and one undo for a multi-page placement (D103).
   CLI `add-image --pages` adds batch placement while preserving existing `--page` behaviour/JSON.
-- Implementation validation is ongoing. No 0.13.0 publication is claimed; 0.12.0 remains Latest until its release
-  gates pass. Executed evidence belongs in `PROJECT_STATUS.md`.
+- [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (release
+  `414763678`), source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation passed: 410 workspace tests (zero failed,
+  seven default ignored), formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed NIST/NBS documents
+  (744 pages; 76.40 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
+  and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
+  passed. Eleven portable scenarios (seven upgrades including 0.12.0 and four failure guards), five MSI baselines
+  (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0), all six staged/public files and enhanced binary checks passed. Packaged
+  signature batches cover plain/owner-opened AES-128/256 PDFs, both passwords, qpdf and source preservation.
+  Verified copies are in `dist/`; the production updater verified the 19,730,578-byte Latest x64 ZIP without
+  installation. Evidence and remaining limits are in `PROJECT_STATUS.md` (D102–D103).
 
 ## Remaining work beyond this lot
 
@@ -170,8 +178,10 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
   `/AP`, screens) if a real case calls for it; today only `/Link` entries are put back;
 
 ## After sign-image (visual signature, slice delivered)
+
+Typed signatures and all/selected-page placement were delivered in 0.13.0 (D102–D103).
+
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060):
-- Typed signatures and all/selected-page placement are implemented for 0.13.0; validation is ongoing (D102–D103).
 - DPAPI encryption of the saved signatures (ADR to write, D055);
 - stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
   cast shadow; pen pressure if egui ever exposes it.

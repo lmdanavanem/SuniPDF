@@ -5,9 +5,17 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
-## [0.13.0] - Unreleased
+## [0.13.0] - 2026-10-16
 
-Implementation is under validation; 0.12.0 remains the published Latest release. See `docs/PROJECT_STATUS.md`.
+[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem`, release
+`414763678`, with six verified files in `dist/`. Source: `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`.
+Validation passed: 410 workspace tests (zero failed, seven default ignored), formatting/Clippy, 870 EN/FR keys,
+53 qpdf checks and four licensed NIST/NBS documents (744 pages; 76.40 seconds locally). [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
+and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
+passed, along with eleven portable scenarios and five MSI baselines. All six staged/public files and enhanced
+binary checks passed, including plain/protected signature batches, both encryption passwords, qpdf and source
+preservation. The production updater verified the 19,730,578-byte Latest x64 ZIP without installation.
+Evidence and limits: `docs/PROJECT_STATUS.md`.
 
 ### Added
 - **Type** a visual signature or initials, select a standard/system TrueType font and black/blue ink, then
@@ -31,7 +39,7 @@ third-party reader checks remain separate; distribution packages are unsigned.
 
 ## [0.12.0] - 2026-10-16
 
-[Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem`, release
+[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (Latest at the time), release
 `414674886`, with six verified files in `dist/`. Source: `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`.
 Validation passed: 398 workspace tests (zero failed, seven default ignored), formatting/Clippy, 859 EN/FR keys,
 48 qpdf checks, four NIST/NBS documents (744 pages; 59.68 seconds), Windows CI and same-source ARM64 compilation.

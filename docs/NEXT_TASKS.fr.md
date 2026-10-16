@@ -85,14 +85,14 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   résolue au chemin source. La CLI garde `encryption_removed: false` et ajoute `encrypted` ; la politique existante
   des permissions ne change pas. Contrôles locaux, CI, paquets et régressions de mise à niveau réussis ; preuves dans `PROJECT_STATUS.fr.md`.
 
-## 0.12.0 : création de champs et valeurs d'export radio (publiée en Latest)
+## 0.12.0 : création de champs et valeurs d'export radio (publiée ; Latest à cette date)
 
 - Créer des listes déroulantes modifiables par la case de l'interface ou `add-form-field --kind combo --editable` ;
   conserver choix prédéfinis requis, noms uniques, contrôles de géométrie/protection et annulation.
 - Distinguer valeurs d'export radio `/Opt` et états d'apparence, y compris dans les échanges JSON/XFDF/FDF.
   Ajouter `widgets[].export_value` aux informations CLI sans modifier `on_state` ; correspondances malformées ou
   dupliquées : champ concerné en lecture seule. Sans `/Opt`, les radios conservent les noms d'état.
-- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem` (release
+- [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem` (Latest à cette date ; release
   `414674886`), source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation réussie : 398 tests workspace (zéro échec,
   sept ignorés par défaut), formatage/Clippy, 859 clés EN/FR, 48 contrôles qpdf et quatre documents NIST/NBS (744 pages ;
   59,68 s). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) et
@@ -101,7 +101,7 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   contrôles renforcés des binaires. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
   Fichiers vérifiés dans `dist/` ; preuves et limites dans `PROJECT_STATUS.fr.md` (D100–D101).
 
-## 0.13.0 : signatures visuelles saisies et lots de pages (en développement)
+## 0.13.0 : signatures visuelles saisies et lots de pages (publiée en Latest)
 
 - Aperçu local explicite d'un nom/paraphe saisi, sélecteur standard/TrueType système existant,
   contrôles de glyphes/incorporation et parcours PNG transparent/bibliothèque réutilisés (D102). Times italique
@@ -109,8 +109,16 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
 - Page courante/toutes les pages/sélection Organiser capturée avant de quitter la grille ; même centre en
   points affichés, proportions conservées, annulation/restauration atomiques et un undo pour le lot (D103).
   CLI `add-image --pages` ajoute le lot sans modifier le comportement/JSON historique de `--page`.
-- Validation de l'implémentation en cours. Aucune publication 0.13.0 annoncée ; la 0.12.0 reste Latest jusqu'à
-  réussite des contrôles de release. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+- [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem` (release
+  `414763678`), source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation réussie : 410 tests workspace (zéro échec,
+  sept ignorés par défaut), formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents NIST/NBS licenciés
+  (744 pages ; 76,40 s localement). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
+  et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
+  réussis. Onze scénarios portables (sept mises à niveau dont 0.12.0 et quatre protections contre les échecs), cinq
+  bases MSI (0.8.0/0.9.1/0.10.0/0.11.0/0.12.0), six fichiers préparés/publics et contrôles renforcés des binaires réussis.
+  Lots de signatures embarqués : PDF non chiffrés/AES-128/256 ouverts comme propriétaire, les deux mots de passe,
+  qpdf et préservation source. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
+  de 19 730 578 octets sans installation. Preuves et limites restantes dans `PROJECT_STATUS.fr.md` (D102–D103).
 
 ## Travail restant au-delà de ce lot
 
@@ -172,8 +180,10 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
   `/AP`, écrans) si un cas réel le demande ; aujourd'hui seuls les `/Link` sont remis en place ;
 
 ## Après sign-image (signature visuelle, tranche livrée)
+
+Signatures saisies et pose sur toutes les pages/la sélection livrées en 0.13.0 (D102–D103).
+
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A35–A37, décisions D054–D060) :
-- Signatures saisies et pose sur toutes les pages/la sélection implémentées pour 0.13.0 ; validation en cours (D102–D103).
 - chiffrement DPAPI des signatures enregistrées (ADR à écrire, D055) ;
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
   ombre portée ; pression du stylet si egui l'expose un jour.

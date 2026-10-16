@@ -29,7 +29,7 @@ téléchargements publics concordent avec les empreintes API/SHA256/paquets ; co
 binaires publics. Le metteur à jour de production a vérifié le ZIP Latest x64 de 19 687 375 octets sans installation.
 Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés inchangés.
 
-[0.12.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem`, release
+[0.12.0 publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem` (Latest à cette date), release
 `414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. Validation réussie : 398 tests workspace (zéro échec,
 sept ignorés par défaut), formatage/Clippy, 859 clés EN/FR, 48 contrôles qpdf et quatre documents NIST/NBS (744 pages ;
 59,68 s). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688) et
@@ -37,6 +37,14 @@ sept ignorés par défaut), formatage/Clippy, 859 clés EN/FR, 48 contrôles qpd
 ainsi que dix scénarios portables, quatre bases MSI, six fichiers préparés/publics et contrôles renforcés des binaires.
 Copies vérifiées dans `dist/`. L'updater de production a vérifié le ZIP Latest x64 de 19 699 323 octets sans installation.
 Limites matérielles, d'interface interactive et de lecteurs dans `PROJECT_STATUS.fr.md`.
+
+[0.13.0 publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem`, release
+`414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Validation réussie : 410 tests workspace (zéro échec,
+sept ignorés par défaut), formatage/Clippy, 870 clés EN/FR, 53 contrôles qpdf et quatre documents licenciés
+(744 pages ; 76,40 s localement), CI Windows et compilation ARM64 de même source, onze scénarios portables et
+cinq bases MSI. Six fichiers préparés/publics et contrôles renforcés des binaires réussis, dont lots de signatures
+protégés et les deux mots de passe. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest
+x64 de 19 730 578 octets sans installation. Preuves détaillées et limites restantes dans `PROJECT_STATUS.fr.md`.
 
 ## A. Lecture
 
@@ -114,7 +122,7 @@ Limites matérielles, d'interface interactive et de lecteurs dans `PROJECT_STATU
 | Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; longueur AES-256 explicite et contrôle qpdf synthétique ajoutés pour 0.9.1 ; résultats dans `PROJECT_STATUS.fr.md` |
 | Caviardage irréversible | Déclaré (crate redact) | **Fait** (outil Caviarder du hub : zones à la souris, marquage d'un texte, confirmation, garde d'enregistrement ; CLI `redact`) : objets retirés + vignette noircie, annotations / champs / métadonnées / révisions antérieures supprimés, vérification par relecture ; absence prouvée par tests (extraction, octets décompressés, pixels, pages pivotées, document chiffré) ; limites `KNOWN_ISSUES.fr.md` A40 |
 | Nettoyage des métadonnées | Déclaré | **Fait** (Info, XMP du catalogue, des pages et des images, `/PieceInfo`) ; l'édition 0.9.1 préserve l'identification PDF/A et le XMP indépendant, refuse les XML malformés, validation dans `PROJECT_STATUS.fr.md` ; conformité PDF/A non certifiée |
-| Signature visuelle (image) | Déclaré | **Fait** : dessin, import ou PNG local en clair réutilisé, paraphe/date, image alpha modifiable et undo. **En développement pour 0.13.0** : nom/paraphe saisi avec aperçu natif explicite et contrôles de police existants ; page courante/toutes/sélection Organiser, géométrie ajustée, annulation atomique/un undo ; ajout CLI `add-image --pages`. Validation en cours ; 0.12.0 reste Latest publiée. **Visuelle, sans preuve d'identité/intégrité** ; parcours CMS/PFX distinct inchangé |
+| Signature visuelle (image) | Déclaré | **Fait** : dessin, saisie, import ou PNG local en clair réutilisé, paraphe/date, image alpha modifiable et undo. **Livré en 0.13.0** : nom/paraphe saisi avec aperçu natif explicite et contrôles de police existants ; page courante/toutes/sélection Organiser, géométrie ajustée, annulation atomique/un undo ; ajout CLI `add-image --pages`. Contrôles locaux, CI, paquets/publics et mises à niveau réussis. **Visuelle, sans preuve d'identité/intégrité** ; parcours CMS/PFX distinct inchangé |
 | Signature numérique CMS/PKCS#12, horodatage | Déclaré | Intégrité/copie signée PFX/P12 **Faites** (tests avec certificat jetable) ; CLI `signatures`/`sign` ; PDF chiffré refusé. Confiance/révocation/horodatage fiable/LTV non implémentés ; interopérabilité Acrobat/Foxit non vérifiée |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
 
@@ -148,6 +156,6 @@ Limites matérielles, d'interface interactive et de lecteurs dans `PROJECT_STATU
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.12.0 ZIP/MSI publiés en Latest ; dix scénarios portables et quatre bases MSI (installation/rollback/mise à niveau/refus de downgrade/désinstallation) réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.12.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.13.0 ZIP/MSI publiés en Latest ; onze scénarios portables et cinq bases MSI réussis ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
+| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.13.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |

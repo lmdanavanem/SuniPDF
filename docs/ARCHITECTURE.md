@@ -135,7 +135,7 @@ Implementation validation is tracked in `PROJECT_STATUS.md`; this section descri
   and certificate metadata without establishing trust, revocation or a trusted timestamp. UI `certificate.rs`
   and CLI `feature_cmd.rs` both require a new copy for signing; encrypted input is refused.
 
-## 0.13.0 visual signature paths (in development)
+## 0.13.0 visual signature paths (published)
 
 `Engine::typed_signature` creates a disposable PDF, reuses `Document::add_text` and its existing font/glyph
 checks, then renders a bounded transparent PNG through PDFium. Desktop `RenderSignature` runs on the engine
@@ -148,7 +148,8 @@ does not mutate the open document. The resulting image uses the existing optiona
 The desktop worker records one undo snapshot for the committed batch; failures leave the document and journal
 unchanged. Selected Organize pages are captured when opening the dialog; structural page changes discard the
 dialog or captured targets. CLI `add-image --pages` uses the same batch method, while existing `--page` keeps
-its original placement behaviour. Validation is tracked in `PROJECT_STATUS.md` (D102–D103).
+its original placement behaviour. Local, CI, package/public and upgrade gates passed; executed evidence and
+remaining hardware/interaction limits are tracked in `PROJECT_STATUS.md` (D102–D103).
 
 ## Coordinates (SUNI-031c)
 

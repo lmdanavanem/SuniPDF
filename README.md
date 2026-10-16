@@ -30,7 +30,7 @@
 | Annotate | Highlight, underline, strike-out, notes, ink, free text, shapes, links and reply threads |
 | Edit | Text with standard or embedded system fonts, images, shapes, object selection/move/resize/rotation/opacity, grouped rotation/resizing, clipboard across tabs, Objects panel, mouse page crop and resize |
 | Organize | Rotate, delete, insert, reorder, combine, split, extract and create blank pages; extraction/split preserve source encryption, passwords and permissions |
-| Fill and sign | AcroForm filling, editable drop-down text, radio `/Opt` export values, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; visual signatures, initials and date |
+| Fill and sign | AcroForm filling, editable drop-down text, radio `/Opt` export values, retained drafts/retry after read errors, grouped Apply/Discard, keyboard controls, flattening, JSON/XFDF export and JSON/XFDF/value-only FDF import; drawn/typed/imported visual signatures and initials, atomic all/selected-page placement, date |
 | Create forms | Named text fields, checkboxes, radio groups, ordinary/editable drop-downs and single/multiple-selection lists through numeric page rectangles, including rotated/cropped/protected documents; undo and fill/save |
 | Recover | Automatic snapshots every 60 seconds and on tab suspension; original unchanged, PDF encryption preserved, no passwords stored, restore through Save As |
 | Print | Native Windows printer selection, page ranges/copies/orientation, current edits, bounded raster output, progress and cancellation |
@@ -45,19 +45,16 @@ are not reconstructed. Physical printing, ARM64 hardware and third-party signatu
 
 [Feature matrix](docs/FEATURE_MATRIX.md) · [Project status](docs/PROJECT_STATUS.md) · [Changelog](CHANGELOG.md)
 
-**[0.12.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0)** under `lmdanavanem`.
-398 workspace tests, formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four real NIST/NBS documents
-(744 pages; 59.68 seconds) passed, alongside final Windows CI, ARM64 compilation, ten portable scenarios and four
+**[0.13.0 is published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0)** under `lmdanavanem`.
+410 workspace tests, formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four real NIST/NBS documents
+(744 pages; 76.40 seconds locally) passed, alongside final Windows CI, ARM64 compilation, eleven portable scenarios and five
 MSI upgrade baselines. All six staged/public files and enhanced packaged-binary checks passed; verified files are
-in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
+in `dist/`. The production updater verified the 19,730,578-byte Latest x64 ZIP without installation.
 [Project status](docs/PROJECT_STATUS.md) records source, release evidence and hardware/interoperability limits.
 
-New in 0.12.0: create editable drop-downs and use radio-button `/Opt` export values consistently in the app and
-JSON/XFDF/FDF interchange. Malformed or ambiguous radio fields remain read-only; see the [roadmap](docs/ROADMAP.md).
-
-In development for **0.13.0**: typed visual signatures with an explicit local preview, and one-click placement
-on current/all/selected pages with fitted geometry, cancellation and one undo. These features are not included in
-the published 0.12.0 packages; validation and publication are tracked in [Project status](docs/PROJECT_STATUS.md).
+New in **0.13.0**: typed visual signatures with an explicit local preview, and one-click placement on
+current/all/selected pages with fitted geometry, atomic cancellation and one undo. Editable drop-down creation
+and consistent radio-button `/Opt` export values remain available from 0.12.0; see the [roadmap](docs/ROADMAP.md).
 
 ## Screenshots
 

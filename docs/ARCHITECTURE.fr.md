@@ -135,7 +135,7 @@ La validation est suivie dans `PROJECT_STATUS.fr.md` ; cette section décrit la 
   confiance, révocation ni horodatage fiable. UI `certificate.rs` et CLI `feature_cmd.rs` imposent une nouvelle copie
   pour signer et refusent les PDF chiffrés.
 
-## Parcours des signatures visuelles 0.13.0 (en développement)
+## Parcours des signatures visuelles 0.13.0 (publiée)
 
 `Engine::typed_signature` crée un PDF temporaire, réutilise `Document::add_text` et ses contrôles de
 police/glyphes existants, puis rend un PNG transparent borné via PDFium. `RenderSignature` s'exécute sur le
@@ -149,7 +149,8 @@ de bibliothèque PNG facultative et de placement.
 uniquement en cas de succès. Le worker conserve un seul instantané d'annulation pour le lot validé ; un échec
 préserve document et journal. La sélection Organiser est capturée à l'ouverture de la boîte ; un changement
 structurel des pages abandonne la boîte ou les cibles capturées. CLI `add-image --pages` appelle la même méthode
-de lot ; `--page` conserve son placement historique. Validation dans `PROJECT_STATUS.fr.md` (D102–D103).
+de lot ; `--page` conserve son placement historique. Contrôles locaux, CI, paquets/publics et mises à niveau réussis ;
+preuves exécutées et limites matérielles/interactives dans `PROJECT_STATUS.fr.md` (D102–D103).
 
 ## Coordonnées (SUNI-031c)
 

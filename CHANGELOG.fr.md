@@ -5,9 +5,17 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
-## [0.13.0] — Non publiée
+## [0.13.0] — 2026-10-16
 
-Implémentation en cours de validation ; la 0.12.0 reste la release Latest publiée. Voir `docs/PROJECT_STATUS.fr.md`.
+[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) sous `lmdanavanem`, release
+`414763678`, avec six fichiers vérifiés dans `dist/`. Source : `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`.
+Validation réussie : 410 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 870 clés EN/FR,
+53 contrôles qpdf et quatre documents NIST/NBS licenciés (744 pages ; 76,40 s localement). [CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818813)
+et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38877818501/job/116897016513)
+réussis, ainsi que onze scénarios portables et cinq bases MSI. Six fichiers préparés/publics et contrôles renforcés
+des binaires réussis, dont lots de signatures non chiffrés/protégés, les deux mots de passe, qpdf et préservation de
+la source. L'updater de production a vérifié le ZIP Latest x64 de 19 730 578 octets sans installation.
+Preuves et limites : `docs/PROJECT_STATUS.fr.md`.
 
 ### Ajouts
 - **Saisir** une signature visuelle ou un paraphe, choisir une police standard/TrueType système et une encre
@@ -31,7 +39,7 @@ natifs et lecteurs tiers demandent des vérifications séparées ; les paquets d
 
 ## [0.12.0] — 2026-10-16
 
-[Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem`, release
+[Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) sous `lmdanavanem` (Latest à cette date), release
 `414674886`, avec six fichiers vérifiés dans `dist/`. Source : `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`.
 Validation réussie : 398 tests workspace (zéro échec, sept ignorés par défaut), formatage/Clippy, 859 clés EN/FR,
 48 contrôles qpdf, quatre documents NIST/NBS (744 pages ; 59,68 s), CI Windows et compilation ARM64 de même source.
