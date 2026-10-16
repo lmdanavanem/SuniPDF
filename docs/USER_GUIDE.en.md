@@ -119,12 +119,22 @@ comment. **Advanced annotations**, real PDF annotations (not page content: other
 
 An annotation created by SuniPDF can be resized and restyled ("Apply to annotation" button: the bar's colours are
 applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can
-also be recoloured) but is never rewritten, so nothing of its fidelity is lost. A locked annotation cannot be changed.
+also be recoloured). A locked annotation cannot be changed.
 
 **Clickable links.** With the reading cursor, the pointer turns into a hand over a link. An internal link takes you
 to the page; an external link first opens a **confirmation dialog that shows the full address** (Open in browser,
 Copy address, Cancel): nothing opens without your agreement, and only `http`, `https` and `mailto` addresses are
 accepted. Actions that launch a program or a script are never run.
+
+**Edit an existing target — 0.15.0 in development.** Use **Select an annotation** (A), select the link and choose
+**Edit target**, or double-click it. Choose an `http`, `https` or `mailto` address, or a physical page number.
+An existing resolved named/XYZ destination prefills its page. Replacing a page target fits the whole page;
+the old detailed position/zoom is not retained, as the dialog explains. An unsupported destination starts with
+an empty address, so enter a valid destination explicitly. **Replace destination** keeps the link's area,
+appearance, name, comments and replies. Read-only/locked/locked-content links cannot be edited; malformed flags
+are refused too. Cancel/Esc keeps the original target. One Ctrl+Z undoes the change; save explicitly to keep it.
+Other edits or tab switches close the pending dialog so it cannot use a stale annotation index. Existing signed-PDF
+rewrite warnings still apply. Validation is ongoing; these additions are absent from the published 0.14.0 packages.
 
 The **Comments** panel (F7) groups the page's annotations into **threads**: author, date, text, review status (None,
 Accepted, Rejected, Cancelled, Completed), indented replies. **Reply** adds a reply with no icon on the page, the
@@ -509,6 +519,18 @@ sunipdf-cli set-page-labels input.pdf --from 1 --to 4 --style roman-lower --out 
 sunipdf-cli set-page-labels labelled.pdf --from 5 --style decimal --prefix "Appendix-" --start 1 --out appendix.pdf
 sunipdf-cli info appendix.pdf
 sunipdf-cli reset-page-labels appendix.pdf --out unlabelled.pdf
+```
+
+**0.15.0 in development:** `set-link-target` uses `--page` (default physical page 1) and required `--index`
+(zero-based annotation index from `annotations`). Supply exactly one of `--goto-page N` or `--url ADDRESS`,
+plus `--out` and optional `--password`. A page target uses whole-page Fit; safe addresses are limited to `http`,
+`https` and `mailto`. Existing output guards apply, and invalid input leaves the existing output unchanged,
+including with `--overwrite`. The original link's rectangle/style/comments and document protection are retained.
+
+```powershell
+sunipdf-cli annotations input.pdf --page 1
+sunipdf-cli set-link-target input.pdf --page 1 --index 0 --url "https://example.org/updated" --out updated-link.pdf
+sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --out page-link.pdf
 ```
 
 Commands added in 0.9.0:

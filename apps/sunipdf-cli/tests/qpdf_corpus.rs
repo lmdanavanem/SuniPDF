@@ -212,6 +212,13 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     command.args(["--degrees", "90", "--out"]).arg(&edited);
     success(command);
     check(&qpdf, &edited, None);
+    let retargeted = temp.path().join("retargeted-link.pdf");
+    let mut command = cli(&["set-link-target"], &[&fixture("annotated.pdf")]);
+    command
+        .args(["--index", "7", "--goto-page", "2", "--out"])
+        .arg(&retargeted);
+    assert_eq!(success(command)["link"], serde_json::json!({"page":2}));
+    check(&qpdf, &retargeted, None);
     for (name, aes128) in [("aes256.pdf", false), ("aes128.pdf", true)] {
         let encrypted = temp.path().join(name);
         let mut command = cli(&["protect"], &[&edited]);
@@ -238,6 +245,55 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
+        let encrypted_links = temp.path().join(format!("{name}-links.pdf"));
+        let mut command = cli(&["protect"], &[&fixture("annotated.pdf")]);
+        command
+            .args([
+                "--user-password",
+                "package-user",
+                "--owner-password",
+                "package-owner",
+                "--no-copy",
+                "--no-print",
+                "--out",
+            ])
+            .arg(&encrypted_links);
+        if aes128 {
+            command.arg("--aes128");
+        }
+        success(command);
+        let links_source_bytes = std::fs::read(&encrypted_links).unwrap();
+        let retargeted = temp.path().join(format!("{name}-retargeted-link.pdf"));
+        let mut command = cli(&["set-link-target"], &[&encrypted_links]);
+        command
+            .args([
+                "--password",
+                "package-owner",
+                "--index",
+                "7",
+                "--url",
+                "https://example.org/revised",
+                "--out",
+            ])
+            .arg(&retargeted);
+        assert_eq!(
+            success(command)["link"],
+            serde_json::json!({"uri":"https://example.org/revised"})
+        );
+        for password in ["package-user", "package-owner"] {
+            check(&qpdf, &retargeted, Some(password));
+            let annotations = success(cli(
+                &["annotations", "--password", password],
+                &[&retargeted],
+            ));
+            assert_eq!(
+                annotations["pages"][0]["annotations"][7]["link"]["uri"],
+                "https://example.org/revised"
+            );
+            let properties = success(cli(&["properties", "--password", password], &[&retargeted]));
+            assert_eq!(properties["permissions"], opened["permissions"]);
+        }
+        assert_eq!(std::fs::read(&encrypted_links).unwrap(), links_source_bytes);
         let encrypted_bytes = std::fs::read(&encrypted).unwrap();
         let labelled = temp.path().join(format!("{name}-authored-labels.pdf"));
         let mut command = cli(&["set-page-labels"], &[&encrypted]);

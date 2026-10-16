@@ -1,9 +1,28 @@
-# État du projet — mis à jour le 2026-10-16 (version 0.14.0)
+# État du projet — mis à jour le 2026-10-16 (version 0.15.0 en d?veloppement)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.15.0 : modification des destinations de liens existants (en d?veloppement)
+
+Cette source ajoute `set-link-target` et une action Modifier la destination pour les liens existants. Les adresses
+HTTP/HTTPS/mailto s?res et les destinations de page enti?re remplacent `/A`, `/Dest` et `/AA`, en conservant
+l'indice, le rectangle, l'apparence, les commentaires/r?ponses et les propri?t?s sans rapport. Les destinations
+nomm?es/d?taill?es sont r?solues pour le pr?remplissage si disponibles ; le dialogue explique leur remplacement
+par une destination de page enti?re. Les flags en lecture seule, verrouill?s, au contenu verrouill? ou malform?s
+sont refus?s, y compris les flags indirects.
+
+Le bureau r?utilise son dialogue de lien, propose un seul Annuler/R?tablir pr?servant la g?om?trie et ferme les
+dialogues p?rim?s apr?s modification ou changement d'onglet. L'anglais reste la langue par d?faut, le fran?ais
+reste disponible ; aucune d?pendance ajout?e. La source compte 53 commandes CLI ; la 0.14.0 publi?e en compte 52.
+La 0.14.0 reste stable Latest jusqu'? validation de tous les nouveaux contr?les.
+
+Validation locale r?ussie : 429 tests du workspace, aucun ?chec, sept ignor?s par d?faut ; formatage, Clippy sans avertissement, 894 cl?s EN/FR concordantes, 68 contr?les qpdf ind?pendants et quatre documents NIST/NBS sous licence (744 pages ; 48,90 secondes). CI, paquets et publication restent ? valider. Les nouvelles r?gressions de mise ? jour incluent le ZIP portable et le MSI
+0.14.0 v?rifi?s. Les tests natifs/sans fen?tre couvrent les destinations, la protection, les m?tadonn?es, les entr?es
+invalides et la pr?servation des sources ; leurs r?sultats observ?s et les preuves de publication seront consign?s
+avant toute annonce d'ach?vement.
 
 ## 0.14.0 : création d'étiquettes de page et historique (publiée en Latest)
 

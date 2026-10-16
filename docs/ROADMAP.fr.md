@@ -114,6 +114,15 @@ CI Windows, compilation ARM64 de même source, douze scénarios portables, six b
 avec contrôles renforcés réussis. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64
 de 19 785 200 octets sans installation. Preuves exécutées et limites restantes : `PROJECT_STATUS.fr.md`.
 
+## 0.15.0 : modifier les destinations de liens existants (en développement)
+
+Réutiliser boîte de lien et writer protégé pour changer une destination via Modifier la destination, double-clic
+ou CLI `set-link-target`. URI web/mail autorisée ou page physique Fit remplace tous les anciens champs de cible/
+actions, en conservant zone/style/commentaires/réponses et données indépendantes. Vue détaillée/nommée explicitement
+remplacée par Fit ; une cible inconnue ne devient jamais silencieusement page 1. ReadOnly/Locked/LockedContents
+et drapeaux malformés refusés ; un Annuler conserve géométrie/navigation, boîtes périmées fermées au changement
+de document (D106). Validation/publication en cours ; la 0.14.0 reste Latest. Voir `PROJECT_STATUS.fr.md`.
+
 ## Phases 0–1 : planification et fondations — livrées
 
 Workspace Rust, PDFium, erreurs typées, ouverture/navigation/zoom/fermeture, mots de passe, glisser-déposer,
@@ -139,6 +148,7 @@ création de champs texte/case et sauvegarde/récupération.
 Livrés en 0.10.0 : transformations groupées, recadrage souris, champs radio/listes, échanges FDF/XFDF de valeurs et clavier.
 Livrés en 0.12.0 : création de listes modifiables et exports radio `/Opt`, avec lecture seule conservatrice si nécessaire.
 Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page courante/toutes/sélection.
+En développement pour 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
 Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 

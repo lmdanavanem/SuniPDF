@@ -141,6 +141,16 @@ Preuves et limites dans `PROJECT_STATUS.fr.md` ; source/paquets 0.10.0 publiés 
   inchangés. Copies vérifiées dans `dist/` ; l'updater de production a vérifié le ZIP Latest x64 de 19 785 200 octets
   sans installation. Preuves exécutées et limites restantes dans `PROJECT_STATUS.fr.md` (D104–D105).
 
+## 0.15.0 : modifier les destinations de liens existants (en développement)
+
+- Réutiliser la boîte de lien via Modifier la destination/double-clic, préremplir les destinations nommées/XYZ
+  résolues et remplacer explicitement les vues de page par Fit. Cible inconnue : adresse vide, jamais page 1 implicite.
+- Moteur/UI/CLI acceptent `http`/`https`/`mailto` ou une page physique, remplacent ensemble champs de cible/actions
+  additionnelles et conservent zone/style/noms/commentaires/réponses, données indépendantes et protection (D106).
+- Respecter ReadOnly/Locked/LockedContents directs/indirects ; drapeaux malformés : édition refusée. Un Annuler conserve
+  géométrie/navigation. Éditions/changements d'onglet abandonnent les boîtes périmées ; protections CLI existantes conservées.
+- Validation/publication en cours ; la 0.14.0 reste Latest. Preuves exécutées dans `PROJECT_STATUS.fr.md`.
+
 ## Travail restant au-delà de ces lots
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
@@ -259,7 +269,7 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
   l'enregistrement et à la fermeture ; gomme ;
 - polygone, polyligne, nuage, tampon, pièce jointe, bordure pointillée, texte libre riche (gras, italique, CJK : police
   incorporée) ;
-- modifier la cible d'un lien existant ; lecture des destinations nommées et `/XYZ` implémentée dans le lot 0.11.0 ci-dessus ;
+- création de vues de destination détaillées au-delà de Fit ; remplacement de cible suivi dans le lot 0.15.0 (D106) ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - zone de texte posée directement sur la page (éditeur en place, comme l'outil Texte) au lieu d'une boîte de dialogue.
 

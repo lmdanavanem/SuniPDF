@@ -69,6 +69,7 @@ impl SuniApp {
         // survivre à un changement de document (Suppr agirait sur l'autre onglet).
         self.edit.reset_for_tab();
         self.pagesetup.close_labels();
+        self.annotate.adv.link = None;
         // Le placement d'une signature vise une page du document actif : il ne survit pas.
         self.cancel_placing();
         self.annotate.clear_reading();

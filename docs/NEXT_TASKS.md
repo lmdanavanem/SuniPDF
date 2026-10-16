@@ -140,6 +140,16 @@ and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 sourc
   Verified copies are in `dist/`; the production updater verified the 19,785,200-byte Latest x64 ZIP without
   installation. Executed evidence and remaining limits are in `PROJECT_STATUS.md` (D104–D105).
 
+## 0.15.0: editing existing link targets (in development)
+
+- Reuse the link dialog through Edit target/double-click, prefill resolved named/XYZ destinations and explicitly
+  replace page views with whole-page Fit. Unsupported targets start as an empty address, never implicit page 1.
+- Core/UI/CLI accept safe `http`/`https`/`mailto` or a physical page, replace all target/additional-action fields
+  together and retain area/style/names/comments/replies, unrelated data and protection (D106).
+- Respect direct/indirect ReadOnly/Locked/LockedContents flags; malformed flags refuse editing. One undo preserves
+  geometry/navigation. Edits/tab switches discard stale dialogs. CLI `set-link-target` keeps existing output guards.
+- Validation and publication are pending; 0.14.0 remains Latest. Executed evidence belongs in `PROJECT_STATUS.md`.
+
 ## Remaining work beyond these lots
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
@@ -256,7 +266,7 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 - grouping of ink strokes (one annotation for N strokes, committed on idle) with guaranteed write at save and close
   time; eraser;
 - polygon, polyline, cloud, stamp, attachment, dashed border, rich free text (bold, italic, CJK: embedded font);
-- change the target of an existing link; named destinations and `/XYZ` reading are implemented in the 0.11.0 lot above;
+- richer destination-view authoring beyond whole-page Fit; existing-link replacement is tracked in the 0.15.0 lot (D106);
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - free text placed directly on the page (in-place editor, like the Text tool) instead of a dialog.
 

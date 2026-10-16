@@ -310,6 +310,11 @@ pub enum EditOp {
         rect: PointRect,
         target: LinkTarget,
     },
+    SetLinkTarget {
+        page: usize,
+        index: usize,
+        target: LinkTarget,
+    },
     MoveAnnotation {
         page: usize,
         index: usize,
@@ -1147,6 +1152,11 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         EditOp::AddLink { page, rect, target } => {
             doc.add_link_annotation(page, rect, &target).map(|_| ())
         }
+        EditOp::SetLinkTarget {
+            page,
+            index,
+            target,
+        } => doc.set_link_target(page, index, &target),
         EditOp::MoveAnnotation {
             page,
             index,
@@ -2088,6 +2098,7 @@ mod tests {
             ));
         }
         page_label_edits_and_history_keep_page_geometry(&worker);
+        link_target_edits_have_one_undo_and_preserve_geometry(&worker);
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
@@ -2105,6 +2116,71 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn link_target_edits_have_one_undo_and_preserve_geometry(worker: &Worker) {
+        let changed = || match next_response(worker) {
+            Response::DocumentChanged(state) => {
+                assert!(state.pages_unchanged && state.modified && state.can_undo);
+                state.info.page_sizes
+            }
+            _ => panic!("link target document state"),
+        };
+        let before = LinkTarget::Uri("https://example.org/original".into());
+        worker.send(Request::Edit(EditOp::AddLink {
+            page: 0,
+            rect: PointRect {
+                left: 50.0,
+                bottom: 100.0,
+                right: 150.0,
+                top: 125.0,
+            },
+            target: before.clone(),
+        }));
+        let sizes = changed();
+        let link = || {
+            worker.send(Request::Links { page: 0 });
+            match next_response(worker) {
+                Response::Links { list, .. } => list.into_iter().last().expect("link"),
+                _ => panic!("link response"),
+            }
+        };
+        let original = link();
+        assert_eq!(original.target, before);
+        worker.send(Request::Edit(EditOp::SetLinkTarget {
+            page: 0,
+            index: original.index,
+            target: LinkTarget::Page(1),
+        }));
+        assert_eq!(changed(), sizes);
+        assert_eq!(link().target, LinkTarget::Page(1));
+        worker.send(Request::Undo);
+        assert_eq!(changed(), sizes);
+        assert_eq!(link().target, before);
+        worker.send(Request::Redo);
+        assert_eq!(changed(), sizes);
+        let updated = link();
+        assert_eq!(updated.target, LinkTarget::Page(1));
+        assert_eq!(updated.rect, original.rect);
+        worker.send(Request::Edit(EditOp::SetLinkTarget {
+            page: 0,
+            index: original.index,
+            target: LinkTarget::Uri("javascript:alert(1)".into()),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(link().target, LinkTarget::Page(1));
+        worker.send(Request::Undo);
+        changed();
+        assert_eq!(link().target, before);
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
     }
 
     fn page_label_edits_and_history_keep_page_geometry(worker: &Worker) {

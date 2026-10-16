@@ -37,8 +37,9 @@ function PreviousPackages([string]$Workspace) {
         '0.11.0' = '6A08A518619D89D450332F8AE1BA31FB336C3DF88910D5471183B25C173B2421'
         '0.12.0' = 'AD1ECB72A999F1A43602E58AD2634F9E80FD7925C90A90B9AD25FB9B6BDC1B83'
         '0.13.0' = 'B5CC0CBAB1A1ABE4CFF346093A984760ECE458C2986CBF650C6EC3769C2A3FDD'
+        '0.14.0' = '9A2A085FDCC0E30852A2F72755705CB42EE2F5C866EF9A4E00ADCEEA9C6D6960'
     }
-    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0')) {
+    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0')) {
         if ([version]$version -ge [version]$incoming.version) { continue }
         $name = "SuniPDF-$version-win-x64-portable.zip"
         $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content

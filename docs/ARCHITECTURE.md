@@ -167,6 +167,20 @@ travels through Undo/Redo, preserving viewport/history for label/content edits w
 invalidate page geometry (D105). Labels remain positional after structural operations. Local, CI, package/public,
 upgrade and production updater checks passed; executed evidence and remaining limits are in `PROJECT_STATUS.md`.
 
+## 0.15.0 existing-link targets (in development)
+
+`Document::set_link_target` reuses the annotation writer and protected full rewrite. It verifies the selected
+annotation is a Link, resolves direct/indirect `F` flags and refuses ReadOnly/Locked/LockedContents or malformed
+flags. The shared target writer accepts an allow-listed URI or a physical page with `/Fit`, replaces `A`/`Dest`/`AA`
+together and keeps the remaining annotation dictionary, geometry and unrelated document data (D106).
+
+Desktop `annot_adv.rs` reuses its link dialog for a selected annotation's Edit target/double-click action.
+PDFium-resolved destinations supply the initial page; unsupported targets begin as an empty address. The dialog
+explains that page replacement uses whole-page Fit. Edits/tab changes discard stale prompts; the worker makes
+one ordinary geometry-preserving undoable edit. CLI `set-link-target` uses the same API and existing output guard.
+Validation is pending; executed results belong in `PROJECT_STATUS.md`. External navigation confirmation and
+signed-document rewrite warnings remain unchanged.
+
 ## Coordinates (SUNI-031c)
 
 Every coordinate crossing the engine ↔ interface/CLI boundary is in **display space**: points,

@@ -757,6 +757,29 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Change an existing link's target without replacing its annotation or appearance.
+    SetLinkTarget {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// Zero-based annotation index (as reported by annotations).
+        #[arg(long)]
+        index: usize,
+        /// Link to a page (1-based).
+        #[arg(long, conflicts_with = "url", required_unless_present = "url")]
+        goto_page: Option<usize>,
+        /// Link to an http, https or mailto address; anything else is refused.
+        #[arg(
+            long,
+            conflicts_with = "goto_page",
+            required_unless_present = "goto_page"
+        )]
+        url: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Delete an annotation by index; --thread also deletes its replies and review states.
     AnnotationDelete {
         file: PathBuf,
@@ -1934,6 +1957,35 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "annotation_count": doc.annotations(p)?.len(),
             }))
         }
+        Command::SetLinkTarget {
+            file,
+            page,
+            index,
+            goto_page,
+            url,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let target = match (goto_page, url) {
+                (Some(n), None) => {
+                    sunipdf_core::LinkTarget::Page(n.checked_sub(1).ok_or_else(page_zero)?)
+                }
+                (None, Some(uri)) => sunipdf_core::LinkTarget::Uri(uri.trim().to_owned()),
+                _ => {
+                    return Err(EngineError::Other(
+                        "a link needs --goto-page or --url".into(),
+                    ))
+                }
+            };
+            doc.set_link_target(p, index, &target)?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({
+                "out": out, "page": page, "index": index,
+                "link": annot_cmd::link_json(&target),
+            }))
+        }
         Command::AnnotationDelete {
             file,
             page,
@@ -2106,6 +2158,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::FormExport { out, .. }
         | Command::Flatten { out, .. }
         | Command::Annotate { out, .. }
+        | Command::SetLinkTarget { out, .. }
         | Command::AnnotationDelete { out, .. }
         | Command::Reply { out, .. }
         | Command::ReviewState { out, .. }
@@ -2289,6 +2342,99 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn link_target_command_requires_one_target_and_guards_output() {
+        let parsed = parse_cli([
+            "sunipdf-cli",
+            "set-link-target",
+            "input.pdf",
+            "--index",
+            "7",
+            "--goto-page",
+            "2",
+            "--out",
+            "output.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&parsed.command),
+            Some(std::path::Path::new("output.pdf"))
+        );
+        assert!(matches!(
+            parsed.command,
+            Command::SetLinkTarget {
+                page: 1,
+                index: 7,
+                goto_page: Some(2),
+                url: None,
+                ..
+            }
+        ));
+        let parsed = parse_cli([
+            "sunipdf-cli",
+            "set-link-target",
+            "input.pdf",
+            "--page",
+            "2",
+            "--index",
+            "0",
+            "--url",
+            "https://example.org",
+            "--out",
+            "output.pdf",
+            "--password",
+            "secret",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(parsed.overwrite);
+        assert!(matches!(
+            parsed.command,
+            Command::SetLinkTarget {
+                page: 2,
+                index: 0,
+                goto_page: None,
+                url: Some(_),
+                password: Some(_),
+                ..
+            }
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-link-target",
+            "input.pdf",
+            "--index",
+            "7",
+            "--out",
+            "output.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-link-target",
+            "input.pdf",
+            "--index",
+            "7",
+            "--goto-page",
+            "2",
+            "--url",
+            "https://example.org",
+            "--out",
+            "output.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-link-target",
+            "input.pdf",
+            "--url",
+            "https://example.org",
+            "--out",
+            "output.pdf",
+        ])
+        .is_err());
     }
 
     #[test]

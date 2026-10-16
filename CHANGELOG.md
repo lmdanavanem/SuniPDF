@@ -5,6 +5,29 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
 
+## [0.15.0] - Unreleased
+
+Implementation validation is ongoing; 0.14.0 remains the published Latest. Executed results belong in
+`docs/PROJECT_STATUS.md`; no 0.15.0 package or publication result is claimed here.
+
+### Added
+- Edit an existing link through **Edit target** or double-click with annotation selection. The reused dialog
+  accepts `http`, `https`, `mailto` or a physical page. Resolved named/XYZ destinations prefill their page;
+  replacement explicitly uses whole-page Fit rather than preserving detailed position/zoom. Unsupported targets
+  start with an empty address and cannot silently become page 1.
+- CLI `set-link-target --page 1 --index 0 --goto-page N` or `--url ADDRESS`, with exactly one destination,
+  `--out` and optional `--password`, reuses the existing output guard. Page indices are physical and one-based;
+  annotation indices are zero-based, as returned by `annotations`.
+
+### Fixed
+- Replace the link's `A`, `Dest` and `AA` action fields together, keeping its rectangle/style, names, comments,
+  replies, unrelated annotations/forms/content and source protection. ReadOnly, Locked, LockedContents or
+  malformed flags refuse the edit, including indirect flags. One Undo restores the change without losing page
+  geometry/navigation; edits and tab switches discard stale dialogs.
+
+No new dependency. Existing external-address confirmation and signed-document rewrite warnings remain.
+Native interactive, hardware and third-party-reader checks are separate; packages remain unsigned.
+
 ## [0.14.0] - 2026-10-16
 
 [Published as Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem`, release

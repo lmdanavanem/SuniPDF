@@ -238,9 +238,14 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     costs a full snapshot + lopdf + reload round trip: imperceptible on an ordinary PDF, about a second on a file of
     tens of MB; **reply threads and statuses** written according to ISO 32000-1 but **never tested in Acrobat, Foxit
     or Chrome** (replies without icon: empty appearance + `F 4`), no "Marked" state model; **detailed reading** of
-    annotations (panel, selection) is requested on demand, per page, and re-reads the whole document; an existing
-    link does not change target (delete then recreate), named destinations are not resolved, `/XYZ` destination
-    reduced to the page, Launch / JavaScript / GoToR actions are never executed; **resizing and styling reserved for
+    annotations (panel, selection) is requested on demand, per page, and re-reads the whole document. Named/XYZ
+    navigation is delivered in 0.11.0 (A49). **0.15.0 in development** adds existing-link target replacement via
+    UI/CLI (D106): a safe URI or physical-page Fit, explicitly replacing detailed views. Area/style/names/comments,
+    replies and unrelated document data remain; `A`/`Dest`/`AA` are replaced together. ReadOnly (64), Locked (128),
+    LockedContents (512), negative/malformed or unreadable indirect flags refuse editing. Unsupported targets
+    prefill an empty address, not page 1. One Undo preserves geometry/navigation; edits and tab switches close
+    stale dialogs. Validation pending in `PROJECT_STATUS.md`; 0.14.0 remains Latest. Launch / JavaScript / GoToR
+    actions are never executed; **resizing and styling reserved for
     SuniPDF's own annotations** (prefixed `/NM`): those from another producer can be moved, commented and deleted
     (highlights and notes can also be recoloured); no eraser, polygon, cloud, stamp, attachment, dashed border; caps:
     64 strokes of 4,000 points, width ≤ 50 pt, link area ≥ 6 pt; **verified in screenshots** (`dev-screenshot.ps1`): ink,

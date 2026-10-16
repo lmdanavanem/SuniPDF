@@ -5,6 +5,29 @@
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
 `release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
 
+## [0.15.0] — Non publiée
+
+Validation de l'implémentation en cours ; la 0.14.0 reste la Latest publiée. Résultats exécutés dans
+`docs/PROJECT_STATUS.fr.md` ; aucun résultat de paquet ou de publication 0.15.0 annoncé ici.
+
+### Ajouts
+- Modifier un lien existant via **Modifier la destination** ou double-clic avec la sélection d'annotations.
+  La boîte réutilisée accepte `http`, `https`, `mailto` ou une page physique. Les destinations nommées/XYZ résolues
+  préremplissent leur page ; le remplacement affiche explicitement la page entière (Fit), sans conserver
+  position/zoom détaillés. Une cible non prise en charge donne une adresse vide, jamais silencieusement la page 1.
+- CLI `set-link-target --page 1 --index 0 --goto-page N` ou `--url ADRESSE`, avec une seule destination,
+  `--out` et `--password` facultatif, réutilise la protection de sortie. Pages physiques à partir de 1 ; indices
+  d'annotations à partir de 0, comme retournés par `annotations`.
+
+### Corrections
+- Remplacer ensemble les champs d'action `A`, `Dest`, `AA`, en conservant rectangle/style, noms, commentaires,
+  réponses, autres annotations/formulaires/contenu et protection source. Drapeaux ReadOnly, Locked, LockedContents
+  ou malformés : édition refusée, même indirects. Un Annuler restaure le changement sans perdre géométrie/navigation ;
+  éditions et changements d'onglet abandonnent les boîtes périmées.
+
+Aucune nouvelle dépendance. Confirmation des adresses externes et avertissement de réécriture des documents
+signés conservés. Contrôles natifs interactifs, matériels et lecteurs tiers distincts ; paquets non signés.
+
 ## [0.14.0] — 2026-10-16
 
 [Publiée en Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) sous `lmdanavanem`, release

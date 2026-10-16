@@ -68,6 +68,7 @@ pub struct FreeTextPrompt {
 pub struct LinkPrompt {
     pub page: usize,
     pub rect: PointRect,
+    pub index: Option<usize>,
     pub to_page: bool,
     /// Numéro de page visé (base 1).
     pub page_number: usize,
@@ -114,6 +115,7 @@ pub struct AnnotAdvState {
 impl AnnotAdvState {
     /// Les caches désignent des indices du document actif : repris à zéro quand il change de main.
     pub fn invalidate(&mut self) {
+        self.link = None;
         self.details.clear();
         self.selected = None;
         self.reselect = None;
@@ -565,6 +567,7 @@ impl SuniApp {
                     self.annotate.adv.link = Some(LinkPrompt {
                         page: drag.page,
                         rect,
+                        index: None,
                         to_page: true,
                         page_number: (drag.page + 2).min(count),
                         url: String::new(),
@@ -655,15 +658,20 @@ impl SuniApp {
         }
     }
 
-    /// Double-clic avec l'outil de sélection : modifier le texte de l'annotation.
+    /// Double-clic avec l'outil de sélection : modifier le texte ou la destination du lien.
     pub fn adv_double_click(&mut self, page: usize, pt: (f32, f32)) {
         if self.annotate.tool != Tool::SelectAnnot {
             return;
         }
         let hit = hit_test(self.details_for(page), pt).cloned();
         if let Some(d) = hit {
+            let link = d.subtype == "Link";
             self.select_annot(page, d);
-            self.edit_selected_annot_text();
+            if link {
+                self.edit_selected_annot_link();
+            } else {
+                self.edit_selected_annot_text();
+            }
         }
     }
 
@@ -797,6 +805,37 @@ impl SuniApp {
         }
     }
 
+    fn edit_selected_annot_link(&mut self) {
+        let Some((page, detail)) = self.annotate.adv.selected.as_ref() else {
+            return;
+        };
+        if !detail.can_edit_link {
+            return;
+        }
+        let target = self
+            .annotate
+            .adv
+            .links
+            .iter()
+            .find(|link| self.annotate.adv.links_page == Some(*page) && link.index == detail.index)
+            .map(|link| &link.target)
+            .or(detail.link.as_ref());
+        let (to_page, page_number, url) = match target {
+            Some(LinkTarget::Page(page)) => (true, page + 1, String::new()),
+            Some(LinkTarget::Uri(url)) => (false, 1, url.clone()),
+            _ => (false, 1, String::new()),
+        };
+        self.annotate.adv.link = Some(LinkPrompt {
+            page: *page,
+            rect: detail.rect,
+            index: Some(detail.index),
+            to_page,
+            page_number,
+            url,
+            error: false,
+        });
+    }
+
     fn start_reply(&mut self, page: usize, parent: usize) {
         self.annotate.adv.thread = Some(ThreadPrompt {
             page,
@@ -872,7 +911,10 @@ impl SuniApp {
                 });
             }
         }
-        let wants_links = matches!(self.annotate.tool, Tool::Select | Tool::AddLink);
+        let wants_links = matches!(
+            self.annotate.tool,
+            Tool::Select | Tool::AddLink | Tool::SelectAnnot
+        );
         if let (true, Some(page)) = (wants_links, self.view.hover_page) {
             if self.annotate.adv.links_page != Some(page) {
                 self.annotate.adv.links_page = Some(page);
@@ -1132,6 +1174,7 @@ impl SuniApp {
         let mut apply = false;
         let mut reply = false;
         let mut edit_text = false;
+        let mut edit_link = false;
         let mut delete = false;
         let sel_detail = selected.as_ref().map(|(_, d)| d.clone());
         let size_range = 6.0..=96.0;
@@ -1267,6 +1310,14 @@ impl SuniApp {
                                     "bar.annot_edit_text",
                                     d.can_edit_text,
                                 );
+                                if d.subtype == "Link" {
+                                    edit_link = ui
+                                        .add_enabled(
+                                            d.can_edit_link,
+                                            Button::new(tr(lang, "bar.annot_edit_link")),
+                                        )
+                                        .clicked();
+                                }
                                 delete = icon_button(
                                     ui,
                                     glyph::DELETE,
@@ -1302,6 +1353,9 @@ impl SuniApp {
             }
             if edit_text {
                 self.edit_selected_annot_text();
+            }
+            if edit_link {
+                self.edit_selected_annot_link();
             }
             if delete {
                 self.delete_selected_annot();
@@ -1458,15 +1512,30 @@ impl SuniApp {
         let Some(prompt) = self.annotate.adv.link.as_mut() else {
             return;
         };
+        let editing = prompt.index.is_some();
         let mut submit = false;
         let mut cancel = false;
         let spec = crate::dialog::Spec::new(
             "link",
-            tr(lang, "dialog.link.title"),
+            tr(
+                lang,
+                if editing {
+                    "dialog.link.title_edit"
+                } else {
+                    "dialog.link.title"
+                },
+            ),
             self.settings.dark_theme,
             self.has_icons,
         )
-        .subtitle(tr(lang, "dialog.link.subtitle"))
+        .subtitle(tr(
+            lang,
+            if editing {
+                "dialog.link.subtitle_edit"
+            } else {
+                "dialog.link.subtitle"
+            },
+        ))
         .icon(glyph::GLOBE, "🔗")
         .width(460.0);
         crate::dialog::show(
@@ -1509,8 +1578,17 @@ impl SuniApp {
                 }
             },
             |ui| {
-                if crate::dialog::primary(ui, tr(lang, "dialog.link.ok"))
-                    || ui.input(|i| i.key_pressed(Key::Enter))
+                if crate::dialog::primary(
+                    ui,
+                    tr(
+                        lang,
+                        if editing {
+                            "dialog.link.ok_edit"
+                        } else {
+                            "dialog.link.ok"
+                        },
+                    ),
+                ) || ui.input(|i| i.key_pressed(Key::Enter))
                 {
                     submit = true;
                 }
@@ -1526,7 +1604,10 @@ impl SuniApp {
                 return;
             };
             let target = if p.to_page {
-                LinkTarget::Page(p.page_number.clamp(1, count) - 1)
+                if !(1..=count).contains(&p.page_number) {
+                    return;
+                }
+                LinkTarget::Page(p.page_number - 1)
             } else if is_safe_external_uri(&p.url) {
                 LinkTarget::Uri(p.url.trim().to_string())
             } else {
@@ -1536,13 +1617,24 @@ impl SuniApp {
                 return;
             };
             self.annotate.adv.link = None;
-            // Les zones de lien en cache sont périmées : relues après l'ajout.
+            // Les zones de lien en cache sont périmées : relues après la modification.
             self.annotate.adv.links_page = None;
-            self.worker.send(Request::Edit(EditOp::AddLink {
-                page: p.page,
-                rect: p.rect,
-                target,
-            }));
+            let op = match p.index {
+                Some(index) => {
+                    self.annotate.adv.reselect = Some((p.page, index));
+                    EditOp::SetLinkTarget {
+                        page: p.page,
+                        index,
+                        target,
+                    }
+                }
+                None => EditOp::AddLink {
+                    page: p.page,
+                    rect: p.rect,
+                    target,
+                },
+            };
+            self.worker.send(Request::Edit(op));
         } else if cancel {
             self.annotate.adv.link = None;
         }
@@ -2051,6 +2143,7 @@ mod tests {
             can_resize: true,
             can_restyle: true,
             can_edit_text: true,
+            can_edit_link: false,
             replies: 0,
         }
     }
@@ -2061,6 +2154,243 @@ mod tests {
             bottom: b,
             right: rt,
             top: t,
+        }
+    }
+
+    fn editable_link() -> AnnotDetail {
+        let mut link = detail(2, "Link", r(10.0, 10.0, 100.0, 30.0));
+        link.link = Some(LinkTarget::Uri("https://example.org/old".into()));
+        link.can_edit_text = false;
+        link.can_edit_link = true;
+        link.can_restyle = false;
+        link
+    }
+
+    fn link_frame(
+        app: &mut SuniApp,
+        ctx: &egui::Context,
+        events: Vec<egui::Event>,
+    ) -> egui::FullOutput {
+        let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 780.0));
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(bounds),
+                events,
+                ..Default::default()
+            },
+            |_| {
+                app.annot_bar(ctx, bounds);
+                app.link_dialog(ctx);
+            },
+        );
+        output.textures_delta.clear();
+        output
+    }
+
+    fn click_link_control(app: &mut SuniApp, ctx: &egui::Context, key: &str) {
+        let mut target = None;
+        for _ in 0..2 {
+            let output = link_frame(app, ctx, vec![]);
+            if let Some(tree) = output.platform_output.accesskit_update {
+                if let Some(bounds) = tree
+                    .nodes
+                    .iter()
+                    .map(|(_, node)| node)
+                    .find(|node| node.label() == Some(app.t(key)))
+                    .and_then(|node| node.bounds())
+                {
+                    assert!(bounds.x0 >= 0.0 && bounds.x1 <= 1280.0 && bounds.y1 <= 780.0);
+                    target = Some(egui::pos2(
+                        ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                        ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                    ));
+                }
+            }
+        }
+        let pos = target.expect("visible accessible link control");
+        for pressed in [true, false] {
+            link_frame(
+                app,
+                ctx,
+                vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+        }
+    }
+
+    #[test]
+    fn link_target_buttons_prefill_and_replace_once_in_both_languages() {
+        for language in Language::ALL {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            app.annotate.tool = Tool::SelectAnnot;
+            app.select_annot(0, editable_link());
+            click_link_control(&mut app, &ctx, "bar.annot_edit_link");
+            assert!(app.dialog_open() && requests.try_recv().is_err());
+            let prompt = app.annotate.adv.link.as_mut().unwrap();
+            assert_eq!(prompt.index, Some(2));
+            assert_eq!(prompt.url, "https://example.org/old");
+            assert!(!prompt.to_page);
+            prompt.url = "https://example.org/new?source=pdf".into();
+            click_link_control(&mut app, &ctx, "dialog.link.ok_edit");
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::Edit(EditOp::SetLinkTarget { page: 0, index: 2, target: LinkTarget::Uri(url) })
+                    if url == "https://example.org/new?source=pdf"
+            ));
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+            app.worker.finish_mutation();
+            assert!(requests.try_recv().is_err());
+            assert!(app.annotate.adv.link.is_none() && app.annotate.adv.links_page.is_none());
+            assert_eq!(app.annotate.adv.reselect, Some((0, 2)));
+            assert!(app.annotate.adv.url_confirm.is_none());
+            assert!(
+                !app.dirty && !app.can_undo,
+                "only the worker commits the edit"
+            );
+            let mut updated = editable_link();
+            updated.link = Some(LinkTarget::Uri("https://example.org/new?source=pdf".into()));
+            app.annotate.annotations_page = Some(0);
+            app.on_annotations(0, vec![], Some(vec![updated.clone()]));
+            assert_eq!(app.annotate.adv.selected.unwrap().1.link, updated.link);
+            assert!(app.annotate.adv.reselect.is_none());
+        }
+    }
+
+    #[test]
+    fn link_target_dialog_rejects_unsafe_or_unknown_destinations_and_cancel_keeps_original() {
+        for language in Language::ALL {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            app.annotate.tool = Tool::SelectAnnot;
+            app.select_annot(0, editable_link());
+            click_link_control(&mut app, &ctx, "bar.annot_edit_link");
+            for url in ["javascript:alert(1)", "file:///C:/secret.pdf", ""] {
+                app.annotate.adv.link.as_mut().unwrap().url = url.into();
+                click_link_control(&mut app, &ctx, "dialog.link.ok_edit");
+                assert!(app.annotate.adv.link.as_ref().unwrap().error);
+                assert!(requests.try_recv().is_err() && app.annotate.adv.url_confirm.is_none());
+            }
+            click_link_control(&mut app, &ctx, "dialog.password.cancel");
+            assert!(app.annotate.adv.link.is_none() && requests.try_recv().is_err());
+            assert_eq!(
+                app.annotate.adv.selected.as_ref().unwrap().1.link,
+                editable_link().link
+            );
+            let mut unsupported = editable_link();
+            unsupported.link = Some(LinkTarget::Unsupported);
+            app.select_annot(0, unsupported);
+            click_link_control(&mut app, &ctx, "bar.annot_edit_link");
+            let prompt = app.annotate.adv.link.as_ref().unwrap();
+            assert!(!prompt.to_page && prompt.url.is_empty());
+            click_link_control(&mut app, &ctx, "dialog.link.ok_edit");
+            assert!(requests.try_recv().is_err());
+            click_link_control(&mut app, &ctx, "dialog.link.kind_page");
+            click_link_control(&mut app, &ctx, "dialog.link.ok_edit");
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::Edit(EditOp::SetLinkTarget {
+                    page: 0,
+                    index: 2,
+                    target: LinkTarget::Page(0)
+                })
+            ));
+            assert!(matches!(
+                requests.try_recv().unwrap(),
+                Request::FinishMutation
+            ));
+        }
+    }
+
+    #[test]
+    fn link_target_locked_controls_and_double_click_cannot_open_editor() {
+        for language in Language::ALL {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            app.annotate.tool = Tool::SelectAnnot;
+            let mut locked = editable_link();
+            locked.can_edit_link = false;
+            app.select_annot(0, locked.clone());
+            click_link_control(&mut app, &ctx, "bar.annot_edit_link");
+            assert!(app.annotate.adv.link.is_none() && requests.try_recv().is_err());
+            app.annotate.annotations_page = Some(0);
+            app.annotate.adv.details = vec![locked];
+            app.adv_double_click(0, (50.0, 20.0));
+            assert!(app.annotate.adv.link.is_none() && requests.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn link_target_uses_resolved_destination_and_discards_stale_dialogs() {
+        use crate::worker::{DocState, Response};
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.annotate.tool = Tool::SelectAnnot;
+        let doc = app.document.as_mut().unwrap();
+        doc.info.page_sizes = vec![doc.info.page_sizes[0]; 5];
+        let mut named = editable_link();
+        named.link = Some(LinkTarget::Unsupported);
+        app.annotate.annotations_page = Some(0);
+        app.annotate.adv.details = vec![named];
+        app.annotate.adv.links_page = Some(0);
+        app.annotate.adv.links = vec![LinkInfo {
+            index: 2,
+            rect: r(10.0, 10.0, 100.0, 30.0),
+            target: LinkTarget::Page(3),
+            destination: Some(sunipdf_core::Destination {
+                page: 3,
+                view: sunipdf_core::DestinationView::Xyz {
+                    x: Some(12.0),
+                    y: Some(100.0),
+                    zoom: Some(2.0),
+                },
+            }),
+        }];
+        app.adv_double_click(0, (50.0, 20.0));
+        let prompt = app.annotate.adv.link.as_ref().unwrap();
+        assert!(prompt.to_page && prompt.page_number == 4 && prompt.index == Some(2));
+        let tab = app.take_tab();
+        assert!(app.annotate.adv.link.is_none() && tab.annotate.adv.link.is_none());
+        app.put_tab(tab);
+        assert!(app.annotate.adv.link.is_none());
+        for pages_unchanged in [true, false] {
+            app.select_annot(0, editable_link());
+            app.edit_selected_annot_link();
+            assert!(app.annotate.adv.link.is_some());
+            responses
+                .send(Response::DocumentChanged(DocState {
+                    info: app.document.as_ref().unwrap().info.clone(),
+                    can_undo: true,
+                    can_redo: false,
+                    pages_unchanged,
+                    modified: true,
+                    has_signatures: false,
+                }))
+                .unwrap();
+            app.handle_responses(&ctx);
+            assert!(app.annotate.adv.link.is_none());
+            assert!(!requests
+                .try_iter()
+                .any(|request| matches!(request, Request::Edit(_))));
         }
     }
 

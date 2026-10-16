@@ -111,6 +111,15 @@ Windows CI, same-source ARM64 compilation, twelve portable scenarios, six MSI ba
 files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified the
 19,785,200-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
 
+## 0.15.0: editing existing link targets (in development)
+
+Reuse the annotation link dialog and protected writer to change an existing destination through Edit target,
+double-click or CLI `set-link-target`. Safe web/mail URI or physical-page Fit replaces all previous target/action
+fields, keeping the link's area/style/comments/replies and unrelated document data. Existing detailed/named views
+are explicitly replaced by whole-page Fit; unknown targets never default silently to page 1. ReadOnly/Locked/
+LockedContents and malformed flags are refused; one undo preserves geometry/navigation and stale dialogs close
+on document changes (D106). Validation/publication are pending; 0.14.0 remains Latest. See `PROJECT_STATUS.md`.
+
 ## Phase 0–1: planning and foundations — delivered
 
 Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
@@ -137,6 +146,7 @@ Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/
 FDF/XFDF interchange and keyboard page widgets.
 Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
 Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
+In development for 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
 Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 

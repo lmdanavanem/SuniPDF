@@ -38,7 +38,7 @@
 | Convert | Images to PDF, PDF to PNG, lossless optimization, lossy image compression to a new copy; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo; sequential multi-file compression/OCR |
 | Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
 | Certificates | Saved-byte integrity verification and incremental PFX/P12 signing into a new copy; certificate trust, revocation and trusted timestamps are unchecked; encrypted PDF signing is refused |
-| Automate | `sunipdf-cli`: 52 commands with JSON output and stable exit codes, including `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` and `sign` |
+| Automate | `sunipdf-cli`: 53 commands in the 0.15.0 source (52 in published 0.14.0), JSON output and stable exit codes; new `set-link-target` is under validation |
 
 All 14 task tools have real commands. Reading follows PDFium's logical character order; arbitrary untagged columns
 are not reconstructed. Physical printing, ARM64 hardware and third-party signature interoperability remain separate QA checks.
@@ -56,6 +56,11 @@ New in **0.14.0**: create navigation page labels over a physical page range, or 
 through Pages/Organize and two CLI commands. Decimal, Roman, letter and prefix-only styles preserve the labels
 outside the chosen range. Undo/Redo preserves navigation for changes that keep page geometry. Typed and
 multi-page visual signatures remain available from 0.13.0; see the [roadmap](docs/ROADMAP.md).
+
+In development for **0.15.0**: edit an existing link's destination through **Edit target**, double-click or
+`set-link-target`, preserving its area, appearance and comments. Choose a safe web/mail address or a physical
+page fitted to the window. Locked/read-only links are refused. Validation is pending; the published Latest
+remains 0.14.0. See [Project status](docs/PROJECT_STATUS.md).
 
 ## Screenshots
 

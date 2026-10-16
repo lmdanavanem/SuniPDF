@@ -164,6 +164,7 @@ pub struct AnnotDetail {
     pub can_resize: bool,
     pub can_restyle: bool,
     pub can_edit_text: bool,
+    pub can_edit_link: bool,
     /// Nombre de descendants `/IRT` (réponses et états, à tous les niveaux).
     pub replies: usize,
 }
@@ -478,6 +479,50 @@ fn subtype_of(d: &Dictionary) -> String {
         .and_then(|s| s.as_name().ok())
         .map(|n| String::from_utf8_lossy(n).into_owned())
         .unwrap_or_else(|| "Unknown".into())
+}
+
+fn link_target_editable(pdf: &lopdf::Document, dict: &Dictionary) -> bool {
+    let flags = match dict.get(b"F") {
+        Err(_) => Some(0),
+        Ok(_) => get(pdf, dict, b"F").and_then(|f| f.as_i64().ok()),
+    };
+    flags.is_some_and(|f| f >= 0 && f & (64 | 128 | 512) == 0)
+}
+
+fn write_link_target(
+    pdf: &lopdf::Document,
+    dict: &mut Dictionary,
+    target: &LinkTarget,
+) -> Result<(), EngineError> {
+    let (key, value) = match target {
+        LinkTarget::Page(n) => {
+            let id = u32::try_from(*n)
+                .ok()
+                .and_then(|n| n.checked_add(1))
+                .and_then(|n| pdf.get_pages().get(&n).copied())
+                .ok_or(EngineError::PageOutOfRange(*n))?;
+            (
+                "Dest",
+                Object::Array(vec![Object::Reference(id), name("Fit")]),
+            )
+        }
+        LinkTarget::Uri(u) if crate::links::is_safe_external_uri(u) => {
+            let mut action = Dictionary::new();
+            action.set("S", name("URI"));
+            action.set("URI", Object::string_literal(u.trim().as_bytes().to_vec()));
+            ("A", Object::Dictionary(action))
+        }
+        LinkTarget::Uri(_) => return Err(EngineError::Other("unsafe uri".into())),
+        LinkTarget::Unsupported => {
+            return Err(EngineError::Other("unsupported link target".into()))
+        }
+    };
+    // Retargeting replaces every action, including additional mouse-triggered actions.
+    for key in [b"A".as_slice(), b"Dest", b"AA"] {
+        dict.remove(key);
+    }
+    dict.set(key, value);
+    Ok(())
 }
 
 // ----- Modèle des annotations de SuniPDF ---------------------------------------------------------
@@ -1098,42 +1143,33 @@ impl Document<'_> {
         if rect.right - rect.left < 2.0 || rect.top - rect.bottom < 2.0 {
             return Err(EngineError::Other("invalid rectangle".into()));
         }
-        match target {
-            LinkTarget::Page(n) if *n >= self.page_count() => {
-                return Err(EngineError::PageOutOfRange(*n))
-            }
-            LinkTarget::Uri(u) if !crate::links::is_safe_external_uri(u) => {
-                return Err(EngineError::Other("unsafe uri".into()))
-            }
-            LinkTarget::Unsupported => {
-                return Err(EngineError::Other("unsupported link target".into()))
-            }
-            _ => {}
-        }
         self.edit_pdf(page_index, |pdf, page, geo| {
             let mut dict = base_annotation("Link", None)?;
             dict.set("Rect", rect_obj(geo.rect_to_user(rect)));
             dict.set("Border", nums(&[0.0, 0.0, 0.0]));
-            match target {
-                LinkTarget::Page(n) => {
-                    let id = *pdf
-                        .get_pages()
-                        .get(&(*n as u32 + 1))
-                        .ok_or(EngineError::PageOutOfRange(*n))?;
-                    dict.set(
-                        "Dest",
-                        Object::Array(vec![Object::Reference(id), name("Fit")]),
-                    );
-                }
-                LinkTarget::Uri(u) => {
-                    let mut a = Dictionary::new();
-                    a.set("S", name("URI"));
-                    a.set("URI", Object::string_literal(u.trim().as_bytes().to_vec()));
-                    dict.set("A", Object::Dictionary(a));
-                }
-                LinkTarget::Unsupported => {}
-            }
+            write_link_target(pdf, &mut dict, target)?;
             push_annotation(pdf, page, dict, None)
+        })
+    }
+
+    /// Replace a link's action with a safe URI or a page-fit destination, preserving its zone.
+    pub fn set_link_target(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        target: &LinkTarget,
+    ) -> Result<(), EngineError> {
+        self.edit_pdf(page_index, |pdf, page, _| {
+            let (slot, mut dict) = load_annot(pdf, page, index)?;
+            if subtype_of(&dict) != "Link" {
+                return Err(EngineError::Other("annotation is not a link".into()));
+            }
+            if !link_target_editable(pdf, &dict) {
+                return Err(EngineError::SecurityRestricted);
+            }
+            write_link_target(pdf, &mut dict, target)?;
+            touch(&mut dict);
+            store_annot(pdf, page, slot, dict)
         })
     }
 
@@ -1550,6 +1586,7 @@ fn details_of(
                 can_resize: false,
                 can_restyle: false,
                 can_edit_text: false,
+                can_edit_link: false,
                 replies: 0,
             },
         })
@@ -1621,6 +1658,7 @@ fn detail_of(
         can_resize: c.can_resize,
         can_restyle: c.can_restyle,
         can_edit_text: c.can_edit_text,
+        can_edit_link: subtype == "Link" && link_target_editable(pdf, d),
         replies: 0,
         subtype: subtype.clone(),
     };
@@ -1728,6 +1766,29 @@ mod tests {
         let c = caps("Square", 128 | 2, Some("SuniPDF-00"));
         assert!(c.locked && c.hidden && !c.can_move && !c.can_resize && !c.can_restyle);
         assert!(!caps("Popup", 0, None).can_edit_text);
+    }
+
+    #[test]
+    fn link_target_rights_resolve_flags_and_reject_malformed_values() {
+        let mut pdf = lopdf::Document::new();
+        let mut dict = Dictionary::new();
+        assert!(link_target_editable(&pdf, &dict));
+        for flag in [0, 4, 64, 128, 512, -1024] {
+            let editable = matches!(flag, 0 | 4);
+            dict.set("F", flag);
+            assert_eq!(link_target_editable(&pdf, &dict), editable);
+            let reference = pdf.add_object(Object::Integer(flag));
+            dict.set("F", Object::Reference(reference));
+            assert_eq!(link_target_editable(&pdf, &dict), editable);
+        }
+        for flag in [Object::Null, Object::Real(0.0), name("ReadOnly")] {
+            dict.set("F", flag);
+            assert!(!link_target_editable(&pdf, &dict));
+        }
+        let cyclic = pdf.new_object_id();
+        pdf.objects.insert(cyclic, Object::Reference(cyclic));
+        dict.set("F", Object::Reference(cyclic));
+        assert!(!link_target_editable(&pdf, &dict));
     }
 
     #[test]
@@ -1840,6 +1901,7 @@ mod tests {
             can_resize: false,
             can_restyle: false,
             can_edit_text: false,
+            can_edit_link: false,
             replies: 0,
         };
         let list = vec![

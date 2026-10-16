@@ -86,6 +86,7 @@ pub fn detail_json(d: &AnnotDetail) -> serde_json::Value {
         "arrow": d.arrow,
         "ours": d.ours,
         "locked": d.locked,
+        "can_edit_link": d.can_edit_link,
         "replies": d.replies,
     })
 }

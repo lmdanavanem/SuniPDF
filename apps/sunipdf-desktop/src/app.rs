@@ -868,6 +868,7 @@ impl SuniApp {
                     self.annotate.adv.drag = None;
                     self.annotate.adv.ink.clear();
                     self.annotate.adv.links_page = None;
+                    self.annotate.adv.link = None;
                     // La liste d'objets en cache (panneau, prise directe) est périmée.
                     self.edit.objects_page = None;
                     // Les champs du formulaire aussi (valeur saisie, annulation, aplatissement).

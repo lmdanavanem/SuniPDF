@@ -40,7 +40,7 @@ Licence MIT ou Apache-2.0, au choix.
 | Convertir | Images → PDF, PDF → PNG, optimisation sans perte, compression des images avec perte vers une nouvelle copie ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo ; lots séquentiels compression/OCR |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
 | Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
-| Automatiser | `sunipdf-cli` : 52 commandes JSON et codes stables, dont `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` et `sign` |
+| Automatiser | `sunipdf-cli` : 53 commandes dans la source 0.15.0 (52 en 0.14.0 publiée), JSON et codes stables ; nouvelle commande `set-link-target` en validation |
 
 Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes
 arbitraires non balisées. Impression réelle, matériel ARM64 et interopérabilité des signatures restent des contrôles QA distincts.
@@ -58,6 +58,11 @@ Nouveautés **0.14.0** : créer des étiquettes de navigation sur une plage phys
 toutes, depuis Pages/Organiser et deux commandes CLI. Styles décimal, romain, lettres et préfixe seul ; étiquettes
 hors plage conservées. Annuler/Rétablir préserve la navigation si la géométrie des pages est inchangée. Les signatures
 visuelles saisies et multipages restent disponibles depuis 0.13.0 ; voir la [roadmap](docs/ROADMAP.fr.md).
+
+En développement pour **0.15.0** : modifier la destination d'un lien existant via **Modifier la destination**,
+double-clic ou `set-link-target`, en conservant zone, apparence et commentaires. Choisir une adresse web/mail
+autorisée ou une page physique affichée en entier. Liens verrouillés/en lecture seule refusés. Validation en
+cours ; la Latest publiée reste 0.14.0. Voir l'[état du projet](docs/PROJECT_STATUS.fr.md).
 
 ## Captures d'écran
 | Accueil (thème sombre) | Accueil (thème clair) |

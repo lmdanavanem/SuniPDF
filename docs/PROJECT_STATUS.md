@@ -1,9 +1,25 @@
-# Project status - updated 2026-10-16 (version 0.14.0)
+# Project status - updated 2026-10-16 (version 0.15.0 in development)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with a result observed on this machine
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.15.0: editing existing link destinations (in development)
+
+This source adds `set-link-target` and an Edit target action for existing links. Safe HTTP/HTTPS/mailto addresses
+and physical-page fit destinations replace the old `/A`, `/Dest` and `/AA`, retaining the annotation slot,
+rectangle, appearance, comments/replies and unrelated properties. Detailed/named destinations are resolved
+for prefilling where available; the dialog explicitly describes replacing their view with a page-fit target.
+Read-only, locked, locked-content and malformed flag values are refused, including indirect flags.
+
+The desktop reuses its link dialog, records one geometry-preserving Undo/Redo, and closes stale prompts after
+edits or tab changes. English remains the default, French remains available; no dependency was added.
+The source CLI has 53 commands; published 0.14.0 has 52. Version 0.14.0 remains stable Latest until all new gates pass.
+
+Local validation passed: 429 workspace tests, zero failed, seven default ignored; formatting, Clippy with warnings denied, 894 matching EN/FR keys, 68 independent qpdf checks and four licensed NIST/NBS documents (744 pages; 48.90 seconds). CI, package and publication gates remain pending. The new upgrade regressions include the verified 0.14.0 portable ZIP
+and MSI baseline. Native/headless tests cover retargeting, protection, metadata, invalid inputs and source preservation;
+their observed results and package/publication evidence will be recorded before claiming completion.
 
 ## 0.14.0: page-label authoring and navigation history (published as Latest)
 

@@ -128,7 +128,7 @@ du contenu de page : les autres lecteurs les affichent aussi) :
 
 Une annotation créée par SuniPDF se redimensionne et se restyle (bouton « Appliquer à l'annotation » : les couleurs de
 la barre lui sont appliquées) ; celle d'un autre logiciel se déplace, se commente et se supprime (un surlignage ou une
-note se recolore aussi) mais n'est jamais réécrite, pour ne rien perdre de sa fidélité. Une annotation verrouillée
+note se recolore aussi). Une annotation verrouillée
 ne se modifie pas.
 
 **Liens cliquables.** Avec le curseur de lecture, le pointeur devient une main au-dessus d'un lien. Un lien
@@ -136,6 +136,17 @@ interne amène à la page ; un lien externe ouvre d'abord une **boîte de confir
 complète** (Ouvrir dans le navigateur, Copier l'adresse, Annuler) : rien ne s'ouvre sans votre accord, et seules les
 adresses `http`, `https` et `mailto` sont acceptées. Les actions de lancement de programme ou de script ne sont
 jamais exécutées.
+
+**Modifier une cible existante — 0.15.0 en développement.** Avec **Sélectionner une annotation** (A), sélectionnez
+le lien puis **Modifier la destination**, ou double-cliquez dessus. Choisissez une adresse `http`, `https` ou
+`mailto`, ou un numéro de page physique. Une destination nommée/XYZ résolue préremplit sa page. Remplacer une
+cible de page affiche la page entière ; position/zoom détaillés ne sont pas conservés, comme indiqué dans la boîte.
+Une cible inconnue donne une adresse vide : entrez explicitement une destination valide. **Remplacer la destination**
+conserve zone, apparence, nom, commentaires et réponses. Liens en lecture seule/verrouillés/contenu verrouillé
+non modifiables ; drapeaux malformés également refusés. Annuler/Échap conserve la cible d'origine. Un Ctrl+Z annule
+le changement ; enregistrez explicitement pour le garder. Autres éditions ou changement d'onglet ferment la boîte
+pour éviter un indice d'annotation périmé. L'avertissement existant de réécriture des PDF signés s'applique.
+Validation en cours ; ces ajouts sont absents des paquets 0.14.0 publiés.
 
 Le panneau **Commentaires** (F7) groupe les annotations de la page en **fils** : auteur, date, texte, statut de
 relecture (Aucun, Accepté, Refusé, Annulé, Terminé), réponses en retrait. **Répondre** ajoute une réponse sans icône
@@ -541,6 +552,19 @@ sunipdf-cli set-page-labels input.pdf --from 1 --to 4 --style roman-lower --out 
 sunipdf-cli set-page-labels labelled.pdf --from 5 --style decimal --prefix "Annexe-" --start 1 --out appendix.pdf
 sunipdf-cli info appendix.pdf
 sunipdf-cli reset-page-labels appendix.pdf --out unlabelled.pdf
+```
+
+**0.15.0 en développement :** `set-link-target` utilise `--page` (page physique 1 par défaut) et `--index`
+obligatoire (indice d'annotation à partir de 0, retourné par `annotations`). Fournissez exactement une option
+`--goto-page N` ou `--url ADRESSE`, plus `--out` et `--password` facultatif. Une cible de page utilise Fit ; seules
+les adresses `http`, `https`, `mailto` sont acceptées. Protections de sortie existantes conservées ; une saisie
+invalide préserve la sortie existante, même avec `--overwrite`. Rectangle/style/commentaires du lien et protection
+du document sont conservés.
+
+```powershell
+sunipdf-cli annotations input.pdf --page 1
+sunipdf-cli set-link-target input.pdf --page 1 --index 0 --url "https://example.org/updated" --out updated-link.pdf
+sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --out page-link.pdf
 ```
 
 Nouvelles commandes 0.9.0 :
