@@ -269,8 +269,11 @@ recherche, signets, fusion/division/extraction/rotation/réorganisation, enregis
 
 Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
 Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Création/réinitialisation et navigation
-conservée par Annuler/Rétablir livrées en 0.14.0. Restent : recalage sémantique des étiquettes et ordre voulu des colonnes complexes non balisées. qpdf ne prouve pas la préservation de
-chaque lien, champ, calque ou pièce jointe.
+conservée par Annuler/Rétablir livrées en 0.14.0. La candidate 0.30.0 ajoute le recalage sémantique des étiquettes,
+l'édition des signets et la conservation bornée des destinations, champs, calques et pièces jointes pendant
+les opérations de pages ; voir les [structures prises en charge](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md).
+Validation d'exécution et par lecteur indépendant en attente. L'ordre des colonnes complexes non balisées reste
+distinct ; qpdf seul ne prouve pas l'apparence.
 
 ## Phase 3 : édition professionnelle — partiellement livrée
 
@@ -284,7 +287,11 @@ Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page coura
 Livré en 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
 Livré en 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
 Livré en 0.18.0 : encre groupée du bureau, Terminer/Annuler explicites et transitions protégées (D109).
-Restent : sous-ensembles de polices/CFF/OTF/TTC, paragraphes et collage éditable.
+La candidate 0.30.0 ajoute les [sous-ensembles de polices et faces statiques TrueType/CFF1 de collections](FONT_EMBEDDING.fr.md),
+l'aperçu/réagencement borné des paragraphes, le collage éditable explicite, les pivots stables, la lecture de
+l'opacité des images, la mise à l'échelle des annotations, les [annotations enrichies](RICH_ANNOTATIONS.fr.md)
+et la création de destinations précises. Validation en attente. Polices variables/CFF2/couleur, composition
+complexe/bidirectionnelle, XObjects arbitraires éditables et styles par portion de texte restent non pris en charge.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
 ## Phase 4 : conversion et OCR — partiellement livrée
@@ -294,8 +301,11 @@ Livrés : images ↔ PDF, PDF → texte/PNG, optimisation sans perte, lots CLI e
 Livré en 0.17.0 : huit orientations JPEG EXIF incorporées directement et estimation raster cumulée ;
 mesure des limites de mémoire native/processus distincte (D108).
 
-Restent : Office → PDF via convertisseur local détecté, PDF → Word/Excel/PowerPoint avec limites de fidélité mesurées
-et explicites, profils réutilisables. Compression des images et lots compression/OCR livrés en 0.10.0.
+La candidate 0.30.0 ajoute la [conversion Office locale et les profils Standard/Impression mémorisés](OFFICE_CONVERSION.fr.md) :
+LibreOffice installé et pris en charge, texte simple éditable DOCX, grilles XLSX de chaînes littérales et pages PPTX
+tramées. L'absence du convertisseur est explicite ; l'application ne l'installe pas. Les exports éditables complexes
+sont refusés. Validation avec convertisseur réel/corpus en attente ; reconstruction arbitraire de la mise en page
+Office et concepteur général de workflows restent futurs. Lots compression/OCR livrés en 0.10.0.
 
 ## Phase 5 : sécurité et productivité — partiellement livrée
 
@@ -303,8 +313,12 @@ Livrés : AES-128/256 et permissions, retrait de protection autorisé par le pro
 caviardage irréversible, vérification CMS et copies signées PFX/P12 incrémentales, CLI JSON et automatisation.
 
 Restent : comparaison, recherche multi-documents, MCP opt-in confiné, intégration Explorateur et raccourcis configurables.
-Confiance de chaîne, révocation, horodatage fiable, AATL/EUTL, PKCS#11 et LTV sont **non implémentés** ;
-l’heure de signature PDF est déclarative. L’interopérabilité Acrobat/Foxit est une propriété distincte, non vérifiée.
+La candidate 0.30.0 ajoute la [vérification Windows des chaînes/révocations et jetons RFC3161, ainsi que le stockage
+DPAPI par utilisateur](SIGNATURE_SECURITY.fr.md), et l'[aperçu de caviardage, les marques persistantes, la découpe
+bornée du texte et l'assainissement](REDACTION.fr.md). Validation en attente. Chaque vérification réseau demande un
+consentement explicite ; un résultat hors ligne/inconnu ne devient jamais fiable. Le DSS incorporé reste non vérifié,
+sans validation LTV d'archivage. AATL/EUTL, PKCS#11, qualification des signatures et création d'horodatages restent
+non pris en charge. L'heure PDF reste déclarative ; interopérabilité Acrobat/Foxit distincte, non vérifiée.
 La signature du code/MSI demande une identité appropriée fournie.
 
 ## Phase 6 : qualité et distribution — en cours
@@ -313,19 +327,23 @@ Base livrée : releases x64 portable/MSI et ARM64 portable, SHA256, notification
 guides FR/EN, notices tierces et workflows de compilation GitHub.
 
 Livrés en 0.10.0 : quatre documents NIST publics et scénarios d’enregistrement interrompu/disque plein/échec.
-Restent : corpus client/hostile/volumineux plus large, fuzzing,
-benchmarks avec matériel, inventaire complet des licences, Narrateur et lecteurs tiers, parcours interactifs de mise à
+La candidate 0.30.0 ajoute un inventaire hors ligne des licences et la compatibilité du moteur GPU facultatif ;
+contrôles de release en attente. OpenGL reste le défaut. Restent : corpus client/hostile/volumineux plus large, fuzzing,
+benchmarks avec matériel, maintenance de l'inventaire des licences, Narrateur et lecteurs tiers, parcours interactifs de mise à
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
-La [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md) couvre les 117 alertes ouvertes, dont les 115 critiques,
-sans secret de production confirmé parmi ces critiques et sans alerte écartée. Déclarer explicitement les permissions
-du workflow de release reste un durcissement futur ; droits du dépôt observés en lecture seule par défaut.
+La [revue Code Scanning historique](CODE_SCANNING_REVIEW.fr.md) a examiné 117 alertes, dont 115 critiques,
+sans confirmer de secret de production. Corrections/triage et permissions explicites des workflows font partie
+du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). Ce résultat historique
+n'établit pas l'état du scanning de la candidate 0.30.0.
 
-## Suite au-delà du lot 0.20.0 publié
+## Suite au-delà de la candidate 0.30.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.
-3. Définir séparément polices/paragraphes, conversion Office locale et services de confiance.
+3. Maintenir les P1 Roadmap et Suggestions hors lot : validation PDF/A/PDF/UA dédiée, corpus/fuzzing/mesures
+   matérielles élargis et intégrations demandent leur périmètre accepté. Étendre édition, fidélité Office et
+   confiance d'archivage seulement au-delà des limites explicites de cette candidate.
 
 Aucune date/version suivante n’est engagée. L’IA facultative reste désactivée par défaut.

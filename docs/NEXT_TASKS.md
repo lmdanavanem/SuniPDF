@@ -302,25 +302,32 @@ The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 4
 with saved category filters. At 0.21.0 publication the security item was Done; current implementation
 status for the other items is tracked in PROJECT_STATUS.md.
 See [Code Scanning review](CODE_SCANNING_REVIEW.md)
-and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
+and [Project status](PROJECT_STATUS.md). The 53-command count describes the 0.21.x baseline;
+the 0.30.0 candidate adds commands whose validation is pending.
 
-## Remaining work beyond these lots
+## Candidate validation and deferred work
 
 1. Independent execution on ARM64, physical printers, Windows Narrator, interactive installed/portable update and save
    dialogs, and Acrobat/Foxit/Chrome. These require the actual hardware or readers and are not covered by scripted CI.
 2. Expand the four public NIST fixtures with licensed customer/hostile/large scans and complex forms; add fuzzing and
    hardware-recorded performance measurements. Preserve the original on every failed or cancelled operation.
-3. Font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
-4. Local Office conversion and additional batch conversion operations, with measured output fidelity.
-5. Certificate-chain trust/revocation, trusted timestamps/LTV and executable/MSI signing when an identity is supplied.
-6. Semantic page-label rebasing after page changes, complex untagged-column reading order,
-   touch validation and optional integrations.
+3. Validate the implemented 0.30.0 fonts, bounded paragraph/editable-paste, bookmark/structure, semantic-label,
+   precise-link, rich-annotation and redaction slices; see [candidate scope](RELEASE_0.30.0.md).
+   General shaping/bidirectional editing and arbitrary editable XObjects remain unsupported.
+4. Validate [local Office conversion](OFFICE_CONVERSION.md) and real per-format/profile roundtrips. Broader
+   editable layout reconstruction and a general workflow designer remain beyond the bounded exports.
+5. Validate [chain/revocation/RFC3161 checks and DPAPI storage](SIGNATURE_SECURITY.md). Authenticated archival LTV,
+   AATL/EUTL, PKCS#11 and executable/MSI signing with a supplied identity remain separate work.
+6. Complex untagged-column reading order, touch validation and optional integrations remain deferred.
+
+The five Bugs and fourteen P2 Roadmap items form the current authorized candidate. P1 Roadmap items and
+Suggestions are deferred; implementation presence is not a passing release gate or a published release.
 
 No future version/date is committed by this remaining list.
 
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
-2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL rendering.
+2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL; qualify optional wgpu separately if selected.
 3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
 4. Validate interactive installed-MSI and portable update dialogs, including cancellation and unsaved documents;
    scripted installation/upgrade/rollback scenarios passed in CI.
@@ -341,17 +348,14 @@ The `every_registry_command_has_a_home` test fails if a command has neither a to
 All 14 tools have an implementation in 0.9.0, including Scan & OCR, Prepare a form and Use a certificate. "Fill & Sign" is complete: "sign" half (sign-image slice) and "fill" half
 (forms slice, Fill form group / panel / Clear / Flatten / Export / Import).
 
-## After redaction (irreversible redaction, slice delivered)
-Remaining, not blocking (see `KNOWN_ISSUES.md` A40, decisions D077–D082):
-- independent checks of a real corpus (scans with an OCR layer, heavily tagged PDFs, nested
-  form XObjects, Type 3 fonts); measurement on a page with tens of thousands of objects (quadratic
-  `prune_objects`: own reachability with a `BTreeSet` if slow);
-- fine text splitting (keep the unredacted part of a line selectable): requires recreating fragments with the
-  original font, out of reach of `pdfium-render` 0.9.4;
-- fill colour and overlay text ("REDACTED"), persistent `/Redact` marks (no creator in `pdfium-render`);
-- cleaning of bookmarks, attachments, JavaScript and named destinations (separate "Sanitise" tool);
-- removal of a font subset that became unused; "before / after" page preview;
-- `docs/SECURITY_MODEL.md` (A/B/C method, guarantees, assumptions); screenshot S3 (after applying) not replayed.
+## After redaction
+The 0.30.0 candidate implements native before/after preview, fill and bounded overlay text, persistent unapplied
+`/Redact` marks, conservative Base14 Latin glyph splitting and shared hidden-data sanitization. See
+[redaction guarantees and limits](REDACTION.md) and [security model](SECURITY_MODEL.md); validation is pending.
+Persisting marks does not remove content. Complex fonts, OCR, images and nested graphics retain the pixel-patch
+fallback; Undo, original files and backups require separate care.
+Remaining: broader licensed hostile/large/tagged/OCR/Type3 corpus, measured native memory/performance and
+manual reader/UI checks. These P1 checks are deferred; synthetic qpdf/reader gates do not replace that corpus.
 
 ## After forms (AcroForm forms, slice delivered)
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
@@ -368,7 +372,9 @@ Remaining, non-blocking (see `KNOWN_ISSUES.md` A38, decisions D061–D066):
 Typed signatures and all/selected-page placement were delivered in 0.13.0 (D102–D103).
 
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060):
-- DPAPI encryption of the saved signatures (ADR to write, D055);
+- The 0.30.0 candidate implements optional per-user DPAPI storage, verified atomic plaintext migration,
+  opt-out/delete and profile/ACL safeguards; validation is pending. Recovery and session-access limits are in
+  [signature security](SIGNATURE_SECURITY.md).
 - stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
   cast shadow; pen pressure if egui ever exposes it.
 
@@ -404,13 +410,12 @@ move, resizing, free rotation, duplication, Z order (one step or extreme), delet
 stroke width, opacity, copy/cut/paste between pages and tabs (group), Objects panel, text on the page
 (standard and system TrueType fonts), image replacement, blank pages, cropping, page resizing,
 rotated and cropped pages.
-Remaining (see `KNOWN_ISSUES.md` A7, A8, A18–A22):
-- subsetting of embedded fonts (`subsetter` crate MIT/Apache + lopdf post-processing, ADR to write);
-  `.otf` fonts (CFF outlines) and `.ttc` collections;
-- "native" editable paste (objects recreated one by one instead of an XObject); opacity and colour of groups;
-- remembered pivot for asymmetric paths (group rotation/resizing implemented in 0.10.0);
-- drag and drop in the Objects panel (mouse crop preview implemented in 0.10.0);
-- reading the opacity of an existing image (PDFium workaround: read the stream's ExtGState with lopdf).
+The 0.30.0 candidate adds [font subsets/static collection faces](FONT_EMBEDDING.md), Unicode Windows font
+discovery, bounded paragraph preview/reflow, explicit native editable paste, stable remembered rotation pivots
+and image-opacity readback. Existing grouped paste remains available. Validation is pending; see A7, A8, A18–A22.
+Remaining: variable/CFF2/color fonts, general shaping/bidirectional paragraph editing, arbitrary editable
+XObjects, group color/opacity editing and drag-and-drop in the Objects panel. Unknown opacity is explicit;
+unsupported input must preserve the document rather than silently flatten or substitute fonts.
 Acceptance: each operation covered by an engine test with verified rendering.
 
 ## SUNI-021b — Advanced annotations: delivered, what remains (owner: PDF-EDITOR)
@@ -419,11 +424,11 @@ recolour / delete, reply threads and statuses, remembered author, CLI `annotatio
 `review-state` / `annotation-delete`. What remains:
 - **verify interoperability** of replies and statuses, ink, free text and shape appearances in Acrobat, Foxit and
   Chrome (not available on the development machine); structural checking alone does not prove visual interoperability;
-- grouped ink shipped in 0.18.0 with explicit Finish/Cancel and guarded save/close
-  transitions (D109), replacing the idle-commit proposal; local/CI/package regressions passed. Eraser remains future work;
-- polygon, polyline, cloud, stamp, attachment and rich free text (bold, italic, CJK: embedded font); dashed borders
-  for the four existing shapes are delivered in 0.16.0, while other annotation types remain unsupported;
-- richer destination-view authoring beyond whole-page Fit; existing-link replacement was delivered in 0.15.0 (D106);
+- grouped ink shipped in 0.18.0 (D109). The 0.30.0 candidate adds whole-stroke erasure, polygons, polylines,
+  clouds, standard stamps, attachments and uniform-style embedded-font FreeText with actual preview;
+  [bounds and refusals](RICH_ANNOTATIONS.md), validation pending. Span editing, arbitrary `/RC` and shaping remain unsupported;
+- named/XYZ/Fit/FitH destination authoring is present in the 0.30.0 candidate, with retained axes/zoom and
+  bounded raw resolution; validation pending. Unsupported active actions are never executed;
 - lighter round trip for big files (write the annotation without reloading the whole document);
 - on-page FreeText creation and editing shipped in 0.20.0 (D111); local/CI/upgrade, staged/public package and production updater checks passed.
 
@@ -442,6 +447,7 @@ Corpus of free PDFs (pdf.js test corpus, licences checked), hostile file tests (
 Unicode paths, simulated full disk), first benchmark (opening + page 1 rendering) with hardware noted.
 
 ## Known technical debt
-- Re-enable wgpu/DX12 (D010); check OpenGL on ARM64.
+- The 0.30.0 candidate restores optional wgpu compatibility and adds a DX12 software-renderer gate;
+  validation is pending. OpenGL remains default; real GPU/window behavior and ARM64 hardware remain unchecked.
 - `-j 2` imposed by the machine's memory; document the reference machine.
 - CLI `--lang` option (D009) if human-readable messages become necessary.

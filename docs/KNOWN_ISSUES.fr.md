@@ -53,9 +53,9 @@ et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 ## Dépendances
 
-4. **wgpu/DX12 désactivé** : `wgpu-hal` 30.0.1 ne compile pas avec `gpu-allocator` 0.28 (D010).
-   Backend glow/OpenGL utilisé. Impact possible : machines sans pilote OpenGL correct (VM, ARM64).
-   Piste : `cargo update -p gpu-allocator --precise 0.27.x` ou eframe plus récent.
+4. **Compatibilité GPU facultative** : la candidate 0.30.0 aligne les dépendances GPU Windows et ajoute wgpu/DX12
+   facultatif avec contrôle logiciel. Validation en attente. glow/OpenGL reste le défaut/repli ; comportement réel
+   GPU/fenêtres et matériel ARM64 non vérifiés. Voir le [périmètre](RELEASE_0.30.0.fr.md).
 5. **pdfium-render 0.9.4 cible le build PDFium 7881** ; les builds plus récents (8100 au 2026-10-12)
    fonctionnent probablement mais ne sont pas testés. Version épinglée dans `scripts/fetch-pdfium.ps1`.
 
@@ -92,32 +92,35 @@ A6. **Édition du contenu : la modification d'un texte existant réutilise sa po
     Contournement en 0.21.0 publiée : supprimer l'objet et en ajouter un nouveau (Helvetica, accents latins pris en charge).
     **Livré en 0.21.1 :** garder cette police, refuser atomiquement
     le texte incompatible et rouvrir le bon brouillon. Correctif absent des paquets 0.21.0 ; voir les [contrôles exécutés](PROJECT_STATUS.fr.md).
-A7. ~~Rotation par pas de 90°, pas de police système~~ **Résolu (SUNI-031c)** : rotation libre et polices TrueType
-    du système. Rotation/redimensionnement groupés implémentés en 0.10.0 avec une annulation ; validation dans `PROJECT_STATUS.fr.md`. Restent : un objet pivoté d'un angle non multiple de 90° n'a plus de poignées d'angle
-    (le redimensionner le déformerait) ; pivot = centre de la boîte englobante, donc un tracé asymétrique peut
-    dériver légèrement à chaque rotation successive.
-A8. **Réordonner (arrière-plan, reculer, avancer) fusionne les flux de contenu de la page** (lopdf) avant de
-    réordonner : PDFium dessine flux par flux. Le PDF reste valide. Les objets **dupliqués ou collés sont des
-    groupes** (XObjects formulaires) : non éditables comme texte, couleur et opacité non modifiables (champ
-    Opacité grisé), bornés à la boîte de la page d'origine (un objet qui dépassait de sa page est rogné).
-A18. **Polices système incorporées en entier** (pas de sous-ensemble) : chaque police ajoute sa taille au PDF
-     (0,2 à 1,6 Mo pour les polices Windows courantes), une seule fois par document ; après Annuler / Rétablir,
-     la première insertion suivante l'incorpore à nouveau et l'ancienne copie reste orpheline jusqu'à
-     « Optimiser ». Seules les polices `.ttf` à contours TrueType sont proposées (`.otf` PostScript, `.ttc` et
-     polices dont la licence interdit l'incorporation : refus typé `font_not_embeddable`). Liste lue par
-     `reg.exe` (repli : dossier des polices) ; un nom non ASCII peut s'afficher mal (page de code OEM). Rendu
-     vérifié par PDFium ; compatibilité visuelle des autres lecteurs non vérifiée. qpdf ne valide pas le rendu.
+A7. **Rotation et pivot** : rotation libre/groupée antérieure conservée. La candidate 0.30.0 mémorise le pivot
+    choisi pour éviter de recalculer le centre de la boîte englobante d'un tracé asymétrique à chaque rotation ;
+    validation en attente. Les poignées de redimensionnement restent absentes pour les objets non orthogonaux afin
+    d'éviter leur déformation. Voir le [périmètre](RELEASE_0.30.0.fr.md).
+A8. **Ordre et presse-papiers** : l'ordre Z fusionne les flux de page avant réordonnancement. Duplication/collage
+    groupés existants utilisent des XObjects formulaires, sans rendre leur contenu texte éditable ; couleur/opacité
+    des groupes restent limitées. La candidate 0.30.0 ajoute **Coller éditable** explicite pour les objets natifs
+    pris en charge, un Annuler et refus atomique des graphes dangereux, sans repli groupé silencieux. Validation
+    en attente ; [périmètre](RELEASE_0.30.0.fr.md). Presse-papiers de session et limites du collage groupé conservés.
+A18. **Formats, droits et réutilisation des polices** : la candidate 0.30.0 remplace les noms OEM de `reg.exe`
+     par la découverte Windows Unicode, faces statiques TrueType/CFF1 TTF/OTF/TTC/OTC choisies et sous-ensembles admissibles.
+     Droits contrôlés avant mutation ; interdiction de sous-ensemble : face entière conservée. Les programmes
+     identiques peuvent être réutilisés après Annuler/Rétablir/réouverture. Polices variables/CFF2/couleur, faces
+     endommagées, composition non prise en charge et glyphes absents refusés. Limites taille/faces/glyphes applicables ;
+     rendu interne distinct de validation d'autres lecteurs. Validation d'exécution/lecteur en attente ; [politique](FONT_EMBEDDING.fr.md).
 A19. **Recadrer masque, n'efface pas** : le contenu hors cadre reste dans le fichier (ce n'est pas un
      caviardage ; dit dans le dialogue). Recadrage souris dans l’aperçu implémenté en 0.10.0 ; marges numériques conservées.
-A20. **Texte sur la page** : le champ de saisie affiche le texte avec la police de l'interface (Segoe UI ou
-     monospace pour Courier), pas avec la police du PDF : largeur et retours à la ligne approximatifs pendant la
-     saisie. Un texte existant pivoté s'édite dans une boîte de dialogue. Pas d'édition de paragraphes (une ligne
-     = un objet).
-A21. **Redimensionner en mode « Adapter »** : le contenu est mis à l'échelle (`FPDFPage_TransFormWithClip`),
-     pas les annotations ni les liens existants (note permanente dans le dialogue).
-A22. **Opacité d'une image existante non lisible** : PDFium 7881 ne renvoie pas la couleur (donc l'alpha) d'un
-     objet image ; une image transparente garde dans la barre d'objet la valeur précédente du champ Opacité.
-     L'application d'une opacité fonctionne (vérifiée au rendu).
+A20. **Édition du texte et aperçu de paragraphe** : la saisie ordinaire utilise encore la police d'interface ;
+     son brouillon n'est pas une preuve de mise en page PDF. La candidate 0.30.0 ajoute le réagencement multiligne
+     borné avec métriques natives, Aperçu puis Appliquer explicite, brouillon conservé et un Annuler. Polices/texte/
+     états graphiques non pris en charge refusés. Réagencement général et composition bidirectionnelle/complexe
+     restent exclus ; validation en attente. [Périmètre](RELEASE_0.30.0.fr.md) et [limites des polices](FONT_EMBEDDING.fr.md).
+A21. **Redimensionnement des pages** : la candidate 0.30.0 met facultativement les annotations/liens pris en
+     charge à l'échelle avec le contenu. Géométrie malformée et apparences non prises en charge : refus atomique,
+     sans décalage silencieux. Prise en charge bornée, sans promesse pour toute extension PDF ; validation en attente.
+     [Périmètre](RELEASE_0.30.0.fr.md).
+A22. **Opacité d'image** : la candidate 0.30.0 lit l'opacité existante prise en charge et affiche l'état inconnu
+     au lieu de conserver la valeur de l'objet précédent. Remplacement explicite. Masques/états graphiques complexes
+     ne sont pas une valeur alpha universelle éditable ; validation en attente. [Périmètre](RELEASE_0.30.0.fr.md).
 A23. **Angle affiché des objets d'une page pivotée** : l'angle d'un objet est celui de son contenu à l'écran ;
      un rectangle dessiné dans le PDF sur une page `/Rotate 90` est donc annoncé à 90° (CLI `objects`, champ
      Angle). Les poignées d'angle restent disponibles (multiple de 90°).
@@ -231,11 +234,13 @@ A28. **Mémoire de la vue** : bornée mais notable. Textures des pages 192 Mio (
 A35. **Signature visuelle = image sans preuve cryptographique** : dessinée, saisie ou importée, copiable ou supprimable par un éditeur.
      La CLI `add-image` indique `digital_signature: false`. La signature CMS/PFX est un autre parcours dans
      Utiliser un certificat (A44) ; l’application avertit avant la réécriture d’un PDF signé.
-A36. **Signatures enregistrées en clair** : PNG dans `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
-     `initials-<ms>.png`), protégés par les seules ACL du profil Windows : toute personne ayant accès à la session peut
-     les réutiliser. Parade : décocher « Enregistrer sur cet ordinateur » (rien n'est écrit) ou supprimer la vignette
-     (corbeille, en deux clics). Seules les 12 plus récentes par type sont listées ; le tri suppose des horodatages de
-     même longueur (13 chiffres, jusqu'en 2286).
+A36. **Signatures visuelles enregistrées** : la candidate 0.30.0 utilise des fichiers `.dpapi` chiffrés pour
+     l'utilisateur courant, ACL privée de son SID. Les PNG bornés anciens migrent atomiquement après déchiffrement
+     et comparaison des octets chiffrés persistés ; un échec conserve les originaux et signale le risque du clair.
+     Enregistrement facultatif ; suppression en deux clics sans effacement sécurisé des secteurs/sauvegardes.
+     Fichiers illisibles conservés ; autre utilisateur ou profil perdu/réinitialisé : le fichier chiffré seul ne
+     permet pas de récupérer l'image. Une session ouverte permet encore la réutilisation. Validation en attente ;
+     [récupération et bornes](SIGNATURE_SECURITY.fr.md).
 A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la pression du stylet), polyligne brute
      sans lissage ; suppression du fond par **seuil de luminance global** à rampe douce (une photo très inégalement
      éclairée demanderait un seuil adaptatif : juger sur l'aperçu, baisser ou monter le seuil, ou préférer un PNG
@@ -285,7 +290,12 @@ A38. **Formulaires AcroForm** : XFA lu, jamais rempli/aplati ; JavaScript, calcu
      embarquée, donc rendu variable ailleurs. Narrateur et lecteurs tiers non vérifiés ; preuves dans `PROJECT_STATUS.fr.md`.
 
 
-A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **texte libre en Helvetica WinAnsi**
+A39. **Annotations avancées** : la candidate 0.30.0 ajoute FreeText à police incorporée avec aperçu réel, polygones,
+    polylignes, nuages, tampons standard, pièces jointes et gomme des traits d'encre entiers. Style uniforme seulement ;
+    composition non prise en charge refusée. Restylage/redimensionnement riches et données enrichies étrangères
+    arbitraires restent limités. Validation en attente ; [entrées et bornes](RICH_ANNOTATIONS.fr.md).
+    **Base historique 0.9.0–0.21.1 ci-dessous ; ses limites décrivent ces releases :**
+    **Annotations avancées (tranche annotations-advanced, D067–D076)** : **texte libre en Helvetica WinAnsi**
     seulement (accents latins, € et ponctuation courante ; tout autre caractère s'affiche « ? » dans l'apparence,
     `/Contents` garde le texte exact ; pas de gras, d'italique, de texte riche `/RC`, de CJK ni de droite à gauche) et
     largeur de renvoi à la ligne calculée avec la table Helvetica (marge de 2 %) ; jusqu'en 0.17.0, **un trait d'encre = une annotation**
@@ -357,19 +367,20 @@ A39. **Annotations avancées (tranche annotations-advanced, D067–D076)** : **t
     clavier, le redimensionnement d'une encre, d'une ligne ou d'une zone de texte (tous couverts par les tests moteur et
     les tests purs de `annot_adv.rs`) ; contrôle structurel qpdf synthétique ajouté pour 0.9.1 (A4) ;
     interopérabilité des lecteurs toujours non établie.
-A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone est **supprimé** (objets retirés, fichier
-    réécrit sans révision antérieure, vérifié par relecture), mais avec ces limites :
-    1. **Granularité** : un objet texte touché par une zone quitte la couche texte en entier ; ce qui dépasse de la
-       zone reste visible sous forme d'image (vignette à 200 ppp), ni sélectionnable ni trouvable. Idem pour une
-       image ou un tracé partiellement couvert.
+A40. **Caviardage** : la candidate 0.30.0 ajoute aperçu natif avant/après, remplissage/texte, marques persistantes
+    et assainissement partagé. Validation en attente ; [garanties et bornes](REDACTION.fr.md). La sortie appliquée
+    retire le contenu couvert par réécriture complète et vérification résiduelle, avec ces limites :
+    1. **Granularité** : du texte sûr, opaque, Base14 latin peut conserver les glyphes non caviardés sélectionnables
+       à leur position native. Polices complexes, composition, OCR, images, découpe et objets imbriqués gardent le
+       repli par image ; leur reste visible peut perdre sélection/recherche. Graphes dangereux refusés atomiquement.
     2. **Texte d'une image numérisée sans OCR** : invisible pour « Caviarder un texte… » (il faut tracer la zone). Une
        couche OCR décalée par rapport à l'image peut échapper à une zone tracée : l'option « Convertir entièrement
        les pages caviardées en image » la supprime dans tous les cas.
     3. **Polices incorporées** : si la police du texte caviardé sert encore ailleurs, son sous-ensemble de glyphes
        reste dans le fichier (il révèle des caractères utilisés, ni leur ordre ni leur position).
-    4. **Non modifiés** : signets (un titre peut reprendre le texte caviardé), pièces jointes, JavaScript,
-       destinations nommées, contenu des pages non marquées ; une annotation `/Redact` posée par un autre logiciel est
-       traitée comme une annotation ordinaire (retirée seulement si elle est sous une zone).
+    4. **Données cachées** : nettoyage par défaut des métadonnées prises en charge, texte de structure, pièces jointes,
+       scripts et métadonnées de signets/destinations via l'assainisseur vérifié. Le désactiver conserve des données
+       cachées susceptibles de répéter le contenu caviardé. Les pages non marquées ne sont pas effacées globalement.
     5. **Champs de formulaire** : un champ dont un widget est sous une zone disparaît partout (tous ses widgets,
        toutes les pages) ; `/XFA` est alors retiré.
     6. **Balisage d'accessibilité** : supprimé pour tout le document quand « informations cachées » est coché (défaut)
@@ -386,8 +397,10 @@ A40. **Caviardage (tranche redaction, D077–D082)** : le contenu sous une zone 
         `redaction_incomplete` sans rien modifier ; réessayer avec « page en image ».
     11. **Supprimer un objet avec l'outil Modifier n'est pas un caviardage** : PDFium peut laisser l'objet orphelin ou
         la ressource dans le fichier ; seul l'outil Caviarder assainit et réécrit le document.
-    12. Les zones sont **effacées à toute modification du document** (rotation, page supprimée, annulation…) ; les
-        zones dessinées n'ont pas de nœud d'accessibilité propre (leur nombre est annoncé dans la barre d'état).
+    12. Brouillons/candidates en mémoire invalidés par les changements du document. **Conserver les marques PDF
+        non appliquées** persiste des annotations `/Redact` récupérées à l'ouverture ; contenu encore présent avant
+        Appliquer. Police/texte de remplacement non persistables dans cette tranche. Retirer un rectangle brouillon
+        ne supprime pas une marque déjà persistée. Pas de nœud accessible par zone ; nombre annoncé dans la barre d'état.
     13. Non vérifiés : numérisations/PDF balisés lourds réels et pages de plusieurs dizaines de milliers d'objets
         (`prune_objects` de lopdf est quadratique). Le contrôle qpdf synthétique ne remplace pas ce corpus (A4).
 
@@ -408,12 +421,14 @@ A43. **OCR local** : anglais/français uniquement, modèles rapides Tesseract ; 
      Les pages ayant déjà du texte sont ignorées, même si cette couche est mauvaise. Images limitées à 16 Mpx et 8192 px/côté,
      sortie TSV 16 Mio, 50 000 mots/page, délai 120 s/page ; très grandes pages refusées. Pas de reconstruction sémantique
      des tableaux/colonnes. Annulation/échec ne valide aucune page ; succès en un undo. Autres lecteurs à vérifier.
-A44. **Signatures numériques** : CMS détaché `adbe.pkcs7.detached`/`ETSI.CAdES.detached` sur octets enregistrés ;
-     signature PFX/P12 incrémentale dans une nouvelle copie, pas sur PDF chiffré. Validité cryptographique ne signifie
-     pas confiance de l’identité : chaîne, révocation, AATL/EUTL, PKCS#11, horodatage fiable et LTV non implémentés.
-     L’heure du PDF est déclarative. Les modifications/réécritures peuvent invalider une signature. Interopérabilité
-     Acrobat/Foxit et qualification PAdES non établies ; ne pas présenter le résultat comme signature qualifiée.
-
+A44. **Signatures numériques et confiance** : intégrité CMS détachée et copie PFX/P12 incrémentale restent
+     distinctes de la confiance d'identité ; signature chiffrée refusée. La candidate 0.30.0 ajoute vérification Windows
+     des chaînes/révocations et horodatages de signature RFC3161. Récupération en cache par défaut, consentement
+     explicite par vérification réseau ; révocation indisponible/inconnue jamais assimilée à une confiance établie.
+     Empreintes fortes, EKU/temps/liaison du jeton et confiance TSA contrôlés. Heure PDF toujours déclarative ; aucune
+     création d'horodatage ajoutée. DSS incorporé annoncé non vérifié, sans LTV d'archivage authentifiée. AATL/EUTL,
+     PKCS#11, qualification et certification par lecteur tiers restent exclus. Validation en attente ;
+     [garanties et limites](SIGNATURE_SECURITY.fr.md).
 A45. **Compression des images 0.10.0** : avec perte, images RGB/gris 8 bits prises en charge et limitées à 32 millions
      de pixels. Graphes des masques, profils, Decode/DecodeParms particuliers et autres images conservés. Si le fichier
      grossit, restitution exacte des octets source. Aucun poids cible garanti. PDF signés ou restreints refusés ; nouvelle copie.
@@ -430,24 +445,20 @@ A47. **Sauvegardes/corpus 0.10.0** : erreurs de stockage injectées et arrêt fo
 Ces ajouts sont publiés en [0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0). Contrôles locaux, CI, paquets et mises
 à niveau réussis ; contrôles publics/mise à jour aussi réussis ; preuves et limites dans `PROJECT_STATUS.fr.md`.
 
-A48. **Étiquettes de page** : métadonnées de navigation facultatives, distinctes des numéros imprimés. Un libellé
-     vide/illisible, dépassant 4096 octets UTF-8 ou contenant un caractère de contrôle revient à l'indice physique.
-     Le libellé exact et unique prime sur une saisie numérique ; `#N` choisit la page physique N. Un doublon exige
-     un indice physique. Aucun recalage sémantique après une opération structurelle : les plages peuvent rester
-     attachées aux positions physiques ; l'extraction peut omettre les libellés. Les indices CLI restent physiques, à partir de 1.
-     **0.14.0** ajoute création par plage et réinitialisation globale via Pages/Organiser et CLI.
-     Six styles, nouveaux préfixes sur une ligne de 256 octets UTF-8 au plus, étiquettes générées de 4096 octets au
-     plus et départ positif. Parcours des arbres numériques borné ; arbre malformé/dangereux : Appliquer refusé
-     avant mutation. Règles hors plage et continuation à leur frontière conservées. Réinitialiser retire l'entrée
-     du catalogue, même malformée ; aucun effacement sécurisé des anciens objets. L'avertissement existant de
-     réécriture des PDF signés s'applique. Annuler/Rétablir conserve la navigation si la géométrie reste inchangée
-     (D104–D105) ; éditions structurelles positionnelles sans recalage sémantique. Publié en 0.14.0 ; contrôles
-     exécutés et limites restantes dans `PROJECT_STATUS.fr.md`.
-A49. **Navigation vers les destinations** : liens internes/signets avec `/XYZ`, `/Fit` et positions `/FitH` exploitables,
-     historique de position/zoom par onglet. Les autres ajustements conservent la navigation à la page seule.
-     PDFium ne distingue pas une position `/FitH` absente de zéro ; les deux reviennent à la page seule. Des détails
-     illisibles/invalides font de même. Axes `/XYZ` absents et zoom nul/omis conservent les valeurs courantes ; un zoom
-     explicite est borné par l'application. Cela n'établit pas l'interopérabilité Acrobat/Foxit ni celle des lecteurs d'écran natifs.
+A48. **Étiquettes de page** : métadonnées facultatives distinctes des numéros imprimés. Lecture livrée en 0.11.0 ;
+     création/réinitialisation à six styles en 0.14.0. Libellé vide/illisible/caractères de contrôle ou au-delà de
+     4 096 octets UTF-8 : indice physique ; libellé exact unique prioritaire, `#N` physique, doublons exigeant un indice
+     physique. Préfixe nouveau sur une ligne/256 octets, départ positif. La candidate 0.30.0 recale les étiquettes
+     sémantiques par provenance lors des fusions/extractions/réorganisations/suppressions/insertions, sans modifier
+     le texte imprimé. Arbres malformés/dangereux : refus structurel atomique ; doublons explicites. Réinitialiser retire
+     la métadonnée, sans effacer les anciennes copies disque. Validation en attente ; [périmètre](RELEASE_0.30.0.fr.md),
+     [limites structurelles](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md).
+A49. **Destinations** : la candidate 0.30.0 ajoute création nommée/XYZ/Fit/FitH et résolution brute bornée,
+     distinguant axes nuls et zéro explicite, y compris FitH. Axes/zoom conservés selon la vue courante ; coordonnées
+     CropBox/rotation affichées, zoom explicite borné. Cycles, ambiguïtés et destinations locales malformées refusés ;
+     autres ajustements : navigation à la page seule. Actions non prises en charge conservées comme données inertes,
+     jamais exécutées. Validation en attente ; lecteurs indépendants et accessibilité restent distincts.
+     [Périmètre](RELEASE_0.30.0.fr.md), [limites de conservation](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md).
 A50. **Échec de lecture du formulaire** : distinct d'un formulaire vide, avec une nouvelle tentative explicite depuis
      le panneau. Brouillons et valeurs en attente sont conservés pendant l'échec. Un import/effacement en attente
      reprend seulement après une lecture réussie ; les nouvelles tentatives automatiques répétées sont bloquées.

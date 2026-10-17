@@ -305,25 +305,32 @@ par `lmdanavanem` avec preuve : 114 `used in tests`, #13 `false positive`. Aucun
 Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 brouillons priorisés : Bugs (8), Roadmap (23), Suggestions (11),
 avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
 des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
-et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
+et l'[état du projet](PROJECT_STATUS.fr.md). Le compte de 53 commandes décrit la base 0.21.x ;
+la candidate 0.30.0 ajoute des commandes dont la validation est en attente.
 
-## Travail restant au-delà de ces lots
+## Validation de la candidate et travaux différés
 
 1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
    Acrobat/Foxit/Chrome. Le matériel et les lecteurs réels sont nécessaires ; la CI scriptée ne les remplace pas.
 2. Élargir les quatre fixtures NIST à des PDF clients/hostiles/volumineux licenciés, scans et formulaires complexes ;
    fuzzing et mesures de performance avec matériel identifié. Toute erreur/annulation doit préserver l’original.
-3. Sous-ensembles de polices/CFF/OTF/TTC, édition de paragraphes et objets collés éditables.
-4. Conversion Office locale et autres lots de conversion, avec fidélité mesurée.
-5. Confiance/révocation des certificats, horodatage fiable/LTV et signature du code/MSI si identité fournie.
-6. Recalage sémantique des étiquettes après changement de pages, colonnes complexes non balisées,
-   tactile et intégrations facultatives.
+3. Valider les fonctions 0.30.0 présentes : polices, paragraphes/collage éditable bornés, signets/structures,
+   étiquettes sémantiques, liens précis, annotations enrichies et caviardage ; voir le [périmètre](RELEASE_0.30.0.fr.md).
+   Composition complexe/bidirectionnelle et XObjects arbitraires éditables restent non pris en charge.
+4. Valider la [conversion Office locale](OFFICE_CONVERSION.fr.md) et les allers-retours réels par format/profil.
+   Reconstruction de mise en page éditable plus large et concepteur général de workflows restent hors de ces exports bornés.
+5. Valider les [chaînes/révocations/RFC3161 et le stockage DPAPI](SIGNATURE_SECURITY.fr.md). LTV d'archivage authentifiée,
+   AATL/EUTL, PKCS#11 et signature du code/MSI avec une identité fournie restent distincts.
+6. Ordre des colonnes complexes non balisées, tactile et intégrations facultatives restent différés.
+
+Les cinq Bugs et quatorze P2 Roadmap constituent la candidate autorisée. P1 Roadmap et Suggestions sont différés ;
+la présence du code ne signifie ni validation réussie ni release publiée.
 
 Aucune date/version future n’est engagée par cette liste.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
-2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait) et vérifier le rendu OpenGL.
+2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait), vérifier OpenGL et qualifier wgpu séparément si choisi.
 3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
 4. Valider les boîtes interactives de mise à jour MSI et portable, avec annulation et documents modifiés ;
    les scénarios scriptés d'installation/mise à niveau/restauration réussissent en CI.
@@ -344,18 +351,14 @@ Le test `every_registry_command_has_a_home` échoue si une commande n'a ni outil
 Les 14 outils possèdent une implémentation en 0.9.0, dont Numériser et OCR, Préparer un formulaire et Utiliser un certificat. « Remplir et signer » est complet : moitié « signer » (tranche sign-image) et moitié « remplir »
 (tranche forms, groupe Remplir le formulaire / panneau / Effacer / Aplatir / Exporter / Importer).
 
-## Après redaction (caviardage irréversible, tranche livrée)
-Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A40, décisions D077–D082) :
-- contrôles indépendants sur un corpus réel (numérisations avec couche OCR, PDF balisés lourds,
-  formulaires XObject imbriqués, polices Type 3) ; mesure sur une page de plusieurs dizaines de milliers d'objets
-  (`prune_objects` quadratique : accessibilité maison par `BTreeSet` si lent) ;
-- découpe fine du texte (garder sélectionnable la partie non caviardée d'une ligne) : demande de recréer des
-  fragments avec la police d'origine, hors de portée de `pdfium-render` 0.9.4 ;
-- couleur de remplissage et texte en surimpression (« CAVIARDÉ »), marques `/Redact` persistantes (pas de créateur
-  dans `pdfium-render`) ;
-- nettoyage des signets, pièces jointes, JavaScript et destinations nommées (outil « Assainir » séparé) ;
-- suppression d'un sous-ensemble de police devenu inutile ; aperçu « avant / après » de la page ;
-- `docs/SECURITY_MODEL.md` (méthode A/B/C, garanties, hypothèses) ; capture S3 (après application) non rejouée.
+## Après redaction
+La candidate 0.30.0 implémente l'aperçu natif avant/après, remplissage et texte de remplacement borné, marques
+`/Redact` non appliquées persistantes, découpe conservatrice des glyphes Base14 latins et assainissement partagé.
+Voir les [garanties et limites](REDACTION.fr.md) et le [modèle de sécurité](SECURITY_MODEL.fr.md) ; validation en attente.
+Enregistrer des marques ne supprime pas le contenu. Polices complexes, OCR, images et graphiques imbriqués gardent
+le repli par image ; Annuler, originaux et sauvegardes demandent des précautions distinctes.
+Restent : corpus hostile/volumineux/balisé/OCR/Type3 licencié élargi, mémoire/performance natives mesurées et
+contrôles manuels lecteurs/UI. Ces P1 sont différés ; qpdf/lecteur synthétique ne remplace pas ce corpus.
 
 ## Après forms (formulaires AcroForm, tranche livrée)
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
@@ -373,7 +376,9 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 Signatures saisies et pose sur toutes les pages/la sélection livrées en 0.13.0 (D102–D103).
 
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A35–A37, décisions D054–D060) :
-- chiffrement DPAPI des signatures enregistrées (ADR à écrire, D055) ;
+- La candidate 0.30.0 implémente le stockage DPAPI facultatif par utilisateur, la migration vérifiée/atomique
+  des PNG en clair, refus d'enregistrement/suppression et gardes profil/ACL ; validation en attente.
+  Limites de récupération et d'accès à la session dans la [sécurité des signatures](SIGNATURE_SECURITY.fr.md).
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
   ombre portée ; pression du stylet si egui l'expose un jour.
 
@@ -409,13 +414,12 @@ groupé, redimensionnement, rotation libre, duplication, ordre Z (un cran ou ext
 épaisseur, opacité, copier/couper/coller entre pages et onglets (groupe), panneau Objets, texte sur la page
 (polices standard et TrueType du système), remplacement d'image, pages vierges, recadrage, redimensionnement
 des pages, pages pivotées et rognées.
-Reste (voir `KNOWN_ISSUES.fr.md` A7, A8, A18–A22) :
-- sous-ensemble des polices incorporées (crate `subsetter` MIT/Apache + post-traitement lopdf, ADR à écrire) ;
-  polices `.otf` (contours CFF) et collections `.ttc` ;
-- collage « natif » éditable (objets recréés un par un au lieu d'un XObject) ; opacité et couleur des groupes ;
-- pivot mémorisé pour les tracés asymétriques (transformations groupées implémentées en 0.10.0) ;
-- glisser-déposer dans le panneau Objets (recadrage souris implémenté en 0.10.0) ;
-- lecture de l'opacité d'une image existante (contournement PDFium : lire l'ExtGState du flux avec lopdf).
+La candidate 0.30.0 ajoute les [sous-ensembles/faces statiques de collections](FONT_EMBEDDING.fr.md), découverte
+Unicode des polices Windows, aperçu/réagencement borné des paragraphes, collage natif éditable explicite, pivots
+mémorisés stables et lecture de l'opacité. Le collage groupé existant reste disponible. Validation en attente ; A7, A8, A18–A22.
+Restent : polices variables/CFF2/couleur, composition complexe/bidirectionnelle, XObjects arbitraires éditables,
+couleur/opacité des groupes et glisser-déposer du panneau Objets. Une opacité inconnue est explicite ; un cas non
+pris en charge doit préserver le document, sans aplatissement ni substitution de police silencieux.
 Acceptation : chaque opération couverte par un test moteur avec rendu vérifié.
 
 ## SUNI-021b — Annotations avancées : livré, reste (owner : PDF-EDITOR)
@@ -424,12 +428,11 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 `annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
 - **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
   Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
-- encre groupée livrée en 0.18.0, avec Terminer/Annuler explicites et transitions
-  enregistrement/fermeture protégées (D109), remplaçant la proposition à l'inactivité ; régressions locales/CI/paquets réussies.
-  La gomme reste future ;
-- polygone, polyligne, nuage, tampon, pièce jointe et texte libre riche (gras, italique, CJK : police incorporée) ;
-  bordures en tirets des quatre formes livrées en 0.16.0, autres types toujours non pris en charge ;
-- création de vues de destination détaillées au-delà de Fit ; remplacement de cible livré en 0.15.0 (D106) ;
+- encre groupée livrée en 0.18.0 (D109). La candidate 0.30.0 ajoute gomme de traits entiers, polygones, polylignes,
+  nuages, tampons standard, pièces jointes et FreeText à style uniforme/police incorporée avec aperçu réel ;
+  [bornes et refus](RICH_ANNOTATIONS.fr.md), validation en attente. Styles par portion, `/RC` arbitraire et composition complexe restent exclus ;
+- création de destinations nommées/XYZ/Fit/FitH présente dans la candidate 0.30.0, axes/zoom conservés et résolution
+  brute bornée ; validation en attente. Les actions actives non prises en charge ne sont jamais exécutées ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - création et édition FreeText sur la page livrées en 0.20.0 (D111) ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis.
 
@@ -448,6 +451,7 @@ Corpus de PDF libres (pdf.js test corpus, licences vérifiées), tests fichiers 
 chemins Unicode, disque plein simulé), premier benchmark (ouverture + rendu page 1) avec matériel noté.
 
 ## Dette technique connue
-- Réactiver wgpu/DX12 (D010) ; vérifier OpenGL sur ARM64.
+- La candidate 0.30.0 rétablit la compatibilité wgpu facultative et ajoute un contrôle DX12 logiciel ;
+  validation en attente. OpenGL reste le défaut ; GPU/fenêtres réels et matériel ARM64 non vérifiés.
 - `-j 2` imposé par la mémoire du poste ; documenter la machine de référence.
 - Option `--lang` de la CLI (D009) si des messages humains deviennent nécessaires.

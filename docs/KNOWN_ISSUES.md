@@ -53,9 +53,9 @@ and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
 ## Dependencies
 
-4. **wgpu/DX12 disabled**: `wgpu-hal` 30.0.1 does not compile with `gpu-allocator` 0.28 (D010).
-   glow/OpenGL backend used. Possible impact: machines without a proper OpenGL driver (VM, ARM64).
-   Lead: `cargo update -p gpu-allocator --precise 0.27.x` or a newer eframe.
+4. **Optional GPU compatibility**: the 0.30.0 candidate aligns the Windows GPU dependencies and adds optional
+   wgpu/DX12 plus a software-renderer gate. Validation is pending. glow/OpenGL stays the default/fallback;
+   real GPU/window behavior and ARM64 hardware remain unverified. See [candidate scope](RELEASE_0.30.0.md).
 5. **pdfium-render 0.9.4 targets PDFium build 7881**; newer builds (8100 as of 2026-10-12)
    probably work but are untested. Version pinned in `scripts/fetch-pdfium.ps1`.
 
@@ -92,32 +92,33 @@ A6. **Content editing: editing an existing text reuses its original font.** If t
     Workaround in published 0.21.0: delete the object and add a new one (Helvetica, Latin accents supported).
     **Published in 0.21.1:** keep that original font, atomically refuse
     unsupported text and reopen the correct draft. This fix is absent from 0.21.0 packages; see [executed checks](PROJECT_STATUS.md).
-A7. ~~Rotation in 90° steps, no system font~~ **Resolved (SUNI-031c)**: free rotation and system TrueType
-    fonts. Group rotation/resizing is implemented for 0.10.0 with a single undo; validation is tracked in `PROJECT_STATUS.md`. Remaining: an object rotated by an angle that is not a multiple of 90° no longer has corner handles
-    (resizing it would distort it); pivot = centre of the bounding box, so an asymmetric path may
-    drift slightly with each successive rotation.
-A8. **Reordering (send to back, send backward, bring forward) merges the page's content streams** (lopdf) before
-    reordering: PDFium draws stream by stream. The PDF remains valid. **Duplicated or pasted objects are
-    groups** (form XObjects): not editable as text, colour and opacity not modifiable (Opacity field
-    greyed out), bounded to the box of the original page (an object that extended past its page is clipped).
-A18. **System fonts embedded whole** (no subsetting): each font adds its size to the PDF
-     (0.2 to 1.6 MB for common Windows fonts), once per document; after Undo / Redo,
-     the next insertion embeds it again and the old copy remains orphaned until
-     "Optimize". Only `.ttf` fonts with TrueType outlines are offered (`.otf` PostScript, `.ttc` and
-     fonts whose licence forbids embedding: typed refusal `font_not_embeddable`). List read through
-     `reg.exe` (fallback: fonts folder); a non-ASCII name may display badly (OEM code page). Rendering
-     verified by PDFium; other-reader visual compatibility remains unverified. qpdf does not validate rendering.
+A7. **Rotation and pivot**: earlier free/group rotation remains. The 0.30.0 candidate remembers the selected
+    rotation pivot so asymmetric paths do not acquire a new bounding-box centre at each turn; validation is pending.
+    Corner resizing handles remain unavailable for non-orthogonal objects to avoid distortion. See [scope](RELEASE_0.30.0.md).
+A8. **Reordering and clipboard**: Z-order changes merge page content streams before reordering. Existing grouped
+    duplication/paste uses form XObjects and does not turn their contents into editable text; group color/opacity
+    controls remain limited. The 0.30.0 candidate adds explicit **Paste editable** for supported native objects,
+    with one Undo and atomic refusal of unsafe resource graphs, without silent grouped fallback. Validation pending;
+    [scope](RELEASE_0.30.0.md). The session clipboard and page-bound grouped path still have their existing limits.
+A18. **Font formats, rights and reuse**: the 0.30.0 candidate replaces OEM `reg.exe` font-name discovery with
+     Unicode Windows discovery, selected static TrueType/CFF1 TTF/OTF/TTC/OTC faces and eligible font subsetting.
+     Embedding flags are checked before mutation; no-subsetting retains the complete selected face. Identical font
+     programs can be reused after Undo/Redo/reopen. Variable/CFF2/color fonts, damaged faces, unsupported shaping
+     and unavailable glyphs are refused. Size, face and glyph limits apply; internal rendering alone does not
+     validate other readers. Runtime/independent-reader validation is pending; [exact policy](FONT_EMBEDDING.md).
 A19. **Crop hides, it does not erase**: the content outside the frame stays in the file (this is not
      redaction; stated in the dialog). Mouse cropping in the preview is implemented for 0.10.0; numeric margins remain available.
-A20. **Text on the page**: the input field shows the text with the interface font (Segoe UI, or
-     monospace for Courier), not with the PDF font: approximate width and line breaks while
-     typing. An existing rotated text is edited in a dialog. No paragraph editing (one line
-     = one object).
-A21. **Resizing in "Fit" mode**: the content is scaled (`FPDFPage_TransFormWithClip`),
-     not the existing annotations or links (permanent note in the dialog).
-A22. **Opacity of an existing image not readable**: PDFium 7881 does not return the colour (hence the alpha) of an
-     image object; a transparent image keeps the previous value of the Opacity field in the object bar.
-     Applying an opacity works (verified at rendering).
+A20. **Text editing and paragraph preview**: ordinary inline input still uses the interface font; its draft
+     display is not a PDF layout proof. The 0.30.0 candidate adds bounded multiline paragraph reflow with actual
+     native font metrics, Preview then explicit Apply, draft preservation and one Undo. Unsupported fonts/text/
+     graphics states are refused. General document reflow and bidirectional/shaping editing remain unsupported;
+     validation pending. [Scope](RELEASE_0.30.0.md) and [font limits](FONT_EMBEDDING.md).
+A21. **Page resizing**: the 0.30.0 candidate optionally scales supported annotation/link geometry with page
+     content. Malformed geometry and unsupported appearances cause atomic refusal rather than silently leaving
+     misaligned annotations. This is bounded support, not every PDF extension; validation pending. [Scope](RELEASE_0.30.0.md).
+A22. **Image opacity**: the 0.30.0 candidate reads supported existing opacity and exposes an unknown state
+     instead of carrying a previous object's value. Replacement is explicit. Complex masks/graphics states are not
+     a universal editable alpha value; validation pending. [Scope](RELEASE_0.30.0.md).
 A23. **Displayed angle of objects on a rotated page**: an object's angle is that of its content on screen;
      a rectangle drawn in the PDF on a `/Rotate 90` page is therefore reported at 90° (CLI `objects`, Angle
      field). Corner handles remain available (multiple of 90°).
@@ -231,11 +232,12 @@ A28. **View memory**: bounded but notable. Page textures 192 MiB (excluding scre
 A35. **Visual signature = image without cryptographic proof**: drawn, typed or imported, another editor can copy or delete it.
      CLI `add-image` reports `digital_signature: false`. CMS/PFX signing is a separate Use a certificate
      workflow (A44); the application warns before rewriting a signed PDF.
-A36. **Signatures saved unencrypted**: PNG in `%APPDATA%\SuniPDF\signatures` (`signature-<ms>.png`,
-     `initials-<ms>.png`), protected only by the Windows profile ACLs: anyone with access to the session can
-     reuse them. Countermeasure: untick "Save on this computer for reuse" (nothing is written) or delete the thumbnail
-     (bin, two clicks). Only the 12 most recent per type are listed; sorting assumes timestamps of
-     the same length (13 digits, until 2286).
+A36. **Saved visual signatures**: the 0.30.0 candidate uses current-user DPAPI `.dpapi` files with a private
+     user-SID ACL. Legacy bounded PNG entries migrate atomically only after persisted encrypted bytes have been
+     decrypted and compared; failures preserve the originals and show the remaining plaintext risk. Saving is
+     optional; two-click deletion removes the selected entry without securely erasing sectors/backups. Unreadable
+     files are retained; another user or a lost/reset profile cannot recover them from ciphertext alone. Anyone
+     operating the signed-in session can still reuse an image. Validation pending; [recovery and bounds](SIGNATURE_SECURITY.md).
 A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pressure), raw polyline
      without smoothing; background removal by a **global luminance threshold** with a soft ramp (a very unevenly
      lit photo would need an adaptive threshold: judge on the preview, lower or raise the threshold, or prefer a
@@ -286,7 +288,12 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      third-party-reader interoperability remain unverified. Current executed evidence belongs in `PROJECT_STATUS.md`.
 
 
-A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free text in Helvetica WinAnsi** only
+A39. **Advanced annotations**: the 0.30.0 candidate adds actual-preview embedded-font FreeText, polygons,
+    polylines, clouds, standard stamps, attachments and whole-stroke ink erasure. Uniform text style only;
+    unsupported shaping is refused. Rich appearance restyle/resize and arbitrary foreign rich-text data remain
+    limited. Validation is pending; [supported inputs and bounds](RICH_ANNOTATIONS.md).
+    **Historical 0.9.0–0.21.1 baseline follows; its limitations describe those releases:**
+    **Advanced annotations (annotations-advanced slice, D067–D076)**: **free text in Helvetica WinAnsi** only
     (Latin accents, € and common punctuation; any other character shows as "?" in the appearance, `/Contents` keeps
     the exact text; no bold, italic, rich text `/RC`, CJK or right-to-left) and the wrapping width is computed with the
     Helvetica table (2 % margin); through 0.17.0, **one ink stroke = one annotation** and every operation (stroke, move, style)
@@ -354,19 +361,20 @@ A39. **Advanced annotations (annotations-advanced slice, D067–D076)**: **free 
     its dialog, editing by double-click, keyboard arrows, resizing an ink stroke, a line or a text box (all covered by
     the engine tests and the pure tests of `annot_adv.rs`); synthetic structural qpdf checking is added for 0.9.1
     (A4); reader interoperability remains unestablished.
-A40. **Redaction (redaction slice, D077–D082)**: content under an area is **removed** (objects deleted, file rewritten
-    without any earlier revision, verified by reading it back), with these limits:
-    1. **Granularity**: a text object touched by an area leaves the text layer entirely; what extends beyond the area
-       stays visible as an image (200 dpi patch), neither selectable nor searchable. Same for a partly covered image
-       or drawing.
+A40. **Redaction**: the 0.30.0 candidate adds native before/after preview, fill/overlay, persistent marks and
+    shared sanitization. Validation is pending; [exact guarantees and bounds](REDACTION.md). Applied output removes
+    covered content by full rewrite and residual checks, with these limits:
+    1. **Granularity**: safe opaque Base14 Latin text can retain selectable unredacted glyphs at native positions.
+       Complex fonts, shaping, OCR, images, clipping and nested objects retain the raster-patch fallback; their
+       visible remainder may lose selection/search. Unsafe cleanup graphs are refused atomically.
     2. **Text in a scanned image without OCR**: invisible to "Find Text to Redact…" (draw the area). An OCR layer
        offset from the image can escape a drawn area: the "Convert redacted pages entirely to images" option removes
        it in every case.
     3. **Embedded fonts**: if the font of the redacted text is still used elsewhere, its glyph subset stays in the file
        (it reveals characters that were used, not their order or position).
-    4. **Not changed**: bookmarks (a title may repeat the redacted text), attachments, JavaScript, named destinations,
-       content of unmarked pages; a `/Redact` annotation placed by other software is handled as an ordinary
-       annotation (removed only when it lies under an area).
+    4. **Hidden data**: default cleanup removes supported metadata, structure text, attachments, scripts and
+       outline/destination metadata through the verified sanitizer. Turning it off retains unrelated hidden data,
+       which may duplicate redacted content. Unmarked page content is not a global text-erasure operation.
     5. **Form fields**: a field with a widget under an area disappears everywhere (all its widgets, all pages); `/XFA`
        is then removed.
     6. **Accessibility tags**: removed for the whole document when "hidden information" is checked (default); kept
@@ -382,8 +390,10 @@ A40. **Redaction (redaction slice, D077–D082)**: content under an area is **re
         without changing anything; retry with "page as image".
     11. **Deleting an object with the Edit tool is not redaction**: PDFium may leave the object orphaned or the
         resource in the file; only the Redact tool sanitises and rewrites the document.
-    12. Areas are **cleared whenever the document changes** (rotation, deleted page, undo…); drawn areas have no
-        accessibility node of their own (their count is announced in the status bar).
+    12. In-memory drafts/candidates are invalidated by document changes. **Keep unapplied PDF marks** persists
+        standard `/Redact` annotations recovered on opening; content remains present until Apply. Overlay fonts/text
+        cannot be persisted in this slice. Removing a draft rectangle does not delete an existing persisted mark.
+        Drawn areas have no individual accessibility node; their count is announced in the status bar.
     13. Not verified: real scans/heavily tagged PDFs and pages with tens of thousands of objects (lopdf's
         `prune_objects` is quadratic). Synthetic qpdf checking does not replace this corpus (A4).
 
@@ -403,12 +413,14 @@ A43. **Local OCR**: English/French only, fast Tesseract models; accuracy varies 
      any extractable text are skipped, even if that text layer is poor. Images capped at 16 Mpx and 8192 px/side,
      TSV at 16 MiB, 50,000 words/page, 120 seconds/page; very large pages refused. No semantic table/column reconstruction.
      Cancellation/failure commits no pages; success is one undo step. Other readers still need interoperability checks.
-A44. **Digital signatures**: detached CMS `adbe.pkcs7.detached`/`ETSI.CAdES.detached` over saved bytes;
-     incremental PFX/P12 signing into a new copy, no encrypted PDF signing. Cryptographic validity does not establish
-     identity trust: chain, revocation, AATL/EUTL, PKCS#11, trusted timestamps and LTV are not implemented. PDF signing time
-     is declared by the signer. Editing/rewriting may invalidate signatures. Acrobat/Foxit interoperability and PAdES
-     qualification are not established; do not present the result as a qualified signature.
-
+A44. **Digital signatures and trust**: saved-byte detached CMS integrity and incremental new-copy PFX/P12
+     signing remain separate from identity trust; encrypted signing is refused. The 0.30.0 candidate adds Windows
+     chain/revocation and RFC3161 signature-timestamp verification. Retrieval is cache-only by default and requires
+     explicit consent for each online verification; unavailable/unknown revocation never establishes trust.
+     Strong digests, EKU/time/token binding and TSA trust are checked. PDF signing time remains declarative;
+     timestamp creation is not added. Embedded DSS is reported as unverified, not authenticated archival LTV.
+     AATL/EUTL, PKCS#11, qualified-signature assessment and third-party-reader certification remain unsupported.
+     Validation pending; [guarantees and limits](SIGNATURE_SECURITY.md).
 A45. **0.10.0 image compression**: lossy; only supported 8-bit DeviceRGB/DeviceGray images up to 32 million pixels
      are decoded. Mask/soft-mask resource graphs, profiles, custom Decode/DecodeParms and other unsupported images
      remain unchanged. If the document would grow, the exact input bytes are returned. Maximum-side/JPEG controls
@@ -427,24 +439,19 @@ A47. **0.10.0 data-safety/corpus coverage**: injected storage failures and a kil
 These additions are published in [0.11.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0). Local, CI, package and upgrade regression
 gates passed; public-download/live-updater checks also passed; evidence and remaining limits are recorded in `PROJECT_STATUS.md`.
 
-A48. **Page labels**: optional navigation metadata, separate from printed page numbering. Blank/unreadable labels,
-     labels over 4096 UTF-8 bytes and labels containing control characters fall back to physical indices.
-     Exact unique labels take precedence over numeric input; `#N` selects physical page N. Duplicate labels require
-     a physical index. No semantic rebasing is performed after structural changes: ranges can stay attached to
-     physical positions; extraction can omit labels. CLI indices remain physical and one-based.
-     **0.14.0** adds range authoring and global reset through Pages/Organize and CLI. Six styles;
-     new prefixes are one line of at most 256 UTF-8 bytes, generated labels at most 4096 bytes and numbering starts
-     positive. Existing number trees have bounded traversal; malformed/unsafe trees refuse Apply before mutation.
-     Unaffected rules and their boundary continuation are preserved. Reset removes the catalog label entry,
-     including malformed trees; it is not secure erasure of old objects. Existing signed-PDF rewrite warnings
-     still apply. Undo/Redo retains navigation for geometry-preserving label/content edits (D104–D105); structural
-     edits remain positional, without semantic rebasing. Published in 0.14.0; executed checks and remaining
-     limits are in `PROJECT_STATUS.md`.
-A49. **Destination navigation**: internal links/bookmarks support `/XYZ`, `/Fit` and usable `/FitH` positions,
-     with per-tab position/zoom history. Other fit modes retain page-only navigation. PDFium cannot distinguish
-     a `/FitH` null position from zero; both use the page-only fallback. Unreadable/invalid view details also fall
-     back to the page. Missing `/XYZ` axes and zero/missing zoom retain viewport values; explicit zoom is clamped
-     to application limits. This does not establish Acrobat/Foxit or native screen-reader interoperability.
+A48. **Page labels**: optional navigation metadata, separate from printed numbering. Reading shipped in 0.11.0;
+     six-style author/reset in 0.14.0. Blank/unreadable/control-containing labels or labels above 4,096 UTF-8 bytes
+     fall back to physical indices; exact unique labels take precedence, `#N` is physical, duplicates require a
+     physical index. New prefixes remain single-line/256 UTF-8 bytes and start numbers positive. The 0.30.0 candidate
+     rebases semantic labels by page provenance across merge/extract/reorder/delete/insert, without changing printed
+     text. Malformed/unsafe trees refuse structural edits atomically; duplicates remain explicit. Reset removes
+     metadata, not old disk copies. Validation pending; [scope](RELEASE_0.30.0.md), [structure limits](BOOKMARKS_AND_PAGE_STRUCTURE.md).
+A49. **Destinations**: the 0.30.0 candidate adds named/XYZ/Fit/FitH authoring and bounded raw resolution that
+     distinguishes null axes from explicit zero, including FitH. Retained axes/zoom use the current viewport;
+     coordinates follow displayed CropBox/rotation and explicit zoom is bounded. Cycles, ambiguity and malformed
+     local destinations are refused; unsupported fit modes retain page-only navigation. Existing unsupported
+     actions remain inert data and are never executed. Validation pending; independent-reader and accessibility
+     checks are distinct. [Scope](RELEASE_0.30.0.md) and [preservation limits](BOOKMARKS_AND_PAGE_STRUCTURE.md).
 A50. **Form-read failures**: an error is kept distinct from an empty form, and the panel offers an explicit retry.
      Pending drafts and staged values are retained while the read fails. A waiting import/clear operation resumes
      only after a successful read; repeated automatic retries are suppressed.

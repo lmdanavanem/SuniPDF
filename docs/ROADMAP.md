@@ -263,8 +263,10 @@ search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo an
 
 Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
 Delivered in 0.11.0: page-label reading and precise internal navigation. Authoring/reset and navigation-preserving
-Undo/Redo were delivered in 0.14.0. Remaining: semantic label rebasing and intended reading order for complex untagged columns. qpdf structural checks do not
-prove preservation of every link, field, layer or attachment.
+Undo/Redo were delivered in 0.14.0. The 0.30.0 candidate adds semantic label rebasing, bookmark authoring and
+bounded preservation of destinations, fields, layers and attachments across page operations; see
+[supported structure](BOOKMARKS_AND_PAGE_STRUCTURE.md). Runtime and independent-reader validation are pending.
+Intended reading order for complex untagged columns remains separate work; qpdf alone cannot prove appearance.
 
 ## Phase 3: professional editing — partially delivered
 
@@ -279,7 +281,11 @@ Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-pag
 Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
 Delivered in 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
 Delivered in 0.18.0: grouped desktop ink with explicit Finish/Cancel and guarded transitions (D109).
-Remaining: font subsetting/CFF/OTF/TTC, paragraph editing and editable pasted objects.
+The 0.30.0 candidate adds [font subsets and selected static TrueType/CFF1 collection faces](FONT_EMBEDDING.md),
+bounded paragraph preview/reflow, explicit editable object paste, stable rotation pivots, image-opacity readback,
+annotation-aware page scaling, [rich annotations](RICH_ANNOTATIONS.md) and precise destination authoring.
+Validation is pending. Variable/CFF2/color fonts, general shaping/bidirectional paragraph editing, arbitrary
+editable XObjects and full rich-text span editing remain unsupported; unsupported inputs are refused.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
 ## Phase 4: conversion and OCR — partially delivered
@@ -289,8 +295,11 @@ Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches 
 Delivered in 0.17.0: all eight JPEG EXIF orientations embedded directly and cumulative raster-data estimates;
 measured native/process memory limits remain separate work (D108).
 
-Remaining: Office → PDF through a detected local converter, PDF → Word/Excel/PowerPoint with explicit measured
-fidelity limits and reusable conversion profiles. Image compression and sequential compression/OCR batch UI are delivered in 0.10.0.
+The 0.30.0 candidate adds [local Office conversion and saved Standard/Print profiles](OFFICE_CONVERSION.md):
+installed supported LibreOffice only, simple editable DOCX text, literal-string XLSX grids and raster PPTX pages.
+Converter absence is explicit; the app does not install it. Complex editable exports are refused rather than
+promised layout fidelity. Real-converter/corpus validation is pending; arbitrary Office layout reconstruction
+and a general workflow designer remain future work. Compression/OCR batch UI was delivered in 0.10.0.
 
 ## Phase 5: security and productivity — partially delivered
 
@@ -298,8 +307,12 @@ Delivered: AES-128/256 and permissions, owner-authorised protection removal, met
 CMS integrity verification and incremental PFX/P12 signed copies, JSON CLI and automation commands.
 
 Remaining: comparison, multi-document search, confined opt-in MCP, Explorer integration and configurable shortcuts.
-Certificate-chain trust, revocation, trusted timestamping, AATL/EUTL, PKCS#11 and LTV are **not implemented**;
-PDF signing time is a signer declaration. Acrobat/Foxit interoperability is a separate, unverified property.
+The 0.30.0 candidate adds [Windows chain/revocation and RFC3161 timestamp verification, plus per-user DPAPI
+signature storage](SIGNATURE_SECURITY.md), and [redaction preview, persistent marks, bounded text splitting
+and hidden-data sanitization](REDACTION.md). Validation is pending. Network retrieval needs explicit consent
+for each verification; offline/unknown is never trusted. Embedded DSS is unverified evidence, not archival LTV.
+AATL/EUTL, PKCS#11, qualified-signature assessment and timestamp creation remain unsupported. PDF signing time
+is still a signer declaration. Acrobat/Foxit interoperability is a separate, unverified property.
 Executable/MSI code signing needs an appropriate supplied identity.
 
 ## Phase 6: quality and distribution — ongoing
@@ -308,20 +321,24 @@ Delivered baseline: x64 portable/MSI and ARM64 portable releases, SHA256 files, 
 explicit installation, FR/EN guides, third-party notices and GitHub build workflows.
 
 Delivered in 0.10.0: four pinned public NIST samples and interrupted/full-disk/failed-save scenarios.
-Remaining: customer/hostile/large corpus expansion, fuzzing,
-published benchmarks with hardware, complete dependency licence inventory, Narrator and third-party reader checks,
+The 0.30.0 candidate adds an offline license inventory and optional GPU compatibility changes; release gates
+are pending. OpenGL remains the default. Remaining: customer/hostile/large corpus expansion, fuzzing,
+published benchmarks with hardware, ongoing license-inventory maintenance, Narrator and third-party reader checks,
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
 
-The [Code Scanning review](CODE_SCANNING_REVIEW.md) covers all 117 open alerts, including all 115 critical
-alerts, with no production secret confirmed among those critical findings and no dismissal. Explicit release-workflow
-permissions remain a future hardening item; the observed repository defaults are read-only.
+The historical [Code Scanning review](CODE_SCANNING_REVIEW.md) examined 117 alerts, including 115 critical
+findings, without confirming a production secret. Remediation/triage and explicit workflow permissions were
+included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
+This historical result does not establish the scan status of the 0.30.0 candidate.
 
-## Work beyond the published 0.20.0 lot
+## Work beyond the 0.30.0 candidate
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
-3. Address fonts/paragraph editing, local Office conversion and trust services as separately scoped future work.
+3. Keep P1 Roadmap items and Suggestions deferred: dedicated PDF/A/PDF/UA validation, broader corpus/fuzzing/
+   hardware measurement and integrations need their own accepted scope. Extend editing, Office fidelity and
+   archival trust only beyond the explicit limits of this candidate.
 
 
 
