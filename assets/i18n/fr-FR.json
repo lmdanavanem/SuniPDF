@@ -83,6 +83,7 @@
   "menu.app.hide": "Masquer SuniPDF",
   "menu.app.hide_others": "Masquer les autres",
   "menu.app.show_all": "Tout afficher",
+  "menu.app.default_pdf": "Utiliser SuniPDF comme app PDF par défaut",
   "shortcut.open": "Ctrl+O",
   "shortcut.close": "Ctrl+W",
   "shortcut.quit": "Alt+F4",

@@ -5,10 +5,13 @@
 
 use egui::{Key, Modifiers};
 use objc2::rc::Retained;
-use objc2::runtime::{AnyObject, Sel};
+use objc2::runtime::{AnyClass, AnyObject, Sel};
 use objc2::{define_class, msg_send, sel, MainThreadMarker, MainThreadOnly};
-use objc2_app_kit::{NSApplication, NSEventModifierFlags, NSMenu, NSMenuItem};
-use objc2_foundation::{NSObject, NSObjectProtocol, NSString};
+use objc2_app_kit::{
+    NSApplication, NSControlStateValueOff, NSControlStateValueOn, NSEventModifierFlags, NSMenu,
+    NSMenuItem, NSWorkspace,
+};
+use objc2_foundation::{NSBundle, NSError, NSObject, NSObjectProtocol, NSString, NSURL};
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -69,15 +72,39 @@ define_class!(
             }
         }
 
+        // SAFETY: menu actions receive their NSMenuItem as sender.
+        #[unsafe(method(makeDefaultPdfApp:))]
+        fn make_default_pdf_app(&self, _item: &NSMenuItem) {
+            if let Some(pdf) = pdf_type() {
+                let app = NSBundle::mainBundle().bundleURL();
+                let done: Option<&block2::Block<dyn Fn(*mut NSError)>> = None;
+                // SAFETY: NSWorkspace (macOS 12+) signature; the completion handler is nullable.
+                let () = unsafe {
+                    msg_send![
+                        &*NSWorkspace::sharedWorkspace(),
+                        setDefaultApplicationAtURL: &*app,
+                        toOpenContentType: &*pdf,
+                        completionHandler: done
+                    ]
+                };
+            }
+        }
+
         // SAFETY: AppKit's informal NSMenuItemValidation signature.
         #[unsafe(method(validateMenuItem:))]
         fn validate(&self, item: &NSMenuItem) -> bool {
-            let entry = lock(&ITEMS).get(item.tag() as usize).copied();
-            entry.is_some_and(|(command, needs_document)| {
-                command == Command::Quit
-                    || (!BLOCKED.load(Ordering::Relaxed)
-                        && (!needs_document || HAS_DOCUMENT.load(Ordering::Relaxed)))
-            })
+            if item.action() == Some(sel!(makeDefaultPdfApp:)) {
+                let on = is_default_pdf_app();
+                item.setState(if on { NSControlStateValueOn } else { NSControlStateValueOff });
+                true
+            } else {
+                let entry = lock(&ITEMS).get(item.tag() as usize).copied();
+                entry.is_some_and(|(command, needs_document)| {
+                    command == Command::Quit
+                        || (!BLOCKED.load(Ordering::Relaxed)
+                            && (!needs_document || HAS_DOCUMENT.load(Ordering::Relaxed)))
+                })
+            }
         }
     }
 );
@@ -138,6 +165,17 @@ fn build(
 
     let app = submenu(mtm, &main, "SuniPDF");
     command(&app, Command::About, "", NSEventModifierFlags::empty());
+    app.addItem(&NSMenuItem::separatorItem(mtm));
+    let default_pdf = menu_item(
+        mtm,
+        tr(lang, "menu.app.default_pdf"),
+        Some(sel!(makeDefaultPdfApp:)),
+        "",
+        NSEventModifierFlags::empty(),
+    );
+    // SAFETY: `Target` implements `makeDefaultPdfApp:` and outlives the menu.
+    unsafe { default_pdf.setTarget(Some(target as &AnyObject)) };
+    app.addItem(&default_pdf);
     app.addItem(&NSMenuItem::separatorItem(mtm));
     let system = |menu: &NSMenu, key: &str, action: Sel, equivalent: &str, flags| {
         menu.addItem(&menu_item(
@@ -206,6 +244,25 @@ fn build(
     let ns_app = NSApplication::sharedApplication(mtm);
     ns_app.setMainMenu(Some(&main));
     ns_app.setWindowsMenu(Some(&window));
+}
+
+/// Type de contenu PDF (`UTType`, framework UniformTypeIdentifiers chargé par AppKit).
+fn pdf_type() -> Option<Retained<AnyObject>> {
+    let class = AnyClass::get(c"UTType")?;
+    // SAFETY: +[UTType typeWithIdentifier:] takes an NSString and returns a nullable UTType.
+    unsafe { msg_send![class, typeWithIdentifier: &*NSString::from_str("com.adobe.pdf")] }
+}
+
+/// SuniPDF (ce paquet .app) est-il l'application qui ouvre les PDF ?
+fn is_default_pdf_app() -> bool {
+    let Some(pdf) = pdf_type() else {
+        return false;
+    };
+    // SAFETY: -[NSWorkspace URLForApplicationToOpenContentType:] takes a UTType (macOS 12+).
+    let current: Option<Retained<NSURL>> = unsafe {
+        msg_send![&*NSWorkspace::sharedWorkspace(), URLForApplicationToOpenContentType: &*pdf]
+    };
+    current.and_then(|url| url.to_file_path()) == NSBundle::mainBundle().bundleURL().to_file_path()
 }
 
 /// Raccourci ⌘ d'une commande (lettre seule, Maj éventuel), sinon aucun.

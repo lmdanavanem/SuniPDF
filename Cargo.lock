@@ -3823,6 +3823,7 @@ dependencies = [
 name = "sunipdf-desktop"
 version = "0.30.0"
 dependencies = [
+ "block2 0.6.2",
  "chrono",
  "eframe",
  "egui",

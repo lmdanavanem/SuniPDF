@@ -9,7 +9,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ### Ajouté
 
-- Aperçu macOS (compilation locale, non publié) : `scripts/package-macos.sh [--install]` construit un `SuniPDF.app` signé ad hoc avec PDFium ; même interface, texte en San Francisco et icônes Fluent UI System Icons recollées sur les points de code Segoe ; réglages et récupération dans `~/Library/Application Support/SuniPDF` ; ouverture des PDF depuis le Finder ; barre de menus native construite depuis le même registre de commandes que le bouton Menu (⌘Q demande pour les modifications non enregistrées) ; raccourcis affichés en ⌘, ⌫ supprime, ⌃Tab change d'onglet. Impression, signature par certificat, signatures visuelles enregistrées, OCR, conversion Office et mise à jour automatique restent propres à Windows.
+- Aperçu macOS (compilation locale, non publié) : `scripts/package-macos.sh [--install]` construit un `SuniPDF.app` signé ad hoc avec PDFium ; même interface, texte en San Francisco et icônes Fluent UI System Icons recollées sur les points de code Segoe ; réglages et récupération dans `~/Library/Application Support/SuniPDF` ; ouverture des PDF depuis le Finder ; barre de menus native construite depuis le même registre de commandes que le bouton Menu (⌘Q demande pour les modifications non enregistrées) ; « Utiliser SuniPDF comme app PDF par défaut » dans le menu SuniPDF, cochée quand c'est déjà le cas ; raccourcis affichés en ⌘, ⌫ supprime, ⌃Tab change d'onglet. Impression, signature par certificat, signatures visuelles enregistrées, OCR, conversion Office et mise à jour automatique restent propres à Windows.
 
 ## [0.30.0] - 2026-10-17
 
