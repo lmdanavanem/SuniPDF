@@ -1,5 +1,5 @@
 use lopdf::{dictionary, Dictionary, Object, ObjectId, Stream};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use sunipdf_core::{
     bookmarks::{self, BookmarkEdit},
@@ -25,6 +25,118 @@ struct LogicalSnapshot {
     trailer: Dictionary,
 }
 
+fn normalize_xref_storage(pdf: &mut lopdf::Document) {
+    fn references(value: &Object, found: &mut HashSet<ObjectId>) {
+        match value {
+            Object::Reference(id) => {
+                found.insert(*id);
+            }
+            Object::Array(values) => {
+                for value in values {
+                    references(value, found);
+                }
+            }
+            Object::Dictionary(dictionary) => {
+                for (_, value) in dictionary {
+                    references(value, found);
+                }
+            }
+            Object::Stream(stream) => {
+                for (_, value) in &stream.dict {
+                    references(value, found);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut referenced = HashSet::new();
+    references(&Object::Dictionary(pdf.trailer.clone()), &mut referenced);
+    for object in pdf.objects.values() {
+        references(object, &mut referenced);
+    }
+    let mut storage = Vec::new();
+    for (id, object) in &pdf.objects {
+        let Ok(stream) = object.as_stream() else {
+            continue;
+        };
+        if referenced.contains(id)
+            || !stream.dict.has_type(b"XRef")
+            || stream.dict.iter().any(|(key, _)| {
+                !matches!(
+                    key.as_slice(),
+                    b"Type"
+                        | b"Filter"
+                        | b"Length"
+                        | b"Index"
+                        | b"Root"
+                        | b"Size"
+                        | b"W"
+                        | b"ID"
+                        | b"Info"
+                        | b"Encrypt"
+                        | b"DecodeParms"
+                )
+            })
+        {
+            continue;
+        }
+        for key in [b"Root".as_slice(), b"Size", b"Info", b"Encrypt"] {
+            assert_eq!(stream.dict.get(key).ok(), pdf.trailer.get(key).ok());
+        }
+        let stream_ids = stream.dict.get(b"ID").unwrap().as_array().unwrap();
+        let trailer_ids = pdf.trailer.get(b"ID").unwrap().as_array().unwrap();
+        assert_eq!(stream_ids.len(), 2);
+        assert_eq!(
+            stream_ids[0].as_str().unwrap(),
+            trailer_ids[0].as_str().unwrap()
+        );
+        let widths = stream.dict.get(b"W").unwrap().as_array().unwrap();
+        assert_eq!(widths.len(), 3);
+        let row_width = widths
+            .iter()
+            .map(|value| {
+                let width = usize::try_from(value.as_i64().unwrap()).unwrap();
+                assert!(width <= 8);
+                width
+            })
+            .sum::<usize>();
+        assert!(row_width > 0);
+        let index = stream.dict.get(b"Index").unwrap().as_array().unwrap();
+        assert!(!index.is_empty() && index.len() % 2 == 0);
+        let size = usize::try_from(stream.dict.get(b"Size").unwrap().as_i64().unwrap()).unwrap();
+        let mut end = 0;
+        let mut rows = 0usize;
+        for pair in index.as_chunks::<2>().0 {
+            let start = usize::try_from(pair[0].as_i64().unwrap()).unwrap();
+            let count = usize::try_from(pair[1].as_i64().unwrap()).unwrap();
+            assert!(start >= end && count > 0);
+            end = start.checked_add(count).unwrap();
+            assert!(end <= size);
+            rows = rows.checked_add(count).unwrap();
+        }
+        assert_eq!(
+            stream
+                .get_plain_content_with_limit(1024 * 1024)
+                .unwrap()
+                .len(),
+            rows.checked_mul(row_width).unwrap()
+        );
+        storage.push(*id);
+    }
+    if !storage.is_empty() {
+        let original_highest = pdf.objects.keys().map(|id| id.0).max().unwrap();
+        assert_eq!(
+            pdf.trailer.get(b"Size").unwrap().as_i64().unwrap(),
+            i64::from(original_highest) + 1
+        );
+        for id in storage {
+            pdf.objects.remove(&id);
+        }
+        let highest = pdf.objects.keys().map(|id| id.0).max().unwrap();
+        pdf.trailer.set("Size", i64::from(highest) + 1);
+    }
+}
+
 fn logical_snapshot(document: &sunipdf_core::Document<'_>) -> LogicalSnapshot {
     let bytes = document.snapshot().unwrap();
     let raw = lopdf::Document::load_mem(&bytes).unwrap();
@@ -36,6 +148,7 @@ fn logical_snapshot(document: &sunipdf_core::Document<'_>) -> LogicalSnapshot {
         lopdf::LoadOptions::with_password(document.password().unwrap_or("")),
     )
     .unwrap();
+    normalize_xref_storage(&mut pdf);
     let mut ids = pdf.trailer.get(b"ID").unwrap().as_array().unwrap().clone();
     assert_eq!(ids.len(), 2);
     let Object::String(_, format) = &ids[1] else {
@@ -49,6 +162,70 @@ fn logical_snapshot(document: &sunipdf_core::Document<'_>) -> LogicalSnapshot {
         objects: pdf.objects,
         trailer: pdf.trailer,
     }
+}
+
+#[test]
+fn xref_storage_normalization_retains_referenced_streams_content_and_first_id() {
+    let mut original = lopdf::Document::with_version("1.7");
+    let root = original.add_object(dictionary! {"Type"=>"Catalog"});
+    let content = original.add_object(Stream::new(Dictionary::new(), b"kept".to_vec()));
+    let ids = vec![
+        Object::string_literal(b"SuniPDFStructure".to_vec()),
+        Object::string_literal(b"SuniPDFStructure".to_vec()),
+    ];
+    original.trailer.set("Root", root);
+    original.trailer.set("ID", ids.clone());
+    original.trailer.set("Size", 4);
+    let mut rows = vec![0; 21];
+    for row in rows.as_chunks_mut::<7>().0 {
+        row[0] = 1;
+    }
+    let storage = original.add_object(Stream::new(
+        dictionary! {"Type"=>"XRef","Root"=>root,"Size"=>4,"ID"=>ids,"W"=>vec![1.into(),4.into(),2.into()],"Index"=>vec![1.into(),3.into()]},
+        rows,
+    ));
+    let mut baseline = original.clone();
+    normalize_xref_storage(&mut baseline);
+    assert!(!baseline.objects.contains_key(&storage));
+    assert_eq!(baseline.trailer.get(b"Size").unwrap().as_i64().unwrap(), 3);
+
+    let mut changed = original.clone();
+    changed
+        .get_object_mut(content)
+        .unwrap()
+        .as_stream_mut()
+        .unwrap()
+        .content = b"changed".to_vec();
+    normalize_xref_storage(&mut changed);
+    assert_ne!(changed.objects, baseline.objects);
+
+    let mut changed = original.clone();
+    let changed_ids = vec![
+        Object::string_literal(b"ChangedStructure".to_vec()),
+        Object::string_literal(b"SuniPDFStructure".to_vec()),
+    ];
+    changed.trailer.set("ID", changed_ids.clone());
+    changed
+        .get_object_mut(storage)
+        .unwrap()
+        .as_stream_mut()
+        .unwrap()
+        .dict
+        .set("ID", changed_ids);
+    normalize_xref_storage(&mut changed);
+    assert_ne!(changed.trailer, baseline.trailer);
+
+    let mut referenced = original;
+    referenced
+        .get_dictionary_mut(root)
+        .unwrap()
+        .set("ReferencedStream", storage);
+    normalize_xref_storage(&mut referenced);
+    assert!(referenced.objects.contains_key(&storage));
+    assert_eq!(
+        referenced.trailer.get(b"Size").unwrap().as_i64().unwrap(),
+        4
+    );
 }
 
 fn fixture() -> Vec<u8> {
