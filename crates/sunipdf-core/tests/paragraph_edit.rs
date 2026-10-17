@@ -148,7 +148,7 @@ A second paragraph with preserved original font.";
         let mut pdf = lopdf::Document::load_mem(&plain_for_refusals).unwrap();
         let page = pdf.get_pages()[&1];
         let mut content = prefix.as_bytes().to_vec();
-        content.extend(pdf.get_page_content(page).unwrap());
+        content.extend(pdf.get_page_content(page));
         if prefix.contains("BMC") {
             content.extend(b"\nEMC");
         } else if prefix.starts_with('q') {

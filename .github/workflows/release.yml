@@ -43,7 +43,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
           if ($LASTEXITCODE -ne 0) { throw 'Formatting check failed.' }
-          cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
+          cargo clippy --workspace --all-targets --locked --keep-going -j 2 -- -D warnings
           if ($LASTEXITCODE -ne 0) { throw 'Clippy failed.' }
       - name: Tests (x64)
         id: workspace_tests

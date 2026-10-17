@@ -189,7 +189,7 @@ fn native_paste_preserves_individual_fonts_styles_geometry_and_atomic_refusals()
     let mut marked_pdf = lopdf::Document::load_mem(&source.snapshot().unwrap()).unwrap();
     let marked_page = marked_pdf.get_pages()[&1];
     let mut marked_content = b"/Span BMC\n".to_vec();
-    marked_content.extend(marked_pdf.get_page_content(marked_page).unwrap());
+    marked_content.extend(marked_pdf.get_page_content(marked_page));
     marked_content.extend(b"\nEMC");
     let stream =
         marked_pdf.add_object(lopdf::Stream::new(lopdf::Dictionary::new(), marked_content));
@@ -216,7 +216,7 @@ fn native_paste_preserves_individual_fonts_styles_geometry_and_atomic_refusals()
     let mut clipped_pdf = lopdf::Document::load_mem(&source.snapshot().unwrap()).unwrap();
     let clipped_page = clipped_pdf.get_pages()[&1];
     let mut clipped_content = b"q 180 150 70 160 re W n\n".to_vec();
-    clipped_content.extend(clipped_pdf.get_page_content(clipped_page).unwrap());
+    clipped_content.extend(clipped_pdf.get_page_content(clipped_page));
     clipped_content.extend(b"\nQ");
     let clipped_stream = clipped_pdf.add_object(lopdf::Stream::new(
         lopdf::Dictionary::new(),
