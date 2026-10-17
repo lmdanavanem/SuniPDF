@@ -52,15 +52,25 @@ impl Settings {
 
     pub fn push_recent(&mut self, path: &std::path::Path) {
         // Chemins Windows : séparateurs et casse non significatifs.
-        let entry = path.to_string_lossy().replace('/', "\\");
+        let entry = if cfg!(windows) {
+            path.to_string_lossy().replace('/', "\\")
+        } else {
+            path.to_string_lossy().into_owned()
+        };
         let key = entry.to_lowercase();
         self.recent.retain(|r| r.to_lowercase() != key);
         self.recent.insert(0, entry);
         self.recent.truncate(8);
     }
 
+    /// `%APPDATA%\SuniPDF\settings.json`, sous macOS `~/Library/Application Support/SuniPDF/…`.
     pub fn path() -> Option<PathBuf> {
-        std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("SuniPDF").join("settings.json"))
+        #[cfg(target_os = "macos")]
+        let base = std::env::var_os("HOME")
+            .map(|home| PathBuf::from(home).join("Library/Application Support"));
+        #[cfg(not(target_os = "macos"))]
+        let base = std::env::var_os("APPDATA").map(PathBuf::from);
+        base.map(|d| d.join("SuniPDF").join("settings.json"))
     }
 
     pub fn load() -> Self {
@@ -111,20 +121,30 @@ mod tests {
         let parsed: Settings =
             serde_json::from_str(with_bom.trim_start_matches('\u{feff}')).unwrap();
         assert!(parsed.dark_theme);
-        let mut r = Settings::default();
-        for i in 0..10 {
-            r.push_recent(std::path::Path::new(&format!("c:/f{i}.pdf")));
+        #[cfg(windows)]
+        {
+            let mut r = Settings::default();
+            for i in 0..10 {
+                r.push_recent(std::path::Path::new(&format!("c:/f{i}.pdf")));
+            }
+            r.push_recent(std::path::Path::new(r"C:\F5.PDF"));
+            assert_eq!(r.recent.len(), 8);
+            assert_eq!(r.recent[0], r"C:\F5.PDF");
+            assert_eq!(
+                r.recent
+                    .iter()
+                    .filter(|x| x.eq_ignore_ascii_case(r"c:\f5.pdf"))
+                    .count(),
+                1
+            );
         }
-        r.push_recent(std::path::Path::new(r"C:\F5.PDF"));
-        assert_eq!(r.recent.len(), 8);
-        assert_eq!(r.recent[0], r"C:\F5.PDF");
-        assert_eq!(
-            r.recent
-                .iter()
-                .filter(|x| x.eq_ignore_ascii_case(r"c:\f5.pdf"))
-                .count(),
-            1
-        );
+        #[cfg(not(windows))]
+        {
+            let mut r = Settings::default();
+            r.push_recent(std::path::Path::new("/Users/a/F.pdf"));
+            r.push_recent(std::path::Path::new("/Users/a/f.pdf"));
+            assert_eq!(r.recent, ["/Users/a/f.pdf"]);
+        }
         let _ = std::fs::remove_dir_all(dir);
     }
 }

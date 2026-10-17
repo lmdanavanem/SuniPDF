@@ -43,26 +43,39 @@ pub fn system_fonts() -> Vec<SystemFont> {
         }
         entries
     };
+    // Sans registre : dossiers système, machine puis utilisateur (macOS).
     #[cfg(not(windows))]
-    let entries = Vec::new();
+    let entries = ["/System/Library/Fonts", "/Library/Fonts"]
+        .into_iter()
+        .map(PathBuf::from)
+        .chain(std::env::var_os("HOME").map(|home| PathBuf::from(home).join("Library/Fonts")))
+        .flat_map(|dir| font_files(&dir))
+        .collect();
     collect_system_fonts(entries, &fonts_dir)
+}
+
+/// Fichiers de police d'un dossier, nom = nom de fichier.
+fn font_files(fonts_dir: &Path) -> Vec<(String, PathBuf)> {
+    let mut entries = Vec::new();
+    if let Ok(dir) = std::fs::read_dir(fonts_dir) {
+        for e in dir.flatten() {
+            let path = e.path();
+            if is_font_file(&path) {
+                let name = path
+                    .file_stem()
+                    .map(|s| s.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                entries.push((name, path));
+            }
+        }
+    }
+    entries
 }
 
 fn collect_system_fonts(mut entries: Vec<(String, PathBuf)>, fonts_dir: &Path) -> Vec<SystemFont> {
     if entries.is_empty() {
-        // Repli : le dossier des polices, nom = nom de fichier.
-        if let Ok(dir) = std::fs::read_dir(fonts_dir) {
-            for e in dir.flatten() {
-                let path = e.path();
-                if is_font_file(&path) {
-                    let name = path
-                        .file_stem()
-                        .map(|s| s.to_string_lossy().into_owned())
-                        .unwrap_or_default();
-                    entries.push((name, path));
-                }
-            }
-        }
+        // Repli : le dossier des polices.
+        entries = font_files(fonts_dir);
     }
     let mut fonts: Vec<SystemFont> = entries
         .into_iter()

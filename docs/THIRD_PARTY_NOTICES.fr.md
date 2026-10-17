@@ -26,6 +26,9 @@ Le dossier licenses contient également :
 - les notices natives originales de PDFium 151.0.7881.0, ses révisions et empreintes ;
 - les textes complets et références des polices Ubuntu Light, Hack, Noto Emoji et
   emoji-icon-font ;
+- macOS uniquement : la licence MIT de Fluent UI System Icons
+  (LICENSE-FluentSystemIcons.txt), dont `assets/fonts/SuniPDF-Icons.ttf` est un
+  sous-ensemble renommé produit par `scripts/make_mac_icons.py` ;
 - les licences, auteurs, copyrights et provenances de Tesseract 5.5.3, Leptonica 1.87.0
   et des modèles anglais/français tessdata_fast verrouillés ;
 - les mentions complètes de la bibliothèque standard Rust et de la chaîne réellement

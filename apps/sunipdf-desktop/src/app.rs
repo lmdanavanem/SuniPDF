@@ -104,6 +104,19 @@ const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::COMMAND, Key::F, Command::Find),
 ];
 
+/// Touche de suppression : Suppr, ou ⌫ (Backspace) sur un clavier Mac.
+const DELETE_KEY: Key = if cfg!(target_os = "macos") {
+    Key::Backspace
+} else {
+    Key::Delete
+};
+/// Changer d'onglet : ⌘Tab appartient au système sous macOS, Contrôle y reste.
+const TAB_SWITCH: Modifiers = if cfg!(target_os = "macos") {
+    Modifiers::CTRL
+} else {
+    Modifiers::COMMAND
+};
+
 /// Raccourcis globaux, dans l'ordre de lecture : une combinaison avec Maj précède toujours la
 /// même touche sans Maj (`consume_key` ignore un Maj en trop ; invariant testé).
 const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
@@ -141,7 +154,7 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
         Command::RotateCounterClockwise,
     ),
     (Modifiers::COMMAND, Key::R, Command::RotateClockwise),
-    (Modifiers::COMMAND, Key::Delete, Command::DeletePage),
+    (Modifiers::COMMAND, DELETE_KEY, Command::DeletePage),
     (Modifiers::NONE, Key::F9, Command::ToggleTools),
     (Modifiers::NONE, Key::F8, Command::OrganizePages),
     (Modifiers::NONE, Key::F7, Command::ToggleComments),
@@ -173,7 +186,7 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
         Command::RedactApply,
     ),
     (Modifiers::NONE, Key::B, Command::ToolRedact),
-    (Modifiers::NONE, Key::Delete, Command::DeleteObject),
+    (Modifiers::NONE, DELETE_KEY, Command::DeleteObject),
     (Modifiers::NONE, Key::F2, Command::EditObjectText),
     (Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront),
     (Modifiers::COMMAND, Key::OpenBracket, Command::SendToBack),
@@ -191,11 +204,11 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
     ),
     (Modifiers::COMMAND, Key::K, Command::CommandPalette),
     (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        TAB_SWITCH.plus(Modifiers::SHIFT),
         Key::Tab,
         Command::PrevTab,
     ),
-    (Modifiers::COMMAND, Key::Tab, Command::NextTab),
+    (TAB_SWITCH, Key::Tab, Command::NextTab),
 ];
 
 pub struct SuniApp {
@@ -275,6 +288,8 @@ impl SuniApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_files: Vec<PathBuf>) -> Self {
         let settings = Settings::load();
         let has_icons = crate::icons::install(&cc.egui_ctx);
+        #[cfg(target_os = "macos")]
+        crate::mac_open::set_context(&cc.egui_ctx);
         theme::apply(&cc.egui_ctx, settings.dark_theme);
         // Ctrl+Plus / Moins / 0 zooment la page, jamais l'interface (egui les prendrait dès que
         // `handle_input` laisse passer les touches : champ focalisé, boîte de dialogue, palette).
@@ -743,7 +758,7 @@ impl SuniApp {
                         .cloned();
                     if let Some(entry) = &restored {
                         info.path = entry.original.clone().unwrap_or_else(|| {
-                            std::env::var_os("USERPROFILE")
+                            std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
                                 .map(std::path::PathBuf::from)
                                 .unwrap_or_default()
                                 .join("Documents/Recovered.pdf")
@@ -1435,6 +1450,15 @@ impl SuniApp {
                 self.open_path(path, None);
             } else {
                 self.error = Some("error.not_pdf_dropped");
+            }
+        }
+        // Finder : chaque fichier devient un onglet, comme ceux de la ligne de commande.
+        #[cfg(target_os = "macos")]
+        {
+            let mut opened = crate::mac_open::take().into_iter();
+            if let Some(path) = opened.next() {
+                self.pending_files.extend(opened);
+                self.open_path(path, None);
             }
         }
         if self.dialog_open() {

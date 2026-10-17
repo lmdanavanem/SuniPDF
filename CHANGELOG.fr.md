@@ -7,6 +7,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+### Ajouté
+
+- Aperçu macOS (compilation locale, non publié) : `scripts/package-macos.sh [--install]` construit un `SuniPDF.app` signé ad hoc avec PDFium ; même interface, texte en San Francisco et icônes Fluent UI System Icons recollées sur les points de code Segoe ; réglages et récupération dans `~/Library/Application Support/SuniPDF` ; ouverture des PDF depuis le Finder ; raccourcis affichés en ⌘, ⌫ supprime, ⌃Tab change d'onglet. Impression, signature par certificat, signatures visuelles enregistrées, OCR, conversion Office et mise à jour automatique restent propres à Windows.
+
 ## [0.30.0] - 2026-10-17
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](docs/RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.

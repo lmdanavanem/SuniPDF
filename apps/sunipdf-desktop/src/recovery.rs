@@ -29,7 +29,11 @@ fn lock(path: &Path) -> io::Result<File> {
         use std::os::windows::fs::OpenOptionsExt;
         options.share_mode(0);
     }
-    options.open(path)
+    let file = options.open(path)?;
+    // Hors Windows, un verrou exclusif (flock) tient le rôle du handle non partagé.
+    #[cfg(not(windows))]
+    file.try_lock()?;
+    Ok(file)
 }
 
 #[derive(Clone, Debug)]
@@ -201,7 +205,14 @@ impl RecoveryState {
         let root = std::env::var_os("SUNIPDF_RECOVERY_DIR")
             .map(PathBuf::from)
             .or_else(|| {
-                std::env::var_os("LOCALAPPDATA").map(|p| PathBuf::from(p).join("SuniPDF/recovery"))
+                if cfg!(target_os = "macos") {
+                    crate::settings::Settings::path()?
+                        .parent()
+                        .map(|dir| dir.join("recovery"))
+                } else {
+                    std::env::var_os("LOCALAPPDATA")
+                        .map(|p| PathBuf::from(p).join("SuniPDF/recovery"))
+                }
             });
         let mut state = Self::default();
         if let Some(root) = root {
@@ -410,7 +421,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(windows)]
     fn live_sessions_are_skipped_and_slots_do_not_depend_on_tab_indices() {
         let dir = tempfile::tempdir().unwrap();
         let first = Session::create(dir.path().into()).unwrap();

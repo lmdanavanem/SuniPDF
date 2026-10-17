@@ -5,8 +5,42 @@ use crate::EngineError;
 use lopdf::{dictionary, Dictionary, Object, ObjectId, StringFormat};
 use std::collections::HashSet;
 
+#[cfg(windows)]
 #[path = "certificate_native.rs"]
 mod native;
+// ponytail: no certificate backend off Windows yet; signing refuses and existing signatures read
+// as unverifiable. Add a Security.framework backend for macOS parity.
+#[cfg(not(windows))]
+mod native {
+    use super::{CertificateInfo, SignatureTrust, VerificationOptions};
+    use crate::EngineError;
+
+    pub(super) enum Identity {}
+    impl Identity {
+        pub(super) fn from_pfx(_: &[u8], _: &str) -> Result<Self, EngineError> {
+            Err(EngineError::Other(
+                "certificate signing is not available on this platform".into(),
+            ))
+        }
+        pub(super) fn info(&self) -> Result<CertificateInfo, EngineError> {
+            match *self {}
+        }
+        pub(super) fn sign(&self, _: &[&[u8]]) -> Result<Vec<u8>, EngineError> {
+            match *self {}
+        }
+    }
+    #[cfg(test)]
+    pub(super) fn verify(_: &[u8], _: &[&[u8]]) -> Result<CertificateInfo, u32> {
+        Err(0)
+    }
+    pub(super) fn verify_trust(
+        _: &[u8],
+        _: &[&[u8]],
+        _: VerificationOptions,
+    ) -> Result<(CertificateInfo, SignatureTrust), u32> {
+        Err(0)
+    }
+}
 #[cfg(test)]
 #[path = "../tests/support/certificate_identity.rs"]
 mod test_identity;
@@ -602,6 +636,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
     fn native_ephemeral_pfx_signs_and_verifies() {
         let bytes = test_identity::identity();
         let identity = native::Identity::from_pfx(&bytes, "test-only").unwrap();

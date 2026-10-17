@@ -33,6 +33,12 @@ zeroize = "1"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_Controls_Dialogs", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Memory", "Win32_System_Com", "Win32_UI_WindowsAndMessaging", "Win32_Storage_Xps", "Win32_Security_Cryptography", "Win32_Security_Authorization", "Win32_System_Threading"] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# Déjà dans l'arbre (rfd, wgpu) : délégué d'application pour les PDF ouverts depuis le Finder.
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSNotification", "NSString", "NSURL"] }
+
 [build-dependencies]
 winresource = "0.1"
 

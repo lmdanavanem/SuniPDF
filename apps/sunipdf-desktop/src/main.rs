@@ -14,6 +14,8 @@ mod form_builder;
 mod forms;
 mod icons;
 mod inline_text;
+#[cfg(target_os = "macos")]
+mod mac_open;
 mod objects;
 mod ocr;
 mod office;
@@ -54,6 +56,8 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     log::info!("Rendering backend: {}", options.renderer);
+    #[cfg(target_os = "macos")]
+    mac_open::install();
     eframe::run_native(
         "SuniPDF",
         options,
