@@ -2,8 +2,8 @@
 
 [Français](RELEASE_0.30.0.fr.md)
 
-Release candidate: implementation and validation are in progress. The public stable version remains
-[0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) until the release gates pass.
+This version covers five Bugs and fourteen P2 Roadmap items. Supported inputs and limits are described
+below; executed validation and public download evidence are recorded in [Project status](PROJECT_STATUS.md).
 
 ## Editing and annotations
 

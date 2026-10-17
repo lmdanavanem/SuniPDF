@@ -2,9 +2,9 @@
 
 [English](RELEASE_0.30.0.md)
 
-Version candidate : développement et validation en cours. La version publique stable reste la
-[0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) tant que les contrôles de publication
-ne sont pas tous réussis.
+Cette version couvre cinq Bugs et quatorze éléments P2 Roadmap. Les entrées prises en charge et les
+limites sont décrites ci-dessous ; les validations exécutées et les téléchargements publics vérifiés
+sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md).
 
 ## Édition et annotations
 
