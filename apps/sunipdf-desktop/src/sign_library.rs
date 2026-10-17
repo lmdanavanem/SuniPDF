@@ -133,7 +133,7 @@ fn store(dir: &Path, path: &Path, png: &[u8]) -> Result<(), EngineError> {
         .persist_noclobber(path)
         .map_err(|e| EngineError::Io(e.error))?;
     let saved = read(dir, path, MAX_BLOB)?;
-    if &*unprotect(&saved)? != png {
+    if unprotect(&saved)?.as_slice() != png {
         return Err(failure("signature library persisted verification failed"));
     }
     Ok(())
@@ -176,7 +176,7 @@ fn migrate(dir: &Path, path: &Path, png: &[u8]) -> Result<PathBuf, EngineError> 
     let protected = path.with_extension("dpapi");
     if protected.exists() {
         let existing = read(dir, &protected, MAX_BLOB)?;
-        if &*unprotect(&existing)? != png {
+        if unprotect(&existing)?.as_slice() != png {
             return Err(failure(
                 "signature library migration conflicts with an existing encrypted signature",
             ));
@@ -185,7 +185,7 @@ fn migrate(dir: &Path, path: &Path, png: &[u8]) -> Result<PathBuf, EngineError> 
     } else {
         store(dir, &protected, png)?;
     }
-    if &*read(dir, path, MAX_BYTES)? != png {
+    if read(dir, path, MAX_BYTES)?.as_slice() != png {
         return Err(failure(
             "signature library original changed during migration",
         ));

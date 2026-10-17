@@ -24,6 +24,9 @@ jobs:
           targets: aarch64-pc-windows-msvc
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.arch }}
+          cache-on-failure: true
       - name: Cache pinned offline OCR runtime
         id: ocr_runtime
         uses: actions/cache@v6

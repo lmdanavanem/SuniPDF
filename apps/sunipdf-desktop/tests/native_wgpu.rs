@@ -26,6 +26,16 @@ fn pixel(bytes: &[u8], x: u32, y: u32) -> &[u8] {
     &bytes[start..start + 4]
 }
 
+fn sha256(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut encoded = String::with_capacity(64);
+    for byte in Sha256::digest(bytes) {
+        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+        encoded.push(char::from(HEX[usize::from(byte & 15)]));
+    }
+    encoded
+}
+
 fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let requested = std::env::var("SUNIPDF_GPU_ADAPTER").unwrap_or_else(|_| "warp".into());
     require(
@@ -99,7 +109,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let plan = tiles::plan_tiles(
         (10_000, 7_000),
         PixelRect::new(0, 0, 2_050, 1_600),
-        tile_limits,
+        &tile_limits,
     );
     require(
         plan.len() > 1
@@ -205,8 +215,10 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let mut renderer =
         egui_wgpu::Renderer::new(&device, format, egui_wgpu::RendererOptions::PREDICTABLE);
-    for (id, delta) in &frame.textures_delta.set {
-        renderer.update_texture(&device, &queue, *id, delta);
+    for (id, deltas) in &frame.textures_delta.set {
+        for delta in deltas {
+            renderer.update_texture(&device, &queue, *id, delta);
+        }
     }
     let screen = egui_wgpu::ScreenDescriptor {
         size_in_pixels: [WIDTH, HEIGHT],
@@ -295,7 +307,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
         pollster::block_on(render_errors.pop()).is_none(),
         "Native renderer produced a validation error",
     )?;
-    let pixels = readback.slice(..).get_mapped_range().to_vec();
+    let pixels = readback.slice(..).get_mapped_range()?.to_vec();
     readback.unmap();
     for id in frame.textures_delta.free {
         renderer.free_texture(&id);
@@ -353,8 +365,8 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
             "vendor": info.vendor, "device": info.device, "driver": info.driver, "driverInfo": info.driver_info },
         "textureDimension2d": { "adapter": adapter_limits.max_texture_dimension_2d, "requested": requested_side, "device": side },
         "overLimitTextureRefused": refused.to_string(), "largePdfTileCount": plan.len(), "tileSide": tile_limits.tile_side,
-        "nonFiniteZoomRefused": true, "outputPixels": [WIDTH, HEIGHT], "rgbaSha256": format!("{:x}", Sha256::digest(&pixels)),
-        "pngSha256": format!("{:x}", Sha256::digest(std::fs::read(&png)?)),
+        "nonFiniteZoomRefused": true, "outputPixels": [WIDTH, HEIGHT], "rgbaSha256": sha256(&pixels),
+        "pngSha256": sha256(&std::fs::read(&png)?),
         "pdfTexture": { "sourcePixels": [page.width, page.height], "matchingPixels": matches, "comparedPixels": compared,
             "channelTolerance": 2, "minimumMatchingFraction": 0.99,
             "sourceInkPixels": source_ink, "matchingInkPixels": matching_ink, "minimumInkMatchingFraction": 0.90 },

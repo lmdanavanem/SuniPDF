@@ -16,6 +16,8 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - name: Cache pinned offline OCR runtime
         id: ocr_runtime
         uses: actions/cache@v6

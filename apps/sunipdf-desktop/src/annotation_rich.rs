@@ -798,7 +798,7 @@ mod tests {
         assert!(app.has_unsaved_changes() && app.dialog_open());
         for command in [
             sunipdf_core::Command::Save,
-            sunipdf_core::Command::Open,
+            sunipdf_core::Command::OpenDocument,
             sunipdf_core::Command::Quit,
         ] {
             app.execute(&ctx, command);

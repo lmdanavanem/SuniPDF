@@ -676,7 +676,7 @@ mod paragraph_tests {
         app.edit.selection = Some(selection());
         app.open_paragraph_prompt();
         assert!(app.has_unsaved_changes() && app.navigation_blocked());
-        for command in [Command::Save, Command::Open, Command::Quit] {
+        for command in [Command::Save, Command::OpenDocument, Command::Quit] {
             app.execute(&ctx, command);
         }
         assert!(
