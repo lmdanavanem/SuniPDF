@@ -439,6 +439,19 @@ enum Command {
         /// Resolution of the image patches and rasterized pages (72 to 600).
         #[arg(long, default_value_t = 200.0)]
         dpi: f32,
+        /// Redaction fill colour, RRGGBB (default black).
+        #[arg(long)]
+        color: Option<String>,
+        /// Optional visible replacement text, added only after removal verification.
+        #[arg(long)]
+        overlay: Option<String>,
+        #[arg(long, default_value = "FFFFFF")]
+        overlay_color: String,
+        #[arg(long, default_value_t = 10.0)]
+        overlay_size: f32,
+        /// Save visible, unapplied standard /Redact annotations. This does not remove content.
+        #[arg(long)]
+        marks_only: bool,
         #[arg(long)]
         password: Option<String>,
     },
@@ -1604,6 +1617,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             rasterize,
             keep_hidden_data,
             dpi,
+            color,
+            overlay,
+            overlay_color,
+            overlay_size,
+            marks_only,
             password,
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
@@ -1624,7 +1642,42 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 clean_hidden_data: !keep_hidden_data,
                 raster_dpi: dpi,
             };
-            let r = doc.redact(&marks, &options)?;
+            let appearance = sunipdf_core::redact::RedactAppearance {
+                fill_rgb: color
+                    .as_deref()
+                    .map(parse_hex_color)
+                    .transpose()?
+                    .unwrap_or((0, 0, 0)),
+                overlay: overlay
+                    .map(|text| -> Result<_, EngineError> {
+                        Ok(sunipdf_core::redact::RedactOverlay {
+                            text,
+                            style: sunipdf_core::TextStyle {
+                                rgb: parse_hex_color(&overlay_color)?,
+                                size_pt: overlay_size,
+                                ..Default::default()
+                            },
+                        })
+                    })
+                    .transpose()?,
+            };
+            if marks_only {
+                doc.persist_redaction_marks(&marks, &appearance, None)?;
+                sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+                return Ok(
+                    serde_json::json!({"out":out,"marks":marks.len(),"persisted":true,"content_removed":false}),
+                );
+            }
+            let r = if color.is_some() || appearance.overlay.is_some() {
+                let mut preview =
+                    doc.preview_redaction(&marks, &options, &appearance, marks[0].page)?;
+                let prepared = preview.prepared.take().ok_or_else(|| {
+                    EngineError::Other("Redaction preview produced no candidate".into())
+                })?;
+                doc.commit_redaction_preview(prepared)?
+            } else {
+                doc.redact(&marks, &options)?
+            };
             let mut remaining = 0;
             for t in &texts {
                 remaining += doc.search(t, match_case)?.len();
@@ -1637,6 +1690,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "out": out, "marks": r.marks, "pages": r.pages, "objects_removed": r.objects_removed,
                 "annotations_removed": r.annotations_removed, "fields_removed": r.fields_removed,
                 "pages_rasterized": r.pages_rasterized, "hidden_data_cleaned": r.hidden_data_cleaned,
+                "native_text_runs": r.native_text_runs, "bitmap_objects": r.bitmap_objects,
                 "remaining_matches": remaining,
             }))
         }
@@ -2149,6 +2203,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                         let mut value = annot_cmd::detail_json(detail);
                         if let Some(link) = links.iter().find(|link| link.index == detail.index) {
                             value["link"] = annot_cmd::link_json(&link.target);
+                            if let Some(sunipdf_core::LinkTarget::Named(name)) = &detail.link {
+                                value["link"]["named_destination"] = name.clone().into();
+                            }
                             if let Some(destination) = link.destination {
                                 value["link"]["destination"] =
                                     annot_cmd::destination_json(destination);

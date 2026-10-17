@@ -532,6 +532,31 @@ pub enum Request {
         marks: Vec<RedactMark>,
         options: RedactOptions,
     },
+    PreviewRedaction {
+        marks: Vec<RedactMark>,
+        options: RedactOptions,
+        appearance: sunipdf_core::redact::RedactAppearance,
+        page: usize,
+        epoch: u64,
+        generation: u64,
+        cancel: Arc<std::sync::atomic::AtomicBool>,
+    },
+    DiscardRedactionPreview {
+        epoch: u64,
+        generation: u64,
+    },
+    CommitRedactionPreview {
+        epoch: u64,
+        generation: u64,
+    },
+    PersistRedactionMarks {
+        marks: Vec<RedactMark>,
+        appearance: sunipdf_core::redact::RedactAppearance,
+        author: Option<String>,
+    },
+    GetRedactionMarks {
+        epoch: u64,
+    },
     /// Annotations d'une page : liste rapide PDFium et, si `detailed` et si la page porte autre chose
     /// que des liens, fenêtres et champs, lecture détaillée (droits, fils de réponses).
     Annotations {
@@ -780,6 +805,15 @@ pub enum Response {
     },
     /// Bilan d'un caviardage réussi (suivi de `DocumentChanged`).
     Redacted(RedactReport),
+    RedactionPreview {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::redact::RedactionPreview, EngineError>,
+    },
+    RedactionMarks {
+        epoch: u64,
+        result: Result<Vec<RedactMark>, EngineError>,
+    },
     MutationFinished,
 }
 
@@ -826,6 +860,8 @@ impl Worker {
                 | Request::Undo
                 | Request::Redo
                 | Request::Redact { .. }
+                | Request::CommitRedactionPreview { .. }
+                | Request::PersistRedactionMarks { .. }
                 | Request::TextInRect { .. }
                 | Request::FormInfo
                 | Request::CopyObjects { cut: true, .. }
@@ -879,6 +915,7 @@ struct State<'a> {
     clip: Option<ObjectClip>,
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
+    redaction_preview: Option<(u64, u64, sunipdf_core::redact::PreparedRedaction)>,
 }
 
 impl State<'_> {
@@ -911,6 +948,7 @@ impl State<'_> {
         self.cache.clear();
         self.wanted.clear();
         self.rich_preview = None;
+        self.redaction_preview = None;
     }
 
     fn modified(&self) -> bool {
@@ -1019,6 +1057,13 @@ impl State<'_> {
         marks: &[RedactMark],
         options: &RedactOptions,
     ) -> Result<(RedactReport, DocState), EngineError> {
+        self.redact_candidate(|doc| doc.redact(marks, options))
+    }
+
+    fn redact_candidate(
+        &mut self,
+        apply: impl FnOnce(&mut Document<'_>) -> Result<RedactReport, EngineError>,
+    ) -> Result<(RedactReport, DocState), EngineError> {
         let doc = self
             .document
             .as_mut()
@@ -1028,7 +1073,7 @@ impl State<'_> {
             password: doc.password().map(str::to_owned),
             pages_unchanged: false,
         };
-        match doc.redact(marks, options) {
+        match apply(doc) {
             Ok(report) => {
                 self.push_undo(snapshot);
                 self.last_nudge = None;
@@ -1098,6 +1143,7 @@ mod save_point_tests {
             clip: None,
             fonts: None,
             rich_preview: None,
+            redaction_preview: None,
         }
     }
 
@@ -1568,6 +1614,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         clip: None,
         fonts: None,
         rich_preview: None,
+        redaction_preview: None,
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     let mut navigation_failed = false;
@@ -1902,30 +1949,116 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
             }
             Request::Edit(op) => state.edit(op),
-            Request::Redact { marks, options } => match state.redact(&marks, &options) {
-                Ok((report, doc_state)) => {
-                    if let Some(slot) = &state.recovery {
-                        let refreshed = state
-                            .document
-                            .as_ref()
-                            .expect("redacted document")
-                            .snapshot()
-                            .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from));
-                        if let Err(error) = refreshed {
-                            // A failed refresh must not retain a snapshot containing the removed data.
-                            if let Err(cleanup) = slot.remove() {
-                                log::error!("Redaction recovery cleanup failed: {cleanup}");
+            request @ (Request::Redact { .. } | Request::CommitRedactionPreview { .. }) => {
+                let result = match request {
+                    Request::Redact { marks, options } => state.redact(&marks, &options),
+                    Request::CommitRedactionPreview { epoch, generation } => {
+                        match state.redaction_preview.take() {
+                            Some((saved_epoch, saved_generation, prepared))
+                                if saved_epoch == epoch && saved_generation == generation =>
+                            {
+                                state.redact_candidate(|doc| doc.commit_redaction_preview(prepared))
                             }
-                            let _ = tx.send(Response::RecoverySaved(Err(error)));
+                            _ => Err(EngineError::Other(
+                                "redaction preview is stale; preview again".into(),
+                            )),
                         }
                     }
-                    if tx.send(Response::Redacted(report)).is_err() {
-                        break;
+                    _ => unreachable!(),
+                };
+                match result {
+                    Ok((report, doc_state)) => {
+                        if let Some(slot) = &state.recovery {
+                            let refreshed = state
+                                .document
+                                .as_ref()
+                                .expect("redacted document")
+                                .snapshot()
+                                .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from));
+                            if let Err(error) = refreshed {
+                                // A failed refresh must not retain a snapshot containing the removed data.
+                                if let Err(cleanup) = slot.remove() {
+                                    log::error!("Redaction recovery cleanup failed: {cleanup}");
+                                }
+                                let _ = tx.send(Response::RecoverySaved(Err(error)));
+                            }
+                        }
+                        if tx.send(Response::Redacted(report)).is_err() {
+                            break;
+                        }
+                        Response::DocumentChanged(doc_state)
                     }
-                    Response::DocumentChanged(doc_state)
+                    Err(e) => Response::OperationFailed(e),
                 }
-                Err(e) => Response::OperationFailed(e),
+            }
+            Request::PreviewRedaction {
+                marks,
+                options,
+                appearance,
+                page,
+                epoch,
+                generation,
+                cancel,
+            } => {
+                state.redaction_preview = None;
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| {
+                        doc.preview_redaction_cancelable(
+                            &marks,
+                            &options,
+                            &appearance,
+                            page,
+                            cancel,
+                        )
+                    });
+                let result = result.and_then(|mut preview| {
+                    let prepared = preview
+                        .prepared
+                        .take()
+                        .ok_or_else(|| EngineError::Other("missing prepared redaction".into()))?;
+                    state.redaction_preview = Some((epoch, generation, prepared));
+                    Ok(preview)
+                });
+                Response::RedactionPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::DiscardRedactionPreview { epoch, generation } => {
+                if state.redaction_preview.as_ref().is_some_and(
+                    |(saved_epoch, saved_generation, _)| {
+                        *saved_epoch == epoch && *saved_generation == generation
+                    },
+                ) {
+                    state.redaction_preview = None;
+                }
+                continue;
+            }
+            Request::GetRedactionMarks { epoch } => Response::RedactionMarks {
+                epoch,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(Document::redaction_marks),
             },
+            Request::PersistRedactionMarks {
+                marks,
+                appearance,
+                author,
+            } => {
+                match state.redact_candidate(|doc| {
+                    doc.persist_redaction_marks(&marks, &appearance, author.as_deref())?;
+                    Ok(RedactReport::default())
+                }) {
+                    Ok((_, doc_state)) => Response::DocumentChanged(doc_state),
+                    Err(error) => Response::OperationFailed(error),
+                }
+            }
             Request::RedactSearch {
                 query,
                 match_case,
@@ -2355,6 +2488,7 @@ mod tests {
             &worker,
         );
         editable_combo_creation_and_filling_undo_redo(&worker);
+        prepared_redaction_has_one_undo_and_cancellation_keeps_history(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
 
@@ -2370,6 +2504,95 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn prepared_redaction_has_one_undo_and_cancellation_keeps_history(worker: &Worker) {
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::RedactSearch {
+            query: "SuniPDF page 1".into(),
+            match_case: true,
+            verify: false,
+        });
+        let marks = match next_response(worker) {
+            Response::RedactMatches { marks, .. } => marks,
+            _ => panic!("redaction marks"),
+        };
+        let cancel = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        worker.send(Request::PreviewRedaction {
+            marks: marks.clone(),
+            options: RedactOptions::default(),
+            appearance: Default::default(),
+            page: 0,
+            epoch: 42,
+            generation: 1,
+            cancel: cancel.clone(),
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::RedactionPreview { result: Ok(_), .. }
+        ));
+        cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        worker.send(Request::CommitRedactionPreview {
+            epoch: 42,
+            generation: 1,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(EngineError::Cancelled)
+        ));
+        worker.send(Request::PreviewRedaction {
+            marks,
+            options: RedactOptions::default(),
+            appearance: Default::default(),
+            page: 0,
+            epoch: 42,
+            generation: 2,
+            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::RedactionPreview { result: Ok(_), .. }
+        ));
+        worker.send(Request::CommitRedactionPreview {
+            epoch: 42,
+            generation: 2,
+        });
+        assert!(matches!(next_response(worker), Response::Redacted(_)));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        worker.send(Request::CommitRedactionPreview {
+            epoch: 42,
+            generation: 2,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: true,
+                can_redo: false,
+                ..
+            })
+        ));
     }
 
     fn rich_annotation_previews_commit_exactly_once_and_reject_stale_or_discarded_candidates(

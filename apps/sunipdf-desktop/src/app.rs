@@ -790,6 +790,9 @@ impl SuniApp {
                     }
                     self.update_title(ctx);
                     self.worker.send(Request::Bookmarks);
+                    self.worker.send(Request::GetRedactionMarks {
+                        epoch: self.view.epoch,
+                    });
                     // Les commandes scriptées attendent la première image du document (fin de `ui`).
                     self.open_next_pending();
                 }
@@ -942,9 +945,22 @@ impl SuniApp {
                     // Le message de l'opération reste affiché après la resélection.
                     self.edit.hold_status = self.status_msg.is_some();
                     self.redact_on_document_changed();
+                    self.worker.send(Request::GetRedactionMarks {
+                        epoch: self.view.epoch,
+                    });
                     self.update_title(ctx);
                 }
                 Response::Redacted(report) => self.on_redacted(report),
+                Response::RedactionPreview {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_redaction_preview(ctx, epoch, generation, result);
+                }
+                Response::RedactionMarks { epoch, result } => {
+                    self.on_persisted_redaction_marks(epoch, result);
+                }
                 Response::RedactMatches {
                     query,
                     verify,
@@ -1034,6 +1050,9 @@ impl SuniApp {
                     self.has_signatures = state.has_signatures;
                     self.on_resumed(state, ctx);
                     self.worker.send(Request::SetRecovery(self.recovery_slot()));
+                    self.worker.send(Request::GetRedactionMarks {
+                        epoch: self.view.epoch,
+                    });
                 }
                 Response::ResumeFailed(error) => {
                     log::error!("reprise d'onglet impossible : {error}");
@@ -1162,6 +1181,13 @@ impl SuniApp {
             || self.forms.has_unsaved_input()
             || self.ink_draft_active()
             || self.annotate.adv.free_text.is_some()
+    }
+
+    pub(crate) fn document_transition_pending(&self) -> bool {
+        !self.pending_files.is_empty()
+            || self.pending_save.is_some()
+            || self.after_save.is_some()
+            || self.deferred_close.is_some()
     }
 
     pub(crate) fn form_builder_ready(&self) -> bool {

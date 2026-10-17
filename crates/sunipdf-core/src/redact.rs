@@ -16,11 +16,15 @@
 //! ni contenu n'est journalisé.
 
 use crate::edit::{display_quad, quad_bounds};
-use crate::{Document, EngineError, PointRect, MAX_RENDER_SIDE_PX};
+use crate::{Document, EngineError, PointRect, RenderedPage, TextStyle, MAX_RENDER_SIDE_PX};
 use lopdf::content::{Content, Operation};
 use lopdf::{Dictionary, Object, ObjectId};
 use pdfium_render::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 /// Marge ajoutée autour d'une occurrence de texte (points).
 const TEXT_PAD_PT: f32 = 1.0;
@@ -75,6 +79,47 @@ pub struct RedactReport {
     pub fields_removed: usize,
     pub pages_rasterized: usize,
     pub hidden_data_cleaned: bool,
+    /// Safely reconstructed selectable text runs outside the marked rectangles.
+    pub native_text_runs: usize,
+    /// Removed objects whose visible remainder is retained only in the raster patch.
+    pub bitmap_objects: usize,
+}
+
+#[derive(Clone, Default)]
+pub struct RedactAppearance {
+    pub fill_rgb: (u8, u8, u8),
+    pub overlay: Option<RedactOverlay>,
+}
+
+#[derive(Clone)]
+pub struct RedactOverlay {
+    pub text: String,
+    pub style: TextStyle,
+}
+
+/// Opaque, fully verified candidate, bound to its protected source document.
+pub struct PreparedRedaction {
+    original: Vec<u8>,
+    candidate: Vec<u8>,
+    report: RedactReport,
+    cancel: Arc<AtomicBool>,
+}
+
+fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
+    if cancel.load(Ordering::Relaxed) {
+        Err(EngineError::Cancelled)
+    } else {
+        Ok(())
+    }
+}
+
+pub struct RedactionPreview {
+    pub before: RenderedPage,
+    pub after: RenderedPage,
+    pub page: usize,
+    pub scale: f32,
+    pub report: RedactReport,
+    pub prepared: Option<PreparedRedaction>,
 }
 
 fn intersects(a: &PointRect, b: &PointRect) -> bool {
@@ -129,7 +174,7 @@ fn group_marks(
     marks: &[RedactMark],
     page_count: usize,
 ) -> Result<BTreeMap<usize, Vec<PointRect>>, EngineError> {
-    if marks.is_empty() {
+    if marks.is_empty() || marks.len() > 4096 {
         return Err(EngineError::Other("nothing to redact".into()));
     }
     let mut by_page: BTreeMap<usize, Vec<PointRect>> = BTreeMap::new();
@@ -149,7 +194,181 @@ fn group_marks(
     Ok(by_page)
 }
 
-impl Document<'_> {
+impl<'a> Document<'a> {
+    fn redaction_scratch(&self, bytes: Vec<u8>) -> Result<Document<'a>, EngineError> {
+        Ok(Document {
+            inner: self.pdfium.load_pdf_from_byte_vec(bytes, self.password())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password: self.password.clone(),
+            font_cache: Default::default(),
+        })
+    }
+
+    pub fn preview_redaction(
+        &self,
+        marks: &[RedactMark],
+        options: &RedactOptions,
+        appearance: &RedactAppearance,
+        page: usize,
+    ) -> Result<RedactionPreview, EngineError> {
+        self.preview_redaction_cancelable(
+            marks,
+            options,
+            appearance,
+            page,
+            Arc::new(AtomicBool::new(false)),
+        )
+    }
+
+    pub fn preview_redaction_cancelable(
+        &self,
+        marks: &[RedactMark],
+        options: &RedactOptions,
+        appearance: &RedactAppearance,
+        page: usize,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<RedactionPreview, EngineError> {
+        cancelled(&cancel)?;
+        let original = self.snapshot()?;
+        if original.len() > 128 * 1024 * 1024 {
+            return Err(EngineError::Other(
+                "redaction preview is limited to 128 MiB documents".into(),
+            ));
+        }
+        if !marks.iter().any(|mark| mark.page == page) {
+            return Err(EngineError::Other(
+                "preview page has no redaction marks".into(),
+            ));
+        }
+        let size = self.page_size(page)?;
+        let scale = (900.0 / size.width_pt.max(size.height_pt)).min(1.5);
+        let before = self.render_page(page, scale)?;
+        cancelled(&cancel)?;
+        let mut scratch = self.redaction_scratch(original.clone())?;
+        let report = scratch.redact_in_place(marks, options, appearance, &cancel)?;
+        let after = scratch.render_page(page, scale)?;
+        let candidate = scratch.snapshot()?;
+        cancelled(&cancel)?;
+        if candidate.len() > 160 * 1024 * 1024 {
+            return Err(EngineError::Other(
+                "redaction candidate exceeds 160 MiB".into(),
+            ));
+        }
+        Ok(RedactionPreview {
+            before,
+            after,
+            page,
+            scale,
+            report,
+            prepared: Some(PreparedRedaction {
+                original,
+                candidate,
+                report,
+                cancel,
+            }),
+        })
+    }
+
+    pub fn commit_redaction_preview(
+        &mut self,
+        prepared: PreparedRedaction,
+    ) -> Result<RedactReport, EngineError> {
+        cancelled(&prepared.cancel)?;
+        if !crate::annot_rich::same_document(
+            &prepared.original,
+            &self.snapshot()?,
+            self.password(),
+        )? {
+            return Err(EngineError::Other(
+                "document changed since redaction preview; preview again".into(),
+            ));
+        }
+        cancelled(&prepared.cancel)?;
+        self.restore(prepared.candidate)?;
+        Ok(prepared.report)
+    }
+
+    /// Store standard, visibly unapplied /Redact annotations. No content is removed.
+    pub fn persist_redaction_marks(
+        &mut self,
+        marks: &[RedactMark],
+        appearance: &RedactAppearance,
+        author: Option<&str>,
+    ) -> Result<(), EngineError> {
+        let groups = group_marks(marks, self.page_count())?;
+        if author.is_some_and(|a| a.len() > 4096 || a.chars().any(char::is_control)) {
+            return Err(EngineError::Other("invalid redaction author".into()));
+        }
+        if appearance.overlay.is_some() {
+            return Err(EngineError::Other("persisted marks store rectangles and fill only; clear the overlay or preview and apply it".into()));
+        }
+        let existing = self.redaction_marks()?;
+        let mut scratch = self.redaction_scratch(self.snapshot()?)?;
+        for (page, rects) in groups {
+            scratch.edit_pdf(page, |pdf, page_id, geo| {
+                for rect in rects {
+                    if existing.contains(&RedactMark { page, rect }) {
+                        continue;
+                    }
+                    let (w, h) = (rect.right - rect.left, rect.top - rect.bottom);
+                    let (pw, ph) = geo.display_size();
+                    if rect.left < 0.0 || rect.bottom < 0.0 || rect.right > pw || rect.top > ph {
+                        return Err(EngineError::Other(
+                            "redaction mark is outside the page".into(),
+                        ));
+                    }
+                    let mut annotation = crate::annot_write::base_annotation("Redact", author)?;
+                    annotation.set("Rect", crate::annot_write::rect_obj(geo.rect_to_user(rect)));
+                    annotation.set("IC", crate::annot_write::rgb_obj(appearance.fill_rgb));
+                    let style = crate::AnnotStyle {
+                        rgb: (220, 35, 35),
+                        fill_rgb: Some(appearance.fill_rgb),
+                        opacity: 0.35,
+                        width_pt: 1.0,
+                        ..Default::default()
+                    };
+                    let ap = crate::appearance::square_ap(w, h, &style);
+                    crate::annot_write::push_annotation(
+                        pdf,
+                        page_id,
+                        annotation,
+                        Some(crate::annot_write::ap_stream(&ap, geo)),
+                    )?;
+                }
+                Ok(())
+            })?;
+        }
+        self.restore(scratch.snapshot()?)
+    }
+
+    /// Recover standard /Redact rectangles in display coordinates; they are not applied.
+    pub fn redaction_marks(&self) -> Result<Vec<RedactMark>, EngineError> {
+        let pdf = crate::security::load(&self.snapshot()?, self.password())?;
+        let mut marks = Vec::new();
+        for (number, page) in pdf.get_pages() {
+            let index = number as usize - 1;
+            let geo = self.page_geometry(index)?;
+            for entry in page_annotations(&pdf, page).unwrap_or_default() {
+                if entry.dict.get(b"Subtype").and_then(Object::as_name).ok() != Some(b"Redact") {
+                    continue;
+                }
+                if marks.len() == 4096 {
+                    return Err(EngineError::Other(
+                        "too many persisted redaction marks".into(),
+                    ));
+                }
+                if let Some(rect) = rect_of(&pdf, &entry.dict) {
+                    marks.push(RedactMark {
+                        page: index,
+                        rect: geo.rect_to_display(rect),
+                    });
+                }
+            }
+        }
+        Ok(marks)
+    }
     /// Une zone par segment de ligne de chaque occurrence de `query`, agrandie de 1 pt (affichage).
     pub fn redact_marks_for_text(
         &self,
@@ -173,12 +392,30 @@ impl Document<'_> {
             .collect())
     }
 
-    /// Caviarde les zones. En cas d'erreur, le document peut être partiellement modifié : l'appelant
-    /// restaure son instantané (le thread moteur le fait ; la CLI n'écrit rien).
+    /// Apply on a scratch candidate, verify the full rewrite, then replace this document atomically.
+    /// Errors leave the original document unchanged; no files are written.
     pub fn redact(
         &mut self,
         marks: &[RedactMark],
         options: &RedactOptions,
+    ) -> Result<RedactReport, EngineError> {
+        let mut scratch = self.redaction_scratch(self.snapshot()?)?;
+        let report = scratch.redact_in_place(
+            marks,
+            options,
+            &RedactAppearance::default(),
+            &AtomicBool::new(false),
+        )?;
+        self.restore(scratch.snapshot()?)?;
+        Ok(report)
+    }
+
+    fn redact_in_place(
+        &mut self,
+        marks: &[RedactMark],
+        options: &RedactOptions,
+        appearance: &RedactAppearance,
+        cancel: &AtomicBool,
     ) -> Result<RedactReport, EngineError> {
         let by_page = group_marks(marks, self.page_count())?;
         let dpi = if options.raster_dpi.is_finite() {
@@ -190,6 +427,7 @@ impl Document<'_> {
         // Zones en espace utilisateur pour les /Rect d'annotations (phase B).
         let mut user_zones = BTreeMap::new();
         for (&page, rects) in &by_page {
+            cancelled(cancel)?;
             let geo = self.page_geometry(page)?;
             let zones = if rasterize {
                 vec![EVERYWHERE]
@@ -206,16 +444,29 @@ impl Document<'_> {
             ..Default::default()
         };
         for (&page, rects) in &by_page {
-            report.objects_removed += self.redact_page_objects(page, rects, rasterize, dpi)?;
+            cancelled(cancel)?;
+            let (removed, native, bitmap) =
+                self.redact_page_objects(page, rects, rasterize, dpi, appearance.fill_rgb, cancel)?;
+            report.objects_removed += removed;
+            report.native_text_runs += native;
+            report.bitmap_objects += bitmap;
         }
-        let clean = sanitize(
+        let mut clean = sanitize(
             &self.snapshot()?,
             self.password(),
             &user_zones,
             options.clean_hidden_data,
         )?;
+        cancelled(cancel)?;
         report.annotations_removed = clean.annotations_removed;
         report.fields_removed = clean.fields_removed;
+        if options.clean_hidden_data {
+            let (bytes, hidden) =
+                crate::sanitize::sanitize_document(&clean.bytes, self.password())?;
+            clean.bytes = bytes;
+            report.annotations_removed += hidden.removed_annotations;
+        }
+        cancelled(cancel)?;
         // Vérification sur l'état exact qui sera enregistré (rechargé depuis les octets assainis).
         self.restore(clean.bytes)?;
         let residual = by_page.iter().any(|(&page, rects)| {
@@ -230,6 +481,40 @@ impl Document<'_> {
         });
         if residual {
             return Err(EngineError::RedactionIncomplete);
+        }
+        // Intentional replacement text is added only after checking the cleaned, fully rewritten PDF.
+        if let Some(overlay) = &appearance.overlay {
+            if overlay.text.is_empty()
+                || overlay.text.len() > 256
+                || !overlay.text.bytes().all(|b| (32..=126).contains(&b))
+                || !overlay.style.size_pt.is_finite()
+                || !(4.0..=200.0).contains(&overlay.style.size_pt)
+            {
+                return Err(EngineError::Other("redaction overlay requires up to 256 printable Latin characters and a 4..200 pt font".into()));
+            }
+            for (&page, rects) in &by_page {
+                for rect in rects {
+                    cancelled(cancel)?;
+                    let index = self.page_objects(page)?.len();
+                    self.add_text(
+                        page,
+                        rect.left + 2.0,
+                        rect.bottom + 2.0 + overlay.style.size_pt * 0.25,
+                        &overlay.text,
+                        &overlay.style,
+                    )?;
+                    let bounds = self.object_info(page, index)?.bounds;
+                    if bounds.left < rect.left
+                        || bounds.bottom < rect.bottom
+                        || bounds.right > rect.right
+                        || bounds.top > rect.top
+                    {
+                        return Err(EngineError::Other(
+                            "redaction overlay does not fit the marked rectangle".into(),
+                        ));
+                    }
+                }
+            }
         }
         log::info!(
             "caviardage : {} zone(s) sur {} page(s), {} objet(s) et {} annotation(s) retirés",
@@ -249,7 +534,9 @@ impl Document<'_> {
         rects: &[PointRect],
         rasterize: bool,
         dpi: f32,
-    ) -> Result<usize, EngineError> {
+        fill_rgb: (u8, u8, u8),
+        cancel: &AtomicBool,
+    ) -> Result<(usize, usize, usize), EngineError> {
         let geo = self.page_geometry(page_index)?;
         let (w, h) = geo.display_size();
         if !(w > 0.0 && h > 0.0) {
@@ -262,10 +549,21 @@ impl Document<'_> {
             top: h,
         };
         let mut page = self.page_handle(page_index)?;
+        if page.objects().len() > 100_000 {
+            return Err(EngineError::Other(
+                "redaction page object limit exceeded".into(),
+            ));
+        }
+        let native_allowed = !rasterize
+            && native_redaction_page(&self.snapshot()?, self.password(), page_index)
+                .unwrap_or(false);
+        let mut retained = Vec::new();
+        let mut safe_victims = 0;
 
         // 1. Victimes : (index, limites d'affichage, est une image). Limites illisibles : la page.
         let mut victims: Vec<(usize, PointRect, bool)> = Vec::new();
         for (i, object) in page.objects().iter().enumerate() {
+            cancelled(cancel)?;
             let kind = object.object_type();
             let mut b = if object.bounds().is_ok() {
                 quad_bounds(&display_quad(&object, &geo))
@@ -283,6 +581,16 @@ impl Document<'_> {
             }
             if rasterize || rects.iter().any(|r| intersects(r, &b)) {
                 victims.push((i, b, kind == PdfPageObjectType::Image));
+                if native_allowed && kind == PdfPageObjectType::Text {
+                    if let Some(runs) =
+                        retained_text_runs(&self.inner, &page, &object, &geo, rects)?
+                    {
+                        if retained.len() + runs.len() <= 16_384 {
+                            safe_victims += 1;
+                            retained.extend(runs);
+                        }
+                    }
+                }
             }
         }
 
@@ -324,6 +632,7 @@ impl Document<'_> {
             .render_form_data(rasterize)
             .render_annotations(rasterize);
         let mut img = page.render_with_config(&config)?.as_image()?.into_rgb8();
+        cancelled(cancel)?;
         let (pw, ph) = (img.width(), img.height());
         let (sx, sy) = (pw as f32 / w, ph as f32 / h);
 
@@ -331,21 +640,25 @@ impl Document<'_> {
         for r in rects {
             let [x0, y0, x1, y1] = pixel_rect(r, h, sx, sy, pw, ph);
             for y in y0..y1 {
+                cancelled(cancel)?;
                 for x in x0..x1 {
-                    img.put_pixel(x, y, image::Rgb([0, 0, 0]));
+                    img.put_pixel(x, y, image::Rgb([fill_rgb.0, fill_rgb.1, fill_rgb.2]));
                 }
             }
         }
 
         // 5. Retrait groupé, une seule régénération du flux de contenu.
         page.set_content_regeneration_strategy(PdfPageContentRegenerationStrategy::Manual);
+        let native_count = retained.len();
         let result = (|| -> Result<(), EngineError> {
             for (i, ..) in victims.iter().rev() {
+                cancelled(cancel)?;
                 page.objects_mut()
                     .remove_object_at_index(*i as PdfPageObjectIndex)?;
             }
             // 6. Une vignette par empreinte, au premier plan, droite à l'écran.
             for (fp, jpeg) in &footprints {
+                cancelled(cancel)?;
                 let [x0, y0, x1, y1] = pixel_rect(fp, h, sx, sy, pw, ph);
                 if x1 <= x0 || y1 <= y0 {
                     continue;
@@ -377,6 +690,10 @@ impl Document<'_> {
                 object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
                 page.objects_mut().add_image_object(object)?;
             }
+            for object in retained.drain(..) {
+                cancelled(cancel)?;
+                page.objects_mut().add_text_object(object)?;
+            }
             page.regenerate_content()?;
             Ok(())
         })();
@@ -384,8 +701,193 @@ impl Document<'_> {
             PdfPageContentRegenerationStrategy::AutomaticOnEveryChange,
         );
         result?;
-        Ok(victims.len())
+        Ok((victims.len(), native_count, victims.len() - safe_victims))
     }
+}
+
+// Native reconstruction is deliberately limited to uncomplicated Base14 glyphs. All other
+// objects keep the established pixel-patch fallback; no guessed font/encoding is introduced.
+fn native_redaction_page(
+    bytes: &[u8],
+    password: Option<&str>,
+    page: usize,
+) -> Result<bool, EngineError> {
+    let pdf = crate::security::load(bytes, password)?;
+    let catalog = pdf.catalog().map_err(lopdf_err)?;
+    if catalog.has(b"OCProperties") || catalog.has(b"StructTreeRoot") {
+        return Ok(false);
+    }
+    let page = *pdf
+        .get_pages()
+        .get(&(page as u32 + 1))
+        .ok_or(EngineError::PageOutOfRange(page))?;
+    let content = pdf
+        .get_page_content_with_limit(page, 32 * 1024 * 1024)
+        .map_err(lopdf_err)?;
+    let ops = Content::decode_strict(&content)
+        .map_err(lopdf_err)?
+        .operations;
+    if ops.len() > 100_000 {
+        return Ok(false);
+    }
+    for op in ops {
+        match op.operator.as_str() {
+            "BMC" | "BDC" | "'" | "\"" | "k" | "K" | "cs" | "CS" | "sc" | "SC" | "scn" | "SCN" => {
+                return Ok(false)
+            }
+            "TJ" if op
+                .operands
+                .first()
+                .and_then(|v| v.as_array().ok())
+                .is_none_or(|array| array.iter().any(|v| !matches!(v, Object::String(_, _)))) =>
+            {
+                return Ok(false)
+            }
+            "Tc" | "Tw" | "Ts" | "Tr"
+                if op.operands.len() != 1 || op.operands[0].as_float().ok() != Some(0.0) =>
+            {
+                return Ok(false)
+            }
+            "Tz" if op.operands.len() != 1 || op.operands[0].as_float().ok() != Some(100.0) => {
+                return Ok(false)
+            }
+            _ => {}
+        }
+    }
+    let (direct, inherited) = pdf.get_page_resources(page).map_err(lopdf_err)?;
+    for resources in direct.into_iter().chain(
+        inherited
+            .iter()
+            .filter_map(|id| pdf.get_dictionary(*id).ok()),
+    ) {
+        let Some(gs) = resources.get(b"ExtGState").ok() else {
+            continue;
+        };
+        let (_, gs) = pdf.dereference(gs).map_err(lopdf_err)?;
+        for (_, gs) in gs.as_dict().map_err(lopdf_err)?.iter() {
+            let (_, gs) = pdf.dereference(gs).map_err(lopdf_err)?;
+            for (key, value) in gs.as_dict().map_err(lopdf_err)?.iter() {
+                if key == b"Type"
+                    || ((key == b"CA" || key == b"ca") && value.as_float().ok() == Some(1.0))
+                    || (key == b"BM" && value.as_name().ok() == Some(b"Normal"))
+                {
+                    continue;
+                }
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
+}
+
+fn retained_text_runs<'a>(
+    document: &PdfDocument<'a>,
+    page: &PdfPage<'a>,
+    object: &PdfPageObject<'a>,
+    geo: &crate::PageGeometry,
+    zones: &[PointRect],
+) -> Result<Option<Vec<PdfPageTextObject<'a>>>, EngineError> {
+    let Some(text) = object.as_text_object() else {
+        return Ok(None);
+    };
+    if text.font().is_embedded()? {
+        return Ok(None);
+    }
+    if text.render_mode() != PdfPageTextRenderMode::FilledUnstroked
+        || object.get_clip_path().is_some_and(|clip| !clip.is_empty())
+    {
+        return Ok(None);
+    }
+    if !matches!(
+        text.font().name().as_str(),
+        "Helvetica"
+            | "Helvetica-Bold"
+            | "Helvetica-Oblique"
+            | "Helvetica-BoldOblique"
+            | "Courier"
+            | "Courier-Bold"
+            | "Courier-Oblique"
+            | "Courier-BoldOblique"
+            | "Times-Roman"
+            | "Times-Bold"
+            | "Times-Italic"
+            | "Times-BoldItalic"
+    ) {
+        return Ok(None);
+    }
+    let value = text.text();
+    if value.is_empty() || value.len() > 4096 || !value.bytes().all(|b| (32..=126).contains(&b)) {
+        return Ok(None);
+    }
+    let matrix = text.matrix()?;
+    let (a, b, c, d) = (matrix.a(), matrix.b(), matrix.c(), matrix.d());
+    if ![a, b, c, d, matrix.e(), matrix.f()]
+        .iter()
+        .all(|v| v.is_finite())
+        || (a * a + b * b - 1.0).abs() > 0.0001
+        || (c * c + d * d - 1.0).abs() > 0.0001
+        || (a * c + b * d).abs() > 0.0001
+        || matrix.determinant() < 0.9999
+    {
+        return Ok(None);
+    }
+    let color = object.fill_color()?;
+    if color.alpha() != 255 {
+        return Ok(None);
+    }
+    let page_text = page.text()?;
+    let chars = page_text.chars_for_object(text)?;
+    if chars.len() != value.len() {
+        return Ok(None);
+    }
+    let mut retained = Vec::new();
+    for (index, character) in value.chars().enumerate() {
+        let glyph = chars.get(index)?;
+        if glyph.is_generated()? || glyph.unicode_char() != Some(character) {
+            return Ok(None);
+        }
+        let bounds = glyph.loose_bounds()?;
+        let rect = geo.rect_to_display(PointRect {
+            left: bounds.left().value,
+            bottom: bounds.bottom().value,
+            right: bounds.right().value,
+            top: bounds.top().value,
+        });
+        let (x, y) = glyph.origin()?;
+        if ![
+            rect.left,
+            rect.bottom,
+            rect.right,
+            rect.top,
+            x.value,
+            y.value,
+        ]
+        .iter()
+        .all(|v| v.is_finite())
+        {
+            return Ok(None);
+        }
+        // Expanded glyph boxes cover descenders, accents and antialiasing at the cut boundary.
+        let rect = PointRect {
+            left: rect.left - 0.5,
+            bottom: rect.bottom - 0.5,
+            right: rect.right + 0.5,
+            top: rect.top + 0.5,
+        };
+        if zones.iter().any(|zone| intersects(zone, &rect)) {
+            continue;
+        }
+        let mut replacement = PdfPageTextObject::new(
+            document,
+            character.to_string(),
+            text.font().token(),
+            text.unscaled_font_size(),
+        )?;
+        replacement.set_fill_color(color)?;
+        replacement.transform(a, b, c, d, x.value, y.value)?;
+        retained.push(replacement);
+    }
+    Ok(Some(retained))
 }
 
 // ---------------------------------------------------------------------------------------------

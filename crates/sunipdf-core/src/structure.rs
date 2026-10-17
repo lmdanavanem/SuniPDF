@@ -78,7 +78,7 @@ fn names(pdf: &lopdf::Document, root: &Object) -> Result<BTreeMap<Vec<u8>, Objec
                     return Err(invalid("malformed name tree entries"));
                 }
                 let mut previous: Option<Vec<u8>> = None;
-                for pair in entries.chunks_exact(2) {
+                for pair in entries.as_chunks::<2>().0 {
                     let key = pair[0]
                         .as_str()
                         .map_err(crate::security::lopdf_err)?

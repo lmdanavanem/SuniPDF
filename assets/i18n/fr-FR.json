@@ -1031,5 +1031,19 @@
   "bookmarks.up": "Monter",
   "bookmarks.down": "Descendre",
   "bookmarks.delete_subtree": "Supprimer la sélection et ses enfants",
-  "bookmarks.edit_limits": "Maximum : 4 096 signets, 32 niveaux et 1 024 octets UTF-8 par titre. Annulation disponible. Renommer conserve les actions existantes ; définir une destination remplace l’action sélectionnée."
+  "bookmarks.edit_limits": "Maximum : 4 096 signets, 32 niveaux et 1 024 octets UTF-8 par titre. Annulation disponible. Renommer conserve les actions existantes ; définir une destination remplace l’action sélectionnée.",
+  "security.redact.fill": "Couleur de remplissage",
+  "security.redact.overlay": "Texte de remplacement volontaire (facultatif)",
+  "security.redact.overlay.color": "Couleur du texte",
+  "security.redact.overlay.note": "Texte latin imprimable, 256 caractères maximum, devant tenir dans chaque rectangle. Ajouté après vérification du retrait. Effacez-le avant de conserver les marques non appliquées.",
+  "security.redact.preview.action": "Aperçu avant / après",
+  "security.redact.preview.before": "Avant",
+  "security.redact.preview.after": "Après application",
+  "security.redact.preview.page": "Page de l’aperçu",
+  "security.redact.preview.running": "Préparation et vérification de toutes les pages marquées…",
+  "security.redact.preview.report": "{native} glyphes sélectionnables conservés ; {bitmap} objets utilisent une image.",
+  "security.redact.preview.fallback": "Le texte non pris en charge, l’OCR, les images et les objets imbriqués conservent leur partie visible en pixels. Le texte hors zone de ces objets peut perdre sa sélection.",
+  "security.redact.preview.stale": "Le document a changé. Refaites l’aperçu avant d’appliquer.",
+  "security.redact.preview.failed": "L’application a échoué. Vos marques et réglages sont conservés ; refaites l’aperçu.",
+  "security.redact.persist": "Conserver les marques PDF non appliquées"
 }

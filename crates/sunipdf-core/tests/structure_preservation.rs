@@ -3,6 +3,8 @@ use sunipdf_core::{
     bookmarks::{self, BookmarkEdit},
     security, Engine, Protection,
 };
+#[path = "support/feature_evidence.rs"]
+mod feature_evidence;
 
 fn fixture() -> Vec<u8> {
     let mut pdf = lopdf::Document::with_version("1.7");
@@ -14,14 +16,15 @@ fn fixture() -> Vec<u8> {
     for page in 0..2 {
         let stream = pdf.add_object(Stream::new(
             Dictionary::new(),
-            format!("/OC /L1 BDC BT /F1 12 Tf 40 100 Td (PAGE{page}) Tj ET EMC").into_bytes(),
+            format!("BT /F1 12 Tf 40 150 Td (STRUCTURE) Tj ET /OC /L1 BDC BT /F1 12 Tf 40 100 Td (PAGE{page}) Tj ET EMC").into_bytes(),
         ));
         pages.push(pdf.add_object(dictionary!{"Type"=>"Page","Parent"=>root,"MediaBox"=>vec![0.into(),0.into(),300.into(),200.into()],"Contents"=>stream,"Resources"=>dictionary!{"Font"=>dictionary!{"F1"=>font},"Properties"=>dictionary!{"L1"=>group}}}));
     }
     pdf.objects.insert(root,dictionary!{"Type"=>"Pages","Count"=>2,"Kids"=>pages.iter().copied().map(Object::Reference).collect::<Vec<_>>()}.into());
     let link0=pdf.add_object(dictionary!{"Type"=>"Annot","Subtype"=>"Link","Rect"=>vec![20.into(),20.into(),80.into(),40.into()],"P"=>pages[0],"A"=>dictionary!{"S"=>"GoTo","D"=>Object::string_literal("target")}});
     let link1=pdf.add_object(dictionary!{"Type"=>"Annot","Subtype"=>"Link","Rect"=>vec![20.into(),20.into(),80.into(),40.into()],"P"=>pages[1],"Dest"=>vec![Object::Reference(pages[0]),Object::Name(b"Fit".to_vec())]});
-    let field=pdf.add_object(dictionary!{"Type"=>"Annot","Subtype"=>"Widget","FT"=>"Tx","T"=>Object::string_literal("value"),"V"=>Object::string_literal("kept"),"DA"=>Object::string_literal("/Helv 12 Tf 0 g"),"Rect"=>vec![30.into(),50.into(),180.into(),70.into()],"P"=>pages[0]});
+    let field_appearance=pdf.add_object(Stream::new(dictionary!{"Type"=>"XObject","Subtype"=>"Form","BBox"=>vec![0.into(),0.into(),150.into(),20.into()],"Resources"=>dictionary!{"Font"=>dictionary!{"Helv"=>font}}},b"BT /Helv 12 Tf 0 g 2 4 Td (kept) Tj ET".to_vec()));
+    let field=pdf.add_object(dictionary!{"Type"=>"Annot","Subtype"=>"Widget","FT"=>"Tx","T"=>Object::string_literal("value"),"V"=>Object::string_literal("kept"),"DA"=>Object::string_literal("/Helv 12 Tf 0 g"),"Rect"=>vec![30.into(),50.into(),180.into(),70.into()],"P"=>pages[0],"AP"=>dictionary!{"N"=>field_appearance}});
     pdf.get_dictionary_mut(pages[0]).unwrap().set(
         "Annots",
         vec![Object::Reference(link0), Object::Reference(field)],
@@ -101,7 +104,7 @@ fn check_attachments_layers_fields(pdf: &lopdf::Document, count: usize) {
         .as_array()
         .unwrap();
     assert_eq!(files.len(), count * 2);
-    for pair in files.chunks_exact(2) {
+    for pair in files.as_chunks::<2>().0 {
         let spec = dictionary(pdf, &pair[1]);
         let ef = dictionary(pdf, spec.get(b"EF").unwrap());
         let stream = pdf
@@ -145,6 +148,7 @@ fn check_attachments_layers_fields(pdf: &lopdf::Document, count: usize) {
 fn merge_extract_insert_preserve_independent_structure_encryption_and_originals() {
     let engine = Engine::new().unwrap();
     let dir = tempfile::tempdir().unwrap();
+    let mut evidence = feature_evidence::Evidence::new("structure");
     let original = fixture();
     let first = dir.path().join("first.pdf");
     let second = dir.path().join("second.pdf");
@@ -159,6 +163,12 @@ fn merge_extract_insert_preserve_independent_structure_encryption_and_originals(
     );
     let pdf = load(&merged, None);
     check_attachments_layers_fields(&pdf, 2);
+    evidence.save(
+        "merged",
+        &merged,
+        &engine.open(&merged, None).unwrap(),
+        None,
+    );
     let pages = pdf.get_pages();
     let outlines = outline_dicts(&pdf);
     assert_eq!(outlines.len(), 4);
@@ -184,6 +194,19 @@ fn merge_extract_insert_preserve_independent_structure_encryption_and_originals(
             &[Object::Null, Object::Integer(120), Object::Null]
         );
     }
+    let plain = dir.path().join("selected-plain.pdf");
+    engine
+        .open(&first, None)
+        .unwrap()
+        .extract_to(&[0], &plain)
+        .unwrap();
+    check_attachments_layers_fields(&load(&plain, None), 1);
+    evidence.save(
+        "extracted-plain",
+        &plain,
+        &engine.open(&plain, None).unwrap(),
+        None,
+    );
     for aes in [false, true] {
         let bytes = security::protect(
             &original,
@@ -207,6 +230,16 @@ fn merge_extract_insert_preserve_independent_structure_encryption_and_originals(
         let reopened = engine.open(&output, Some("reader")).unwrap();
         assert!(reopened.properties().encrypted);
         assert_eq!(reopened.page_count(), 1);
+        evidence.save(
+            if aes {
+                "extracted-aes256"
+            } else {
+                "extracted-aes128"
+            },
+            &output,
+            &reopened,
+            Some("reader"),
+        );
         let pdf = load(&output, Some("reader"));
         check_attachments_layers_fields(&pdf, 1);
         let page = pdf.get_pages()[&1];
@@ -236,10 +269,17 @@ fn merge_extract_insert_preserve_independent_structure_encryption_and_originals(
     let inserted = dir.path().join("inserted.pdf");
     target.save_as(&inserted).unwrap();
     check_attachments_layers_fields(&load(&inserted, None), 2);
+    evidence.save(
+        "inserted",
+        &inserted,
+        &engine.open(&inserted, None).unwrap(),
+        None,
+    );
     target.restore(before.clone()).unwrap();
     assert_eq!(target.snapshot().unwrap(), before);
     assert_eq!(std::fs::read(&first).unwrap(), original);
     assert_eq!(std::fs::read(&second).unwrap(), original);
+    evidence.finish();
 }
 #[test]
 fn malformed_graphs_copy_restrictions_and_duplicate_widgets_fail_without_outputs_or_changes() {

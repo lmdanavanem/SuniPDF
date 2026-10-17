@@ -320,10 +320,7 @@ impl SuniApp {
             && !self.printing.busy
             && !self.ocr.busy
             && !self.certificate.busy
-            && self.pending_files.is_empty()
-            && self.pending_save.is_none()
-            && self.after_save.is_none()
-            && self.deferred_close.is_none()
+            && !self.document_transition_pending()
     }
 
     fn rich_context_current(&mut self) -> bool {

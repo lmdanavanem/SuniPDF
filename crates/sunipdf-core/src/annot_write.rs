@@ -297,13 +297,6 @@ fn text_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<String>
     Some(out.replace("\r\n", "\n").replace('\r', "\n"))
 }
 
-fn name_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<String> {
-    get(d, dict, key)?
-        .as_name()
-        .ok()
-        .map(|n| String::from_utf8_lossy(n).into_owned())
-}
-
 fn color_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<(u8, u8, u8)> {
     let v = floats(d, dict.get(key).ok()?)?;
     let b = |x: f32| (x.clamp(0.0, 1.0) * 255.0).round() as u8;

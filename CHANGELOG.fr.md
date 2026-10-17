@@ -7,6 +7,18 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.30.0] - Non publiée
+
+Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
+release et publication restent en attente. Le [périmètre exact et ses limites](docs/RELEASE_0.30.0.fr.md)
+comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
+les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
+l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
+des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
+polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
+P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](docs/PROJECT_STATUS.fr.md) ;
+les sections des anciennes versions ci-dessous sont historiques.
+
 ## [0.21.1] — 2026-10-17
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) sous `lmdanavanem`,

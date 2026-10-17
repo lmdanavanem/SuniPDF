@@ -67,7 +67,25 @@ jobs:
             target/font-embedding-evidence/
           if-no-files-found: ignore
       - name: Pinned independent QPDF checker
+        if: always() && steps.workspace_tests.outcome == 'success'
         run: .\scripts\fetch-qpdf.ps1
+      - name: Independent feature-reader checker self-test
+        run: python .\scripts\test-feature-reader.py --self-test
+      - name: Rich annotation and document structure independent readers
+        if: always() && steps.workspace_tests.outcome == 'success'
+        run: |
+          .\scripts\fetch-test-mupdf.ps1
+          python .\scripts\test-feature-reader.py
+          if ($LASTEXITCODE -ne 0) { throw 'Independent feature reader regression failed.' }
+      - name: Independent feature reader evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: feature-independent-reader-evidence
+          path: |
+            target/feature-independent-reader-report.json
+            target/feature-030-evidence/
+          if-no-files-found: ignore
       - name: QPDF archive checksum self-test
         run: .\scripts\fetch-qpdf.ps1 -SelfTest
       - name: Synthetic corpus and generated PDF structural checks

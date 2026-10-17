@@ -10,6 +10,11 @@ use crate::theme;
 use crate::worker::Request;
 use egui::{Key, Modifiers, Stroke};
 use std::collections::BTreeSet;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+use sunipdf_core::redact::{RedactAppearance, RedactOverlay, RedactionPreview};
 use sunipdf_core::{Command, PointRect, RedactMark, RedactOptions, RedactReport};
 use sunipdf_i18n::{tr, tr_args};
 
@@ -32,6 +37,19 @@ pub struct RedactState {
     pub save_prompt: Option<bool>,
     /// « Enregistrer sans caviarder » choisi : le prochain enregistrement passe la garde.
     pub save_confirmed: bool,
+    pub fill_rgb: [u8; 3],
+    pub overlay: String,
+    pub overlay_rgb: [u8; 3],
+    pub overlay_size: f32,
+    generation: u64,
+    preview_epoch: u64,
+    preview_page: Option<usize>,
+    preview: Option<(egui::TextureHandle, egui::TextureHandle)>,
+    preview_report: Option<RedactReport>,
+    preview_busy: bool,
+    preview_cancel: Option<Arc<AtomicBool>>,
+    preview_error: Option<String>,
+    persisting: bool,
 }
 
 impl Default for RedactState {
@@ -48,11 +66,59 @@ impl Default for RedactState {
             applying: false,
             save_prompt: None,
             save_confirmed: false,
+            fill_rgb: [0, 0, 0],
+            overlay: String::new(),
+            overlay_rgb: [255, 255, 255],
+            overlay_size: 10.0,
+            generation: 0,
+            preview_epoch: 0,
+            preview_page: None,
+            preview: None,
+            preview_report: None,
+            preview_busy: false,
+            preview_cancel: None,
+            preview_error: None,
+            persisting: false,
+        }
+    }
+}
+
+impl Drop for RedactState {
+    fn drop(&mut self) {
+        if let Some(cancel) = &self.preview_cancel {
+            cancel.store(true, Ordering::Relaxed);
         }
     }
 }
 
 impl RedactState {
+    fn appearance(&self) -> RedactAppearance {
+        RedactAppearance {
+            fill_rgb: (self.fill_rgb[0], self.fill_rgb[1], self.fill_rgb[2]),
+            overlay: (!self.overlay.trim().is_empty()).then(|| RedactOverlay {
+                text: self.overlay.clone(),
+                style: sunipdf_core::TextStyle {
+                    size_pt: self.overlay_size,
+                    rgb: (
+                        self.overlay_rgb[0],
+                        self.overlay_rgb[1],
+                        self.overlay_rgb[2],
+                    ),
+                    ..Default::default()
+                },
+            }),
+        }
+    }
+
+    fn invalidate_preview(&mut self) {
+        if let Some(cancel) = self.preview_cancel.take() {
+            cancel.store(true, Ordering::Relaxed);
+        }
+        self.generation = self.generation.wrapping_add(1);
+        self.preview = None;
+        self.preview_report = None;
+        self.preview_busy = false;
+    }
     pub fn dialog_open(&self) -> bool {
         self.search_open || self.confirm_open || self.save_prompt.is_some()
     }
@@ -73,6 +139,9 @@ impl RedactState {
                 self.marks.push(m);
             }
         }
+        if self.marks.len() != before {
+            self.invalidate_preview();
+        }
         self.marks.len() - before
     }
 
@@ -83,7 +152,13 @@ impl RedactState {
                 && (m.rect.left..=m.rect.right).contains(&pt.0)
                 && (m.rect.bottom..=m.rect.top).contains(&pt.1)
         });
-        hit.map(|i| self.marks.remove(i)).is_some()
+        if let Some(i) = hit {
+            self.marks.remove(i);
+            self.invalidate_preview();
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -99,6 +174,135 @@ pub fn drawn_rect(rect: PointRect, page_w: f32, page_h: f32) -> Option<PointRect
 }
 
 impl SuniApp {
+    fn discard_redaction_preview(&mut self) {
+        let r = &mut self.annotate.redact;
+        self.worker.send(Request::DiscardRedactionPreview {
+            epoch: r.preview_epoch,
+            generation: r.generation,
+        });
+        r.invalidate_preview();
+    }
+
+    pub(crate) fn on_persisted_redaction_marks(
+        &mut self,
+        epoch: u64,
+        result: Result<Vec<RedactMark>, sunipdf_core::EngineError>,
+    ) {
+        if epoch != self.view.epoch {
+            return;
+        }
+        match result {
+            Ok(marks) => {
+                self.annotate.redact.add(marks);
+            }
+            Err(error) => self.status_msg = Some(error.to_string()),
+        }
+    }
+
+    pub(crate) fn on_redaction_preview(
+        &mut self,
+        ctx: &egui::Context,
+        epoch: u64,
+        generation: u64,
+        result: Result<RedactionPreview, sunipdf_core::EngineError>,
+    ) {
+        let r = &mut self.annotate.redact;
+        if epoch != self.view.epoch
+            || epoch != r.preview_epoch
+            || generation != r.generation
+            || !r.preview_busy
+            || !r.confirm_open
+        {
+            return;
+        }
+        r.preview_busy = false;
+        match result {
+            Ok(preview) => {
+                let texture = |name, image: &sunipdf_core::RenderedPage| {
+                    ctx.load_texture(
+                        name,
+                        egui::ColorImage::from_rgba_unmultiplied(
+                            [image.width as usize, image.height as usize],
+                            &image.rgba,
+                        ),
+                        egui::TextureOptions::LINEAR,
+                    )
+                };
+                r.preview = Some((
+                    texture("redaction-before", &preview.before),
+                    texture("redaction-after", &preview.after),
+                ));
+                r.preview_report = Some(preview.report);
+                r.preview_error = None;
+            }
+            Err(error) => r.preview_error = Some(error.to_string()),
+        }
+    }
+
+    pub(crate) fn persist_redact_marks(&mut self, ctx: &egui::Context) {
+        if !self.redaction_idle() || self.annotate.redact.marks.is_empty() {
+            return;
+        }
+        self.discard_redaction_preview();
+        let r = &mut self.annotate.redact;
+        r.confirm_open = false;
+        r.persisting = true;
+        self.worker.send(Request::PersistRedactionMarks {
+            marks: r.marks.clone(),
+            appearance: r.appearance(),
+            author: None,
+        });
+        ctx.request_repaint();
+    }
+
+    fn redaction_idle(&self) -> bool {
+        self.document.is_some()
+            && !self.worker.has_pending_mutations()
+            && self.opening.is_none()
+            && self.tabs.resuming.is_none()
+            && self.tabs.suspending.is_none()
+            && !self.processing.busy
+            && !self.office.busy
+            && !self.saving
+            && !self.printing.busy
+            && !self.ocr.busy
+            && !self.sign.busy
+            && !self.certificate.busy
+    }
+
+    fn request_redaction_preview(&mut self) {
+        if !self.redaction_idle() {
+            return;
+        }
+        self.discard_redaction_preview();
+        let r = &mut self.annotate.redact;
+        let Some(page) = r
+            .preview_page
+            .filter(|page| r.marks.iter().any(|m| m.page == *page))
+            .or_else(|| r.marks.first().map(|m| m.page))
+        else {
+            return;
+        };
+        r.preview_page = Some(page);
+        r.preview_epoch = self.view.epoch;
+        r.preview_busy = true;
+        let cancel = Arc::new(AtomicBool::new(false));
+        r.preview_cancel = Some(cancel.clone());
+        r.preview_error = None;
+        self.worker.send(Request::PreviewRedaction {
+            marks: r.marks.clone(),
+            options: RedactOptions {
+                rasterize_pages: r.rasterize,
+                clean_hidden_data: r.clean_hidden,
+                ..Default::default()
+            },
+            appearance: r.appearance(),
+            page,
+            epoch: r.preview_epoch,
+            generation: r.generation,
+            cancel,
+        });
+    }
     pub(crate) fn redact_status(&mut self) {
         let r = &self.annotate.redact;
         self.status_msg = Some(if r.marks.is_empty() {
@@ -196,6 +400,7 @@ impl SuniApp {
                 r.search_open = true;
             }
             Command::RedactClear => {
+                self.discard_redaction_preview();
                 self.annotate.redact.marks.clear();
                 self.status_msg = Some(self.t("security.redact.status.all_removed").to_string());
             }
@@ -203,6 +408,8 @@ impl SuniApp {
                 if self.annotate.redact.marks.is_empty() {
                     self.error = Some("error.redact_no_marks");
                 } else if !self.annotate.redact.applying {
+                    self.discard_redaction_preview();
+                    self.annotate.redact.preview_epoch = self.view.epoch;
                     self.annotate.redact.confirm_open = true;
                 }
             }
@@ -213,6 +420,8 @@ impl SuniApp {
     /// Le document a changé (rotation, page supprimée, annulation…) : les zones ne désignent plus
     /// forcément le même contenu. Règle simple et sûre : elles sont effacées.
     pub fn redact_on_document_changed(&mut self) {
+        self.discard_redaction_preview();
+        self.annotate.redact.persisting = false;
         if !self.annotate.redact.marks.is_empty() {
             self.annotate.redact.marks.clear();
             self.status_msg = Some(self.t("security.redact.status.cleared").to_string());
@@ -281,9 +490,14 @@ impl SuniApp {
 
     /// Échec du moteur pendant l'application : les zones restent pour réessayer (page en image).
     pub fn redact_failed(&mut self) {
+        self.annotate.redact.persisting = false;
         if self.annotate.redact.applying {
             self.annotate.redact.applying = false;
             self.tools.running = None;
+            self.annotate.redact.confirm_open = true;
+            self.annotate.redact.preview_error =
+                Some(tr(self.lang(), "security.redact.preview.failed").to_string());
+            self.discard_redaction_preview();
         }
     }
 
@@ -366,6 +580,14 @@ impl SuniApp {
         if !self.annotate.redact.confirm_open {
             return;
         }
+        if self.annotate.redact.preview_epoch != self.view.epoch
+            && (self.annotate.redact.preview.is_some() || self.annotate.redact.preview_busy)
+        {
+            self.discard_redaction_preview();
+            self.annotate.redact.preview_error =
+                Some(tr(self.lang(), "security.redact.preview.stale").to_string());
+        }
+        let idle = self.redaction_idle();
         let lang = self.lang();
         let r = &self.annotate.redact;
         let spec = dialog::Spec::new(
@@ -384,59 +606,163 @@ impl SuniApp {
         ))
         .icon(glyph::REDACT, "█")
         .warning()
-        .width(520.0);
-        let (mut submit, mut cancel) = (false, false);
+        .width(720.0);
+        let (mut submit, mut cancel, mut preview, mut persist, mut changed) =
+            (false, false, false, false, false);
         let r = &mut self.annotate.redact;
+        let ready =
+            r.preview.is_some() && !r.preview_busy && r.preview_epoch == self.view.epoch && idle;
+        let can_preview = idle && !r.preview_busy;
         dialog::show(
             ctx,
             spec,
             |ui| {
                 ui.add(egui::Label::new(tr(lang, "security.redact.confirm.text")).wrap());
-                ui.add_space(6.0);
-                ui.checkbox(
-                    &mut r.rasterize,
-                    tr(lang, "security.redact.confirm.rasterize"),
-                );
-                ui.checkbox(
-                    &mut r.clean_hidden,
-                    tr(lang, "security.redact.confirm.clean"),
-                );
-                ui.add_space(6.0);
+                ui.add_enabled_ui(!r.preview_busy, |ui| {
+                    changed |= ui
+                        .checkbox(
+                            &mut r.rasterize,
+                            tr(lang, "security.redact.confirm.rasterize"),
+                        )
+                        .changed();
+                    changed |= ui
+                        .checkbox(
+                            &mut r.clean_hidden,
+                            tr(lang, "security.redact.confirm.clean"),
+                        )
+                        .changed();
+                    ui.horizontal(|ui| {
+                        ui.label(tr(lang, "security.redact.fill"));
+                        changed |= ui.color_edit_button_srgb(&mut r.fill_rgb).changed();
+                        ui.label(tr(lang, "security.redact.overlay.color"));
+                        changed |= ui.color_edit_button_srgb(&mut r.overlay_rgb).changed();
+                        changed |= ui
+                            .add(
+                                egui::DragValue::new(&mut r.overlay_size)
+                                    .range(4.0..=200.0)
+                                    .suffix(" pt"),
+                            )
+                            .changed();
+                    });
+                    ui.label(tr(lang, "security.redact.overlay"));
+                    changed |= ui
+                        .add(
+                            egui::TextEdit::singleline(&mut r.overlay)
+                                .char_limit(256)
+                                .desired_width(f32::INFINITY),
+                        )
+                        .changed();
+                    ui.add(
+                        egui::Label::new(tr(lang, "security.redact.overlay.note"))
+                            .small()
+                            .wrap(),
+                    );
+                    let pages = r.marks.iter().map(|m| m.page).collect::<BTreeSet<_>>();
+                    let mut page = r
+                        .preview_page
+                        .filter(|p| pages.contains(p))
+                        .or_else(|| pages.first().copied())
+                        .unwrap_or(0);
+                    let before = page;
+                    egui::ComboBox::from_id_salt("redaction-preview-page")
+                        .selected_text(format!(
+                            "{} {}",
+                            tr(lang, "security.redact.preview.page"),
+                            page + 1
+                        ))
+                        .show_ui(ui, |ui| {
+                            for p in pages {
+                                ui.selectable_value(&mut page, p, (p + 1).to_string());
+                            }
+                        });
+                    r.preview_page = Some(page);
+                    changed |= page != before;
+                });
+                if r.preview_busy {
+                    ui.spinner();
+                    ui.label(tr(lang, "security.redact.preview.running"));
+                }
+                if let Some((before, after)) = &r.preview {
+                    ui.columns(2, |columns| {
+                        for (column, (label, texture)) in columns.iter_mut().zip([
+                            ("security.redact.preview.before", before),
+                            ("security.redact.preview.after", after),
+                        ]) {
+                            column.label(tr(lang, label));
+                            let scale = (column.available_width() / texture.size_vec2().x)
+                                .min(260.0 / texture.size_vec2().y);
+                            column.add(egui::Image::new((
+                                texture.id(),
+                                texture.size_vec2() * scale,
+                            )));
+                        }
+                    });
+                }
+                if let Some(report) = r.preview_report {
+                    ui.add(
+                        egui::Label::new(tr_args(
+                            lang,
+                            "security.redact.preview.report",
+                            &[
+                                ("native", &report.native_text_runs.to_string()),
+                                ("bitmap", &report.bitmap_objects.to_string()),
+                            ],
+                        ))
+                        .wrap(),
+                    );
+                    if report.bitmap_objects > 0 {
+                        ui.add(
+                            egui::Label::new(tr(lang, "security.redact.preview.fallback")).wrap(),
+                        );
+                    }
+                }
+                if let Some(error) = &r.preview_error {
+                    ui.colored_label(egui::Color32::from_rgb(220, 70, 70), error);
+                }
                 ui.add(egui::Label::new(tr(lang, "security.redact.confirm.note")).wrap());
             },
             |ui| {
-                // Ctrl+Entrée lu sur l'événement même (jamais Entrée seule : action destructrice).
-                if dialog::danger(ui, tr(lang, "security.redact.confirm.ok"))
-                    || ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter))
-                {
-                    submit = true;
-                }
-                if dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
-                    || ui.input(|i| i.key_pressed(Key::Escape))
-                {
-                    cancel = true;
-                }
+                preview = ui
+                    .add_enabled_ui(can_preview, |ui| {
+                        dialog::primary(ui, tr(lang, "security.redact.preview.action"))
+                    })
+                    .inner;
+                persist = ui
+                    .add_enabled_ui(can_preview, |ui| {
+                        dialog::secondary(ui, tr(lang, "security.redact.persist"))
+                    })
+                    .inner;
+                submit = ui
+                    .add_enabled_ui(ready, |ui| {
+                        dialog::danger(ui, tr(lang, "security.redact.confirm.ok"))
+                    })
+                    .inner
+                    || (ready && ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter)));
+                cancel = dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|i| i.key_pressed(Key::Escape));
             },
         );
-        let r = &mut self.annotate.redact;
-        if submit {
+        if changed {
+            self.discard_redaction_preview();
+        }
+        if cancel {
+            self.discard_redaction_preview();
+            self.annotate.redact.confirm_open = false;
+        } else if persist {
+            self.persist_redact_marks(ctx);
+        } else if preview {
+            self.request_redaction_preview();
+        } else if submit && !changed {
+            let r = &mut self.annotate.redact;
             r.confirm_open = false;
             r.applying = true;
             self.tools.running = Some("security.redact.running");
-            let options = RedactOptions {
-                rasterize_pages: r.rasterize,
-                clean_hidden_data: r.clean_hidden,
-                ..Default::default()
-            };
-            self.worker.send(Request::Redact {
-                marks: r.marks.clone(),
-                options,
+            self.worker.send(Request::CommitRedactionPreview {
+                epoch: r.preview_epoch,
+                generation: r.generation,
             });
-        } else if cancel {
-            r.confirm_open = false;
         }
     }
-
     fn redact_unapplied_dialog(&mut self, ctx: &egui::Context) {
         let Some(ask_path) = self.annotate.redact.save_prompt else {
             return;
@@ -499,6 +825,45 @@ mod tests {
             right: r,
             top: t,
         }
+    }
+
+    #[test]
+    fn preview_cancel_and_stale_responses_preserve_the_draft() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.annotate.redact.marks.push(RedactMark {
+            page: 0,
+            rect: rect(10.0, 10.0, 100.0, 40.0),
+        });
+        app.annotate.redact.confirm_open = true;
+        app.annotate.redact.preview_epoch = app.view.epoch;
+        app.annotate.redact.preview_busy = true;
+        app.annotate.redact.overlay = "KEEP DRAFT".into();
+        let cancel = Arc::new(AtomicBool::new(false));
+        app.annotate.redact.preview_cancel = Some(cancel.clone());
+        let generation = app.annotate.redact.generation;
+        app.on_redaction_preview(
+            &ctx,
+            app.view.epoch,
+            generation.wrapping_add(1),
+            Err(sunipdf_core::EngineError::Cancelled),
+        );
+        assert!(app.annotate.redact.preview_busy);
+        app.discard_redaction_preview();
+        assert!(cancel.load(Ordering::Relaxed));
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::DiscardRedactionPreview { .. }
+        ));
+        assert_eq!(app.annotate.redact.overlay, "KEEP DRAFT");
+        assert_eq!(app.annotate.redact.marks.len(), 1);
+        app.on_redaction_preview(
+            &ctx,
+            app.view.epoch,
+            generation,
+            Err(sunipdf_core::EngineError::RedactionIncomplete),
+        );
+        assert!(!app.annotate.redact.preview_busy && app.annotate.redact.preview.is_none());
     }
 
     #[test]

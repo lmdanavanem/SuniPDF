@@ -189,7 +189,7 @@ pub const REGISTRY: &[CommandInfo] = &[
         "menu.rich_annotations",
         None,
         true,
-        Tools
+        Edit
     ),
     cmd!(
         EraseInkStrokes,
@@ -197,7 +197,7 @@ pub const REGISTRY: &[CommandInfo] = &[
         "menu.erase_ink_strokes",
         None,
         true,
-        Tools
+        Edit
     ),
     cmd!(
         HubCompress,

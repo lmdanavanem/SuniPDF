@@ -2,8 +2,20 @@
 
 [English](PROJECT_STATUS.md)
 
-Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur ce poste
+Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.30.0 : édition, protection des documents et conversion locale (validation en cours)
+
+Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
+release et publication restent en attente. Le [périmètre exact et ses limites](RELEASE_0.30.0.fr.md)
+comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
+les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
+l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
+des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
+polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
+P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](PROJECT_STATUS.fr.md) ;
+les sections des anciennes versions ci-dessous sont historiques.
 
 ## 0.21.1 : conservation des documents (publiée en Latest stable)
 

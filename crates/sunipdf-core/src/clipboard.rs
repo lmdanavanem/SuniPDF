@@ -9,6 +9,8 @@ use lopdf::{Dictionary, Object, ObjectId};
 use pdfium_render::prelude::*;
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+type UsedResources = BTreeSet<(Vec<u8>, Vec<u8>)>;
+
 fn native_unsupported() -> EngineError {
     EngineError::Other("editable paste supports native text, images and paths without forms, layers, patterns or complex blending; use Paste as group for other content".into())
 }
@@ -223,7 +225,7 @@ fn validate_resource(
 fn balanced(
     content: &lopdf::content::Content<Vec<lopdf::content::Operation>>,
     native: bool,
-) -> Result<BTreeSet<(Vec<u8>, Vec<u8>)>, EngineError> {
+) -> Result<UsedResources, EngineError> {
     let mut used = BTreeSet::new();
     let mut depth = 0usize;
     let mut operands = 0usize;

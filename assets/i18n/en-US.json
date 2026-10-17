@@ -1031,5 +1031,19 @@
   "bookmarks.up": "Move up",
   "bookmarks.down": "Move down",
   "bookmarks.delete_subtree": "Delete selected and children",
-  "bookmarks.edit_limits": "Up to 4,096 bookmarks, 32 levels and 1,024 UTF-8 bytes per title. Changes support Undo. Renaming preserves existing actions; setting a destination replaces the selected action."
+  "bookmarks.edit_limits": "Up to 4,096 bookmarks, 32 levels and 1,024 UTF-8 bytes per title. Changes support Undo. Renaming preserves existing actions; setting a destination replaces the selected action.",
+  "security.redact.fill": "Fill color",
+  "security.redact.overlay": "Intentional overlay text (optional)",
+  "security.redact.overlay.color": "Text color",
+  "security.redact.overlay.note": "Printable Latin text, up to 256 characters. It must fit every rectangle. Added only after removal is verified. Clear it before saving unapplied marks.",
+  "security.redact.preview.action": "Preview before / after",
+  "security.redact.preview.before": "Before",
+  "security.redact.preview.after": "After applying",
+  "security.redact.preview.page": "Preview page",
+  "security.redact.preview.running": "Preparing and verifying all marked pages…",
+  "security.redact.preview.report": "{native} selectable glyphs preserved; {bitmap} objects use pixel fallback.",
+  "security.redact.preview.fallback": "Unsupported text, OCR, images and nested objects retain their visible remainder as pixels. Outside text within those objects may no longer be selectable.",
+  "security.redact.preview.stale": "The document changed. Preview again before applying.",
+  "security.redact.preview.failed": "Application failed. Your marks and settings were kept; preview again.",
+  "security.redact.persist": "Keep unapplied PDF marks"
 }

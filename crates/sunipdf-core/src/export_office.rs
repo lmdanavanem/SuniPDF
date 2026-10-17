@@ -109,7 +109,7 @@ fn text_page(doc: &Document<'_>, page: usize, format: Format) -> Result<TextPage
         ));
     }
     let mut objects = doc.page_objects(page)?;
-    if objects.len() > 10000 || objects.len() != doc.page_handle(page)?.objects().len() as usize {
+    if objects.len() > 10000 || objects.len() != doc.page_handle(page)?.objects().len() {
         return Err(failure(
             "Editable Office export object limit or malformed page",
         ));

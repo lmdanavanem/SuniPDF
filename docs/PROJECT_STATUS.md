@@ -2,8 +2,19 @@
 
 [Français](PROJECT_STATUS.fr.md)
 
-Rule: a ticked box = code present **and** command executed with a result observed on this machine
+Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
+
+## 0.30.0: editing, document safety and local conversion (validation in progress)
+
+The authorized batch covers five Bugs and all fourteen P2 Roadmap items. Implementation is present;
+release validation and publication are pending. [Exact scope and supported limits](RELEASE_0.30.0.md)
+include paragraph preview, editable paste, rich annotations, precise links, semantic page labels,
+bookmark/structure preservation, redaction preview and persistent marks, sanitization, font subsets,
+local Office conversion, signature trust states, protected signature storage and license inventory.
+The five bug fixes address Windows font discovery, rotation pivot, opacity, resized annotations and
+optional GPU compatibility. P1 Roadmap work and Suggestions remain outside this batch.
+Results belong in [Project status](PROJECT_STATUS.md); old release sections below are historical.
 
 ## 0.21.1: document preservation (published stable Latest)
 

@@ -2,6 +2,17 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
+## 0.30.0: editing, document safety and local conversion (validation in progress)
+
+The authorized batch covers five Bugs and all fourteen P2 Roadmap items. Implementation is present;
+release validation and publication are pending. [Exact scope and supported limits](RELEASE_0.30.0.md)
+include paragraph preview, editable paste, rich annotations, precise links, semantic page labels,
+bookmark/structure preservation, redaction preview and persistent marks, sanitization, font subsets,
+local Office conversion, signature trust states, protected signature storage and license inventory.
+The five bug fixes address Windows font discovery, rotation pivot, opacity, resized annotations and
+optional GPU compatibility. P1 Roadmap work and Suggestions remain outside this batch.
+Results belong in [Project status](PROJECT_STATUS.md); old release sections below are historical.
+
 ## 0.21.1: document preservation (published stable Latest)
 
 The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct

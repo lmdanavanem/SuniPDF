@@ -1,11 +1,14 @@
 use std::path::Path;
 use sunipdf_core::annot_rich::{RichFreeTextStyle, StampKind, VertexAnnotKind};
 use sunipdf_core::{AnnotStyle, Engine, PointRect, TextStyle};
+#[path = "support/feature_evidence.rs"]
+mod feature_evidence;
 
 #[test]
 fn rich_annotation_appearances_survive_rotation_save_and_undo_with_atomic_refusals() {
     let engine = Engine::new().unwrap();
     let dir = tempfile::tempdir().unwrap();
+    let mut evidence = feature_evidence::Evidence::new("rich");
     for rotation in [0, 90, 180, 270] {
         let mut pdf = lopdf::Document::load_mem(include_bytes!("fixtures/two-pages.pdf")).unwrap();
         let page = pdf.get_pages()[&1];
@@ -105,6 +108,9 @@ fn rich_annotation_appearances_survive_rotation_save_and_undo_with_atomic_refusa
         doc.save_as(&output).unwrap();
         let reopened = engine.open(&output, None).unwrap();
         assert_eq!(reopened.render_page(0, 1.0).unwrap().rgba, pixels);
+        if matches!(rotation, 0 | 90) {
+            evidence.save(&format!("rotation-{rotation}"), &output, &reopened, None);
+        }
         let parsed = lopdf::Document::load(&output).unwrap();
         let entries = parsed
             .get_dictionary(parsed.get_pages()[&1])
@@ -228,6 +234,7 @@ fn rich_annotation_appearances_survive_rotation_save_and_undo_with_atomic_refusa
         "native CJK font preserves Unicode mapping"
     );
     let reopened = engine.open(&output, None).unwrap();
+    evidence.save("embedded-cjk", &output, &reopened, None);
     assert_eq!(
         reopened
             .annotation_details(0)
@@ -413,6 +420,7 @@ fn rich_annotation_appearances_survive_rotation_save_and_undo_with_atomic_refusa
     encrypted.save_as(&output).unwrap();
     assert!(engine.open(&output, None).is_err());
     let reopened = engine.open(&output, Some("rich-user")).unwrap();
+    evidence.save("encrypted-rich", &output, &reopened, Some("rich-user"));
     assert_eq!(
         reopened
             .render_region(0, preview.scale, preview.region)
@@ -421,4 +429,5 @@ fn rich_annotation_appearances_survive_rotation_save_and_undo_with_atomic_refusa
         preview.image.rgba
     );
     assert_eq!(std::fs::read(input).unwrap(), protected);
+    evidence.finish();
 }

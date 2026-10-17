@@ -5,6 +5,18 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
+## 0.30.0 : édition, protection des documents et conversion locale (validation en cours)
+
+Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
+release et publication restent en attente. Le [périmètre exact et ses limites](RELEASE_0.30.0.fr.md)
+comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
+les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
+l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
+des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
+polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
+P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](PROJECT_STATUS.fr.md) ;
+les sections des anciennes versions ci-dessous sont historiques.
+
 ## 0.21.1 : conservation des documents (publiée en Latest stable)
 
 Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
