@@ -325,8 +325,15 @@ fn timestamp_eku(cert: *const CERT_CONTEXT) -> Result<(), u32> {
         return Err(INVALID);
     }
     let mut size = 0;
-    unsafe { CertGetEnhancedKeyUsage(cert, CERT_FIND_EXT_ONLY_ENHKEY_USAGE_FLAG, None, &mut size) }
-        .map_err(|e| e.code().0 as u32)?;
+    unsafe {
+        CertGetEnhancedKeyUsage(
+            cert,
+            CERT_FIND_EXT_ONLY_ENHKEY_USAGE_FLAG.0,
+            None,
+            &mut size,
+        )
+    }
+    .map_err(|e| e.code().0 as u32)?;
     if size as usize > 65536 || size < std::mem::size_of::<CTL_USAGE>() as u32 {
         return Err(INVALID);
     }
@@ -334,7 +341,7 @@ fn timestamp_eku(cert: *const CERT_CONTEXT) -> Result<(), u32> {
     unsafe {
         CertGetEnhancedKeyUsage(
             cert,
-            CERT_FIND_EXT_ONLY_ENHKEY_USAGE_FLAG,
+            CERT_FIND_EXT_ONLY_ENHKEY_USAGE_FLAG.0,
             Some(data.as_mut_ptr().cast()),
             &mut size,
         )
