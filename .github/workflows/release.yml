@@ -51,7 +51,7 @@ jobs:
         run: |
           .\scripts\fetch-pdfium.ps1 -Arch x64
           .\scripts\check-i18n.ps1
-          cargo test --workspace --locked -j 2
+          cargo test --workspace --locked -j 2 --no-fail-fast
           if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
           .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: Pinned independent QPDF checker (x64)

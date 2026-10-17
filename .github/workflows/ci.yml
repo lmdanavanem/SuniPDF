@@ -40,7 +40,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
       - name: Tests
         id: workspace_tests
-        run: cargo test --workspace --locked -j 2
+        run: cargo test --workspace --locked -j 2 --no-fail-fast
       - name: Pinned independent font reader
         if: always() && steps.workspace_tests.outcome == 'success'
         run: |

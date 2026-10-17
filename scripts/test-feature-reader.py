@@ -65,6 +65,8 @@ def validate(root, directory, mutool, qpdf):
     if '1.28.5' not in version + diagnostic:
         raise ValueError('Unexpected MuPDF version')
     qversion, _ = run(qpdf, ['--version'])
+    if 'qpdf version 12.4.2' not in qversion:
+        raise ValueError('Unexpected QPDF version; use the pinned archive checker')
     report = {'schema': 1, 'status': 'running', 'reader': (version + diagnostic).strip(),
               'readerSha256': font_reader.MUTOOL_SHA256, 'qpdf': qversion.strip(),
               'scope': 'Synthetic rich-annotation and document-structure output; strict QPDF syntax and independent MuPDF page appearance, with documented raster tolerances', 'cases': []}

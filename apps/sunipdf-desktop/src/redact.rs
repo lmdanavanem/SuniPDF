@@ -653,9 +653,10 @@ impl SuniApp {
                         )
                         .changed();
                     ui.add(
-                        egui::Label::new(tr(lang, "security.redact.overlay.note"))
-                            .small()
-                            .wrap(),
+                        egui::Label::new(
+                            egui::RichText::new(tr(lang, "security.redact.overlay.note")).small(),
+                        )
+                        .wrap(),
                     );
                     let pages = r.marks.iter().map(|m| m.page).collect::<BTreeSet<_>>();
                     let mut page = r

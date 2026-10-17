@@ -145,7 +145,9 @@ fn authored_labels_follow_content_across_page_operations_and_undo_with_implicit_
     std::fs::write(&implicit, include_bytes!("fixtures/two-pages.pdf")).unwrap();
     let merged = temp.path().join("merged.pdf");
     let original = std::fs::read(&authored).unwrap();
-    assert!(engine.merge(&[authored.clone()], &authored).is_err());
+    assert!(engine
+        .merge(std::slice::from_ref(&authored), &authored)
+        .is_err());
     assert_eq!(std::fs::read(&authored).unwrap(), original);
     engine
         .merge(&[authored.clone(), implicit.clone()], &merged)
