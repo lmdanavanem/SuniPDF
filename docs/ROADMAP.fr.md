@@ -5,27 +5,24 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
-## 0.30.0 : édition, protection des documents et conversion locale (validation en cours)
+## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
-Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
-release et publication restent en attente. Le [périmètre exact et ses limites](RELEASE_0.30.0.fr.md)
-comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
-les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
-l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
-des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
-polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
-P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](PROJECT_STATUS.fr.md) ;
-les sections des anciennes versions ci-dessous sont historiques.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
-## 0.21.1 : conservation des documents (publiée en Latest stable)
+[Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
+
+Six fichiers publics vérifiés octet par octet avec les paquets préparés et leurs SHA256. Le metteur à jour de production a vérifié le ZIP x64 de 26,978,019 octets en 2.55 s, sans installation sur cet hôte, au moyen du banc de test déjà compilé dont le module de mise à jour est inchangé. Projet relu : **42 éléments uniques, 20 Todo, 0 In Progress, 22 Done**, trois filtres enregistrés et aucune modification non enregistrée. [Preuves et limites](PROJECT_STATUS.fr.md).
+
+Les paquets restent non signés. ARM64 est compilé et empaqueté, sans exécution sur matériel ARM64. Imprimantes physiques, Narrateur, interactions manuelles de mise à jour et GPU/fenêtres physiques restent à qualifier ; WARP prouve uniquement le rendu logiciel hors écran. Les entrées non prises en charge restent refusées. La conservation PDF/A ne certifie pas PDF/A/PDF/UA.
+
+## 0.21.1 : conservation des documents (publiée ; Latest à cette date)
 
 Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
 sans perdre le bon brouillon, et conservation des annotations non-widget sans apparence utilisable à
 l'aplatissement. 476 tests, 84 contrôles qpdf, 20 scénarios portables et 14 bases MSI réussis ; six fichiers
 publics et mise à jour en ligne vérifiés. Voir l'[état du projet](PROJECT_STATUS.fr.md).
 
-Prochain lot autorisé **0.30.0** : cinq Bugs ouverts et les 14 P2 Roadmap. P1 Roadmap reportés ;
-Suggestions hors de ce lot. Projet : 38 Todo, un In Progress, trois Done.
+Le lot 0.30.0 prévu après 0.21.1 est publié ; les comptes actuels et P1 différés figurent ci-dessus.
 
 ## Base livrée : 0.9.0
 
@@ -269,10 +266,10 @@ recherche, signets, fusion/division/extraction/rotation/réorganisation, enregis
 
 Livrés en 0.10.0 : rotation de vue, plein écran et historique borné par onglet.
 Livrés en 0.11.0 : lecture des étiquettes et navigation interne précise. Création/réinitialisation et navigation
-conservée par Annuler/Rétablir livrées en 0.14.0. La candidate 0.30.0 ajoute le recalage sémantique des étiquettes,
+conservée par Annuler/Rétablir livrées en 0.14.0. La version 0.30.0 ajoute le recalage sémantique des étiquettes,
 l'édition des signets et la conservation bornée des destinations, champs, calques et pièces jointes pendant
 les opérations de pages ; voir les [structures prises en charge](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md).
-Validation d'exécution et par lecteur indépendant en attente. L'ordre des colonnes complexes non balisées reste
+contrôles d’exécution et indépendants documentés réussis. L'ordre des colonnes complexes non balisées reste
 distinct ; qpdf seul ne prouve pas l'apparence.
 
 ## Phase 3 : édition professionnelle — partiellement livrée
@@ -287,10 +284,10 @@ Livrés en 0.13.0 : signatures visuelles saisies et pose atomique sur page coura
 Livré en 0.15.0 : remplacement de destination existante, zone/apparence/commentaires conservés.
 Livré en 0.16.0 : tirets des quatre annotations de formes, motifs personnalisés conservés.
 Livré en 0.18.0 : encre groupée du bureau, Terminer/Annuler explicites et transitions protégées (D109).
-La candidate 0.30.0 ajoute les [sous-ensembles de polices et faces statiques TrueType/CFF1 de collections](FONT_EMBEDDING.fr.md),
+La version 0.30.0 ajoute les [sous-ensembles de polices et faces statiques TrueType/CFF1 de collections](FONT_EMBEDDING.fr.md),
 l'aperçu/réagencement borné des paragraphes, le collage éditable explicite, les pivots stables, la lecture de
 l'opacité des images, la mise à l'échelle des annotations, les [annotations enrichies](RICH_ANNOTATIONS.fr.md)
-et la création de destinations précises. Validation en attente. Polices variables/CFF2/couleur, composition
+et la création de destinations précises. contrôles de la source publiée réussis. Polices variables/CFF2/couleur, composition
 complexe/bidirectionnelle, XObjects arbitraires éditables et styles par portion de texte restent non pris en charge.
 Critère : rendu, enregistrement et réouverture couverts pour chaque opération, avec contrôles d’accessibilité applicables.
 
@@ -301,10 +298,10 @@ Livrés : images ↔ PDF, PDF → texte/PNG, optimisation sans perte, lots CLI e
 Livré en 0.17.0 : huit orientations JPEG EXIF incorporées directement et estimation raster cumulée ;
 mesure des limites de mémoire native/processus distincte (D108).
 
-La candidate 0.30.0 ajoute la [conversion Office locale et les profils Standard/Impression mémorisés](OFFICE_CONVERSION.fr.md) :
+La version 0.30.0 ajoute la [conversion Office locale et les profils Standard/Impression mémorisés](OFFICE_CONVERSION.fr.md) :
 LibreOffice installé et pris en charge, texte simple éditable DOCX, grilles XLSX de chaînes littérales et pages PPTX
 tramées. L'absence du convertisseur est explicite ; l'application ne l'installe pas. Les exports éditables complexes
-sont refusés. Validation avec convertisseur réel/corpus en attente ; reconstruction arbitraire de la mise en page
+sont refusés. contrôles d’exécution et indépendants documentés réussis ; reconstruction arbitraire de la mise en page
 Office et concepteur général de workflows restent futurs. Lots compression/OCR livrés en 0.10.0.
 
 ## Phase 5 : sécurité et productivité — partiellement livrée
@@ -313,9 +310,9 @@ Livrés : AES-128/256 et permissions, retrait de protection autorisé par le pro
 caviardage irréversible, vérification CMS et copies signées PFX/P12 incrémentales, CLI JSON et automatisation.
 
 Restent : comparaison, recherche multi-documents, MCP opt-in confiné, intégration Explorateur et raccourcis configurables.
-La candidate 0.30.0 ajoute la [vérification Windows des chaînes/révocations et jetons RFC3161, ainsi que le stockage
+La version 0.30.0 ajoute la [vérification Windows des chaînes/révocations et jetons RFC3161, ainsi que le stockage
 DPAPI par utilisateur](SIGNATURE_SECURITY.fr.md), et l'[aperçu de caviardage, les marques persistantes, la découpe
-bornée du texte et l'assainissement](REDACTION.fr.md). Validation en attente. Chaque vérification réseau demande un
+bornée du texte et l'assainissement](REDACTION.fr.md). contrôles de la source publiée réussis. Chaque vérification réseau demande un
 consentement explicite ; un résultat hors ligne/inconnu ne devient jamais fiable. Le DSS incorporé reste non vérifié,
 sans validation LTV d'archivage. AATL/EUTL, PKCS#11, qualification des signatures et création d'horodatages restent
 non pris en charge. L'heure PDF reste déclarative ; interopérabilité Acrobat/Foxit distincte, non vérifiée.
@@ -327,23 +324,22 @@ Base livrée : releases x64 portable/MSI et ARM64 portable, SHA256, notification
 guides FR/EN, notices tierces et workflows de compilation GitHub.
 
 Livrés en 0.10.0 : quatre documents NIST publics et scénarios d’enregistrement interrompu/disque plein/échec.
-La candidate 0.30.0 ajoute un inventaire hors ligne des licences et la compatibilité du moteur GPU facultatif ;
-contrôles de release en attente. OpenGL reste le défaut. Restent : corpus client/hostile/volumineux plus large, fuzzing,
+La version 0.30.0 ajoute un inventaire hors ligne des licences et la compatibilité du moteur GPU facultatif ;
+contrôles de release réussis. OpenGL reste le défaut. Restent : corpus client/hostile/volumineux plus large, fuzzing,
 benchmarks avec matériel, maintenance de l'inventaire des licences, Narrateur et lecteurs tiers, parcours interactifs de mise à
 jour MSI/portable, imprimantes physiques et exécution ARM64/OpenGL réelle.
 La régression MSI ne couvre que son scénario scripté ; compiler un paquet ARM64 ne valide pas son exécution matérielle.
 
 La [revue Code Scanning historique](CODE_SCANNING_REVIEW.fr.md) a examiné 117 alertes, dont 115 critiques,
 sans confirmer de secret de production. Corrections/triage et permissions explicites des workflows font partie
-du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). Ce résultat historique
-n'établit pas l'état du scanning de la candidate 0.30.0.
+du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). La source exacte 0.30.0 réussit CodeQL Rust, Python et Actions, sans alerte ouverte ; preuves exécutées ci-dessus.
 
-## Suite au-delà de la candidate 0.30.0
+## Suite au-delà de la version 0.30.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.
 3. Maintenir les P1 Roadmap et Suggestions hors lot : validation PDF/A/PDF/UA dédiée, corpus/fuzzing/mesures
    matérielles élargis et intégrations demandent leur périmètre accepté. Étendre édition, fidélité Office et
-   confiance d'archivage seulement au-delà des limites explicites de cette candidate.
+   confiance d'archivage seulement au-delà des limites explicites de cette version.
 
 Aucune date/version suivante n’est engagée. L’IA facultative reste désactivée par défaut.

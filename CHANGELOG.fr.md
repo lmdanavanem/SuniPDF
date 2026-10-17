@@ -7,10 +7,17 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-## [0.30.0] - Non publiée
+## [0.30.0] - 2026-10-17
 
-Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
-release et publication restent en attente. Le [périmètre exact et ses limites](docs/RELEASE_0.30.0.fr.md)
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](docs/RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
+
+[Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
+
+Six fichiers publics vérifiés octet par octet avec les paquets préparés et leurs SHA256. Le metteur à jour de production a vérifié le ZIP x64 de 26,978,019 octets en 2.55 s, sans installation sur cet hôte, au moyen du banc de test déjà compilé dont le module de mise à jour est inchangé. Projet relu : **42 éléments uniques, 20 Todo, 0 In Progress, 22 Done**, trois filtres enregistrés et aucune modification non enregistrée. [Preuves et limites](docs/PROJECT_STATUS.fr.md).
+
+Les paquets restent non signés. ARM64 est compilé et empaqueté, sans exécution sur matériel ARM64. Imprimantes physiques, Narrateur, interactions manuelles de mise à jour et GPU/fenêtres physiques restent à qualifier ; WARP prouve uniquement le rendu logiciel hors écran. Les entrées non prises en charge restent refusées. La conservation PDF/A ne certifie pas PDF/A/PDF/UA.
+
+Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est validé et publié. Le [périmètre exact et ses limites](docs/RELEASE_0.30.0.fr.md)
 comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
 les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
 l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
@@ -21,7 +28,7 @@ les sections des anciennes versions ci-dessous sont historiques.
 
 ## [0.21.1] — 2026-10-17
 
-Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) sous `lmdanavanem`,
+Publiée en [Latest stable à cette date](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) sous `lmdanavanem`,
 avec MSI x64, ZIP portables x64/ARM64 et SHA256. Tests de la source de release, preuves de mise à niveau,
 téléchargements publics et mise à jour en ligne réussis ; [preuves et limites](docs/PROJECT_STATUS.fr.md).
 

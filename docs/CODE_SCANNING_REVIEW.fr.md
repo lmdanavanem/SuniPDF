@@ -1,4 +1,4 @@
-# Revue Code Scanning — 2026-10-16
+# Revue Code Scanning — 2026-10-17
 
 [English](CODE_SCANNING_REVIEW.md) · [Inventaire critique par alerte (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
@@ -20,8 +20,18 @@ pointeurs de certificats, chaînes et horodatages natifs, avec des régressions 
 La [nouvelle analyse](https://github.com/lmdanavanem/SuniPDF/actions/runs/38995917746) a réussi ses trois jobs
 sur la source `4896cc277c32621e5d65335b4fd9823760427793`. GitHub déclare #124–128 **corrigées** au
 `2026-10-17T02:51:43Z` ; elles n’ont pas été écartées. L’API authentifiée non filtrée a ensuite confirmé
-**zéro alerte ouverte**. Requêtes, fixtures et couverture restent actives, sans exclusions. Ce contrôle
-intermédiaire ne remplace pas la qualification complète de l’application et des paquets avant publication.
+**zéro alerte ouverte**. Requêtes, fixtures et couverture restent actives, sans exclusions.
+
+L’[analyse finale Rust, Python et Actions](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673553)
+a réussi sur la source immuable de release `4db31c0ee62cfae9d65239edf1eac93db147841e`.
+L’API authentifiée a confirmé zéro alerte ouverte au `2026-10-17T04:01:22.4366426Z`, puis le processus de
+publication l’a revérifié avant de rendre la [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0)
+Latest stable. La [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) et le
+[workflow complet du tag](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) ont réussi sur
+cette source, dont 551 tests, 21 scénarios de mise à jour portable et 15 bases MSI / 75 journaux de transaction.
+Les [preuves de release](qa/RELEASE_0.30.0.json) consignent source exacte, empreintes des paquets,
+téléchargements publics, vérification du metteur à jour et relecture Projects. Ce résultat établit les
+contrôles consignés, pas une absence exhaustive de vulnérabilités ni la qualification du matériel non testé.
 
 ## Corrections 0.21.0 vérifiées
 

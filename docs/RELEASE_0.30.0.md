@@ -48,14 +48,12 @@ below; executed validation and public download evidence are recorded in [Project
 
 ## Validation and distribution
 
-Publication requires x64 formatting/Clippy/workspace tests, ARM64 cross-build, independent font and
-feature-reader checks, qpdf/corpus regression, measured Office conversions, portable upgrades and MSI
-transaction checks. The Windows x64 MSI and x64/ARM64 ZIPs each include a SHA256 sidecar.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 
-Executed results and public asset hashes will be recorded in [Project status](PROJECT_STATUS.md).
-Packages remain unsigned; ARM64 hardware, physical printers and manual native GPU/window behavior
-require separate qualification. Detailed supported inputs and refusals are documented in
-[font embedding](FONT_EMBEDDING.md), [rich annotations](RICH_ANNOTATIONS.md),
-[redaction](REDACTION.md),
-[bookmarks and structure](BOOKMARKS_AND_PAGE_STRUCTURE.md), [Office conversion](OFFICE_CONVERSION.md),
-[signature security](SIGNATURE_SECURITY.md) and [document sanitization](SECURITY_MODEL.md).
+The [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) and [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) passed on this source: **551 tests**, zero failures, 9 default ignored; **1047 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature outputs**, **4 MuPDF font cases**, DX12 software WARP, **14 Office round trips**, 4 licensed PDFs/744 pages, **21 portable scenarios**, **15 MSI baselines/75 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
+
+Six public assets match the inspected packages and SHA256 digests byte for byte. The production updater verified the 26,978,019-byte x64 ZIP in 2.55 seconds without installing on this host, using the previously built test harness with an unchanged updater module. Project readback: **42 unique items, 20 Todo, 0 In Progress, 22 Done**, three saved filters and zero unsaved changes. [Evidence and limits](PROJECT_STATUS.md).
+
+Packages remain unsigned. ARM64 is cross-built and packaged, without execution on ARM64 hardware. Physical printers, Narrator, manual updater interaction and physical GPU/window behavior still need qualification; WARP proves software offscreen rendering only. Unsupported inputs remain refused. PDF/A metadata preservation does not certify PDF/A or PDF/UA conformance.
+
+Supported inputs and refusals: [fonts](FONT_EMBEDDING.md), [annotations](RICH_ANNOTATIONS.md), [redaction](REDACTION.md), [bookmarks and structures](BOOKMARKS_AND_PAGE_STRUCTURE.md), [Office conversion](OFFICE_CONVERSION.md), [signatures](SIGNATURE_SECURITY.md) and [sanitization](SECURITY_MODEL.md).

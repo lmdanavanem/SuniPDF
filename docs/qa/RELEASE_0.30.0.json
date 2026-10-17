@@ -1,0 +1,337 @@
+{
+  "version": "0.30.0",
+  "source": "4db31c0ee62cfae9d65239edf1eac93db147841e",
+  "release_id": 415568680,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0",
+  "author": "lmdanavanem",
+  "author_id": 287339505,
+  "stable_latest": true,
+  "published_at": "2026-10-17T04:22:44Z",
+  "verified_at": "2026-10-17T04:37:19.183584+00:00",
+  "quality_job": {
+    "source": "4db31c0ee62cfae9d65239edf1eac93db147841e",
+    "conclusion": "success",
+    "run": 38999673471,
+    "job": 117299743148,
+    "runUrl": "https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471",
+    "requiredSteps": [
+      {
+        "name": "Translation catalog parity",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Format",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Clippy",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned independent font reader",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Native DX12 software renderer and texture limits",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned independent QPDF checker",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Independent feature-reader checker self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Rich annotation and document structure independent readers",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "QPDF archive checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Synthetic corpus and generated PDF structural checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real corpus checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned licensed real PDF corpus",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real PDFs and independent output regression",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned local Office converter on disposable runner",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Measured licensed Office exports and local converter profiles",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Update helper checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Portable x64 package (including licenses and notices)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Test-only software OpenGL checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Test-only software OpenGL for the isolated application",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real isolated portable upgrades, rollback and close cancellation",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "MSI x64 package",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real MSI installation and upgrade on disposable runner",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "codeqlAnalyses": [
+      {
+        "id": 1971654172,
+        "commit_sha": "4db31c0ee62cfae9d65239edf1eac93db147841e",
+        "ref": "refs/heads/main",
+        "category": "/language:rust",
+        "error": "",
+        "created_at": "2026-10-17T03:50:16Z"
+      },
+      {
+        "id": 1971635090,
+        "commit_sha": "4db31c0ee62cfae9d65239edf1eac93db147841e",
+        "ref": "refs/heads/main",
+        "category": "/language:python",
+        "error": "",
+        "created_at": "2026-10-17T03:40:58Z"
+      },
+      {
+        "id": 1971634674,
+        "commit_sha": "4db31c0ee62cfae9d65239edf1eac93db147841e",
+        "ref": "refs/heads/main",
+        "category": "/language:actions",
+        "error": "",
+        "created_at": "2026-10-17T03:40:45Z"
+      }
+    ],
+    "openAlerts": 0,
+    "verifiedAt": "2026-10-17T04:01:22.4366426Z"
+  },
+  "release_workflow": {
+    "run": 39000390231,
+    "runUrl": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231",
+    "conclusion": "success",
+    "tests": 551,
+    "failed": 0,
+    "ignored": 9,
+    "suites": 50,
+    "i18n": 1047,
+    "qpdf": 84,
+    "qpdfFeatureCases": 9,
+    "fontReaderCases": 4,
+    "featureReaderCases": 9,
+    "nativeRendererStatus": "passed",
+    "officeRoundtrips": 14,
+    "officeFormatProfiles": [
+      "excel/print",
+      "excel/standard",
+      "powerpoint/print",
+      "powerpoint/standard",
+      "word/print",
+      "word/standard"
+    ],
+    "portableScenarios": 21,
+    "portableUpgrades": 17,
+    "portableGuards": 4,
+    "msiBaselines": 15,
+    "msiLogs": 75,
+    "corpusDocuments": 4,
+    "corpusPages": 744
+  },
+  "assets": [
+    {
+      "name": "SuniPDF-0.30.0-win-arm64-portable.zip",
+      "size": 25314771,
+      "sha256": "88301111c27d2225891b56115d81296f213e92ff2c8b84d6bf3ab704cec30e48"
+    },
+    {
+      "name": "SuniPDF-0.30.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "6c2cede719faf573dfed3f0574191a7506a34fb03b7ffb718ccc059bd220a4df"
+    },
+    {
+      "name": "SuniPDF-0.30.0-win-x64-portable.zip",
+      "size": 26978019,
+      "sha256": "99c37b81191cb97a3f7821594dcaed0e11e1ff1180f0bbafc5fae41b1b53620f"
+    },
+    {
+      "name": "SuniPDF-0.30.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "8cfff9a5115fe745798bccecaba512153c90445bf032fbde73943f3d74cbab58"
+    },
+    {
+      "name": "SuniPDF-0.30.0-win-x64.msi",
+      "size": 24965120,
+      "sha256": "0eadbc78c66624f0e8bace5bda3b2f3a5c8d85a93bd851132a4b0ca53c028c4b"
+    },
+    {
+      "name": "SuniPDF-0.30.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "9fcea5ab93c5bf4363adbcfc920cad06a24ec266704640ce7bf59ee7518944b5"
+    }
+  ],
+  "public_assets_match_staged": true,
+  "dist_copies_verified": true,
+  "package_own_license_inventories_verified": true,
+  "public_package_smoke_checks": [
+    "public six-asset downloads and SHA256",
+    "x64/ARM64 PE architecture including OCR",
+    "pinned English/French models",
+    "0.8.x portable ZIP allowlist",
+    "GUI/CLI English metadata and versions",
+    "packaged CLI info/render/form field",
+    "packaged local French OCR",
+    "MSI read-only language/upgrade transaction",
+    "MSI/ZIP executable and common license/OCR hashes; separate own inventories with selected-WiX-only delta"
+  ],
+  "projects": {
+    "project": "https://github.com/users/lmdanavanem/projects/1",
+    "targetRelease": "0.30.0",
+    "totalItems": 42,
+    "uniqueVisibleItemTitles": 42,
+    "aggregate": {
+      "Todo": 20,
+      "In Progress": 0,
+      "Done": 22
+    },
+    "views": [
+      {
+        "view": "Bugs",
+        "items": 8,
+        "Todo": 0,
+        "In Progress": 0,
+        "Done": 8,
+        "filter": "category:Bug ",
+        "unsavedChanges": false
+      },
+      {
+        "view": "Roadmap",
+        "items": 23,
+        "Todo": 9,
+        "In Progress": 0,
+        "Done": 14,
+        "filter": "category:Roadmap",
+        "unsavedChanges": false
+      },
+      {
+        "view": "Suggestions",
+        "items": 11,
+        "Todo": 11,
+        "In Progress": 0,
+        "Done": 0,
+        "filter": "category:Suggestion",
+        "unsavedChanges": false
+      }
+    ],
+    "unsavedChanges": false
+  },
+  "production_updater": {
+    "verified": true,
+    "installation_performed": false,
+    "bytes": 26978019,
+    "seconds": 2.5524035,
+    "sha256": "99c37b81191cb97a3f7821594dcaed0e11e1ff1180f0bbafc5fae41b1b53620f",
+    "provenance": {
+      "test_binary_sha256": "9367d020227f1abc5321d29eed0f33ed07825cb63a50288e651c1a1144335574",
+      "test_name": "updater::tests::live_release_download_verifies_sha256",
+      "previously_built": true,
+      "binary_build_source": null,
+      "updater_source_unchanged": true,
+      "updater_source_sha256": "d735fa45eb3abe542e9752e8fe090064e823c35da3d70acb7326a24314e76c1c"
+    }
+  },
+  "proof_files": {
+    "quality": {
+      "file": "quality-verification-0.30.0.json",
+      "sha256": "6a2fdb4dbe28854b9662676b8000cb8da05b811de188c1ed4331dd13f42ec3b8"
+    },
+    "build": {
+      "file": "release-artifact-verification-0.30.0.json",
+      "sha256": "b15d9ba6017e83507c151c82863373dfabf6fbee34d4aaa68d3e6c0d86ebc2b9"
+    },
+    "staged": {
+      "file": "staged-verification-0.30.0.json",
+      "sha256": "cca4de4b1c0b45f6631a3db65b2092d1df517c755e1bfc7b14760412981703a0"
+    },
+    "public": {
+      "file": "verified-public-assets-0.30.0.json",
+      "sha256": "9258828646bc99b54dd1a4ebc563355893ccc4f5d2ac31fc7c07c986bf7b98c4"
+    },
+    "published": {
+      "file": "release-published-0.30.0.json",
+      "sha256": "bcb282413426b96e924220bc110217e2dc21e1b188f41629d4fda15ce411523d"
+    },
+    "projects": {
+      "file": "project-release-0.30.0-evidence.json",
+      "sha256": "4485945a93eccd334e4866fcd32f83e639fdb293192ea646d293901279571931"
+    },
+    "updater": {
+      "file": "live-updater-verification-0.30.0.json",
+      "sha256": "b23f61655d5bc51a3375cb4ef5f06deb62d939ff941297d077a568006019ec81"
+    }
+  },
+  "unsigned_packages": true,
+  "not_verified": [
+    "ARM64 hardware execution",
+    "physical printer",
+    "Narrator",
+    "manual native updater interaction",
+    "physical GPU/window presentation",
+    "Acrobat/Foxit manual interoperability",
+    "PDF/A/PDF/UA conformance",
+    "archival LTV"
+  ]
+}

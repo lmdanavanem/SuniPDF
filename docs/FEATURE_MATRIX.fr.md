@@ -2,19 +2,17 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.30.0 : édition, protection des documents et conversion locale (validation en cours)
+## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
-Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
-release et publication restent en attente. Le [périmètre exact et ses limites](RELEASE_0.30.0.fr.md)
-comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
-les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
-l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
-des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
-polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
-P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](PROJECT_STATUS.fr.md) ;
-les sections des anciennes versions ci-dessous sont historiques.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
-## 0.21.1 : conservation des documents (publiée en Latest stable)
+[Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
+
+Six fichiers publics vérifiés octet par octet avec les paquets préparés et leurs SHA256. Le metteur à jour de production a vérifié le ZIP x64 de 26,978,019 octets en 2.55 s, sans installation sur cet hôte, au moyen du banc de test déjà compilé dont le module de mise à jour est inchangé. Projet relu : **42 éléments uniques, 20 Todo, 0 In Progress, 22 Done**, trois filtres enregistrés et aucune modification non enregistrée. [Preuves et limites](PROJECT_STATUS.fr.md).
+
+Les paquets restent non signés. ARM64 est compilé et empaqueté, sans exécution sur matériel ARM64. Imprimantes physiques, Narrateur, interactions manuelles de mise à jour et GPU/fenêtres physiques restent à qualifier ; WARP prouve uniquement le rendu logiciel hors écran. Les entrées non prises en charge restent refusées. La conservation PDF/A ne certifie pas PDF/A/PDF/UA.
+
+## 0.21.1 : conservation des documents (publiée ; Latest à cette date)
 
 Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
 sans perdre le bon brouillon, et conservation des annotations non-widget sans apparence utilisable à
@@ -51,8 +49,8 @@ Créer explicite (D110/A38). Implémentation, tests locaux, formatage et Clippy 
 Colonne « Attendu » : capacité attendue d'un éditeur PDF complet (**Déclaré** = courante dans les éditeurs du marché,
 **Partiel** = annoncé comme incomplet par le projet, **Absent** = annoncé manquant. Non vérifié par exécution.
 
-Statuts SuniPDF : **Fait** = implémenté **et** couvert par des tests exécutés ; **Candidate 0.30.0, validation en attente** =
-implémenté dans le lot autorisé, contrôles de release/publication non établis ; **En cours** ;
+Statuts SuniPDF : **Fait** = implémenté **et** couvert par des tests exécutés ; **Livré en 0.30.0** =
+publié dans les limites documentées et couvert par les contrôles exécutés ; **En cours** ;
 **Planifié (Pn)** = phase de roadmap ; **Hors périmètre**. P1 Roadmap et Suggestions restent différés.
 
 Les nouveautés 0.9.0 sont couvertes par des régressions automatisées. `PROJECT_STATUS.fr.md` suit les contrôles exécutés ;
@@ -165,8 +163,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Recherche plein texte | Déclaré | **Fait** | Ctrl+F, casse, surbrillance, CLI `search` |
 | Sélection / copie de texte en ordre de lecture | Déclaré | **Fait** : plage logique, sélection entre pages/dans les deux sens, double-clic sur mot, défilement au bord | Ordre PDFium ; tests moteur/UI sans fenêtre ; colonnes arbitraires non balisées non déduites |
 | Miniatures | Déclaré | **Fait** | Panneau virtualisé, cache partagé |
-| Signets (outline) | Déclaré | **Candidate 0.30.0, validation en attente** : Ajout/renommage/destination/déplacement/suppression avec Annuler ; conservation bornée en fusion/extraction. [Structures](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). | Bornes : 4 096 signets / 32 niveaux ; cycles refusés. |
-| Étiquettes de pages | Déclaré | **Candidate 0.30.0, validation en attente** : Recalage sémantique lié à la provenance ; doublons explicites et numéros imprimés inchangés. Création/réinitialisation antérieures à six styles conservées. [Périmètre](RELEASE_0.30.0.fr.md). | Navigation par libellé unique exact ou `#N` physique. |
+| Signets (outline) | Déclaré | **Livré en 0.30.0** : Ajout/renommage/destination/déplacement/suppression avec Annuler ; conservation bornée en fusion/extraction. [Structures](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). | Bornes : 4 096 signets / 32 niveaux ; cycles refusés. |
+| Étiquettes de pages | Déclaré | **Livré en 0.30.0** : Recalage sémantique lié à la provenance ; doublons explicites et numéros imprimés inchangés. Création/réinitialisation antérieures à six styles conservées. [Périmètre](RELEASE_0.30.0.fr.md). | Navigation par libellé unique exact ou `#N` physique. |
 | Historique de navigation, onglets rouverts | Déclaré | Fichiers récents et historique borné à 256 **Faits** ; historique même page/zoom **livré en 0.11.0** | Tests locaux réussis |
 | Mode lecture / plein écran | Déclaré | **Fait en 0.10.0** | Mode de vue partagé comme préférence ; rotation/historique conservés par onglet ; retour à une vue droite pour éditer |
 | Impression Windows | Déclaré (fidélité limitée) | **Fait** (tests géométrie/plages et sortie réelle Microsoft Print to PDF rouverte) | Boîte native, plages/copies, rendu tramé borné, progression/annulation ; imprimante physique et boîte interactive non vérifiées |
@@ -178,18 +176,18 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | **Candidate 0.30.0, validation en attente** : Marquage antérieur conservé ; FreeText à police incorporée, polygones/polylignes/nuages, tampons standard et pièces jointes avec aperçu réel. Style uniforme, refus bornés ; [détails](RICH_ANNOTATIONS.fr.md). |
+| Notes, surlignage, souligné, barré, formes, encre, zones de texte | Déclaré | **Livré en 0.30.0** : Marquage antérieur conservé ; FreeText à police incorporée, polygones/polylignes/nuages, tampons standard et pièces jointes avec aperçu réel. Style uniforme, refus bornés ; [détails](RICH_ANNOTATIONS.fr.md). |
 | Fils de réponses, statut des commentaires | Déclaré | **Fait dans SuniPDF** : panneau Commentaires en fils (réponses, statut Accepté / Refusé / Annulé / Terminé, auteur, date, suppression du fil), écrits selon ISO 32000-1 ; **compatibilité Acrobat / Foxit non vérifiée** ; CLI `reply` / `review-state` |
-| Regrouper plusieurs traits à main levée | Déclaré | **Candidate 0.30.0, validation en attente** : Encre groupée livrée en 0.18.0. Gomme des traits entiers touchés, style/commentaires restants conservés ; pas de découpe de trait, validation à l'inactivité ni récupération du brouillon. [Limites](RICH_ANNOTATIONS.fr.md). |
-| Création et édition FreeText sur la page | Déclaré | **Candidate 0.30.0, validation en attente** : Base sur la page livrée en 0.20.0 ; aperçu réel à police incorporée, faces gras/italique choisies et CJK horizontal présents. Sans styles par portion ni composition complexe. [Détails](RICH_ANNOTATIONS.fr.md). |
-| Ajout de texte / d'images | Déclaré | **Candidate 0.30.0, validation en attente** : Texte/images antérieurs conservés ; découverte Unicode, sous-ensembles statiques TrueType/CFF1 et faces TTF/OTF/TTC/OTC choisies avec contrôles de droits/réutilisation. Polices variables/CFF2/couleur refusées. [Formats/bornes](FONT_EMBEDDING.fr.md). |
-| Modification de texte existant | Partiel (faible en CJK/bidi) | **Candidate 0.30.0, validation en attente** : Garde des glyphes absents 0.21.1 conservée ; aperçu/réagencement multiligne borné avec métriques natives et Appliquer explicite. Polices/texte/états graphiques dangereux refusés. [Périmètre](RELEASE_0.30.0.fr.md). |
-| Transformation d'objets | Déclaré | **Candidate 0.30.0, validation en attente** : Opérations antérieures conservées ; pivot mémorisé stable, remplacement/lecture explicites de l'opacité et état inconnu. [Périmètre](RELEASE_0.30.0.fr.md). |
-| Sélection multiple, couper/copier/coller d'objets | Déclaré | **Candidate 0.30.0, validation en attente** : Collage groupé conservé ; **Coller éditable** explicite recrée les objets natifs pris en charge en un Annuler. Graphes dangereux refusés sans repli groupé silencieux. [Périmètre](RELEASE_0.30.0.fr.md). |
+| Regrouper plusieurs traits à main levée | Déclaré | **Livré en 0.30.0** : Encre groupée livrée en 0.18.0. Gomme des traits entiers touchés, style/commentaires restants conservés ; pas de découpe de trait, validation à l'inactivité ni récupération du brouillon. [Limites](RICH_ANNOTATIONS.fr.md). |
+| Création et édition FreeText sur la page | Déclaré | **Livré en 0.30.0** : Base sur la page livrée en 0.20.0 ; aperçu réel à police incorporée, faces gras/italique choisies et CJK horizontal présents. Sans styles par portion ni composition complexe. [Détails](RICH_ANNOTATIONS.fr.md). |
+| Ajout de texte / d'images | Déclaré | **Livré en 0.30.0** : Texte/images antérieurs conservés ; découverte Unicode, sous-ensembles statiques TrueType/CFF1 et faces TTF/OTF/TTC/OTC choisies avec contrôles de droits/réutilisation. Polices variables/CFF2/couleur refusées. [Formats/bornes](FONT_EMBEDDING.fr.md). |
+| Modification de texte existant | Partiel (faible en CJK/bidi) | **Livré en 0.30.0** : Garde des glyphes absents 0.21.1 conservée ; aperçu/réagencement multiligne borné avec métriques natives et Appliquer explicite. Polices/texte/états graphiques dangereux refusés. [Périmètre](RELEASE_0.30.0.fr.md). |
+| Transformation d'objets | Déclaré | **Livré en 0.30.0** : Opérations antérieures conservées ; pivot mémorisé stable, remplacement/lecture explicites de l'opacité et état inconnu. [Périmètre](RELEASE_0.30.0.fr.md). |
+| Sélection multiple, couper/copier/coller d'objets | Déclaré | **Livré en 0.30.0** : Collage groupé conservé ; **Coller éditable** explicite recrée les objets natifs pris en charge en un Annuler. Graphes dangereux refusés sans repli groupé silencieux. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
-| Liens | Déclaré | **Candidate 0.30.0, validation en attente** : Liens page/URI antérieurs conservés ; création nommée/XYZ/Fit/FitH et résolution brute bornée, axes/zoom nuls et cadrage/rotation affichés conservés. Actions actives non prises en charge jamais exécutées. [Périmètre](RELEASE_0.30.0.fr.md). |
+| Liens | Déclaré | **Livré en 0.30.0** : Liens page/URI antérieurs conservés ; création nommée/XYZ/Fit/FitH et résolution brute bornée, axes/zoom nuls et cadrage/rotation affichés conservés. Actions actives non prises en charge jamais exécutées. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
-| Tampons personnalisés | Non documenté | **Candidate 0.30.0, validation en attente** : Annotations standard prédéfinies présentes ; création arbitraire de tampons toujours planifiée. [Types](RICH_ANNOTATIONS.fr.md). |
+| Tampons personnalisés | Non documenté | **Livré en 0.30.0** : Annotations standard prédéfinies présentes ; création arbitraire de tampons toujours planifiée. [Types](RICH_ANNOTATIONS.fr.md). |
 
 ## C. Organisation
 
@@ -197,14 +195,14 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 |---|---|---|
 | Rotation, suppression, insertion, déplacement, pages vierges | Déclaré | **Fait** (UI + CLI `insert-blank` pour les pages vierges) |
 | Recadrer les pages (CropBox) | Déclaré | **Fait** (dialogue en mm avec aperçu, rétablissement, CLI `crop`) ; masque seulement, pas de caviardage ; recadrage souris dans l’aperçu livré en 0.10.0 |
-| Redimensionner les pages | Déclaré | **Candidate 0.30.0, validation en attente** : Commandes taille/contenu conservées ; mise à l'échelle facultative des annotations/liens, apparences non prises en charge/malformées refusées atomiquement. [Périmètre](RELEASE_0.30.0.fr.md). |
-| Fusion de N PDF avec signets | Déclaré | **Candidate 0.30.0, validation en attente** : Conservation bornée des signets, destinations, champs, calques et pièces jointes ; collisions de noms entrants déterministes. [Limites](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). |
+| Redimensionner les pages | Déclaré | **Livré en 0.30.0** : Commandes taille/contenu conservées ; mise à l'échelle facultative des annotations/liens, apparences non prises en charge/malformées refusées atomiquement. [Périmètre](RELEASE_0.30.0.fr.md). |
+| Fusion de N PDF avec signets | Déclaré | **Livré en 0.30.0** : Conservation bornée des signets, destinations, champs, calques et pièces jointes ; collisions de noms entrants déterministes. [Limites](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). |
 | Division (tous les n / pages choisies) | Déclaré | **Fait** (UI dialogue + CLI `split`, `extract`) |
-| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | **Candidate 0.30.0, validation en attente** : Gardes chiffrement/source conservées ; graphes bornés préservés, destinations de pages omises retirées. XFA/graphes dangereux refusés ; contrôles lecteur indépendant en attente. [Limites](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). |
+| Extraction préservant liens, champs, calques, pièces jointes | Déclaré | **Livré en 0.30.0** : Gardes chiffrement/source conservées ; graphes bornés préservés, destinations de pages omises retirées. XFA/graphes dangereux refusés ; contrôles documentés du lecteur indépendant réussis. [Limites](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde. **Livré en 0.14.0** : navigation conservée lors d'Annuler/Rétablir contenu/étiquettes si géométrie inchangée ; contrôles exécutés réussis (D105) |
 | Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
-| Traitement par lots | Déclaré (CLI batch) | **Candidate 0.30.0, validation en attente** : Compression/OCR livrés en 0.10.0 ; lots Office présents, 1–128 entrées, 64 Mio/entrée, 120 s/conversion, annulation/nouvelles copies. [Limites](OFFICE_CONVERSION.fr.md). |
+| Traitement par lots | Déclaré (CLI batch) | **Livré en 0.30.0** : Compression/OCR livrés en 0.10.0 ; lots Office présents, 1–128 entrées, 64 Mio/entrée, 120 s/conversion, annulation/nouvelles copies. [Limites](OFFICE_CONVERSION.fr.md). |
 
 ## D. Conversion et OCR
 
@@ -213,9 +211,9 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | PDF → images | Déclaré (CLI render) | **Fait** (UI export PNG 150 ppp, CLI `render`, `export-images`) |
 | PDF → texte | Déclaré | **Fait** (CLI `text`) |
 | Images → PDF | Déclaré (create) | **Fait** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP). **Livré en 0.17.0** : incorporation directe des huit orientations JPEG EXIF ; estimation raster non-JPEG cumulée de 512 Mio `somme(max(octets décodés, largeur × hauteur × 4))` avant allocation, arithmétique vérifiée et géométrie finie/positive (D108). Qualité/transparence et accès conservés ; estimation distincte d'un plafond RSS natif/processus ou d'une limite JPEG comprimé. Contrôles locaux/CI/mises à niveau, conversion indépendante debug/paquets préparés/publics et metteur à jour de production réussis ; preuves et limites dans `PROJECT_STATUS.fr.md` |
-| PDF → Word | Partiel (perd la mise en page) | **Candidate 0.30.0, validation en attente** : Texte visible simple monocolonne éditable réagencé à 11 pt ; polices/mise en page/pagination originales non reconstruites. Entrées complexes refusées. [Périmètre](OFFICE_CONVERSION.fr.md). |
-| PDF → Excel / PowerPoint | Absent / export pptx partiel | **Candidate 0.30.0, validation en attente** : Grilles alignées en chaînes XLSX littérales ; PPTX en images de pages 150 ppp avec marges. Sans formules, reconstruction sémantique de tableaux ni contenu PPTX éditable. [Limites](OFFICE_CONVERSION.fr.md). |
-| Office → PDF | Absent | **Candidate 0.30.0, validation en attente** : Entrées sans macros contrôlées, LibreOffice 26.2/26.8 installé, profils isolés et nouvelles copies. Indisponibilité explicite, aucune installation automatique. [Formats/profils](OFFICE_CONVERSION.fr.md). |
+| PDF → Word | Partiel (perd la mise en page) | **Livré en 0.30.0** : Texte visible simple monocolonne éditable réagencé à 11 pt ; polices/mise en page/pagination originales non reconstruites. Entrées complexes refusées. [Périmètre](OFFICE_CONVERSION.fr.md). |
+| PDF → Excel / PowerPoint | Absent / export pptx partiel | **Livré en 0.30.0** : Grilles alignées en chaînes XLSX littérales ; PPTX en images de pages 150 ppp avec marges. Sans formules, reconstruction sémantique de tableaux ni contenu PPTX éditable. [Limites](OFFICE_CONVERSION.fr.md). |
+| Office → PDF | Absent | **Livré en 0.30.0** : Entrées sans macros contrôlées, LibreOffice 26.2/26.8 installé, profils isolés et nouvelles copies. Indisponibilité explicite, aucune installation automatique. [Formats/profils](OFFICE_CONVERSION.fr.md). |
 | HTML → PDF | Absent | Planifié (P5, optionnel) |
 | Compression des images | Déclaré | **Faite en 0.10.0** : RGB/gris bornés, qualité JPEG/côté maximal, copie exacte sans gain, masques/profils conservés, PDF signés/restreints refusés |
 | OCR | Partiel (latin, modèles CC-BY-SA) | **Fait** : Tesseract 5.5.3 / Leptonica 1.87 embarqués hors ligne, modèles rapides eng/fra, texte invisible, pages textuelles ignorées, progression/annulation/un undo ; tests moteur et reconnaissance CLI réelle ; CLI `ocr` |
@@ -226,10 +224,10 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 |---|---|---|
 | Ouvrir chiffré, honorer les permissions | Déclaré | **Fait** (ouverture ; permissions affichées dans les propriétés) |
 | Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; longueur AES-256 explicite et contrôle qpdf synthétique ajoutés pour 0.9.1 ; résultats dans `PROJECT_STATUS.fr.md` |
-| Caviardage irréversible | Déclaré (crate redact) | **Candidate 0.30.0, validation en attente** : Aperçu natif, remplissage/texte, marques non appliquées persistantes, découpe sûre Base14 latine et nettoyage partagé. Repli image des objets complexes ; marques seules sans caviardage. [Garanties](REDACTION.fr.md). |
-| Nettoyage des métadonnées | Déclaré | **Candidate 0.30.0, validation en attente** : Préservation des métadonnées PDF/A conservée, sans promesse de conformité. Copie assainie séparée/données cachées prises en charge retirées/réécriture ; sauvegardes/Annuler/secteurs non effacés. [Modèle de sécurité](SECURITY_MODEL.fr.md). |
-| Signature visuelle (image) | Déclaré | **Candidate 0.30.0, validation en attente** : Dessin/saisie/import conservés ; bibliothèque DPAPI utilisateur facultative, migration vérifiée, désactivation/suppression et gardes profil/ACL. Clés du profil requises pour récupérer ; session ouverte permettant réutilisation. Sans preuve d'identité/intégrité. [Détails](SIGNATURE_SECURITY.fr.md). |
-| Signature numérique CMS/PKCS#12, horodatage | Déclaré | **Candidate 0.30.0, validation en attente** : Intégrité/signature PFX conservées ; chaînes/révocations Windows/RFC3161 distincts. Hors ligne par défaut, réseau consenti par vérification, inconnu jamais fiable. DSS non vérifié ; sans LTV d'archivage/création d'horodatage. [Limites](SIGNATURE_SECURITY.fr.md). |
+| Caviardage irréversible | Déclaré (crate redact) | **Livré en 0.30.0** : Aperçu natif, remplissage/texte, marques non appliquées persistantes, découpe sûre Base14 latine et nettoyage partagé. Repli image des objets complexes ; marques seules sans caviardage. [Garanties](REDACTION.fr.md). |
+| Nettoyage des métadonnées | Déclaré | **Livré en 0.30.0** : Préservation des métadonnées PDF/A conservée, sans promesse de conformité. Copie assainie séparée/données cachées prises en charge retirées/réécriture ; sauvegardes/Annuler/secteurs non effacés. [Modèle de sécurité](SECURITY_MODEL.fr.md). |
+| Signature visuelle (image) | Déclaré | **Livré en 0.30.0** : Dessin/saisie/import conservés ; bibliothèque DPAPI utilisateur facultative, migration vérifiée, désactivation/suppression et gardes profil/ACL. Clés du profil requises pour récupérer ; session ouverte permettant réutilisation. Sans preuve d'identité/intégrité. [Détails](SIGNATURE_SECURITY.fr.md). |
+| Signature numérique CMS/PKCS#12, horodatage | Déclaré | **Livré en 0.30.0** : Intégrité/signature PFX conservées ; chaînes/révocations Windows/RFC3161 distincts. Hors ligne par défaut, réseau consenti par vérification, inconnu jamais fiable. DSS non vérifié ; sans LTV d'archivage/création d'horodatage. [Limites](SIGNATURE_SECURITY.fr.md). |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
 
 ## F. Formulaires et accessibilité
@@ -258,7 +256,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
 | Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour les 14 outils ; Numériser et OCR, Préparer un formulaire et Utiliser un certificat ont leurs commandes ; tests registre et activation sans fenêtre |
-| Workflows locaux, profils de conversion | Absent | **Candidate 0.30.0, validation en attente** : Profils Office Standard/Impression mémorisés. Concepteur général de workflows toujours planifié. [Périmètre](OFFICE_CONVERSION.fr.md). |
+| Workflows locaux, profils de conversion | Absent | **Livré en 0.30.0** : Profils Office Standard/Impression mémorisés. Concepteur général de workflows toujours planifié. [Périmètre](OFFICE_CONVERSION.fr.md). |
 
 ## H. Distribution
 
@@ -267,5 +265,5 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.20.0 ZIP/MSI publiés en Latest ; dix-huit scénarios portables et douze bases MSI réussis (60 journaux MSI) ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
 | Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.19.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
-| Moteur GPU facultatif | Non documenté | **Candidate 0.30.0, validation en attente** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
-| Inventaire licences des dépendances/composants | Non documenté | **Candidate 0.30.0, validation en attente** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |
+| Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
+| Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

@@ -2,18 +2,17 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.30.0: editing, document safety and local conversion (validation in progress)
+## 0.30.0: editing, document safety and local conversion (published stable Latest)
 
-The authorized batch covers five Bugs and all fourteen P2 Roadmap items. Implementation is present;
-release validation and publication are pending. [Exact scope and supported limits](RELEASE_0.30.0.md)
-include paragraph preview, editable paste, rich annotations, precise links, semantic page labels,
-bookmark/structure preservation, redaction preview and persistent marks, sanitization, font subsets,
-local Office conversion, signature trust states, protected signature storage and license inventory.
-The five bug fixes address Windows font discovery, rotation pivot, opacity, resized annotations and
-optional GPU compatibility. P1 Roadmap work and Suggestions remain outside this batch.
-Results belong in [Project status](PROJECT_STATUS.md); old release sections below are historical.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 
-## 0.21.1: document preservation (published stable Latest)
+The [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) and [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) passed on this source: **551 tests**, zero failures, 9 default ignored; **1047 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature outputs**, **4 MuPDF font cases**, DX12 software WARP, **14 Office round trips**, 4 licensed PDFs/744 pages, **21 portable scenarios**, **15 MSI baselines/75 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
+
+Six public assets match the inspected packages and SHA256 digests byte for byte. The production updater verified the 26,978,019-byte x64 ZIP in 2.55 seconds without installing on this host, using the previously built test harness with an unchanged updater module. Project readback: **42 unique items, 20 Todo, 0 In Progress, 22 Done**, three saved filters and zero unsaved changes. [Evidence and limits](PROJECT_STATUS.md).
+
+Packages remain unsigned. ARM64 is cross-built and packaged, without execution on ARM64 hardware. Physical printers, Narrator, manual updater interaction and physical GPU/window behavior still need qualification; WARP proves software offscreen rendering only. Unsupported inputs remain refused. PDF/A metadata preservation does not certify PDF/A or PDF/UA conformance.
+
+## 0.21.1: document preservation (published; Latest at the time)
 
 The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
 draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
@@ -53,9 +52,9 @@ and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
 ## Dependencies
 
-4. **Optional GPU compatibility**: the 0.30.0 candidate aligns the Windows GPU dependencies and adds optional
-   wgpu/DX12 plus a software-renderer gate. Validation is pending. glow/OpenGL stays the default/fallback;
-   real GPU/window behavior and ARM64 hardware remain unverified. See [candidate scope](RELEASE_0.30.0.md).
+4. **Optional GPU compatibility**: 0.30.0 aligns the Windows GPU dependencies and adds optional
+   wgpu/DX12 plus a software-renderer gate. Release-source regression gates passed. glow/OpenGL stays the default/fallback;
+   real GPU/window behavior and ARM64 hardware remain unverified. See [release scope](RELEASE_0.30.0.md).
 5. **pdfium-render 0.9.4 targets PDFium build 7881**; newer builds (8100 as of 2026-10-12)
    probably work but are untested. Version pinned in `scripts/fetch-pdfium.ps1`.
 
@@ -92,33 +91,33 @@ A6. **Content editing: editing an existing text reuses its original font.** If t
     Workaround in published 0.21.0: delete the object and add a new one (Helvetica, Latin accents supported).
     **Published in 0.21.1:** keep that original font, atomically refuse
     unsupported text and reopen the correct draft. This fix is absent from 0.21.0 packages; see [executed checks](PROJECT_STATUS.md).
-A7. **Rotation and pivot**: earlier free/group rotation remains. The 0.30.0 candidate remembers the selected
+A7. **Rotation and pivot**: earlier free/group rotation remains. 0.30.0 remembers the selected
     rotation pivot so asymmetric paths do not acquire a new bounding-box centre at each turn; validation is pending.
     Corner resizing handles remain unavailable for non-orthogonal objects to avoid distortion. See [scope](RELEASE_0.30.0.md).
 A8. **Reordering and clipboard**: Z-order changes merge page content streams before reordering. Existing grouped
     duplication/paste uses form XObjects and does not turn their contents into editable text; group color/opacity
-    controls remain limited. The 0.30.0 candidate adds explicit **Paste editable** for supported native objects,
-    with one Undo and atomic refusal of unsafe resource graphs, without silent grouped fallback. Validation pending;
+    controls remain limited. 0.30.0 adds explicit **Paste editable** for supported native objects,
+    with one Undo and atomic refusal of unsafe resource graphs, without silent grouped fallback. Release-source regression gates passed;
     [scope](RELEASE_0.30.0.md). The session clipboard and page-bound grouped path still have their existing limits.
-A18. **Font formats, rights and reuse**: the 0.30.0 candidate replaces OEM `reg.exe` font-name discovery with
+A18. **Font formats, rights and reuse**: 0.30.0 replaces OEM `reg.exe` font-name discovery with
      Unicode Windows discovery, selected static TrueType/CFF1 TTF/OTF/TTC/OTC faces and eligible font subsetting.
      Embedding flags are checked before mutation; no-subsetting retains the complete selected face. Identical font
      programs can be reused after Undo/Redo/reopen. Variable/CFF2/color fonts, damaged faces, unsupported shaping
      and unavailable glyphs are refused. Size, face and glyph limits apply; internal rendering alone does not
-     validate other readers. Runtime/independent-reader validation is pending; [exact policy](FONT_EMBEDDING.md).
+     validate other readers. Runtime and documented independent-reader gates passed; [exact policy](FONT_EMBEDDING.md).
 A19. **Crop hides, it does not erase**: the content outside the frame stays in the file (this is not
      redaction; stated in the dialog). Mouse cropping in the preview is implemented for 0.10.0; numeric margins remain available.
 A20. **Text editing and paragraph preview**: ordinary inline input still uses the interface font; its draft
-     display is not a PDF layout proof. The 0.30.0 candidate adds bounded multiline paragraph reflow with actual
+     display is not a PDF layout proof. 0.30.0 adds bounded multiline paragraph reflow with actual
      native font metrics, Preview then explicit Apply, draft preservation and one Undo. Unsupported fonts/text/
      graphics states are refused. General document reflow and bidirectional/shaping editing remain unsupported;
-     validation pending. [Scope](RELEASE_0.30.0.md) and [font limits](FONT_EMBEDDING.md).
-A21. **Page resizing**: the 0.30.0 candidate optionally scales supported annotation/link geometry with page
+     release-source regression gates passed. [Scope](RELEASE_0.30.0.md) and [font limits](FONT_EMBEDDING.md).
+A21. **Page resizing**: 0.30.0 optionally scales supported annotation/link geometry with page
      content. Malformed geometry and unsupported appearances cause atomic refusal rather than silently leaving
-     misaligned annotations. This is bounded support, not every PDF extension; validation pending. [Scope](RELEASE_0.30.0.md).
-A22. **Image opacity**: the 0.30.0 candidate reads supported existing opacity and exposes an unknown state
+     misaligned annotations. This is bounded support, not every PDF extension; release-source regression gates passed. [Scope](RELEASE_0.30.0.md).
+A22. **Image opacity**: 0.30.0 reads supported existing opacity and exposes an unknown state
      instead of carrying a previous object's value. Replacement is explicit. Complex masks/graphics states are not
-     a universal editable alpha value; validation pending. [Scope](RELEASE_0.30.0.md).
+     a universal editable alpha value; release-source regression gates passed. [Scope](RELEASE_0.30.0.md).
 A23. **Displayed angle of objects on a rotated page**: an object's angle is that of its content on screen;
      a rectangle drawn in the PDF on a `/Rotate 90` page is therefore reported at 90° (CLI `objects`, Angle
      field). Corner handles remain available (multiple of 90°).
@@ -232,12 +231,12 @@ A28. **View memory**: bounded but notable. Page textures 192 MiB (excluding scre
 A35. **Visual signature = image without cryptographic proof**: drawn, typed or imported, another editor can copy or delete it.
      CLI `add-image` reports `digital_signature: false`. CMS/PFX signing is a separate Use a certificate
      workflow (A44); the application warns before rewriting a signed PDF.
-A36. **Saved visual signatures**: the 0.30.0 candidate uses current-user DPAPI `.dpapi` files with a private
+A36. **Saved visual signatures**: 0.30.0 uses current-user DPAPI `.dpapi` files with a private
      user-SID ACL. Legacy bounded PNG entries migrate atomically only after persisted encrypted bytes have been
      decrypted and compared; failures preserve the originals and show the remaining plaintext risk. Saving is
      optional; two-click deletion removes the selected entry without securely erasing sectors/backups. Unreadable
      files are retained; another user or a lost/reset profile cannot recover them from ciphertext alone. Anyone
-     operating the signed-in session can still reuse an image. Validation pending; [recovery and bounds](SIGNATURE_SECURITY.md).
+     operating the signed-in session can still reuse an image. Release-source regression gates passed; [recovery and bounds](SIGNATURE_SECURITY.md).
 A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pressure), raw polyline
      without smoothing; background removal by a **global luminance threshold** with a soft ramp (a very unevenly
      lit photo would need an adaptive threshold: judge on the preview, lower or raise the threshold, or prefer a
@@ -288,7 +287,7 @@ A38. **AcroForm forms**: XFA is read, never filled/flattened; JavaScript, calcul
      third-party-reader interoperability remain unverified. Current executed evidence belongs in `PROJECT_STATUS.md`.
 
 
-A39. **Advanced annotations**: the 0.30.0 candidate adds actual-preview embedded-font FreeText, polygons,
+A39. **Advanced annotations**: 0.30.0 adds actual-preview embedded-font FreeText, polygons,
     polylines, clouds, standard stamps, attachments and whole-stroke ink erasure. Uniform text style only;
     unsupported shaping is refused. Rich appearance restyle/resize and arbitrary foreign rich-text data remain
     limited. Validation is pending; [supported inputs and bounds](RICH_ANNOTATIONS.md).
@@ -361,7 +360,7 @@ A39. **Advanced annotations**: the 0.30.0 candidate adds actual-preview embedded
     its dialog, editing by double-click, keyboard arrows, resizing an ink stroke, a line or a text box (all covered by
     the engine tests and the pure tests of `annot_adv.rs`); synthetic structural qpdf checking is added for 0.9.1
     (A4); reader interoperability remains unestablished.
-A40. **Redaction**: the 0.30.0 candidate adds native before/after preview, fill/overlay, persistent marks and
+A40. **Redaction**: 0.30.0 adds native before/after preview, fill/overlay, persistent marks and
     shared sanitization. Validation is pending; [exact guarantees and bounds](REDACTION.md). Applied output removes
     covered content by full rewrite and residual checks, with these limits:
     1. **Granularity**: safe opaque Base14 Latin text can retain selectable unredacted glyphs at native positions.
@@ -414,13 +413,13 @@ A43. **Local OCR**: English/French only, fast Tesseract models; accuracy varies 
      TSV at 16 MiB, 50,000 words/page, 120 seconds/page; very large pages refused. No semantic table/column reconstruction.
      Cancellation/failure commits no pages; success is one undo step. Other readers still need interoperability checks.
 A44. **Digital signatures and trust**: saved-byte detached CMS integrity and incremental new-copy PFX/P12
-     signing remain separate from identity trust; encrypted signing is refused. The 0.30.0 candidate adds Windows
+     signing remain separate from identity trust; encrypted signing is refused. 0.30.0 adds Windows
      chain/revocation and RFC3161 signature-timestamp verification. Retrieval is cache-only by default and requires
      explicit consent for each online verification; unavailable/unknown revocation never establishes trust.
      Strong digests, EKU/time/token binding and TSA trust are checked. PDF signing time remains declarative;
      timestamp creation is not added. Embedded DSS is reported as unverified, not authenticated archival LTV.
      AATL/EUTL, PKCS#11, qualified-signature assessment and third-party-reader certification remain unsupported.
-     Validation pending; [guarantees and limits](SIGNATURE_SECURITY.md).
+     Release-source regression gates passed; [guarantees and limits](SIGNATURE_SECURITY.md).
 A45. **0.10.0 image compression**: lossy; only supported 8-bit DeviceRGB/DeviceGray images up to 32 million pixels
      are decoded. Mask/soft-mask resource graphs, profiles, custom Decode/DecodeParms and other unsupported images
      remain unchanged. If the document would grow, the exact input bytes are returned. Maximum-side/JPEG controls
@@ -442,15 +441,15 @@ gates passed; public-download/live-updater checks also passed; evidence and rema
 A48. **Page labels**: optional navigation metadata, separate from printed numbering. Reading shipped in 0.11.0;
      six-style author/reset in 0.14.0. Blank/unreadable/control-containing labels or labels above 4,096 UTF-8 bytes
      fall back to physical indices; exact unique labels take precedence, `#N` is physical, duplicates require a
-     physical index. New prefixes remain single-line/256 UTF-8 bytes and start numbers positive. The 0.30.0 candidate
+     physical index. New prefixes remain single-line/256 UTF-8 bytes and start numbers positive. 0.30.0
      rebases semantic labels by page provenance across merge/extract/reorder/delete/insert, without changing printed
      text. Malformed/unsafe trees refuse structural edits atomically; duplicates remain explicit. Reset removes
-     metadata, not old disk copies. Validation pending; [scope](RELEASE_0.30.0.md), [structure limits](BOOKMARKS_AND_PAGE_STRUCTURE.md).
-A49. **Destinations**: the 0.30.0 candidate adds named/XYZ/Fit/FitH authoring and bounded raw resolution that
+     metadata, not old disk copies. Release-source regression gates passed; [scope](RELEASE_0.30.0.md), [structure limits](BOOKMARKS_AND_PAGE_STRUCTURE.md).
+A49. **Destinations**: 0.30.0 adds named/XYZ/Fit/FitH authoring and bounded raw resolution that
      distinguishes null axes from explicit zero, including FitH. Retained axes/zoom use the current viewport;
      coordinates follow displayed CropBox/rotation and explicit zoom is bounded. Cycles, ambiguity and malformed
      local destinations are refused; unsupported fit modes retain page-only navigation. Existing unsupported
-     actions remain inert data and are never executed. Validation pending; independent-reader and accessibility
+     actions remain inert data and are never executed. Release-source regression gates passed; independent-reader and accessibility
      checks are distinct. [Scope](RELEASE_0.30.0.md) and [preservation limits](BOOKMARKS_AND_PAGE_STRUCTURE.md).
 A50. **Form-read failures**: an error is kept distinct from an empty form, and the panel offers an explicit retry.
      Pending drafts and staged values are retained while the read fails. A waiting import/clear operation resumes

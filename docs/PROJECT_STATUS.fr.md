@@ -1,23 +1,21 @@
-# État du projet — mis à jour le 2026-10-17 (0.21.1 publiée en Latest stable)
+# État du projet — mis à jour le 2026-10-17 (0.30.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.30.0 : édition, protection des documents et conversion locale (validation en cours)
+## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
-Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
-release et publication restent en attente. Le [périmètre exact et ses limites](RELEASE_0.30.0.fr.md)
-comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
-les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
-l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
-des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
-polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
-P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](PROJECT_STATUS.fr.md) ;
-les sections des anciennes versions ci-dessous sont historiques.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
-## 0.21.1 : conservation des documents (publiée en Latest stable)
+[Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
+
+Six fichiers publics vérifiés octet par octet avec les paquets préparés et leurs SHA256. Le metteur à jour de production a vérifié le ZIP x64 de 26,978,019 octets en 2.55 s, sans installation sur cet hôte, au moyen du banc de test déjà compilé dont le module de mise à jour est inchangé. Projet relu : **42 éléments uniques, 20 Todo, 0 In Progress, 22 Done**, trois filtres enregistrés et aucune modification non enregistrée. [Preuves et limites](PROJECT_STATUS.fr.md).
+
+Les paquets restent non signés. ARM64 est compilé et empaqueté, sans exécution sur matériel ARM64. Imprimantes physiques, Narrateur, interactions manuelles de mise à jour et GPU/fenêtres physiques restent à qualifier ; WARP prouve uniquement le rendu logiciel hors écran. Les entrées non prises en charge restent refusées. La conservation PDF/A ne certifie pas PDF/A/PDF/UA.
+
+## 0.21.1 : conservation des documents (publiée ; Latest à cette date)
 
 [Publiée](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) sous `lmdanavanem`, release `415426148`, source immuable
 `358a73fa08ab7ea02adbbb022c1ffa6d54fd9826`. Les deux correctifs P1 sont inclus dans les paquets publics.
@@ -56,9 +54,9 @@ La source d'implémentation antérieure `3ee794dac84617b17cddf73147ee2cefd279c13
 contrôles locaux complets et la [CI GitHub](https://github.com/lmdanavanem/SuniPDF/actions/runs/38967614776).
 Les régressions d'échec/relance et d'aplatissement sont conservées. La release ajoute les bases 0.21.0 figées.
 
-Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) garde **42 brouillons uniques** : Bugs (8),
+Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) gardait **42 brouillons uniques à la publication 0.21.1** : Bugs (8),
 Roadmap (23), Suggestions (11) ; **38 Todo, un In Progress, trois Done**. Les deux descriptions P1 indiquent
-la livraison 0.21.1. Prochain lot autorisé : **0.30.0**, cinq Bugs ouverts et 14 P2 Roadmap ; P1 Roadmap reportés
+la livraison 0.21.1. Le lot prévu après le jalon 0.21.1 était **0.30.0**, cinq Bugs ouverts et 14 P2 Roadmap ; P1 Roadmap reportés
 et Suggestions hors de ce lot. API et 53 commandes CLI inchangées.
 
 Paquets non signés. Exécution ARM64, impression physique, interface native manuelle et lecteurs tiers non

@@ -2,18 +2,17 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.30.0: editing, document safety and local conversion (validation in progress)
+## 0.30.0: editing, document safety and local conversion (published stable Latest)
 
-The authorized batch covers five Bugs and all fourteen P2 Roadmap items. Implementation is present;
-release validation and publication are pending. [Exact scope and supported limits](RELEASE_0.30.0.md)
-include paragraph preview, editable paste, rich annotations, precise links, semantic page labels,
-bookmark/structure preservation, redaction preview and persistent marks, sanitization, font subsets,
-local Office conversion, signature trust states, protected signature storage and license inventory.
-The five bug fixes address Windows font discovery, rotation pivot, opacity, resized annotations and
-optional GPU compatibility. P1 Roadmap work and Suggestions remain outside this batch.
-Results belong in [Project status](PROJECT_STATUS.md); old release sections below are historical.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 
-## 0.21.1: document preservation (published stable Latest)
+The [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) and [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) passed on this source: **551 tests**, zero failures, 9 default ignored; **1047 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature outputs**, **4 MuPDF font cases**, DX12 software WARP, **14 Office round trips**, 4 licensed PDFs/744 pages, **21 portable scenarios**, **15 MSI baselines/75 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
+
+Six public assets match the inspected packages and SHA256 digests byte for byte. The production updater verified the 26,978,019-byte x64 ZIP in 2.55 seconds without installing on this host, using the previously built test harness with an unchanged updater module. Project readback: **42 unique items, 20 Todo, 0 In Progress, 22 Done**, three saved filters and zero unsaved changes. [Evidence and limits](PROJECT_STATUS.md).
+
+Packages remain unsigned. ARM64 is cross-built and packaged, without execution on ARM64 hardware. Physical printers, Narrator, manual updater interaction and physical GPU/window behavior still need qualification; WARP proves software offscreen rendering only. Unsupported inputs remain refused. PDF/A metadata preservation does not certify PDF/A or PDF/UA conformance.
+
+## 0.21.1: document preservation (published; Latest at the time)
 
 The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
 draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
@@ -51,8 +50,8 @@ explicit Create (D110/A38). Implementation, local tests, formatting and Clippy p
 "Expected" column: capability expected of a full PDF editor (**Declared** = common in the editors on the market,
 **Partial** = announced as incomplete by the project, **Absent** = announced as missing. Not verified by execution.
 
-SuniPDF statuses: **Done** = implemented **and** covered by executed tests; **0.30.0 candidate, validation pending** =
-implemented in the authorized batch, release gates/publication not yet established; **In progress**;
+SuniPDF statuses: **Done** = implemented **and** covered by executed tests; **Delivered in 0.30.0** =
+published within the documented limits and covered by the executed release gates; **In progress**;
 **Planned (Pn)** = roadmap phase; **Out of scope**. P1 Roadmap items and Suggestions are deferred.
 
 The 0.9.0 features below have automated regression coverage. `PROJECT_STATUS.md` records the executed checks;
@@ -162,8 +161,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Full-text search | Declared | **Done** | Ctrl+F, case, highlighting, CLI `search` |
 | Text selection / copy in reading order | Declared | **Done**: logical character range, cross-page/reverse selection, double-click words, edge autoscroll | PDFium order; core/headless tests; arbitrary untagged column order not inferred |
 | Thumbnails | Declared | **Done** | Virtualised panel, shared cache |
-| Bookmarks (outline) | Declared | **0.30.0 candidate, validation pending**: Add/rename/retarget/move/delete with Undo; bounded merge/extract preservation. [Supported structures](BOOKMARKS_AND_PAGE_STRUCTURE.md). | Bounds: 4,096 bookmarks / 32 levels; cycles refused. |
-| Page labels | Declared | **0.30.0 candidate, validation pending**: Semantic rebasing follows page provenance; duplicate labels explicit and printed numbers unchanged. Earlier six-style author/reset remains. [Scope](RELEASE_0.30.0.md). | Exact unique label or physical `#N` navigation. |
+| Bookmarks (outline) | Declared | **Delivered in 0.30.0**: Add/rename/retarget/move/delete with Undo; bounded merge/extract preservation. [Supported structures](BOOKMARKS_AND_PAGE_STRUCTURE.md). | Bounds: 4,096 bookmarks / 32 levels; cycles refused. |
+| Page labels | Declared | **Delivered in 0.30.0**: Semantic rebasing follows page provenance; duplicate labels explicit and printed numbers unchanged. Earlier six-style author/reset remains. [Scope](RELEASE_0.30.0.md). | Exact unique label or physical `#N` navigation. |
 | Navigation history, reopened tabs | Declared | Recent files and per-tab 256-entry history **Done**; same-page/zoom history **delivered in 0.11.0** | Local tests passed |
 | Reading mode / full screen | Declared | **Done in 0.10.0** | View mode is a shared preference; rotation/history are retained per tab; editing returns to upright view |
 | Windows printing | Declared (limited fidelity) | **Done** (layout/range tests and actual Microsoft Print to PDF output reopened) | Native dialog, ranges/copies, bounded raster printing, progress/cancel; physical printer and interactive dialog unverified |
@@ -175,18 +174,18 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **0.30.0 candidate, validation pending**: Earlier markup retained; embedded-font FreeText, polygons/polylines/clouds, standard stamps and attachments with actual preview. Uniform text style, bounded refusals; [details](RICH_ANNOTATIONS.md). |
+| Notes, highlight, underline, strikethrough, shapes, ink, text boxes | Declared | **Delivered in 0.30.0**: Earlier markup retained; embedded-font FreeText, polygons/polylines/clouds, standard stamps and attachments with actual preview. Uniform text style, bounded refusals; [details](RICH_ANNOTATIONS.md). |
 | Reply threads, comment status | Declared | **Done in SuniPDF**: Comments panel as threads (replies, status Accepted / Rejected / Cancelled / Completed, author, date, thread deletion), written according to ISO 32000-1; **Acrobat / Foxit compatibility not verified**; CLI `reply` / `review-state` |
-| Group several freehand strokes | Declared | **0.30.0 candidate, validation pending**: Grouped ink shipped in 0.18.0. Whole touched strokes can be erased, untouched style/comments retained; no partial-stroke erasure, idle commit or draft recovery. [Limits](RICH_ANNOTATIONS.md). |
-| On-page FreeText creation and editing | Declared | **0.30.0 candidate, validation pending**: On-page baseline shipped in 0.20.0; actual embedded-font preview and selected bold/italic faces/horizontal CJK now present. No span editor or unsupported shaping. [Details](RICH_ANNOTATIONS.md). |
-| Adding text / images | Declared | **0.30.0 candidate, validation pending**: Earlier text/images retained; Unicode font discovery, eligible static TrueType/CFF1 subsets and selected TTF/OTF/TTC/OTC faces with rights/reuse checks. Variable/CFF2/color fonts refused. [Formats/bounds](FONT_EMBEDDING.md). |
-| Modifying existing text | Partial (weak in CJK/bidi) | **0.30.0 candidate, validation pending**: 0.21.1 missing-glyph guard retained; bounded multiline paragraph preview/reflow with native metrics and explicit Apply. Unsafe fonts/text/graphics states refused. [Scope](RELEASE_0.30.0.md). |
-| Object transformation | Declared | **0.30.0 candidate, validation pending**: Earlier object operations retained; stable remembered rotation pivot, explicit opacity replacement/readback and unknown state. [Scope](RELEASE_0.30.0.md). |
-| Multiple selection, cut/copy/paste of objects | Declared | **0.30.0 candidate, validation pending**: Grouped paste retained; explicit **Paste editable** recreates supported native objects in one Undo. Unsafe graphs refused without silent grouped fallback. [Scope](RELEASE_0.30.0.md). |
+| Group several freehand strokes | Declared | **Delivered in 0.30.0**: Grouped ink shipped in 0.18.0. Whole touched strokes can be erased, untouched style/comments retained; no partial-stroke erasure, idle commit or draft recovery. [Limits](RICH_ANNOTATIONS.md). |
+| On-page FreeText creation and editing | Declared | **Delivered in 0.30.0**: On-page baseline shipped in 0.20.0; actual embedded-font preview and selected bold/italic faces/horizontal CJK now present. No span editor or unsupported shaping. [Details](RICH_ANNOTATIONS.md). |
+| Adding text / images | Declared | **Delivered in 0.30.0**: Earlier text/images retained; Unicode font discovery, eligible static TrueType/CFF1 subsets and selected TTF/OTF/TTC/OTC faces with rights/reuse checks. Variable/CFF2/color fonts refused. [Formats/bounds](FONT_EMBEDDING.md). |
+| Modifying existing text | Partial (weak in CJK/bidi) | **Delivered in 0.30.0**: 0.21.1 missing-glyph guard retained; bounded multiline paragraph preview/reflow with native metrics and explicit Apply. Unsafe fonts/text/graphics states refused. [Scope](RELEASE_0.30.0.md). |
+| Object transformation | Declared | **Delivered in 0.30.0**: Earlier object operations retained; stable remembered rotation pivot, explicit opacity replacement/readback and unknown state. [Scope](RELEASE_0.30.0.md). |
+| Multiple selection, cut/copy/paste of objects | Declared | **Delivered in 0.30.0**: Grouped paste retained; explicit **Paste editable** recreates supported native objects in one Undo. Unsafe graphs refused without silent grouped fallback. [Scope](RELEASE_0.30.0.md). |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
-| Links | Declared | **0.30.0 candidate, validation pending**: Earlier page/URI links retained; named/XYZ/Fit/FitH authoring and bounded raw resolution preserve null axes/zoom and displayed crop/rotation. Active unsupported actions never run. [Scope](RELEASE_0.30.0.md). |
+| Links | Declared | **Delivered in 0.30.0**: Earlier page/URI links retained; named/XYZ/Fit/FitH authoring and bounded raw resolution preserve null axes/zoom and displayed crop/rotation. Active unsupported actions never run. [Scope](RELEASE_0.30.0.md). |
 | Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
-| Custom stamps | Not documented | **0.30.0 candidate, validation pending**: Standard preset annotations present; arbitrary custom stamp design remains planned. [Types](RICH_ANNOTATIONS.md). |
+| Custom stamps | Not documented | **Delivered in 0.30.0**: Standard preset annotations present; arbitrary custom stamp design remains planned. [Types](RICH_ANNOTATIONS.md). |
 
 ## C. Organisation
 
@@ -194,14 +193,14 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 |---|---|---|
 | Rotate, delete, insert, move, blank pages | Declared | **Done** (UI + CLI `insert-blank` for blank pages) |
 | Crop pages (CropBox) | Declared | **Done** (dialog in mm with preview, restore, CLI `crop`); mask only, not redaction; mouse crop preview delivered in 0.10.0 |
-| Resize pages | Declared | **0.30.0 candidate, validation pending**: Earlier size/content controls retained; optional annotation/link scaling with content, unsupported/malformed appearances refused atomically. [Scope](RELEASE_0.30.0.md). |
-| Merge N PDFs with bookmarks | Declared | **0.30.0 candidate, validation pending**: Bounded outlines, destinations, fields, layers and attachments preserved; incoming name collisions deterministic. [Limits](BOOKMARKS_AND_PAGE_STRUCTURE.md). |
+| Resize pages | Declared | **Delivered in 0.30.0**: Earlier size/content controls retained; optional annotation/link scaling with content, unsupported/malformed appearances refused atomically. [Scope](RELEASE_0.30.0.md). |
+| Merge N PDFs with bookmarks | Declared | **Delivered in 0.30.0**: Bounded outlines, destinations, fields, layers and attachments preserved; incoming name collisions deterministic. [Limits](BOOKMARKS_AND_PAGE_STRUCTURE.md). |
 | Split (every n / chosen pages) | Declared | **Done** (UI dialog + CLI `split`, `extract`) |
-| Extraction preserving links, fields, layers, attachments | Declared | **0.30.0 candidate, validation pending**: Earlier encryption/source guards retained; bounded graph preservation and omitted-page destination removal. XFA/unsafe graphs refused; independent reader gates pending. [Limits](BOOKMARKS_AND_PAGE_STRUCTURE.md). |
+| Extraction preserving links, fields, layers, attachments | Declared | **Delivered in 0.30.0**: Earlier encryption/source guards retained; bounded graph preservation and omitted-page destination removal. XFA/unsafe graphs refused; documented independent reader gates passed. [Limits](BOOKMARKS_AND_PAGE_STRUCTURE.md). |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save. **Delivered in 0.14.0**: preserve navigation through label/content Undo/Redo when page geometry is unchanged; executed checks passed (D105) |
 | Comparison of two versions | Declared (compare crate) | Planned (P5) |
-| Batch processing | Declared (CLI batch) | **0.30.0 candidate, validation pending**: Compression/OCR shipped in 0.10.0; Office batches now present, 1–128 inputs, 64 MiB/input, 120 s/conversion, cancel/new copies. [Limits](OFFICE_CONVERSION.md). |
+| Batch processing | Declared (CLI batch) | **Delivered in 0.30.0**: Compression/OCR shipped in 0.10.0; Office batches now present, 1–128 inputs, 64 MiB/input, 120 s/conversion, cancel/new copies. [Limits](OFFICE_CONVERSION.md). |
 
 ## D. Conversion and OCR
 
@@ -210,9 +209,9 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | PDF → images | Declared (CLI render) | **Done** (UI 150 dpi PNG export, CLI `render`, `export-images`) |
 | PDF → text | Declared | **Done** (CLI `text`) |
 | Images → PDF | Declared (create) | **Done** (UI + CLI `images2pdf`, PNG/JPEG/BMP/GIF/TIFF/WebP). **Delivered in 0.17.0**: direct embedding for all eight JPEG EXIF orientations; 512 MiB cumulative non-JPEG raster estimate `sum(max(decoded bytes, width × height × 4))` before allocation, checked arithmetic and finite/positive page geometry (D108). Quality/transparency and callers retained; estimate is not a process/native RSS ceiling or compressed-JPEG limit. Local/CI/upgrade, independent debug/staged/public conversion and production updater checks passed; evidence and remaining limits in `PROJECT_STATUS.md` |
-| PDF → Word | Partial (loses the layout) | **0.30.0 candidate, validation pending**: Simple editable single-column visible text reflowed at 11 pt; original fonts/layout/pagination not reconstructed. Complex inputs refused. [Scope](OFFICE_CONVERSION.md). |
-| PDF → Excel / PowerPoint | Absent / partial pptx export | **0.30.0 candidate, validation pending**: Aligned text grids as literal XLSX strings; PPTX as 150 dpi page images with margins. No formulas, semantic table reconstruction or editable PPTX content. [Limits](OFFICE_CONVERSION.md). |
-| Office → PDF | Absent | **0.30.0 candidate, validation pending**: Guarded macro-free inputs, installed LibreOffice 26.2/26.8, isolated profiles and new-copy outputs. Unavailable explicit, no auto-install. [Formats/profiles](OFFICE_CONVERSION.md). |
+| PDF → Word | Partial (loses the layout) | **Delivered in 0.30.0**: Simple editable single-column visible text reflowed at 11 pt; original fonts/layout/pagination not reconstructed. Complex inputs refused. [Scope](OFFICE_CONVERSION.md). |
+| PDF → Excel / PowerPoint | Absent / partial pptx export | **Delivered in 0.30.0**: Aligned text grids as literal XLSX strings; PPTX as 150 dpi page images with margins. No formulas, semantic table reconstruction or editable PPTX content. [Limits](OFFICE_CONVERSION.md). |
+| Office → PDF | Absent | **Delivered in 0.30.0**: Guarded macro-free inputs, installed LibreOffice 26.2/26.8, isolated profiles and new-copy outputs. Unavailable explicit, no auto-install. [Formats/profiles](OFFICE_CONVERSION.md). |
 | HTML → PDF | Absent | Planned (P5, optional) |
 | Image compression | Declared | **Done in 0.10.0**: supported RGB/Gray images, JPEG quality/max-side controls, no-gain byte copy, masks/profiles retained, signed/restricted inputs refused |
 | OCR | Partial (Latin, CC-BY-SA models) | **Done**: bundled offline Tesseract 5.5.3 / Leptonica 1.87, fast eng/fra models, invisible text, skip existing text, progress/cancel/one undo; core and real CLI recognition tests; CLI `ocr` |
@@ -223,10 +222,10 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 |---|---|---|
 | Open encrypted, honour permissions | Declared | **Done** (opening; permissions shown in the properties) |
 | Add/change password, AES-256 | Declared | **Done** (AES-128/256, permissions; AES-128 limited to Latin-1 passwords, typed refusal; accessibility always granted) through `lopdf`, re-read by PDFium; explicit AES-256 key length and synthetic qpdf gate added for 0.9.1; results in `PROJECT_STATUS.md` |
-| Irreversible redaction | Declared (redact crate) | **0.30.0 candidate, validation pending**: Native preview, fill/overlay, persistent unapplied marks, safe Base14 Latin glyph splitting and shared cleanup. Complex objects use raster fallback; marks alone do not redact. [Guarantees](REDACTION.md). |
-| Metadata cleanup | Declared | **0.30.0 candidate, validation pending**: Earlier PDF/A metadata preservation retained, without conformance claim. Separate sanitized copy removes supported hidden data/full rewrite; backups/Undo/disk sectors not erased. [Security model](SECURITY_MODEL.md). |
-| Visual signature (image) | Declared | **0.30.0 candidate, validation pending**: Earlier drawing/typing/import retained; optional user-DPAPI library with verified migration, opt-out/delete and profile/ACL safeguards. Profile keys required for recovery; session access permits reuse. No identity/integrity proof. [Details](SIGNATURE_SECURITY.md). |
-| CMS/PKCS#12 digital signature, timestamping | Declared | **0.30.0 candidate, validation pending**: Earlier integrity/PFX signing retained; separate Windows chain/revocation/RFC3161 verification. Offline default, per-check network consent, unknown never trusted. DSS unverified; no archival LTV/timestamp creation. [Limits](SIGNATURE_SECURITY.md). |
+| Irreversible redaction | Declared (redact crate) | **Delivered in 0.30.0**: Native preview, fill/overlay, persistent unapplied marks, safe Base14 Latin glyph splitting and shared cleanup. Complex objects use raster fallback; marks alone do not redact. [Guarantees](REDACTION.md). |
+| Metadata cleanup | Declared | **Delivered in 0.30.0**: Earlier PDF/A metadata preservation retained, without conformance claim. Separate sanitized copy removes supported hidden data/full rewrite; backups/Undo/disk sectors not erased. [Security model](SECURITY_MODEL.md). |
+| Visual signature (image) | Declared | **Delivered in 0.30.0**: Earlier drawing/typing/import retained; optional user-DPAPI library with verified migration, opt-out/delete and profile/ACL safeguards. Profile keys required for recovery; session access permits reuse. No identity/integrity proof. [Details](SIGNATURE_SECURITY.md). |
+| CMS/PKCS#12 digital signature, timestamping | Declared | **Delivered in 0.30.0**: Earlier integrity/PFX signing retained; separate Windows chain/revocation/RFC3161 verification. Offline default, per-check network consent, unknown never trusted. DSS unverified; no archival LTV/timestamp creation. [Limits](SIGNATURE_SECURITY.md). |
 | PKCS#11, online LTV, AATL/EUTL | Absent | Out of initial scope |
 
 ## F. Forms and accessibility
@@ -255,7 +254,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
 | "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for all 14 tools; Scan & OCR, Prepare a form and Use a certificate have real commands; registry and headless activation tests |
-| Local workflows, conversion profiles | Absent | **0.30.0 candidate, validation pending**: Remembered Standard/Print Office profiles. General workflow designer remains planned. [Scope](OFFICE_CONVERSION.md). |
+| Local workflows, conversion profiles | Absent | **Delivered in 0.30.0**: Remembered Standard/Print Office profiles. General workflow designer remains planned. [Scope](OFFICE_CONVERSION.md). |
 
 ## H. Distribution
 
@@ -264,5 +263,5 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Windows x64 | Declared (MSI, zip) | **Done**: 0.20.0 ZIP/MSI published as Latest; eighteen real portable cases and twelve MSI baselines passed (60 MSI logs); six public files/SHA256 and packaged checks verified; production updater verified without installation; evidence in `PROJECT_STATUS.md`; interactive UX unverified |
 | Windows ARM64 | Declared | **Done**: same-source 0.19.0 portable ZIP built in CI and published; public SHA256, architecture, models, notices and icons verified; evidence in `PROJECT_STATUS.md`; hardware execution unverified |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
-| Optional GPU renderer | Not documented | **0.30.0 candidate, validation pending**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
-| Dependency/component license inventory | Not documented | **0.30.0 candidate, validation pending**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |
+| Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
+| Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

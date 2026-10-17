@@ -52,14 +52,12 @@ sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md).
 
 ## Validation et distribution
 
-La publication exige les contrôles x64 de formatage, Clippy et tests, la compilation ARM64, les lecteurs
-indépendants de polices et de fonctions, qpdf et le corpus, les conversions Office mesurées, les mises à
-jour portables et les transactions MSI. Le MSI x64 et les ZIP x64/ARM64 ont chacun une empreinte SHA256.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
-Les résultats exécutés et empreintes publiques seront consignés dans [l’état du projet](PROJECT_STATUS.fr.md).
-Les paquets restent non signés ; matériel ARM64, imprimantes physiques et comportement manuel des fenêtres
-et GPU natifs restent à qualifier séparément. Consulter les notices des
-[polices](FONT_EMBEDDING.fr.md), [annotations](RICH_ANNOTATIONS.fr.md),
-[caviardage](REDACTION.fr.md),
-[signets et structures](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md), [conversions Office](OFFICE_CONVERSION.fr.md),
-[signatures](SIGNATURE_SECURITY.fr.md) et de [l’assainissement](SECURITY_MODEL.fr.md).
+[Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
+
+Six fichiers publics vérifiés octet par octet avec les paquets préparés et leurs SHA256. Le metteur à jour de production a vérifié le ZIP x64 de 26,978,019 octets en 2.55 s, sans installation sur cet hôte, au moyen du banc de test déjà compilé dont le module de mise à jour est inchangé. Projet relu : **42 éléments uniques, 20 Todo, 0 In Progress, 22 Done**, trois filtres enregistrés et aucune modification non enregistrée. [Preuves et limites](PROJECT_STATUS.fr.md).
+
+Les paquets restent non signés. ARM64 est compilé et empaqueté, sans exécution sur matériel ARM64. Imprimantes physiques, Narrateur, interactions manuelles de mise à jour et GPU/fenêtres physiques restent à qualifier ; WARP prouve uniquement le rendu logiciel hors écran. Les entrées non prises en charge restent refusées. La conservation PDF/A ne certifie pas PDF/A/PDF/UA.
+
+Consulter les notices des [polices](FONT_EMBEDDING.fr.md), [annotations](RICH_ANNOTATIONS.fr.md), [caviardage](REDACTION.fr.md), [signets et structures](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md), [conversions Office](OFFICE_CONVERSION.fr.md), [signatures](SIGNATURE_SECURITY.fr.md) et de [l’assainissement](SECURITY_MODEL.fr.md).

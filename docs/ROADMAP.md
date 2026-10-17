@@ -5,26 +5,24 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## 0.30.0: editing, document safety and local conversion (validation in progress)
+## 0.30.0: editing, document safety and local conversion (published stable Latest)
 
-The authorized batch covers five Bugs and all fourteen P2 Roadmap items. Implementation is present;
-release validation and publication are pending. [Exact scope and supported limits](RELEASE_0.30.0.md)
-include paragraph preview, editable paste, rich annotations, precise links, semantic page labels,
-bookmark/structure preservation, redaction preview and persistent marks, sanitization, font subsets,
-local Office conversion, signature trust states, protected signature storage and license inventory.
-The five bug fixes address Windows font discovery, rotation pivot, opacity, resized annotations and
-optional GPU compatibility. P1 Roadmap work and Suggestions remain outside this batch.
-Results belong in [Project status](PROJECT_STATUS.md); old release sections below are historical.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 
-## 0.21.1: document preservation (published stable Latest)
+The [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) and [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) passed on this source: **551 tests**, zero failures, 9 default ignored; **1047 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature outputs**, **4 MuPDF font cases**, DX12 software WARP, **14 Office round trips**, 4 licensed PDFs/744 pages, **21 portable scenarios**, **15 MSI baselines/75 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
+
+Six public assets match the inspected packages and SHA256 digests byte for byte. The production updater verified the 26,978,019-byte x64 ZIP in 2.55 seconds without installing on this host, using the previously built test harness with an unchanged updater module. Project readback: **42 unique items, 20 Todo, 0 In Progress, 22 Done**, three saved filters and zero unsaved changes. [Evidence and limits](PROJECT_STATUS.md).
+
+Packages remain unsigned. ARM64 is cross-built and packaged, without execution on ARM64 hardware. Physical printers, Narrator, manual updater interaction and physical GPU/window behavior still need qualification; WARP proves software offscreen rendering only. Unsupported inputs remain refused. PDF/A metadata preservation does not certify PDF/A or PDF/UA conformance.
+
+## 0.21.1: document preservation (published; Latest at the time)
 
 The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
 draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
 84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
 were verified. See [Project status](PROJECT_STATUS.md).
 
-Next authorized batch **0.30.0**: five open Bugs and all 14 P2 Roadmap items. P1 Roadmap work is deferred;
-Suggestions are outside this batch. Project: 38 Todo, one In Progress, three Done.
+The planned 0.30.0 batch after 0.21.1 is now published; current counts and remaining P1 work are recorded above.
 
 ## Delivered baseline: 0.9.0
 
@@ -263,9 +261,9 @@ search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo an
 
 Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
 Delivered in 0.11.0: page-label reading and precise internal navigation. Authoring/reset and navigation-preserving
-Undo/Redo were delivered in 0.14.0. The 0.30.0 candidate adds semantic label rebasing, bookmark authoring and
+Undo/Redo were delivered in 0.14.0. 0.30.0 adds semantic label rebasing, bookmark authoring and
 bounded preservation of destinations, fields, layers and attachments across page operations; see
-[supported structure](BOOKMARKS_AND_PAGE_STRUCTURE.md). Runtime and independent-reader validation are pending.
+[supported structure](BOOKMARKS_AND_PAGE_STRUCTURE.md). Runtime and documented independent-reader gates passed.
 Intended reading order for complex untagged columns remains separate work; qpdf alone cannot prove appearance.
 
 ## Phase 3: professional editing — partially delivered
@@ -281,10 +279,10 @@ Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-pag
 Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
 Delivered in 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
 Delivered in 0.18.0: grouped desktop ink with explicit Finish/Cancel and guarded transitions (D109).
-The 0.30.0 candidate adds [font subsets and selected static TrueType/CFF1 collection faces](FONT_EMBEDDING.md),
+0.30.0 adds [font subsets and selected static TrueType/CFF1 collection faces](FONT_EMBEDDING.md),
 bounded paragraph preview/reflow, explicit editable object paste, stable rotation pivots, image-opacity readback,
 annotation-aware page scaling, [rich annotations](RICH_ANNOTATIONS.md) and precise destination authoring.
-Validation is pending. Variable/CFF2/color fonts, general shaping/bidirectional paragraph editing, arbitrary
+Release-source regression gates passed. Variable/CFF2/color fonts, general shaping/bidirectional paragraph editing, arbitrary
 editable XObjects and full rich-text span editing remain unsupported; unsupported inputs are refused.
 Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
 
@@ -295,10 +293,10 @@ Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches 
 Delivered in 0.17.0: all eight JPEG EXIF orientations embedded directly and cumulative raster-data estimates;
 measured native/process memory limits remain separate work (D108).
 
-The 0.30.0 candidate adds [local Office conversion and saved Standard/Print profiles](OFFICE_CONVERSION.md):
+0.30.0 adds [local Office conversion and saved Standard/Print profiles](OFFICE_CONVERSION.md):
 installed supported LibreOffice only, simple editable DOCX text, literal-string XLSX grids and raster PPTX pages.
 Converter absence is explicit; the app does not install it. Complex editable exports are refused rather than
-promised layout fidelity. Real-converter/corpus validation is pending; arbitrary Office layout reconstruction
+promised layout fidelity. Real-converter/corpus gates passed; arbitrary Office layout reconstruction
 and a general workflow designer remain future work. Compression/OCR batch UI was delivered in 0.10.0.
 
 ## Phase 5: security and productivity — partially delivered
@@ -307,9 +305,9 @@ Delivered: AES-128/256 and permissions, owner-authorised protection removal, met
 CMS integrity verification and incremental PFX/P12 signed copies, JSON CLI and automation commands.
 
 Remaining: comparison, multi-document search, confined opt-in MCP, Explorer integration and configurable shortcuts.
-The 0.30.0 candidate adds [Windows chain/revocation and RFC3161 timestamp verification, plus per-user DPAPI
+0.30.0 adds [Windows chain/revocation and RFC3161 timestamp verification, plus per-user DPAPI
 signature storage](SIGNATURE_SECURITY.md), and [redaction preview, persistent marks, bounded text splitting
-and hidden-data sanitization](REDACTION.md). Validation is pending. Network retrieval needs explicit consent
+and hidden-data sanitization](REDACTION.md). Release-source regression gates passed. Network retrieval needs explicit consent
 for each verification; offline/unknown is never trusted. Embedded DSS is unverified evidence, not archival LTV.
 AATL/EUTL, PKCS#11, qualified-signature assessment and timestamp creation remain unsupported. PDF signing time
 is still a signer declaration. Acrobat/Foxit interoperability is a separate, unverified property.
@@ -321,8 +319,7 @@ Delivered baseline: x64 portable/MSI and ARM64 portable releases, SHA256 files, 
 explicit installation, FR/EN guides, third-party notices and GitHub build workflows.
 
 Delivered in 0.10.0: four pinned public NIST samples and interrupted/full-disk/failed-save scenarios.
-The 0.30.0 candidate adds an offline license inventory and optional GPU compatibility changes; release gates
-are pending. OpenGL remains the default. Remaining: customer/hostile/large corpus expansion, fuzzing,
+0.30.0 adds an offline license inventory and optional GPU compatibility changes; release gates passed. OpenGL remains the default. Remaining: customer/hostile/large corpus expansion, fuzzing,
 published benchmarks with hardware, ongoing license-inventory maintenance, Narrator and third-party reader checks,
 interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
 Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
@@ -330,15 +327,15 @@ Automated MSI regression covers its scripted scenario only; packaged cross-compi
 The historical [Code Scanning review](CODE_SCANNING_REVIEW.md) examined 117 alerts, including 115 critical
 findings, without confirming a production secret. Remediation/triage and explicit workflow permissions were
 included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
-This historical result does not establish the scan status of the 0.30.0 candidate.
+This historical result does not establish the scan status of 0.30.0.
 
-## Work beyond the 0.30.0 candidate
+## Work beyond 0.30.0
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
 3. Keep P1 Roadmap items and Suggestions deferred: dedicated PDF/A/PDF/UA validation, broader corpus/fuzzing/
    hardware measurement and integrations need their own accepted scope. Extend editing, Office fidelity and
-   archival trust only beyond the explicit limits of this candidate.
+   archival trust only beyond the explicit limits of this release.
 
 
 

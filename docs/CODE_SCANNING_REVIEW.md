@@ -1,4 +1,4 @@
-# Code Scanning review — 2026-10-16
+# Code Scanning review — 2026-10-17
 
 [Français](CODE_SCANNING_REVIEW.fr.md) · [Per-alert critical inventory (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
@@ -19,8 +19,18 @@ chain and timestamp pointers, including null/missing certificate regressions. Th
 passed its three analysis jobs on source `4896cc277c32621e5d65335b4fd9823760427793`.
 GitHub reports #124–128 as **fixed** at `2026-10-17T02:51:43Z`; they were not dismissed.
 The unfiltered authenticated API subsequently confirmed **zero open alerts**. Queries, test fixtures
-and source coverage remain enabled without exclusions. This checkpoint does not replace the complete
-application and package qualification required for publication.
+and source coverage remain enabled without exclusions.
+
+The [final Rust, Python and Actions scan](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673553)
+passed on immutable release source `4db31c0ee62cfae9d65239edf1eac93db147841e`.
+The authenticated API confirmed zero open alerts at `2026-10-17T04:01:22.4366426Z`, and the publisher
+checked this again before making [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0)
+stable Latest. [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) and the complete
+[tag release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) passed on this source,
+including 551 workspace tests, 21 portable update scenarios and 15 MSI baselines / 75 transaction logs.
+The [release evidence](qa/RELEASE_0.30.0.json) records the exact source, package hashes, public downloads,
+updater verification and Projects readback. This establishes the recorded checks, not an exhaustive
+absence of vulnerabilities or qualification of untested hardware.
 
 ## Verified 0.21.0 remediation
 

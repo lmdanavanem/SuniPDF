@@ -2,27 +2,24 @@
 
 [English](NEXT_TASKS.md)
 
-## 0.30.0 : édition, protection des documents et conversion locale (validation en cours)
+## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
-Le lot autorisé couvre cinq Bugs et les quatorze P2 Roadmap. Le code est présent ; validation de
-release et publication restent en attente. Le [périmètre exact et ses limites](RELEASE_0.30.0.fr.md)
-comprend l’aperçu des paragraphes, le collage modifiable, les annotations enrichies, les liens précis,
-les étiquettes sémantiques, les signets et structures, l’aperçu du caviardage et ses marques persistantes,
-l’assainissement, les sous-ensembles de polices, les conversions Office locales, les états de confiance
-des signatures, leur stockage protégé et l’inventaire des licences. Les cinq correctifs concernent les
-polices Windows, le pivot de rotation, l’opacité, les annotations redimensionnées et le GPU facultatif.
-P1 Roadmap et Suggestions restent hors de ce lot. Résultats dans [l’état du projet](PROJECT_STATUS.fr.md) ;
-les sections des anciennes versions ci-dessous sont historiques.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
-## 0.21.1 : conservation des documents (publiée en Latest stable)
+[Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
+
+Six fichiers publics vérifiés octet par octet avec les paquets préparés et leurs SHA256. Le metteur à jour de production a vérifié le ZIP x64 de 26,978,019 octets en 2.55 s, sans installation sur cet hôte, au moyen du banc de test déjà compilé dont le module de mise à jour est inchangé. Projet relu : **42 éléments uniques, 20 Todo, 0 In Progress, 22 Done**, trois filtres enregistrés et aucune modification non enregistrée. [Preuves et limites](PROJECT_STATUS.fr.md).
+
+Les paquets restent non signés. ARM64 est compilé et empaqueté, sans exécution sur matériel ARM64. Imprimantes physiques, Narrateur, interactions manuelles de mise à jour et GPU/fenêtres physiques restent à qualifier ; WARP prouve uniquement le rendu logiciel hors écran. Les entrées non prises en charge restent refusées. La conservation PDF/A ne certifie pas PDF/A/PDF/UA.
+
+## 0.21.1 : conservation des documents (publiée ; Latest à cette date)
 
 Les deux correctifs P1 sont livrés dans la [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1) : refus du texte incompatible
 sans perdre le bon brouillon, et conservation des annotations non-widget sans apparence utilisable à
 l'aplatissement. 476 tests, 84 contrôles qpdf, 20 scénarios portables et 14 bases MSI réussis ; six fichiers
 publics et mise à jour en ligne vérifiés. Voir l'[état du projet](PROJECT_STATUS.fr.md).
 
-Prochain lot autorisé **0.30.0** : cinq Bugs ouverts et les 14 P2 Roadmap. P1 Roadmap reportés ;
-Suggestions hors de ce lot. Projet : 38 Todo, un In Progress, trois Done.
+Le lot 0.30.0 prévu après 0.21.1 est publié ; les comptes actuels et P1 différés figurent ci-dessus.
 
 ## Version 0.9.0 : les sept fonctions demandées sont publiées
 
@@ -306,27 +303,16 @@ Le [projet GitHub](https://github.com/users/lmdanavanem/projects/1) contient 42 
 avec filtres de catégorie enregistrés. À la publication 0.21.0, la sécurité était Terminé ; l'état actuel
 des autres éléments est suivi dans PROJECT_STATUS.fr.md. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
 et l'[état du projet](PROJECT_STATUS.fr.md). Le compte de 53 commandes décrit la base 0.21.x ;
-la candidate 0.30.0 ajoute des commandes dont la validation est en attente.
+la version 0.30.0 ajoute des commandes validées dans les preuves de publication.
 
-## Validation de la candidate et travaux différés
+## Travaux différés après 0.30.0
 
-1. Matériel ARM64, imprimantes physiques, Narrateur Windows, dialogues interactifs de mise à jour/enregistrement et
-   Acrobat/Foxit/Chrome. Le matériel et les lecteurs réels sont nécessaires ; la CI scriptée ne les remplace pas.
-2. Élargir les quatre fixtures NIST à des PDF clients/hostiles/volumineux licenciés, scans et formulaires complexes ;
-   fuzzing et mesures de performance avec matériel identifié. Toute erreur/annulation doit préserver l’original.
-3. Valider les fonctions 0.30.0 présentes : polices, paragraphes/collage éditable bornés, signets/structures,
-   étiquettes sémantiques, liens précis, annotations enrichies et caviardage ; voir le [périmètre](RELEASE_0.30.0.fr.md).
-   Composition complexe/bidirectionnelle et XObjects arbitraires éditables restent non pris en charge.
-4. Valider la [conversion Office locale](OFFICE_CONVERSION.fr.md) et les allers-retours réels par format/profil.
-   Reconstruction de mise en page éditable plus large et concepteur général de workflows restent hors de ces exports bornés.
-5. Valider les [chaînes/révocations/RFC3161 et le stockage DPAPI](SIGNATURE_SECURITY.fr.md). LTV d'archivage authentifiée,
-   AATL/EUTL, PKCS#11 et signature du code/MSI avec une identité fournie restent distincts.
-6. Ordre des colonnes complexes non balisées, tactile et intégrations facultatives restent différés.
+1. Qualifier le matériel ARM64, les imprimantes, Narrateur, les GPU/fenêtres et les interactions natives de mise à jour.
+2. Étendre les corpus licenciés, les formes complexes, le fuzzing et les mesures de performances avec matériel documenté.
+3. Étendre la fidélité Office, la composition complexe et le texte bidirectionnel au-delà des entrées actuellement prises en charge.
+4. Qualifier PDF/A/PDF/UA, la confiance d’archivage, les lecteurs tiers et les intégrations selon un périmètre accepté.
 
-Les cinq Bugs et quatorze P2 Roadmap constituent la candidate autorisée. P1 Roadmap et Suggestions sont différés ;
-la présence du code ne signifie ni validation réussie ni release publiée.
-
-Aucune date/version future n’est engagée par cette liste.
+Les cinq Bugs et quatorze P2 Roadmap sont livrés dans la version publiée 0.30.0. P1 Roadmap et Suggestions restent différés ; aucune date ni version future n’est engagée.
 
 ## À faire par l'utilisateur (hors de portée de l'agent)
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
@@ -352,9 +338,9 @@ Les 14 outils possèdent une implémentation en 0.9.0, dont Numériser et OCR, P
 (tranche forms, groupe Remplir le formulaire / panneau / Effacer / Aplatir / Exporter / Importer).
 
 ## Après redaction
-La candidate 0.30.0 implémente l'aperçu natif avant/après, remplissage et texte de remplacement borné, marques
+La version 0.30.0 implémente l'aperçu natif avant/après, remplissage et texte de remplacement borné, marques
 `/Redact` non appliquées persistantes, découpe conservatrice des glyphes Base14 latins et assainissement partagé.
-Voir les [garanties et limites](REDACTION.fr.md) et le [modèle de sécurité](SECURITY_MODEL.fr.md) ; validation en attente.
+Voir les [garanties et limites](REDACTION.fr.md) et le [modèle de sécurité](SECURITY_MODEL.fr.md) ; contrôles de la source publiée réussis.
 Enregistrer des marques ne supprime pas le contenu. Polices complexes, OCR, images et graphiques imbriqués gardent
 le repli par image ; Annuler, originaux et sauvegardes demandent des précautions distinctes.
 Restent : corpus hostile/volumineux/balisé/OCR/Type3 licencié élargi, mémoire/performance natives mesurées et
@@ -376,8 +362,8 @@ Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A38, décisions D061–D066) :
 Signatures saisies et pose sur toutes les pages/la sélection livrées en 0.13.0 (D102–D103).
 
 Reste, non bloquant (voir `KNOWN_ISSUES.fr.md` A35–A37, décisions D054–D060) :
-- La candidate 0.30.0 implémente le stockage DPAPI facultatif par utilisateur, la migration vérifiée/atomique
-  des PNG en clair, refus d'enregistrement/suppression et gardes profil/ACL ; validation en attente.
+- La version 0.30.0 implémente le stockage DPAPI facultatif par utilisateur, la migration vérifiée/atomique
+  des PNG en clair, refus d'enregistrement/suppression et gardes profil/ACL ; contrôles de la source publiée réussis.
   Limites de récupération et d'accès à la session dans la [sécurité des signatures](SIGNATURE_SECURITY.fr.md).
 - lissage des traits (Chaikin) si les courbes rapides paraissent anguleuses ; seuil adaptatif pour les photos à
   ombre portée ; pression du stylet si egui l'expose un jour.
@@ -414,9 +400,9 @@ groupé, redimensionnement, rotation libre, duplication, ordre Z (un cran ou ext
 épaisseur, opacité, copier/couper/coller entre pages et onglets (groupe), panneau Objets, texte sur la page
 (polices standard et TrueType du système), remplacement d'image, pages vierges, recadrage, redimensionnement
 des pages, pages pivotées et rognées.
-La candidate 0.30.0 ajoute les [sous-ensembles/faces statiques de collections](FONT_EMBEDDING.fr.md), découverte
+La version 0.30.0 ajoute les [sous-ensembles/faces statiques de collections](FONT_EMBEDDING.fr.md), découverte
 Unicode des polices Windows, aperçu/réagencement borné des paragraphes, collage natif éditable explicite, pivots
-mémorisés stables et lecture de l'opacité. Le collage groupé existant reste disponible. Validation en attente ; A7, A8, A18–A22.
+mémorisés stables et lecture de l'opacité. Le collage groupé existant reste disponible. contrôles de la source publiée réussis ; A7, A8, A18–A22.
 Restent : polices variables/CFF2/couleur, composition complexe/bidirectionnelle, XObjects arbitraires éditables,
 couleur/opacité des groupes et glisser-déposer du panneau Objets. Une opacité inconnue est explicite ; un cas non
 pris en charge doit préserver le document, sans aplatissement ni substitution de police silencieux.
@@ -428,11 +414,11 @@ déplacement / redimensionnement / recoloration / suppression, fils de réponses
 `annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
 - **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
   Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
-- encre groupée livrée en 0.18.0 (D109). La candidate 0.30.0 ajoute gomme de traits entiers, polygones, polylignes,
+- encre groupée livrée en 0.18.0 (D109). La version 0.30.0 ajoute gomme de traits entiers, polygones, polylignes,
   nuages, tampons standard, pièces jointes et FreeText à style uniforme/police incorporée avec aperçu réel ;
-  [bornes et refus](RICH_ANNOTATIONS.fr.md), validation en attente. Styles par portion, `/RC` arbitraire et composition complexe restent exclus ;
-- création de destinations nommées/XYZ/Fit/FitH présente dans la candidate 0.30.0, axes/zoom conservés et résolution
-  brute bornée ; validation en attente. Les actions actives non prises en charge ne sont jamais exécutées ;
+  [bornes et refus](RICH_ANNOTATIONS.fr.md), contrôles de la source publiée réussis. Styles par portion, `/RC` arbitraire et composition complexe restent exclus ;
+- création de destinations nommées/XYZ/Fit/FitH présente dans la version 0.30.0, axes/zoom conservés et résolution
+  brute bornée ; contrôles de la source publiée réussis. Les actions actives non prises en charge ne sont jamais exécutées ;
 - aller-retour allégé pour les gros fichiers (écrire l'annotation sans recharger tout le document) ;
 - création et édition FreeText sur la page livrées en 0.20.0 (D111) ; contrôles locaux/CI/mises à niveau, paquets préparés/publics et metteur à jour de production réussis.
 
@@ -451,7 +437,7 @@ Corpus de PDF libres (pdf.js test corpus, licences vérifiées), tests fichiers 
 chemins Unicode, disque plein simulé), premier benchmark (ouverture + rendu page 1) avec matériel noté.
 
 ## Dette technique connue
-- La candidate 0.30.0 rétablit la compatibilité wgpu facultative et ajoute un contrôle DX12 logiciel ;
-  validation en attente. OpenGL reste le défaut ; GPU/fenêtres réels et matériel ARM64 non vérifiés.
+- La version 0.30.0 rétablit la compatibilité wgpu facultative et ajoute un contrôle DX12 logiciel ;
+  contrôles de la source publiée réussis. OpenGL reste le défaut ; GPU/fenêtres réels et matériel ARM64 non vérifiés.
 - `-j 2` imposé par la mémoire du poste ; documenter la machine de référence.
 - Option `--lang` de la CLI (D009) si des messages humains deviennent nécessaires.
