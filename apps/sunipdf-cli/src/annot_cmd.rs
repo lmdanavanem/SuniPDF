@@ -47,6 +47,8 @@ fn hex((r, g, b): (u8, u8, u8)) -> String {
 pub fn link_json(t: &LinkTarget) -> serde_json::Value {
     match t {
         LinkTarget::Page(p) => serde_json::json!({ "page": p + 1 }),
+        LinkTarget::Named(name) => serde_json::json!({ "named_destination": name }),
+        LinkTarget::Destination(destination) => destination_json(*destination),
         LinkTarget::Uri(u) => serde_json::json!({ "uri": u }),
         LinkTarget::Unsupported => serde_json::json!({ "unsupported": true }),
     }

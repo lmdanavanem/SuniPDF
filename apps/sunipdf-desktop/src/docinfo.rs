@@ -12,6 +12,10 @@ use sunipdf_i18n::{tr, tr_args, Language};
 pub struct DocInfoState {
     pub bookmarks_open: bool,
     pub bookmarks: Vec<Bookmark>,
+    pub bookmark_selected: Option<usize>,
+    pub bookmark_title: String,
+    pub bookmark_page: usize,
+    pub bookmark_child: bool,
     pub properties: Option<Properties>,
     pub properties_open: bool,
     pub metadata_edit: Metadata,
@@ -67,6 +71,7 @@ impl SuniApp {
             });
         });
         ui.separator();
+        self.bookmark_author(ui);
         if self.docinfo.bookmarks.is_empty() {
             ui.label(RichText::new(tr(lang, "bookmarks.empty")).color(p.text_muted));
             return;
@@ -76,7 +81,7 @@ impl SuniApp {
         egui::ScrollArea::vertical()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                for b in &self.docinfo.bookmarks {
+                for (index, b) in self.docinfo.bookmarks.iter().enumerate() {
                     ui.horizontal(|ui| {
                         ui.add_space(8.0 + b.depth as f32 * 14.0);
                         let active = b.page.is_some() && b.page == current;
@@ -85,7 +90,7 @@ impl SuniApp {
                         } else {
                             RichText::new(&b.title).size(13.0)
                         };
-                        let resp = ui.add_enabled(b.page.is_some(), Button::new(text).frame(false));
+                        let resp = ui.add(Button::new(text).frame(false));
                         let resp = match b.page {
                             Some(page) => resp.on_hover_text(tr_args(
                                 lang,
@@ -95,6 +100,9 @@ impl SuniApp {
                             None => resp,
                         };
                         if resp.clicked() {
+                            self.docinfo.bookmark_selected = Some(index);
+                            self.docinfo.bookmark_title = b.title.clone();
+                            self.docinfo.bookmark_page = b.page.map_or(1, |page| page + 1);
                             go = b.page.map(|page| (page, b.destination));
                         }
                     });
@@ -105,6 +113,140 @@ impl SuniApp {
                 Some(destination) => self.go_to_destination(destination),
                 None if self.reading_navigation_ready() => self.go_to_page(page),
                 None => {}
+            }
+        }
+    }
+
+    fn bookmark_author(&mut self, ui: &mut egui::Ui) {
+        use sunipdf_core::bookmarks::BookmarkEdit;
+        let lang = self.lang();
+        let Some(doc) = &self.document else {
+            return;
+        };
+        let count = doc.info.page_count();
+        let current = doc.page;
+        let selected = self
+            .docinfo
+            .bookmark_selected
+            .filter(|index| *index < self.docinfo.bookmarks.len());
+        self.docinfo.bookmark_selected = selected;
+        if self.docinfo.bookmark_page == 0 || self.docinfo.bookmark_page > count {
+            self.docinfo.bookmark_page = current + 1;
+        }
+        let mut operation = None;
+        ui.collapsing(tr(lang, "bookmarks.edit"), |ui| {
+            ui.label(tr(lang, "bookmarks.title_label"));
+            ui.add(
+                egui::TextEdit::singleline(&mut self.docinfo.bookmark_title)
+                    .char_limit(1024)
+                    .desired_width(f32::INFINITY),
+            );
+            ui.horizontal(|ui| {
+                ui.label(tr(lang, "bookmarks.target_page"));
+                ui.add(egui::DragValue::new(&mut self.docinfo.bookmark_page).range(1..=count));
+                if ui.button(tr(lang, "bookmarks.current_page")).clicked() {
+                    self.docinfo.bookmark_page = current + 1;
+                }
+            });
+            ui.add_enabled_ui(selected.is_some(), |ui| {
+                ui.checkbox(
+                    &mut self.docinfo.bookmark_child,
+                    tr(lang, "bookmarks.as_child"),
+                );
+            });
+            let ready = !self.docinfo.bookmark_title.trim().is_empty()
+                && self.docinfo.bookmark_title.len() <= 1024;
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .add_enabled(
+                        ready
+                            && self.docinfo.bookmarks.len()
+                                < sunipdf_core::bookmarks::MAX_BOOKMARKS,
+                        Button::new(tr(lang, "bookmarks.add")),
+                    )
+                    .clicked()
+                {
+                    operation = Some(BookmarkEdit::Add {
+                        parent: if self.docinfo.bookmark_child {
+                            selected
+                        } else {
+                            None
+                        },
+                        title: self.docinfo.bookmark_title.clone(),
+                        page: self.docinfo.bookmark_page - 1,
+                    });
+                }
+                if let Some(index) = selected {
+                    if ui
+                        .add_enabled(ready, Button::new(tr(lang, "bookmarks.rename")))
+                        .clicked()
+                    {
+                        operation = Some(BookmarkEdit::Rename {
+                            index,
+                            title: self.docinfo.bookmark_title.clone(),
+                        });
+                    }
+                    if ui.button(tr(lang, "bookmarks.set_destination")).clicked() {
+                        operation = Some(BookmarkEdit::Destination {
+                            index,
+                            page: self.docinfo.bookmark_page - 1,
+                        });
+                    }
+                    let depth = self.docinfo.bookmarks[index].depth;
+                    let parent = (0..index)
+                        .rev()
+                        .find(|i| self.docinfo.bookmarks[*i].depth < depth);
+                    let siblings: Vec<_> = self
+                        .docinfo
+                        .bookmarks
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, item)| {
+                            if item.depth != depth {
+                                return None;
+                            }
+                            let own_parent = (0..i)
+                                .rev()
+                                .find(|p| self.docinfo.bookmarks[*p].depth < depth);
+                            (own_parent == parent).then_some(i)
+                        })
+                        .collect();
+                    let position = siblings.iter().position(|i| *i == index).unwrap_or(0);
+                    if ui
+                        .add_enabled(position > 0, Button::new(tr(lang, "bookmarks.up")))
+                        .clicked()
+                    {
+                        operation = Some(BookmarkEdit::Move {
+                            index,
+                            parent,
+                            position: position - 1,
+                        });
+                    }
+                    if ui
+                        .add_enabled(
+                            position + 1 < siblings.len(),
+                            Button::new(tr(lang, "bookmarks.down")),
+                        )
+                        .clicked()
+                    {
+                        operation = Some(BookmarkEdit::Move {
+                            index,
+                            parent,
+                            position: position + 1,
+                        });
+                    }
+                    if ui.button(tr(lang, "bookmarks.delete_subtree")).clicked() {
+                        operation = Some(BookmarkEdit::Delete { index });
+                    }
+                }
+            });
+            ui.label(tr(lang, "bookmarks.edit_limits"));
+        });
+        if let Some(operation) = operation {
+            if self.commit_form_input() {
+                self.docinfo.bookmark_selected = None;
+                self.worker
+                    .send(Request::Edit(EditOp::Bytes(BytesOp::Bookmark(operation))));
             }
         }
     }

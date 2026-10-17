@@ -81,6 +81,10 @@ pub enum AnnotShape {
 pub enum LinkTarget {
     /// Page de destination (index à partir de 0).
     Page(usize),
+    /// Reference a unique existing named destination without changing its original key bytes.
+    Named(String),
+    /// Explicit target-page display coordinates and viewport retention semantics.
+    Destination(crate::Destination),
     Uri(String),
     /// Unsupported action (launch, JavaScript, remote destination): never executed.
     Unsupported,
@@ -240,15 +244,15 @@ fn name(s: &str) -> Object {
     Object::Name(s.as_bytes().to_vec())
 }
 
-fn nums(v: &[f32]) -> Object {
+pub(crate) fn nums(v: &[f32]) -> Object {
     Object::Array(v.iter().map(|x| Object::Real(*x)).collect())
 }
 
-fn rect_obj(r: PointRect) -> Object {
+pub(crate) fn rect_obj(r: PointRect) -> Object {
     nums(&[r.left, r.bottom, r.right, r.top])
 }
 
-fn rgb_obj(c: (u8, u8, u8)) -> Object {
+pub(crate) fn rgb_obj(c: (u8, u8, u8)) -> Object {
     nums(&[c.0 as f32 / 255.0, c.1 as f32 / 255.0, c.2 as f32 / 255.0])
 }
 
@@ -338,7 +342,7 @@ fn border_width(d: &lopdf::Document, dict: &Dictionary) -> Option<f32> {
     floats(d, dict.get(b"Border").ok()?)?.get(2).copied()
 }
 
-fn validate_dash_pattern(pattern: &[f32]) -> Result<(), EngineError> {
+pub(crate) fn validate_dash_pattern(pattern: &[f32]) -> Result<(), EngineError> {
     if pattern.len() > 16
         || pattern
             .iter()
@@ -459,7 +463,12 @@ fn caps(subtype: &str, f: i64, nm: Option<&str>) -> Caps {
         ours,
         locked,
         hidden: f & 2 != 0,
-        can_move: !locked && (shape || matches!(subtype, "Text" | "Link" | "Stamp")),
+        can_move: !locked
+            && (shape
+                || matches!(
+                    subtype,
+                    "Text" | "Link" | "Stamp" | "Polygon" | "PolyLine" | "FileAttachment"
+                )),
         can_resize: !locked && ours && (shape || subtype == "Link"),
         can_restyle: !locked
             && ((ours && shape)
@@ -476,7 +485,7 @@ fn caps(subtype: &str, f: i64, nm: Option<&str>) -> Caps {
 // ----- Accès aux annotations d'une page --------------------------------------------------------
 
 #[derive(Clone, Copy)]
-enum Slot {
+pub(crate) enum Slot {
     Indirect(ObjectId),
     Direct(usize),
 }
@@ -521,7 +530,7 @@ fn not_found(index: usize) -> EngineError {
     EngineError::Other(format!("annotation {index} not found"))
 }
 
-fn load_annot(
+pub(crate) fn load_annot(
     pdf: &lopdf::Document,
     page: ObjectId,
     index: usize,
@@ -537,7 +546,7 @@ fn load_annot(
     }
 }
 
-fn store_annot(
+pub(crate) fn store_annot(
     pdf: &mut lopdf::Document,
     page: ObjectId,
     slot: Slot,
@@ -572,19 +581,18 @@ fn write_link_target(
     pdf: &lopdf::Document,
     dict: &mut Dictionary,
     target: &LinkTarget,
+    target_geo: Option<(usize, PageGeometry)>,
 ) -> Result<(), EngineError> {
     let (key, value) = match target {
-        LinkTarget::Page(n) => {
-            let id = u32::try_from(*n)
-                .ok()
-                .and_then(|n| n.checked_add(1))
-                .and_then(|n| pdf.get_pages().get(&n).copied())
-                .ok_or(EngineError::PageOutOfRange(*n))?;
-            (
-                "Dest",
-                Object::Array(vec![Object::Reference(id), name("Fit")]),
-            )
-        }
+        LinkTarget::Page(_) | LinkTarget::Named(_) | LinkTarget::Destination(_) => (
+            "Dest",
+            crate::link_destination::authored(pdf, target, dict, &|page| {
+                target_geo
+                    .filter(|(index, _)| *index == page)
+                    .map(|(_, geometry)| geometry)
+                    .ok_or(EngineError::PageOutOfRange(page))
+            })?,
+        ),
         LinkTarget::Uri(u) if crate::links::is_safe_external_uri(u) => {
             let mut action = Dictionary::new();
             action.set("S", name("URI"));
@@ -752,6 +760,12 @@ fn parse_ours(
     geo: &PageGeometry,
 ) -> Result<Parsed, EngineError> {
     let bad = || EngineError::Other("annotation cannot be edited".into());
+    if dict.has(b"SuniPDFRich") {
+        return Err(EngineError::Other(
+            "use the rich annotation editor to preserve this appearance and its embedded fonts"
+                .into(),
+        ));
+    }
     let ours = text_of(pdf, dict, b"NM").is_some_and(|n| n.starts_with(NAME_PREFIX));
     if !ours {
         return Err(bad());
@@ -836,7 +850,7 @@ fn parse_ours(
     Ok(Parsed { model, style })
 }
 
-fn ap_stream(ap: &Ap, geo: &PageGeometry) -> Stream {
+pub(crate) fn ap_stream(ap: &Ap, geo: &PageGeometry) -> Stream {
     let (a, b) = geo.vec_to_user(1.0, 0.0);
     let (c, d) = geo.vec_to_user(0.0, 1.0);
     let mut gs = Dictionary::new();
@@ -877,7 +891,7 @@ fn empty_ap() -> Stream {
 }
 
 /// Pose `stream` comme `/AP /N` : l'objet existant est remplacé sur place (pas d'orphelin).
-fn set_ap(pdf: &mut lopdf::Document, dict: &mut Dictionary, stream: Stream) {
+pub(crate) fn set_ap(pdf: &mut lopdf::Document, dict: &mut Dictionary, stream: Stream) {
     let existing = get(pdf, dict, b"AP")
         .and_then(|ap| ap.as_dict().ok())
         .and_then(|ap| ap.get(b"N").ok())
@@ -896,7 +910,7 @@ fn set_ap(pdf: &mut lopdf::Document, dict: &mut Dictionary, stream: Stream) {
     dict.remove(b"PDFIUM_HasGeneratedAP");
 }
 
-fn border_style(width: f32, dash_pattern: &[f32]) -> Object {
+pub(crate) fn border_style(width: f32, dash_pattern: &[f32]) -> Object {
     let mut bs = Dictionary::new();
     bs.set("W", Object::Real(width));
     bs.set("S", name(if dash_pattern.is_empty() { "S" } else { "D" }));
@@ -1061,7 +1075,10 @@ fn write_model(
 }
 
 /// Dictionnaire de base : sous-type, indicateurs, nom unique, dates, auteur.
-fn base_annotation(subtype: &str, author: Option<&str>) -> Result<Dictionary, EngineError> {
+pub(crate) fn base_annotation(
+    subtype: &str,
+    author: Option<&str>,
+) -> Result<Dictionary, EngineError> {
     let now = pdf_date_now();
     let mut d = Dictionary::new();
     d.set("Type", name("Annot"));
@@ -1077,7 +1094,7 @@ fn base_annotation(subtype: &str, author: Option<&str>) -> Result<Dictionary, En
 }
 
 /// Ajoute l'annotation à `/Annots` et renvoie son indice.
-fn push_annotation(
+pub(crate) fn push_annotation(
     pdf: &mut lopdf::Document,
     page: ObjectId,
     mut dict: Dictionary,
@@ -1093,7 +1110,7 @@ fn push_annotation(
     Ok(annots.len() - 1)
 }
 
-fn touch(dict: &mut Dictionary) {
+pub(crate) fn touch(dict: &mut Dictionary) {
     dict.set("M", Object::string_literal(pdf_date_now()));
 }
 
@@ -1244,7 +1261,7 @@ impl Document<'_> {
     }
 
     /// Instantané → lopdf → rechargement PDFium. Un document chiffré garde son chiffrement.
-    fn edit_pdf<R>(
+    pub(crate) fn edit_pdf<R>(
         &mut self,
         page_index: usize,
         f: impl FnOnce(&mut lopdf::Document, ObjectId, &PageGeometry) -> Result<R, EngineError>,
@@ -1320,6 +1337,45 @@ impl Document<'_> {
         self.add_model(page_index, Model::Ink(simplified), style, author)
     }
 
+    /// Erases entire touched strokes, preserving the remaining control points, style and comment thread.
+    pub fn erase_ink_annotation(
+        &mut self,
+        page_index: usize,
+        index: usize,
+        path: &[(f32, f32)],
+        radius: f32,
+    ) -> Result<(), EngineError> {
+        self.edit_pdf(page_index, |pdf, page, geo| {
+            let (w, h) = geo.display_size();
+            if path.iter().any(|&(x, y)| {
+                !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 || x > w || y > h
+            }) {
+                return Err(EngineError::Other(
+                    "eraser path must stay inside the displayed page".into(),
+                ));
+            }
+            let (slot, mut dict) = load_annot(pdf, page, index)?;
+            check_unlocked(&dict)?;
+            let mut parsed = parse_ours(pdf, &dict, geo)?;
+            let Model::Ink(strokes) = &parsed.model else {
+                return Err(EngineError::Other(
+                    "select a SuniPDF ink annotation to erase strokes".into(),
+                ));
+            };
+            let kept = crate::annot_rich::erase_touched_strokes(
+                strokes,
+                path,
+                radius,
+                parsed.style.width_pt,
+            )?;
+            parsed.model = Model::Ink(kept);
+            let ap = write_model(&mut dict, &mut parsed, geo)?;
+            set_ap(pdf, &mut dict, ap);
+            touch(&mut dict);
+            store_annot(pdf, page, slot, dict)
+        })
+    }
+
     /// Rectangle, ellipse, ligne ou flèche. Pour une ligne, `rect` donne les extrémités :
     /// `(left, bottom)` puis `(right, top)`, sans normalisation. Renvoie l'indice.
     pub fn add_shape_annotation(
@@ -1390,6 +1446,7 @@ impl Document<'_> {
         rect: PointRect,
         target: &LinkTarget,
     ) -> Result<usize, EngineError> {
+        let target_geo = self.link_target_geometry(target)?;
         let rect = PointRect {
             left: rect.left.min(rect.right),
             bottom: rect.bottom.min(rect.top),
@@ -1403,7 +1460,7 @@ impl Document<'_> {
             let mut dict = base_annotation("Link", None)?;
             dict.set("Rect", rect_obj(geo.rect_to_user(rect)));
             dict.set("Border", nums(&[0.0, 0.0, 0.0]));
-            write_link_target(pdf, &mut dict, target)?;
+            write_link_target(pdf, &mut dict, target, target_geo)?;
             push_annotation(pdf, page, dict, None)
         })
     }
@@ -1415,6 +1472,7 @@ impl Document<'_> {
         index: usize,
         target: &LinkTarget,
     ) -> Result<(), EngineError> {
+        let target_geo = self.link_target_geometry(target)?;
         self.edit_pdf(page_index, |pdf, page, _| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             if subtype_of(&dict) != "Link" {
@@ -1423,7 +1481,7 @@ impl Document<'_> {
             if !link_target_editable(pdf, &dict) {
                 return Err(EngineError::SecurityRestricted);
             }
-            write_link_target(pdf, &mut dict, target)?;
+            write_link_target(pdf, &mut dict, target, target_geo)?;
             touch(&mut dict);
             store_annot(pdf, page, slot, dict)
         })
@@ -1439,9 +1497,10 @@ impl Document<'_> {
         let page_id = *pages
             .get(&(page_index as u32 + 1))
             .ok_or(EngineError::PageOutOfRange(page_index))?;
-        let page_of: HashMap<ObjectId, usize> =
-            pages.iter().map(|(n, id)| (*id, *n as usize - 1)).collect();
-        Ok(details_of(&pdf, page_id, &geo, &page_of))
+        let resolver = crate::link_destination::Resolver::new(&pdf);
+        Ok(details_of(&pdf, page_id, &geo, &resolver, &|page| {
+            self.page_geometry(page)
+        }))
     }
 
     /// Déplace une annotation de `(dx, dy)` points d'affichage (toute annotation déplaçable).
@@ -1761,7 +1820,7 @@ impl Document<'_> {
     }
 }
 
-fn check_unlocked(dict: &Dictionary) -> Result<(), EngineError> {
+pub(crate) fn check_unlocked(dict: &Dictionary) -> Result<(), EngineError> {
     if flags(dict) & 128 != 0 {
         return Err(EngineError::SecurityRestricted);
     }
@@ -1815,7 +1874,8 @@ fn details_of(
     pdf: &lopdf::Document,
     page_id: ObjectId,
     geo: &PageGeometry,
-    page_of: &HashMap<ObjectId, usize>,
+    resolver: &crate::link_destination::Resolver<'_>,
+    target_geometry: &dyn Fn(usize) -> Result<PageGeometry, EngineError>,
 ) -> Vec<AnnotDetail> {
     let entries = annots_entries(pdf, page_id);
     let ids: Vec<Option<ObjectId>> = entries.iter().map(|e| e.as_reference().ok()).collect();
@@ -1828,7 +1888,7 @@ fn details_of(
         .iter()
         .enumerate()
         .map(|(index, e)| match entry_dict(pdf, e) {
-            Some(d) => detail_of(pdf, d, index, geo, page_of, &by_id),
+            Some(d) => detail_of(pdf, d, index, geo, resolver, target_geometry, &by_id),
             None => AnnotDetail {
                 index,
                 subtype: "Unknown".into(),
@@ -1885,7 +1945,8 @@ fn detail_of(
     d: &Dictionary,
     index: usize,
     geo: &PageGeometry,
-    page_of: &HashMap<ObjectId, usize>,
+    resolver: &crate::link_destination::Resolver<'_>,
+    target_geometry: &dyn Fn(usize) -> Result<PageGeometry, EngineError>,
     by_id: &HashMap<ObjectId, usize>,
 ) -> AnnotDetail {
     let subtype = subtype_of(d);
@@ -1943,6 +2004,13 @@ fn detail_of(
         replies: 0,
         subtype: subtype.clone(),
     };
+    if d.has(b"SuniPDFRich") {
+        detail.can_resize = false;
+        detail.can_restyle = false;
+        if subtype == "FreeText" {
+            detail.can_edit_text = false;
+        }
+    }
     if get(pdf, d, b"StateModel").is_some() {
         let state = text_of(pdf, d, b"State").unwrap_or_default();
         detail.status = Some(
@@ -1972,7 +2040,7 @@ fn detail_of(
                     })
                 });
         }
-        "Link" => detail.link = Some(link_of(pdf, d, page_of)),
+        "Link" => detail.link = Some(link_of(resolver, d, target_geometry)),
         _ => {}
     }
     detail
@@ -1980,34 +2048,14 @@ fn detail_of(
 
 /// Cible d'un lien : `/Dest` ou action `GoTo` (page seulement), `URI` ; le reste n'est pas exécuté.
 fn link_of(
-    pdf: &lopdf::Document,
+    resolver: &crate::link_destination::Resolver<'_>,
     d: &Dictionary,
-    page_of: &HashMap<ObjectId, usize>,
+    target_geometry: &dyn Fn(usize) -> Result<PageGeometry, EngineError>,
 ) -> LinkTarget {
-    let page_target = |o: &Object| -> Option<LinkTarget> {
-        let arr = deref(pdf, o)?.as_array().ok()?;
-        let id = arr.first()?.as_reference().ok()?;
-        page_of.get(&id).map(|p| LinkTarget::Page(*p))
-    };
-    if let Some(t) = d.get(b"Dest").ok().and_then(page_target) {
-        return t;
-    }
-    let Some(action) = get(pdf, d, b"A").and_then(|a| a.as_dict().ok()) else {
-        return LinkTarget::Unsupported;
-    };
-    match name_of(pdf, action, b"S").as_deref() {
-        Some("GoTo") => action
-            .get(b"D")
-            .ok()
-            .and_then(page_target)
-            .unwrap_or(LinkTarget::Unsupported),
-        Some("URI") => get(pdf, action, b"URI")
-            .and_then(|u| u.as_str().ok())
-            .map_or(LinkTarget::Unsupported, |u| {
-                LinkTarget::Uri(String::from_utf8_lossy(u).into_owned())
-            }),
-        _ => LinkTarget::Unsupported,
-    }
+    resolver
+        .link(d, target_geometry)
+        .map(|(target, _)| target)
+        .unwrap_or(LinkTarget::Unsupported)
 }
 
 #[cfg(test)]

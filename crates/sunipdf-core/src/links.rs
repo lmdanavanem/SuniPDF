@@ -112,25 +112,6 @@ fn destination_view(
     }
 }
 
-fn target_of(doc: &Document<'_>, link: &PdfLink<'_>) -> (LinkTarget, Option<Destination>) {
-    if let Some(action) = link.action() {
-        if let Some(uri) = action.as_uri_action().and_then(|a| a.uri().ok()) {
-            return (LinkTarget::Uri(uri), None);
-        }
-        let (page, destination) = doc.resolve_local_action(&action);
-        return (
-            page.map_or(LinkTarget::Unsupported, LinkTarget::Page),
-            destination,
-        );
-    }
-    if let Some(d) = link.destination() {
-        if let (Some(page), destination) = doc.resolve_destination(&d) {
-            return (LinkTarget::Page(page), destination);
-        }
-    }
-    (LinkTarget::Unsupported, None)
-}
-
 impl Document<'_> {
     pub(crate) fn resolve_local_action(
         &self,
@@ -166,6 +147,9 @@ impl Document<'_> {
 
     /// Zones de lien de la page, dans l'ordre de `/Annots`.
     pub fn page_links(&self, page_index: usize) -> Result<Vec<LinkInfo>, EngineError> {
+        let pdf = crate::security::load(&self.snapshot()?, self.password())?;
+        let resolver = crate::link_destination::Resolver::new(&pdf);
+        let raw_annotations = resolver.page_annotations(page_index)?;
         let page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;
         let annotations = page.annotations();
@@ -174,14 +158,25 @@ impl Document<'_> {
             let Ok(a) = annotations.get(index) else {
                 continue;
             };
-            let Some(l) = a.as_link_annotation() else {
+            if a.as_link_annotation().is_none() {
                 continue;
-            };
+            }
             let Ok(r) = a.bounds() else { continue };
-            let (target, destination) = match l.link() {
-                Ok(link) => target_of(self, &link),
-                Err(_) => (LinkTarget::Unsupported, None),
-            };
+            let raw_annotation = raw_annotations.get(index).and_then(|entry| *entry);
+            let (precise_target, destination) = raw_annotation
+                .and_then(|annotation| {
+                    resolver
+                        .link(annotation, &|page| self.page_geometry(page))
+                        .ok()
+                })
+                .unwrap_or((LinkTarget::Unsupported, None));
+            // Navigation callers keep their legacy Page match; editors read the precise target in AnnotDetail.
+            let target = destination
+                .map(|destination| destination.page)
+                .or_else(|| {
+                    raw_annotation.and_then(|annotation| resolver.fallback_page(annotation))
+                })
+                .map_or(precise_target, LinkTarget::Page);
             out.push(LinkInfo {
                 index,
                 rect: geo.rect_to_display(PointRect {

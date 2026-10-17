@@ -2,6 +2,7 @@
 
 mod annot_adv;
 mod annotate;
+mod annotation_rich;
 mod app;
 mod brand;
 mod certificate;

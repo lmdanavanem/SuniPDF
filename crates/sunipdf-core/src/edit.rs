@@ -600,7 +600,6 @@ impl Document<'_> {
         face_index: u32,
         text: &str,
     ) -> Result<PdfFontToken, EngineError> {
-        use pdfium_render::pdf::document::fonts::ToPdfFontToken;
         let source = crate::font_embed::read_font(path)?;
         let prepared = crate::font_embed::prepare(&source, face_index, text)?;
         if let Some(tokens) = self.font_cache.get(path) {

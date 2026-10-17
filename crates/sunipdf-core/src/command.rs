@@ -131,6 +131,8 @@ pub enum Command {
     ToolAnnotEllipse,
     ToolAnnotLine,
     ToolLink,
+    RichAnnotations,
+    EraseInkStrokes,
     /// Caviardage irréversible : marquer des zones, marquer un texte, effacer les marques, appliquer.
     ToolRedact,
     RedactSearch,
@@ -181,6 +183,22 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        RichAnnotations,
+        "annotations.rich",
+        "menu.rich_annotations",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        EraseInkStrokes,
+        "annotations.erase_ink",
+        "menu.erase_ink_strokes",
+        None,
+        true,
+        Tools
+    ),
     cmd!(
         HubCompress,
         "hub.compress",

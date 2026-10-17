@@ -211,6 +211,108 @@ pub(crate) fn square_ap(w: f32, h: f32, s: &AnnotStyle) -> Ap {
     ap(w, h, c, s)
 }
 
+pub(crate) fn vertices_ap(
+    w: f32,
+    h: f32,
+    points: &[(f32, f32)],
+    closed: bool,
+    cloud: bool,
+    style: &AnnotStyle,
+) -> Ap {
+    let mut content = header(style, closed);
+    content.push_str(&format!(
+        "{} {} m ",
+        fmt_num(points[0].0),
+        fmt_num(points[0].1)
+    ));
+    let area: f32 = points
+        .iter()
+        .zip(points.iter().cycle().skip(1))
+        .take(points.len())
+        .map(|(a, b)| a.0 * b.1 - a.1 * b.0)
+        .sum();
+    let count = points.len() - usize::from(!closed);
+    for index in 0..count {
+        let a = points[index];
+        let b = points[(index + 1) % points.len()];
+        if cloud {
+            let length = (b.0 - a.0).hypot(b.1 - a.1);
+            let steps = (length / 8.0).ceil().max(1.0) as usize;
+            let direction = if area >= 0.0 { 1.0 } else { -1.0 };
+            let normal = (
+                (b.1 - a.1) / length * direction,
+                -(b.0 - a.0) / length * direction,
+            );
+            for step in 0..steps {
+                let t0 = step as f32 / steps as f32;
+                let t1 = (step + 1) as f32 / steps as f32;
+                let start = (a.0 + (b.0 - a.0) * t0, a.1 + (b.1 - a.1) * t0);
+                let end = (a.0 + (b.0 - a.0) * t1, a.1 + (b.1 - a.1) * t1);
+                let control = (
+                    (start.0 + end.0) / 2.0 + normal.0 * 4.0,
+                    (start.1 + end.1) / 2.0 + normal.1 * 4.0,
+                );
+                let c1 = (
+                    start.0 + (control.0 - start.0) * 2.0 / 3.0,
+                    start.1 + (control.1 - start.1) * 2.0 / 3.0,
+                );
+                let c2 = (
+                    end.0 + (control.0 - end.0) * 2.0 / 3.0,
+                    end.1 + (control.1 - end.1) * 2.0 / 3.0,
+                );
+                content.push_str(&format!(
+                    "{} {} {} {} {} {} c ",
+                    fmt_num(c1.0),
+                    fmt_num(c1.1),
+                    fmt_num(c2.0),
+                    fmt_num(c2.1),
+                    fmt_num(end.0),
+                    fmt_num(end.1)
+                ));
+            }
+        } else {
+            content.push_str(&format!("{} {} l ", fmt_num(b.0), fmt_num(b.1)));
+        }
+    }
+    if closed {
+        content.push_str("h ");
+    }
+    content.push_str(if closed { paint_op(style) } else { "S" });
+    content.push_str(" Q");
+    ap(w, h, content, style)
+}
+
+pub(crate) fn stamp_ap(w: f32, h: f32, label: &str) -> Ap {
+    let style = FreeTextStyle {
+        size_pt: ((w - 12.0) / text_width(label, 1.0)).min(h * 0.42),
+        rgb: (180, 20, 35),
+        fill_rgb: None,
+        border_pt: 2.0,
+    };
+    free_text_ap(w, h, &[label.to_string()], &style)
+}
+
+pub(crate) fn attachment_ap(w: f32, h: f32) -> Ap {
+    let content = format!(
+        "q /GS gs 0.2 0.3 0.55 RG 1.5 w {} {} m {} {} l {} {} l {} {} l S Q",
+        fmt_num(w * 0.25),
+        fmt_num(h * 0.2),
+        fmt_num(w * 0.75),
+        fmt_num(h * 0.85),
+        fmt_num(w * 0.55),
+        fmt_num(h * 0.92),
+        fmt_num(w * 0.15),
+        fmt_num(h * 0.4)
+    );
+    Ap {
+        w,
+        h,
+        content: content.into_bytes(),
+        opacity: 1.0,
+        uses_font: false,
+    }
+}
+
 pub(crate) fn circle_ap(w: f32, h: f32, s: &AnnotStyle) -> Ap {
     const K: f32 = 0.552_284_8;
     let lw = s.width_pt;

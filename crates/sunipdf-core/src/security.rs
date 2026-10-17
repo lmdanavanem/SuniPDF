@@ -715,16 +715,34 @@ impl Document<'_> {
 
     /// Signets (table des matières), en profondeur préfixe.
     pub fn bookmarks(&self) -> Vec<Bookmark> {
+        let tree = self
+            .snapshot()
+            .ok()
+            .filter(|bytes| bytes.len() <= 128 * 1024 * 1024)
+            .and_then(|bytes| load(&bytes, self.password()).ok())
+            .and_then(|pdf| crate::bookmarks::Tree::read(&pdf).ok());
+        let Some(tree) = tree else {
+            return Vec::new();
+        };
+        let depths: Vec<_> = tree
+            .order()
+            .iter()
+            .map(|&index| {
+                let mut depth = 0;
+                let mut parent = tree.nodes[index].parent;
+                while let Some(index) = parent {
+                    depth += 1;
+                    parent = tree.nodes[index].parent;
+                }
+                depth
+            })
+            .collect();
         self.inner
             .bookmarks()
             .iter()
-            .map(|b| {
-                let mut depth = 0;
-                let mut parent = b.parent();
-                while let Some(p) = parent {
-                    depth += 1;
-                    parent = p.parent();
-                }
+            .take(crate::bookmarks::MAX_BOOKMARKS)
+            .zip(depths)
+            .map(|(b, depth)| {
                 let resolved = b
                     .action()
                     .map(|action| self.resolve_local_action(&action))

@@ -140,6 +140,7 @@ impl Engine {
         }
         let mut target = self.pdfium.create_new_pdf()?;
         let mut label_sources = Vec::with_capacity(inputs.len());
+        let mut structure_sources = Vec::with_capacity(inputs.len());
         let mut provenance = Vec::new();
         let mut total_bytes = 0usize;
         for input in inputs {
@@ -152,6 +153,7 @@ impl Engine {
                 return Err(EngineError::Other("merge source limit is 256 MiB".into()));
             }
             let labels = LabelSource::from_bytes(&source_bytes, None)?;
+            structure_sources.push(crate::structure::Source::from_bytes(&source_bytes, None)?);
             provenance.extend(
                 (0..source.pages().len() as usize).map(|page| Some((label_sources.len(), page))),
             );
@@ -163,6 +165,11 @@ impl Engine {
         preserve_labels(
             &mut pdf,
             &label_sources.iter().collect::<Vec<_>>(),
+            &provenance,
+        )?;
+        crate::structure::preserve(
+            &mut pdf,
+            &structure_sources.iter().collect::<Vec<_>>(),
             &provenance,
         )?;
         write_atomic(output, &crate::security::save(pdf)?)?;
@@ -282,7 +289,9 @@ impl Document<'_> {
         overwrite: bool,
     ) -> Result<usize, EngineError> {
         let mut target = self.pdfium().create_new_pdf()?;
-        let labels = LabelSource::from_bytes(&self.snapshot()?, self.password())?;
+        let snapshot = self.snapshot()?;
+        let labels = LabelSource::from_bytes(&snapshot, self.password())?;
+        let structure = crate::structure::Source::from_bytes(&snapshot, self.password())?;
         target
             .pages_mut()
             .copy_pages_from_document(&self.inner, &page_range_string(pages), 0)?;
@@ -291,6 +300,14 @@ impl Document<'_> {
         preserve_labels(
             &mut copy,
             &[&labels],
+            &pages
+                .iter()
+                .map(|page| Some((0, *page)))
+                .collect::<Vec<_>>(),
+        )?;
+        crate::structure::preserve(
+            &mut copy,
+            &[&structure],
             &pages
                 .iter()
                 .map(|page| Some((0, *page)))
@@ -402,8 +419,13 @@ impl Document<'_> {
             return Err(EngineError::Other("no pages selected".into()));
         }
         let index = PdfPageIndex::try_from(at).map_err(|_| EngineError::PageOutOfRange(at))?;
-        let current_labels = LabelSource::from_bytes(&self.snapshot()?, self.password())?;
-        let inserted_labels = LabelSource::from_bytes(&src.save_to_bytes()?, password)?;
+        let current_bytes = self.snapshot()?;
+        let inserted_bytes = src.save_to_bytes()?;
+        let current_labels = LabelSource::from_bytes(&current_bytes, self.password())?;
+        let inserted_labels = LabelSource::from_bytes(&inserted_bytes, password)?;
+        let current_structure =
+            crate::structure::Source::from_bytes(&current_bytes, self.password())?;
+        let inserted_structure = crate::structure::Source::from_bytes(&inserted_bytes, password)?;
         let provenance: Vec<_> = (0..at)
             .map(|page| Some((0, page)))
             .chain(selection.iter().map(|page| Some((1, *page))))
@@ -418,6 +440,13 @@ impl Document<'_> {
                     &page_range_string(&selection),
                     index,
                 )?;
+                let mut pdf = crate::security::load(&candidate.snapshot()?, candidate.password())?;
+                crate::structure::preserve(
+                    &mut pdf,
+                    &[&current_structure, &inserted_structure],
+                    &provenance,
+                )?;
+                candidate.restore(crate::security::save(pdf)?)?;
                 Ok(selection.len())
             },
         )

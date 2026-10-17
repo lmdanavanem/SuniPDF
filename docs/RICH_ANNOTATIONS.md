@@ -1,0 +1,17 @@
+# Rich annotations
+
+[Français](RICH_ANNOTATIONS.fr.md)
+
+Use **Rich annotations** to create native-font FreeText, polygons, polylines, clouds, standard stamps or file attachments. Enter vertices as one `x,y` pair per line in displayed page coordinates. The original on-page FreeText editor also opens this dialog through **Embedded fonts, bold, italic and CJK** without losing the current text or rectangle.
+
+**Preview** renders the actual PDF appearance. **Apply** commits that prepared appearance as one Undo step. Changing a field requires another preview. A document change invalidates the candidate; errors preserve the draft. The prepared candidate keeps its font resources even if the selected font file changes after Preview.
+
+FreeText uses one selected font and its actual glyph metrics, with character wrapping for horizontal Latin/CJK text and long words. Joining scripts, bidirectional controls, combining sequences and variation selectors are refused until a shaping editor is available; precomposed accents are supported. Installed font choices select the real face, including collection face indices; choose a bold or italic face rather than synthesizing one. Unsupported fonts, absent glyphs and text that does not fit are refused. Spaces are normalized for layout; `/Contents` preserves the original text. This is a uniform-style text box, not a span editor. Changing an existing FreeText font requires explicit confirmation. Legacy plain-text restyling and resizing are disabled for these appearances so that embedded fonts cannot be replaced silently. Move, comments and Delete remain available.
+
+Attachments embed a copy of a local file up to **16 MiB** using a standard file-attachment annotation. Only its basename is stored; the local path and a launch action are omitted. Save a new PDF copy to share the attachment. SuniPDF does not open or run the embedded payload. Existing document encryption is retained. The sanitizer can remove attachments from a separate sanitized copy.
+
+**Erase touched ink strokes** removes whole strokes from an unlocked SuniPDF ink annotation, preserving the other control points, style and comment thread. Enter one brush point or a brush path and choose a radius. Curve hit testing uses a conservative **0.1 pt** approximation. Empty results require the explicit Delete action, which also handles the comment thread. This eraser does not split strokes or erase page content.
+
+Bounds: 4,096 FreeText characters, 128 wrapped lines, 512 polygon vertices, 256 eraser points, 16,000 source ink points, 20,000 curve-subdivision steps and two million hit-test comparisons. Source font and embedding limits also apply. Preview is limited to a 128 MiB source document and 160 MiB prepared document; direct core operations retain their individual bounds. Rich shape appearances can be moved and commented on; their generic restyle/resize controls are disabled in this first supported slice.
+
+Every annotation receives a standard `/AP /N` appearance with its font and graphic resources. The integration suite exercises rotation, CropBox, glyph refusal, actual embedded CJK resources, preview/commit equality, save/reopen, encryption, Undo and atomic failure. Reader compatibility must be recorded from the release validation; successful internal rendering alone does not establish independent-reader fidelity.

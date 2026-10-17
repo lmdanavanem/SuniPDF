@@ -136,6 +136,8 @@ pub struct AnnotAdvState {
     pub ink: Vec<(f32, f32)>,
     pub ink_draft: Option<InkDraft>,
     pub free_text: Option<FreeTextPrompt>,
+    pub rich: Option<crate::annotation_rich::RichDraft>,
+    pub rich_generation: u64,
     pub link: Option<LinkPrompt>,
     pub thread: Option<ThreadPrompt>,
     /// Adresse externe qui attend la confirmation de l'utilisateur.
@@ -155,6 +157,8 @@ impl AnnotAdvState {
     /// Les caches désignent des indices du document actif : repris à zéro quand il change de main.
     pub fn invalidate(&mut self) {
         self.free_text = None;
+        self.rich = None;
+        self.rich_generation = self.rich_generation.wrapping_add(1);
         self.link = None;
         self.details.clear();
         self.selected = None;
@@ -169,6 +173,7 @@ impl AnnotAdvState {
     /// Une boîte de dialogue des annotations est ouverte : les raccourcis sont suspendus.
     pub fn dialog_open(&self) -> bool {
         self.free_text.is_some()
+            || self.rich.is_some()
             || self.link.is_some()
             || self.thread.is_some()
             || self.url_confirm.is_some()
@@ -311,6 +316,8 @@ pub enum LinkAction {
 pub fn link_action(target: &LinkTarget) -> LinkAction {
     match target {
         LinkTarget::Page(n) => LinkAction::GoTo(*n),
+        LinkTarget::Destination(destination) => LinkAction::GoTo(destination.page),
+        LinkTarget::Named(_) => LinkAction::Unsupported,
         LinkTarget::Uri(u) if is_safe_external_uri(u) => LinkAction::Confirm(u.trim().to_string()),
         LinkTarget::Uri(_) => LinkAction::Blocked,
         LinkTarget::Unsupported => LinkAction::Unsupported,
@@ -349,7 +356,7 @@ fn status_color(s: ReviewStatus) -> egui::Color32 {
 
 impl SuniApp {
     /// Nom de l'auteur écrit dans les nouvelles annotations (vide : omis).
-    fn annot_author(&self) -> Option<String> {
+    pub(crate) fn annot_author(&self) -> Option<String> {
         let a = self.settings.author.trim();
         (!a.is_empty()).then(|| a.to_string())
     }
@@ -478,6 +485,10 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if self.annotate.adv.rich.is_some() {
+            self.status_msg = Some(self.t("rich.finish_first").into());
+            return true;
+        }
         if self.annotate.adv.free_text.is_some() {
             self.status_msg = Some(self.t("free_text.finish_first").into());
             return true;
@@ -490,6 +501,9 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        if self.annotate.adv.rich.is_some() {
+            return true;
+        }
         if self.annotate.adv.free_text.is_some() {
             return !matches!(
                 command,
@@ -1777,6 +1791,7 @@ impl SuniApp {
         };
         let rect = prompt.screen_rect(page_rect, k, height);
         let (mut submit, mut cancel) = (false, false);
+        let mut rich_font = false;
         egui::Area::new(egui::Id::new("inline-free-text"))
             .order(egui::Order::Foreground)
             .fixed_pos(rect.min)
@@ -1854,6 +1869,7 @@ impl SuniApp {
                                     .small()
                                     .color(palette.text_muted),
                             );
+                            rich_font = ui.button(tr(lang, "rich.open_font")).clicked();
                             if !prompt.text.trim().is_empty() && !prompt.valid() {
                                 ui.colored_label(palette.error, tr(lang, "free_text.invalid"));
                             }
@@ -1885,7 +1901,9 @@ impl SuniApp {
         {
             cancel = true;
         }
-        if cancel {
+        if rich_font {
+            self.open_rich_from_free_text_prompt(ctx);
+        } else if cancel {
             self.annotate.adv.free_text = None;
         } else if submit {
             self.submit_free_text();

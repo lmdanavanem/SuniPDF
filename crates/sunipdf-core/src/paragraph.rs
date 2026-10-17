@@ -92,7 +92,7 @@ fn preflight(bytes: &[u8], password: Option<&str>, page_index: usize) -> Result<
     Ok(())
 }
 
-fn measure(page: &mut PdfPage<'_>, value: &str) -> Result<f32, EngineError> {
+pub(crate) fn measure(page: &mut PdfPage<'_>, value: &str) -> Result<f32, EngineError> {
     let mut object = page.objects().get(0)?;
     object
         .as_text_object_mut()

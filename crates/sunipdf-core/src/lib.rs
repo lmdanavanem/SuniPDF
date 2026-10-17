@@ -8,8 +8,10 @@
 //! de parallélisme). L'application de bureau les confine dans un thread de travail.
 
 pub mod annot;
+pub mod annot_rich;
 pub mod annot_write;
 mod appearance;
+pub mod bookmarks;
 pub mod boxes;
 pub mod cache;
 pub mod certificate;
@@ -25,6 +27,7 @@ pub mod fonts;
 pub mod form_data;
 pub mod forms;
 pub mod geometry;
+mod link_destination;
 pub mod links;
 pub mod ocr;
 pub mod office;
@@ -36,6 +39,7 @@ pub mod sanitize;
 pub mod security;
 pub mod signature_image;
 pub mod stamp;
+mod structure;
 pub mod text;
 pub mod tiles;
 

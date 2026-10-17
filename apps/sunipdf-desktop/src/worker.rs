@@ -117,6 +117,7 @@ pub enum BatchResult {
 
 /// Transformation d'octets (lopdf) : chiffrement, métadonnées.
 pub enum BytesOp {
+    Bookmark(sunipdf_core::bookmarks::BookmarkEdit),
     Protect(Protection),
     /// Mot de passe propriétaire saisi par l'utilisateur.
     Unprotect(String),
@@ -192,6 +193,11 @@ pub enum EditOp {
         width: f32,
         leading: f32,
     },
+    CommitRichAnnotationPreview {
+        epoch: u64,
+        generation: u64,
+    },
+    PreparedRichAnnotation(sunipdf_core::annot_rich::PreparedRichAnnotation),
     ResizeObjects {
         page: usize,
         indices: Vec<usize>,
@@ -573,6 +579,17 @@ pub enum Request {
         epoch: u64,
         generation: u64,
     },
+    PreviewRichAnnotation {
+        page: usize,
+        annotation: sunipdf_core::annot_rich::RichAnnotation,
+        author: Option<String>,
+        epoch: u64,
+        generation: u64,
+    },
+    DiscardRichAnnotationPreview {
+        epoch: u64,
+        generation: u64,
+    },
     /// Copie dans le presse-papiers d'objets du moteur (document inchangé, pas d'annulation).
     /// `cut` : les objets sont supprimés aussitôt après une copie réussie, sans qu'une autre
     /// requête puisse décaler leurs index entre les deux (`Copied` puis `DocumentChanged`).
@@ -733,6 +750,11 @@ pub enum Response {
         generation: u64,
         result: Result<sunipdf_core::paragraph::ParagraphPreview, EngineError>,
     },
+    RichAnnotationPreview {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::annot_rich::RichAnnotationPreview, EngineError>,
+    },
     /// Objets copiés : `text` = texte des objets texte (repère du presse-papiers système).
     Copied {
         count: usize,
@@ -856,6 +878,7 @@ struct State<'a> {
     /// dans un autre).
     clip: Option<ObjectClip>,
     fonts: Option<Arc<Vec<SystemFont>>>,
+    rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
 }
 
 impl State<'_> {
@@ -887,6 +910,7 @@ impl State<'_> {
     fn invalidate(&mut self) {
         self.cache.clear();
         self.wanted.clear();
+        self.rich_preview = None;
     }
 
     fn modified(&self) -> bool {
@@ -924,6 +948,23 @@ impl State<'_> {
     /// Applique une modification sous instantané. Toute erreur laisse le document intact
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
+        let op = match op {
+            EditOp::CommitRichAnnotationPreview { epoch, generation } => {
+                match self.rich_preview.take() {
+                    Some((saved_epoch, saved_generation, prepared))
+                        if saved_epoch == epoch && saved_generation == generation =>
+                    {
+                        EditOp::PreparedRichAnnotation(prepared)
+                    }
+                    _ => {
+                        return Response::OperationFailed(EngineError::Other(
+                            "rich annotation preview is stale; preview again".into(),
+                        ))
+                    }
+                }
+            }
+            op => op,
+        };
         let nudge = match &op {
             EditOp::NudgeObjects { page, indices, .. } => Some((*page, indices.clone())),
             _ => None,
@@ -1056,6 +1097,7 @@ mod save_point_tests {
             last_nudge: None,
             clip: None,
             fonts: None,
+            rich_preview: None,
         }
     }
 
@@ -1292,6 +1334,12 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         } => doc
             .reflow_paragraph(page, &indices, &text, width, leading)
             .map(|_| ()),
+        EditOp::PreparedRichAnnotation(prepared) => {
+            doc.commit_rich_annotation_preview(prepared).map(|_| ())
+        }
+        EditOp::CommitRichAnnotationPreview { .. } => Err(EngineError::Other(
+            "rich annotation preview was not prepared".into(),
+        )),
         EditOp::SetObjectStyle {
             page,
             indices,
@@ -1387,6 +1435,7 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             let current = doc.snapshot()?;
             let password = doc.password().map(str::to_owned);
             match op {
+                BytesOp::Bookmark(edit) => doc.edit_bookmark(&edit),
                 BytesOp::Protect(p) => {
                     let bytes = security::protect(&current, password.as_deref(), &p)?;
                     let typed = if p.user_password.is_empty() {
@@ -1518,6 +1567,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         last_nudge: None,
         clip: None,
         fonts: None,
+        rich_preview: None,
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     let mut navigation_failed = false;
@@ -2084,6 +2134,46 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Err(e) => Response::OperationFailed(e),
                 }
             }
+            Request::PreviewRichAnnotation {
+                page,
+                annotation,
+                author,
+                epoch,
+                generation,
+            } => {
+                state.rich_preview = None;
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| {
+                        doc.preview_rich_annotation(page, &annotation, author.as_deref())
+                    });
+                let result = result.and_then(|mut preview| {
+                    let prepared = preview.prepared.take().ok_or_else(|| {
+                        EngineError::Other("missing prepared annotation preview".into())
+                    })?;
+                    state.rich_preview = Some((epoch, generation, prepared));
+                    Ok(preview)
+                });
+                Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::DiscardRichAnnotationPreview { epoch, generation } => {
+                if state
+                    .rich_preview
+                    .as_ref()
+                    .is_some_and(|(saved_epoch, saved_generation, _)| {
+                        *saved_epoch == epoch && *saved_generation == generation
+                    })
+                {
+                    state.rich_preview = None;
+                }
+                continue;
+            }
             Request::LoadImage { path, max_side } => {
                 let (path, result) = if let Some(dir) =
                     crate::sign::signatures_dir().filter(|dir| {
@@ -2251,6 +2341,7 @@ mod tests {
             ));
         }
         page_label_edits_and_history_keep_page_geometry(&worker);
+        bookmark_edits_have_one_undo_and_failed_edits_keep_history(&worker);
         link_target_edits_have_one_undo_and_preserve_geometry(&worker);
         existing_text_missing_glyphs_keep_history_and_original_objects(&worker);
         grouped_ink_has_one_undo_redo_and_failed_edits_keep_history(&worker);
@@ -2260,6 +2351,9 @@ mod tests {
         inline_free_text_has_exact_styles_geometry_history_and_saved_content(&worker);
         paragraph_preview_and_reflow_keep_one_undo_and_failed_edit_history(&worker);
         native_clipboard_paste_across_documents_has_one_undo_and_no_silent_group_fallback(&worker);
+        rich_annotation_previews_commit_exactly_once_and_reject_stale_or_discarded_candidates(
+            &worker,
+        );
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
@@ -2276,6 +2370,119 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn rich_annotation_previews_commit_exactly_once_and_reject_stale_or_discarded_candidates(
+        worker: &Worker,
+    ) {
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let details = || {
+            worker.send(Request::Annotations {
+                page: 0,
+                detailed: true,
+            });
+            match next_response(worker) {
+                Response::Annotations {
+                    details: Some(details),
+                    ..
+                } => details,
+                _ => panic!("rich annotations"),
+            }
+        };
+        let preview = |generation| {
+            worker.send(Request::PreviewRichAnnotation {
+                page: 0,
+                annotation: sunipdf_core::annot_rich::RichAnnotation::Stamp {
+                    rect: PointRect {
+                        left: 40.0,
+                        bottom: 180.0,
+                        right: 200.0,
+                        top: 230.0,
+                    },
+                    kind: sunipdf_core::annot_rich::StampKind::Approved,
+                },
+                author: Some("lmdanavanem".into()),
+                epoch: 7,
+                generation,
+            });
+            assert!(
+                matches!(next_response(worker),Response::RichAnnotationPreview {epoch:7,generation:sent,result:Ok(_)} if sent==generation)
+            );
+        };
+        let before = details();
+        preview(11);
+        assert_eq!(
+            details(),
+            before,
+            "preview is read-only and creates no history"
+        );
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 7,
+            generation: 11,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        let after = details();
+        assert_eq!(after.len(), before.len() + 1);
+        assert_eq!(after.last().unwrap().subtype, "Stamp");
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(details(), before);
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(details(), after);
+        preview(12);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 7,
+            generation: 12,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(details(), before, "Undo invalidates the prepared candidate");
+        preview(13);
+        worker.send(Request::DiscardRichAnnotationPreview {
+            epoch: 7,
+            generation: 13,
+        });
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 7,
+            generation: 13,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(details(), before);
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        assert_eq!(details(), after, "refusals do not consume Redo history");
     }
 
     fn native_clipboard_paste_across_documents_has_one_undo_and_no_silent_group_fallback(
@@ -3284,6 +3491,66 @@ mod tests {
         assert_eq!(std::fs::read(&source).unwrap(), original_bytes);
         worker.send(Request::Open {
             path: source,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+    }
+
+    fn bookmark_edits_have_one_undo_and_failed_edits_keep_history(worker: &Worker) {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        worker.send(Request::Open {
+            path: path.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let bookmarks = || {
+            worker.send(Request::Bookmarks);
+            match next_response(worker) {
+                Response::Bookmarks(bookmarks) => bookmarks,
+                _ => panic!("bookmarks response"),
+            }
+        };
+        worker.send(Request::Edit(EditOp::Bytes(BytesOp::Bookmark(
+            sunipdf_core::bookmarks::BookmarkEdit::Add {
+                parent: None,
+                title: "Undo bookmark".into(),
+                page: 1,
+            },
+        ))));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(bookmarks()[0].page, Some(1));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(bookmarks().is_empty());
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(bookmarks()[0].title, "Undo bookmark");
+        worker.send(Request::Edit(EditOp::Bytes(BytesOp::Bookmark(
+            sunipdf_core::bookmarks::BookmarkEdit::Delete { index: 999 },
+        ))));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(bookmarks().len(), 1);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(bookmarks().is_empty());
+        worker.send(Request::Open {
+            path,
             password: None,
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));

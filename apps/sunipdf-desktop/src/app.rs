@@ -1008,6 +1008,13 @@ impl SuniApp {
                 } => {
                     self.on_paragraph_preview(ctx, epoch, generation, result);
                 }
+                Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_rich_preview(ctx, epoch, generation, result);
+                }
                 Response::Objects { page, list } => {
                     if self.edit.objects_page == Some(page) {
                         self.edit.objects = list;
@@ -1041,6 +1048,7 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    self.rich_annotation_failed(&e);
                     if let Some(draft) = self.edit.paragraph.as_mut().filter(|d| d.applying) {
                         draft.applying = false;
                         draft.preview = None;
@@ -1149,6 +1157,7 @@ impl SuniApp {
 
     pub fn has_unsaved_changes(&self) -> bool {
         self.dirty
+            || self.annotate.adv.rich.is_some()
             || self.edit.paragraph.is_some()
             || self.forms.has_unsaved_input()
             || self.ink_draft_active()
@@ -1295,6 +1304,7 @@ impl SuniApp {
 
     pub(crate) fn navigation_blocked(&self) -> bool {
         self.edit.paragraph.is_some()
+            || self.annotate.adv.rich.is_some()
             || self.processing.busy
             || self.office.busy
             || self.sign.busy
@@ -1308,6 +1318,7 @@ impl SuniApp {
 
     fn close_must_wait(&self) -> bool {
         self.edit.paragraph.is_some()
+            || self.annotate.adv.rich.is_some()
             || self.ink_draft_active()
             || self.processing.busy
             || self.office.busy
@@ -1719,6 +1730,8 @@ impl SuniApp {
         match command {
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
+            Command::RichAnnotations => self.open_rich_annotations(ctx),
+            Command::EraseInkStrokes => self.open_ink_eraser(ctx),
             Command::OfficeToPdf => self.open_office(false),
             Command::ExportOffice => self.open_office(true),
             Command::RotateViewClockwise => self.rotate_reading_view(true),
@@ -3147,6 +3160,7 @@ impl eframe::App for SuniApp {
         self.redact_dialogs(&ctx);
         self.text_prompt_dialog(&ctx);
         self.paragraph_dialog(&ctx);
+        self.rich_annotation_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
         self.adv_dialogs(&ctx);
