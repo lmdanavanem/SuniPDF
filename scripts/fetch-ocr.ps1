@@ -11,10 +11,10 @@ $build = Join-Path $root "target/ocr-build-$Arch"
 $install = Join-Path $build 'install'
 $stage = Join-Path $root "third_party/ocr/win-$Arch"
 $marker = Join-Path $stage 'VERSION'
-$version = "TESSERACT=5.5.3;LEPTONICA=1.87.0;TESSDATA=87416418657359cb625c412a48b6e1d6d41c29bd;PNM_ONLY=1;STDINT_PATCH=1;MSVC_ARM64_PATCH=1;NOTICES=1;ARCH=$Arch"
+$version = "TESSERACT=5.5.3;LEPTONICA=1.87.0;TESSDATA=87416418657359cb625c412a48b6e1d6d41c29bd;PNM_ONLY=1;STDINT_PATCH=1;MSVC_ARM64_PATCH=1;NOTICES=1;COMPILER_PROVENANCE=1;ARCH=$Arch"
 if ((Test-Path -LiteralPath $marker) -and -not $Force) {
     if ([IO.File]::ReadAllText($marker).Trim() -ne $version) { throw 'Unexpected OCR build version; rerun with -Force.' }
-    foreach ($file in @('tesseract.exe', 'tessdata/eng.traineddata', 'tessdata/fra.traineddata', 'licenses/AUTHORS.txt', 'licenses/COPYRIGHTS.txt', 'SHA256SUMS')) {
+    foreach ($file in @('tesseract.exe', 'tessdata/eng.traineddata', 'tessdata/fra.traineddata', 'licenses/AUTHORS.txt', 'licenses/COPYRIGHTS.txt', 'licenses/compiler-provenance.json', 'licenses/windows-sdk-license.rtf', 'licenses/cmake.txt', 'SHA256SUMS')) {
         if (-not (Test-Path -LiteralPath (Join-Path $stage $file))) { throw "Incomplete OCR runtime: $file" }
     }
     foreach ($line in [IO.File]::ReadAllLines((Join-Path $stage 'SHA256SUMS'))) {
@@ -59,6 +59,36 @@ $platform = if ($Arch -eq 'arm64') { 'ARM64' } else { 'x64' }
 function Invoke-CMake([string[]]$Arguments) {
     & cmake @Arguments
     if ($LASTEXITCODE -ne 0) { throw "CMake failed ($LASTEXITCODE)." }
+}
+function Get-OcrCompilerProvenance([string]$BuildDirectory, [string]$Language, [string]$Architecture, [string]$NoticeDirectory) {
+    $configs = @(Get-ChildItem -LiteralPath (Join-Path $BuildDirectory 'CMakeFiles') -Filter "CMake${Language}Compiler.cmake" -File -Recurse)
+    if ($configs.Count -ne 1) { throw "Cannot identify the selected OCR $Language compiler." }
+    $config = [IO.File]::ReadAllText($configs[0].FullName)
+    $compiler = [regex]::Match($config, ('set\(CMAKE_' + $Language + '_COMPILER "([^"]+)"\)')).Groups[1].Value
+    $compilerVersion = [regex]::Match($config, ('set\(CMAKE_' + $Language + '_COMPILER_VERSION "([^"]+)"\)')).Groups[1].Value
+    $toolset = [regex]::Match($compiler, '^(.*[/\\]VC[/\\]Tools[/\\]MSVC[/\\]([^/\\]+))[/\\]bin[/\\]')
+    if (-not $toolset.Success -or -not $compilerVersion -or -not (Test-Path -LiteralPath $compiler)) { throw 'OCR compiler provenance is unavailable.' }
+    $libraries = foreach ($name in @('libcmt.lib', 'libvcruntime.lib', 'libcpmt.lib')) {
+        $path = Join-Path $toolset.Groups[1].Value "lib/$Architecture/$name"
+        if (-not (Test-Path -LiteralPath $path)) { throw "Selected MSVC runtime library missing: $name" }
+        [ordered]@{ name = $name; sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
+    }
+    $project = [IO.File]::ReadAllText((Join-Path $BuildDirectory 'ZERO_CHECK.vcxproj'))
+    $sdkVersion = [regex]::Match($project, '<WindowsTargetPlatformVersion>([^<]+)</WindowsTargetPlatformVersion>').Groups[1].Value
+    if (-not $sdkVersion) { throw 'The selected OCR Windows SDK version is unavailable.' }
+    $kitRoots = foreach ($key in @('HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots', 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots')) {
+        if (Test-Path -LiteralPath $key) { Get-ItemPropertyValue -LiteralPath $key -Name KitsRoot10 -ErrorAction SilentlyContinue }
+    }
+    $ucrtCandidates = @($kitRoots | Select-Object -Unique | ForEach-Object { Join-Path $_ "Lib/$sdkVersion/ucrt/$Architecture/libucrt.lib" } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+    if ($ucrtCandidates.Count -ne 1) { throw 'The selected static Universal CRT library is unavailable or ambiguous.' }
+    $ucrt = $ucrtCandidates[0]
+    $sdkLicense = Join-Path (Split-Path (Split-Path (Split-Path (Split-Path (Split-Path $ucrt))))) "Licenses/$sdkVersion/sdk_license.rtf"
+    if (-not (Test-Path -LiteralPath $sdkLicense -PathType Leaf)) { throw 'The selected Windows SDK license is unavailable.' }
+    if ($NoticeDirectory) { Copy-Item -LiteralPath $sdkLicense -Destination (Join-Path $NoticeDirectory 'windows-sdk-license.rtf') }
+    $cache = [IO.File]::ReadAllText((Join-Path $BuildDirectory 'CMakeCache.txt'))
+    $visualStudioMajor = [regex]::Match($cache, '(?m)^CMAKE_GENERATOR:INTERNAL=Visual Studio (\d+) ').Groups[1].Value
+    if ($visualStudioMajor -notin @('17', '18')) { throw 'The selected Visual Studio license edition is unrecognized.' }
+    [ordered]@{ language = $Language; compiler = 'MSVC cl.exe'; compilerVersion = $compilerVersion; compilerSha256 = (Get-FileHash -LiteralPath $compiler -Algorithm SHA256).Hash.ToLowerInvariant(); visualStudioMajor = $visualStudioMajor; toolsetVersion = $toolset.Groups[2].Value; architecture = $Architecture; runtimeSelection = 'Static /MT requested by the pinned build configuration'; toolsetRuntimeLibraries = @($libraries); windowsSdkVersion = $sdkVersion; windowsSdkLicenseSha256 = (Get-FileHash -LiteralPath $sdkLicense -Algorithm SHA256).Hash.ToLowerInvariant(); universalCrtLibrary = [ordered]@{ name = 'libucrt.lib'; sha256 = (Get-FileHash -LiteralPath $ucrt -Algorithm SHA256).Hash.ToLowerInvariant() } }
 }
 $leptSource = Join-Path $downloads 'leptonica-1.87.0'
 $leptBuild = Join-Path $build 'leptonica'
@@ -107,6 +137,19 @@ Set-SourcePatch $matrixNeon 'int8x8_t bias_scale = {127, 127, 127, 127, 127, 127
 $tessBuild = Join-Path $build 'tesseract'
 Invoke-CMake @('-S', $tessSource, '-B', $tessBuild, '-G', $Generator, '-A', $platform, "-DCMAKE_PREFIX_PATH=$install", "-DCMAKE_INSTALL_PREFIX=$install", '-DBUILD_SHARED_LIBS=OFF', '-DWIN32_MT_BUILD=ON', '-DSW_BUILD=OFF', '-DOPENMP_BUILD=OFF', '-DGRAPHICS_DISABLED=ON', '-DDISABLED_LEGACY_ENGINE=ON', '-DENABLE_LTO=OFF', '-DENABLE_NATIVE=OFF', '-DBUILD_TRAINING_TOOLS=OFF', '-DBUILD_TESTS=OFF', '-DDISABLE_TIFF=ON', '-DDISABLE_ARCHIVE=ON', '-DDISABLE_CURL=ON', '-DENABLE_PRECOMPILED_HEADERS=OFF')
 Invoke-CMake @('--build', $tessBuild, '--config', 'Release', '--target', 'tesseract', '--parallel', '2')
+$cmakeVersionLine = (& cmake --version | Select-Object -First 1)
+$cmakeVersion = [regex]::Match($cmakeVersionLine, '^cmake version (\d+\.\d+\.\d+)$').Groups[1].Value
+if (-not $cmakeVersion) { throw 'An exact released CMake version is required for its upstream license evidence.' }
+$cmakeLicense = Join-Path $stage 'licenses/cmake.txt'
+$cmakeLicenseUrl = $null
+foreach ($name in @('LICENSE.rst', 'Copyright.txt')) {
+    $candidate = "https://raw.githubusercontent.com/Kitware/CMake/v$cmakeVersion/$name"
+    & curl.exe --location --fail --silent --output $cmakeLicense $candidate
+    if ($LASTEXITCODE -eq 0) { $cmakeLicenseUrl = $candidate; break }
+}
+if (-not $cmakeLicenseUrl) { throw 'The selected CMake upstream license is unavailable.' }
+$compilerProvenance = [ordered]@{ schema = 1; generator = $Generator; cmakeVersion = $cmakeVersion; cmakeLicenseSource = $cmakeLicenseUrl; cmakeLicenseSha256 = (Get-FileHash -LiteralPath $cmakeLicense -Algorithm SHA256).Hash.ToLowerInvariant(); architecture = $Arch; compilers = @((Get-OcrCompilerProvenance $leptBuild 'C' $platform (Join-Path $stage 'licenses')), (Get-OcrCompilerProvenance $tessBuild 'CXX' $platform (Join-Path $stage 'licenses'))) }
+[IO.File]::WriteAllText((Join-Path $stage 'licenses/compiler-provenance.json'), ($compilerProvenance | ConvertTo-Json -Depth 8) + "`n", [Text.UTF8Encoding]::new($false))
 $exe = Join-Path $tessBuild 'bin/Release/tesseract.exe'
 if (-not (Test-Path -LiteralPath $exe)) { throw 'Tesseract executable was not produced.' }
 $bytes = [IO.File]::ReadAllBytes($exe)

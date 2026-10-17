@@ -69,6 +69,9 @@ pub enum BatchOp {
     Optimize {
         out: PathBuf,
     },
+    Sanitize {
+        out: PathBuf,
+    },
     /// Valeurs du formulaire en JSON (`{ nom: valeur }`) ; le document est intact.
     ExportFormData {
         out: PathBuf,
@@ -100,6 +103,10 @@ pub enum BatchResult {
         out: PathBuf,
         before: u64,
         after: u64,
+    },
+    Sanitized {
+        out: PathBuf,
+        report: sunipdf_core::sanitize::SanitizeReport,
     },
     FormExported {
         out: PathBuf,
@@ -177,6 +184,13 @@ pub enum EditOp {
         text: Option<String>,
         size: Option<f32>,
         rgb: Option<(u8, u8, u8)>,
+    },
+    ReflowParagraph {
+        page: usize,
+        indices: Vec<usize>,
+        text: String,
+        width: f32,
+        leading: f32,
     },
     ResizeObjects {
         page: usize,
@@ -450,6 +464,7 @@ pub enum Request {
         cancel: Arc<std::sync::atomic::AtomicBool>,
     },
     VerifySignatures,
+    VerifySignaturesWithOptions(sunipdf_core::certificate::VerificationOptions),
     SignCertificate {
         pfx: PathBuf,
         password: zeroize::Zeroizing<String>,
@@ -536,6 +551,21 @@ pub enum Request {
     /// Liste des objets d'une page (panneau Objets, prise directe au glisser).
     Objects {
         page: usize,
+    },
+    RotationCenter {
+        page: usize,
+        indices: Vec<usize>,
+        epoch: u64,
+        generation: u64,
+    },
+    PreviewParagraph {
+        page: usize,
+        indices: Vec<usize>,
+        text: String,
+        width: f32,
+        leading: f32,
+        epoch: u64,
+        generation: u64,
     },
     /// Copie dans le presse-papiers d'objets du moteur (document inchangé, pas d'annulation).
     /// `cut` : les objets sont supprimés aussitôt après une copie réussie, sans qu'une autre
@@ -677,6 +707,18 @@ pub enum Response {
     Objects {
         page: usize,
         list: Vec<ObjectInfo>,
+    },
+    RotationCenter {
+        page: usize,
+        indices: Vec<usize>,
+        epoch: u64,
+        generation: u64,
+        center: Option<(f32, f32)>,
+    },
+    ParagraphPreview {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::paragraph::ParagraphPreview, EngineError>,
     },
     /// Objets copiés : `text` = texte des objets texte (repère du presse-papiers système).
     Copied {
@@ -1228,6 +1270,15 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             }
             Ok(())
         }
+        EditOp::ReflowParagraph {
+            page,
+            indices,
+            text,
+            width,
+            leading,
+        } => doc
+            .reflow_paragraph(page, &indices, &text, width, leading)
+            .map(|_| ()),
         EditOp::SetObjectStyle {
             page,
             indices,
@@ -1400,6 +1451,12 @@ fn run_batch(engine: &Engine, doc: Option<&Document<'_>>, op: BatchOp) -> BatchR
                 before: before.len() as u64,
                 after: after.len() as u64,
             })
+        }
+        BatchOp::Sanitize { out } => {
+            let doc = doc.ok_or(EngineError::Other("no document".into()))?;
+            let (bytes, report) = doc.sanitized_copy()?;
+            write_new_copy(&out, &bytes)?;
+            Ok(BatchResult::Sanitized { out, report })
         }
         BatchOp::ExportFormData { out } => {
             let doc = doc.ok_or(EngineError::Other("no document".into()))?;
@@ -1661,14 +1718,22 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     },
                 }
             }
-            Request::VerifySignatures => {
+            request @ (Request::VerifySignatures | Request::VerifySignaturesWithOptions(_)) => {
+                let options = match request {
+                    Request::VerifySignaturesWithOptions(options) => options,
+                    _ => sunipdf_core::certificate::VerificationOptions::default(),
+                };
                 let result = state
                     .document
                     .as_ref()
                     .ok_or_else(|| EngineError::Other("no document".into()))
                     .and_then(|doc| {
                         let bytes = std::fs::read(&doc.info().path)?;
-                        sunipdf_core::certificate::verify_signatures(&bytes, doc.password())
+                        sunipdf_core::certificate::verify_signatures_with_options(
+                            &bytes,
+                            doc.password(),
+                            options,
+                        )
                     });
                 Response::Signatures(result)
             }
@@ -1929,6 +1994,43 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     list: doc.page_objects(page).unwrap_or_default(),
                 }
             }
+            Request::RotationCenter {
+                page,
+                indices,
+                epoch,
+                generation,
+            } => {
+                let center = state
+                    .document
+                    .as_ref()
+                    .and_then(|doc| doc.rotation_center(page, &indices).ok());
+                Response::RotationCenter {
+                    page,
+                    indices,
+                    epoch,
+                    generation,
+                    center,
+                }
+            }
+            Request::PreviewParagraph {
+                page,
+                indices,
+                text,
+                width,
+                leading,
+                epoch,
+                generation,
+            } => {
+                let result = match state.document.as_ref() {
+                    Some(doc) => doc.preview_paragraph(page, &indices, &text, width, leading),
+                    None => Err(EngineError::PageOutOfRange(page)),
+                };
+                Response::ParagraphPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::CopyObjects { page, indices, cut } => {
                 let Some(doc) = &state.document else { continue };
                 match doc.copy_objects(page, &indices) {
@@ -1947,7 +2049,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
             }
             Request::LoadImage { path, max_side } => {
-                let result = sunipdf_core::signature_image::load(&path, max_side);
+                let (path, result) = if let Some(dir) =
+                    crate::sign::signatures_dir().filter(|dir| {
+                        path.parent() == Some(dir.as_path())
+                            && path.file_name().and_then(|n| n.to_str()).is_some_and(|n| {
+                                n.starts_with("signature-") || n.starts_with("initials-")
+                            })
+                    }) {
+                    match crate::sign::library::load(&dir, &path) {
+                        Ok((path, image)) => (path, Ok(image)),
+                        Err(error) => (path, Err(error)),
+                    }
+                } else {
+                    let result = sunipdf_core::signature_image::load(&path, max_side);
+                    (path, result)
+                };
                 Response::ImageLoaded { path, result }
             }
             Request::SystemFonts => Response::SystemFonts(
@@ -2106,6 +2222,7 @@ mod tests {
         signature_batch_placement_has_one_undo_and_no_partial_failures(&worker, signature);
         drawn_form_rectangles_keep_history_and_saved_fields(&worker);
         inline_free_text_has_exact_styles_geometry_history_and_saved_content(&worker);
+        paragraph_preview_and_reflow_keep_one_undo_and_failed_edit_history(&worker);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
@@ -2122,6 +2239,100 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn paragraph_preview_and_reflow_keep_one_undo_and_failed_edit_history(worker: &Worker) {
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let objects = || {
+            worker.send(Request::Objects { page: 0 });
+            match next_response(worker) {
+                Response::Objects { list, .. } => list,
+                _ => panic!("page objects"),
+            }
+        };
+        let before = objects();
+        let index = before
+            .iter()
+            .find(|o| o.kind == sunipdf_core::ObjectKind::Text)
+            .unwrap()
+            .index;
+        let text = "Native paragraph words across multiple editable lines.";
+        worker.send(Request::PreviewParagraph {
+            page: 0,
+            indices: vec![index],
+            text: text.into(),
+            width: 180.0,
+            leading: 1.2,
+            epoch: 7,
+            generation: 9,
+        });
+        let count = match next_response(worker) {
+            Response::ParagraphPreview {
+                epoch: 7,
+                generation: 9,
+                result: Ok(preview),
+            } => preview.objects,
+            _ => panic!("native paragraph preview"),
+        };
+        assert!(count > 1);
+        assert_eq!(objects(), before, "preview is read-only");
+        let edit = |indices: Vec<usize>, value: &str| {
+            worker.send(Request::Edit(EditOp::ReflowParagraph {
+                page: 0,
+                indices,
+                text: value.into(),
+                width: 180.0,
+                leading: 1.2,
+            }))
+        };
+        edit(vec![index], text);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                modified: true,
+                can_undo: true,
+                ..
+            })
+        ));
+        let after = objects();
+        assert_eq!(after.len(), before.len() - 1 + count);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                modified: false,
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(objects(), before, "one Undo restores all replaced lines");
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(objects(), after);
+        edit((index..index + count).collect(), "Missing 🚀");
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(EngineError::MissingGlyphs(_))
+        ));
+        assert_eq!(objects(), after);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                ..
+            })
+        ));
+        assert_eq!(objects(), before, "refusal creates no undo entry");
     }
 
     fn existing_text_missing_glyphs_keep_history_and_original_objects(worker: &Worker) {

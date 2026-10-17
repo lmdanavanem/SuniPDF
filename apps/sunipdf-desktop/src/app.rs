@@ -469,6 +469,10 @@ impl SuniApp {
     }
 
     pub fn go_to_page(&mut self, page: usize) {
+        if self.edit.paragraph.is_some() {
+            self.status_msg = Some(self.t("paragraph.finish_first").into());
+            return;
+        }
         if self.annotate.adv.free_text.is_some() {
             self.status_msg = Some(self.t("free_text.finish_first").into());
             return;
@@ -833,6 +837,9 @@ impl SuniApp {
                     modified,
                     has_signatures,
                 }) => {
+                    if self.edit.paragraph.as_ref().is_some_and(|d| d.applying) {
+                        self.edit.paragraph = None;
+                    }
                     self.form_builder.cancel();
                     self.annotate.adv.free_text = None;
                     if self
@@ -968,6 +975,22 @@ impl SuniApp {
                 Response::ObjectsSelected { page, infos, mode } => {
                     self.on_objects_selected(page, infos, mode)
                 }
+                Response::RotationCenter {
+                    page,
+                    indices,
+                    epoch,
+                    generation,
+                    center,
+                } => {
+                    self.on_rotation_center(page, &indices, epoch, generation, center);
+                }
+                Response::ParagraphPreview {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_paragraph_preview(ctx, epoch, generation, result);
+                }
                 Response::Objects { page, list } => {
                     if self.edit.objects_page == Some(page) {
                         self.edit.objects = list;
@@ -1001,6 +1024,11 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    if let Some(draft) = self.edit.paragraph.as_mut().filter(|d| d.applying) {
+                        draft.applying = false;
+                        draft.preview = None;
+                        draft.error = Some(e.to_string());
+                    }
                     if let Some(prompt) = &mut self.annotate.adv.free_text {
                         if prompt.pending {
                             prompt.pending = false;
@@ -1104,6 +1132,7 @@ impl SuniApp {
 
     pub fn has_unsaved_changes(&self) -> bool {
         self.dirty
+            || self.edit.paragraph.is_some()
             || self.forms.has_unsaved_input()
             || self.ink_draft_active()
             || self.annotate.adv.free_text.is_some()
@@ -1248,7 +1277,8 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.processing.busy
+        self.edit.paragraph.is_some()
+            || self.processing.busy
             || self.sign.busy
             || self.saving
             || self.after_save.is_some()
@@ -1259,7 +1289,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.ink_draft_active()
+        self.edit.paragraph.is_some()
+            || self.ink_draft_active()
             || self.processing.busy
             || self.sign.busy
             || self.worker.has_pending_mutations()
@@ -1568,6 +1599,7 @@ impl SuniApp {
             || self.show_about
             || self.unsaved_prompt.is_some()
             || self.tools.split_open
+            || self.tools.sanitize_open
             || self.tools.stamp_open.is_some()
             || self.docinfo.unprotect_open
             || self.docinfo.properties_open
@@ -1575,6 +1607,7 @@ impl SuniApp {
             || self.pagesetup.dialog.is_some()
             || self.annotate.note_prompt.is_some()
             || self.edit.text_prompt.is_some()
+            || self.edit.paragraph.is_some()
             || self.sign.open.is_some()
             || self.forms.flatten_open
             || self.annotate.adv.dialog_open()
@@ -1595,6 +1628,10 @@ impl SuniApp {
     }
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
+        if self.edit.paragraph.is_some() {
+            self.status_msg = Some(self.t("paragraph.finish_first").into());
+            return;
+        }
         log::debug!("commande {}", command.info().id);
         if self.ink_blocks_command(command) {
             self.ink_blocks_action();
@@ -2034,6 +2071,7 @@ impl SuniApp {
                 self.worker
                     .send(Request::Edit(EditOp::Bytes(BytesOp::StripMetadata)));
             }
+            Command::Sanitize => self.tools.sanitize_open = true,
             Command::ToggleComments => {
                 self.annotate.comments_open = !self.annotate.comments_open;
                 self.annotate.annotations_page = None;
@@ -3084,6 +3122,7 @@ impl eframe::App for SuniApp {
         self.unprotect_dialog(&ctx);
         self.redact_dialogs(&ctx);
         self.text_prompt_dialog(&ctx);
+        self.paragraph_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
         self.adv_dialogs(&ctx);

@@ -181,6 +181,10 @@ pub type PendingCopy = (bool, Option<(PathBuf, usize)>);
 
 pub struct EditState {
     pub selection: Option<Selection>,
+    pub rotation_center: Option<(u64, (f32, f32))>,
+    pub rotation_generation: u64,
+    pub paragraph: Option<crate::inline_text::ParagraphDraft>,
+    pub paragraph_generation: u64,
     /// Après une modification, resélectionner cet objet (page, index ; `usize::MAX` = dernier).
     pub reselect: Option<(usize, usize)>,
     /// Après une modification, resélectionner ces objets.
@@ -240,6 +244,10 @@ impl Default for EditState {
         let shape = ShapeStyle::default();
         Self {
             selection: None,
+            rotation_center: None,
+            rotation_generation: 0,
+            paragraph: None,
+            paragraph_generation: 0,
             reselect: None,
             reselect_many: None,
             text_prompt: None,
@@ -284,6 +292,10 @@ impl EditState {
     /// le presse-papiers, les polices, les réglages et l'état du panneau restent.
     pub fn reset_for_tab(&mut self) {
         self.selection = None;
+        self.rotation_center = None;
+        self.rotation_generation = self.rotation_generation.wrapping_add(1);
+        self.paragraph = None;
+        self.paragraph_generation = self.paragraph_generation.wrapping_add(1);
         self.reselect = None;
         self.reselect_many = None;
         self.drag_mode = None;
@@ -512,6 +524,9 @@ impl SuniApp {
     }
 
     fn on_rotate_handle(&self, page: usize, pt: (f32, f32)) -> bool {
+        if self.rotation_center_on(page).is_none() {
+            return false;
+        }
         let k = self.zoom_k();
         self.selection_on(page)
             .and_then(Selection::handle_info)
@@ -583,8 +598,8 @@ impl SuniApp {
         self.edit.drag_mode = if self.annotate.tool != Tool::SelectObject {
             None
         } else if self.on_rotate_handle(page, pt) {
-            let c = self.selection_on(page).map(|s| center(&s.union_bounds()));
-            c.map(|c| DragMode::Rotate { c })
+            self.rotation_center_on(page)
+                .map(|c| DragMode::Rotate { c })
         } else if let Some(c) = self.corner_at(page, pt) {
             Some(DragMode::Resize(c))
         } else if self.in_selection(page, pt) {
@@ -909,6 +924,8 @@ impl SuniApp {
 
     fn set_selection(&mut self, page: usize, objects: Vec<ObjectInfo>) {
         let lang = self.lang();
+        self.edit.rotation_center = None;
+        self.edit.rotation_generation = self.edit.rotation_generation.wrapping_add(1);
         if objects.is_empty() {
             self.edit.selection = None;
             return;
@@ -943,16 +960,56 @@ impl SuniApp {
         } else if let Some(c) = first.fill_rgb {
             self.edit.stroke_rgb = rgb_arr(c);
         }
-        if let Some(o) = first.opacity {
-            self.edit.opacity_pct = (o * 100.0).round();
-        }
+        self.edit.opacity_pct = (first.opacity.unwrap_or(1.0) * 100.0).round();
         self.edit.opacity_dirty = false;
         self.edit.angle_field = if objects.len() == 1 {
             first.angle_deg.round()
         } else {
             0.0
         };
+        let indices = objects.iter().map(|o| o.index).collect();
         self.edit.selection = Some(Selection { page, objects });
+        self.worker.send(Request::RotationCenter {
+            page,
+            indices,
+            epoch: self.view.epoch,
+            generation: self.edit.rotation_generation,
+        });
+    }
+
+    pub fn on_rotation_center(
+        &mut self,
+        page: usize,
+        indices: &[usize],
+        epoch: u64,
+        generation: u64,
+        center: Option<(f32, f32)>,
+    ) {
+        if self.document.is_none()
+            || self.opening.is_some()
+            || self.tabs.resuming.is_some()
+            || epoch != self.view.epoch
+            || generation != self.edit.rotation_generation
+            || !self
+                .selection_on(page)
+                .is_some_and(|s| s.indices() == indices)
+        {
+            return;
+        }
+        self.edit.rotation_center = center
+            .filter(|p| p.0.is_finite() && p.1.is_finite())
+            .map(|center| (epoch, center));
+    }
+
+    fn rotation_center_on(&self, page: usize) -> Option<(f32, f32)> {
+        self.selection_on(page)?;
+        if self.worker.has_pending_mutations() {
+            return None;
+        }
+        self.edit
+            .rotation_center
+            .filter(|(epoch, _)| *epoch == self.view.epoch)
+            .map(|(_, center)| center)
     }
 
     fn selection_ref(&self) -> Option<(usize, Vec<usize>)> {
@@ -1293,7 +1350,7 @@ impl SuniApp {
                 handle(pt(c.point(&bounds, off)));
             }
         }
-        if mode.is_none() {
+        if mode.is_none() && self.rotation_center_on(page_index).is_some() {
             // Poignée de rotation : tige depuis le haut du cadre, disque blanc cerclé.
             let h = pt(rotate_handle(&info, k));
             let a = frame_angle(&info).to_radians();
@@ -1328,6 +1385,7 @@ impl SuniApp {
         let p = theme::palette(self.settings.dark_theme);
         let has_icons = self.has_icons;
         let mut apply = false;
+        let mut paragraph = false;
         let mut angle_target = None;
         let mut action: Option<Command> = None;
         const GAP: f32 = 14.0;
@@ -1423,17 +1481,35 @@ impl SuniApp {
                             });
                             ui.separator();
                             ui.label(tr(lang, "bar.opacity"));
-                            let o = ui
-                                .add_enabled(
-                                    !all_forms,
-                                    egui::DragValue::new(&mut self.edit.opacity_pct)
-                                        .range(0.0..=100.0)
-                                        .speed(1.0)
-                                        .suffix(" %"),
-                                )
-                                .on_hover_text(tr(lang, "bar.opacity_hint"));
-                            if o.changed() {
-                                self.edit.opacity_dirty = true;
+                            let unknown = !self.edit.opacity_dirty
+                                && sel
+                                    .as_ref()
+                                    .and_then(|s| s.objects.first())
+                                    .is_some_and(|o| o.opacity.is_none());
+                            if unknown {
+                                if ui
+                                    .add_enabled(
+                                        !all_forms,
+                                        egui::Button::new(tr(lang, "bar.opacity_unknown")),
+                                    )
+                                    .on_hover_text(tr(lang, "bar.opacity_unknown_hint"))
+                                    .clicked()
+                                {
+                                    self.edit.opacity_dirty = true;
+                                }
+                            } else {
+                                let o = ui
+                                    .add_enabled(
+                                        !all_forms,
+                                        egui::DragValue::new(&mut self.edit.opacity_pct)
+                                            .range(0.0..=100.0)
+                                            .speed(1.0)
+                                            .suffix(" %"),
+                                    )
+                                    .on_hover_text(tr(lang, "bar.opacity_hint"));
+                                if o.changed() {
+                                    self.edit.opacity_dirty = true;
+                                }
                             }
                             if sel.is_some() {
                                 let base = single.as_ref().map_or(0.0, |i| i.angle_deg);
@@ -1470,6 +1546,12 @@ impl SuniApp {
                         });
                         ui.horizontal_wrapped(|ui| {
                             if sel.is_some() {
+                                if sel.as_ref().is_some_and(|s| {
+                                    s.objects.iter().all(|o| o.kind == ObjectKind::Text)
+                                }) && ui.button(tr(lang, "paragraph.open")).clicked()
+                                {
+                                    paragraph = true;
+                                }
                                 if ui
                                     .button(tr(lang, "bar.apply"))
                                     .on_hover_text(tr_args(
@@ -1512,6 +1594,9 @@ impl SuniApp {
             self.rotate_selected(norm180(
                 target - single.as_ref().map_or(0.0, |i| i.angle_deg),
             ));
+        }
+        if paragraph {
+            self.open_paragraph_prompt();
         }
         if apply {
             if let Some(sel) = &self.edit.selection {
@@ -1704,6 +1789,234 @@ mod tests {
     }
 
     #[test]
+    fn unknown_image_opacity_never_reuses_previous_selection_and_requires_explicit_replacement() {
+        fn frame(
+            app: &mut SuniApp,
+            ctx: &egui::Context,
+            events: Vec<egui::Event>,
+        ) -> egui::FullOutput {
+            let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1280.0, 780.0));
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(bounds),
+                    events,
+                    ..Default::default()
+                },
+                |_| app.object_bar(ctx, bounds),
+            );
+            out.textures_delta.clear();
+            out
+        }
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            app.annotate.tool = Tool::SelectObject;
+            let mut known = info(0);
+            known.opacity = Some(0.23);
+            app.set_selection(0, vec![known.clone()]);
+            assert_eq!(app.edit.opacity_pct, 23.0);
+            app.edit.opacity_dirty = true;
+            let mut unknown = info(1);
+            unknown.kind = ObjectKind::Image;
+            unknown.opacity = None;
+            app.set_selection(0, vec![unknown.clone()]);
+            assert!(requests
+                .try_iter()
+                .all(|request| matches!(request, Request::RotationCenter { .. })));
+            assert_eq!(app.edit.opacity_pct, 100.0);
+            assert!(!app.edit.opacity_dirty);
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            let mut target = None;
+            let mut apply_target = None;
+            for _ in 0..2 {
+                let out = frame(&mut app, &ctx, vec![]);
+                if let Some(tree) = out.platform_output.accesskit_update {
+                    apply_target = tree
+                        .nodes
+                        .iter()
+                        .map(|(_, node)| node)
+                        .find(|node| node.label() == Some(tr(app.lang(), "bar.apply")))
+                        .and_then(|node| node.bounds())
+                        .map(|bounds| {
+                            egui::pos2(
+                                ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                                ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                            )
+                        });
+                    target = tree
+                        .nodes
+                        .iter()
+                        .map(|(_, node)| node)
+                        .find(|node| node.label() == Some(tr(app.lang(), "bar.opacity_unknown")))
+                        .and_then(|node| node.bounds())
+                        .map(|bounds| {
+                            egui::pos2(
+                                ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                                ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                            )
+                        });
+                }
+            }
+            let target = target.expect("unknown opacity control is accessible");
+            assert!(!app.edit.opacity_dirty);
+            assert!(requests.try_recv().is_err());
+            app.edit.fill = true;
+            app.edit.fill_rgb = [10, 20, 30];
+            app.edit.stroke_width = 4.0;
+            let apply_target = apply_target.expect("Apply control is accessible");
+            for pressed in [true, false] {
+                frame(
+                    &mut app,
+                    &ctx,
+                    vec![
+                        egui::Event::PointerMoved(apply_target),
+                        egui::Event::PointerButton {
+                            pos: apply_target,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            assert!(
+                matches!(requests.recv().unwrap(), Request::Edit(EditOp::SetObjectStyle { style, .. }) if style.opacity.is_none() && style.fill_rgb == Some((10, 20, 30)))
+            );
+            assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+            app.worker.finish_mutation();
+            assert!(!app.edit.opacity_dirty);
+            for pressed in [true, false] {
+                frame(
+                    &mut app,
+                    &ctx,
+                    vec![
+                        egui::Event::PointerMoved(target),
+                        egui::Event::PointerButton {
+                            pos: target,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            assert!(app.edit.opacity_dirty);
+            assert_eq!(app.edit.opacity_pct, 100.0);
+            assert!(
+                requests.try_recv().is_err(),
+                "replacement still needs Apply"
+            );
+            app.set_selection(0, vec![known]);
+            assert_eq!(app.edit.opacity_pct, 23.0);
+            assert!(!app.edit.opacity_dirty);
+            app.set_selection(0, vec![unknown]);
+            assert_eq!(app.edit.opacity_pct, 100.0);
+            assert!(!app.edit.opacity_dirty);
+        }
+    }
+
+    #[test]
+    fn rotation_preview_uses_engine_pivot_and_rejects_stale_selection_and_document_responses() {
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.annotate.tool = Tool::SelectObject;
+        app.set_selection(0, vec![info(2), info(5)]);
+        let old_generation = app.edit.rotation_generation;
+        assert!(
+            matches!(requests.recv().unwrap(), Request::RotationCenter { page: 0, indices, .. } if indices == [2, 5])
+        );
+        app.set_selection(0, vec![info(2), info(5)]);
+        let generation = app.edit.rotation_generation;
+        let epoch = app.view.epoch;
+        assert!(
+            matches!(requests.recv().unwrap(), Request::RotationCenter { page: 0, indices, .. } if indices == [2, 5])
+        );
+        let handle = rotate_handle(
+            &app.edit.selection.as_ref().unwrap().handle_info().unwrap(),
+            app.zoom_k(),
+        );
+        assert!(
+            !app.on_rotate_handle(0, handle),
+            "rotation waits for the engine pivot"
+        );
+        for (page, indices, response_epoch, response_generation) in [
+            (0, vec![2, 5], epoch, old_generation),
+            (1, vec![2, 5], epoch, generation),
+            (0, vec![2], epoch, generation),
+            (0, vec![2, 5], epoch.wrapping_add(1), generation),
+        ] {
+            app.on_rotation_center(
+                page,
+                &indices,
+                response_epoch,
+                response_generation,
+                Some((7.0, 7.0)),
+            );
+            assert!(app.edit.rotation_center.is_none());
+        }
+        let pivot = (7.0, 7.0);
+        responses
+            .send(crate::worker::Response::RotationCenter {
+                page: 0,
+                indices: vec![2, 5],
+                epoch,
+                generation,
+                center: Some(pivot),
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(app.rotation_center_on(0), Some(pivot));
+        app.edit_drag_start(0, handle);
+        assert_eq!(app.edit.drag_mode, Some(DragMode::Rotate { c: pivot }));
+        let drag = Drag {
+            page: 0,
+            start: handle,
+            current: rotate_point(pivot, handle, 30.0),
+        };
+        app.annotate.drag = Some(drag);
+        let page_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(600.0, 700.0));
+        let k = app.zoom_k();
+        let expected = rotate_point(pivot, frame(&info(2))[0], 30.0);
+        let expected = egui::pos2(expected.0 * k, (500.0 - expected.1) * k);
+        let mut out = ctx.run_ui(Default::default(), |ui| {
+            app.paint_object_selection(ui.painter(), page_rect, 0, 500.0);
+        });
+        assert!(
+            out.shapes.iter().any(|shape| match &shape.shape {
+                egui::Shape::Path(path) => path.points.iter().any(|p| p.distance(expected) < 0.01),
+                _ => false,
+            }),
+            "preview rotates around the returned engine pivot"
+        );
+        out.textures_delta.clear();
+        assert!(
+            requests.try_recv().is_err(),
+            "painting does not poll for pivots"
+        );
+        app.edit_drag_finished(drag);
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Edit(EditOp::RotateObjects { page: 0, indices, degrees }) if indices == [2, 5] && (degrees - 30.0).abs() < 0.01)
+        );
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        assert!(
+            app.rotation_center_on(0).is_none(),
+            "no drag during a pending mutation"
+        );
+        app.worker.finish_mutation();
+        app.view.bump_epoch();
+        assert!(app.rotation_center_on(0).is_none());
+        app.on_rotation_center(0, &[2, 5], epoch, generation, Some(pivot));
+        assert!(
+            app.rotation_center_on(0).is_none(),
+            "old document pivot is stale"
+        );
+        app.edit.reset_for_tab();
+        app.on_rotation_center(0, &[2, 5], app.view.epoch, generation, Some(pivot));
+        assert!(app.edit.rotation_center.is_none());
+    }
+
+    #[test]
     fn existing_text_missing_glyphs_reopens_current_draft_instead_of_previous_addition() {
         let (mut app, requests, responses) = crate::app::tests::test_app();
         let mut object = info(2);
@@ -1712,6 +2025,10 @@ mod tests {
         object.font_size = 12.0;
         object.fill_rgb = Some((0, 0, 0));
         app.set_selection(0, vec![object]);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::RotationCenter { .. }
+        ));
         let mut prompt = TextPrompt {
             page: 0,
             x: 20.0,
@@ -1886,6 +2203,10 @@ mod tests {
         let (mut app, requests, _) = crate::app::tests::test_app();
         app.annotate.tool = Tool::SelectObject;
         app.set_selection(0, vec![info(2), info(5)]);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::RotationCenter { .. }
+        ));
         app.rotate_selected(90.0);
         assert!(
             matches!(requests.recv().unwrap(), Request::Edit(EditOp::RotateObjects { page: 0, indices, degrees: 90.0 }) if indices == [2, 5])

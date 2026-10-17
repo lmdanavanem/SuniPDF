@@ -53,6 +53,114 @@ pub struct DigitalSignature {
     pub signing_time: Option<String>,
     pub signed_len: usize,
     pub detail: Option<u32>,
+    pub trust: SignatureTrust,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct VerificationOptions {
+    pub allow_network: bool,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ChainTrust {
+    Trusted,
+    Untrusted,
+    #[default]
+    Unavailable,
+}
+impl ChainTrust {
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Trusted => "trusted",
+            Self::Untrusted => "untrusted",
+            Self::Unavailable => "unavailable",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum RevocationStatus {
+    Good,
+    Revoked,
+    Offline,
+    Unknown,
+    #[default]
+    NotChecked,
+}
+impl RevocationStatus {
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Good => "good",
+            Self::Revoked => "revoked",
+            Self::Offline => "offline",
+            Self::Unknown => "unknown",
+            Self::NotChecked => "not_checked",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum TimestampStatus {
+    #[default]
+    Absent,
+    Trusted,
+    Untrusted,
+    Invalid,
+    Unsupported,
+    Unavailable,
+}
+impl TimestampStatus {
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Absent => "absent",
+            Self::Trusted => "trusted",
+            Self::Untrusted => "untrusted",
+            Self::Invalid => "invalid",
+            Self::Unsupported => "unsupported",
+            Self::Unavailable => "unavailable",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TimestampVerification {
+    pub status: TimestampStatus,
+    pub time: Option<String>,
+    pub chain: ChainTrust,
+    pub revocation: RevocationStatus,
+    pub detail: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum LtvStatus {
+    #[default]
+    Absent,
+    EmbeddedUnverified,
+    Malformed,
+}
+impl LtvStatus {
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Absent => "absent",
+            Self::EmbeddedUnverified => "embedded_unverified",
+            Self::Malformed => "malformed",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SignatureTrust {
+    pub chain: ChainTrust,
+    pub revocation: RevocationStatus,
+    pub chain_detail: Option<u32>,
+    pub timestamp: TimestampVerification,
+    pub ltv: LtvStatus,
+    pub network_allowed: bool,
+}
+impl SignatureTrust {
+    pub fn identity_trusted(&self) -> bool {
+        self.chain == ChainTrust::Trusted && self.revocation == RevocationStatus::Good
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -64,6 +172,10 @@ pub struct CertSignOptions {
 pub fn identity_info(pfx: &[u8], password: &str) -> Result<CertificateInfo, EngineError> {
     native::Identity::from_pfx(pfx, password)?.info()
 }
+
+#[cfg(test)]
+#[path = "certificate_trust_tests.rs"]
+mod trust_tests;
 
 fn text(dict: &Dictionary, key: &[u8]) -> Option<String> {
     dict.get(key)
@@ -220,7 +332,16 @@ pub fn verify_signatures(
     input: &[u8],
     password: Option<&str>,
 ) -> Result<Vec<DigitalSignature>, EngineError> {
+    verify_signatures_with_options(input, password, VerificationOptions::default())
+}
+
+pub fn verify_signatures_with_options(
+    input: &[u8],
+    password: Option<&str>,
+    options: VerificationOptions,
+) -> Result<Vec<DigitalSignature>, EngineError> {
     let pdf = security::load(input, password)?;
+    let ltv = ltv_status(&pdf);
     let mut out = Vec::new();
     for (field_name, dict) in fields(&pdf)?.signatures {
         let sub_filter = dict
@@ -238,6 +359,11 @@ pub fn verify_signatures(
             signing_time: text(&dict, b"M"),
             signed_len: 0,
             detail: None,
+            trust: SignatureTrust {
+                ltv,
+                network_allowed: options.allow_network,
+                ..Default::default()
+            },
         };
         if !matches!(
             result.sub_filter.as_str(),
@@ -246,8 +372,10 @@ pub fn verify_signatures(
             result.status = SignatureStatus::Unsupported;
         } else if let Some((a, b, cms, end)) = signed_data(input, &dict) {
             result.signed_len = end;
-            match native::verify(&cms, &[a, b]) {
-                Ok(info) => {
+            match native::verify_trust(&cms, &[a, b], options) {
+                Ok((info, mut trust)) => {
+                    trust.ltv = ltv;
+                    result.trust = trust;
                     result.certificate = Some(info);
                     result.status = if input[end..].iter().all(|b| pdf_space(*b)) {
                         SignatureStatus::Valid
@@ -270,6 +398,33 @@ pub fn verify_signatures(
     }
     out.sort_by_key(|s| s.signed_len);
     Ok(out)
+}
+
+fn ltv_status(pdf: &lopdf::Document) -> LtvStatus {
+    let inspect = || -> Result<LtvStatus, EngineError> {
+        let Some(dss) = entry(pdf, pdf.catalog().map_err(lopdf_err)?, b"DSS")? else {
+            return Ok(LtvStatus::Absent);
+        };
+        let dss = dss.as_dict().map_err(lopdf_err)?;
+        let mut count = 0usize;
+        let mut size = 0usize;
+        for key in [b"Certs".as_slice(), b"OCSPs", b"CRLs"] {
+            if let Some(material) = entry(pdf, dss, key)? {
+                for value in material.as_array().map_err(lopdf_err)? {
+                    count += 1;
+                    let stream = resolve(pdf, value)?.as_stream().map_err(lopdf_err)?;
+                    size = size
+                        .checked_add(stream.content.len())
+                        .ok_or(EngineError::InvalidFormat)?;
+                    if count > 256 || size > 16 * 1024 * 1024 {
+                        return Err(EngineError::InvalidFormat);
+                    }
+                }
+            }
+        }
+        Ok(LtvStatus::EmbeddedUnverified)
+    };
+    inspect().unwrap_or(LtvStatus::Malformed)
 }
 
 /// Produces a new signed copy without reserializing any preceding revision.

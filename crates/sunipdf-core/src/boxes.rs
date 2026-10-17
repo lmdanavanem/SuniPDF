@@ -25,6 +25,8 @@ pub enum ResizeMode {
     KeepContent,
     /// Contenu mis à l'échelle pour tenir dans la nouvelle page, centré.
     ScaleContent,
+    /// Scale content and explicitly include annotation/link geometry.
+    ScaleContentWithAnnotations,
 }
 
 fn pdf_rect(r: PointRect) -> PdfRect {
@@ -107,8 +109,8 @@ impl Document<'_> {
         self.refresh_page_sizes()
     }
 
-    /// Donne à la page la taille d'affichage `width_pt` × `height_pt`. Les annotations et liens
-    /// ne suivent pas la mise à l'échelle.
+    /// Donne à la page la taille d'affichage `width_pt` × `height_pt`.
+    /// Annotation/link geometry follows only with `ScaleContentWithAnnotations`.
     pub fn resize_page(
         &mut self,
         page_index: usize,
@@ -117,6 +119,30 @@ impl Document<'_> {
         mode: ResizeMode,
     ) -> Result<(), EngineError> {
         check_size(width_pt, height_pt)?;
+        if mode == ResizeMode::ScaleContentWithAnnotations {
+            let old = self.page_geometry(page_index)?;
+            let mut scratch = Document {
+                inner: self
+                    .pdfium
+                    .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
+                pdfium: self.pdfium,
+                info: self.info.clone(),
+                page_rotations: self.page_rotations.clone(),
+                password: self.password.clone(),
+                font_cache: Default::default(),
+            };
+            scratch.resize_page(page_index, width_pt, height_pt, ResizeMode::ScaleContent)?;
+            let new = scratch.page_geometry(page_index)?;
+            scratch.scale_annotation_geometry(
+                page_index,
+                scale_matrix(&old, &new, width_pt, height_pt),
+            )?;
+            self.inner = scratch.inner;
+            self.info = scratch.info;
+            self.page_rotations = scratch.page_rotations;
+            self.font_cache.clear();
+            return Ok(());
+        }
         let mut page = self.page_handle(page_index)?;
         let old = geometry_of(&page)?;
         let (_, oh) = old.display_size();
@@ -127,7 +153,7 @@ impl Document<'_> {
                 right: width_pt,
                 top: oh,
             }),
-            ResizeMode::ScaleContent => {
+            ResizeMode::ScaleContent | ResizeMode::ScaleContentWithAnnotations => {
                 let (uw, uh) =
                     if matches!(old.rotation, crate::Rotation::R90 | crate::Rotation::R270) {
                         (height_pt, width_pt)

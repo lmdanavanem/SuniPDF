@@ -67,6 +67,7 @@ pub enum Command {
     Protect,
     Unprotect,
     StripMetadata,
+    Sanitize,
     CombineFiles,
     SplitDocument,
     ExtractPages,
@@ -631,6 +632,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         StripMetadata,
         "security.strip_metadata",
         "menu.security.strip_metadata",
+        None,
+        true,
+        Security
+    ),
+    cmd!(
+        Sanitize,
+        "security.sanitize",
+        "menu.security.sanitize",
         None,
         true,
         Security

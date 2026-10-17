@@ -1,0 +1,22 @@
+[
+  {
+    "edition": "2022",
+    "source": "https://visualstudio.microsoft.com/wp-content/uploads/2024/03/Visual-Studio-2022-Diagnostic-Build-Tools-Agent-License_Update-March-2024_EN.docx",
+    "licensePage": "https://visualstudio.microsoft.com/license-terms/vs2022-ga-diagnosticbuildtools/",
+    "documentSha256": "2f66b86a00e8d9833789897ce23d05a4a2dbea370cf39c8c1098dbc17d0e7bdc",
+    "textSha256": "0c1bb848fbc0cd9f1679d1a77db087141fa619cd2cd9a60291f1e20a0162b69d",
+    "licenseFile": "assets/licenses/microsoft-build-tools-2022.txt",
+    "extraction": "All paragraph text in official Word document order; Word automatic numbering is represented by document structure, not generated numbers.",
+    "originalDocumentFile": "assets/licenses/microsoft-build-tools-2022.docx"
+  },
+  {
+    "edition": "2026",
+    "source": "https://visualstudio.microsoft.com/wp-content/uploads/2025/10/Visual_Studio_2026-License-Diagnostic_and_Build_Tools_ENU.docx",
+    "licensePage": "https://visualstudio.microsoft.com/license-terms/vs2026-ga-diagnostic-buildtools/",
+    "documentSha256": "ff03a242ec131e8353643612cdf58ae3d6cc9b51d7dce929351d140ba24a8b83",
+    "textSha256": "053c32242100fa63e335aa34b21d5c0cbfe707c2b668db294ce6896e51dc9bcf",
+    "licenseFile": "assets/licenses/microsoft-build-tools-2026.txt",
+    "extraction": "All paragraph text in official Word document order; Word automatic numbering is represented by document structure, not generated numbers.",
+    "originalDocumentFile": "assets/licenses/microsoft-build-tools-2026.docx"
+  }
+]

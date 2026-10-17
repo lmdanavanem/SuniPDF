@@ -10,6 +10,8 @@ Set-Location $root
 $version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
 $stage = Join-Path $root "dist\SuniPDF-$version-win-$Arch-portable"
 if (-not (Test-Path "$stage\sunipdf.exe")) { throw "Portable package missing: run package-portable.ps1 -Arch $Arch first." }
+& python (Join-Path $PSScriptRoot 'license-inventory.py') --verify --stage $stage
+if ($LASTEXITCODE -ne 0) { throw 'The prepared portable payload or license inventory is invalid.' }
 foreach ($file in @('tesseract.exe', 'eng.traineddata', 'fra.traineddata', 'ocr-tesseract.txt', 'ocr-leptonica.txt', 'ocr-tessdata-fast.txt', 'ocr-AUTHORS.txt', 'ocr-NOTICE.txt')) {
     if (-not (Test-Path -LiteralPath (Join-Path "$stage\licenses" $file))) { throw "Bundled OCR file missing: $file" }
 }
@@ -29,9 +31,22 @@ if (-not $wixBin) {
     $wixBin = $dl
 }
 
-$obj = Join-Path $root "target\wix"
+$obj = Join-Path $root "target\wix-$Arch"
 New-Item -ItemType Directory -Force $obj | Out-Null
 $msi = Join-Path $root "dist\SuniPDF-$version-win-$Arch.msi"
+$wixProvenance = [ordered]@{ schema = 1; tools = @(foreach ($name in @('candle.exe', 'light.exe')) {
+    $path = Join-Path $wixBin $name
+    [ordered]@{ name = $name; version = (Get-Item -LiteralPath $path).VersionInfo.ProductVersion; sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() }
+}) }
+$wixEvidence = Join-Path $obj 'wix-build-provenance.json'
+[IO.File]::WriteAllText($wixEvidence, ($wixProvenance | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
+# Keep the already verified portable ZIP and stage unchanged when adding MSI build evidence.
+$msiStage = Join-Path $obj ('payload-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $msiStage | Out-Null
+Copy-Item -Path (Join-Path $stage '*') -Destination $msiStage -Recurse
+$stage = $msiStage
+& python (Join-Path $PSScriptRoot 'license-inventory.py') --stage $stage --record-wix $wixEvidence
+if ($LASTEXITCODE -ne 0) { throw 'Selected MSI build-tool evidence could not be verified.' }
 
 # One component per flat license/OCR file, including the runtime required for offline recognition.
 $licenses = Get-ChildItem -File (Join-Path $stage "licenses") | Sort-Object Name
@@ -67,6 +82,7 @@ $readmeText = "SuniPDF $version (Windows $Arch)`r`n" +
 if ($LASTEXITCODE -ne 0) { throw "candle failed" }
 & (Join-Path $wixBin "light.exe") -nologo -sval -out $msi "$obj\SuniPDF.wixobj" "$obj\Licenses.wixobj"
 if ($LASTEXITCODE -ne 0) { throw "light failed" }
+& (Join-Path $PSScriptRoot 'verify-msi-licenses.ps1') -MsiPath $msi -OutputDirectory $obj
 $hash = (Get-FileHash $msi -Algorithm SHA256).Hash
 Set-Content -Path "$msi.sha256" -Value "$hash  $(Split-Path -Leaf $msi)" -Encoding ascii
 Write-Host "OK : $msi"

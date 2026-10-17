@@ -21,6 +21,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-pc-windows-msvc
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Cache pinned offline OCR runtime
         uses: actions/cache@v6
@@ -29,6 +30,13 @@ jobs:
           key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Offline OCR (${{ matrix.arch }}, including English and French)
         run: .\scripts\fetch-ocr.ps1 -Arch ${{ matrix.arch }}
+      - name: Format and Clippy (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          cargo fmt --all -- --check
+          if ($LASTEXITCODE -ne 0) { throw 'Formatting check failed.' }
+          cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Clippy failed.' }
       - name: Tests (x64)
         if: matrix.arch == 'x64'
         run: |

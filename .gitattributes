@@ -1,2 +1,7 @@
 # Les fixtures PDF contiennent des décalages d'octets (xref, /Length) : jamais de conversion de fins de ligne.
 *.pdf binary
+
+# Preserve vendored legal evidence bytes used by the pinned SHA-256 checks.
+assets/licenses/upstream/*.txt -text whitespace=-trailing-space,-blank-at-eof
+assets/licenses/microsoft-build-tools-*.txt -text whitespace=-trailing-space,-blank-at-eof
+assets/licenses/microsoft-build-tools-*.docx binary

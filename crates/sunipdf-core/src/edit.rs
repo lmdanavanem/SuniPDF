@@ -159,6 +159,69 @@ fn finite_bounds(b: PointRect) -> bool {
         .all(|v| v.is_finite())
 }
 
+fn rotation_point(
+    bounds: &mut PointRect,
+    remaining: &mut usize,
+    (x, y): (PdfPoints, PdfPoints),
+) -> Result<(), EngineError> {
+    *remaining = remaining
+        .checked_sub(1)
+        .ok_or_else(|| EngineError::Other("rotation geometry limit exceeded".into()))?;
+    if !x.value.is_finite() || !y.value.is_finite() {
+        return Err(EngineError::Other("invalid object bounds".into()));
+    }
+    bounds.left = bounds.left.min(x.value);
+    bounds.bottom = bounds.bottom.min(y.value);
+    bounds.right = bounds.right.max(x.value);
+    bounds.top = bounds.top.max(y.value);
+    Ok(())
+}
+
+fn rotation_bounds(
+    object: &PdfPageObject<'_>,
+    parent_to_frame: PdfMatrix,
+    bounds: &mut PointRect,
+    remaining: &mut usize,
+    depth: usize,
+) -> Result<(), EngineError> {
+    // shortcut: 32 form levels and 100,000 geometry entries; revisit after large-graph benchmarks.
+    if depth > 32 || *remaining == 0 {
+        return Err(EngineError::Other(
+            "rotation geometry limit exceeded".into(),
+        ));
+    }
+    *remaining -= 1;
+    let to_frame = object.matrix()?.multiply(parent_to_frame);
+    if let Some(path) = object.as_path_object() {
+        let segments = path.segments();
+        for index in 0..segments.len() {
+            let segment = segments.get(index)?;
+            if segment.segment_type() == PdfPathSegmentType::Unknown {
+                return Err(EngineError::Other("invalid path segment".into()));
+            }
+            let (x, y) = segment.point();
+            rotation_point(bounds, remaining, to_frame.apply_to_points(x, y))?;
+        }
+    } else if let Some(form) = object.as_x_object_form_object() {
+        for index in 0..form.len() {
+            rotation_bounds(&form.get(index)?, to_frame, bounds, remaining, depth + 1)?;
+        }
+    } else if matches!(kind_of(object), ObjectKind::Text | ObjectKind::Image) {
+        let q = object.bounds()?;
+        for (x, y) in [
+            (q.x1(), q.y1()),
+            (q.x2(), q.y2()),
+            (q.x3(), q.y3()),
+            (q.x4(), q.y4()),
+        ] {
+            rotation_point(bounds, remaining, parent_to_frame.apply_to_points(x, y))?;
+        }
+    } else {
+        return Err(EngineError::Other("unsupported rotation geometry".into()));
+    }
+    Ok(())
+}
+
 /// Cadre orienté d'un objet, espace d'affichage.
 pub(crate) fn display_quad(object: &PdfPageObject<'_>, geo: &PageGeometry) -> [(f32, f32); 4] {
     match object.bounds() {
@@ -762,7 +825,9 @@ impl Document<'_> {
             let is_path = object.object_type() == PdfPageObjectType::Path;
             let fill = object.fill_color().unwrap_or(PdfColor::new(0, 0, 0, 255));
             let alpha = style.opacity.map(alpha_u8);
-            if style.fill_rgb.is_some() || alpha.is_some() {
+            if (style.fill_rgb.is_some() && object.object_type() != PdfPageObjectType::Image)
+                || alpha.is_some()
+            {
                 let rgb = style
                     .fill_rgb
                     .unwrap_or((fill.red(), fill.green(), fill.blue()));
@@ -811,7 +876,7 @@ impl Document<'_> {
         Ok(())
     }
 
-    /// Fait pivoter un objet autour du centre de ses limites (degrés, sens horaire à l'écran).
+    /// Rotate one object around its stable local geometry center (clockwise display degrees).
     pub fn rotate_object(
         &mut self,
         page_index: usize,
@@ -821,7 +886,53 @@ impl Document<'_> {
         self.rotate_objects(page_index, &[index], degrees)
     }
 
-    /// Rotate a selection around one common display-space center (clockwise degrees).
+    /// Read the stable display-space pivot used for selection rotation without editing the PDF.
+    pub fn rotation_center(
+        &self,
+        page_index: usize,
+        indices: &[usize],
+    ) -> Result<(f32, f32), EngineError> {
+        let (geo, indices, _) = self.transform_selection(page_index, indices)?;
+        let page = self.page_handle(page_index)?;
+        let frame = page
+            .objects()
+            .get(indices[0] as PdfPageObjectIndex)?
+            .matrix()?;
+        let determinant = frame.determinant();
+        if !determinant.is_finite() || determinant == 0.0 {
+            return Err(EngineError::Other("invalid object transform".into()));
+        }
+        let mut bounds = PointRect {
+            left: f32::MAX,
+            bottom: f32::MAX,
+            right: f32::MIN,
+            top: f32::MIN,
+        };
+        let mut remaining = 100_000;
+        for &index in &indices {
+            rotation_bounds(
+                &page.objects().get(index as PdfPageObjectIndex)?,
+                frame.invert(),
+                &mut bounds,
+                &mut remaining,
+                0,
+            )?;
+        }
+        if !finite_bounds(bounds) || bounds.right < bounds.left || bounds.top < bounds.bottom {
+            return Err(EngineError::Other("invalid object bounds".into()));
+        }
+        let (cx, cy) = frame.apply_to_points(
+            PdfPoints::new((bounds.left + bounds.right) / 2.0),
+            PdfPoints::new((bounds.bottom + bounds.top) / 2.0),
+        );
+        let (cx, cy) = geo.to_display(cx.value, cy.value);
+        if !cx.is_finite() || !cy.is_finite() {
+            return Err(EngineError::Other("invalid object bounds".into()));
+        }
+        Ok((cx, cy))
+    }
+
+    /// Rotate a selection around its bounds in the first object's affine frame (clockwise degrees).
     pub fn rotate_objects(
         &mut self,
         page_index: usize,
@@ -831,8 +942,8 @@ impl Document<'_> {
         if !degrees.is_finite() {
             return Err(EngineError::Other("invalid angle".into()));
         }
-        let (geo, indices, b) = self.transform_selection(page_index, indices)?;
-        let (cx, cy) = ((b.left + b.right) / 2.0, (b.bottom + b.top) / 2.0);
+        let (geo, indices, _) = self.transform_selection(page_index, indices)?;
+        let (cx, cy) = self.rotation_center(page_index, &indices)?;
         let (sin, cos) = degrees.rem_euclid(360.0).to_radians().sin_cos();
         let m = user_transform(
             &geo,
@@ -873,7 +984,7 @@ impl Document<'_> {
     /// Fusionne les flux de contenu d'une page en un seul (lopdf), si elle en a plusieurs.
     /// PDFium ordonne le dessin flux par flux : un seul flux rend l'ordre des objets fidèle
     /// à l'ordre de la liste.
-    fn merge_content_streams(&mut self, page_index: usize) -> Result<bool, EngineError> {
+    pub(crate) fn merge_content_streams(&mut self, page_index: usize) -> Result<bool, EngineError> {
         let bytes = self.snapshot()?;
         let mut doc = crate::security::load(&bytes, self.password())?;
         let page_id = *doc

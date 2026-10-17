@@ -88,6 +88,7 @@ pub struct ResizeForm {
     pub height: f32,
     pub landscape: bool,
     pub scale: bool,
+    pub annotations: bool,
     pub all: bool,
 }
 
@@ -175,6 +176,7 @@ impl ResizeForm {
             height: PRESETS[1].2,
             landscape: false,
             scale: false,
+            annotations: false,
             all: true,
         }
     }
@@ -538,6 +540,10 @@ impl SuniApp {
                         ui.radio_value(&mut f.scale, false, tr(lang, "pagesetup.resize.mode_keep"));
                         ui.radio_value(&mut f.scale, true, tr(lang, "pagesetup.resize.mode_scale"));
                         if f.scale {
+                            ui.checkbox(
+                                &mut f.annotations,
+                                tr(lang, "pagesetup.resize.annotations"),
+                            );
                             ui.label(
                                 RichText::new(tr(lang, "pagesetup.resize.scale_note"))
                                     .size(12.0)
@@ -681,7 +687,11 @@ impl SuniApp {
                         width_pt: mm_to_pt(w),
                         height_pt: mm_to_pt(h),
                         mode: if f.scale {
-                            ResizeMode::ScaleContent
+                            if f.annotations {
+                                ResizeMode::ScaleContentWithAnnotations
+                            } else {
+                                ResizeMode::ScaleContent
+                            }
                         } else {
                             ResizeMode::KeepContent
                         },

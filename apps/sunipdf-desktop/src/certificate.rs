@@ -2,12 +2,12 @@
 
 use crate::dialog::{self, Spec};
 use std::path::PathBuf;
-use sunipdf_core::certificate::{CertSignOptions, DigitalSignature};
+use sunipdf_core::certificate::{CertSignOptions, DigitalSignature, VerificationOptions};
 use sunipdf_i18n::{tr, Language};
 use zeroize::Zeroizing;
 
 pub enum CertificateAction {
-    Verify,
+    Verify(VerificationOptions),
     Sign {
         pfx: PathBuf,
         password: Zeroizing<String>,
@@ -27,6 +27,7 @@ pub struct CertificateState {
     reason: String,
     location: String,
     signatures: Option<Vec<DigitalSignature>>,
+    allow_network: bool,
 }
 
 impl CertificateState {
@@ -36,10 +37,18 @@ impl CertificateState {
         self.error = None;
         self.password = Zeroizing::new(String::new());
         self.signatures = None;
+        self.allow_network = false;
     }
     pub fn results(&mut self, signatures: Vec<DigitalSignature>) {
         self.busy = false;
         self.signatures = Some(signatures);
+    }
+    fn verify_action(&mut self) -> CertificateAction {
+        self.busy = true;
+        self.error = None;
+        CertificateAction::Verify(VerificationOptions {
+            allow_network: std::mem::take(&mut self.allow_network),
+        })
     }
     pub fn show(
         &mut self,
@@ -76,6 +85,16 @@ impl CertificateState {
             |ui| {
                 ui.label(tr(lang, "certificate.trust_unknown"));
                 ui.label(tr(lang, "certificate.scope"));
+                if !self.signing {
+                    ui.add_enabled(
+                        !self.busy,
+                        egui::Checkbox::new(
+                            &mut self.allow_network,
+                            tr(lang, "certificate.network_consent"),
+                        ),
+                    );
+                    ui.small(tr(lang, "certificate.network_note"));
+                }
                 if self.signing {
                     ui.label(tr(lang, "certificate.saved_copy"));
                     if ui
@@ -116,6 +135,31 @@ impl CertificateState {
                         ui.label(tr(
                             lang,
                             &format!("certificate.status.{}", signature.status.id()),
+                        ));
+                        for key in [
+                            format!("certificate.chain.{}", signature.trust.chain.id()),
+                            format!("certificate.revocation.{}", signature.trust.revocation.id()),
+                            format!(
+                                "certificate.timestamp.{}",
+                                signature.trust.timestamp.status.id()
+                            ),
+                            format!("certificate.ltv.{}", signature.trust.ltv.id()),
+                        ] {
+                            ui.label(tr(lang, &key));
+                        }
+                        if let Some(time) = &signature.trust.timestamp.time {
+                            ui.label(format!(
+                                "{}: {time}",
+                                tr(lang, "certificate.timestamp_time")
+                            ));
+                        }
+                        ui.small(tr(
+                            lang,
+                            if signature.trust.network_allowed {
+                                "certificate.network_used"
+                            } else {
+                                "certificate.offline_used"
+                            },
                         ));
                         if let Some(cert) = &signature.certificate {
                             ui.label(format!(
@@ -177,6 +221,7 @@ impl CertificateState {
         if close {
             self.visible = false;
             self.password = Zeroizing::new(String::new());
+            self.allow_network = false;
         }
         if submit {
             if self.signing {
@@ -201,11 +246,13 @@ impl CertificateState {
                     }
                 }
             } else {
-                self.busy = true;
-                self.error = None;
-                action = Some(CertificateAction::Verify);
+                action = Some(self.verify_action());
             }
         }
         action
     }
 }
+
+#[cfg(test)]
+#[path = "certificate_tests.rs"]
+mod tests;

@@ -1,9 +1,12 @@
 //! Windows owns the private key and performs all CMS cryptography.
 
-use super::CertificateInfo;
+use super::{CertificateInfo, SignatureTrust, VerificationOptions};
 use crate::EngineError;
 use windows::core::{w, PCWSTR};
 use windows::Win32::Security::Cryptography::*;
+
+#[path = "certificate_trust_native.rs"]
+mod trust;
 
 struct Store(HCERTSTORE);
 impl Drop for Store {
@@ -172,7 +175,23 @@ fn buffers(parts: &[&[u8]]) -> Result<(Vec<*const u8>, Vec<u32>), EngineError> {
     Ok((parts.iter().map(|p| p.as_ptr()).collect(), sizes))
 }
 
+#[cfg(test)]
 pub(super) fn verify(cms: &[u8], parts: &[&[u8]]) -> Result<CertificateInfo, u32> {
+    let cert = verified_signer(cms, parts)?;
+    cert_info(cert.0).map_err(|_| 0x80092004u32)
+}
+
+pub(super) fn verify_trust(
+    cms: &[u8],
+    parts: &[&[u8]],
+    options: VerificationOptions,
+) -> Result<(CertificateInfo, SignatureTrust), u32> {
+    let cert = verified_signer(cms, parts)?;
+    let info = cert_info(cert.0).map_err(|_| 0x80092004u32)?;
+    Ok((info, trust::assess(cert.0, cms, options)))
+}
+
+fn verified_signer(cms: &[u8], parts: &[&[u8]]) -> Result<Cert, u32> {
     if cms.len() > u32::MAX as usize {
         return Err(0x80070057);
     }
@@ -201,7 +220,7 @@ pub(super) fn verify(cms: &[u8], parts: &[&[u8]]) -> Result<CertificateInfo, u32
         Some(Cert(cert))
     };
     result.map_err(|e| e.code().0 as u32)?;
-    cert_info(cert.as_ref().ok_or(0x80092004u32)?.0).map_err(|_| 0x80092004u32)
+    cert.ok_or(0x80092004u32)
 }
 
 fn cert_info(cert: *const CERT_CONTEXT) -> Result<CertificateInfo, EngineError> {

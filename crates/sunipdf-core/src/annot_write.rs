@@ -1097,7 +1097,152 @@ fn touch(dict: &mut Dictionary) {
     dict.set("M", Object::string_literal(pdf_date_now()));
 }
 
+fn scaled_annotation_pairs(
+    pdf: &lopdf::Document,
+    value: &Object,
+    matrix: [f32; 6],
+    valid_length: impl FnOnce(usize) -> bool,
+) -> Result<Object, EngineError> {
+    let values = deref(pdf, value)
+        .ok_or_else(|| EngineError::Other("invalid annotation geometry reference".into()))?
+        .as_array()
+        .map_err(lopdf_err)?;
+    if values.len() > 200_000 || !values.len().is_multiple_of(2) || !valid_length(values.len()) {
+        return Err(EngineError::Other(
+            "invalid annotation geometry length".into(),
+        ));
+    }
+    let mut output = Vec::with_capacity(values.len());
+    for pair in values.chunks_exact(2) {
+        let number = |value| {
+            deref(pdf, value)
+                .and_then(|value| value.as_float().ok())
+                .filter(|value| value.is_finite())
+                .ok_or_else(|| EngineError::Other("invalid annotation coordinate".into()))
+        };
+        let (x, y) = (number(&pair[0])?, number(&pair[1])?);
+        let (x, y) = (
+            matrix[0] * x + matrix[2] * y + matrix[4],
+            matrix[1] * x + matrix[3] * y + matrix[5],
+        );
+        if !x.is_finite() || !y.is_finite() {
+            return Err(EngineError::Other("annotation coordinate overflow".into()));
+        }
+        output.extend([Object::Real(x), Object::Real(y)]);
+    }
+    Ok(Object::Array(output))
+}
+
 impl Document<'_> {
+    pub(crate) fn scale_annotation_geometry(
+        &mut self,
+        page_index: usize,
+        matrix: [f32; 6],
+    ) -> Result<(), EngineError> {
+        self.edit_pdf(page_index, |pdf, page, _| {
+            let entries = match pdf.get_dictionary(page).map_err(lopdf_err)?.get(b"Annots") {
+                Ok(value) => deref(pdf, value)
+                    .ok_or_else(|| EngineError::Other("invalid annotation list".into()))?
+                    .as_array()
+                    .map_err(lopdf_err)?
+                    .clone(),
+                Err(_) => return Ok(()),
+            };
+            if entries.len() > 100_000 {
+                return Err(EngineError::Other("too many annotations".into()));
+            }
+            let page_annotation_ids = entries
+                .iter()
+                .filter_map(|entry| pdf.dereference(entry).ok().and_then(|(id, _)| id))
+                .collect::<HashSet<_>>();
+            let mut other_page_ids = HashSet::new();
+            for id in pdf.get_pages().values().copied().filter(|id| *id != page) {
+                for entry in annots_entries(pdf, id) {
+                    if let Ok((Some(id), _)) = pdf.dereference(&entry) {
+                        other_page_ids.insert(id);
+                    }
+                }
+            }
+            let mut seen = HashSet::new();
+            let mut output = Vec::with_capacity(entries.len());
+            for entry in entries {
+                let (id, value) = pdf.dereference(&entry).map_err(lopdf_err)?;
+                if id.is_some_and(|id| other_page_ids.contains(&id)) {
+                    return Err(EngineError::Other(
+                        "annotation is shared by multiple pages".into(),
+                    ));
+                }
+                if id.is_some_and(|id| !seen.insert(id)) {
+                    output.push(entry);
+                    continue;
+                }
+                let mut dict = value.as_dict().map_err(lopdf_err)?.clone();
+                if let Ok(popup) = dict.get(b"Popup") {
+                    let (popup_id, popup) = pdf.dereference(popup).map_err(lopdf_err)?;
+                    if !popup_id.is_some_and(|id| page_annotation_ids.contains(&id))
+                        || popup.as_dict().is_err()
+                    {
+                        return Err(EngineError::Other(
+                            "linked popup must be listed on the same page".into(),
+                        ));
+                    }
+                }
+                let flags = match dict.get(b"F") {
+                    Ok(value) => deref(pdf, value)
+                        .ok_or_else(|| EngineError::Other("invalid annotation flags".into()))?
+                        .as_i64()
+                        .map_err(lopdf_err)?,
+                    Err(_) => 0,
+                };
+                if flags < 0 || flags & (64 | 128 | 512) != 0 {
+                    return Err(EngineError::SecurityRestricted);
+                }
+                let rect = dict.get(b"Rect").map_err(lopdf_err)?;
+                dict.set(
+                    "Rect",
+                    scaled_annotation_pairs(pdf, rect, matrix, |n| n == 4)?,
+                );
+                for key in [b"QuadPoints".as_slice(), b"L", b"CL", b"Vertices"] {
+                    if let Ok(value) = dict.get(key) {
+                        let transformed =
+                            scaled_annotation_pairs(pdf, value, matrix, |n| match key {
+                                b"QuadPoints" => n >= 8 && n.is_multiple_of(8),
+                                b"L" => n == 4,
+                                b"CL" => n == 4 || n == 6,
+                                _ => n >= 4,
+                            })?;
+                        dict.set(key, transformed);
+                    }
+                }
+                if let Ok(value) = dict.get(b"InkList") {
+                    let strokes = deref(pdf, value)
+                        .ok_or_else(|| EngineError::Other("invalid ink list reference".into()))?
+                        .as_array()
+                        .map_err(lopdf_err)?;
+                    if strokes.len() > MAX_STROKES {
+                        return Err(EngineError::Other("too many ink strokes".into()));
+                    }
+                    let transformed = strokes
+                        .iter()
+                        .map(|stroke| scaled_annotation_pairs(pdf, stroke, matrix, |n| n >= 2))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    dict.set("InkList", Object::Array(transformed));
+                }
+                if let Some(id) = id {
+                    pdf.objects.insert(id, Object::Dictionary(dict));
+                    output.push(entry);
+                } else {
+                    output.push(Object::Dictionary(dict));
+                }
+            }
+            // A shared indirect Annots array must not move annotations on another page.
+            pdf.get_dictionary_mut(page)
+                .map_err(lopdf_err)?
+                .set("Annots", Object::Array(output));
+            Ok(())
+        })
+    }
+
     /// Instantané → lopdf → rechargement PDFium. Un document chiffré garde son chiffrement.
     fn edit_pdf<R>(
         &mut self,

@@ -1,0 +1,187 @@
+{
+  "pdfium": {
+    "build": "7881",
+    "version": "151.0.7881.0",
+    "sourceRevision": "91b9d569b34be4f38eed7b3c49b227356c3aadad",
+    "source": "https://pdfium.googlesource.com/pdfium/+/91b9d569b34be4f38eed7b3c49b227356c3aadad",
+    "release": "https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium/7881",
+    "depsFile": "assets/licenses/pdfium-7881-DEPS.txt",
+    "components": [
+      {
+        "name": "PDFium",
+        "version": "151.0.7881.0",
+        "license": "BSD-3-Clause AND additional notices in the supplied license",
+        "files": [
+          "pdfium.txt"
+        ],
+        "revision": "91b9d569b34be4f38eed7b3c49b227356c3aadad"
+      },
+      {
+        "name": "pdfium-binaries packaging",
+        "version": "chromium/7881",
+        "license": "MIT",
+        "files": [
+          "pdfium-binaries-MIT.txt"
+        ]
+      },
+      {
+        "name": "Abseil",
+        "revision": "5e42a36a85a252d8cdee6c39661d2bfd9883fd5c",
+        "license": "Apache-2.0",
+        "files": [
+          "abseil.txt"
+        ]
+      },
+      {
+        "name": "Anti-Grain Geometry",
+        "version": "2.3 (PDFium-patched)",
+        "revision": "91b9d569b34be4f38eed7b3c49b227356c3aadad",
+        "license": "MIT-style upstream permission notice",
+        "files": [
+          "agg23.txt"
+        ],
+        "sourcePath": "third_party/agg23/README.pdfium"
+      },
+      {
+        "name": "fast_float",
+        "version": "7.0.0",
+        "revision": "05087a303dad9c98768b33c829d398223a649bc6",
+        "upstreamRevision": "cb1d42aaa1e14b09e1452cfdef373d051b8c02a4",
+        "license": "MIT",
+        "files": [
+          "fast_float.txt"
+        ],
+        "sourcePath": "third_party/fast_float/README.pdfium"
+      },
+      {
+        "name": "FreeType",
+        "version": "VER-2-14-3-58 (PDFium-patched)",
+        "revision": "b08a2eb0dd37f4a6c886fa5b0ecf5b3e1d27aac7",
+        "license": "FTL",
+        "files": [
+          "freetype.txt"
+        ],
+        "sourcePath": "third_party/freetype/README.pdfium"
+      },
+      {
+        "name": "ICU",
+        "revision": "3859e64eed5d34544b27fbcab0ac1685ce83df3c",
+        "license": "Unicode and bundled third-party notices",
+        "files": [
+          "icu.txt"
+        ]
+      },
+      {
+        "name": "Little CMS",
+        "version": "2.19 (PDFium-patched)",
+        "revision": "b76633e60c8387a77268fb3359277ca25b5fd75c",
+        "license": "MIT",
+        "files": [
+          "lcms.txt"
+        ],
+        "sourcePath": "third_party/lcms/README.pdfium"
+      },
+      {
+        "name": "libjpeg-turbo",
+        "revision": "640f254ad0fa03f6b1f29f89b7dd9366f2f6e533",
+        "license": "IJG AND BSD-style notices",
+        "files": [
+          "libjpeg_turbo.ijg",
+          "libjpeg_turbo.md"
+        ]
+      },
+      {
+        "name": "OpenJPEG",
+        "version": "2.5.4 (PDFium-patched)",
+        "revision": "6c4a29b00211eb0430fa0e5e890f1ce5c80f409f",
+        "license": "BSD-2-Clause",
+        "files": [
+          "libopenjpeg.txt"
+        ],
+        "sourcePath": "third_party/libopenjpeg/README.pdfium"
+      },
+      {
+        "name": "libpng",
+        "revision": "8a5b4ace0c2a8a47d73037610b98096f55f3d18f",
+        "license": "libpng",
+        "files": [
+          "libpng.txt"
+        ]
+      },
+      {
+        "name": "LibTIFF",
+        "version": "4.7.1 (PDFium-patched)",
+        "revision": "5fe20d0e9aba49a6a350ed533459d1505203838f",
+        "license": "libtiff",
+        "files": [
+          "libtiff.txt"
+        ],
+        "sourcePath": "third_party/libtiff/README.pdfium"
+      },
+      {
+        "name": "LLVM libc",
+        "revision": "9309c117ebae84dd2f9df1ef99de4782162527d5",
+        "license": "Apache-2.0 WITH LLVM-exception AND bundled notices",
+        "files": [
+          "llvm-libc.txt"
+        ]
+      },
+      {
+        "name": "simdutf",
+        "revision": "f7356eed293f8208c40b3c1b344a50bd70971983",
+        "license": "MIT",
+        "files": [
+          "simdutf.txt"
+        ]
+      },
+      {
+        "name": "zlib",
+        "revision": "5c1dfd53066bf58d3d28197f715717dd88762443",
+        "license": "Zlib",
+        "files": [
+          "zlib.txt"
+        ]
+      }
+    ]
+  },
+  "ocr": {
+    "tesseract": {
+      "version": "5.5.3",
+      "license": "Apache-2.0",
+      "source": "https://github.com/tesseract-ocr/tesseract/tree/5.5.3",
+      "files": [
+        "ocr-tesseract.txt",
+        "ocr-AUTHORS.txt",
+        "ocr-COPYRIGHTS.txt",
+        "ocr-NOTICE.txt"
+      ]
+    },
+    "leptonica": {
+      "version": "1.87.0",
+      "license": "BSD-2-Clause",
+      "source": "https://github.com/DanBloomberg/leptonica/tree/1.87.0",
+      "files": [
+        "ocr-leptonica.txt"
+      ]
+    },
+    "tessdata_fast": {
+      "version": "87416418657359cb625c412a48b6e1d6d41c29bd",
+      "license": "Apache-2.0",
+      "source": "https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd",
+      "files": [
+        "ocr-tessdata-fast.txt"
+      ],
+      "licenseSource": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/87416418657359cb625c412a48b6e1d6d41c29bd/LICENSE",
+      "licenseSha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  },
+  "packaging": {
+    "wix": {
+      "version": "3.14.1",
+      "license": "MS-RL",
+      "source": "https://github.com/wixtoolset/wix3/releases/tag/wix3141rtm",
+      "licenseFile": "assets/licenses/wix3-MS-RL.txt",
+      "scope": "Build tool only; compiler executables are not distributed. Record the actual selected tool version when producing an MSI."
+    }
+  }
+}

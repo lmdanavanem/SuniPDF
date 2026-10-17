@@ -469,7 +469,7 @@ fn preserve_annotation(d: &lopdf::Document, annot: &Object) -> bool {
 }
 
 /// Réserve les références avant leurs enfants : les cycles et les pièces jointes partagées survivent.
-fn deep_copy(
+pub(crate) fn deep_copy(
     src: &lopdf::Document,
     dst: &mut lopdf::Document,
     page_map: &HashMap<ObjectId, ObjectId>,

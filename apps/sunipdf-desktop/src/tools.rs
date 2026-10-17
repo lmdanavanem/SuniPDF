@@ -13,6 +13,7 @@ use sunipdf_i18n::{tr, tr_args};
 pub struct ToolsState {
     /// Dialogue « Diviser » : taille des lots.
     pub split_open: bool,
+    pub sanitize_open: bool,
     pub split_every: usize,
     pub running: Option<&'static str>,
     pub stamp_open: Option<StampKind>,
@@ -418,6 +419,7 @@ impl SuniApp {
     }
 
     pub fn split_dialog(&mut self, ctx: &egui::Context) {
+        self.sanitize_dialog(ctx);
         if !self.tools.split_open {
             return;
         }
@@ -550,6 +552,22 @@ impl SuniApp {
                     ],
                 ));
             }
+            BatchResult::Sanitized { out, report } => {
+                self.status_msg = Some(tr_args(
+                    lang,
+                    "sanitize.done",
+                    &[
+                        ("name", &file_name(&out)),
+                        (
+                            "entries",
+                            &(report.removed_entries
+                                + report.removed_annotations
+                                + report.unused_font_entries)
+                                .to_string(),
+                        ),
+                    ],
+                ));
+            }
             BatchResult::FormExported { out, count } => {
                 self.status_msg = Some(tr_args(
                     lang,
@@ -560,6 +578,52 @@ impl SuniApp {
             BatchResult::Failed(e) => {
                 log::warn!("tâche échouée : {e}");
                 self.error = Some(crate::app::error_key(&e));
+            }
+        }
+    }
+}
+
+impl SuniApp {
+    fn sanitize_dialog(&mut self, ctx: &egui::Context) {
+        if !self.tools.sanitize_open {
+            return;
+        }
+        let lang = self.lang();
+        let mut submit = false;
+        let mut cancel = false;
+        let spec = crate::dialog::Spec::new(
+            "sanitize",
+            tr(lang, "menu.security.sanitize"),
+            self.settings.dark_theme,
+            self.has_icons,
+        )
+        .subtitle(tr(lang, "sanitize.subtitle"))
+        .width(500.0);
+        crate::dialog::show(
+            ctx,
+            spec,
+            |ui| {
+                ui.label(tr(lang, "sanitize.scope"));
+                ui.add_space(8.0);
+                ui.label(tr(lang, "sanitize.warning"));
+                ui.add_space(8.0);
+                ui.label(tr(lang, "sanitize.limits"));
+            },
+            |ui| {
+                submit = crate::dialog::primary(ui, tr(lang, "sanitize.save"));
+                cancel = crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
+                    || ui.input(|input| input.key_pressed(Key::Escape));
+            },
+        );
+        if cancel {
+            self.tools.sanitize_open = false;
+        }
+        if submit {
+            self.tools.sanitize_open = false;
+            if let Some(out) =
+                self.save_dialog("sanitize.save", &self.suggest_output("sanitize.suffix"))
+            {
+                self.run_batch(BatchOp::Sanitize { out }, "sanitize.running");
             }
         }
     }

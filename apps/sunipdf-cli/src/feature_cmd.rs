@@ -8,31 +8,45 @@ fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
 }
 
-fn certificate_json(info: &CertificateInfo) -> serde_json::Value {
+fn certificate_json(info: &CertificateInfo, trusted: bool) -> serde_json::Value {
     serde_json::json!({
         "subject":info.subject,"issuer":info.issuer,"serial_hex":info.serial_hex,
         "sha256_hex":info.sha256_hex,"not_before":info.not_before,"not_after":info.not_after,
-        "valid_now":info.valid_now,"identity_trusted":false
+        "valid_now":info.valid_now,"identity_trusted":trusted
     })
 }
 
 fn signatures_json(signatures: &[DigitalSignature]) -> serde_json::Value {
     serde_json::json!({
-        "identity_trusted":false,
+        "identity_trusted":!signatures.is_empty() && signatures.iter().all(|s| s.status == certificate::SignatureStatus::Valid && s.trust.identity_trusted()),
         "signatures":signatures.iter().map(|s|serde_json::json!({
             "field_name":s.field_name,"sub_filter":s.sub_filter,"status":s.status.id(),
-            "certificate":s.certificate.as_ref().map(certificate_json),
+            "certificate":s.certificate.as_ref().map(|c| certificate_json(c, s.status == certificate::SignatureStatus::Valid && s.trust.identity_trusted())),
             "reason":s.reason,"location":s.location,"signing_time":s.signing_time,
-            "signed_len":s.signed_len,"detail":s.detail,"identity_trusted":false
+            "signed_len":s.signed_len,"detail":s.detail,"identity_trusted":s.status == certificate::SignatureStatus::Valid && s.trust.identity_trusted(),
+            "trust": {
+                "chain":s.trust.chain.id(),"revocation":s.trust.revocation.id(),"chain_detail":s.trust.chain_detail,
+                "network_allowed":s.trust.network_allowed,"ltv":s.trust.ltv.id(),
+                "timestamp":{"status":s.trust.timestamp.status.id(),"time":s.trust.timestamp.time,
+                    "chain":s.trust.timestamp.chain.id(),"revocation":s.trust.timestamp.revocation.id(),"detail":s.trust.timestamp.detail}
+            }
         })).collect::<Vec<_>>()
     })
 }
 
-pub fn signatures(file: &Path, password: Option<&str>) -> Result<serde_json::Value, EngineError> {
+pub fn signatures(
+    file: &Path,
+    password: Option<&str>,
+    allow_network: bool,
+) -> Result<serde_json::Value, EngineError> {
     let input = std::fs::read(file)?;
-    Ok(signatures_json(&certificate::verify_signatures(
-        &input, password,
-    )?))
+    Ok(signatures_json(
+        &certificate::verify_signatures_with_options(
+            &input,
+            password,
+            certificate::VerificationOptions { allow_network },
+        )?,
+    ))
 }
 
 fn password(env: Option<&str>, stdin: bool) -> Result<Zeroizing<String>, EngineError> {

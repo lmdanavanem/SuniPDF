@@ -1,27 +1,56 @@
-# Notices tierces
+# Mentions des composants tiers
 
 [English](THIRD_PARTY_NOTICES.md)
 
-À livrer avec chaque distribution (MSI, ZIP). Aucune marque, logo ni ressource graphique d'un autre lecteur PDF
-n'est utilisée ; aucun code d'un autre lecteur n'a été copié.
+Chaque ZIP portable et MSI contient licenses/dependency-inventory.json et
+licenses/dependency-licenses.txt : versions Rust verrouillées, révisions sources ou
+empreintes des archives, expressions de licence et textes complets de licence,
+copyright et NOTICE. Tout Cargo.lock est inventorié, y compris les outils de
+construction et les autres plateformes. Les graphes Windows x64 et ARM64 sont indiqués
+séparément, sans prétendre que chaque paquet ou police reste présent après optimisation.
 
-| Composant | Licence | Fichier de licence livré |
-|---|---|---|
-| PDFium (Google / Foxit) | BSD-3-Clause | `third_party/pdfium/win-*/licenses/pdfium.txt` → `LICENSE-pdfium.txt` |
-| Bibliothèques incluses dans pdfium.dll (abseil, agg23, fast_float, freetype, icu, lcms, libjpeg-turbo, openjpeg, libpng, libtiff, llvm-libc, simdutf, zlib) | diverses (BSD, MIT, Apache-2.0, FreeType, IJG, zlib) | `third_party/pdfium/win-*/licenses/*` à copier dans le dossier `licenses/` de la distribution |
-| pdfium-binaries (packaging, Benoit Blanchon) | MIT | `third_party/pdfium/win-*/LICENSE` → `LICENSE-pdfium-binaries.txt` |
-| pdfium-render | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
-| lopdf 0.45.0, révision officielle `6ce451328c5caa65d50462daaf4ee8db9c85bb8e` (mot de passe propriétaire et encodage) | MIT | `assets/licenses/lopdf-MIT.txt` → `licenses/lopdf-MIT.txt` |
-| chrono (date locale du jour, dépendance directe de `sunipdf-desktop` ; déjà dans l'arbre via lopdf et pdfium-render) | MIT OR Apache-2.0 | généré par `cargo about` (P6) |
-| egui / eframe et polices par défaut (Ubuntu Light : Ubuntu Font Licence 1.0 ; Hack : MIT/Bitstream Vera ; Noto Emoji : OFL-1.1 ; emoji-icon-font : MIT) | voir colonne | généré par `cargo about` (P6) |
-| Dépendances HTTP/TLS et helper de mise à jour | Licences par crate, dont ISC, BSD-3-Clause et CDLA-Permissive-2.0 | `assets/licenses/update-dependencies.txt` → `licenses/update-dependencies.txt` |
-| Tesseract 5.5.3 (OCR hors ligne) | Apache-2.0 | `licenses/ocr-tesseract.txt`, `ocr-AUTHORS.txt`, `ocr-COPYRIGHTS.txt`, `ocr-NOTICE.txt` |
-| Leptonica 1.87.0 (décodage PNM) | BSD-2-Clause | `licenses/ocr-leptonica.txt` |
-| Modèles anglais et français tessdata_fast (révision figée) | Apache-2.0 | `licenses/ocr-tessdata-fast.txt`, `ocr-NOTICE.txt` |
-| xml-rs 1.0.0 (dépendance directe, compatibilité), xml 1.4.0 (implémentation de lecture/écriture XMP/XFDF), xml-rs 0.8.29 (dépendance transitive) | MIT, mêmes mentions de copyright et texte de licence | `assets/licenses/xml-rs-MIT.txt` → `licenses/xml-rs-MIT.txt` |
-| Autres crates Rust | Consulter la licence de chaque crate | Inventaire complet via `cargo about generate` (P6) |
+OR indique un choix de licences ; AND des conditions cumulatives. Les anciennes
+expressions avec une barre oblique restent inchangées. Les identifiants SPDX renvoient
+aux textes fournis. Les copyrights, licences, NOTICE, attributions, restrictions de
+nommage des polices et mentions de modification applicables doivent être conservés
+selon ces textes. Un choix de licence n'impose pas toutes les autres possibilités.
 
-Interdits : modèles OCR `ocrs` (CC-BY-SA-4.0) ; icônes/polices non vérifiées ; captures d'écran d'applications tierces.
+Les archives Cargo et leurs mentions sont vérifiées contre Cargo.lock. Si un paquet
+omet sa licence, un texte vérifié provient de sa révision source exacte, référencée
+dans assets/licenses/upstream-sources.json. Une licence indisponible reste signalée et
+bloque la génération si le paquet appartient à un graphe Windows. Le paquet macOS
+dispatch est ainsi signalé et exclu des deux graphes Windows.
 
-L’icône SuniPDF est dérivée du visuel dédié fourni par l’auteur et retouché, `assets/icon/sunipdf-source.png`,
-avec les tailles PNG et ICO produites par `scripts/make_icon.py`. Aucun élément graphique tiers supplémentaire.
+Le dossier licenses contient également :
+
+- les notices natives originales de PDFium 151.0.7881.0, ses révisions et empreintes ;
+- les textes complets et références des polices Ubuntu Light, Hack, Noto Emoji et
+  emoji-icon-font ;
+- les licences, auteurs, copyrights et provenances de Tesseract 5.5.3, Leptonica 1.87.0
+  et des modèles anglais/français tessdata_fast verrouillés ;
+- les mentions complètes de la bibliothèque standard Rust et de la chaîne réellement
+  sélectionnée, avec la révision rustc ;
+- la provenance du compilateur OCR, les empreintes des bibliothèques MSVC statiques
+  et de l'Universal CRT, les conditions Microsoft Build Tools sélectionnées et la
+  licence du SDK Windows installé ;
+- les versions et textes réels des outils Rust/Cargo, CMake et Python, dont les
+  exécutables ne sont pas redistribués ;
+- la licence MS-RL de WiX 3 ; le MSI ajoute les versions et empreintes des exécutables
+  candle/light réellement employés ;
+- les licences MIT et Apache-2.0 de SuniPDF.
+
+Les empreintes identifient les entrées du compilateur OCR, sans attestation indépendante
+de l'édition de liens. Les anciens caches sans ces preuves doivent être reconstruits.
+PDFium est un binaire amont verrouillé : ses notices, version et empreinte sont
+vérifiées sans prétendre connaître le compilateur privé de son producteur. Les DLL
+système utilisées par les API Windows/DX12 ne sont pas redistribuées.
+
+La préparation portable vérifie le dossier puis le ZIP. La préparation MSI vérifie
+son entrée, ajoute les preuves WiX dans une copie distincte, puis extrait le MSI pour
+vérifier les exécutables et licences sans installer l'application. Un fichier manquant,
+modifié, ajouté ou une entrée ZIP ambiguë bloque la validation. Le README propre au
+MSI est exclu de cette comparaison.
+
+L'icône provient du visuel fourni par l'auteur assets/icon/sunipdf-source.png ; ses
+formats sont produits par make_icon.py. Aucun nouveau visuel tiers n'est ajouté. Les
+ressources supplémentaires nécessitent une vérification de leurs conditions réelles.

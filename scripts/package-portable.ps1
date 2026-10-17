@@ -35,6 +35,7 @@ Copy-Item "docs\THIRD_PARTY_NOTICES.md", "docs\THIRD_PARTY_NOTICES.fr.md" "$stag
 Copy-Item "assets\licenses\update-dependencies.txt" "$stage\licenses\"
 Copy-Item "assets\licenses\xml-rs-MIT.txt" "$stage\licenses\"
 Copy-Item "assets\licenses\lopdf-MIT.txt" "$stage\licenses\"
+Copy-Item "assets\licenses\wix3-MS-RL.txt", "LICENSE-MIT", "LICENSE-APACHE" "$stage\licenses\"
 # Flat licenses payloads keep updates compatible with the 0.8.x portable updater allowlist.
 $ocr = Join-Path $root "third_party/ocr/win-$Arch"
 Copy-Item -LiteralPath (Join-Path $ocr 'tesseract.exe'), (Join-Path $ocr 'tessdata/eng.traineddata'), (Join-Path $ocr 'tessdata/fra.traineddata') -Destination "$stage\licenses\"
@@ -62,9 +63,32 @@ User guides: USER_GUIDE.en.md and USER_GUIDE.fr.md
 Licenses: licenses\
 "@
 
+$licenseMetadata = Join-Path $root "target/license-metadata-$Arch"
+New-Item -ItemType Directory -Force $licenseMetadata | Out-Null
+foreach ($entry in @(@{ Name = 'all'; Filter = @() }, @{ Name = 'x64'; Filter = @('--filter-platform', 'x86_64-pc-windows-msvc') }, @{ Name = 'arm64'; Filter = @('--filter-platform', 'aarch64-pc-windows-msvc') })) {
+    $arguments = @('metadata', '--locked', '--format-version', '1') + $entry.Filter
+    $metadata = & cargo @arguments
+    if ($LASTEXITCODE -ne 0) { throw "Locked license metadata failed: $($entry.Name)" }
+    [IO.File]::WriteAllText((Join-Path $licenseMetadata ($entry.Name + '.json')), ($metadata -join "`n"), [Text.UTF8Encoding]::new($false))
+}
+$rustSysroot = & rustc --print sysroot
+if ($LASTEXITCODE -ne 0) { throw 'Rust sysroot is unavailable for standard-library notices.' }
+$rustVersion = & rustc -Vv
+if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain provenance is unavailable.' }
+$rustVersionFile = Join-Path $licenseMetadata 'rust-version.txt'
+[IO.File]::WriteAllText($rustVersionFile, ($rustVersion -join "`n"), [Text.UTF8Encoding]::new($false))
+$cargoVersion = & cargo -Vv
+if ($LASTEXITCODE -ne 0) { throw 'Cargo build-tool provenance is unavailable.' }
+$cargoVersionFile = Join-Path $licenseMetadata 'cargo-version.txt'
+[IO.File]::WriteAllText($cargoVersionFile, ($cargoVersion -join "`n"), [Text.UTF8Encoding]::new($false))
+& python (Join-Path $PSScriptRoot 'license-inventory.py') --stage $stage --arch $Arch --metadata (Join-Path $licenseMetadata 'all.json') --x64-metadata (Join-Path $licenseMetadata 'x64.json') --arm64-metadata (Join-Path $licenseMetadata 'arm64.json') --rust-sysroot $rustSysroot --rust-version-file $rustVersionFile --cargo-version-file $cargoVersionFile
+if ($LASTEXITCODE -ne 0) { throw 'Distribution license generation or payload verification failed.' }
+
 $zip = Join-Path $root "dist\$name.zip"
 if (Test-Path $zip) { Remove-Item $zip }
 Compress-Archive -Path "$stage\*" -DestinationPath $zip
+& python (Join-Path $PSScriptRoot 'license-inventory.py') --verify --archive $zip
+if ($LASTEXITCODE -ne 0) { throw 'Archived distribution notices differ from the generated inventory.' }
 $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
 Set-Content -Path "$zip.sha256" -Value "$hash  $name.zip" -Encoding ascii
 Write-Host "OK : $zip"

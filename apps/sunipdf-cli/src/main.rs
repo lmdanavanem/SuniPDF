@@ -76,6 +76,9 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         password: Option<String>,
+        /// Permit Windows certificate-chain, revocation and timestamp network checks for this call.
+        #[arg(long)]
+        allow_network: bool,
     },
     /// Sign saved PDF bytes with a PFX/P12 identity into a new copy (encrypted PDFs are unsupported).
     Sign {
@@ -311,6 +314,14 @@ enum Command {
     },
     /// Remove all document metadata (Info dictionary and XMP stream).
     StripMetadata {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Sanitize hidden structures into a verified new copy; existing files are never replaced.
+    Sanitize {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
@@ -606,6 +617,9 @@ enum Command {
         /// keep or scale
         #[arg(long, default_value = "keep")]
         mode: String,
+        /// Explicitly scale annotation/link geometry too (requires --mode scale).
+        #[arg(long)]
+        annotations: bool,
         #[arg(long)]
         out: PathBuf,
         #[arg(long)]
@@ -912,9 +926,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
     }
     match &cli.command {
-        Command::Signatures { file, password } => {
-            return feature_cmd::signatures(file, password.as_deref())
-        }
+        Command::Signatures {
+            file,
+            password,
+            allow_network,
+        } => return feature_cmd::signatures(file, password.as_deref(), *allow_network),
         Command::Sign {
             file,
             certificate,
@@ -1328,6 +1344,19 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             sunipdf_core::write_atomic(&out, &bytes)?;
             Ok(serde_json::json!({ "out": out }))
         }
+        Command::Sanitize {
+            file,
+            out,
+            password,
+        } => {
+            let input = std::fs::read(&file)?;
+            let (bytes, report) =
+                sunipdf_core::sanitize::sanitize_document(&input, password.as_deref())?;
+            sunipdf_core::write_new_copy(&out, &bytes)?;
+            Ok(serde_json::json!({"out":out,"verified":report.verified,
+                "removed_entries":report.removed_entries,"removed_annotations":report.removed_annotations,
+                "unused_font_entries":report.unused_font_entries,"unreachable_objects":report.unreachable_objects}))
+        }
         Command::Redact {
             file,
             out,
@@ -1736,6 +1765,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             height,
             unit,
             mode,
+            annotations,
             out,
             password,
         } => {
@@ -1743,7 +1773,13 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let selection = unique(parse_pages(&pages, doc.page_count())?);
             let k = unit_factor(&unit)?;
             let mode = match mode.as_str() {
-                "keep" => sunipdf_core::ResizeMode::KeepContent,
+                "keep" if !annotations => sunipdf_core::ResizeMode::KeepContent,
+                "keep" => {
+                    return Err(EngineError::Other(
+                        "--annotations requires --mode scale".into(),
+                    ))
+                }
+                "scale" if annotations => sunipdf_core::ResizeMode::ScaleContentWithAnnotations,
                 "scale" => sunipdf_core::ResizeMode::ScaleContent,
                 other => return Err(EngineError::Other(format!("unknown mode: {other}"))),
             };
@@ -2159,6 +2195,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Unprotect { out, .. }
         | Command::SetMetadata { out, .. }
         | Command::StripMetadata { out, .. }
+        | Command::Sanitize { out, .. }
         | Command::Redact { out, .. }
         | Command::Images2pdf { out, .. }
         | Command::Optimize { out, .. }
@@ -2362,6 +2399,27 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn signature_network_checks_require_explicit_opt_in() {
+        let offline = parse_cli(["sunipdf-cli", "signatures", "signed.pdf"]).unwrap();
+        assert!(matches!(
+            offline.command,
+            Command::Signatures {
+                allow_network: false,
+                ..
+            }
+        ));
+        let online =
+            parse_cli(["sunipdf-cli", "signatures", "signed.pdf", "--allow-network"]).unwrap();
+        assert!(matches!(
+            online.command,
+            Command::Signatures {
+                allow_network: true,
+                ..
+            }
+        ));
     }
 
     #[test]

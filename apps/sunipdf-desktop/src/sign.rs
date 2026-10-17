@@ -21,6 +21,9 @@ use sunipdf_core::signature_image as sig;
 use sunipdf_core::{EngineError, FontFamily, TextStyle};
 use sunipdf_i18n::{tr, tr_args, Language};
 
+#[path = "sign_library.rs"]
+pub(crate) mod library;
+
 /// Côté maximal d'une image décodée (import ou bibliothèque), en pixels.
 const MAX_SIDE: u32 = 1600;
 /// Côté maximal d'une vignette (texture GPU, fantôme de placement).
@@ -74,10 +77,12 @@ impl SignKind {
         }
     }
 
-    /// `signature-<ms>.png` / `initials-<ms>.png` ; tout autre fichier est ignoré.
+    /// Numeric signature/initials names; legacy PNG and current DPAPI files only.
     fn from_file_name(name: &str) -> Option<SignKind> {
         let (prefix, rest) = name.split_once('-')?;
-        let digits = rest.strip_suffix(".png")?;
+        let digits = rest
+            .strip_suffix(".png")
+            .or_else(|| rest.strip_suffix(".dpapi"))?;
         if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
             return None;
         }
@@ -287,7 +292,7 @@ enum Act {
 }
 
 /// Dossier des signatures enregistrées : `SUNIPDF_SIGNATURES_DIR` (tests, captures), sinon
-/// `%APPDATA%\SuniPDF\signatures`. PNG en clair : aucun chiffrement, jamais envoyé sur Internet.
+/// `%APPDATA%\SuniPDF\signatures`, protected for the current Windows user with DPAPI.
 pub fn signatures_dir() -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os("SUNIPDF_SIGNATURES_DIR") {
         return Some(PathBuf::from(dir));
@@ -299,7 +304,7 @@ pub fn signatures_dir() -> Option<PathBuf> {
     )
 }
 
-/// Fichiers `signature-*.png` et `initials-*.png`, plus récents d'abord, 12 au plus par type.
+/// Legacy PNG/current DPAPI signatures, newest first, at most twelve per kind.
 fn list_saved(dir: &Path) -> Vec<(PathBuf, SignKind)> {
     // ponytail: plafond fixe de 12 par type, images gardées décodées en mémoire.
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -308,8 +313,15 @@ fn list_saved(dir: &Path) -> Vec<(PathBuf, SignKind)> {
     let mut found: Vec<(PathBuf, SignKind)> = entries
         .flatten()
         .filter_map(|e| {
+            if !e.file_type().ok()?.is_file() {
+                return None;
+            }
             let path = e.path();
             let kind = SignKind::from_file_name(path.file_name()?.to_str()?)?;
+            if path.extension().is_some_and(|e| e == "dpapi") && path.with_extension("png").exists()
+            {
+                return None;
+            }
             Some((path, kind))
         })
         .collect();
@@ -433,10 +445,7 @@ impl SuniApp {
         self.refresh_library();
     }
 
-    /// Aligne le cache sur le dossier : les fichiers disparus sont retirés, les nouveaux sont
-    /// décodés par le thread moteur (`Request::LoadImage`, reçus dans `on_image_loaded`). Tout
-    /// fichier `signature-<ms>.png` déposé dans le dossier est un fichier étranger : mêmes bornes
-    /// que l'import, jamais décodé sur le thread d'interface.
+    /// The worker decrypts/migrates bounded library files and decodes their PNG in memory.
     fn refresh_library(&mut self) {
         let Some(dir) = signatures_dir() else { return };
         let listed = list_saved(&dir);
@@ -750,11 +759,16 @@ impl SuniApp {
                 self.sign.drawing = false;
             }
             Some(Act::Delete(path)) => {
-                if let Err(e) = std::fs::remove_file(&path) {
+                let result = signatures_dir()
+                    .ok_or_else(|| EngineError::Other("signature library is unavailable".into()))
+                    .and_then(|dir| library::delete(&dir, &path));
+                if let Err(e) = result {
                     log::warn!(
                         "suppression impossible ({}) : {e}",
                         crate::app::file_name(&path)
                     );
+                    self.sign.error = Some("signature.library.error");
+                    return;
                 }
                 self.sign.saved.retain(|s| s.path != path);
                 self.sign.confirm_delete = None;
@@ -860,15 +874,12 @@ impl SuniApp {
         if st.save {
             match signatures_dir() {
                 Some(dir) => {
-                    let path = dir.join(new_file_name(kind));
-                    match sig::save_png(&img, &path) {
-                        Ok(()) => saved_path = Some(path),
+                    let name = new_file_name(kind);
+                    match library::save(&dir, &name, &img) {
+                        Ok(path) => saved_path = Some(path),
                         // Jamais de contenu dans le journal : seulement le nom du fichier.
                         Err(e) => {
-                            log::warn!(
-                                "signature non enregistrée ({}) : {e}",
-                                crate::app::file_name(&path)
-                            );
+                            log::warn!("signature non enregistrée ({}) : {e}", name);
                             save_failed = true;
                         }
                     }
@@ -983,6 +994,9 @@ impl SuniApp {
         }
         match result {
             Ok(img) => {
+                if path.extension().is_some_and(|e| e == "png") {
+                    st.error = Some("signature.library.migration_failed");
+                }
                 let image = DynamicImage::ImageRgba8(img);
                 let thumb = texture(ctx, "sign-saved", &thumb_of(&image));
                 st.saved.push(SavedSignature {
@@ -994,7 +1008,10 @@ impl SuniApp {
                 st.saved.sort_by(|a, b| b.path.cmp(&a.path));
                 ctx.request_repaint();
             }
-            Err(e) => warn_unreadable("signature enregistrée illisible", &path, &e),
+            Err(e) => {
+                warn_unreadable("signature enregistrée illisible", &path, &e);
+                st.error = Some("signature.library.error");
+            }
         }
     }
 

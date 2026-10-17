@@ -104,9 +104,9 @@ impl SuniApp {
             } else {
                 self.certificate.busy = true;
                 match action {
-                    crate::certificate::CertificateAction::Verify => {
-                        self.worker.send(Request::VerifySignatures)
-                    }
+                    crate::certificate::CertificateAction::Verify(options) => self
+                        .worker
+                        .send(Request::VerifySignaturesWithOptions(options)),
                     crate::certificate::CertificateAction::Sign {
                         pfx,
                         password,
