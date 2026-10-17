@@ -3,28 +3,54 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.21.1 publiée. État de publication et contrôles exécutés dans l'[état du projet](PROJECT_STATUS.fr.md).
-0.21.1 est publiée en Latest stable ; contrôles de la source de release, CodeQL, mises à niveau,
-paquets préparés/publics et metteur à jour de production réussis. Les preuves de la version précédente suivent.
+Ce guide couvre SuniPDF 0.30.0. État de publication et contrôles exécutés dans
+[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.30.0.fr.md) décrit
+les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
+dans les réglages.
 
-[Version stable précédente](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) sous `lmdanavanem`, release `415338013`,
-source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Validation locale : 471 tests réussis, zéro échec, sept ignorés par défaut ;
-formatage/Clippy sans avertissement, 912 clés EN/FR, 75 contrôles qpdf, autotest du metteur à jour et corpus quatre PDF/744 pages.
-[CI Windows](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) et [job ARM64 de même source](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) réussis :
-19 scénarios portables, 13 bases MSI et 65 journaux vérifiés. Six fichiers préparés/publics et copies `dist/` correspondent aux empreintes API/SHA256 ; contrôles complets des paquets réussis.
-Le metteur à jour de production a vérifié le ZIP Latest x64 de 19,846,878 octets en 1.76 s, sans installation sur l'hôte.
-[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) a corrigé #3/#119 sur cette source ; aucune alerte ouverte après triage individuel des 115 critiques.
-Preuves détaillées et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
+## Nouveaux outils d’édition et de documents
 
-Stylet/tactile natifs, boîtes interactives, imprimantes, Narrator, matériel ARM64 et lecteurs tiers restent non vérifiés. Paquets non signés ; brouillons d'encre et FreeText non validés sans récupération après plantage.
+- **Édition → Annotations enrichies** ouvre les contrôles de FreeText à police incorporée, polygones,
+  polylignes, nuages, tampons et pièces jointes. Prévisualiser avant d’appliquer. La gomme retire
+  les traits d’encre complets touchés ; Annuler conserve le PDF.
+- L’édition de paragraphes prévisualise le réagencement avec la police PDF d’origine. Un glyphe ou un
+  état graphique incompatible conserve le document et le brouillon. **Coller modifiable** importe
+  les objets PDF compatibles séparément ; le collage groupé reste disponible.
+- Les liens prennent en charge les destinations nommées existantes et Fit/XYZ/FitH. Un axe ou zoom
+  vide conserve la vue du lecteur. Les coordonnées suivent la page cible affichée ; une position
+  FitH tournée peut utiliser X au lieu de Y. Les actions externes dangereuses sont refusées.
+- Le panneau Signets permet création, renommage, changement de destination, déplacement et suppression.
+  Les étiquettes suivent le contenu réorganisé ; `#N` reste un numéro physique.
+- La confirmation de caviardage propose un aperçu avant/après, une couleur et un texte de remplacement.
+  **Enregistrer les marques** stocke des annotations `/Redact` visibles non appliquées : le contenu
+  sensible demeure présent. Ce stockage exige actuellement un texte de remplacement vide. Appliquer
+  utilise la copie exacte prévisualisée et une seule étape Annuler. Le texte extérieur reste sélectionnable
+  lorsque sa reconstruction est prouvée sûre ; le rapport indique les replis en image.
+- **Assainir** écrit une copie distincte et contrôle la suppression des données cachées compatibles.
+  Les anciennes copies, récupérations, sauvegardes et l’historique Annuler sont à traiter séparément.
+- Les conversions détectent LibreOffice local compatible déjà installé ; son absence est explicite.
+  Profils Standard/Print et lots annulables écrivent de nouvelles copies. L’export PDF propose du texte
+  simple modifiable en DOCX, des cellules de texte aligné en XLSX et des diapositives raster en PPTX.
+  Voir les [limites de conversion](OFFICE_CONVERSION.fr.md).
+- Les images de signature enregistrées facultativement utilisent DPAPI pour l’utilisateur Windows courant.
+  Conserver l’image originale ou le profil et ses clés pour récupération. La vérification numérique
+  sépare intégrité, confiance Windows, révocation et horodatages RFC3161. Le réseau exige un accord explicite ;
+  les états hors ligne ou indisponibles ne valent pas validation réussie.
 
-## Maintenance de sécurité 0.21.0
+Exemples (pages et signets en base 1 ; indices d’annotation en base 0) :
 
-Cette version de maintenance rend explicites les contrôles natifs des certificats et les permissions
-du workflow de release. Les signatures vérifient toujours l'intégrité des octets enregistrés ; confiance
-de la chaîne, révocation et horodatage fiable restent non vérifiés. Mots de passe PDF, chiffrement et
-enregistrement conservent leur comportement. Voir la [revue Code Scanning](CODE_SCANNING_REVIEW.fr.md)
-pour les preuves par alerte et l'état actuel du triage.
+```powershell
+sunipdf-cli bookmark-add input.pdf --title "Chapitre 1" --page 2 --out bookmarked.pdf
+sunipdf-cli link-destinations input.pdf
+sunipdf-cli set-link-target input.pdf --index 0 --goto-page 2 --view xyz --y 300 --zoom 1.5 --out linked.pdf
+sunipdf-cli redact input.pdf --text SECRET --color 000000 --out redacted.pdf
+sunipdf-cli redact input.pdf --text SECRET --marks-only --out unapplied-marks.pdf
+sunipdf-cli sanitize input.pdf --out sanitized.pdf
+```
+
+Consulter les notices [annotations](RICH_ANNOTATIONS.fr.md), [caviardage](REDACTION.fr.md),
+[signets et structures](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md), [polices](FONT_EMBEDDING.fr.md),
+[signatures](SIGNATURE_SECURITY.fr.md) et [assainissement](SECURITY_MODEL.fr.md) pour les limites exactes.
 
 ## Installation
 
@@ -269,10 +295,10 @@ survol : repère orange sur la page ; boutons avancer / reculer d'un plan et sup
 
 Toutes ces modifications sont annulables (Ctrl+Z) et écrites dans le PDF à l'enregistrement.
 
-Limites : un groupe collé ou dupliqué n'est plus éditable comme texte ; rotation/redimensionnement groupés disponibles en 0.10.0 avec une annulation ; les polices `.otf` et `.ttc`
-ne sont pas proposées ; la police est incorporée entière (pas de sous-ensemble) ; le champ de saisie sur la
-page utilise la police de l'interface comme aperçu (largeurs approximatives) ; le texte modifié conserve sa
-police d'origine, qui peut ne pas contenir tous les caractères saisis.
+Limites : le collage groupé reste un groupe ; **Coller modifiable** importe les objets individuels compatibles.
+Les faces statiques TTF/OTF/TTC compatibles sont incorporées en sous-ensembles et réutilisées, sauf restriction
+exigeant la face complète. La saisie ordinaire utilise l’aperçu de l’interface ; l’aperçu de paragraphe utilise
+les métriques PDF. Le texte existant garde sa police ; un glyphe incompatible est refusé atomiquement.
 
 **Livré en 0.21.1 :** remplacement incompatible refusé avant modification du PDF,
 avec réouverture du bon brouillon sur la page ou du texte pivoté. Les
@@ -370,9 +396,10 @@ modification de structure. Enregistrez explicitement le document pour conserver 
 dans les paquets 0.13.0 publiés ; contrôles exécutés et limites dans l'[état du projet](PROJECT_STATUS.fr.md).
 
 **Réutiliser.** Avec **Enregistrer sur cet ordinateur pour la réutiliser** (coché par défaut), la signature
-rognée est écrite en PNG dans `%APPDATA%\SuniPDF\signatures` et apparaît ensuite dans la boîte, sur fond
-blanc : cliquez pour commencer le placement ; la corbeille (deux clics) la supprime. Rien n'est chiffré ni envoyé sur Internet :
-toute personne ayant accès à votre session Windows peut réutiliser ces fichiers ; décochez la case pour ne
+rognée est protégée par DPAPI pour l’utilisateur courant dans `%APPDATA%\SuniPDF\signatures` et apparaît ensuite
+dans la boîte : cliquez pour la placer ; la corbeille (deux clics) la supprime. La migration des anciens PNG
+est vérifiée avant suppression du fichier initial. Aucune image n’est envoyée. Toute personne capable d’utiliser
+votre session Windows ouverte peut réutiliser ces images ; décochez la case pour ne
 rien enregistrer. Le **Paraphe** a sa propre liste, plus petite sur la page.
 
 **Après la pose**, la signature est un **objet image** ordinaire de la page. La pose sur la page courante la sélectionne : glissez-la,
@@ -580,7 +607,9 @@ une opération réussie forme un seul niveau d'annulation. Enregistrez le résul
 **Utiliser un certificat → Vérifier les signatures** contrôle les octets du PDF enregistré et affiche le résultat,
 le sujet, l'émetteur, les dates de validité et l'empreinte SHA256 du certificat. Les statuts distinguent révision signée
 valide, modification postérieure, contenu invalide, format non pris en charge et signature non vérifiable.
-La confiance de l'identité et la révocation ne sont pas établies ; aucun horodatage fiable ni LTV n'est fourni.
+L’intégrité CMS seule ne prouve ni la confiance de l’identité ni la révocation. La vérification expose ces
+décisions et les horodatages RFC3161 compatibles séparément, hors ligne par défaut. Créer une copie signée
+n’ajoute ni horodatage fiable ni preuve d’archivage LTV. Voir la [sécurité des signatures](SIGNATURE_SECURITY.fr.md).
 L'heure affichée est celle déclarée par le signataire.
 
 Enregistrez d'abord les modifications, puis choisissez **Signer avec un certificat**, l'identité PFX/P12, son mot de passe,
@@ -666,7 +695,7 @@ sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --
 **Disponible en 0.16.0 :** ajoutez `--dashed` à `annotate --kind square|circle|line|arrow` pour le motif fixe
 `[6,3]` points. `annotations` renvoie le tableau réel `dash_pattern`. Sans ce drapeau, comportement continu
 existant inchangé. Drapeau refusé pour les types non pris en charge ; requête invalide : aucune sortie créée ou
-sortie existante préservée, même avec `--overwrite`. La CLI conserve 53 commandes.
+sortie existante préservée, même avec `--overwrite`. La CLI propose 62 commandes ; consulter `--help`.
 
 ```powershell
 sunipdf-cli annotate input.pdf --kind square --rect 40,40,240,140 --dashed --out dashed.pdf
@@ -686,7 +715,9 @@ sunipdf-cli sign saved.pdf --certificate identity.pfx --certificate-password-env
 Pour `sign`, définissez la variable d'environnement de manière sûre avant l'exécution, ou choisissez
 `--certificate-password-stdin` avec une entrée UTF-8 redirigée. Les options s'excluent et l'une est obligatoire ;
 une fin de ligne finale est retirée de l'entrée standard. Aucun argument de mot de passe de certificat en clair
-n'existe. `--reason` et `--location` sont facultatifs. Le JSON indique toujours `identity_trusted: false`.
+n'existe. `--reason` et `--location` sont facultatifs. Le JSON sépare intégrité, confiance et révocation ;
+`identity_trusted` exige la réussite de la politique de confiance. La vérification est hors ligne par défaut ;
+`--allow-network` autorise explicitement les échanges de certificats pour ce contrôle.
 Même `--overwrite` ne peut pas remplacer le PDF source de la signature. `ocr --language` accepte `eng`, `fra`
 ou `eng+fra` ; `--pages` vaut `all` par défaut. Sans texte ajouté, les octets source sont copiés à l'identique.
 
@@ -707,8 +738,9 @@ texte libre ; les autres types refusent ce drapeau. Des choix prédéfinis reste
 
 ## Limites actuelles
 
-Conversion Office et formulaires XFA modifiables indisponibles ; leurs scripts ne sont jamais exécutés.
+Conversion Office locale bornée comme décrit plus haut ; formulaires XFA modifiables indisponibles et scripts jamais exécutés.
 L'ordre complexe de colonnes n'est pas déduit. Création texte/case/radio/listes disponible ; FDF limité au sous-ensemble de valeurs décrit ci-dessus.
-La précision OCR dépend de la numérisation et de la langue ; le texte existant n'est pas remplacé. Confiance du certificat,
-révocation, horodatage fiable et LTV ne sont pas vérifiés. Imprimante réelle, installation/mise à jour et matériel ARM64
+La précision OCR dépend de la numérisation et de la langue ; le texte existant n'est pas remplacé. Confiance Windows,
+révocation et horodatages RFC3161 compatibles ont des états explicites ; validation d’archivage LTV et qualification
+AATL/EUTL restent indisponibles. Imprimante réelle, fenêtres natives interactives et matériel ARM64
 restent des validations séparées des tests automatisés. Voir `docs/KNOWN_ISSUES.fr.md` et `docs/ROADMAP.fr.md`.

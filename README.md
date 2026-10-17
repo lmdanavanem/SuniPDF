@@ -56,7 +56,7 @@ were verified. See [Project status](docs/PROJECT_STATUS.md).
 | Convert | Images to PDF, PDF to PNG, lossless optimization, lossy image compression to a new copy; bundled offline English/French OCR with invisible searchable text, existing-text skipping, cancellation and undo; sequential multi-file compression/OCR |
 | Protect | AES-128/256 encryption and permissions, metadata cleanup, irreversible redaction |
 | Certificates | Saved-byte integrity verification and incremental PFX/P12 signing into a new copy; certificate trust, revocation and trusted timestamps are unchecked; encrypted PDF signing is refused |
-| Automate | `sunipdf-cli`: 53 commands with JSON output and stable exit codes, including `set-link-target`, `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` and `sign` |
+| Automate | `sunipdf-cli`: 62 commands with JSON output and stable exit codes, including `set-link-target`, `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` and `sign` |
 
 All 14 task tools have real commands. Reading follows PDFium's logical character order; arbitrary untagged columns
 are not reconstructed. Physical printing, ARM64 hardware and third-party signature interoperability remain separate QA checks.

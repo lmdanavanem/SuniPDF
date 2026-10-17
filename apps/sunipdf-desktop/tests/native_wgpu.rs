@@ -132,7 +132,9 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     )?;
     require(
         page.rgba
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .any(|p| p[..3].iter().any(|channel| *channel < 128)),
         "PDF fixture has no raster ink",
     )?;
@@ -318,7 +320,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let mut compared = 0_usize;
     let mut source_ink = 0_usize;
     let mut matching_ink = 0_usize;
-    for (index, expected) in page.rgba.chunks_exact(4).enumerate() {
+    for (index, expected) in page.rgba.as_chunks::<4>().0.iter().enumerate() {
         let x = index as u32 % page.width;
         let y = index as u32 / page.width;
         let actual = pixel(&pixels, x + 20, y + 80);

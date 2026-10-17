@@ -2642,7 +2642,7 @@ fn write_font_reader_evidence(engine: &Engine, source: &Path, output: &Path, exp
     }
     let image = reference.render_page(0, 2.0).unwrap();
     let mut ppm = format!("P6\n{} {}\n255\n", image.width, image.height).into_bytes();
-    for pixel in image.rgba.chunks_exact(4) {
+    for pixel in image.rgba.as_chunks::<4>().0 {
         ppm.extend_from_slice(&pixel[..3]);
     }
     std::fs::write(output.with_extension("ppm"), ppm).unwrap();

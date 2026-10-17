@@ -56,5 +56,6 @@ Executed results and public asset hashes will be recorded in [Project status](PR
 Packages remain unsigned; ARM64 hardware, physical printers and manual native GPU/window behavior
 require separate qualification. Detailed supported inputs and refusals are documented in
 [font embedding](FONT_EMBEDDING.md), [rich annotations](RICH_ANNOTATIONS.md),
+[redaction](REDACTION.md),
 [bookmarks and structure](BOOKMARKS_AND_PAGE_STRUCTURE.md), [Office conversion](OFFICE_CONVERSION.md),
 [signature security](SIGNATURE_SECURITY.md) and [document sanitization](SECURITY_MODEL.md).

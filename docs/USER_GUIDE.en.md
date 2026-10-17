@@ -3,27 +3,53 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers published SuniPDF 0.21.1. Publication status and executed release checks are recorded in
-[Project status](PROJECT_STATUS.md). 0.21.1 is published as stable Latest; release-source, CodeQL, upgrade,
-staged/public package and production-updater checks passed. Previous-release evidence follows.
+This guide covers SuniPDF 0.30.0. Publication status and executed checks are recorded in
+[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.30.0.md) lists supported inputs
+and documented refusals; English remains the default language and French is available in Settings.
 
-[Previous stable release](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) under `lmdanavanem`, release `415338013`,
-source `f006b7dd027fd5a3084c2bfffc2fceaa1b66be46`. Local validation: 471 passed tests, zero failures, seven default ignored;
-formatting/Clippy with warnings denied, 912 EN/FR keys, 75 qpdf checks, update-helper self-test and four PDFs/744 pages.
-[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648173) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957647839/job/117164444654) passed:
-19 portable cases, 13 MSI baselines and 65 verified logs. Six staged/public files and `dist/` copies match API/SHA256 digests; complete package checks passed.
-The production updater verified the 19,846,878-byte Latest x64 ZIP in 1.76 seconds without installing on the host.
-[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) fixed #3/#119 on this source; zero alerts remain open after individual triage of 115 criticals.
-Detailed evidence and limits are in [Project status](PROJECT_STATUS.md).
+## New editing and document tools
 
-Native pen/touch, interactive dialogs, printers, Narrator, ARM64 hardware and third-party readers remain unverified. Packages are unsigned; unsubmitted ink and FreeText drafts have no crash recovery.
+- **Edit → Rich annotations** opens guarded controls for embedded-font FreeText, polygons,
+  polylines, clouds, stamps and attachments. Preview before applying. **Erase ink strokes** removes
+  whole touched strokes; cancel keeps the PDF unchanged.
+- Paragraph editing previews wrapping with the original PDF font. Unsupported glyphs or graphics
+  states keep the document and draft intact. **Paste editable** imports individual supported PDF
+  objects; the existing grouped paste remains available.
+- Link target editing supports existing named destinations and Fit/XYZ/FitH. Blank coordinates or
+  zoom keep the reader's current values; coordinates use the target page as displayed. A FitH
+  position on a rotated page can use X instead of Y. Unsafe external actions are refused.
+- The bookmark panel can add, rename, retarget, move and delete bounded bookmark trees. Page labels
+  follow page content during reorganisation; `#N` is always a physical page number.
+- The redaction confirmation offers before/after preview, fill and optional replacement text.
+  **Save marks** stores visible, unapplied `/Redact` annotations: sensitive content remains present
+  until redaction is applied. Saving marks currently requires an empty overlay. Apply uses the exact
+  prepared preview and one Undo. Native text outside marks remains selectable only when its safe
+  reconstruction can be proved; the report identifies bitmap fallback.
+- **Sanitize** writes a separate cleaned copy and verifies supported hidden-data removal. Keep track
+  of previous copies, recovery files, backups and Undo separately.
+- Conversion tools detect an already-installed supported local LibreOffice. If unavailable, the app
+  says so. Standard/Print profiles and bounded cancellable batches use new-copy output. PDF exports
+  offer simple editable DOCX text, aligned XLSX string cells and raster PPTX slides, with explicit
+  limits in [Office conversion](OFFICE_CONVERSION.md).
+- Optional saved signature images use current-user Windows DPAPI. Preserve the original image or
+  the Windows profile and DPAPI keys for recovery. Digital-signature verification separately reports
+  integrity, Windows trust, revocation and RFC3161 timestamps. Online checks require explicit consent;
+  offline/unavailable states are not successful verification.
 
-## Security maintenance in 0.21.0
+Examples (pages and bookmark numbers start at 1; annotation indices start at 0):
 
-This maintenance release makes native certificate checks and release-workflow permissions explicit.
-Signing still verifies saved-byte integrity; certificate-chain trust, revocation and trusted timestamps
-remain unchecked. Existing PDF password, encryption and document-saving behavior is preserved.
-See the [Code Scanning review](CODE_SCANNING_REVIEW.md) for the per-alert evidence and current triage state.
+```powershell
+sunipdf-cli bookmark-add input.pdf --title "Chapter 1" --page 2 --out bookmarked.pdf
+sunipdf-cli link-destinations input.pdf
+sunipdf-cli set-link-target input.pdf --index 0 --goto-page 2 --view xyz --y 300 --zoom 1.5 --out linked.pdf
+sunipdf-cli redact input.pdf --text SECRET --color 000000 --out redacted.pdf
+sunipdf-cli redact input.pdf --text SECRET --marks-only --out unapplied-marks.pdf
+sunipdf-cli sanitize input.pdf --out sanitized.pdf
+```
+
+See [rich annotations](RICH_ANNOTATIONS.md), [redaction](REDACTION.md),
+[bookmarks and structures](BOOKMARKS_AND_PAGE_STRUCTURE.md), [font embedding](FONT_EMBEDDING.md),
+[signature security](SIGNATURE_SECURITY.md) and [sanitization](SECURITY_MODEL.md) for exact bounds.
 
 ## Installation
 
@@ -251,9 +277,10 @@ forward / send backward and delete.
 
 Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
 
-Limits: a pasted or duplicated group can no longer be edited as text; group rotation/resizing is available in 0.10.0 with one undo step; `.otf` and `.ttc` fonts are not offered; fonts are embedded whole
-(no subsetting); the on-page field previews text with the interface font (approximate widths); edited text
-keeps its original font, which may not contain every character you type.
+Limits: grouped paste remains a group; use **Paste editable** for supported individual objects.
+Eligible static TTF/OTF/TTC faces are subset and reused unless embedding restrictions require a full face.
+The ordinary on-page input uses an interface-font preview; paragraph preview uses actual PDF metrics.
+Existing text keeps its original font; unsupported replacement glyphs are refused atomically.
 
 **Published in 0.21.1:** unsupported replacement text is refused before changing the PDF,
 with the correct on-page or rotated-text draft reopened. Published 0.21.0 packages
@@ -343,9 +370,9 @@ undoes the completed batch. Page insertion/deletion/reordering discards a pendin
 reopen it after changing the page structure. Save the document explicitly to keep the marks. These additions are
 included in the published 0.13.0 packages; executed checks and limits are in [Project status](PROJECT_STATUS.md).
 
-**Reuse.** With **Save on this computer for reuse** (ticked by default), the trimmed signature is written as a
-PNG in `%APPDATA%\SuniPDF\signatures` and then appears in the dialog, on a white card: click it to start placement; the
-trash icon (two clicks) deletes it. Nothing is encrypted or sent over the Internet: anyone with access to your
+**Reuse.** With **Save on this computer for reuse** (ticked by default), the trimmed signature is stored as a
+current-user DPAPI-protected image in `%APPDATA%\SuniPDF\signatures` and then appears in the dialog: click it to start placement; the
+trash icon (two clicks) deletes it. Current-user Windows DPAPI encrypts new library entries; legacy PNG migration is verified before removing the old file. No image is uploaded. Anyone able to operate your
 Windows session can reuse these files; untick the box to save nothing. **Initials** have their own list and a
 smaller default size on the page.
 
@@ -545,7 +572,9 @@ a successful run is one undo step. Save to keep the result, and proofread recogn
 **Use a certificate → Verify signatures** checks signatures over the saved PDF bytes and shows the result,
 certificate subject, issuer, validity dates and SHA256 fingerprint. Results distinguish a valid signed revision,
 changes after signing, invalid content, unsupported formats and unverifiable signatures.
-This proves neither certificate identity trust nor revocation status; no trusted timestamp or LTV is provided.
+CMS integrity alone proves neither identity trust nor revocation. Verification reports those decisions and
+supported RFC3161 timestamps separately, offline by default. Creating a signed copy does not add a trusted
+timestamp or archival LTV evidence. See [signature security](SIGNATURE_SECURITY.md).
 The displayed signing time is the signer's declared time.
 
 Save edits first, then choose **Sign with a certificate**, select a PFX/P12 identity, enter its password and
@@ -650,7 +679,7 @@ sunipdf-cli sign saved.pdf --certificate identity.pfx --certificate-password-env
 For `sign`, set the named environment variable securely before execution, or use `--certificate-password-stdin`
 with piped UTF-8 input instead. These options are mutually exclusive and one is required; one trailing line ending
 is removed from stdin. There is no plaintext certificate-password argument. `--reason` and `--location` are optional.
-Signature JSON always reports `identity_trusted: false`. Even `--overwrite` cannot replace the signing input.
+Signature JSON separates integrity from trust and revocation; `identity_trusted` requires the recorded trust policy to succeed. Verification is offline by default; `--allow-network` explicitly permits certificate retrieval for that check. Even `--overwrite` cannot replace the signing input.
 `ocr --language` accepts `eng`, `fra` or `eng+fra`; `--pages` defaults to `all`. If no text is added, the output
 copies the source bytes exactly.
 
@@ -671,8 +700,8 @@ other field kinds reject this flag. Predefined choices are still required.
 
 ## Current limits
 
-Office conversion and editable XFA forms are unavailable; form scripts are never run. Complex column reading
+Office conversion has the bounded local scope above; editable XFA forms remain unavailable; form scripts are never run. Complex column reading
 order is not inferred. Field creation supports text, checkbox, radio, combo and list widgets; FDF interchange has the value-only limits above. OCR accuracy depends on the scan
-and language; existing text is not replaced. Certificate trust, revocation, trusted timestamps and LTV are unchecked.
+and language; existing text is not replaced. Windows trust, revocation and supported RFC3161 timestamps have explicit results; archival LTV validation and AATL/EUTL qualification remain unsupported.
 Real printer, installation/update and ARM64 hardware validation remain separate from automated tests.
 See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.

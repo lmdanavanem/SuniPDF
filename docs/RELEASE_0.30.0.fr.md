@@ -60,5 +60,6 @@ Les résultats exécutés et empreintes publiques seront consignés dans [l’é
 Les paquets restent non signés ; matériel ARM64, imprimantes physiques et comportement manuel des fenêtres
 et GPU natifs restent à qualifier séparément. Consulter les notices des
 [polices](FONT_EMBEDDING.fr.md), [annotations](RICH_ANNOTATIONS.fr.md),
+[caviardage](REDACTION.fr.md),
 [signets et structures](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md), [conversions Office](OFFICE_CONVERSION.fr.md),
 [signatures](SIGNATURE_SECURITY.fr.md) et de [l’assainissement](SECURITY_MODEL.fr.md).

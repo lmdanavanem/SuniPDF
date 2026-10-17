@@ -582,9 +582,7 @@ impl<'a> Document<'a> {
             if rasterize || rects.iter().any(|r| intersects(r, &b)) {
                 victims.push((i, b, kind == PdfPageObjectType::Image));
                 if native_allowed && kind == PdfPageObjectType::Text {
-                    if let Some(runs) =
-                        retained_text_runs(&self.inner, &page, &object, &geo, rects)?
-                    {
+                    if let Some(runs) = retained_text_runs(&page, &object, &geo, rects)? {
                         if retained.len() + runs.len() <= 16_384 {
                             safe_victims += 1;
                             retained.extend(runs);
@@ -690,8 +688,12 @@ impl<'a> Document<'a> {
                 object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
                 page.objects_mut().add_image_object(object)?;
             }
-            for object in retained.drain(..) {
+            for run in retained.drain(..) {
                 cancelled(cancel)?;
+                let mut object = PdfPageTextObject::new(&self.inner, run.text, run.font, run.size)?;
+                object.set_fill_color(run.color)?;
+                let m = run.matrix;
+                object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
                 page.objects_mut().add_text_object(object)?;
             }
             page.regenerate_content()?;
@@ -780,13 +782,20 @@ fn native_redaction_page(
     Ok(true)
 }
 
-fn retained_text_runs<'a>(
-    document: &PdfDocument<'a>,
-    page: &PdfPage<'a>,
-    object: &PdfPageObject<'a>,
+struct RetainedGlyph {
+    text: String,
+    font: PdfFontToken,
+    size: PdfPoints,
+    color: PdfColor,
+    matrix: [f32; 6],
+}
+
+fn retained_text_runs(
+    page: &PdfPage<'_>,
+    object: &PdfPageObject<'_>,
     geo: &crate::PageGeometry,
     zones: &[PointRect],
-) -> Result<Option<Vec<PdfPageTextObject<'a>>>, EngineError> {
+) -> Result<Option<Vec<RetainedGlyph>>, EngineError> {
     let Some(text) = object.as_text_object() else {
         return Ok(None);
     };
@@ -877,15 +886,13 @@ fn retained_text_runs<'a>(
         if zones.iter().any(|zone| intersects(zone, &rect)) {
             continue;
         }
-        let mut replacement = PdfPageTextObject::new(
-            document,
-            character.to_string(),
-            text.font().token(),
-            text.unscaled_font_size(),
-        )?;
-        replacement.set_fill_color(color)?;
-        replacement.transform(a, b, c, d, x.value, y.value)?;
-        retained.push(replacement);
+        retained.push(RetainedGlyph {
+            text: character.to_string(),
+            font: text.font().token(),
+            size: text.unscaled_font_size(),
+            color,
+            matrix: [a, b, c, d, x.value, y.value],
+        });
     }
     Ok(Some(retained))
 }
