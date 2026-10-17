@@ -17,6 +17,7 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Cache pinned offline OCR runtime
+        id: ocr_runtime
         uses: actions/cache@v6
         with:
           path: third_party/ocr/win-x64
@@ -25,6 +26,12 @@ jobs:
         run: .\scripts\fetch-pdfium.ps1 -Arch x64
       - name: Offline OCR (x64, including English and French)
         run: .\scripts\fetch-ocr.ps1 -Arch x64
+      - name: Save verified OCR build before application checks
+        if: steps.ocr_runtime.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: third_party/ocr/win-x64
+          key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Translation catalog parity
         run: .\scripts\check-i18n.ps1
       - name: Format
@@ -33,6 +40,20 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
       - name: Tests
         run: cargo test --workspace --locked -j 2
+      - name: Pinned independent font reader
+        run: |
+          .\scripts\fetch-test-mupdf.ps1
+          python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
+      - name: Independent font reader evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: font-independent-reader-evidence
+          path: |
+            target/font-independent-reader-report.json
+            target/font-embedding-evidence/
+          if-no-files-found: ignore
       - name: Pinned independent QPDF checker
         run: .\scripts\fetch-qpdf.ps1
       - name: QPDF archive checksum self-test

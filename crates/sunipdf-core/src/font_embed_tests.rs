@@ -3,21 +3,9 @@ use super::*;
 const TTF: &[u8] = include_bytes!("../tests/fixtures/fonts/Ubuntu-Light.ttf");
 const CFF: &[u8] = include_bytes!("../tests/fixtures/fonts/FontAwesome.otf");
 
-fn flags(source: &[u8], value: u16) -> Vec<u8> {
-    let mut bytes = source.to_vec();
-    let count = u16::from_be_bytes(bytes[4..6].try_into().unwrap()) as usize;
-    let record = (0..count)
-        .map(|i| 12 + i * 16)
-        .find(|&at| &bytes[at..at + 4] == b"OS/2")
-        .unwrap();
-    let offset = u32::from_be_bytes(bytes[record + 8..record + 12].try_into().unwrap()) as usize;
-    bytes[offset + 8..offset + 10].copy_from_slice(&value.to_be_bytes());
-    bytes
-}
-
 #[path = "../tests/support/font_collection.rs"]
 mod font_container;
-use font_container::collection;
+use font_container::{collection, embedding_flags as flags};
 
 #[test]
 fn subsets_are_deterministic_smaller_and_keep_unicode_and_embedding_flags() {

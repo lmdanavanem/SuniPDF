@@ -92,6 +92,7 @@ fn measure_licensed_office_exports_and_installed_converter_roundtrips() {
     }
     let mut records = Vec::new();
     let mut roundtrips = 0;
+    let mut verified_formats = std::collections::BTreeSet::new();
     for source in manifest["documents"].as_array().unwrap() {
         let id = source["id"].as_str().unwrap();
         let path = corpus.join(source["filename"].as_str().unwrap());
@@ -181,6 +182,7 @@ fn measure_licensed_office_exports_and_installed_converter_roundtrips() {
                             };
                             profiles.push(serde_json::json!({"conversion":conversion.json(),"output_sha256":sha256(&pdf),"nonwhitespace_text_sequence_equal_to_source":compact(&roundtrip_text)==compact(&text),"source_sample_page_size_pt":[sample.page_size(0).unwrap().width_pt,sample.page_size(0).unwrap().height_pt],"roundtrip_first_page_size_pt":[reopened.page_size(0).unwrap().width_pt,reopened.page_size(0).unwrap().height_pt],"first_page_render_dimensions_equal":same_dimensions,"first_page_mean_absolute_rgba_error_0_to_255":pixel_error,"semantic_table_and_font_reconstruction":"not supported; no inferred fidelity score"}));
                             roundtrips += 1;
+                            verified_formats.insert((format.id(), profile.id()));
                         }
                         record["local_roundtrips"] = profiles.into();
                     } else {
@@ -198,11 +200,123 @@ fn measure_licensed_office_exports_and_installed_converter_roundtrips() {
         }
         assert_eq!(fs::read(&path).unwrap(), original);
     }
+    // Controlled inputs prove converter coverage separately from complex publication refusals.
+    let controlled_path = dir.path().join("controlled-simple-text.pdf");
+    let mut controlled = engine
+        .open_bytes(
+            include_bytes!("fixtures/two-pages.pdf").to_vec(),
+            None,
+            &controlled_path,
+        )
+        .unwrap();
+    controlled.delete_page(1).unwrap();
+    let indices: Vec<_> = controlled
+        .page_objects(0)
+        .unwrap()
+        .iter()
+        .map(|object| object.index)
+        .collect();
+    controlled.delete_objects(0, &indices).unwrap();
+    for (line, text) in [
+        "SuniPDF local Office conversion",
+        "Literal string =1+1",
+        "Simple controlled text fixture",
+    ]
+    .iter()
+    .enumerate()
+    {
+        controlled
+            .add_text(
+                0,
+                72.0,
+                700.0 - line as f32 * 24.0,
+                text,
+                &sunipdf_core::TextStyle::default(),
+            )
+            .unwrap();
+    }
+    let controlled_bytes = controlled.snapshot().unwrap();
+    sunipdf_core::write_new_copy(&controlled_path, &controlled_bytes).unwrap();
+    let controlled_text = controlled.page_text(0).unwrap();
+    let expected = controlled.render_page(0, 150.0 / 72.0).unwrap();
+    let mut controlled_records = Vec::new();
+    for format in [Format::Word, Format::Excel, Format::PowerPoint] {
+        let output = dir
+            .path()
+            .join(format!("controlled-simple-text.{}", format.extension()));
+        let exported = controlled
+            .export_office(&output, format, &cancel, |_, _| {})
+            .expect("controlled simple-text export must be supported");
+        let package = parts(&fs::read(&output).unwrap());
+        let mut record = serde_json::json!({"source_kind":"controlled synthetic repository fixture; not a NIST sample or customer document","source_sha256":sha256(&controlled_path),"format":format.id(),"source_text_chars":controlled_text.chars().count(),"status":"exported","report":exported.json(),"original_unchanged":true,"output_sha256":sha256(&output),"semantic_table_and_original_font_reconstruction":"not supported"});
+        if format == Format::PowerPoint {
+            let image = image::load_from_memory(&package["ppt/media/page1.png"])
+                .unwrap()
+                .into_rgba8();
+            assert_eq!(image.as_raw(), &expected.rgba);
+            record["page_image_pixel_equality"] = true.into();
+        } else {
+            let text = exported_text(&package);
+            assert_eq!(compact(&text), compact(&controlled_text));
+            record["exported_text_chars"] = text.chars().count().into();
+            record["nonwhitespace_text_sequence_equal_to_source"] = true.into();
+        }
+        if let Some(converter) = &converter {
+            let mut profiles = Vec::new();
+            for profile in [Profile::Standard, Profile::Print] {
+                let pdf =
+                    dir.path()
+                        .join(format!("controlled-{}-{}.pdf", format.id(), profile.id()));
+                let converted = sunipdf_core::office::convert(
+                    &engine, converter, &output, &pdf, profile, &cancel,
+                )
+                .unwrap();
+                let reopened = engine.open(&pdf, None).unwrap();
+                let mut text = String::new();
+                for page in 0..reopened.page_count() {
+                    text.push_str(&reopened.page_text(page).unwrap());
+                }
+                let rendered = reopened.render_page(0, 150.0 / 72.0).unwrap();
+                let same = (expected.width, expected.height) == (rendered.width, rendered.height);
+                let error = if same {
+                    Some(
+                        expected
+                            .rgba
+                            .iter()
+                            .zip(&rendered.rgba)
+                            .map(|(a, b)| u64::from(a.abs_diff(*b)))
+                            .sum::<u64>() as f64
+                            / expected.rgba.len() as f64,
+                    )
+                } else {
+                    None
+                };
+                profiles.push(serde_json::json!({"conversion":converted.json(),"output_sha256":sha256(&pdf),"nonwhitespace_text_sequence_equal_to_source":compact(&text)==compact(&controlled_text),"source_size_pt":[controlled.page_size(0).unwrap().width_pt,controlled.page_size(0).unwrap().height_pt],"first_page_size_pt":[reopened.page_size(0).unwrap().width_pt,reopened.page_size(0).unwrap().height_pt],"first_page_render_dimensions_equal":same,"first_page_mean_absolute_rgba_error_0_to_255":error,"layout_fidelity":"measured only; original layout not guaranteed for editable exports"}));
+                roundtrips += 1;
+                verified_formats.insert((format.id(), profile.id()));
+            }
+            record["local_roundtrips"] = profiles.into();
+        } else {
+            record["local_roundtrip_status"] = "unavailable: no local converter tested".into();
+        }
+        controlled_records.push(record);
+    }
+    assert_eq!(controlled.snapshot().unwrap(), controlled_bytes);
+    assert_eq!(fs::read(&controlled_path).unwrap(), controlled_bytes);
     let revision = std::env::var("GITHUB_SHA").unwrap_or_else(|_| "unavailable outside CI".into());
     if required_converter {
-        assert!(roundtrips>0,"pinned converter QA must include at least one accepted licensed export and real local roundtrip");
+        for format in [Format::Word, Format::Excel, Format::PowerPoint] {
+            for profile in [Profile::Standard, Profile::Print] {
+                assert!(
+                    verified_formats.contains(&(format.id(), profile.id())),
+                    "pinned converter QA requires a real {} / {} roundtrip",
+                    format.id(),
+                    profile.id()
+                );
+            }
+        }
     }
-    let report = serde_json::json!({"schema":1,"measurement":"actual pinned public source samples; no inferred accuracy percentages","source_revision":revision,"build_version":env!("CARGO_PKG_VERSION"),"license_policy":manifest["license_policy_url"],"source_documents":4,"source_pages":744,"converter_detected":converter.is_some(),"completed_local_roundtrips":roundtrips,"records":records});
+    let report = serde_json::json!({"schema":2,"measurement":"actual pinned public source samples and separately labeled controlled fixtures; no inferred accuracy percentages","source_revision":revision,"build_version":env!("CARGO_PKG_VERSION"),"license_policy":manifest["license_policy_url"],"source_documents":4,"source_pages":744,"converter_detected":converter.is_some(),"completed_local_roundtrips":roundtrips,"records":records,"controlled_fixture_records":controlled_records});
     sunipdf_core::write_new_copy(&report_path, &serde_json::to_vec_pretty(&report).unwrap())
         .unwrap();
     println!(

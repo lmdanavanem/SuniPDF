@@ -1,9 +1,13 @@
 {
   "Ubuntu-Light.ttf": {
-    "source": "epaint_default_fonts0.36.2 registry archive",
+    "source": "https://crates.io/api/v1/crates/epaint_default_fonts/0.36.2/download",
     "license": "Ubuntu-font-1.0",
     "licenseFile": "UFL.txt",
-    "sha256": "80307b8da7649aa4ee4d484b232140e3ce1ec0ca093073d3c53c8f5a5ced7a70"
+    "sha256": "80307b8da7649aa4ee4d484b232140e3ce1ec0ca093073d3c53c8f5a5ced7a70",
+    "licenseSha256": "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002",
+    "sourceArchiveSha256": "773fa9c96dd0dbef887e39d0ed6177f141cce4d68e6041df77570aa3702dfa13",
+    "sourceArchivePath": "epaint_default_fonts-0.36.2/fonts/Ubuntu-Light.ttf",
+    "licenseArchivePath": "epaint_default_fonts-0.36.2/fonts/UFL.txt"
   },
   "NotoSansJP-Regular.otf": {
     "source": "https://raw.githubusercontent.com/yeslogic/allsorts/efab0fc769287f4ced68bbd723c328c9d9b89698/tests/fonts/noto/NotoSansJP-Regular.otf",
@@ -11,7 +15,8 @@
     "licenseFile": "NotoSansJP-OFL.txt",
     "licenseSource": "https://raw.githubusercontent.com/yeslogic/allsorts/efab0fc769287f4ced68bbd723c328c9d9b89698/tests/fonts/noto/LICENSE",
     "sha256": "5b57b51d86e3e105e40f76afb95d2a0c0ba690cde73f1a268f634855c8c169ac",
-    "note": "Unmodified static CFF1 CJK test font from the pinned Allsorts upstream test suite; 2182944 bytes. Tests exercise requested Japanese and Chinese glyphs without a system font dependency."
+    "note": "Unmodified static CFF1 CJK test font from the pinned Allsorts upstream test suite; 2182944 bytes. Tests exercise requested Japanese and Chinese glyphs without a system font dependency.",
+    "licenseSha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb"
   },
   "FontAwesome.otf": {
     "source": "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/a8386aae19e200ddb0f6845b5feeee5eb7013687/fonts/FontAwesome.otf",

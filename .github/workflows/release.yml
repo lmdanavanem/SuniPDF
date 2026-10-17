@@ -25,12 +25,19 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - name: Cache pinned offline OCR runtime
+        id: ocr_runtime
         uses: actions/cache@v6
         with:
           path: third_party/ocr/win-${{ matrix.arch }}
           key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Offline OCR (${{ matrix.arch }}, including English and French)
         run: .\scripts\fetch-ocr.ps1 -Arch ${{ matrix.arch }}
+      - name: Save verified OCR build before application checks
+        if: steps.ocr_runtime.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: third_party/ocr/win-${{ matrix.arch }}
+          key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Format and Clippy (x64)
         if: matrix.arch == 'x64'
         run: |
@@ -49,6 +56,21 @@ jobs:
       - name: Pinned independent QPDF checker (x64)
         if: matrix.arch == 'x64'
         run: .\scripts\fetch-qpdf.ps1
+      - name: Pinned independent font reader (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          .\scripts\fetch-test-mupdf.ps1
+          python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
+      - name: Independent font reader evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: font-independent-reader-evidence
+          path: |
+            target/font-independent-reader-report.json
+            target/font-embedding-evidence/
+          if-no-files-found: ignore
       - name: Synthetic corpus and generated PDF structural checks (x64)
         if: matrix.arch == 'x64'
         run: cargo test -p sunipdf-cli --test qpdf_corpus --locked -j 2 -- --ignored --nocapture

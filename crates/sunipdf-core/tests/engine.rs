@@ -2624,6 +2624,58 @@ fn embedded_font_programs(bytes: &[u8]) -> Vec<Vec<u8>> {
         .collect()
 }
 
+fn write_font_reader_evidence(engine: &Engine, source: &Path, output: &Path, expected: &[&str]) {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("full-original-font.otf");
+    // Test fixtures permit embedding. Add the stricter no-subset flag to obtain a full-font baseline.
+    let full = font_container::embedding_flags(&std::fs::read(source).unwrap(), 0x0100);
+    std::fs::write(&path, full).unwrap();
+    let mut reference = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let style = sunipdf_core::TextStyle {
+        font_file: Some(path),
+        ..Default::default()
+    };
+    for (index, text) in expected.iter().enumerate() {
+        reference
+            .add_text(0, 60.0, 300.0 - index as f32 * 40.0, text, &style)
+            .unwrap();
+    }
+    let image = reference.render_page(0, 2.0).unwrap();
+    let mut ppm = format!("P6\n{} {}\n255\n", image.width(), image.height()).into_bytes();
+    for pixel in image.pixels() {
+        ppm.extend_from_slice(&pixel.0[..3]);
+    }
+    std::fs::write(output.with_extension("ppm"), ppm).unwrap();
+    let regions: Vec<_> = reference
+        .page_objects(0)
+        .unwrap()
+        .into_iter()
+        .rev()
+        .take(2)
+        .map(|o| {
+            let b = o.bounds;
+            [
+                b.left * 2.0,
+                image.height() as f32 - b.top * 2.0,
+                b.right * 2.0,
+                image.height() as f32 - b.bottom * 2.0,
+            ]
+        })
+        .collect();
+    let evidence = serde_json::json!({
+        "schema": 1, "page": 1, "dpi": 144, "width": image.width(), "height": image.height(),
+        "pdf": output.file_name().unwrap().to_str().unwrap(),
+        "baseline": output.with_extension("ppm").file_name().unwrap().to_str().unwrap(),
+        "expectedText": expected, "regions": regions,
+        "baselineReader": "PDFium full original font; subset output is compared by independent MuPDF",
+    });
+    std::fs::write(
+        output.with_extension("json"),
+        serde_json::to_vec_pretty(&evidence).unwrap(),
+    )
+    .unwrap();
+}
+
 #[test]
 fn embedded_subsets_reuse_programs_after_undo_redo_and_save_reopen() {
     use sunipdf_core::TextStyle;
@@ -2657,6 +2709,12 @@ fn embedded_subsets_reuse_programs_after_undo_redo_and_save_reopen() {
     std::fs::create_dir_all(&output).unwrap();
     let pdf = output.join("truetype-unicode-subset.pdf");
     doc.save_as(&pdf).unwrap();
+    write_font_reader_evidence(
+        &engine,
+        &fixture("fonts/Ubuntu-Light.ttf"),
+        &pdf,
+        &[text, "Deuxi\u{e8}me ligne"],
+    );
     let reopened = engine.open(&pdf, None).unwrap();
     assert!(reopened.page_text(0).unwrap().contains(text));
     assert!(reopened
@@ -2682,9 +2740,20 @@ fn cff_otf_and_selected_ttc_face_round_trip_without_duplicate_embedding() {
     let dir = tempfile::tempdir().unwrap();
     let ttc = dir.path().join("mixed.ttc");
     std::fs::write(&ttc, font_container::collection(&[&ttf, &cff])).unwrap();
-    for (name, path, face) in [
-        ("cff-otf-subset", fixture("fonts/FontAwesome.otf"), 0),
-        ("ttc-second-cff-face", ttc, 1),
+    for (name, path, face, text) in [
+        (
+            "cff-otf-subset",
+            fixture("fonts/FontAwesome.otf"),
+            0,
+            "\u{f000}",
+        ),
+        ("ttc-second-cff-face", ttc, 1, "\u{f000}"),
+        (
+            "cff-cjk-subset",
+            fixture("fonts/NotoSansJP-Regular.otf"),
+            0,
+            "\u{65e5}\u{672c}\u{8a9e}\u{4e2d}\u{6587}",
+        ),
     ] {
         let style = TextStyle {
             font_file: Some(path),
@@ -2692,10 +2761,10 @@ fn cff_otf_and_selected_ttc_face_round_trip_without_duplicate_embedding() {
             ..Default::default()
         };
         let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
-        doc.add_text(0, 60.0, 300.0, "\u{f000}", &style).unwrap();
+        doc.add_text(0, 60.0, 300.0, text, &style).unwrap();
         let first = doc.snapshot().unwrap();
         doc.restore(first.clone()).unwrap();
-        doc.add_text(0, 60.0, 260.0, "\u{f000}", &style).unwrap();
+        doc.add_text(0, 60.0, 260.0, text, &style).unwrap();
         assert_eq!(
             embedded_font_programs(&first),
             embedded_font_programs(&doc.snapshot().unwrap())
@@ -2705,8 +2774,14 @@ fn cff_otf_and_selected_ttc_face_round_trip_without_duplicate_embedding() {
         std::fs::create_dir_all(&output).unwrap();
         let path = output.join(format!("{name}.pdf"));
         doc.save_as(&path).unwrap();
+        let full_source = if name == "cff-cjk-subset" {
+            "fonts/NotoSansJP-Regular.otf"
+        } else {
+            "fonts/FontAwesome.otf"
+        };
+        write_font_reader_evidence(&engine, &fixture(full_source), &path, &[text, text]);
         let reopened = engine.open(&path, None).unwrap();
-        assert!(reopened.page_text(0).unwrap().contains('\u{f000}'));
+        assert!(reopened.page_text(0).unwrap().contains(text));
         assert!(reopened.render_page(0, 1.0).is_ok());
     }
 }
