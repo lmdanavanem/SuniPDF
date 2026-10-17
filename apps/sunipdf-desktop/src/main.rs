@@ -15,6 +15,8 @@ mod forms;
 mod icons;
 mod inline_text;
 #[cfg(target_os = "macos")]
+mod mac_menu;
+#[cfg(target_os = "macos")]
 mod mac_open;
 mod objects;
 mod ocr;

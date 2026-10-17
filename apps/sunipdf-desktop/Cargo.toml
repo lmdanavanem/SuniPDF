@@ -36,7 +36,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graph
 [target.'cfg(target_os = "macos")'.dependencies]
 # Déjà dans l'arbre (rfd, wgpu) : délégué d'application pour les PDF ouverts depuis le Finder.
 objc2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSResponder"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSEvent", "NSMenu", "NSMenuItem", "NSResponder"] }
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSNotification", "NSString", "NSURL"] }
 
 [build-dependencies]

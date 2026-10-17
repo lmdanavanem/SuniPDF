@@ -2977,6 +2977,20 @@ impl eframe::App for SuniApp {
             ctx.request_repaint();
         }
         self.handle_responses(&ctx);
+        #[cfg(target_os = "macos")]
+        {
+            let blocked = self.dialog_open();
+            crate::mac_menu::sync(
+                &ctx,
+                self.lang(),
+                self.document.is_some(),
+                blocked,
+                FIELD_SHORTCUTS,
+            );
+            for command in crate::mac_menu::take() {
+                self.execute(&ctx, command);
+            }
+        }
         self.handle_input(&ctx);
         let p = theme::palette(self.settings.dark_theme);
         let chrome = |fill: egui::Color32| {
