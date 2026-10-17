@@ -146,7 +146,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
     match command {
         Command::CompressImages => (glyph::PHOTO, "⤓"),
         Command::ProcessFiles => (glyph::PAGES, "▣"),
-        Command::RichAnnotations => (glyph::COMMENT, "✎"),
+        Command::RichAnnotations => (glyph::EDIT_DOC, "A"),
         Command::EraseInkStrokes => (glyph::ERASE, "⌫"),
         Command::OfficeToPdf => (glyph::IMPORT, "⤵"),
         Command::ExportOffice => (glyph::EXTRACT, "⤴"),

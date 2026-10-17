@@ -5,6 +5,10 @@
 Added text uses a selected installed face, not a filename extension as proof of
 compatibility. Static TrueType outlines in TTF/OTF and explicitly selected TTC/OTC
 faces use PDFium's TrueType CID loader. Static CFF1 faces use its Type1 CID loader.
+CID-keyed CFF1 faces must use the Adobe-Identity collection. Allsorts rewrites their
+charset to match PDFium's Identity-H glyph codes, including full no-subset faces;
+outlines, subroutines, cmap and rights remain intact. Other CID collections are
+refused before editing because they require collection-aware PDF authoring.
 Variable fonts, CFF2, color-font tables, missing outlines, damaged faces and web-font
 containers are refused. Format-specific runtime and independent-reader QA must pass
 before a format is described as validated in a release.

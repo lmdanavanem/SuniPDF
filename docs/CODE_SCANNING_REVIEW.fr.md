@@ -2,7 +2,7 @@
 
 [English](CODE_SCANNING_REVIEW.md) · [Inventaire critique par alerte (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
-## Revue 0.30.0 — 2026-10-17 (validation en cours)
+## Revue Code Scanning 0.30.0 — 2026-10-17
 
 La [première analyse complète](https://github.com/lmdanavanem/SuniPDF/actions/runs/38994022178) de la source
 `b87beea529196e7f93308908eef1e96be4feff25` a terminé ses jobs Rust, Python et Actions avec succès et relevé
@@ -15,10 +15,13 @@ Aucun identifiant de production ni valeur d’authentification par défaut de l�
 Le [CSV par alerte](qa/CODE_SCANNING_0.30.0_2026-10-17.csv) conserve périmètre, source, emplacement,
 motif, auteur, horodatage et commentaire de clôture vérifié pour chaque constat.
 
-Les cinq alertes élevées nécessitent des gardes explicites et une propriété contrôlée des pointeurs de
-certificats, chaînes et horodatages natifs. La correction comprend des régressions de certificat nul ou
-incomplet ; une nouvelle analyse et les tests Windows doivent la vérifier avant publication. Ces alertes
-élevées n’ont pas été écartées. Requêtes, fixtures et couverture restent actives, sans exclusions.
+Les cinq alertes élevées ont été corrigées par des gardes explicites et une propriété contrôlée des
+pointeurs de certificats, chaînes et horodatages natifs, avec des régressions de certificat nul ou incomplet.
+La [nouvelle analyse](https://github.com/lmdanavanem/SuniPDF/actions/runs/38995917746) a réussi ses trois jobs
+sur la source `4896cc277c32621e5d65335b4fd9823760427793`. GitHub déclare #124–128 **corrigées** au
+`2026-10-17T02:51:43Z` ; elles n’ont pas été écartées. L’API authentifiée non filtrée a ensuite confirmé
+**zéro alerte ouverte**. Requêtes, fixtures et couverture restent actives, sans exclusions. Ce contrôle
+intermédiaire ne remplace pas la qualification complète de l’application et des paquets avant publication.
 
 ## Corrections 0.21.0 vérifiées
 

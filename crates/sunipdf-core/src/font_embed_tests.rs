@@ -2,6 +2,7 @@ use super::*;
 
 const TTF: &[u8] = include_bytes!("../tests/fixtures/fonts/Ubuntu-Light.ttf");
 const CFF: &[u8] = include_bytes!("../tests/fixtures/fonts/FontAwesome.otf");
+const CJK: &[u8] = include_bytes!("../tests/fixtures/fonts/NotoSansJP-Regular.otf");
 
 #[path = "../tests/support/font_collection.rs"]
 mod font_container;
@@ -78,4 +79,76 @@ fn missing_glyphs_malformed_faces_and_size_limits_are_refused() {
     oversized.extend_from_slice(&65u32.to_be_bytes());
     assert!(faces(&oversized).is_err());
     assert!(prepare(TTF, 0, &"x".repeat(MAX_TEXT_CHARS + 1)).is_err());
+}
+
+#[test]
+fn cid_cff_charset_matches_pdfium_identity_codes_without_changing_outlines() {
+    let prepared = prepare(CJK, 0, "\u{65e5}\u{672c}\u{8a9e}\u{4e2d}\u{6587}").unwrap();
+    let face = provider(&prepared.bytes, 0).unwrap();
+    let data = face.read_table_data(tag::CFF).unwrap();
+    let table = ReadScope::new(&data).read::<CFF<'_>>().unwrap();
+    let font = &table.fonts[0];
+    assert!(identity_cid_collection(&table).unwrap());
+    assert!((1..font.char_strings_index.len()).all(|index| {
+        font.charset.id_for_glyph(u16::try_from(index).unwrap()) == Some(index as u16)
+    }));
+    assert!(prepared.bytes.len() < CJK.len() / 10);
+
+    let full = flags(CJK, 0x0100);
+    let normalized = prepare(&full, 0, "\u{65e5}\u{672c}").unwrap();
+    let original_provider = provider(&full, 0).unwrap();
+    let original_data = original_provider.read_table_data(tag::CFF).unwrap();
+    let original = ReadScope::new(&original_data).read::<CFF<'_>>().unwrap();
+    let normalized_provider = provider(&normalized.bytes, 0).unwrap();
+    let normalized_data = normalized_provider.read_table_data(tag::CFF).unwrap();
+    let normalized = ReadScope::new(&normalized_data).read::<CFF<'_>>().unwrap();
+    assert_eq!(
+        original.fonts[0].char_strings_index.len(),
+        normalized.fonts[0].char_strings_index.len(),
+        "no-subset embedding must retain every glyph"
+    );
+    for index in 0..original.fonts[0].char_strings_index.len() {
+        assert_eq!(
+            original.fonts[0].char_strings_index.read_object(index),
+            normalized.fonts[0].char_strings_index.read_object(index),
+            "CID normalization must preserve the original glyph program"
+        );
+    }
+    for tag in original_provider.table_tags().unwrap() {
+        if !matches!(tag, tag::CFF | tag::HEAD) {
+            assert_eq!(
+                original_provider.read_table_data(tag).unwrap(),
+                normalized_provider.read_table_data(tag).unwrap(),
+                "CID normalization changed an unrelated SFNT table"
+            );
+        }
+    }
+    assert!(!permissions(&normalized_provider).unwrap());
+}
+
+#[test]
+fn other_cid_collections_are_refused_before_font_selection() {
+    let original = provider(CJK, 0).unwrap();
+    let data = original.read_table_data(tag::CFF).unwrap();
+    let mut table = ReadScope::new(&data).read::<CFF<'_>>().unwrap();
+    let identity = (0..table.string_index.len())
+        .find(|index| table.string_index.read_object(*index) == Some(b"Identity".as_slice()))
+        .unwrap();
+    table.string_index.replace(identity, b"Japan1".to_vec());
+    let mut buffer = WriteBuffer::new();
+    CFF::write(&mut buffer, &table).unwrap();
+    let replacement = buffer.into_inner();
+    let bytes = whole_font(
+        &CffTableProvider {
+            original: &original,
+            table: &replacement,
+        },
+        &original.table_tags().unwrap(),
+    )
+    .unwrap();
+    assert!(faces(&bytes).unwrap().is_empty());
+    assert!(matches!(
+        prepare(&bytes, 0, "\u{65e5}"),
+        Err(EngineError::FontNotEmbeddable)
+    ));
 }

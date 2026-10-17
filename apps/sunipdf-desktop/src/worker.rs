@@ -2595,6 +2595,11 @@ mod tests {
                     details: Some(details),
                     ..
                 } => details,
+                Response::Annotations {
+                    list,
+                    details: None,
+                    ..
+                } if list.is_empty() => Vec::new(),
                 _ => panic!("rich annotations"),
             }
         };

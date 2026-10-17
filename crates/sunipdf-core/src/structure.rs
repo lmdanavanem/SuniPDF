@@ -285,6 +285,7 @@ fn sanitize_destinations(
     }
     Ok(())
 }
+
 fn page_dictionary(pdf: &lopdf::Document, page: ObjectId) -> Result<Dictionary, EngineError> {
     let mut result = pdf
         .get_dictionary(page)
@@ -577,8 +578,10 @@ pub(crate) fn preserve(
         let original = &source.pdf;
         let mut sanitized = original.clone();
         let selected = &maps[source_index];
+        // Validate/filter destinations in source space; deep_copy applies the page mapping once.
+        let source_identity = selected.keys().map(|id| (*id, *id)).collect();
         let named = destinations(original)?;
-        sanitize_destinations(&mut sanitized, original, &named, selected)?;
+        sanitize_destinations(&mut sanitized, original, &named, &source_identity)?;
         let mut widgets = HashSet::new();
         let mut omitted_annotations = HashSet::new();
         for page in &source.pages {
@@ -713,7 +716,7 @@ pub(crate) fn preserve(
                 metadata.remove(key);
             }
             if let Ok(value) = metadata.get(b"Dest").cloned() {
-                match destination(original, &value, &named, selected)? {
+                match destination(original, &value, &named, &source_identity)? {
                     Some(value) => metadata.set("Dest", value),
                     None => {
                         metadata.remove(b"Dest");
@@ -732,7 +735,7 @@ pub(crate) fn preserve(
                         original,
                         action.get(b"D").map_err(crate::security::lopdf_err)?,
                         &named,
-                        selected,
+                        &source_identity,
                     )? {
                         let mut action = action.clone();
                         action.set("D", destination);
@@ -773,7 +776,7 @@ pub(crate) fn preserve(
         let mut groups = BTreeMap::new();
         let mut kept_destinations = BTreeMap::new();
         for (key, value) in &named {
-            if let Some(value) = destination(original, value, &named, selected)? {
+            if let Some(value) = destination(original, value, &named, &source_identity)? {
                 kept_destinations.insert(key.clone(), value);
             }
         }
@@ -1001,4 +1004,116 @@ pub(crate) fn preserve(
         return Err(invalid("output stream size limit"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lopdf::dictionary;
+
+    #[test]
+    fn destination_page_ids_are_mapped_once_across_colliding_source_and_target_namespaces() {
+        let mut source = lopdf::Document::with_version("1.7");
+        let page_tree = source.new_object_id();
+        let page = source.add_object(dictionary! {
+            "Type"=>"Page", "Parent"=>page_tree, "MediaBox"=>vec![0.into(),0.into(),300.into(),200.into()],
+        });
+        source.objects.insert(
+            page_tree,
+            dictionary! {
+                "Type"=>"Pages", "Kids"=>vec![Object::Reference(page)], "Count"=>1,
+            }
+            .into(),
+        );
+        let view = Object::Array(vec![page.into(), "Fit".into()]);
+        let annotation = source.add_object(dictionary! {
+            "Type"=>"Annot", "Subtype"=>"Link", "Rect"=>vec![0.into(),0.into(),20.into(),20.into()],
+            "P"=>page, "Dest"=>view.clone(),
+        });
+        source
+            .get_dictionary_mut(page)
+            .unwrap()
+            .set("Annots", vec![Object::Reference(annotation)]);
+        let catalog = source.add_object(dictionary! {
+            "Type"=>"Catalog", "Pages"=>page_tree, "Dests"=>dictionary! {"chapter"=>view},
+        });
+        source.trailer.set("Root", catalog);
+        let bytes = crate::security::save(source).unwrap();
+        let bytes = crate::bookmarks::edit(
+            &bytes,
+            None,
+            &crate::bookmarks::BookmarkEdit::Add {
+                parent: None,
+                title: "Chapter".into(),
+                page: 0,
+            },
+        )
+        .unwrap();
+        let source = Source::from_bytes(&bytes, None).unwrap();
+        let mut target = lopdf::Document::with_version("1.7");
+        let target_page = target.new_object_id();
+        assert_eq!(target_page, page_tree);
+        let target_pages = target.new_object_id();
+        let target_catalog = target.new_object_id();
+        target.objects.insert(target_page, dictionary! {
+            "Type"=>"Page", "Parent"=>target_pages, "MediaBox"=>vec![0.into(),0.into(),300.into(),200.into()],
+        }.into());
+        target.objects.insert(
+            target_pages,
+            dictionary! {
+                "Type"=>"Pages", "Kids"=>vec![Object::Reference(target_page)], "Count"=>1,
+            }
+            .into(),
+        );
+        target.objects.insert(
+            target_catalog,
+            dictionary! {"Type"=>"Catalog", "Pages"=>target_pages}.into(),
+        );
+        target.trailer.set("Root", target_catalog);
+        preserve(&mut target, &[&source], &[Some((0, 0))]).unwrap();
+        let saved = crate::security::save(target).unwrap();
+        let target = crate::security::load(&saved, None).unwrap();
+        assert_eq!(
+            target
+                .catalog()
+                .unwrap()
+                .get(b"Type")
+                .unwrap()
+                .as_name()
+                .unwrap(),
+            b"Catalog"
+        );
+        assert_eq!(
+            target.get_pages().values().copied().collect::<Vec<_>>(),
+            vec![target_page]
+        );
+        let annotations = target
+            .get_dictionary(target_page)
+            .unwrap()
+            .get(b"Annots")
+            .unwrap()
+            .as_array()
+            .unwrap();
+        let annotation = dict(&target, &annotations[0]).unwrap();
+        assert_eq!(
+            annotation.get(b"Dest").unwrap().as_array().unwrap()[0]
+                .as_reference()
+                .unwrap(),
+            target_page
+        );
+        let tree = Tree::read(&target).unwrap();
+        assert_eq!(
+            tree.nodes[0].dict.get(b"Dest").unwrap().as_array().unwrap()[0]
+                .as_reference()
+                .unwrap(),
+            target_page
+        );
+        let named = destinations(&target).unwrap();
+        assert_eq!(
+            named[b"chapter".as_slice()].as_array().unwrap()[0]
+                .as_reference()
+                .unwrap(),
+            target_page
+        );
+    }
 }

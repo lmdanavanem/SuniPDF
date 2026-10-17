@@ -122,6 +122,22 @@ fn load(path: &std::path::Path, password: Option<&str>) -> lopdf::Document {
     if pdf.is_encrypted() {
         pdf.decrypt(password.unwrap()).unwrap();
     }
+    if let Err(error) = pdf.catalog() {
+        let output = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/feature-030-evidence/structure");
+        std::fs::create_dir_all(&output).unwrap();
+        let diagnostic = output.join(format!(
+            "diagnostic-{}",
+            path.file_name().unwrap().to_string_lossy()
+        ));
+        std::fs::copy(path, &diagnostic).unwrap();
+        panic!(
+            "saved synthetic structure catalog failed: {error:?}; root={:?}; objects={:?}; evidence={}",
+            pdf.trailer.get(b"Root"),
+            pdf.objects.keys().collect::<Vec<_>>(),
+            diagnostic.display()
+        );
+    }
     pdf
 }
 fn outline_dicts(pdf: &lopdf::Document) -> Vec<&Dictionary> {

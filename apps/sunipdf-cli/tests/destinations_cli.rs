@@ -45,9 +45,31 @@ fn bookmarks_and_annotation_links_report_one_based_precise_destinations() {
         assert_eq!(&links[index]["link"]["destination"], destination);
         assert_eq!(bookmarks[index + 5]["destination"]["view"], "Fit");
         assert_eq!(bookmarks[index + 6]["destination"]["view"], "FitH");
-        assert!(bookmarks[index + 7]["destination"].is_null());
-        assert!(bookmarks[index + 8]["destination"].is_null());
-        assert!(bookmarks[index + 9]["destination"].is_null());
+        let null_axis = &bookmarks[index + 7]["destination"];
+        assert_eq!(null_axis["page"], page + 1);
+        assert_eq!(null_axis["view"], "FitH");
+        assert!(null_axis["x"].is_null() && null_axis["y"].is_null());
+        let zero_axis = &bookmarks[index + 8]["destination"];
+        assert_eq!(zero_axis["page"], page + 1);
+        assert_eq!(zero_axis["view"], "FitH");
+        let (x, y) = match page {
+            0 => (serde_json::Value::Null, serde_json::json!(-50.0)),
+            1 => (serde_json::json!(-50.0), serde_json::Value::Null),
+            2 => (serde_json::Value::Null, serde_json::json!(650.0)),
+            3 => (serde_json::json!(650.0), serde_json::Value::Null),
+            _ => unreachable!(),
+        };
+        assert_eq!(zero_axis["x"], x);
+        assert_eq!(zero_axis["y"], y);
+        for row in 7..=8 {
+            assert_eq!(
+                links[index + row]["link"]["destination"],
+                bookmarks[index + row]["destination"]
+            );
+        }
+        for row in 9..=11 {
+            assert!(bookmarks[index + row]["destination"].is_null());
+        }
     }
     assert!(bookmarks[4 * fixture::PER_PAGE]["page"].is_null());
     assert!(links[4 * fixture::PER_PAGE]["link"]["unsupported"]

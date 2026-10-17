@@ -2,7 +2,7 @@
 
 [Français](CODE_SCANNING_REVIEW.fr.md) · [Per-alert critical inventory (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
-## 0.30.0 review — 2026-10-17 (validation in progress)
+## 0.30.0 code scanning review — 2026-10-17
 
 The [first complete scan](https://github.com/lmdanavanem/SuniPDF/actions/runs/38994022178) of source
 `b87beea529196e7f93308908eef1e96be4feff25` passed its Rust, Python and Actions analysis jobs and reported
@@ -14,10 +14,13 @@ Cargo integration tests or explicit `cfg(test)` modules. No production credentia
 was identified. The [per-alert CSV](qa/CODE_SCANNING_0.30.0_2026-10-17.csv) records scope, source, location,
 reason, author, timestamp and the verified dismissal comment for every finding.
 
-The five high findings require explicit guards and checked ownership of native certificate, chain and
-timestamp pointers. The source correction includes null/missing certificate regressions; a fresh scan
-and Windows test run must verify it before publication. These high findings have not been dismissed.
-Queries, test fixtures and source coverage remain enabled without exclusions.
+The five high findings were corrected with explicit guards and checked ownership of native certificate,
+chain and timestamp pointers, including null/missing certificate regressions. The [fresh scan](https://github.com/lmdanavanem/SuniPDF/actions/runs/38995917746)
+passed its three analysis jobs on source `4896cc277c32621e5d65335b4fd9823760427793`.
+GitHub reports #124–128 as **fixed** at `2026-10-17T02:51:43Z`; they were not dismissed.
+The unfiltered authenticated API subsequently confirmed **zero open alerts**. Queries, test fixtures
+and source coverage remain enabled without exclusions. This checkpoint does not replace the complete
+application and package qualification required for publication.
 
 ## Verified 0.21.0 remediation
 

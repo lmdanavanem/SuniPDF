@@ -1,6 +1,40 @@
 use super::*;
 use std::collections::BTreeMap;
 
+#[derive(Debug, PartialEq)]
+struct LogicalSnapshot {
+    encrypted: bool,
+    encryption: Option<lopdf::Dictionary>,
+    objects: BTreeMap<lopdf::ObjectId, lopdf::Object>,
+    trailer: lopdf::Dictionary,
+}
+
+fn logical_snapshot(document: &Document<'_>) -> LogicalSnapshot {
+    let bytes = document.snapshot().unwrap();
+    let raw = lopdf::Document::load_mem(&bytes).unwrap();
+    let encrypted = raw.is_encrypted();
+    let encryption = raw.get_encrypted().ok().cloned();
+    assert_eq!(encrypted, document.properties().encrypted);
+    let mut pdf = lopdf::Document::load_mem_with_options(
+        &bytes,
+        lopdf::LoadOptions::with_password(document.password().unwrap_or("")),
+    )
+    .unwrap();
+    let mut ids = pdf.trailer.get(b"ID").unwrap().as_array().unwrap().clone();
+    assert_eq!(ids.len(), 2);
+    let lopdf::Object::String(_, format) = &ids[1] else {
+        panic!("second trailer ID is not a string");
+    };
+    ids[1] = lopdf::Object::String(Vec::new(), *format);
+    pdf.trailer.set("ID", ids);
+    LogicalSnapshot {
+        encrypted,
+        encryption,
+        objects: pdf.objects,
+        trailer: pdf.trailer,
+    }
+}
+
 fn stored_parts(bytes: &[u8]) -> BTreeMap<String, Vec<u8>> {
     let mut parts = BTreeMap::new();
     let mut offset = 0;
@@ -87,9 +121,18 @@ pub(crate) fn office_exports_validate_packages_preserve_sources_and_refuse_atomi
 ) {
     let dir = tempfile::tempdir().unwrap();
     let cancel = AtomicBool::new(false);
-    let fixture = include_bytes!("../tests/fixtures/two-pages.pdf");
+    let mut fixture =
+        crate::security::load(include_bytes!("../tests/fixtures/two-pages.pdf"), None).unwrap();
+    fixture.trailer.set(
+        "ID",
+        vec![
+            lopdf::Object::string_literal(b"SuniPDFOfficeQA!".to_vec()),
+            lopdf::Object::string_literal(b"SuniPDFOfficeQA!".to_vec()),
+        ],
+    );
+    let fixture = crate::security::save(fixture).unwrap();
     let source_path = dir.path().join("source.pdf");
-    std::fs::write(&source_path, fixture).unwrap();
+    std::fs::write(&source_path, &fixture).unwrap();
     let mut doc = engine.open(&source_path, None).unwrap();
     for page in 0..doc.page_count() {
         let indices: Vec<_> = doc
@@ -108,7 +151,7 @@ pub(crate) fn office_exports_validate_packages_preserve_sources_and_refuse_atomi
         )
         .unwrap();
     }
-    let before = doc.snapshot().unwrap();
+    let before = logical_snapshot(&doc);
     for format in [Format::Word, Format::Excel, Format::PowerPoint] {
         let output = dir.path().join(format!("export.{}", format.extension()));
         let mut progress = 0;
@@ -150,7 +193,7 @@ pub(crate) fn office_exports_validate_packages_preserve_sources_and_refuse_atomi
         ));
         assert_eq!(std::fs::read(&output).unwrap(), bytes);
     }
-    assert_eq!(doc.snapshot().unwrap(), before);
+    assert_eq!(logical_snapshot(&doc), before);
     assert_eq!(std::fs::read(&source_path).unwrap(), fixture);
     cancel.store(true, Ordering::Relaxed);
     let cancelled = dir.path().join("cancel.docx");
@@ -170,7 +213,7 @@ pub(crate) fn office_exports_validate_packages_preserve_sources_and_refuse_atomi
         Err(EngineError::Cancelled)
     ));
     assert!(!interrupted.exists());
-    assert_eq!(doc.snapshot().unwrap(), before);
+    assert_eq!(logical_snapshot(&doc), before);
     cancel.store(false, Ordering::Relaxed);
     doc.add_shape(
         0,
@@ -207,7 +250,7 @@ pub(crate) fn office_exports_validate_packages_preserve_sources_and_refuse_atomi
         },
     )
     .unwrap();
-    let white_before = doc.snapshot().unwrap();
+    let white_before = logical_snapshot(&doc);
     for format in [Format::Word, Format::Excel] {
         let output = dir.path().join(format!("hidden.{}", format.extension()));
         assert!(doc
@@ -215,6 +258,6 @@ pub(crate) fn office_exports_validate_packages_preserve_sources_and_refuse_atomi
             .is_err());
         assert!(!output.exists());
     }
-    assert_eq!(doc.snapshot().unwrap(), white_before);
+    assert_eq!(logical_snapshot(&doc), white_before);
     assert_eq!(std::fs::read(&source_path).unwrap(), fixture);
 }

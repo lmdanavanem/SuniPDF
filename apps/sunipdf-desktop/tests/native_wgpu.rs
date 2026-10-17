@@ -5,13 +5,30 @@ use eframe::egui_wgpu::{self, wgpu};
 use egui::{pos2, vec2, Color32, Rect};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use sunipdf_core::{tiles, Engine, PixelRect, TileLimits};
 
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = 384;
 type TestResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+fn wait_future<T>(stage: &str, future: impl Future<Output = T>) -> TestResult<T> {
+    eprintln!("Native wgpu stage: {stage}");
+    let mut future = std::pin::pin!(future);
+    let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    let started = Instant::now();
+    loop {
+        if let std::task::Poll::Ready(value) = future.as_mut().poll(&mut context) {
+            return Ok(value);
+        }
+        if started.elapsed() >= Duration::from_secs(30) {
+            return Err(format!("Native GPU timed out while {stage}").into());
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
 
 fn require(condition: bool, message: &str) -> TestResult<()> {
     if condition {
@@ -45,12 +62,15 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
     descriptor.backends = wgpu::Backends::DX12;
     let instance = wgpu::Instance::new(descriptor);
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-        force_fallback_adapter: requested == "warp",
-        compatible_surface: None,
-        power_preference: wgpu::PowerPreference::LowPower,
-        apply_limit_buckets: false,
-    }))
+    let adapter = wait_future(
+        "requesting the DX12 adapter",
+        instance.request_adapter(&wgpu::RequestAdapterOptions {
+            force_fallback_adapter: requested == "warp",
+            compatible_surface: None,
+            power_preference: wgpu::PowerPreference::LowPower,
+            apply_limit_buckets: false,
+        }),
+    )?
     .map_err(|error| format!("Requested DX12 adapter unavailable: {error}"))?;
     let info = adapter.get_info();
     require(
@@ -74,11 +94,14 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let adapter_limits = adapter.limits();
     let limits = wgpu::Limits::downlevel_defaults();
     let requested_side = limits.max_texture_dimension_2d;
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-        label: Some("SuniPDF native renderer regression"),
-        required_limits: limits,
-        ..Default::default()
-    }))?;
+    let (device, queue) = wait_future(
+        "requesting the bounded device",
+        adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("SuniPDF native renderer regression"),
+            required_limits: limits,
+            ..Default::default()
+        }),
+    )??;
     let device_limits = device.limits();
     let side = device_limits.max_texture_dimension_2d;
     require(
@@ -102,7 +125,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
         usage: wgpu::TextureUsages::TEXTURE_BINDING,
         view_formats: &[],
     });
-    let refused = pollster::block_on(validation.pop())
+    let refused = wait_future("checking the over-limit refusal", validation.pop())?
         .ok_or("Native GPU accepted an over-limit texture descriptor")?;
     drop(invalid_texture);
     let tile_limits = TileLimits::for_texture_side(side as usize);
@@ -130,6 +153,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
         "Non-finite PDF zoom was not refused",
     )?;
 
+    eprintln!("Native wgpu stage: rendering the PDFium fixture");
     let engine = Engine::new()?;
     let document = engine.open(
         &root.join("crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
@@ -213,6 +237,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     )?;
     let jobs = context.tessellate(frame.shapes, frame.pixels_per_point);
     let format = wgpu::TextureFormat::Rgba8Unorm;
+    eprintln!("Native wgpu stage: creating the egui renderer and uploading textures");
     let mut renderer =
         egui_wgpu::Renderer::new(&device, format, egui_wgpu::RendererOptions::PREDICTABLE);
     for (id, deltas) in frame.textures_delta.set.drain() {
@@ -287,6 +312,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
             depth_or_array_layers: 1,
         },
     );
+    eprintln!("Native wgpu stage: submitting the offscreen frame");
     queue.submit(
         callbacks
             .into_iter()
@@ -298,13 +324,14 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
         .map_async(wgpu::MapMode::Read, move |result| {
             let _ = sender.send(result);
         });
+    eprintln!("Native wgpu stage: waiting for bounded pixel readback");
     device.poll(wgpu::PollType::Wait {
         submission_index: None,
         timeout: Some(Duration::from_secs(30)),
     })?;
     receiver.recv_timeout(Duration::from_secs(30))??;
     require(
-        pollster::block_on(render_errors.pop()).is_none(),
+        wait_future("checking native render validation", render_errors.pop())?.is_none(),
         "Native renderer produced a validation error",
     )?;
     let pixels = readback.slice(..).get_mapped_range()?.to_vec();
@@ -381,7 +408,20 @@ fn native_dx12_pdf_image_text_and_limits() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = root.join("target/native-wgpu-evidence");
     std::fs::create_dir_all(&output).unwrap();
-    let result = smoke(&root, &output);
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let worker_root = root.clone();
+    let worker_output = output.clone();
+    std::thread::spawn(move || {
+        let result = smoke(&worker_root, &worker_output).map_err(|error| error.to_string());
+        let _ = sender.send(result);
+    });
+    let result = receiver
+        .recv_timeout(Duration::from_secs(120))
+        .unwrap_or_else(|error| {
+            Err(format!(
+                "Native GPU execution did not finish within 120 seconds: {error}"
+            ))
+        });
     let report = match &result {
         Ok(value) => value.clone(),
         Err(error) => json!({ "schema": 1, "status": "failed", "error": error.to_string() }),

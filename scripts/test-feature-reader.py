@@ -17,7 +17,7 @@ spec.loader.exec_module(font_reader)
 def contained(root, value):
     path = (root / value).resolve()
     if root.resolve() not in path.parents or not path.is_file():
-        raise ValueError('Evidence resource is missing or escapes its directory')
+        raise ValueError(f'Evidence resource is missing or escapes its directory: {value}')
     if path.stat().st_size > 128 * 1024 * 1024:
         raise ValueError('Evidence resource exceeds its size bound')
     return path

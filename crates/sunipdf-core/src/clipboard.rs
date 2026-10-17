@@ -326,12 +326,27 @@ fn same_native_object(new: &crate::ObjectInfo, old: &crate::ObjectInfo, dx: f32,
         })
 }
 
-fn native_source_supported(bytes: &[u8]) -> Result<(), EngineError> {
+fn native_source_supported(
+    bytes: &[u8],
+    password: Option<&str>,
+    page_index: usize,
+) -> Result<(), EngineError> {
     if bytes.len() > 64 * 1024 * 1024 {
         return Err(native_unsupported());
     }
-    let pdf = crate::security::load(bytes, None)?;
-    let page = *pdf.get_pages().get(&1).ok_or_else(native_unsupported)?;
+    let pdf = crate::security::load(bytes, password)?;
+    let catalog = pdf.catalog().map_err(crate::security::lopdf_err)?;
+    if catalog.has(b"OCProperties") || catalog.has(b"StructTreeRoot") {
+        return Err(native_unsupported());
+    }
+    let page_number = u32::try_from(page_index)
+        .ok()
+        .and_then(|index| index.checked_add(1))
+        .ok_or_else(native_unsupported)?;
+    let page = *pdf
+        .get_pages()
+        .get(&page_number)
+        .ok_or_else(native_unsupported)?;
     let resources = effective_resources(&pdf, page)?;
     plain_page(&pdf, page, &resources).map_err(|_| native_stage("source page resources"))?;
     let content = lopdf::content::Content::decode_strict(
@@ -412,16 +427,14 @@ impl Document<'_> {
             .filter(|t| !t.trim().is_empty())
             .collect::<Vec<_>>()
             .join("\n");
+        // Inspect the actual source before importing or regenerating it. PDFium may rename the
+        // imported page's resources before that page has been parsed and regenerated.
+        let native_preflight = self
+            .snapshot()
+            .and_then(|bytes| native_source_supported(&bytes, self.password(), page_index));
         let mut tmp = self.pdfium().create_new_pdf()?;
         tmp.pages_mut()
             .copy_page_from_document(&self.inner, page_index as PdfPageIndex, 0)?;
-        // Check the untouched page before PDFium regeneration can remove marks or unsupported state.
-        let native_preflight = tmp
-            .save_to_bytes()
-            .map_err(EngineError::from)
-            .and_then(|bytes| native_source_supported(&bytes));
-        let native_source_supported = native_preflight.is_ok();
-        let native_source_refusal = native_preflight.err().map(|error| error.to_string());
         {
             let mut p = tmp.pages().get(0)?;
             // La copie relit le flux de contenu : mêmes objets, même ordre, sinon on refuse.
@@ -438,8 +451,13 @@ impl Document<'_> {
             }
             p.regenerate_content()?;
         }
+        let pdf = tmp.save_to_bytes()?;
+        let native_preflight =
+            native_preflight.and_then(|()| native_source_supported(&pdf, None, 0));
+        let native_source_supported = native_preflight.is_ok();
+        let native_source_refusal = native_preflight.err().map(|error| error.to_string());
         Ok(ObjectClip {
-            pdf: tmp.save_to_bytes()?,
+            pdf,
             native_source_supported,
             native_source_refusal,
             count: keep.len(),

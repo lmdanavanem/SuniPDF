@@ -221,17 +221,86 @@ fn rich_annotation_appearances_survive_rotation_save_and_undo_with_atomic_refusa
     let output = dir.path().join("embedded-cjk.pdf");
     doc.save_as(&output).unwrap();
     let pdf = lopdf::Document::load(&output).unwrap();
+    let annots = pdf
+        .get_dictionary(pdf.get_pages()[&1])
+        .unwrap()
+        .get(b"Annots")
+        .unwrap()
+        .as_array()
+        .unwrap();
+    let annotation = pdf
+        .dereference(&annots[index])
+        .unwrap()
+        .1
+        .as_dict()
+        .unwrap();
+    let ap = pdf
+        .dereference(annotation.get(b"AP").unwrap())
+        .unwrap()
+        .1
+        .as_dict()
+        .unwrap();
+    let ap = pdf
+        .dereference(ap.get(b"N").unwrap())
+        .unwrap()
+        .1
+        .as_stream()
+        .unwrap();
+    let resources = pdf
+        .dereference(ap.dict.get(b"Resources").unwrap())
+        .unwrap()
+        .1
+        .as_dict()
+        .unwrap();
+    let fonts = pdf
+        .dereference(resources.get(b"Font").unwrap())
+        .unwrap()
+        .1
+        .as_dict()
+        .unwrap();
     assert!(
-        pdf.objects
-            .values()
-            .any(|value| value.as_dict().is_ok_and(|dict| dict.has(b"FontFile3"))),
-        "CJK AP font must actually be embedded"
-    );
-    assert!(
-        pdf.objects
-            .values()
-            .any(|value| value.as_dict().is_ok_and(|dict| dict.has(b"ToUnicode"))),
-        "native CJK font preserves Unicode mapping"
+        fonts.iter().any(|(_, font)| {
+            let font = pdf.dereference(font).unwrap().1.as_dict().unwrap();
+            let unicode = font
+                .get(b"ToUnicode")
+                .ok()
+                .and_then(|value| pdf.dereference(value).ok())
+                .and_then(|(_, value)| value.as_stream().ok())
+                .is_some_and(|stream| !stream.get_plain_content().unwrap().is_empty());
+            let Some(descendants) = font
+                .get(b"DescendantFonts")
+                .ok()
+                .and_then(|value| value.as_array().ok())
+            else {
+                return false;
+            };
+            unicode
+                && descendants.iter().any(|font| {
+                    let font = pdf.dereference(font).unwrap().1.as_dict().unwrap();
+                    let descriptor = pdf
+                        .dereference(font.get(b"FontDescriptor").unwrap())
+                        .unwrap()
+                        .1
+                        .as_dict()
+                        .unwrap();
+                    // PDFium's CFF CID loader stores its actual SFNT program under FontFile.
+                    // Follow the appearance's font graph rather than requiring one descriptor spelling.
+                    [b"FontFile".as_slice(), b"FontFile2", b"FontFile3"]
+                        .iter()
+                        .any(|key| {
+                            descriptor
+                                .get(key)
+                                .ok()
+                                .and_then(|value| pdf.dereference(value).ok())
+                                .and_then(|(_, value)| value.as_stream().ok())
+                                .is_some_and(|stream| {
+                                    let program = stream.get_plain_content().unwrap();
+                                    program.len() > 64 && program.starts_with(b"OTTO")
+                                })
+                        })
+                })
+        }),
+        "CJK appearance must use its own embedded OTF program and a real ToUnicode stream"
     );
     let reopened = engine.open(&output, None).unwrap();
     evidence.save("embedded-cjk", &output, &reopened, None);

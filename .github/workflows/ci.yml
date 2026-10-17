@@ -42,13 +42,25 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked --keep-going -j 2 -- -D warnings
       - name: Tests
         id: workspace_tests
-        run: cargo test --workspace --locked -j 2 --no-fail-fast
+        run: |
+          cargo test --workspace --locked -j 2 --no-fail-fast 2>&1 | Tee-Object -FilePath target/workspace-tests.log
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
       - name: Pinned independent font reader
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
+      - name: Independent font reader evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: font-independent-reader-evidence
+          path: |
+            target/workspace-tests.log
+            target/font-independent-reader-report.json
+            target/font-embedding-evidence/
+          if-no-files-found: ignore
       - name: Native DX12 software renderer and texture limits
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: cargo test -p sunipdf-desktop --test native_wgpu --locked -j 2 -- --ignored --nocapture
@@ -58,15 +70,6 @@ jobs:
         with:
           name: native-wgpu-evidence
           path: target/native-wgpu-evidence/
-          if-no-files-found: ignore
-      - name: Independent font reader evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: font-independent-reader-evidence
-          path: |
-            target/font-independent-reader-report.json
-            target/font-embedding-evidence/
           if-no-files-found: ignore
       - name: Pinned independent QPDF checker
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
@@ -106,7 +109,13 @@ jobs:
         run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
       - name: Pinned local Office converter on disposable runner
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
-        run: .\scripts\fetch-test-libreoffice.ps1
+        run: |
+          pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1 -SelfTest
+          if ($LASTEXITCODE -ne 0) { throw 'Office converter setup self-test failed.' }
+          pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Office converter installation failed.' }
+          $proof = Get-Content -Raw target/office-converter-provenance.json | ConvertFrom-Json
+          if ($proof.source_revision -ne $env:GITHUB_SHA -or -not (Test-Path -LiteralPath $proof.installed_path)) { throw 'Installed Office converter provenance is missing or invalid.' }
       - name: Measured licensed Office exports and local converter profiles
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         env:

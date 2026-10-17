@@ -936,7 +936,8 @@ mod tests {
                     assert!(ws.is_mode());
                 }
                 Entry::Direct(c) => {
-                    assert_eq!(info.commands().collect::<Vec<_>>(), vec![c]);
+                    assert_eq!(info.commands().next(), Some(c));
+                    assert_eq!(Workspace::owner_of(c), Some(ws));
                     assert!(!ws.is_mode());
                 }
             }

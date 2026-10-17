@@ -1,13 +1,17 @@
 //! Bounded SFNT face selection and library-based subsetting for PDFium.
 
 use crate::EngineError;
-use allsorts::binary::read::ReadScope;
+use allsorts::binary::read::{ReadArrayCow, ReadScope};
+use allsorts::binary::write::{WriteBinary, WriteBuffer};
+use allsorts::cff::{Charset, CustomCharset, Operand, Operator, CFF};
+use allsorts::error::ParseError;
 use allsorts::font::{Font, MatchingPresentation};
 use allsorts::font_data::{DynamicFontTableProvider, FontData};
 use allsorts::get_name::fontcode_get_name;
 use allsorts::subset::{subset, whole_font, CmapTarget, SubsetProfile};
 use allsorts::tables::FontTableProvider;
 use allsorts::tag;
+use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::io::Read;
 use std::path::Path;
@@ -99,7 +103,108 @@ fn outline(provider: &impl FontTableProvider) -> Result<bool, EngineError> {
     {
         return Err(EngineError::FontNotEmbeddable);
     }
+    if cff {
+        let data = provider
+            .read_table_data(tag::CFF)
+            .map_err(|_| EngineError::FontNotEmbeddable)?;
+        let table = ReadScope::new(&data)
+            .read::<CFF<'_>>()
+            .map_err(|_| EngineError::FontNotEmbeddable)?;
+        identity_cid_collection(&table)?;
+    }
     Ok(cff)
+}
+
+/// PDFium authors composite Type 1 text with Identity-H character codes equal to glyph indices.
+/// Other CID collections need a collection-aware authoring path, which is refused here.
+fn identity_cid_collection(table: &CFF<'_>) -> Result<bool, EngineError> {
+    let [font] = table.fonts.as_slice() else {
+        return Err(EngineError::FontNotEmbeddable);
+    };
+    if !font.is_cid_keyed() {
+        return Ok(false);
+    }
+    let Some([Operand::Integer(registry), Operand::Integer(ordering), Operand::Integer(0)]) =
+        font.top_dict.get(Operator::ROS)
+    else {
+        return Err(EngineError::FontNotEmbeddable);
+    };
+    // CFF1 defines 391 standard strings; Adobe and Identity are custom String INDEX entries.
+    let custom_string = |sid: i32| {
+        usize::try_from(sid)
+            .ok()
+            .and_then(|sid| sid.checked_sub(391))
+            .and_then(|index| table.string_index.read_object(index))
+    };
+    if custom_string(*registry) != Some(b"Adobe".as_slice())
+        || custom_string(*ordering) != Some(b"Identity".as_slice())
+    {
+        return Err(EngineError::FontNotEmbeddable);
+    }
+    Ok(true)
+}
+
+struct CffTableProvider<'a, P> {
+    original: &'a P,
+    table: &'a [u8],
+}
+
+impl<P: FontTableProvider> FontTableProvider for CffTableProvider<'_, P> {
+    fn table_data(&self, tag: u32) -> Result<Option<Cow<'_, [u8]>>, ParseError> {
+        if tag == tag::CFF {
+            Ok(Some(Cow::Borrowed(self.table)))
+        } else {
+            self.original.table_data(tag)
+        }
+    }
+
+    fn has_table(&self, tag: u32) -> bool {
+        tag == tag::CFF || self.original.has_table(tag)
+    }
+
+    fn table_tags(&self) -> Option<Vec<u32>> {
+        self.original.table_tags()
+    }
+}
+
+fn identity_cid_charset(bytes: &[u8]) -> Result<Vec<u8>, EngineError> {
+    let provider = provider(bytes, 0)?;
+    let data = provider
+        .read_table_data(tag::CFF)
+        .map_err(|_| EngineError::FontNotEmbeddable)?;
+    let mut table = ReadScope::new(&data)
+        .read::<CFF<'_>>()
+        .map_err(|_| EngineError::FontNotEmbeddable)?;
+    if !identity_cid_collection(&table)? {
+        return Ok(bytes.to_vec());
+    }
+    let font = &mut table.fonts[0];
+    let count = u16::try_from(font.char_strings_index.len())
+        .ok()
+        .filter(|count| *count > 0)
+        .ok_or(EngineError::FontNotEmbeddable)?;
+    if (1..count).all(|id| font.charset.id_for_glyph(id) == Some(id)) {
+        return Ok(bytes.to_vec());
+    }
+    // Allsorts retains source CIDs when subsetting a CID-keyed CFF. Renumber only the charset,
+    // leaving every selected outline, subroutine, cmap, metric and embedding restriction intact.
+    font.charset = Charset::Custom(CustomCharset::Format0 {
+        glyphs: ReadArrayCow::Owned((1..count).collect()),
+    });
+    let mut buffer = WriteBuffer::new();
+    CFF::write(&mut buffer, &table).map_err(|_| EngineError::FontNotEmbeddable)?;
+    let normalized = buffer.into_inner();
+    let tags = provider
+        .table_tags()
+        .ok_or(EngineError::FontNotEmbeddable)?;
+    whole_font(
+        &CffTableProvider {
+            original: &provider,
+            table: &normalized,
+        },
+        &tags,
+    )
+    .map_err(|_| EngineError::FontNotEmbeddable)
 }
 
 pub(crate) fn faces(bytes: &[u8]) -> Result<Vec<(u32, String)>, EngineError> {
@@ -187,6 +292,14 @@ pub(crate) fn prepare(
     } else {
         output
     };
+    let bytes = if is_cff {
+        identity_cid_charset(&bytes)?
+    } else {
+        bytes
+    };
+    if bytes.len() > MAX_FONT_BYTES {
+        return Err(EngineError::FontNotEmbeddable);
+    }
     Ok(PreparedFont { bytes, is_cff })
 }
 

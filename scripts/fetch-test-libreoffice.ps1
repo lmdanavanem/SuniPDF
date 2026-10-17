@@ -13,7 +13,7 @@ function Assert-DisposableRunner {
         $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ARCH -ne 'X64' -or
         $env:GITHUB_REPOSITORY -ne 'lmdanavanem/SuniPDF' -or -not $env:RUNNER_TEMP -or
         $env:GITHUB_SHA -notmatch '^[a-f0-9]{40}$') {
-        throw 'Converter installation is restricted to this repository’s disposable GitHub-hosted Windows x64 runner.'
+        throw 'Converter installation is restricted to the disposable GitHub-hosted Windows x64 runner for this repository.'
     }
 }
 if ($SelfTest) {

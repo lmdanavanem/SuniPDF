@@ -3,7 +3,12 @@
 Le texte ajouté utilise une face sélectionnée, dont le contenu est vérifié. Les
 contours TrueType statiques des fichiers TTF/OTF et des faces TTC/OTC sélectionnées
 utilisent le chargeur CID TrueType de PDFium. Les faces CFF1 statiques utilisent son
-chargeur CID Type1. Les polices variables, CFF2, les tables de couleur, les fichiers
+chargeur CID Type1. Les faces CFF1 à clés CID doivent appartenir à la collection
+Adobe-Identity. Allsorts réécrit leur charset pour correspondre aux codes Identity-H
+de PDFium, y compris pour une face complète sans réduction. Les contours,
+sous-programmes, cmap et droits restent intacts. Les autres collections CID sont
+refusées avant modification, car elles nécessitent une écriture PDF adaptée.
+Les polices variables, CFF2, les tables de couleur, les fichiers
 endommagés, les contours absents et les conteneurs web sont refusés. Un format ne
 doit être annoncé comme validé qu'après réussite de ses tests natifs et des contrôles
 par un lecteur indépendant.

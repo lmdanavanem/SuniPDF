@@ -126,7 +126,14 @@ def validate(mutool, directory):
             raise ValueError('Independent reader page geometry differs')
         if len(evidence['regions']) != 2:
             raise ValueError('Expected both newly added text regions')
-        regions = [compare_masks(mask(expected, region), mask(actual, region)) for region in evidence['regions']]
+        regions = []
+        for index, region in enumerate(evidence['regions']):
+            expected_mask, actual_mask = mask(expected, region), mask(actual, region)
+            try:
+                regions.append(compare_masks(expected_mask, actual_mask))
+            except ValueError as error:
+                raise ValueError(f'{name}, region {index}: {error}; '
+                                 f'baseline ink={len(expected_mask)}, reader ink={len(actual_mask)}') from error
         report['cases'].append({'name': name, 'pdfSha256': sha256(pdf), 'baselineSha256': sha256(baseline),
                                 'readerRasterSha256': sha256(raster_path), 'pagePixels': list(actual[:2]),
                                 'unicodeTextPassed': True, 'regions': regions,
