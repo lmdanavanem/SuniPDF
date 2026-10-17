@@ -234,7 +234,7 @@ fn bad() -> EngineError {
     EngineError::Other("invalid or excessive rich annotation geometry, style or resource".into())
 }
 
-fn same_document(
+pub(crate) fn same_document(
     original: &[u8],
     current: &[u8],
     password: Option<&str>,
@@ -449,6 +449,7 @@ impl<'a> Document<'a> {
         }
         let first = probe.objects().get(0)?;
         let font = first.as_text_object().ok_or_else(bad)?.font().token();
+        drop(first);
         let mut objects = Vec::new();
         for (index, line) in lines.iter().enumerate() {
             if line.is_empty() {
@@ -481,7 +482,6 @@ impl<'a> Document<'a> {
             )?;
             objects.push(object);
         }
-        drop(first);
         probe.objects_mut().remove_object_at_index(0)?;
         probe.regenerate_content()?;
         drop(probe);

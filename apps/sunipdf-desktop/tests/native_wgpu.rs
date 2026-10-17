@@ -316,21 +316,30 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     )?;
     let mut matches = 0_usize;
     let mut compared = 0_usize;
+    let mut source_ink = 0_usize;
+    let mut matching_ink = 0_usize;
     for (index, expected) in page.rgba.chunks_exact(4).enumerate() {
         let x = index as u32 % page.width;
         let y = index as u32 / page.width;
         let actual = pixel(&pixels, x + 20, y + 80);
-        matches += usize::from(
-            expected
-                .iter()
-                .zip(actual)
-                .all(|(a, b)| a.abs_diff(*b) <= 2),
-        );
+        let same = expected
+            .iter()
+            .zip(actual)
+            .all(|(a, b)| a.abs_diff(*b) <= 2);
+        matches += usize::from(same);
+        if expected[..3].iter().any(|channel| *channel < 200) {
+            source_ink += 1;
+            matching_ink += usize::from(same);
+        }
         compared += 1;
     }
     require(
         matches as f64 / compared as f64 > 0.99,
         "PDF texture differs from its PDFium raster in native readback",
+    )?;
+    require(
+        source_ink > 0 && matching_ink as f64 / source_ink as f64 > 0.90,
+        "PDF glyphs are missing from the native texture even if its white background matches",
     )?;
     let png = output.join("native-wgpu.png");
     image::save_buffer(&png, &pixels, WIDTH, HEIGHT, image::ColorType::Rgba8)?;
@@ -345,7 +354,8 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
         "nonFiniteZoomRefused": true, "outputPixels": [WIDTH, HEIGHT], "rgbaSha256": format!("{:x}", Sha256::digest(&pixels)),
         "pngSha256": format!("{:x}", Sha256::digest(std::fs::read(&png)?)),
         "pdfTexture": { "sourcePixels": [page.width, page.height], "matchingPixels": matches, "comparedPixels": compared,
-            "channelTolerance": 2, "minimumMatchingFraction": 0.99 },
+            "channelTolerance": 2, "minimumMatchingFraction": 0.99,
+            "sourceInkPixels": source_ink, "matchingInkPixels": matching_ink, "minimumInkMatchingFraction": 0.90 },
         "imageColorProbesPassed": true, "eguiTextInkPixels": text_ink,
         "defaultRendererChanged": false }),
     )

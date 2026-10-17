@@ -9,3 +9,17 @@ Original target names are retained. Incoming collisions receive a deterministic 
 This is a bounded preservation operation, not a claim that every PDF extension or active workflow is supported. Name trees, outlines, page inheritance and field trees have explicit count/depth/cycle checks. Missing references and graphs that cannot be represented safely cause atomic failure. Original files remain unchanged. Extraction preserves the original encryption state and permissions; encrypted sources without copy permission cannot be imported. Insertion operates on a candidate and commits only after preservation succeeds. Existing output and overwrite rules of the page-operation API are unchanged.
 
 Tests independently inspect output page destinations, form values and owners, layer/resource object identities, attachment stream bytes and absence of omitted page content. They cover AES-128/AES-256 copies, malformed outline cycles, duplicate widgets, copy restrictions, unchanged source files and snapshot restoration. A worker test checks bookmark Undo/Redo and failure history using the existing single engine. Runtime results belong in the release QA evidence; source tests alone are not a completed release gate.
+
+## CLI authoring
+
+`bookmarks INPUT.pdf` remains the read command. Authoring commands write new copies and refuse existing output files or replacement of the input, including with `--overwrite`. Indices use the current preorder, starting at 1. Omitting `--parent` selects the root; move positions are sibling slots after removing the moved item.
+
+```text
+bookmark-add INPUT.pdf --title "Chapter" --page 2 [--parent 1] --out NEW.pdf
+bookmark-rename INPUT.pdf --index 1 --title "Renamed" --out NEW.pdf
+bookmark-destination INPUT.pdf --index 1 --page 2 --out NEW.pdf
+bookmark-move INPUT.pdf --index 2 [--parent 1] --position 1 --out NEW.pdf
+bookmark-delete INPUT.pdf --index 1 --out NEW.pdf
+```
+
+All authoring commands accept `--password` for encrypted input and preserve its encryption in the output. Modify permission is required. [French notice](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md).

@@ -44,6 +44,53 @@ fn hex((r, g, b): (u8, u8, u8)) -> String {
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
+pub fn link_target(
+    page: Option<usize>,
+    uri: Option<String>,
+    named: Option<String>,
+    view: Option<String>,
+    x: Option<f32>,
+    y: Option<f32>,
+    zoom: Option<f32>,
+) -> Result<LinkTarget, EngineError> {
+    let invalid = || {
+        EngineError::Other("Use exactly one of --goto-page, --url or --named-destination; coordinates need --view xyz or --view fith.".into())
+    };
+    if [x, y, zoom].into_iter().flatten().any(|v| !v.is_finite()) || zoom.is_some_and(|v| v <= 0.0)
+    {
+        return Err(invalid());
+    }
+    match (page, uri, named) {
+        (Some(page), None, None) => {
+            let page = page.checked_sub(1).ok_or_else(invalid)?;
+            let view = match view.as_deref() {
+                None | Some("fit") if x.is_none() && y.is_none() && zoom.is_none() => {
+                    return Ok(LinkTarget::Page(page))
+                }
+                Some("xyz") => DestinationView::Xyz { x, y, zoom },
+                Some("fith") if zoom.is_none() => DestinationView::FitWidth { x, y },
+                _ => return Err(invalid()),
+            };
+            Ok(LinkTarget::Destination(Destination { page, view }))
+        }
+        (None, Some(uri), None)
+            if view.is_none() && x.is_none() && y.is_none() && zoom.is_none() =>
+        {
+            Ok(LinkTarget::Uri(uri.trim().to_string()))
+        }
+        (None, None, Some(named))
+            if view.is_none()
+                && x.is_none()
+                && y.is_none()
+                && zoom.is_none()
+                && !named.trim().is_empty() =>
+        {
+            Ok(LinkTarget::Named(named))
+        }
+        _ => Err(invalid()),
+    }
+}
+
 pub fn link_json(t: &LinkTarget) -> serde_json::Value {
     match t {
         LinkTarget::Page(p) => serde_json::json!({ "page": p + 1 }),
@@ -97,6 +144,67 @@ pub fn detail_json(d: &AnnotDetail) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn authored_destinations_retain_null_axes_and_reject_invalid_combinations() {
+        let target = link_target(
+            Some(2),
+            None,
+            None,
+            Some("xyz".into()),
+            None,
+            Some(25.0),
+            Some(1.5),
+        )
+        .unwrap();
+        assert_eq!(
+            target,
+            LinkTarget::Destination(Destination {
+                page: 1,
+                view: DestinationView::Xyz {
+                    x: None,
+                    y: Some(25.0),
+                    zoom: Some(1.5)
+                }
+            })
+        );
+        assert_eq!(
+            link_target(None, None, Some("Chapter 1".into()), None, None, None, None).unwrap(),
+            LinkTarget::Named("Chapter 1".into())
+        );
+        for zoom in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            assert!(link_target(
+                Some(1),
+                None,
+                None,
+                Some("xyz".into()),
+                None,
+                None,
+                Some(zoom)
+            )
+            .is_err());
+        }
+        assert!(link_target(
+            Some(1),
+            None,
+            None,
+            Some("fit".into()),
+            Some(4.0),
+            None,
+            None
+        )
+        .is_err());
+        assert!(link_target(
+            Some(1),
+            Some("https://example.org".into()),
+            None,
+            None,
+            None,
+            None,
+            None
+        )
+        .is_err());
+    }
 
     #[test]
     fn rect_and_strokes_parse_strictly() {

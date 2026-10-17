@@ -277,9 +277,77 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// List existing local named destinations, refusing ambiguous or malformed name trees.
+    LinkDestinations {
+        file: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Print the bookmark tree (title, page, depth) as JSON.
     Bookmarks {
         file: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Add a page bookmark to a new copy. Bookmark/page indices start at 1; omit --parent for root.
+    BookmarkAdd {
+        file: PathBuf,
+        #[arg(long)]
+        title: String,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        page: usize,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        parent: Option<usize>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Rename a bookmark in a new copy, preserving its original action and children.
+    BookmarkRename {
+        file: PathBuf,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        index: usize,
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Replace a bookmark action with a local page destination in a new copy.
+    BookmarkDestination {
+        file: PathBuf,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        index: usize,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        page: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Move a bookmark subtree. --position is the 1-based sibling slot after removing the item.
+    BookmarkMove {
+        file: PathBuf,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        index: usize,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        parent: Option<usize>,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        position: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
+    /// Delete a bookmark and its children in a new copy; the input cannot be replaced.
+    BookmarkDelete {
+        file: PathBuf,
+        #[arg(long,value_parser=positive_bookmark_number)]
+        index: usize,
+        #[arg(long)]
+        out: PathBuf,
         #[arg(long)]
         password: Option<String>,
     },
@@ -787,11 +855,23 @@ enum Command {
         #[arg(long, default_value_t = 1.0)]
         opacity: f32,
         /// Link to a page (1-based).
-        #[arg(long, conflicts_with = "url")]
+        #[arg(long, conflicts_with_all = ["url", "named_destination"])]
         goto_page: Option<usize>,
         /// Link to http, https or mailto address; anything else is refused.
         #[arg(long)]
         url: Option<String>,
+        /// Use an existing uniquely named local destination.
+        #[arg(long, conflicts_with_all = ["goto_page", "url"])]
+        named_destination: Option<String>,
+        /// Local viewport: Fit, XYZ or FitH; empty axes retain the reader's current values.
+        #[arg(long, requires = "goto_page", value_parser = ["fit", "xyz", "fith"])]
+        view: Option<String>,
+        #[arg(long, requires = "view", allow_negative_numbers = true)]
+        x: Option<f32>,
+        #[arg(long, requires = "view", allow_negative_numbers = true)]
+        y: Option<f32>,
+        #[arg(long, requires = "view")]
+        zoom: Option<f32>,
         #[arg(long)]
         author: Option<String>,
         #[arg(long)]
@@ -808,15 +888,25 @@ enum Command {
         #[arg(long)]
         index: usize,
         /// Link to a page (1-based).
-        #[arg(long, conflicts_with = "url", required_unless_present = "url")]
+        #[arg(long, conflicts_with_all = ["url", "named_destination"], required_unless_present_any = ["url", "named_destination"])]
         goto_page: Option<usize>,
         /// Link to an http, https or mailto address; anything else is refused.
         #[arg(
             long,
-            conflicts_with = "goto_page",
-            required_unless_present = "goto_page"
+            conflicts_with_all = ["goto_page", "named_destination"],
+            required_unless_present_any = ["goto_page", "named_destination"]
         )]
         url: Option<String>,
+        #[arg(long, conflicts_with_all = ["goto_page", "url"], required_unless_present_any = ["goto_page", "url"])]
+        named_destination: Option<String>,
+        #[arg(long, requires = "goto_page", value_parser = ["fit", "xyz", "fith"])]
+        view: Option<String>,
+        #[arg(long, requires = "view", allow_negative_numbers = true)]
+        x: Option<f32>,
+        #[arg(long, requires = "view", allow_negative_numbers = true)]
+        y: Option<f32>,
+        #[arg(long, requires = "view")]
+        zoom: Option<f32>,
         #[arg(long)]
         out: PathBuf,
         #[arg(long)]
@@ -1313,6 +1403,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 "permissions": { "print": p.can_print, "copy": p.can_copy, "modify": p.can_modify, "annotate": p.can_annotate },
             }))
         }
+        Command::LinkDestinations { file, password } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let names = doc.named_link_destinations()?;
+            Ok(serde_json::json!({"named_destinations": names}))
+        }
         Command::Bookmarks { file, password } => {
             let doc = engine.open(&file, password.as_deref())?;
             Ok(serde_json::json!(doc
@@ -1324,6 +1419,88 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 }))
                 .collect::<Vec<_>>()))
         }
+        Command::BookmarkAdd {
+            file,
+            title,
+            page,
+            parent,
+            out,
+            password,
+        } => bookmark_copy(
+            &engine,
+            &file,
+            &out,
+            password.as_deref(),
+            sunipdf_core::bookmarks::BookmarkEdit::Add {
+                parent: parent.map(bookmark_index).transpose()?,
+                title,
+                page: bookmark_index(page)?,
+            },
+        ),
+        Command::BookmarkRename {
+            file,
+            index,
+            title,
+            out,
+            password,
+        } => bookmark_copy(
+            &engine,
+            &file,
+            &out,
+            password.as_deref(),
+            sunipdf_core::bookmarks::BookmarkEdit::Rename {
+                index: bookmark_index(index)?,
+                title,
+            },
+        ),
+        Command::BookmarkDestination {
+            file,
+            index,
+            page,
+            out,
+            password,
+        } => bookmark_copy(
+            &engine,
+            &file,
+            &out,
+            password.as_deref(),
+            sunipdf_core::bookmarks::BookmarkEdit::Destination {
+                index: bookmark_index(index)?,
+                page: bookmark_index(page)?,
+            },
+        ),
+        Command::BookmarkMove {
+            file,
+            index,
+            parent,
+            position,
+            out,
+            password,
+        } => bookmark_copy(
+            &engine,
+            &file,
+            &out,
+            password.as_deref(),
+            sunipdf_core::bookmarks::BookmarkEdit::Move {
+                index: bookmark_index(index)?,
+                parent: parent.map(bookmark_index).transpose()?,
+                position: bookmark_index(position)?,
+            },
+        ),
+        Command::BookmarkDelete {
+            file,
+            index,
+            out,
+            password,
+        } => bookmark_copy(
+            &engine,
+            &file,
+            &out,
+            password.as_deref(),
+            sunipdf_core::bookmarks::BookmarkEdit::Delete {
+                index: bookmark_index(index)?,
+            },
+        ),
         Command::Protect {
             file,
             out,
@@ -1999,11 +2176,16 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             opacity,
             goto_page,
             url,
+            named_destination,
+            view,
+            x,
+            y,
+            zoom,
             author,
             out,
             password,
         } => {
-            use sunipdf_core::{AnnotShape, AnnotStyle, FreeTextStyle, LinkTarget};
+            use sunipdf_core::{AnnotShape, AnnotStyle, FreeTextStyle};
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
             let need_rect = || -> Result<sunipdf_core::PointRect, EngineError> {
@@ -2052,17 +2234,15 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     doc.add_free_text_annotation(p, need_rect()?, text, &fts, author)?
                 }
                 "link" => {
-                    let target = match (goto_page, url) {
-                        (Some(n), None) => {
-                            LinkTarget::Page(n.checked_sub(1).ok_or_else(page_zero)?)
-                        }
-                        (None, Some(u)) => LinkTarget::Uri(u),
-                        _ => {
-                            return Err(EngineError::Other(
-                                "a link needs --goto-page or --url".into(),
-                            ))
-                        }
-                    };
+                    let target = annot_cmd::link_target(
+                        goto_page,
+                        url,
+                        named_destination,
+                        view,
+                        x,
+                        y,
+                        zoom,
+                    )?;
                     doc.add_link_annotation(p, need_rect()?, &target)?
                 }
                 other => {
@@ -2086,22 +2266,18 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             index,
             goto_page,
             url,
+            named_destination,
+            view,
+            x,
+            y,
+            zoom,
             out,
             password,
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
-            let target = match (goto_page, url) {
-                (Some(n), None) => {
-                    sunipdf_core::LinkTarget::Page(n.checked_sub(1).ok_or_else(page_zero)?)
-                }
-                (None, Some(uri)) => sunipdf_core::LinkTarget::Uri(uri.trim().to_owned()),
-                _ => {
-                    return Err(EngineError::Other(
-                        "a link needs --goto-page or --url".into(),
-                    ))
-                }
-            };
+            let target =
+                annot_cmd::link_target(goto_page, url, named_destination, view, x, y, zoom)?;
             doc.set_link_target(p, index, &target)?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({
@@ -2247,6 +2423,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
         Command::Merge { out, .. }
+        | Command::BookmarkAdd { out, .. }
+        | Command::BookmarkRename { out, .. }
+        | Command::BookmarkDestination { out, .. }
+        | Command::BookmarkMove { out, .. }
+        | Command::BookmarkDelete { out, .. }
         | Command::OfficeToPdf { out, .. }
         | Command::ExportOffice { out, .. }
         | Command::AddFormField { out, .. }
@@ -2294,6 +2475,36 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
 }
 
 /// 90, 180, 270 (ou leurs équivalents négatifs) → quart de tour horaire ; le reste est refusé.
+fn positive_bookmark_number(value: &str) -> Result<usize, String> {
+    value
+        .parse::<usize>()
+        .ok()
+        .filter(|number| *number > 0)
+        .ok_or_else(|| "bookmark indices, pages and positions start at 1".into())
+}
+fn bookmark_index(value: usize) -> Result<usize, EngineError> {
+    value.checked_sub(1).ok_or_else(|| {
+        EngineError::Other("bookmark indices, pages and positions start at 1".into())
+    })
+}
+fn bookmark_copy(
+    engine: &Engine,
+    input: &std::path::Path,
+    output: &std::path::Path,
+    password: Option<&str>,
+    edit: sunipdf_core::bookmarks::BookmarkEdit,
+) -> Result<serde_json::Value, EngineError> {
+    if output.exists() {
+        return Err(EngineError::AlreadyExists(output.into()));
+    }
+    let mut doc = engine.open(input, password)?;
+    doc.edit_bookmark(&edit)?;
+    sunipdf_core::write_new_copy(output, &doc.snapshot()?)?;
+    Ok(
+        serde_json::json!({"out":output,"bookmarks":doc.bookmarks().len(),"original_unchanged":true,"encrypted":doc.properties().encrypted}),
+    )
+}
+
 fn quarter_turn(degrees: i32) -> Result<i32, EngineError> {
     match degrees.rem_euclid(360) {
         d @ (90 | 180 | 270) => Ok(d),
@@ -2468,6 +2679,174 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn bookmark_author_commands_use_one_based_indices_and_guard_all_output_paths() {
+        let add = parse_cli([
+            "sunipdf-cli",
+            "bookmark-add",
+            "input.pdf",
+            "--title",
+            "Chapter",
+            "--page",
+            "2",
+            "--parent",
+            "1",
+            "--out",
+            "added.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(
+            add.command,
+            Command::BookmarkAdd {
+                parent: Some(1),
+                page: 2,
+                ..
+            }
+        ));
+        assert_eq!(
+            output_path(&add.command),
+            Some(std::path::Path::new("added.pdf"))
+        );
+        let rename = parse_cli([
+            "sunipdf-cli",
+            "bookmark-rename",
+            "input.pdf",
+            "--index",
+            "1",
+            "--title",
+            "Renamed",
+            "--out",
+            "renamed.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&rename.command),
+            Some(std::path::Path::new("renamed.pdf"))
+        );
+        let destination = parse_cli([
+            "sunipdf-cli",
+            "bookmark-destination",
+            "input.pdf",
+            "--index",
+            "1",
+            "--page",
+            "2",
+            "--out",
+            "dest.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&destination.command),
+            Some(std::path::Path::new("dest.pdf"))
+        );
+        let moved = parse_cli([
+            "sunipdf-cli",
+            "bookmark-move",
+            "input.pdf",
+            "--index",
+            "2",
+            "--parent",
+            "1",
+            "--position",
+            "1",
+            "--out",
+            "moved.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&moved.command),
+            Some(std::path::Path::new("moved.pdf"))
+        );
+        let deleted = parse_cli([
+            "sunipdf-cli",
+            "bookmark-delete",
+            "input.pdf",
+            "--index",
+            "1",
+            "--out",
+            "deleted.pdf",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(deleted.overwrite);
+        assert_eq!(
+            output_path(&deleted.command),
+            Some(std::path::Path::new("deleted.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "bookmark-delete",
+            "input.pdf",
+            "--index",
+            "0",
+            "--out",
+            "bad.pdf"
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "bookmark-add",
+            "input.pdf",
+            "--title",
+            "bad",
+            "--page",
+            "0",
+            "--out",
+            "bad.pdf"
+        ])
+        .is_err());
+        assert!(bookmark_index(0).is_err());
+        assert_eq!(bookmark_index(1).unwrap(), 0);
+    }
+    #[test]
+    fn bookmark_cli_new_copy_helper_preserves_input_and_refuses_replacement_or_bad_edits() {
+        let engine = Engine::new().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("input.pdf");
+        let original = include_bytes!("../../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        std::fs::write(&input, original).unwrap();
+        let output = dir.path().join("output.pdf");
+        let result = bookmark_copy(
+            &engine,
+            &input,
+            &output,
+            None,
+            sunipdf_core::bookmarks::BookmarkEdit::Add {
+                parent: None,
+                title: "CLI Chapter".into(),
+                page: 1,
+            },
+        )
+        .unwrap();
+        assert_eq!(result["bookmarks"], 1);
+        assert_eq!(
+            engine.open(&output, None).unwrap().bookmarks()[0].page,
+            Some(1)
+        );
+        assert_eq!(std::fs::read(&input).unwrap(), original);
+        assert!(matches!(
+            bookmark_copy(
+                &engine,
+                &input,
+                &input,
+                None,
+                sunipdf_core::bookmarks::BookmarkEdit::Delete { index: 0 }
+            ),
+            Err(EngineError::AlreadyExists(_))
+        ));
+        let invalid = dir.path().join("invalid.pdf");
+        assert!(bookmark_copy(
+            &engine,
+            &input,
+            &invalid,
+            None,
+            sunipdf_core::bookmarks::BookmarkEdit::Delete { index: 99 }
+        )
+        .is_err());
+        assert!(!invalid.exists());
+        assert_eq!(std::fs::read(&input).unwrap(), original);
     }
 
     #[test]

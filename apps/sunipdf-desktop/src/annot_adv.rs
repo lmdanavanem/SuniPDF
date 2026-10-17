@@ -13,8 +13,8 @@ use crate::theme;
 use crate::worker::{EditOp, Request};
 use egui::{Align, Button, CursorIcon, Frame, Key, Layout, RichText, Stroke};
 use sunipdf_core::{
-    is_safe_external_uri, thread_status, AnnotDetail, AnnotShape, AnnotStyle, Command,
-    FreeTextStyle, LinkInfo, LinkTarget, PointRect, ReviewStatus,
+    is_safe_external_uri, thread_status, AnnotDetail, AnnotShape, AnnotStyle, Command, Destination,
+    DestinationView, FreeTextStyle, LinkInfo, LinkTarget, PointRect, ReviewStatus,
 };
 use sunipdf_i18n::{tr, tr_args, Language};
 
@@ -112,6 +112,92 @@ pub struct LinkPrompt {
     pub page_number: usize,
     pub url: String,
     pub error: bool,
+    pub precise: PreciseLinkPrompt,
+}
+
+#[derive(Clone, Copy, Default, PartialEq)]
+pub enum LinkViewport {
+    #[default]
+    Fit,
+    Xyz,
+    FitWidth,
+}
+
+#[derive(Clone, Default)]
+pub struct PreciseLinkPrompt {
+    pub named: bool,
+    pub name: String,
+    pub view: LinkViewport,
+    pub x: String,
+    pub y: String,
+    pub zoom: String,
+}
+
+impl PreciseLinkPrompt {
+    fn from_target(target: Option<&LinkTarget>) -> Self {
+        let mut result = Self::default();
+        match target {
+            Some(LinkTarget::Named(name)) => {
+                result.named = true;
+                result.name = name.clone();
+            }
+            Some(LinkTarget::Destination(destination)) => {
+                let (x, y, zoom) = match destination.view {
+                    DestinationView::FitPage => (None, None, None),
+                    DestinationView::Xyz { x, y, zoom } => {
+                        result.view = LinkViewport::Xyz;
+                        (x, y, zoom)
+                    }
+                    DestinationView::FitWidth { x, y } => {
+                        result.view = LinkViewport::FitWidth;
+                        (x, y, None)
+                    }
+                };
+                result.x = x.map_or_else(String::new, |value| value.to_string());
+                result.y = y.map_or_else(String::new, |value| value.to_string());
+                result.zoom = zoom.map_or_else(String::new, |value| value.to_string());
+            }
+            _ => {}
+        }
+        result
+    }
+
+    fn target(&self, page_number: usize) -> Option<LinkTarget> {
+        if self.named {
+            return (!self.name.trim().is_empty()).then(|| LinkTarget::Named(self.name.clone()));
+        }
+        let page = page_number.checked_sub(1)?;
+        let number = |text: &str| -> Option<Option<f32>> {
+            if text.trim().is_empty() {
+                Some(None)
+            } else {
+                text.trim()
+                    .parse::<f32>()
+                    .ok()
+                    .filter(|v| v.is_finite())
+                    .map(Some)
+            }
+        };
+        let view = match self.view {
+            LinkViewport::Fit => return Some(LinkTarget::Page(page)),
+            LinkViewport::Xyz => {
+                let zoom = number(&self.zoom)?;
+                if zoom.is_some_and(|v| v <= 0.0) {
+                    return None;
+                }
+                DestinationView::Xyz {
+                    x: number(&self.x)?,
+                    y: number(&self.y)?,
+                    zoom,
+                }
+            }
+            LinkViewport::FitWidth => DestinationView::FitWidth {
+                x: number(&self.x)?,
+                y: number(&self.y)?,
+            },
+        };
+        Some(LinkTarget::Destination(Destination { page, view }))
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -786,6 +872,7 @@ impl SuniApp {
                         page_number: (drag.page + 2).min(count),
                         url: String::new(),
                         error: false,
+                        precise: PreciseLinkPrompt::default(),
                     });
                 } else {
                     self.status_msg = Some(tr(self.lang(), "status.link_too_small").to_string());
@@ -1027,16 +1114,23 @@ impl SuniApp {
         if !detail.can_edit_link {
             return;
         }
-        let target = self
+        let cached = self
             .annotate
             .adv
             .links
             .iter()
             .find(|link| self.annotate.adv.links_page == Some(*page) && link.index == detail.index)
-            .map(|link| &link.target)
-            .or(detail.link.as_ref());
+            .map(|link| &link.target);
+        let target = match detail.link.as_ref() {
+            Some(target @ (LinkTarget::Named(_) | LinkTarget::Destination(_))) => Some(target),
+            _ => cached.or(detail.link.as_ref()),
+        };
         let (to_page, page_number, url) = match target {
             Some(LinkTarget::Page(page)) => (true, page + 1, String::new()),
+            Some(LinkTarget::Destination(destination)) => {
+                (true, destination.page + 1, String::new())
+            }
+            Some(LinkTarget::Named(_)) => (false, 1, String::new()),
             Some(LinkTarget::Uri(url)) => (false, 1, url.clone()),
             _ => (false, 1, String::new()),
         };
@@ -1048,6 +1142,7 @@ impl SuniApp {
             page_number,
             url,
             error: false,
+            precise: PreciseLinkPrompt::from_target(target),
         });
     }
 
@@ -1995,10 +2090,39 @@ impl SuniApp {
             ctx,
             spec,
             |ui| {
-                ui.radio_value(&mut prompt.to_page, true, tr(lang, "dialog.link.kind_page"));
-                ui.radio_value(&mut prompt.to_page, false, tr(lang, "dialog.link.kind_url"));
+                if ui
+                    .radio(
+                        prompt.to_page && !prompt.precise.named,
+                        tr(lang, "dialog.link.kind_page"),
+                    )
+                    .clicked()
+                {
+                    prompt.to_page = true;
+                    prompt.precise.named = false;
+                }
+                if ui
+                    .radio(
+                        !prompt.to_page && !prompt.precise.named,
+                        tr(lang, "dialog.link.kind_url"),
+                    )
+                    .clicked()
+                {
+                    prompt.to_page = false;
+                    prompt.precise.named = false;
+                }
+                if ui
+                    .radio(prompt.precise.named, tr(lang, "dialog.link.kind_named"))
+                    .clicked()
+                {
+                    prompt.precise.named = true;
+                    prompt.to_page = false;
+                }
                 ui.add_space(4.0);
-                if prompt.to_page {
+                if prompt.precise.named {
+                    ui.label(tr(lang, "dialog.link.named_label"));
+                    ui.text_edit_singleline(&mut prompt.precise.name);
+                    ui.small(tr(lang, "dialog.link.named_note"));
+                } else if prompt.to_page {
                     ui.horizontal(|ui| {
                         ui.label(tr(lang, "dialog.link.page"));
                         ui.add(
@@ -2008,6 +2132,38 @@ impl SuniApp {
                         );
                         ui.label(format!("/ {count}"));
                     });
+                    ui.horizontal(|ui| {
+                        ui.label(tr(lang, "dialog.link.view"));
+                        ui.selectable_value(&mut prompt.precise.view, LinkViewport::Fit, "Fit");
+                        ui.selectable_value(&mut prompt.precise.view, LinkViewport::Xyz, "XYZ");
+                        ui.selectable_value(
+                            &mut prompt.precise.view,
+                            LinkViewport::FitWidth,
+                            "FitH",
+                        );
+                    });
+                    if prompt.precise.view != LinkViewport::Fit {
+                        ui.small(tr(lang, "dialog.link.axes_note"));
+                        ui.horizontal(|ui| {
+                            ui.label("X");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut prompt.precise.x)
+                                    .desired_width(75.0),
+                            );
+                            ui.label("Y");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut prompt.precise.y)
+                                    .desired_width(75.0),
+                            );
+                            if prompt.precise.view == LinkViewport::Xyz {
+                                ui.label(tr(lang, "dialog.link.zoom"));
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut prompt.precise.zoom)
+                                        .desired_width(75.0),
+                                );
+                            }
+                        });
+                    }
                 } else {
                     crate::dialog::field_label(ui, tr(lang, "dialog.link.url"));
                     let field = ui.add(
@@ -2021,13 +2177,13 @@ impl SuniApp {
                     if field.changed() {
                         prompt.error = false;
                     }
-                    if prompt.error {
-                        ui.label(
-                            RichText::new(tr(lang, "dialog.link.invalid_url"))
-                                .size(12.5)
-                                .color(error),
-                        );
-                    }
+                }
+                if prompt.error {
+                    ui.label(
+                        RichText::new(tr(lang, "dialog.link.invalid_target"))
+                            .size(12.5)
+                            .color(error),
+                    );
                 }
             },
             |ui| {
@@ -2056,11 +2212,17 @@ impl SuniApp {
             let Some(p) = self.annotate.adv.link.clone() else {
                 return;
             };
-            let target = if p.to_page {
-                if !(1..=count).contains(&p.page_number) {
+            let target = if p.precise.named || p.to_page {
+                if !p.precise.named && !(1..=count).contains(&p.page_number) {
                     return;
                 }
-                LinkTarget::Page(p.page_number - 1)
+                let Some(target) = p.precise.target(p.page_number) else {
+                    if let Some(prompt) = self.annotate.adv.link.as_mut() {
+                        prompt.error = true;
+                    }
+                    return;
+                };
+                target
             } else if is_safe_external_uri(&p.url) {
                 LinkTarget::Uri(p.url.trim().to_string())
             } else {
@@ -2570,6 +2732,67 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn precise_link_controls_preserve_null_axes_zoom_and_named_targets_in_both_languages() {
+        for language in Language::ALL {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.settings.set_language(language);
+            app.annotate.tool = Tool::SelectAnnot;
+            let size = app.document.as_ref().unwrap().info.page_sizes[0];
+            app.document.as_mut().unwrap().info.page_sizes = vec![size; 4];
+            for target in [
+                LinkTarget::Destination(Destination {
+                    page: 2,
+                    view: DestinationView::Xyz {
+                        x: None,
+                        y: Some(35.0),
+                        zoom: Some(1.75),
+                    },
+                }),
+                LinkTarget::Destination(Destination {
+                    page: 1,
+                    view: DestinationView::FitWidth {
+                        x: Some(20.0),
+                        y: None,
+                    },
+                }),
+                LinkTarget::Named("Café".into()),
+            ] {
+                let mut detail = editable_link();
+                detail.link = Some(target.clone());
+                app.select_annot(0, detail);
+                app.edit_selected_annot_link();
+                let prompt = app.annotate.adv.link.as_ref().unwrap();
+                assert_eq!(
+                    prompt.precise.target(prompt.page_number),
+                    Some(target.clone())
+                );
+                click_link_control(&mut app, &ctx, "dialog.link.ok_edit");
+                assert!(
+                    matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::SetLinkTarget { target: actual, .. }) if actual == target)
+                );
+                assert!(matches!(
+                    requests.try_recv().unwrap(),
+                    Request::FinishMutation
+                ));
+                app.worker.finish_mutation();
+                assert!(requests.try_recv().is_err());
+            }
+            let mut invalid = PreciseLinkPrompt {
+                view: LinkViewport::Xyz,
+                zoom: "0".into(),
+                ..Default::default()
+            };
+            assert!(invalid.target(1).is_none());
+            invalid.zoom.clear();
+            invalid.x = "NaN".into();
+            assert!(invalid.target(1).is_none());
+        }
+    }
 
     fn ink_gesture(app: &mut SuniApp, page: usize, start: (f32, f32), end: (f32, f32)) {
         let drag = Drag {
