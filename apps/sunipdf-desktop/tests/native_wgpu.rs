@@ -172,7 +172,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
         egui::ColorImage::from_rgba_unmultiplied([32, 32], &colors),
         egui::TextureOptions::NEAREST,
     );
-    let frame = context.run_ui(
+    let mut frame = context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
                 pos2(0.0, 0.0),
@@ -215,9 +215,9 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     let format = wgpu::TextureFormat::Rgba8Unorm;
     let mut renderer =
         egui_wgpu::Renderer::new(&device, format, egui_wgpu::RendererOptions::PREDICTABLE);
-    for (id, deltas) in &frame.textures_delta.set {
+    for (id, deltas) in frame.textures_delta.set.drain() {
         for delta in deltas {
-            renderer.update_texture(&device, &queue, *id, delta);
+            renderer.update_texture(&device, &queue, id, &delta);
         }
     }
     let screen = egui_wgpu::ScreenDescriptor {
@@ -309,7 +309,7 @@ fn smoke(root: &Path, output: &Path) -> TestResult<Value> {
     )?;
     let pixels = readback.slice(..).get_mapped_range()?.to_vec();
     readback.unmap();
-    for id in frame.textures_delta.free {
+    for id in frame.textures_delta.free.drain() {
         renderer.free_texture(&id);
     }
     require(
