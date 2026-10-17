@@ -63,7 +63,7 @@ jobs:
           if-no-files-found: ignore
       - name: Native DX12 software renderer and texture limits
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
-        run: cargo test -p sunipdf-desktop --test native_wgpu --locked -j 2 -- --ignored --nocapture
+        run: .\scripts\run-built-ci-test.ps1 -TestName native_wgpu
       - name: Native renderer evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -97,7 +97,7 @@ jobs:
         run: .\scripts\fetch-qpdf.ps1 -SelfTest
       - name: Synthetic corpus and generated PDF structural checks
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
-        run: cargo test -p sunipdf-cli --test qpdf_corpus --locked -j 2 -- --ignored --nocapture
+        run: .\scripts\run-built-ci-test.ps1 -TestName qpdf_corpus
       - name: Real corpus checksum self-test
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-regression-corpus.ps1 -SelfTest
@@ -106,7 +106,7 @@ jobs:
         run: .\scripts\fetch-regression-corpus.ps1
       - name: Real PDFs and independent output regression
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
-        run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
+        run: .\scripts\run-built-ci-test.ps1 -TestName real_corpus
       - name: Pinned local Office converter on disposable runner
         if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: |
@@ -122,7 +122,7 @@ jobs:
           SUNIPDF_REQUIRE_OFFICE_CONVERTER: '1'
         run: |
           $env:SUNIPDF_OFFICE_REPORT = Join-Path (Get-Location).Path 'target/office-fidelity-report.json'
-          cargo test -p sunipdf-core --test office_fidelity_corpus --locked -j 2 -- --ignored --nocapture
+          .\scripts\run-built-ci-test.ps1 -TestName office_fidelity_corpus
           if ($LASTEXITCODE -ne 0) { throw 'Office regression failed.' }
       - name: Office regression evidence
         if: always()

@@ -698,7 +698,7 @@ impl<'a> Document<'a> {
                 object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
                 page.objects_mut().add_text_object(object)?;
             }
-            page.regenerate_content()?;
+            crate::edit::regenerate_content(&mut page)?;
             Ok(())
         })();
         page.set_content_regeneration_strategy(

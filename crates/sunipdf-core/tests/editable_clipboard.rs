@@ -1,6 +1,21 @@
 use std::path::Path;
 use sunipdf_core::{Engine, ObjectKind, ObjectStyle, PointRect, ShapeKind, ShapeStyle, TextStyle};
 
+fn assert_saved_graphics_states_resolve(bytes: &[u8]) {
+    let pdf = lopdf::Document::load_mem(bytes).unwrap();
+    let page = pdf.get_pages()[&1];
+    let resources = pdf.get_page_resources(page).unwrap().0.unwrap();
+    let states = resources.get(b"ExtGState").unwrap().as_dict().unwrap();
+    let content = lopdf::content::Content::decode_strict(&pdf.get_page_content(page)).unwrap();
+    for operation in content.operations.iter().filter(|op| op.operator == "gs") {
+        let name = operation.operands[0].as_name().unwrap();
+        assert!(
+            states.has(name),
+            "saved content references missing graphics state: {name:?}"
+        );
+    }
+}
+
 #[test]
 fn native_paste_preserves_individual_fonts_styles_geometry_and_atomic_refusals() {
     let engine = Engine::new().unwrap();
@@ -36,6 +51,7 @@ fn native_paste_preserves_individual_fonts_styles_geometry_and_atomic_refusals()
             },
         )
         .unwrap();
+    assert_saved_graphics_states_resolve(&source.snapshot().unwrap());
     source
         .add_text(
             0,
@@ -50,7 +66,9 @@ fn native_paste_preserves_individual_fonts_styles_geometry_and_atomic_refusals()
             },
         )
         .unwrap();
+    assert_saved_graphics_states_resolve(&source.snapshot().unwrap());
     source.rotate_object(0, 1, 23.0).unwrap();
+    assert_saved_graphics_states_resolve(&source.snapshot().unwrap());
     let image = image::DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
         4,
         4,
@@ -59,6 +77,7 @@ fn native_paste_preserves_individual_fonts_styles_geometry_and_atomic_refusals()
     source
         .add_image_data(0, &image, 310.0, 170.0, 40.0)
         .unwrap();
+    assert_saved_graphics_states_resolve(&source.snapshot().unwrap());
     let original = source.page_objects(0).unwrap();
     let original_pixels = source.render_page(0, 1.0).unwrap().rgba;
     let clip = source.copy_objects(0, &[2, 0, 1]).unwrap();

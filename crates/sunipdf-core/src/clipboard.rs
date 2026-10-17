@@ -449,7 +449,7 @@ impl Document<'_> {
                         .remove_object_at_index(i as PdfPageObjectIndex)?;
                 }
             }
-            p.regenerate_content()?;
+            crate::edit::regenerate_content(&mut p)?;
         }
         let pdf = tmp.save_to_bytes()?;
         let native_preflight =
@@ -775,7 +775,7 @@ impl<'a> Document<'a> {
         object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
         let index = page.objects().len() - 1;
         drop(object);
-        page.regenerate_content()?;
+        crate::edit::regenerate_content(&mut page)?;
         drop(page);
         drop(source_page);
         drop(src);
@@ -835,5 +835,22 @@ mod tests {
         assert!(balanced(&content(b"BT /F1 12 Tf (Text) Tj ET"), true).is_ok());
         assert!(balanced(&content(b"/Spot cs 1 scn"), true).is_err());
         assert!(balanced(&content(b"/Sh1 sh"), true).is_err());
+    }
+
+    #[test]
+    fn native_preflight_refuses_dangling_graphics_state_even_for_default_reset() {
+        let mut pdf =
+            lopdf::Document::load_mem(include_bytes!("../tests/fixtures/two-pages.pdf")).unwrap();
+        let page = pdf.get_pages()[&1];
+        let stream = pdf.add_object(lopdf::Stream::new(
+            Dictionary::new(),
+            b"q 0 0 0 RG 0 0 0 rg 1 w 0 J 0 j /MissingState gs Q".to_vec(),
+        ));
+        pdf.get_dictionary_mut(page)
+            .unwrap()
+            .set("Contents", stream);
+        let mut bytes = Vec::new();
+        pdf.save_to(&mut bytes).unwrap();
+        assert!(native_source_supported(&bytes, None, 0).is_err());
     }
 }

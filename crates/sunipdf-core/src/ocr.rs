@@ -365,7 +365,7 @@ impl Document<'_> {
                 return Err(EngineError::MissingGlyphs(word.text.clone()));
             }
         }
-        page.regenerate_content()?;
+        crate::edit::regenerate_content(&mut page)?;
         Ok(())
     }
 }

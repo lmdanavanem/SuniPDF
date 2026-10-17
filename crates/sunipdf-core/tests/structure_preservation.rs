@@ -118,10 +118,17 @@ fn dictionary<'a>(pdf: &'a lopdf::Document, value: &'a Object) -> &'a Dictionary
     pdf.dereference(value).unwrap().1.as_dict().unwrap()
 }
 fn load(path: &std::path::Path, password: Option<&str>) -> lopdf::Document {
-    let mut pdf = lopdf::Document::load(path).unwrap();
-    if pdf.is_encrypted() {
-        pdf.decrypt(password.unwrap()).unwrap();
-    }
+    // Supply the password while parsing: the encrypted reader defers body objects
+    // until authentication, so decrypting a passwordless load cannot recover them.
+    let pdf = lopdf::Document::load_with_options(
+        path,
+        lopdf::LoadOptions::with_password(password.unwrap_or("")),
+    )
+    .unwrap();
+    assert!(
+        !pdf.is_encrypted(),
+        "structure oracle was not authenticated"
+    );
     if let Err(error) = pdf.catalog() {
         let output = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../target/feature-030-evidence/structure");
@@ -393,13 +400,13 @@ fn malformed_graphs_copy_restrictions_and_duplicate_widgets_fail_without_outputs
         check_attachments_layers_fields(&load(&output, Some(password)), 1);
     }
     let mut imported_target = engine.open(&path, None).unwrap();
-    let before_import = imported_target.snapshot().unwrap();
+    let before_import = logical_snapshot(&imported_target);
     for password in ["reader", "owner"] {
         assert!(matches!(
             imported_target.insert_pages_from(&restricted_path, Some(password), &[0], 1),
             Err(sunipdf_core::EngineError::SecurityRestricted)
         ));
-        assert_eq!(imported_target.snapshot().unwrap(), before_import);
+        assert_eq!(logical_snapshot(&imported_target), before_import);
     }
     let mut owner_target = engine.open(&restricted_path, Some("owner")).unwrap();
     owner_target

@@ -483,7 +483,7 @@ impl<'a> Document<'a> {
             objects.push(object);
         }
         probe.objects_mut().remove_object_at_index(0)?;
-        probe.regenerate_content()?;
+        crate::edit::regenerate_content(&mut probe)?;
         drop(probe);
         if style.fill_rgb.is_some() || style.border_pt > 0.0 {
             let border = style.border_pt / 2.0;
@@ -508,7 +508,7 @@ impl<'a> Document<'a> {
         for object in objects {
             page.objects_mut().add_text_object(object)?;
         }
-        page.regenerate_content()?;
+        crate::edit::regenerate_content(&mut page)?;
         drop(page);
         for object in tmp.page_objects(0)? {
             // The authored background/border is deliberately clipped by the appearance BBox.

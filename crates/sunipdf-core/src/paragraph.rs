@@ -101,7 +101,7 @@ pub(crate) fn measure(page: &mut PdfPage<'_>, value: &str) -> Result<f32, Engine
         .ok_or_else(unsupported)?
         .set_text(value)?;
     drop(object);
-    page.regenerate_content()?;
+    crate::edit::regenerate_content(page)?;
     let object = page.objects().get(0)?;
     let object = object.as_text_object().ok_or_else(unsupported)?;
     let text = page.text()?;
@@ -318,7 +318,7 @@ impl<'a> Document<'a> {
                 .insert_object_at_index(index as PdfPageObjectIndex, PdfPageObject::Text(object))?;
             new_indices.push(index);
         }
-        page.regenerate_content()?;
+        crate::edit::regenerate_content(&mut page)?;
         page.set_content_regeneration_strategy(strategy);
         drop(page);
         let page_size = scratch.page_size(page_index)?;

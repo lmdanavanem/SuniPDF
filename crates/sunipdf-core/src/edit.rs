@@ -144,6 +144,25 @@ fn not_found(index: usize) -> EngineError {
     EngineError::Other(format!("object {index} not found"))
 }
 
+/// Preserve graphics-state resources referenced by older streams when committing native edits.
+pub(crate) fn regenerate_content(page: &mut PdfPage<'_>) -> Result<(), EngineError> {
+    let strategy = page.content_regeneration_strategy();
+    page.set_content_regeneration_strategy(PdfPageContentRegenerationStrategy::Manual);
+    let result = (|| {
+        // PDFium 7881 prunes resources using dirty objects. Earlier streams may still refer to
+        // a default ExtGState, so regenerate all native objects with unchanged transforms.
+        for index in 0..page.objects().len() {
+            page.objects()
+                .get(index)?
+                .transform(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)?;
+        }
+        page.regenerate_content()?;
+        Ok(())
+    })();
+    page.set_content_regeneration_strategy(strategy);
+    result
+}
+
 /// Conjugate an affine display-space transform into the PDF page's user space.
 fn user_transform(geo: &PageGeometry, m: [f32; 6]) -> [f32; 6] {
     let linear = |x: f32, y: f32| geo.vec_to_user(m[0] * x + m[2] * y, m[1] * x + m[3] * y);
@@ -578,7 +597,7 @@ impl Document<'_> {
                     let n = page.objects().len();
                     page.objects_mut().remove_object_at_index(n - 1)?;
                 }
-                page.regenerate_content()?;
+                regenerate_content(&mut page)?;
                 // Caractères perdus ou remplacés : ceux de la ligne absents de la relecture,
                 // chacun une seule fois, dans l'ordre du texte.
                 let mut seen = std::collections::HashSet::new();
@@ -589,7 +608,7 @@ impl Document<'_> {
                 return Err(EngineError::MissingGlyphs(missing));
             }
         }
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(added)
     }
 
@@ -694,7 +713,7 @@ impl Document<'_> {
                 return Err(EngineError::MissingGlyphs(missing));
             }
             drop(object);
-            page.regenerate_content()?;
+            regenerate_content(&mut page)?;
         }
         self.inner = scratch.inner;
         self.font_cache.clear();
@@ -731,7 +750,7 @@ impl Document<'_> {
             object.translate(PdfPoints::new(ux), PdfPoints::new(uy))?;
         }
         // Les objets modifiés en place ne régénèrent pas le flux de contenu : le faire explicitement.
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(())
     }
 
@@ -837,7 +856,7 @@ impl Document<'_> {
                 let mut object = page.objects().get(index as PdfPageObjectIndex)?;
                 object.transform(m[0], m[1], m[2], m[3], m[4], m[5])?;
             }
-            page.regenerate_content()?;
+            regenerate_content(&mut page)?;
             Ok(())
         })();
         page.set_content_regeneration_strategy(strategy);
@@ -894,7 +913,7 @@ impl Document<'_> {
                 }
             }
         }
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(())
     }
 
@@ -919,7 +938,7 @@ impl Document<'_> {
         let ratio = text_scale(text_object);
         text_object.set_unscaled_font_size(PdfPoints::new(size_pt / ratio))?;
         drop(object);
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(())
     }
 
@@ -1102,7 +1121,7 @@ impl Document<'_> {
                 current.insert(k, id);
             }
         }
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(selected
             .iter()
             .map(|s| target.iter().position(|t| t == s).expect("permutation"))
@@ -1125,7 +1144,7 @@ impl Document<'_> {
             page.objects_mut()
                 .remove_object_at_index(i as PdfPageObjectIndex)?;
         }
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(())
     }
 
@@ -1199,7 +1218,7 @@ impl Document<'_> {
             object.set_fill_color(PdfColor::new(255, 255, 255, alpha_u8(opacity)))?;
         }
         page.objects_mut().add_image_object(object)?;
-        page.regenerate_content()?;
+        regenerate_content(&mut page)?;
         Ok(())
     }
 
@@ -1227,7 +1246,7 @@ impl Document<'_> {
             };
             image_object.set_image(&img)?;
             drop(object);
-            page.regenerate_content()?;
+            regenerate_content(&mut page)?;
         }
         if info.angle_deg.abs() < 0.5 {
             let b = info.bounds;
@@ -1295,6 +1314,7 @@ impl Document<'_> {
                 )?;
             }
         }
+        regenerate_content(&mut page)?;
         Ok(())
     }
 }

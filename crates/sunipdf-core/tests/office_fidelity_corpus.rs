@@ -1,5 +1,6 @@
 //! Opt-in measured exports of pinned government publications; no customer documents or claimed accuracy.
 
+use lopdf::{Dictionary, Object, ObjectId};
 use std::{
     collections::BTreeMap,
     fs,
@@ -61,6 +62,38 @@ fn exported_text(parts: &BTreeMap<String, Vec<u8>>) -> String {
 }
 fn compact(text: &str) -> String {
     text.chars().filter(|c| !c.is_whitespace()).collect()
+}
+
+#[derive(Debug, PartialEq)]
+struct LogicalSnapshot {
+    encrypted: bool,
+    encryption: Option<Dictionary>,
+    objects: BTreeMap<ObjectId, Object>,
+    trailer: Dictionary,
+}
+
+fn logical_snapshot(bytes: &[u8]) -> LogicalSnapshot {
+    let mut pdf = lopdf::Document::load_mem(bytes).unwrap();
+    let encrypted = pdf.is_encrypted();
+    let encryption = pdf.get_encrypted().ok().cloned();
+    assert!(
+        !encrypted,
+        "controlled Office fixture must remain unencrypted"
+    );
+    let mut ids = pdf.trailer.get(b"ID").unwrap().as_array().unwrap().clone();
+    assert_eq!(ids.len(), 2);
+    assert_eq!(ids[0].as_str().unwrap(), b"SuniPDFOfficeQA!");
+    let Object::String(_, format) = &ids[1] else {
+        panic!("second trailer ID is not a string");
+    };
+    ids[1] = Object::String(Vec::new(), *format);
+    pdf.trailer.set("ID", ids);
+    LogicalSnapshot {
+        encrypted,
+        encryption,
+        objects: pdf.objects,
+        trailer: pdf.trailer,
+    }
 }
 
 #[test]
@@ -202,12 +235,19 @@ fn measure_licensed_office_exports_and_installed_converter_roundtrips() {
     }
     // Controlled inputs prove converter coverage separately from complex publication refusals.
     let controlled_path = dir.path().join("controlled-simple-text.pdf");
+    let mut controlled_input =
+        lopdf::Document::load_mem(include_bytes!("fixtures/two-pages.pdf")).unwrap();
+    controlled_input.trailer.set(
+        "ID",
+        vec![
+            Object::string_literal(b"SuniPDFOfficeQA!".to_vec()),
+            Object::string_literal(b"SuniPDFOfficeQA!".to_vec()),
+        ],
+    );
+    let mut controlled_seed = Vec::new();
+    controlled_input.save_to(&mut controlled_seed).unwrap();
     let mut controlled = engine
-        .open_bytes(
-            include_bytes!("fixtures/two-pages.pdf").to_vec(),
-            None,
-            &controlled_path,
-        )
+        .open_bytes(controlled_seed, None, &controlled_path)
         .unwrap();
     controlled.delete_page(1).unwrap();
     let indices: Vec<_> = controlled
@@ -236,6 +276,7 @@ fn measure_licensed_office_exports_and_installed_converter_roundtrips() {
             .unwrap();
     }
     let controlled_bytes = controlled.snapshot().unwrap();
+    let controlled_before = logical_snapshot(&controlled_bytes);
     sunipdf_core::write_new_copy(&controlled_path, &controlled_bytes).unwrap();
     let controlled_text = controlled.page_text(0).unwrap();
     let expected = controlled.render_page(0, 150.0 / 72.0).unwrap();
@@ -301,7 +342,10 @@ fn measure_licensed_office_exports_and_installed_converter_roundtrips() {
         }
         controlled_records.push(record);
     }
-    assert_eq!(controlled.snapshot().unwrap(), controlled_bytes);
+    assert_eq!(
+        logical_snapshot(&controlled.snapshot().unwrap()),
+        controlled_before
+    );
     assert_eq!(fs::read(&controlled_path).unwrap(), controlled_bytes);
     let revision = std::env::var("GITHUB_SHA").unwrap_or_else(|_| "unavailable outside CI".into());
     if required_converter {
