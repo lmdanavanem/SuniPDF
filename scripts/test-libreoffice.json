@@ -1,0 +1,10 @@
+{
+  "version": "26.8.1",
+  "filename": "LibreOffice_26.8.1_Win_x86-64.msi",
+  "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi",
+  "metadata_url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi.meta4",
+  "sha256": "C6298B10CFA1748BCBEDAD94C62CE771E240E5021BFD6D7A967CD571B04B5312",
+  "bytes": 374870016,
+  "reviewed_on": "2026-10-17",
+  "scope": "Disposable GitHub-hosted Windows x64 QA runner only; never application payload or development-host installation"
+}

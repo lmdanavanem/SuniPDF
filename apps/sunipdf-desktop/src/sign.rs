@@ -223,7 +223,10 @@ impl SignState {
         };
         match &self.typed_font {
             TextFont::Standard(family) => style.family = *family,
-            TextFont::System(font) => style.font_file = Some(font.path.clone()),
+            TextFont::System(font) => {
+                style.font_file = Some(font.path.clone());
+                style.font_face_index = font.face_index;
+            }
         }
         Some((id, self.typed_text.clone(), style))
     }
@@ -1653,9 +1656,11 @@ mod tests {
             name: "Test font".into(),
             path: path.clone(),
             size_bytes: 123,
+            face_index: 1,
         });
         let (id, _, style) = app.sign.preview_request().unwrap();
         assert_eq!(style.font_file, Some(path));
+        assert_eq!(style.font_face_index, 1);
         app.on_signature_rendered(&ctx, id, Ok(image::RgbaImage::new(60, 20)));
         assert!(!app.sign.ready());
         assert_eq!(app.sign.error, Some("signature.error.empty"));

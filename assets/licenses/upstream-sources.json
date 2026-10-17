@@ -1261,6 +1261,52 @@
           "upstream_file": "LICENSE"
         }
       ]
+    },
+    {
+      "name": "pathfinder_geometry",
+      "version": "0.5.1",
+      "license": "MIT/Apache-2.0",
+      "repo": "servo/pathfinder",
+      "revision": "a5e98fac00f433fe2ff4b2135383d82491b8bfc5",
+      "path": "",
+      "texts": [
+        {
+          "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "file": "assets/licenses/upstream/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt",
+          "upstream_file": "Explicit Apache2 alternative linked by original source"
+        },
+        {
+          "source": "registry archive checksum0b7b7e7b4ea703700ce73ebf128e1450eb69c3a8329199ffbfb9b2a0418e5ad3::pathfinder_geometry0.5.1/src/lib.rs (original license header)",
+          "sha256": "a830c3e1ca7ae32b804500428e0dd1fbaf34e997174af1ff2296227bd537c0d3",
+          "file": "assets/licenses/upstream/a830c3e1ca7ae32b804500428e0dd1fbaf34e997174af1ff2296227bd537c0d3.txt",
+          "upstream_file": "Original copyright and license grant"
+        }
+      ],
+      "distribution_choice": "Apache-2.0",
+      "upstream_revision_unavailable": "Published VCS SHA returns404 upstream. License evidence comes from the original checksum-verified crate source header and its explicit Apache2 link."
+    },
+    {
+      "name": "pathfinder_simd",
+      "version": "0.5.6",
+      "license": "MIT OR Apache-2.0",
+      "repo": "servo/pathfinder",
+      "revision": "6c3c0466f451c5bd2007087728cd168798cd64e8",
+      "path": "simd",
+      "texts": [
+        {
+          "source": "https://raw.githubusercontent.com/servo/pathfinder/6c3c0466f451c5bd2007087728cd168798cd64e8/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "file": "assets/licenses/upstream/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
+          "upstream_file": "LICENSE-APACHE"
+        },
+        {
+          "source": "https://raw.githubusercontent.com/servo/pathfinder/6c3c0466f451c5bd2007087728cd168798cd64e8/LICENSE-MIT",
+          "sha256": "0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
+          "file": "assets/licenses/upstream/0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720.txt",
+          "upstream_file": "LICENSE-MIT"
+        }
+      ]
     }
   ]
 }

@@ -583,7 +583,7 @@ impl SuniApp {
             Command::RotateObjectLeft | Command::RotateObjectRight => self.edit.selection.is_some(),
             Command::HistoryBack => self.view.reading.history.can_back(),
             Command::HistoryForward => self.view.reading.history.can_forward(),
-            Command::PasteObjects => self.edit.clip.is_some(),
+            Command::PasteObjects | Command::PasteEditableObjects => self.edit.clip.is_some(),
             Command::RedactClear | Command::RedactApply => {
                 !self.annotate.redact.marks.is_empty() && !self.annotate.redact.applying
             }

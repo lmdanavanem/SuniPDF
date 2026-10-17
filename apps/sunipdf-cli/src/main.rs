@@ -71,6 +71,24 @@ enum Command {
         #[arg(long)]
         password: Option<String>,
     },
+    /// Convert a guarded macro-free Office document with an already installed local LibreOffice.
+    OfficeToPdf {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, default_value = "standard", value_parser = ["standard", "print"])]
+        profile: String,
+    },
+    /// Export simple editable text/cells, or explicit page-image slides, to a new Office copy.
+    ExportOffice {
+        file: PathBuf,
+        #[arg(long, value_parser = ["word", "excel", "powerpoint"])]
+        format: String,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long)]
+        password: Option<String>,
+    },
     /// Verify digital signatures over the saved PDF bytes; certificate identity is not trusted automatically.
     Signatures {
         file: PathBuf,
@@ -440,9 +458,12 @@ enum Command {
         color: String,
         #[arg(long, default_value_t = 1.0)]
         opacity: f32,
-        /// TrueType font file to embed (whole file).
+        /// Eligible static TrueType/OpenType font or collection, subset when its embedding rights permit.
         #[arg(long, conflicts_with = "font_name")]
         font_file: Option<PathBuf>,
+        /// Zero-based collection face (with --font-file).
+        #[arg(long, requires = "font_file")]
+        font_face_index: Option<u32>,
         /// Name of an installed system font, as listed by `fonts` (e.g. "Arial Bold").
         #[arg(long)]
         font_name: Option<String>,
@@ -879,7 +900,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             .into_iter()
             .filter(|f| f.name.to_lowercase().contains(&filter))
             .map(|f| serde_json::json!({
-                "name": f.name, "path": f.path, "size_bytes": f.size_bytes,
+                "name": f.name, "path": f.path, "size_bytes": f.size_bytes, "face_index": f.face_index,
             }))
             .collect::<Vec<_>>()));
     }
@@ -960,6 +981,46 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         | Command::Fonts { .. }
         | Command::Signatures { .. }
         | Command::Sign { .. } => unreachable!(),
+        Command::OfficeToPdf { file, out, profile } => {
+            use sunipdf_core::office::{Converter, Profile};
+            let converter = Converter::detect().ok_or_else(|| EngineError::Other(
+                "A supported local LibreOffice is not installed; Office conversion is unavailable".into()
+            ))?;
+            let profile = Profile::from_id(&profile).ok_or(EngineError::InvalidFormat)?;
+            let input = std::path::absolute(file)?;
+            let output = std::path::absolute(out)?;
+            let report = sunipdf_core::office::convert(
+                &engine,
+                &converter,
+                &input,
+                &output,
+                profile,
+                &std::sync::atomic::AtomicBool::new(false),
+            )?;
+            let mut json = report.json();
+            json["out"] = serde_json::json!(output);
+            Ok(json)
+        }
+        Command::ExportOffice {
+            file,
+            out,
+            format,
+            password,
+        } => {
+            let out = std::path::absolute(out)?;
+            let format = sunipdf_core::export_office::Format::from_id(&format)
+                .ok_or(EngineError::InvalidFormat)?;
+            let doc = engine.open(&file, password.as_deref())?;
+            let report = doc.export_office(
+                &out,
+                format,
+                &std::sync::atomic::AtomicBool::new(false),
+                |_, _| {},
+            )?;
+            let mut json = report.json();
+            json["out"] = serde_json::json!(out);
+            Ok(json)
+        }
         Command::AddFormField {
             file,
             kind,
@@ -1512,22 +1573,25 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             color,
             opacity,
             font_file,
+            font_face_index,
             font_name,
             bold,
             italic,
             out,
             password,
         } => {
-            let font_file = match (font_file, font_name) {
-                (Some(path), _) => Some(path),
-                (None, Some(name)) => Some(
-                    sunipdf_core::fonts::system_fonts()
+            let (font_file, font_face_index) = match (font_file, font_name) {
+                (Some(path), _) => (Some(path), font_face_index.unwrap_or(0)),
+                (None, Some(name)) => {
+                    let selected = sunipdf_core::fonts::system_fonts()
                         .into_iter()
                         .find(|f| f.name.eq_ignore_ascii_case(&name))
-                        .ok_or_else(|| EngineError::Other(format!("unknown system font: {name}")))?
-                        .path,
-                ),
-                (None, None) => None,
+                        .ok_or_else(|| {
+                            EngineError::Other(format!("unknown system font: {name}"))
+                        })?;
+                    (Some(selected.path), selected.face_index)
+                }
+                (None, None) => (None, 0),
             };
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
@@ -1538,11 +1602,14 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 rgb: parse_hex_color(&color)?,
                 opacity,
                 font_file: font_file.clone(),
+                font_face_index,
                 ..Default::default()
             };
             let added = doc.add_text(p, x, y, &text.replace("\\n", "\n"), &style)?;
             doc.save_as(&out)?;
-            Ok(serde_json::json!({ "out": out, "added": added, "embedded_font": font_file }))
+            Ok(
+                serde_json::json!({ "out": out, "added": added, "embedded_font": font_file, "font_face_index": font_face_index }),
+            )
         }
         Command::SetOpacity {
             file,
@@ -2180,6 +2247,8 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
         Command::Merge { out, .. }
+        | Command::OfficeToPdf { out, .. }
+        | Command::ExportOffice { out, .. }
         | Command::AddFormField { out, .. }
         | Command::Ocr { out, .. }
         | Command::Sign { out, .. }
@@ -2399,6 +2468,77 @@ mod tests {
             .expect("CLI parser thread")
             .join()
             .expect("CLI parser result")
+    }
+
+    #[test]
+    fn office_commands_and_font_faces_keep_existing_defaults_and_new_copy_paths() {
+        let import = parse_cli([
+            "sunipdf-cli",
+            "office-to-pdf",
+            "input.docx",
+            "--out",
+            "new.pdf",
+        ])
+        .unwrap();
+        assert!(
+            matches!(import.command, Command::OfficeToPdf { ref profile, .. } if profile == "standard")
+        );
+        assert_eq!(
+            output_path(&import.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        let export = parse_cli([
+            "sunipdf-cli",
+            "export-office",
+            "input.pdf",
+            "--format",
+            "powerpoint",
+            "--out",
+            "new.pptx",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&export.command),
+            Some(std::path::Path::new("new.pptx"))
+        );
+        let text = parse_cli([
+            "sunipdf-cli",
+            "add-text",
+            "input.pdf",
+            "--x",
+            "10",
+            "--y",
+            "20",
+            "--text",
+            "Hello",
+            "--out",
+            "new.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(
+            text.command,
+            Command::AddText {
+                font_face_index: None,
+                font_file: None,
+                ..
+            }
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "add-text",
+            "input.pdf",
+            "--x",
+            "10",
+            "--y",
+            "20",
+            "--text",
+            "Hello",
+            "--font-face-index",
+            "1",
+            "--out",
+            "new.pdf"
+        ])
+        .is_err());
     }
 
     #[test]

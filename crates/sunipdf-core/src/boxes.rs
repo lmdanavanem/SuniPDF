@@ -195,15 +195,27 @@ impl Document<'_> {
             return Err(EngineError::Other("invalid page count".into()));
         }
         check_size(width_pt, height_pt)?;
-        for k in 0..count {
-            let index =
-                PdfPageIndex::try_from(at + k).map_err(|_| EngineError::PageOutOfRange(at + k))?;
-            self.inner.pages_mut().create_page_at_index(
-                PdfPagePaperSize::new_custom(PdfPoints::new(width_pt), PdfPoints::new(height_pt)),
-                index,
-            )?;
-        }
-        self.refresh_page_sizes()
+        let labels =
+            crate::page_labels::LabelSource::from_bytes(&self.snapshot()?, self.password())?;
+        let provenance: Vec<_> = (0..at)
+            .map(|page| Some((0, page)))
+            .chain((0..count).map(|_| None))
+            .chain((at..self.page_count()).map(|page| Some((0, page))))
+            .collect();
+        self.edit_pages_with_labels(&[&labels], &provenance, |candidate| {
+            for k in 0..count {
+                let index = PdfPageIndex::try_from(at + k)
+                    .map_err(|_| EngineError::PageOutOfRange(at + k))?;
+                candidate.inner.pages_mut().create_page_at_index(
+                    PdfPagePaperSize::new_custom(
+                        PdfPoints::new(width_pt),
+                        PdfPoints::new(height_pt),
+                    ),
+                    index,
+                )?;
+            }
+            Ok(())
+        })
     }
 }
 

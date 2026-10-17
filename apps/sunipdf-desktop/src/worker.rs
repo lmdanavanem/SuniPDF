@@ -261,6 +261,11 @@ pub enum EditOp {
         dx: f32,
         dy: f32,
     },
+    PasteEditableObjects {
+        page: usize,
+        dx: f32,
+        dy: f32,
+    },
     ReplaceImage {
         page: usize,
         index: usize,
@@ -442,6 +447,7 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    Office(crate::office::Job),
     ProcessFiles(crate::processing::ProcessingJob),
     Print {
         job: crate::printing::PrintJob,
@@ -617,6 +623,13 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    OfficeProgress {
+        done: usize,
+        total: usize,
+        item_done: usize,
+        item_total: usize,
+    },
+    OfficeDone(Vec<crate::office::FileResult>),
     ProcessingProgress {
         done: usize,
         total: usize,
@@ -1330,6 +1343,12 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
                 .ok_or_else(|| EngineError::Other("empty object clipboard".into()))?;
             doc.paste_objects(page, clip, dx, dy).map(|_| ())
         }
+        EditOp::PasteEditableObjects { page, dx, dy } => {
+            let clip = clip
+                .as_ref()
+                .ok_or_else(|| EngineError::Other("empty object clipboard".into()))?;
+            doc.paste_editable_objects(page, clip, dx, dy).map(|_| ())
+        }
         EditOp::ReplaceImage { page, index, path } => doc.replace_image(page, index, &path),
         EditOp::CropPages { pages, margins } => {
             for p in checked_pages(pages, doc.page_count())? {
@@ -1584,6 +1603,23 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     },
                 );
                 Response::ProcessingDone(results)
+            }
+            Request::Office(job) => {
+                let results = crate::office::run_job(
+                    &engine,
+                    state.document.as_ref(),
+                    job,
+                    |done, total, item_done, item_total| {
+                        let _ = tx.send(Response::OfficeProgress {
+                            done,
+                            total,
+                            item_done,
+                            item_total,
+                        });
+                        ctx.request_repaint();
+                    },
+                );
+                Response::OfficeDone(results)
             }
             Request::Print { job, cancel } => {
                 let result = state
@@ -2223,6 +2259,7 @@ mod tests {
         drawn_form_rectangles_keep_history_and_saved_fields(&worker);
         inline_free_text_has_exact_styles_geometry_history_and_saved_content(&worker);
         paragraph_preview_and_reflow_keep_one_undo_and_failed_edit_history(&worker);
+        native_clipboard_paste_across_documents_has_one_undo_and_no_silent_group_fallback(&worker);
         editable_combo_creation_and_filling_undo_redo(&worker);
         encrypted_recovery_after_redaction(&worker);
     }
@@ -2239,6 +2276,121 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn native_clipboard_paste_across_documents_has_one_undo_and_no_silent_group_fallback(
+        worker: &Worker,
+    ) {
+        let open = || {
+            worker.send(Request::Open {
+                path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+                password: None,
+            });
+            assert!(matches!(next_response(worker), Response::Opened(_)));
+        };
+        let objects = |page| {
+            worker.send(Request::Objects { page });
+            match next_response(worker) {
+                Response::Objects { list, .. } => list,
+                _ => panic!("clipboard objects"),
+            }
+        };
+        open();
+        let selected: Vec<_> = objects(0)
+            .iter()
+            .filter(|object| {
+                matches!(
+                    object.kind,
+                    sunipdf_core::ObjectKind::Text | sunipdf_core::ObjectKind::Path
+                )
+            })
+            .take(2)
+            .map(|object| object.index)
+            .collect();
+        assert_eq!(selected.len(), 2);
+        worker.send(Request::CopyObjects {
+            page: 0,
+            indices: selected,
+            cut: false,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::Copied { count: 2, .. }
+        ));
+        open();
+        let before = objects(1);
+        worker.send(Request::Edit(EditOp::PasteEditableObjects {
+            page: 1,
+            dx: 0.0,
+            dy: 0.0,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        let after = objects(1);
+        assert_eq!(after.len(), before.len() + 2);
+        assert!(after[before.len()..]
+            .iter()
+            .all(|object| object.kind != sunipdf_core::ObjectKind::Form));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(objects(1), before, "one Undo removes every pasted object");
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(objects(1), after);
+        worker.send(Request::Edit(EditOp::PasteObjects {
+            page: 1,
+            dx: 0.0,
+            dy: 0.0,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let grouped = objects(1);
+        let form = grouped.last().unwrap();
+        assert_eq!(form.kind, sunipdf_core::ObjectKind::Form);
+        worker.send(Request::CopyObjects {
+            page: 1,
+            indices: vec![form.index],
+            cut: false,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::Copied { count: 1, .. }
+        ));
+        worker.send(Request::Edit(EditOp::PasteEditableObjects {
+            page: 1,
+            dx: 0.0,
+            dy: 0.0,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(objects(1), grouped);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(
+            objects(1),
+            after,
+            "refusal creates no Undo entry or grouped fallback"
+        );
     }
 
     fn paragraph_preview_and_reflow_keep_one_undo_and_failed_edit_history(worker: &Worker) {

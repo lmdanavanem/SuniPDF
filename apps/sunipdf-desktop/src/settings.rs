@@ -20,6 +20,7 @@ pub struct Settings {
     /// Auteur écrit dans les annotations, réponses et statuts (vide : aucun nom écrit).
     pub author: String,
     pub check_updates: bool,
+    pub office_profile: String,
 }
 
 impl Default for Settings {
@@ -35,6 +36,7 @@ impl Default for Settings {
             recent: Vec::new(),
             author: String::new(),
             check_updates: true,
+            office_profile: "standard".into(),
         }
     }
 }

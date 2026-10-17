@@ -119,7 +119,7 @@ pub fn font_picker(
                             ui.label(RichText::new(tr(lang, "text.font.none")).color(muted));
                         }
                         for f in shown {
-                            let selected = matches!(font, TextFont::System(s) if s.path == f.path);
+                            let selected = matches!(font, TextFont::System(s) if s.path == f.path && s.face_index == f.face_index);
                             if ui.selectable_label(selected, &f.name).clicked() {
                                 *font = TextFont::System(f.clone());
                             }

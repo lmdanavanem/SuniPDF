@@ -1,0 +1,28 @@
+{
+  "Ubuntu-Light.ttf": {
+    "source": "epaint_default_fonts0.36.2 registry archive",
+    "license": "Ubuntu-font-1.0",
+    "licenseFile": "UFL.txt",
+    "sha256": "80307b8da7649aa4ee4d484b232140e3ce1ec0ca093073d3c53c8f5a5ced7a70"
+  },
+  "NotoSansJP-Regular.otf": {
+    "source": "https://raw.githubusercontent.com/yeslogic/allsorts/efab0fc769287f4ced68bbd723c328c9d9b89698/tests/fonts/noto/NotoSansJP-Regular.otf",
+    "license": "OFL-1.1",
+    "licenseFile": "NotoSansJP-OFL.txt",
+    "licenseSource": "https://raw.githubusercontent.com/yeslogic/allsorts/efab0fc769287f4ced68bbd723c328c9d9b89698/tests/fonts/noto/LICENSE",
+    "sha256": "5b57b51d86e3e105e40f76afb95d2a0c0ba690cde73f1a268f634855c8c169ac",
+    "note": "Unmodified static CFF1 CJK test font from the pinned Allsorts upstream test suite; 2182944 bytes. Tests exercise requested Japanese and Chinese glyphs without a system font dependency."
+  },
+  "FontAwesome.otf": {
+    "source": "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/a8386aae19e200ddb0f6845b5feeee5eb7013687/fonts/FontAwesome.otf",
+    "version": "4.7.0",
+    "license": "OFL-1.1",
+    "sha256": "444dd4366615ffc4a16d012b2fa90137065d3ccb410fa6fd5e4ddd7b5e4ffcd5",
+    "licenseFile": "FontAwesome-LICENSE.txt",
+    "noticeFile": "FontAwesome-NOTICE.txt",
+    "licenseSource": "https://openfontlicense.org/documents/OFL.txt",
+    "licenseDeclarationSource": "https://raw.githubusercontent.com/FortAwesome/Font-Awesome/a8386aae19e200ddb0f6845b5feeee5eb7013687/_config.yml",
+    "licenseSha256": "1d361a8f8e8ce6e68457dcd93fb56e162e6baa3bbb7e7573a290d44399f6b57e",
+    "note": "Full OFL1.1 terms supplement the exact original font copyright notice; Font Awesome pinned upstream explicitly declares SIL OFL1.1."
+  }
+}

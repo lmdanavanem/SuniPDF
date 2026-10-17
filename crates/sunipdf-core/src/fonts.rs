@@ -1,8 +1,5 @@
-//! Polices TrueType installées sur le système, incorporables dans un PDF.
-//!
-//! PDFium (`FPDFText_LoadFont`, police CID Identity-H) copie le fichier **entier** dans le PDF :
-//! pas de sous-ensemble. Seules les polices `.ttf` à contours TrueType sont proposées ; la
-//! licence d'incorporation (`OS/2.fsType`) est vérifiée avant toute incorporation.
+//! Installed font discovery with native Unicode names and explicit collection faces.
+//! Font format, embedding rights and subsetting are validated before PDFium loading.
 
 use crate::EngineError;
 use std::path::{Path, PathBuf};
@@ -16,6 +13,8 @@ pub struct SystemFont {
     pub name: String,
     pub path: PathBuf,
     pub size_bytes: u64,
+    /// Zero-based face within a TrueType/OpenType collection.
+    pub face_index: u32,
 }
 
 #[cfg(windows)]
@@ -55,7 +54,7 @@ fn collect_system_fonts(mut entries: Vec<(String, PathBuf)>, fonts_dir: &Path) -
         if let Ok(dir) = std::fs::read_dir(fonts_dir) {
             for e in dir.flatten() {
                 let path = e.path();
-                if is_ttf(&path) {
+                if is_font_file(&path) {
                     let name = path
                         .file_stem()
                         .map(|s| s.to_string_lossy().into_owned())
@@ -67,13 +66,41 @@ fn collect_system_fonts(mut entries: Vec<(String, PathBuf)>, fonts_dir: &Path) -
     }
     let mut fonts: Vec<SystemFont> = entries
         .into_iter()
-        .filter_map(|(name, path)| {
-            let size_bytes = std::fs::metadata(&path).ok().filter(|m| m.is_file())?.len();
-            Some(SystemFont {
-                name,
-                path,
-                size_bytes,
-            })
+        .flat_map(|(name, path)| {
+            let Some(size_bytes) = std::fs::metadata(&path)
+                .ok()
+                .filter(|m| m.is_file())
+                .map(|m| m.len())
+            else {
+                return Vec::new();
+            };
+            if is_ttf(&path) {
+                return vec![SystemFont {
+                    name,
+                    path,
+                    size_bytes,
+                    face_index: 0,
+                }];
+            }
+            let Ok(bytes) = crate::font_embed::read_font(&path) else {
+                return Vec::new();
+            };
+            let Ok(faces) = crate::font_embed::faces(&bytes) else {
+                return Vec::new();
+            };
+            faces
+                .into_iter()
+                .map(|(face_index, face_name)| SystemFont {
+                    name: if faces_are_collection(&path) {
+                        format!("{face_name} [face {}]", face_index + 1)
+                    } else {
+                        name.clone()
+                    },
+                    path: path.clone(),
+                    size_bytes,
+                    face_index,
+                })
+                .collect::<Vec<_>>()
         })
         .collect();
     fonts.sort_by_key(|a| a.name.to_lowercase());
@@ -84,6 +111,19 @@ fn collect_system_fonts(mut entries: Vec<(String, PathBuf)>, fonts_dir: &Path) -
 fn is_ttf(path: &Path) -> bool {
     path.extension()
         .is_some_and(|e| e.eq_ignore_ascii_case("ttf"))
+}
+
+fn is_font_file(path: &Path) -> bool {
+    path.extension().is_some_and(|e| {
+        ["ttf", "otf", "ttc", "otc"]
+            .iter()
+            .any(|ext| e.eq_ignore_ascii_case(ext))
+    })
+}
+
+fn faces_are_collection(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("ttc") || e.eq_ignore_ascii_case("otc"))
 }
 
 #[cfg(windows)]
@@ -184,7 +224,7 @@ fn registry_fonts(
             .unwrap_or(name)
             .trim();
         let file = file.trim();
-        if !name.is_empty() && is_ttf(Path::new(file)) {
+        if !name.is_empty() && is_font_file(Path::new(file)) {
             fonts.push((name.to_string(), file.to_string()));
         }
     }
@@ -225,16 +265,21 @@ pub(crate) fn check_embeddable(bytes: &[u8]) -> Result<(), EngineError> {
         else {
             return refuse;
         };
-        let usage = fs_type & 0x000E;
-        // Le droit le moins restrictif l'emporte (anciennes versions de la spécification).
-        let allowed = usage == 0 || usage & 0x0008 != 0;
-        return if allowed && fs_type & 0x0200 == 0 {
-            Ok(())
-        } else {
-            refuse
-        };
+        return embedding_permissions(fs_type).map(|_| ());
     }
     Ok(()) // pas de table OS/2 : aucune restriction déclarée
+}
+
+/// Whether editable/installable outline embedding also permits subsetting.
+pub(crate) fn embedding_permissions(fs_type: u16) -> Result<bool, EngineError> {
+    let usage = fs_type & 0x000E;
+    // Retain the least-restrictive interpretation for older fonts with multiple usage bits.
+    let allowed = usage == 0 || usage & 0x0008 != 0;
+    if !allowed || fs_type & 0x0200 != 0 || fs_type & !0x030E != 0 {
+        Err(EngineError::FontNotEmbeddable)
+    } else {
+        Ok(fs_type & 0x0100 == 0)
+    }
 }
 
 #[cfg(test)]
@@ -435,6 +480,8 @@ mod tests {
         assert_eq!(
             entries,
             vec![
+                ("Collection".into(), "font.ttc".into()),
+                ("PostScript".into(), "font.otf".into()),
                 ("Unterminated".into(), "unterminated.ttf".into()),
                 ("Valid".into(), "valid.ttf".into()),
             ],

@@ -60,6 +60,8 @@ pub struct TextStyle {
     pub opacity: f32,
     /// Police TrueType du système à incorporer (`family`, `bold`, `italic` sont alors ignorés).
     pub font_file: Option<PathBuf>,
+    /// Zero-based face within the selected font collection.
+    pub font_face_index: u32,
 }
 
 impl Default for TextStyle {
@@ -72,6 +74,7 @@ impl Default for TextStyle {
             rgb: (0, 0, 0),
             opacity: 1.0,
             font_file: None,
+            font_face_index: 0,
         }
     }
 }
@@ -538,7 +541,7 @@ impl Document<'_> {
         }
         let geo = self.page_geometry(page_index)?;
         let font = match &style.font_file {
-            Some(path) => self.font_token_for_file(path)?,
+            Some(path) => self.font_token_for_file(path, style.font_face_index, text)?,
             None => font_token(self.inner.fonts_mut(), style),
         };
         let alpha = alpha_u8(style.opacity);
@@ -590,19 +593,64 @@ impl Document<'_> {
         Ok(added)
     }
 
-    /// Police système incorporée une seule fois par document (cache vidé à chaque rechargement).
-    fn font_token_for_file(&mut self, path: &Path) -> Result<PdfFontToken, EngineError> {
-        if let Some(t) = self.font_cache.get(path) {
-            return Ok(*t);
+    /// Reuse identical font programs, including fonts already present after snapshot restore.
+    fn font_token_for_file(
+        &mut self,
+        path: &Path,
+        face_index: u32,
+        text: &str,
+    ) -> Result<PdfFontToken, EngineError> {
+        use pdfium_render::pdf::document::fonts::ToPdfFontToken;
+        let source = crate::font_embed::read_font(path)?;
+        let prepared = crate::font_embed::prepare(&source, face_index, text)?;
+        if let Some(tokens) = self.font_cache.get(path) {
+            for token in tokens {
+                if self
+                    .inner
+                    .fonts()
+                    .get(*token)
+                    .and_then(|font| font.data().ok())
+                    .is_some_and(|bytes| bytes == prepared.bytes)
+                {
+                    return Ok(*token);
+                }
+            }
         }
-        let bytes = std::fs::read(path)?;
-        crate::fonts::check_embeddable(&bytes)?;
-        let token = self
-            .inner
-            .fonts_mut()
-            .load_true_type_from_bytes(&bytes, true)
-            .map_err(|_| EngineError::FontNotEmbeddable)?;
-        self.font_cache.insert(path.to_path_buf(), token);
+        let mut seen = std::collections::HashSet::new();
+        let mut existing = None;
+        'pages: for page in self.inner.pages().iter() {
+            for object in page.objects().iter() {
+                let Some(text) = object.as_text_object() else {
+                    continue;
+                };
+                let font = text.font();
+                let token = font.token();
+                if seen.insert(token)
+                    && font.is_embedded().unwrap_or(false)
+                    && font.data().is_ok_and(|bytes| bytes == prepared.bytes)
+                {
+                    existing = Some(token);
+                    break 'pages;
+                }
+            }
+        }
+        let token = match existing {
+            Some(token) => token,
+            None if prepared.is_cff => self
+                .inner
+                .fonts_mut()
+                .load_type1_from_bytes(&prepared.bytes, true)
+                .map_err(|_| EngineError::FontNotEmbeddable)?,
+            None => self
+                .inner
+                .fonts_mut()
+                .load_true_type_from_bytes(&prepared.bytes, true)
+                .map_err(|_| EngineError::FontNotEmbeddable)?,
+        };
+        self.font_cache
+            .entry(path.to_path_buf())
+            .or_default()
+            .push(token);
         Ok(token)
     }
 

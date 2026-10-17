@@ -5,3 +5,6 @@
 assets/licenses/upstream/*.txt -text whitespace=-trailing-space,-blank-at-eof
 assets/licenses/microsoft-build-tools-*.txt -text whitespace=-trailing-space,-blank-at-eof
 assets/licenses/microsoft-build-tools-*.docx binary
+crates/sunipdf-core/tests/fixtures/fonts/*.ttf binary
+crates/sunipdf-core/tests/fixtures/fonts/*.otf binary
+crates/sunipdf-core/tests/fixtures/fonts/*.txt -text whitespace=-trailing-space,-blank-at-eof

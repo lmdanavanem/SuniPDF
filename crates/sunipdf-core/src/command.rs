@@ -6,6 +6,8 @@ pub enum Command {
     HubCompress,
     CompressImages,
     ProcessFiles,
+    OfficeToPdf,
+    ExportOffice,
     RotateViewClockwise,
     RotateViewCounterClockwise,
     FullScreenReading,
@@ -102,6 +104,7 @@ pub enum Command {
     CopyObjects,
     CutObjects,
     PasteObjects,
+    PasteEditableObjects,
     SelectAllObjects,
     ReplaceImage,
     CropPages,
@@ -200,6 +203,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         "menu.convert.process_files",
         None,
         false,
+        Convert
+    ),
+    cmd!(
+        OfficeToPdf,
+        "convert.office_to_pdf",
+        "menu.office_to_pdf",
+        None,
+        false,
+        Convert
+    ),
+    cmd!(
+        ExportOffice,
+        "convert.export_office",
+        "menu.export_office",
+        None,
+        true,
         Convert
     ),
     cmd!(
@@ -849,6 +868,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "edit.paste_objects",
         "menu.edit.paste_objects",
         Some("shortcut.paste_objects"),
+        true,
+        Edit
+    ),
+    cmd!(
+        PasteEditableObjects,
+        "edit.paste_editable_objects",
+        "clipboard.paste_editable",
+        None,
         true,
         Edit
     ),

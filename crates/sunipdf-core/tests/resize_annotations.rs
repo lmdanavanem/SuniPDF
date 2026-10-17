@@ -123,7 +123,12 @@ fn assert_scaled(
             if let Ok(value) = a.get(key) {
                 let old_values = coordinates(old_pdf, value);
                 let values = coordinates(new_pdf, b.get(key).unwrap());
-                for (from, to) in old_values.chunks_exact(2).zip(values.chunks_exact(2)) {
+                for (from, to) in old_values
+                    .as_chunks::<2>()
+                    .0
+                    .iter()
+                    .zip(values.as_chunks::<2>().0)
+                {
                     let (x, y) = expected(from[0], from[1]);
                     assert!(
                         (x - to[0]).abs() < 0.02 && (y - to[1]).abs() < 0.02,
@@ -135,7 +140,12 @@ fn assert_scaled(
         if let Ok(value) = a.get(b"InkList") {
             let old_values = coordinates(old_pdf, &value.as_array().unwrap()[0]);
             let values = coordinates(new_pdf, &b.get(b"InkList").unwrap().as_array().unwrap()[0]);
-            for (from, to) in old_values.chunks_exact(2).zip(values.chunks_exact(2)) {
+            for (from, to) in old_values
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .zip(values.as_chunks::<2>().0)
+            {
                 let (x, y) = expected(from[0], from[1]);
                 assert!((x - to[0]).abs() < 0.02 && (y - to[1]).abs() < 0.02);
             }

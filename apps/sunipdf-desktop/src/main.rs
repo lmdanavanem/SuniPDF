@@ -15,6 +15,7 @@ mod icons;
 mod inline_text;
 mod objects;
 mod ocr;
+mod office;
 mod organize;
 mod pagesetup;
 mod printing;

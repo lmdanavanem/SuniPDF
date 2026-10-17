@@ -1,8 +1,165 @@
-//! Page-label authoring. Ranges refer to physical page indices, not page contents.
+//! Page-label authoring and semantic preservation during page operations.
 
 use crate::{Document, EngineError};
 use lopdf::{Dictionary, Object, ObjectId};
 use std::collections::HashSet;
+
+pub(crate) struct LabelSource {
+    pdf: lopdf::Document,
+    pages: Vec<ObjectId>,
+    labels: Option<Vec<(usize, Dictionary)>>,
+}
+
+impl LabelSource {
+    pub(crate) fn from_bytes(bytes: &[u8], password: Option<&str>) -> Result<Self, EngineError> {
+        if bytes.len() > 128 * 1024 * 1024 {
+            return Err(invalid("page operation input exceeds 128 MiB"));
+        }
+        let pdf = crate::security::load(bytes, password)?;
+        let pages: Vec<_> = pdf.get_pages().into_values().collect();
+        if pages.len() > 65_535 || pdf.objects.len() > 250_000 {
+            return Err(invalid("page operation structure limit"));
+        }
+        let labels = if let Ok(tree) = pdf
+            .catalog()
+            .map_err(crate::security::lopdf_err)?
+            .get(b"PageLabels")
+        {
+            let mut ranges = Vec::new();
+            collect_ranges(
+                &pdf,
+                tree,
+                pages.len(),
+                0,
+                &mut HashSet::new(),
+                &mut 0,
+                &mut ranges,
+            )?;
+            if ranges.first().map(|r| r.0) != Some(0) {
+                return Err(invalid("number tree must start at physical page zero"));
+            }
+            for (index, (first, dict)) in ranges.iter().enumerate() {
+                let last = ranges.get(index + 1).map_or(pages.len(), |r| r.0);
+                let (style, prefix, start) = entry_values(&pdf, dict)?;
+                check_length(style, prefix, start, last - first)?;
+            }
+            Some(ranges)
+        } else {
+            None
+        };
+        Ok(Self { pdf, pages, labels })
+    }
+
+    fn label(&self, page: usize) -> Result<Option<Dictionary>, EngineError> {
+        if page >= self.pages.len() {
+            return Err(invalid("source label index"));
+        }
+        let Some(ranges) = &self.labels else {
+            return Ok(None);
+        };
+        let index = ranges.partition_point(|range| range.0 <= page);
+        let (first, dict) = ranges
+            .get(index.saturating_sub(1))
+            .ok_or_else(|| invalid("source label range"))?;
+        let mut dict = dict.clone();
+        let (style, _, start) = entry_values(&self.pdf, &dict)?;
+        if style != PageLabelStyle::PrefixOnly {
+            dict.set("St", last_number(start, page - first + 1)? as i64);
+        }
+        Ok(Some(dict))
+    }
+}
+
+/// Authored labels travel with their original pages; inserted unlabelled pages use physical numbers.
+/// Without any authored rules, physical numbering stays implicit. Duplicate labels stay ambiguous.
+pub(crate) fn preserve_labels(
+    target: &mut lopdf::Document,
+    sources: &[&LabelSource],
+    provenance: &[Option<(usize, usize)>],
+) -> Result<(), EngineError> {
+    use std::collections::HashMap;
+    let pages: Vec<_> = target.get_pages().into_values().collect();
+    if pages.len() != provenance.len() || pages.len() > 65_535 {
+        return Err(invalid("page operation mapping mismatch"));
+    }
+    if sources.iter().all(|source| source.labels.is_none()) {
+        target
+            .catalog_mut()
+            .map_err(crate::security::lopdf_err)?
+            .remove(b"PageLabels");
+        return Ok(());
+    }
+    let mut page_maps = vec![HashMap::new(); sources.len()];
+    for (target_page, source) in pages.iter().zip(provenance) {
+        if let Some((source, page)) = *source {
+            let source_page = sources
+                .get(source)
+                .and_then(|s| s.pages.get(page))
+                .ok_or_else(|| invalid("source page mapping"))?;
+            page_maps[source]
+                .entry(*source_page)
+                .or_insert(*target_page);
+        }
+    }
+    let mut copied = vec![HashMap::new(); sources.len()];
+    let mut nums = Vec::new();
+    let mut previous: Option<(usize, Dictionary)> = None;
+    for (index, provenance) in provenance.iter().enumerate() {
+        let mut authored = None;
+        if let Some((source_index, page)) = *provenance {
+            let source = sources
+                .get(source_index)
+                .ok_or_else(|| invalid("source index"))?;
+            if let Some(label_source) = source.label(page)? {
+                authored = Some(
+                    crate::forms::deep_copy(
+                        &source.pdf,
+                        target,
+                        &page_maps[source_index],
+                        &mut copied[source_index],
+                        0,
+                        &Object::Dictionary(label_source),
+                        32,
+                    )?
+                    .as_dict()
+                    .map_err(crate::security::lopdf_err)?
+                    .clone(),
+                );
+            }
+        }
+        let label = authored.unwrap_or_else(|| {
+            let mut label = Dictionary::new();
+            label.set("S", "D");
+            label.set("St", (index + 1) as i64);
+            label
+        });
+        let continues = if let Some((first, previous)) = &previous {
+            let mut a = previous.clone();
+            let mut b = label.clone();
+            let a_start = entry_values(target, &a)?.2;
+            let b_start = entry_values(target, &b)?.2;
+            let numbered = a.has(b"S");
+            a.remove(b"St");
+            b.remove(b"St");
+            a == b
+                && (!numbered || u64::from(a_start) + (index - first) as u64 == u64::from(b_start))
+        } else {
+            false
+        };
+        if !continues {
+            previous = Some((index, label.clone()));
+            nums.extend([Object::Integer(index as i64), Object::Dictionary(label)]);
+        }
+    }
+    let mut tree = Dictionary::new();
+    tree.set("Nums", nums);
+    let tree = target.add_object(tree);
+    target
+        .catalog_mut()
+        .map_err(crate::security::lopdf_err)?
+        .set("PageLabels", tree);
+    Ok(())
+}
 
 const MAX_LABEL_BYTES: usize = 4096;
 const MAX_PREFIX_BYTES: usize = 256;
@@ -306,6 +463,33 @@ fn collect_ranges(
 }
 
 impl Document<'_> {
+    pub(crate) fn edit_pages_with_labels<R>(
+        &mut self,
+        sources: &[&LabelSource],
+        provenance: &[Option<(usize, usize)>],
+        edit: impl FnOnce(&mut Self) -> Result<R, EngineError>,
+    ) -> Result<R, EngineError> {
+        let mut candidate = Document {
+            inner: self
+                .pdfium
+                .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password: self.password.clone(),
+            font_cache: Default::default(),
+        };
+        let result = edit(&mut candidate)?;
+        let mut pdf = crate::security::load(&candidate.snapshot()?, candidate.password())?;
+        preserve_labels(&mut pdf, sources, provenance)?;
+        candidate.commit_page_labels(crate::security::save(pdf)?)?;
+        self.inner = candidate.inner;
+        self.info = candidate.info;
+        self.page_rotations = candidate.page_rotations;
+        self.font_cache.clear();
+        Ok(result)
+    }
+
     /// Replaces only the inclusive physical range. Existing label rules outside it remain effective.
     pub fn set_page_labels(&mut self, range: &PageLabelRange) -> Result<(), EngineError> {
         range.validate(self.page_count())?;

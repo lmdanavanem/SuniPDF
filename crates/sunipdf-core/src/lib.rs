@@ -19,12 +19,15 @@ pub mod compress;
 pub mod convert;
 pub mod edit;
 mod error;
+pub mod export_office;
+mod font_embed;
 pub mod fonts;
 pub mod form_data;
 pub mod forms;
 pub mod geometry;
 pub mod links;
 pub mod ocr;
+pub mod office;
 pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
@@ -188,7 +191,7 @@ pub struct Document<'a> {
     /// Mot de passe d'ouverture, réutilisé pour recharger un instantané (undo/redo).
     password: Option<String>,
     /// Polices système déjà incorporées dans ce document (vidé à chaque rechargement).
-    font_cache: std::collections::HashMap<PathBuf, PdfFontToken>,
+    font_cache: std::collections::HashMap<PathBuf, Vec<PdfFontToken>>,
 }
 
 /// Forme SASLprep du mot de passe si elle diffère de la saisie (sinon rien à réessayer).

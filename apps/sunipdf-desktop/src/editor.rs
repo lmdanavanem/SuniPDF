@@ -173,6 +173,7 @@ pub struct ClipInfo {
     /// Document et page d'origine (décalage des collages successifs au même endroit).
     pub source: Option<(PathBuf, usize)>,
     pub pastes: u32,
+    pub count: usize,
 }
 
 /// Copie d'objets en vol : « couper » (le thread moteur supprime lui-même après la copie),
@@ -1105,6 +1106,7 @@ impl SuniApp {
             marker,
             source,
             pastes: 0,
+            count,
         });
         let msg = tr_args(
             lang,
@@ -1125,6 +1127,22 @@ impl SuniApp {
     /// Coller sur la page courante : décalé de 12 pt par collage au même endroit, sinon à la
     /// position d'origine.
     pub fn paste_objects(&mut self, ctx: &egui::Context) {
+        self.paste_object_clip(ctx, false);
+    }
+
+    pub fn paste_editable_objects(&mut self, ctx: &egui::Context) {
+        self.paste_object_clip(ctx, true);
+    }
+
+    fn paste_object_clip(&mut self, ctx: &egui::Context, editable: bool) {
+        if self.navigation_blocked()
+            || self.worker.has_pending_mutations()
+            || self.opening.is_some()
+            || self.tabs.resuming.is_some()
+            || self.edit.pending_copy.is_some()
+        {
+            return;
+        }
         let Some(doc) = &self.document else { return };
         let (page, path) = (doc.page, doc.info.path.clone());
         let lang = self.lang();
@@ -1133,19 +1151,33 @@ impl SuniApp {
             return;
         };
         let (dx, dy) = if clip.source.as_ref() == Some(&(path, page)) {
-            clip.pastes += 1;
+            clip.pastes = clip.pastes.saturating_add(1);
             let d = 12.0 * clip.pastes as f32;
             (d, -d)
         } else {
             (0.0, 0.0)
         };
+        let count = if editable { clip.count } else { 1 };
         if self.annotate.tool != Tool::SelectObject {
             self.execute(ctx, Command::ToolSelectObject);
         }
-        self.edit.reselect_many = Some((page, Pick::Last(1)));
-        self.edit.pending_status = Some(tr(lang, "status.objects_pasted").to_string());
-        self.worker
-            .send(Request::Edit(EditOp::PasteObjects { page, dx, dy }));
+        self.edit.reselect_many = Some((page, Pick::Last(count)));
+        self.edit.pending_status = Some(
+            tr(
+                lang,
+                if editable {
+                    "status.objects_pasted_editable"
+                } else {
+                    "status.objects_pasted"
+                },
+            )
+            .to_string(),
+        );
+        self.worker.send(Request::Edit(if editable {
+            EditOp::PasteEditableObjects { page, dx, dy }
+        } else {
+            EditOp::PasteObjects { page, dx, dy }
+        }));
     }
 
     pub fn select_all_objects(&mut self, ctx: &egui::Context) {
@@ -1386,6 +1418,7 @@ impl SuniApp {
         let has_icons = self.has_icons;
         let mut apply = false;
         let mut paragraph = false;
+        let mut paste_editable = false;
         let mut angle_target = None;
         let mut action: Option<Command> = None;
         const GAP: f32 = 14.0;
@@ -1582,6 +1615,16 @@ impl SuniApp {
                                     action = Some(c);
                                 }
                             }
+                            if ui
+                                .add_enabled(
+                                    can_paste,
+                                    egui::Button::new(tr(lang, "clipboard.paste_editable")),
+                                )
+                                .on_hover_text(tr(lang, "clipboard.paste_editable_hint"))
+                                .clicked()
+                            {
+                                paste_editable = true;
+                            }
                             if single.as_ref().is_some_and(|i| i.kind == ObjectKind::Image)
                                 && icon(ui, Command::ReplaceImage, true)
                             {
@@ -1597,6 +1640,9 @@ impl SuniApp {
         }
         if paragraph {
             self.open_paragraph_prompt();
+        }
+        if paste_editable {
+            self.paste_editable_objects(ctx);
         }
         if apply {
             if let Some(sel) = &self.edit.selection {
@@ -1734,9 +1780,11 @@ impl SuniApp {
             }
             None => {
                 let lines = text.lines().filter(|l| !l.trim().is_empty()).count();
-                let (family, font_file) = match &prompt.font {
-                    TextFont::Standard(f) => (*f, None),
-                    TextFont::System(f) => (FontFamily::Helvetica, Some(f.path.clone())),
+                let (family, font_file, font_face_index) = match &prompt.font {
+                    TextFont::Standard(f) => (*f, None, 0),
+                    TextFont::System(f) => {
+                        (FontFamily::Helvetica, Some(f.path.clone()), f.face_index)
+                    }
                 };
                 self.edit.reselect_many = Some((prompt.page, Pick::Last(lines.max(1))));
                 self.worker.send(Request::Edit(EditOp::AddText {
@@ -1752,6 +1800,7 @@ impl SuniApp {
                         rgb: rgb_tuple(prompt.rgb),
                         opacity: 1.0,
                         font_file,
+                        font_face_index,
                     },
                 }));
                 self.edit.last_prompt = Some(prompt);
@@ -1786,6 +1835,77 @@ mod tests {
             stroke_rgb: None,
             stroke_width: 1.0,
         }
+    }
+
+    #[test]
+    fn native_paste_selects_all_objects_and_refusal_never_falls_back_to_a_group() {
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.annotate.tool = Tool::SelectObject;
+        app.on_copied(&ctx, 3, "Editable text".into());
+        assert_eq!(app.edit.clip.as_ref().unwrap().marker, "Editable text");
+        app.paste_editable_objects(&ctx);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::Edit(EditOp::PasteEditableObjects {
+                page: 0,
+                dx: 0.0,
+                dy: 0.0
+            })
+        ));
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        assert_eq!(app.edit.reselect_many, Some((0, Pick::Last(3))));
+        assert_eq!(
+            app.edit.pending_status.as_deref(),
+            Some(tr(app.lang(), "status.objects_pasted_editable"))
+        );
+        responses
+            .send(crate::worker::Response::OperationFailed(
+                sunipdf_core::EngineError::Other("unsupported graph".into()),
+            ))
+            .unwrap();
+        responses
+            .send(crate::worker::Response::MutationFinished)
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(app.edit.reselect_many.is_none() && app.edit.pending_status.is_none());
+        assert!(
+            requests.try_recv().is_err(),
+            "no automatic grouped fallback"
+        );
+        app.paste_objects(&ctx);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::Edit(EditOp::PasteObjects { page: 0, .. })
+        ));
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        assert_eq!(app.edit.reselect_many, Some((0, Pick::Last(1))));
+        app.worker.finish_mutation();
+        let source = app
+            .document
+            .as_ref()
+            .map(|doc| (doc.info.path.clone(), doc.page));
+        app.edit.pending_copy = Some((false, source));
+        app.on_copied(&ctx, 2, "Same page".into());
+        app.paste_editable_objects(&ctx);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::Edit(EditOp::PasteEditableObjects {
+                dx: 12.0,
+                dy: -12.0,
+                ..
+            })
+        ));
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        app.paste_editable_objects(&ctx);
+        assert!(
+            requests.try_recv().is_err(),
+            "pending mutation blocks another paste"
+        );
+        app.worker.finish_mutation();
+        app.opening = Some("opening.pdf".into());
+        app.paste_editable_objects(&ctx);
+        assert!(requests.try_recv().is_err());
     }
 
     #[test]

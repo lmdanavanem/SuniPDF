@@ -200,6 +200,7 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
 
 pub struct SuniApp {
     pub processing: crate::processing::ProcessingState,
+    pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
     pub recovery: crate::recovery::RecoveryState,
     pub printing: crate::printing::PrintState,
@@ -282,6 +283,7 @@ impl SuniApp {
         let recovery_failed = recovery.failed;
         let mut app = Self {
             processing: Default::default(),
+            office: Default::default(),
             reading_full_screen: false,
             recovery,
             printing: Default::default(),
@@ -616,6 +618,21 @@ impl SuniApp {
                 Response::ProcessingDone(results) => {
                     self.processing.busy = false;
                     self.processing.results = results;
+                }
+                Response::OfficeProgress {
+                    done,
+                    total,
+                    item_done,
+                    item_total,
+                } => {
+                    self.office.done = done;
+                    self.office.total = total;
+                    self.office.item_done = item_done;
+                    self.office.item_total = item_total;
+                }
+                Response::OfficeDone(results) => {
+                    self.office.busy = false;
+                    self.office.results = results;
                 }
                 Response::TaskProgress { kind, done, total } => match kind {
                     crate::worker::TaskKind::Print => {
@@ -1279,6 +1296,7 @@ impl SuniApp {
     pub(crate) fn navigation_blocked(&self) -> bool {
         self.edit.paragraph.is_some()
             || self.processing.busy
+            || self.office.busy
             || self.sign.busy
             || self.saving
             || self.after_save.is_some()
@@ -1292,6 +1310,7 @@ impl SuniApp {
         self.edit.paragraph.is_some()
             || self.ink_draft_active()
             || self.processing.busy
+            || self.office.busy
             || self.sign.busy
             || self.worker.has_pending_mutations()
             || self.printing.busy
@@ -1587,6 +1606,8 @@ impl SuniApp {
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
         self.processing.open
+            || self.office.open
+            || self.office.busy
             || self.sign.busy
             || self.processing.busy
             || self.recovery.open
@@ -1698,6 +1719,8 @@ impl SuniApp {
         match command {
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
+            Command::OfficeToPdf => self.open_office(false),
+            Command::ExportOffice => self.open_office(true),
             Command::RotateViewClockwise => self.rotate_reading_view(true),
             Command::RotateViewCounterClockwise => self.rotate_reading_view(false),
             Command::HistoryBack => self.navigate_reading_history(true),
@@ -1933,6 +1956,7 @@ impl SuniApp {
             Command::CopyObjects => self.copy_objects(false),
             Command::CutObjects => self.copy_objects(true),
             Command::PasteObjects => self.paste_objects(ctx),
+            Command::PasteEditableObjects => self.paste_editable_objects(ctx),
             Command::SelectAllObjects => self.select_all_objects(ctx),
             Command::ReplaceImage => self.replace_selected_image(),
             Command::ToggleObjects => {
@@ -3204,6 +3228,7 @@ pub(crate) mod tests {
         let (worker, requests, responses) = Worker::test_channels();
         let mut app = SuniApp {
             processing: Default::default(),
+            office: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),

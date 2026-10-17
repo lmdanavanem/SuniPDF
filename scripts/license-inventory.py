@@ -162,6 +162,7 @@ def rust_inventory(root, metadata, target_metadata):
             'texts': sorted(evidence, key=lambda item: (item['source'], item['textSha256'])),
             'unavailable': unavailable if unavailable else (None if evidence else 'No full license text in the resolved source'),
             'distributionChoice': override.get('distribution_choice') if override else None,
+            'sourceRevisionNotice': override.get('upstream_revision_unavailable') if override else None,
         })
     return packages, texts
 
@@ -358,12 +359,32 @@ def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version
             raise ValueError('Default font source set differs from the reviewed inventory')
         for filename, (license_expression, notice) in sorted(font_licenses.items()):
             fonts.append({'name': filename, 'version': 'epaint_default_fonts ' + package['version'], 'sha256': digest((directory / filename).read_bytes()), 'license': license_expression, 'noticeSource': 'epaint_default_fonts@' + package['version'] + '/fonts/' + notice, 'scope': 'Desktop default-font source; notices retained even if a font is optimized out of the executable'})
+    fixture_root = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+    test_fonts = []
+    for filename, evidence in sorted(read_json(fixture_root / 'source-provenance.json').items()):
+        font = inside(fixture_root / filename, fixture_root)
+        if digest(font.read_bytes()) != evidence['sha256']:
+            raise ValueError('Licensed font fixture differs from its reviewed source: ' + filename)
+        entry = dict(evidence, name=filename, scope='Development regression fixture only; font file is not shipped in product packages')
+        entry['texts'] = []
+        for key in ('licenseFile', 'noticeFile'):
+            if key not in evidence:
+                continue
+            path = inside(fixture_root / evidence[key], fixture_root)
+            if key == 'licenseFile' and evidence.get('licenseSha256') and digest(path.read_bytes()) != evidence['licenseSha256']:
+                raise ValueError('Licensed font fixture terms differ: ' + filename)
+            content = legal_text(path)
+            text_id = digest(content.encode())
+            source = 'test-font::' + filename + '/' + path.name
+            texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(source)
+            entry['texts'].append({'textSha256': text_id, 'source': source})
+        test_fonts.append(entry)
     header = 'SuniPDF complete locked-source license and notice texts\n\nOR denotes alternatives; AND denotes cumulative terms. Legacy slash expressions are preserved exactly as declared.\nThis inventory includes other-platform and development/build dependencies; it is not a claim that every locked crate is linked into a Windows executable.\nRetain applicable copyright, license and NOTICE texts, attribution, font naming and modification notices required by the full terms below. An OR alternative does not impose every alternative.\n\n'
     body = header + '\n'.join(f"{p['name']} {p['version']} | {p['declaredLicense']} | {p['source']}" for p in packages) + '\n'
     for text_id, entry in sorted(texts.items()):
         body += '\n' + '=' * 78 + '\n' + 'SHA256 (LF-normalized text): ' + text_id + '\n' + '\n'.join(sorted(entry['sources'])) + '\n\n' + entry['text'].rstrip('\n') + '\n'
     (stage / TEXTS).write_text(body, encoding='utf-8', newline='\n')
-    inventory = {'schema': 1, 'architecture': arch, 'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()), 'coverage': 'Every Cargo.lock package, with Windows normal/build dependency membership from target-filtered Cargo metadata; all source license expressions retained verbatim', 'licenseRelationships': 'OR = alternative; AND = cumulative; / = legacy declaration retained verbatim. Full terms are included; SPDX identifiers alone are not license evidence.', 'rustPackages': packages, 'nativeAndPackagingComponents': components, 'embeddedFontSources': fonts, 'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())], 'payloadFiles': payload_map(stage)}
+    inventory = {'schema': 1, 'architecture': arch, 'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()), 'coverage': 'Every Cargo.lock package, with Windows normal/build dependency membership from target-filtered Cargo metadata; all source license expressions retained verbatim', 'licenseRelationships': 'OR = alternative; AND = cumulative; / = legacy declaration retained verbatim. Full terms are included; SPDX identifiers alone are not license evidence.', 'rustPackages': packages, 'nativeAndPackagingComponents': components, 'embeddedFontSources': fonts, 'testFontFixtures': test_fonts, 'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())], 'payloadFiles': payload_map(stage)}
     (stage / INVENTORY).write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + '\n', encoding='utf-8', newline='\n')
     verify(stage)
     return inventory

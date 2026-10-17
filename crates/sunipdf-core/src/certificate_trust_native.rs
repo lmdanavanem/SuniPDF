@@ -131,7 +131,7 @@ fn within<T>(arena: &[usize], pointer: *const T, count: usize) -> Result<&[T], u
     Ok(unsafe { std::slice::from_raw_parts(pointer, count) })
 }
 
-fn oid<'a>(arena: &'a [usize], pointer: PSTR) -> Result<&'a [u8], u32> {
+fn oid(arena: &[usize], pointer: PSTR) -> Result<&[u8], u32> {
     let offset = (pointer.0 as usize)
         .checked_sub(arena.as_ptr() as usize)
         .ok_or(INVALID)?;

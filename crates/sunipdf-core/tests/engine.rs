@@ -2539,8 +2539,8 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
     );
     let first = doc.snapshot().unwrap().len();
     assert!(
-        (first - base) as u64 >= font.size_bytes / 3,
-        "police incorporée : +{} octets pour {} ({} octets)",
+        first > base && ((first - base) as u64) < font.size_bytes,
+        "embedded PDF growth: +{} bytes for {} ({} source bytes)",
         first - base,
         font.name,
         font.size_bytes
@@ -2598,6 +2598,117 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
         b.bounds
     );
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[path = "support/font_collection.rs"]
+mod font_container;
+
+fn embedded_font_programs(bytes: &[u8]) -> Vec<Vec<u8>> {
+    let pdf = lopdf::Document::load_mem(bytes).unwrap();
+    let mut ids = std::collections::BTreeSet::new();
+    for object in pdf.objects.values() {
+        let Ok(dict) = object.as_dict() else { continue };
+        for key in [b"FontFile".as_slice(), b"FontFile2", b"FontFile3"] {
+            if let Ok(id) = dict.get(key).and_then(|o| o.as_reference()) {
+                ids.insert(id);
+            }
+        }
+    }
+    ids.into_iter()
+        .map(|id| {
+            let stream = pdf.get_object(id).unwrap().as_stream().unwrap();
+            stream
+                .decompressed_content()
+                .unwrap_or_else(|_| stream.content.clone())
+        })
+        .collect()
+}
+
+#[test]
+fn embedded_subsets_reuse_programs_after_undo_redo_and_save_reopen() {
+    use sunipdf_core::TextStyle;
+    let engine = engine();
+    let path = fixture("fonts/Ubuntu-Light.ttf");
+    let source_size = std::fs::metadata(&path).unwrap().len() as usize;
+    let style = TextStyle {
+        font_file: Some(path),
+        ..Default::default()
+    };
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.snapshot().unwrap();
+    let text = "Cafe\u{e9} \u{3a9} \u{41f}\u{440}\u{438}\u{432}\u{435}\u{442}";
+    doc.add_text(0, 60.0, 300.0, text, &style).unwrap();
+    let after = doc.snapshot().unwrap();
+    let programs = embedded_font_programs(&after);
+    assert_eq!(programs.len(), 1);
+    assert!(programs[0].len() < source_size * 9 / 10);
+    doc.restore(before).unwrap();
+    doc.restore(after.clone()).unwrap();
+    doc.add_text(0, 60.0, 260.0, "Deuxi\u{e8}me ligne", &style)
+        .unwrap();
+    let reused = doc.snapshot().unwrap();
+    assert_eq!(
+        embedded_font_programs(&reused),
+        programs,
+        "restore must reuse the existing font program"
+    );
+    assert!(reused.len() - after.len() < 20_000);
+    let output = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/font-embedding-evidence");
+    std::fs::create_dir_all(&output).unwrap();
+    let pdf = output.join("truetype-unicode-subset.pdf");
+    doc.save_as(&pdf).unwrap();
+    let reopened = engine.open(&pdf, None).unwrap();
+    assert!(reopened.page_text(0).unwrap().contains(text));
+    assert!(reopened
+        .page_text(0)
+        .unwrap()
+        .contains("Deuxi\u{e8}me ligne"));
+    let image = reopened.render_page(0, 1.0).unwrap();
+    assert!(image.width() > 0 && image.height() > 0);
+    eprintln!(
+        "Font subset evidence: {} -> {} program bytes; {}",
+        source_size,
+        programs[0].len(),
+        pdf.display()
+    );
+}
+
+#[test]
+fn cff_otf_and_selected_ttc_face_round_trip_without_duplicate_embedding() {
+    use sunipdf_core::TextStyle;
+    let engine = engine();
+    let cff = std::fs::read(fixture("fonts/FontAwesome.otf")).unwrap();
+    let ttf = std::fs::read(fixture("fonts/Ubuntu-Light.ttf")).unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let ttc = dir.path().join("mixed.ttc");
+    std::fs::write(&ttc, font_container::collection(&[&ttf, &cff])).unwrap();
+    for (name, path, face) in [
+        ("cff-otf-subset", fixture("fonts/FontAwesome.otf"), 0),
+        ("ttc-second-cff-face", ttc, 1),
+    ] {
+        let style = TextStyle {
+            font_file: Some(path),
+            font_face_index: face,
+            ..Default::default()
+        };
+        let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+        doc.add_text(0, 60.0, 300.0, "\u{f000}", &style).unwrap();
+        let first = doc.snapshot().unwrap();
+        doc.restore(first.clone()).unwrap();
+        doc.add_text(0, 60.0, 260.0, "\u{f000}", &style).unwrap();
+        assert_eq!(
+            embedded_font_programs(&first),
+            embedded_font_programs(&doc.snapshot().unwrap())
+        );
+        let output =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/font-embedding-evidence");
+        std::fs::create_dir_all(&output).unwrap();
+        let path = output.join(format!("{name}.pdf"));
+        doc.save_as(&path).unwrap();
+        let reopened = engine.open(&path, None).unwrap();
+        assert!(reopened.page_text(0).unwrap().contains('\u{f000}'));
+        assert!(reopened.render_page(0, 1.0).is_ok());
+    }
 }
 
 #[test]

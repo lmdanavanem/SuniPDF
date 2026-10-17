@@ -1113,7 +1113,7 @@ fn scaled_annotation_pairs(
         ));
     }
     let mut output = Vec::with_capacity(values.len());
-    for pair in values.chunks_exact(2) {
+    for pair in values.as_chunks::<2>().0 {
         let number = |value| {
             deref(pdf, value)
                 .and_then(|value| value.as_float().ok())

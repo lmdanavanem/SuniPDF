@@ -58,6 +58,26 @@ jobs:
       - name: Real PDFs and independent output regression (x64)
         if: matrix.arch == 'x64'
         run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
+      - name: Pinned local Office converter on disposable runner (x64)
+        if: matrix.arch == 'x64'
+        run: .\scripts\fetch-test-libreoffice.ps1
+      - name: Measured licensed Office exports and local converter profiles (x64)
+        if: matrix.arch == 'x64'
+        env:
+          SUNIPDF_REQUIRE_OFFICE_CONVERTER: '1'
+        run: |
+          $env:SUNIPDF_OFFICE_REPORT = Join-Path (Get-Location).Path 'target/office-fidelity-report.json'
+          cargo test -p sunipdf-core --test office_fidelity_corpus --locked -j 2 -- --ignored --nocapture
+          if ($LASTEXITCODE -ne 0) { throw 'Office regression failed.' }
+      - name: Office regression evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: office-regression-evidence
+          path: |
+            target/office-fidelity-report.json
+            target/office-converter-provenance.json
+          if-no-files-found: ignore
       - name: Real corpus regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@v7
@@ -104,6 +124,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.19.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.20.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.1
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@v7
