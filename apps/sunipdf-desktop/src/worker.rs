@@ -527,11 +527,7 @@ pub enum Request {
         match_case: bool,
         verify: bool,
     },
-    /// Caviardage irréversible des zones (annulable : instantané) ; `Redacted` puis `DocumentChanged`.
-    Redact {
-        marks: Vec<RedactMark>,
-        options: RedactOptions,
-    },
+    /// Prepare a verified candidate without changing the document; commit uses its exact bytes.
     PreviewRedaction {
         marks: Vec<RedactMark>,
         options: RedactOptions,
@@ -859,7 +855,6 @@ impl Worker {
             Request::Edit(_)
                 | Request::Undo
                 | Request::Redo
-                | Request::Redact { .. }
                 | Request::CommitRedactionPreview { .. }
                 | Request::PersistRedactionMarks { .. }
                 | Request::TextInRect { .. }
@@ -1052,14 +1047,6 @@ impl State<'_> {
 
     /// Caviardage sous instantané (même règle que `edit`) : en cas d'échec, l'état d'avant est
     /// rechargé ; jamais d'écriture de fichier ici.
-    fn redact(
-        &mut self,
-        marks: &[RedactMark],
-        options: &RedactOptions,
-    ) -> Result<(RedactReport, DocState), EngineError> {
-        self.redact_candidate(|doc| doc.redact(marks, options))
-    }
-
     fn redact_candidate(
         &mut self,
         apply: impl FnOnce(&mut Document<'_>) -> Result<RedactReport, EngineError>,
@@ -1949,22 +1936,16 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
             }
             Request::Edit(op) => state.edit(op),
-            request @ (Request::Redact { .. } | Request::CommitRedactionPreview { .. }) => {
-                let result = match request {
-                    Request::Redact { marks, options } => state.redact(&marks, &options),
-                    Request::CommitRedactionPreview { epoch, generation } => {
-                        match state.redaction_preview.take() {
-                            Some((saved_epoch, saved_generation, prepared))
-                                if saved_epoch == epoch && saved_generation == generation =>
-                            {
-                                state.redact_candidate(|doc| doc.commit_redaction_preview(prepared))
-                            }
-                            _ => Err(EngineError::Other(
-                                "redaction preview is stale; preview again".into(),
-                            )),
-                        }
+            Request::CommitRedactionPreview { epoch, generation } => {
+                let result = match state.redaction_preview.take() {
+                    Some((saved_epoch, saved_generation, prepared))
+                        if saved_epoch == epoch && saved_generation == generation =>
+                    {
+                        state.redact_candidate(|doc| doc.commit_redaction_preview(prepared))
                     }
-                    _ => unreachable!(),
+                    _ => Err(EngineError::Other(
+                        "redaction preview is stale; preview again".into(),
+                    )),
                 };
                 match result {
                     Ok((report, doc_state)) => {
@@ -3853,6 +3834,26 @@ mod tests {
         assert_eq!(form_info().field("Country").unwrap().value, custom);
     }
 
+    fn prepare_and_commit_redaction(worker: &Worker, marks: Vec<RedactMark>, generation: u64) {
+        let page = marks.first().expect("nonempty redaction marks").page;
+        worker.send(Request::PreviewRedaction {
+            marks,
+            options: RedactOptions::default(),
+            appearance: Default::default(),
+            page,
+            epoch: 73,
+            generation,
+            cancel: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        });
+        assert!(
+            matches!(next_response(worker), Response::RedactionPreview { epoch: 73, generation: returned, result: Ok(_) } if returned == generation)
+        );
+        worker.send(Request::CommitRedactionPreview {
+            epoch: 73,
+            generation,
+        });
+    }
+
     fn encrypted_recovery_after_redaction(worker: &Worker) {
         let temp = tempfile::tempdir().unwrap();
         let original = temp.path().join("original.pdf");
@@ -3930,10 +3931,7 @@ mod tests {
             _ => panic!("redaction search response"),
         };
         assert_eq!(marks.len(), 1);
-        worker.send(Request::Redact {
-            marks: marks.clone(),
-            options: RedactOptions::default(),
-        });
+        prepare_and_commit_redaction(worker, marks.clone(), 1);
         assert!(matches!(next_response(worker), Response::Redacted(_)));
         assert!(matches!(
             next_response(worker),
@@ -3982,10 +3980,7 @@ mod tests {
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
         worker.send(Request::SetRecovery(Some(failed_slot.clone())));
-        worker.send(Request::Redact {
-            marks,
-            options: RedactOptions::default(),
-        });
+        prepare_and_commit_redaction(worker, marks, 2);
         assert!(matches!(
             next_response(worker),
             Response::RecoverySaved(Err(_))

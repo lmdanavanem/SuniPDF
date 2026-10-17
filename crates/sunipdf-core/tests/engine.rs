@@ -1277,6 +1277,7 @@ fn edit_resize_style_text_size_and_fonts() {
             rgb: (200, 0, 0),
             opacity: 1.0,
             font_file: None,
+            font_face_index: 0,
         },
     )
     .unwrap();

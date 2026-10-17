@@ -1,6 +1,5 @@
-//! Outil « Caviarder » : zones marquées à la souris ou par recherche de texte, confirmation, garde
-//! d'enregistrement. Les zones sont un état d'interface : rien n'est supprimé avant « Appliquer »,
-//! qui envoie `Request::Redact` au thread moteur (suppression réelle, vérifiée, annulable).
+//! Redaction drafts, persisted unapplied PDF marks and an exact verified before/after candidate.
+//! Applying commits the preview bytes through the worker in one Undo step; preparation is read-only.
 
 use crate::annotate::{Drag, Tool};
 use crate::app::{SuniApp, SCREEN_PER_PDF_POINT};

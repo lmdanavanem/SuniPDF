@@ -12,11 +12,17 @@ import tarfile
 import tempfile
 import tomllib
 import unittest
+from unittest.mock import patch
 import zipfile
 
 INVENTORY = 'licenses/dependency-inventory.json'
 TEXTS = 'licenses/dependency-licenses.txt'
 LEGAL_NAME = re.compile(r'(?i)^(licen[cs]e|copying|copyright|notice|unlicense)([._-]|$)')
+# The pinned PDFium 7881 FreeType notice contains a literal Latin-1 copyright sign.
+# Its original bytes remain in the package; only the combined UTF-8 text is decoded.
+LEGAL_TEXT_ENCODINGS = {
+    'f4b133e25df1f86ad3ffea453aa0e613f0474f34778dbbb3e437e7b2724937d8': 'iso-8859-1',
+}
 
 
 def digest(data):
@@ -37,7 +43,11 @@ def legal_text(path):
     data = path.read_bytes()
     if not data or len(data) > 16 * 1024 * 1024:
         raise ValueError(f'Empty or oversized legal text: {path.name}')
-    return data.decode('utf-8-sig').replace('\r\n', '\n').replace('\r', '\n')
+    encoding = LEGAL_TEXT_ENCODINGS.get(digest(data), 'utf-8-sig')
+    try:
+        return data.decode(encoding).replace('\r\n', '\n').replace('\r', '\n')
+    except UnicodeError as error:
+        raise ValueError(f'Unsupported legal text encoding: {path.name}: {error}') from error
 
 
 def inside(path, directory):
@@ -440,6 +450,17 @@ def record_wix(stage, provenance):
 
 
 class InventoryTests(unittest.TestCase):
+    def test_reviewed_legacy_notice_preserves_bytes_and_unknown_encoding_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'legacy-license.txt'
+            raw = b'Copyright \xa9 example\r\nFull terms retained.\r\n'
+            path.write_bytes(raw)
+            with patch.dict(LEGAL_TEXT_ENCODINGS, {digest(raw): 'iso-8859-1'}):
+                self.assertEqual(legal_text(path), 'Copyright \u00a9 example\nFull terms retained.\n')
+                self.assertEqual(path.read_bytes(), raw)
+            with self.assertRaisesRegex(ValueError, 'legacy-license.txt'):
+                legal_text(path)
+
     def test_platform_membership_excludes_dev_edges(self):
         data = {'workspace_members': ['app'], 'resolve': {'nodes': [{'id': 'app', 'deps': [{'pkg': 'runtime', 'dep_kinds': [{'kind': None}]}, {'pkg': 'dev', 'dep_kinds': [{'kind': 'dev'}]}]}, {'id': 'runtime', 'deps': []}]}}
         self.assertEqual(windows_ids(data), {'app', 'runtime'})
