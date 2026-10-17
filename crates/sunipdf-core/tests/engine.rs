@@ -2641,9 +2641,9 @@ fn write_font_reader_evidence(engine: &Engine, source: &Path, output: &Path, exp
             .unwrap();
     }
     let image = reference.render_page(0, 2.0).unwrap();
-    let mut ppm = format!("P6\n{} {}\n255\n", image.width(), image.height()).into_bytes();
-    for pixel in image.pixels() {
-        ppm.extend_from_slice(&pixel.0[..3]);
+    let mut ppm = format!("P6\n{} {}\n255\n", image.width, image.height).into_bytes();
+    for pixel in image.rgba.chunks_exact(4) {
+        ppm.extend_from_slice(&pixel[..3]);
     }
     std::fs::write(output.with_extension("ppm"), ppm).unwrap();
     let regions: Vec<_> = reference
@@ -2656,14 +2656,14 @@ fn write_font_reader_evidence(engine: &Engine, source: &Path, output: &Path, exp
             let b = o.bounds;
             [
                 b.left * 2.0,
-                image.height() as f32 - b.top * 2.0,
+                image.height as f32 - b.top * 2.0,
                 b.right * 2.0,
-                image.height() as f32 - b.bottom * 2.0,
+                image.height as f32 - b.bottom * 2.0,
             ]
         })
         .collect();
     let evidence = serde_json::json!({
-        "schema": 1, "page": 1, "dpi": 144, "width": image.width(), "height": image.height(),
+        "schema": 1, "page": 1, "dpi": 144, "width": image.width, "height": image.height,
         "pdf": output.file_name().unwrap().to_str().unwrap(),
         "baseline": output.with_extension("ppm").file_name().unwrap().to_str().unwrap(),
         "expectedText": expected, "regions": regions,
@@ -2722,7 +2722,7 @@ fn embedded_subsets_reuse_programs_after_undo_redo_and_save_reopen() {
         .unwrap()
         .contains("Deuxi\u{e8}me ligne"));
     let image = reopened.render_page(0, 1.0).unwrap();
-    assert!(image.width() > 0 && image.height() > 0);
+    assert!(image.width > 0 && image.height > 0);
     eprintln!(
         "Font subset evidence: {} -> {} program bytes; {}",
         source_size,

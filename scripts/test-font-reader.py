@@ -54,9 +54,11 @@ def ppm(path):
 
 def mask(image, region):
     width, height, pixels = image
+    if len(region) != 4 or not all(math.isfinite(value) for value in region):
+        raise ValueError('Invalid glyph evidence region')
     left, top = max(0, math.floor(region[0]) - 3), max(0, math.floor(region[1]) - 3)
     right, bottom = min(width, math.ceil(region[2]) + 3), min(height, math.ceil(region[3]) + 3)
-    if not all(math.isfinite(value) for value in region) or not (0 <= left < right <= width and 0 <= top < bottom <= height):
+    if not (0 <= left < right <= width and 0 <= top < bottom <= height):
         raise ValueError('Invalid glyph evidence region')
     return {(x, y) for y in range(top, bottom) for x in range(left, right)
             if min(pixels[(y * width + x) * 3:(y * width + x) * 3 + 3]) < 128}
@@ -155,6 +157,12 @@ class ReaderTests(unittest.TestCase):
             path.write_bytes(b'P6\n2 1\n255\n' + b'\xff' * 5)
             with self.assertRaises(ValueError):
                 ppm(path)
+
+    def test_non_finite_or_empty_regions_are_refused(self):
+        image = (4, 4, b'\xff' * 48)
+        for region in ([0, 0, float('inf'), 2], [0, float('nan'), 2, 2], [], [20, 20, 30, 30]):
+            with self.assertRaises(ValueError):
+                mask(image, region)
 
 
 def main():

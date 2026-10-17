@@ -39,12 +39,24 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
       - name: Tests
+        id: workspace_tests
         run: cargo test --workspace --locked -j 2
       - name: Pinned independent font reader
+        if: always() && steps.workspace_tests.outcome == 'success'
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
+      - name: Native DX12 software renderer and texture limits
+        if: always() && steps.workspace_tests.outcome == 'success'
+        run: cargo test -p sunipdf-desktop --test native_wgpu --locked -j 2 -- --ignored --nocapture
+      - name: Native renderer evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-wgpu-evidence
+          path: target/native-wgpu-evidence/
+          if-no-files-found: ignore
       - name: Independent font reader evidence
         if: always()
         uses: actions/upload-artifact@v7
