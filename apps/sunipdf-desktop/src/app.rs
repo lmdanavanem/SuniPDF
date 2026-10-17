@@ -1245,6 +1245,10 @@ impl SuniApp {
     }
 
     fn start_update_check(&mut self, ctx: &egui::Context, manual: bool) {
+        // ponytail: seuls des paquets Windows sont publiés ; mise à jour macOS (.dmg) à venir.
+        if cfg!(not(any(windows, test))) {
+            return;
+        }
         if manual {
             self.update_errors_visible = true;
         }
