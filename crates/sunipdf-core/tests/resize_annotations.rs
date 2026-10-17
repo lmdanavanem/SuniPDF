@@ -220,10 +220,18 @@ fn page_scaling_explicitly_preserves_annotation_geometry_targets_encryption_and_
                     .rgba
                     .iter()
                     .any(|v| *v != 255));
+                assert_eq!(reopened.is_encrypted(), encryption.is_some());
+                // The password loader decrypts and removes /Encrypt, retaining its original state.
                 assert_eq!(
-                    decoded(&std::fs::read(&output).unwrap(), reopen_password).is_encrypted(),
+                    decoded(&std::fs::read(&output).unwrap(), reopen_password).was_encrypted(),
                     encryption.is_some()
                 );
+            }
+            if encryption.is_some() {
+                assert!(matches!(
+                    engine.open(&output, None),
+                    Err(sunipdf_core::EngineError::PasswordRequired)
+                ));
             }
             doc.restore(before).unwrap();
             assert_eq!(doc.page_geometry(0).unwrap(), old);

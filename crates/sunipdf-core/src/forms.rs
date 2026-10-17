@@ -1665,6 +1665,7 @@ mod tests {
         assert_eq!(ours.len(), 16);
         assert_eq!(ours, theirs);
         assert!(!model.scripts);
+        crate::export_office::tests::office_exports_validate_packages_preserve_sources_and_refuse_atomic_failures(&engine);
     }
 
     fn field(kind: FieldKind) -> FormField {

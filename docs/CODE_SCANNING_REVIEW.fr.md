@@ -2,6 +2,24 @@
 
 [English](CODE_SCANNING_REVIEW.md) · [Inventaire critique par alerte (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
+## Revue 0.30.0 — 2026-10-17 (validation en cours)
+
+La [première analyse complète](https://github.com/lmdanavanem/SuniPDF/actions/runs/38994022178) de la source
+`b87beea529196e7f93308908eef1e96be4feff25` a terminé ses jobs Rust, Python et Actions avec succès et relevé
+**27 nouvelles critiques de fixtures de test** (#129–155) et **cinq alertes élevées de pointeurs natifs** (#124–128).
+
+Les 27 critiques ont été vérifiées individuellement sur cette source exacte, puis écartées par
+`lmdanavanem` avec le motif `used in tests`. Il s’agit de mots de passe déterministes de PDF chiffrés et
+d’identités PFX synthétiques dans des tests d’intégration Cargo ou des modules `cfg(test)` explicites.
+Aucun identifiant de production ni valeur d’authentification par défaut de l’application n’a été identifié.
+Le [CSV par alerte](qa/CODE_SCANNING_0.30.0_2026-10-17.csv) conserve périmètre, source, emplacement,
+motif, auteur, horodatage et commentaire de clôture vérifié pour chaque constat.
+
+Les cinq alertes élevées nécessitent des gardes explicites et une propriété contrôlée des pointeurs de
+certificats, chaînes et horodatages natifs. La correction comprend des régressions de certificat nul ou
+incomplet ; une nouvelle analyse et les tests Windows doivent la vérifier avant publication. Ces alertes
+élevées n’ont pas été écartées. Requêtes, fixtures et couverture restent actives, sans exclusions.
+
 ## Corrections 0.21.0 vérifiées
 
 [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) a réussi ses trois jobs Rust/Actions/Python
@@ -19,7 +37,7 @@ L'analyse Rust contient encore **115 constats déjà triés**, Actions/Python z�
 471 tests locaux et CI, formatage/Clippy, 912 clés, 75 qpdf, corpus 4/744, autotest, 19 scénarios portables,
 13 bases MSI/65 journaux, ARM64, six paquets/sidecars publics et metteur à jour réussis. Trois nouvelles régressions
 CMS et DTD/entités XMP/XFDF UTF-8/UTF-16 réussies ; parsing XML 1.0 borné et notices conservés.
-[0.21.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) est Latest stable. Preuves dans l'[état du projet](PROJECT_STATUS.fr.md).
+[0.21.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) était Latest stable à sa publication. Preuves dans l'[état du projet](PROJECT_STATUS.fr.md).
 Fuzzing exhaustif, confiance/révocation/horodatage des certificats et matériel restent non vérifiés.
 
 L'instantané initial ci-dessous est historique : ses états ouverts décrivent la revue initiale, et non l'état actuel.

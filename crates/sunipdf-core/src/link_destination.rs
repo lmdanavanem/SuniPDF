@@ -141,11 +141,29 @@ impl<'a> Resolver<'a> {
             }
             action.get(b"D").ok()
         })?;
-        let value =
-            crate::structure::destination(self.pdf, raw, &self.named, &self.identity).ok()??;
-        self.pages
-            .get(&value.as_array().ok()?.first()?.as_reference().ok()?)
-            .copied()
+        let mut value = raw;
+        let mut names = HashSet::new();
+        for _ in 0..32 {
+            value = deref(self.pdf, value).ok()?;
+            match value {
+                Object::Array(values) => {
+                    // A viewer may retain safe local page navigation when view arguments are
+                    // malformed. Precise decoding and all authoring remain strict.
+                    return self
+                        .pages
+                        .get(&values.first()?.as_reference().ok()?)
+                        .copied();
+                }
+                Object::Dictionary(dictionary) => value = dictionary.get(b"D").ok()?,
+                Object::Name(bytes) | Object::String(bytes, _)
+                    if self.names_valid && bytes.len() <= 1024 && names.insert(bytes.clone()) =>
+                {
+                    value = self.named.get(bytes)?;
+                }
+                _ => return None,
+            }
+        }
+        None
     }
 
     pub(crate) fn destination(

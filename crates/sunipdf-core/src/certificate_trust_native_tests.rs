@@ -78,6 +78,25 @@ fn native_arena_bounds_reject_null_unaligned_and_overflowing_values() {
 }
 
 #[test]
+fn native_certificate_guards_reject_missing_context_and_info() {
+    let empty = CERT_CONTEXT::default();
+    for cert in [std::ptr::null(), &empty as *const CERT_CONTEXT] {
+        assert_eq!(signing_key_usage(cert), Err(INVALID));
+        assert_eq!(timestamp_eku(cert), Err(INVALID));
+    }
+    assert_eq!(
+        chain(
+            std::ptr::null(),
+            HCERTSTORE::default(),
+            VerificationOptions::default(),
+            None,
+            false
+        ),
+        Err(INVALID)
+    );
+}
+
+#[test]
 fn tsa_usage_and_future_time_are_rejected_without_network() {
     let pfx = crate::certificate::test_identity::identity();
     let identity = super::super::Identity::from_pfx(&pfx, "test-only").unwrap();

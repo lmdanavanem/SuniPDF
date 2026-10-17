@@ -715,44 +715,43 @@ impl Document<'_> {
 
     /// Signets (table des matières), en profondeur préfixe.
     pub fn bookmarks(&self) -> Vec<Bookmark> {
-        let tree = self
+        let pdf = self
             .snapshot()
             .ok()
             .filter(|bytes| bytes.len() <= 128 * 1024 * 1024)
-            .and_then(|bytes| load(&bytes, self.password()).ok())
-            .and_then(|pdf| crate::bookmarks::Tree::read(&pdf).ok());
-        let Some(tree) = tree else {
+            .and_then(|bytes| load(&bytes, self.password()).ok());
+        let Some(pdf) = pdf else {
             return Vec::new();
         };
-        let depths: Vec<_> = tree
-            .order()
-            .iter()
-            .map(|&index| {
+        let Ok(tree) = crate::bookmarks::Tree::read(&pdf) else {
+            return Vec::new();
+        };
+        let resolver = crate::link_destination::Resolver::new(&pdf);
+        tree.order()
+            .into_iter()
+            .map(|index| {
                 let mut depth = 0;
                 let mut parent = tree.nodes[index].parent;
                 while let Some(index) = parent {
                     depth += 1;
                     parent = tree.nodes[index].parent;
                 }
-                depth
-            })
-            .collect();
-        self.inner
-            .bookmarks()
-            .iter()
-            .take(crate::bookmarks::MAX_BOOKMARKS)
-            .zip(depths)
-            .map(|(b, depth)| {
-                let resolved = b
-                    .action()
-                    .map(|action| self.resolve_local_action(&action))
-                    .or_else(|| b.destination().map(|d| self.resolve_destination(&d)))
-                    .unwrap_or((None, None));
+                let dictionary = &tree.nodes[index].dict;
+                let destination = resolver
+                    .link(dictionary, &|page| self.page_geometry(page))
+                    .ok()
+                    .and_then(|(_, destination)| destination);
                 Bookmark {
-                    title: b.title().unwrap_or_default(),
-                    page: resolved.0,
+                    title: dictionary
+                        .get(b"Title")
+                        .ok()
+                        .and_then(|title| lopdf::decode_text_string(title).ok())
+                        .unwrap_or_default(),
+                    page: destination
+                        .map(|destination| destination.page)
+                        .or_else(|| resolver.fallback_page(dictionary)),
                     depth,
-                    destination: resolved.1,
+                    destination,
                 }
             })
             .collect()

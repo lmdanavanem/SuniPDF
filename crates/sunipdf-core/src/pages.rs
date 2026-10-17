@@ -291,7 +291,8 @@ impl Document<'_> {
         let mut target = self.pdfium().create_new_pdf()?;
         let snapshot = self.snapshot()?;
         let labels = LabelSource::from_bytes(&snapshot, self.password())?;
-        let structure = crate::structure::Source::from_bytes(&snapshot, self.password())?;
+        let structure =
+            crate::structure::Source::from_current_document(&snapshot, self.password())?;
         target
             .pages_mut()
             .copy_pages_from_document(&self.inner, &page_range_string(pages), 0)?;
@@ -424,7 +425,7 @@ impl Document<'_> {
         let current_labels = LabelSource::from_bytes(&current_bytes, self.password())?;
         let inserted_labels = LabelSource::from_bytes(&inserted_bytes, password)?;
         let current_structure =
-            crate::structure::Source::from_bytes(&current_bytes, self.password())?;
+            crate::structure::Source::from_current_document(&current_bytes, self.password())?;
         let inserted_structure = crate::structure::Source::from_bytes(&inserted_bytes, password)?;
         let provenance: Vec<_> = (0..at)
             .map(|page| Some((0, page)))

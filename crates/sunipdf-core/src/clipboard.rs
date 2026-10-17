@@ -15,6 +15,10 @@ fn native_unsupported() -> EngineError {
     EngineError::Other("editable paste supports native text, images and paths without forms, layers, patterns or complex blending; use Paste as group for other content".into())
 }
 
+fn native_stage(stage: &str) -> EngineError {
+    EngineError::Other(format!("{stage}: {}", native_unsupported()))
+}
+
 fn effective_resources(pdf: &lopdf::Document, page: ObjectId) -> Result<Dictionary, EngineError> {
     let (direct, inherited) = pdf
         .get_page_resources(page)
@@ -329,14 +333,16 @@ fn native_source_supported(bytes: &[u8]) -> Result<(), EngineError> {
     let pdf = crate::security::load(bytes, None)?;
     let page = *pdf.get_pages().get(&1).ok_or_else(native_unsupported)?;
     let resources = effective_resources(&pdf, page)?;
-    plain_page(&pdf, page, &resources)?;
+    plain_page(&pdf, page, &resources).map_err(|_| native_stage("source page resources"))?;
     let content = lopdf::content::Content::decode_strict(
         &pdf.get_page_content_with_limit(page, 32 * 1024 * 1024)
             .map_err(crate::security::lopdf_err)?,
     )
     .map_err(crate::security::lopdf_err)?;
     let mut values = Vec::new();
-    for (category, name) in balanced(&content, true)? {
+    for (category, name) in
+        balanced(&content, true).map_err(|_| native_stage("source content operators"))?
+    {
         let (_, entries) = pdf
             .dereference(
                 resources
@@ -349,7 +355,8 @@ fn native_source_supported(bytes: &[u8]) -> Result<(), EngineError> {
             .map_err(crate::security::lopdf_err)?
             .get(&name)
             .map_err(crate::security::lopdf_err)?;
-        validate_resource(&pdf, &category, value)?;
+        validate_resource(&pdf, &category, value)
+            .map_err(|_| native_stage("source font, image or graphics-state resource"))?;
         values.push(value.clone());
     }
     values.extend(
@@ -358,13 +365,14 @@ fn native_source_supported(bytes: &[u8]) -> Result<(), EngineError> {
             .iter()
             .flat_map(|op| op.operands.iter().cloned()),
     );
-    bounded_graph(&pdf, &values)
+    bounded_graph(&pdf, &values).map_err(|_| native_stage("source object graph"))
 }
 
 #[derive(Debug, Clone)]
 pub struct ObjectClip {
     pdf: Vec<u8>,
     native_source_supported: bool,
+    native_source_refusal: Option<String>,
     /// Nombre d'objets copiés.
     pub count: usize,
     /// Texte des objets texte copiés, une ligne par objet.
@@ -408,10 +416,12 @@ impl Document<'_> {
         tmp.pages_mut()
             .copy_page_from_document(&self.inner, page_index as PdfPageIndex, 0)?;
         // Check the untouched page before PDFium regeneration can remove marks or unsupported state.
-        let native_source_supported = tmp
+        let native_preflight = tmp
             .save_to_bytes()
-            .ok()
-            .is_some_and(|bytes| native_source_supported(&bytes).is_ok());
+            .map_err(EngineError::from)
+            .and_then(|bytes| native_source_supported(&bytes));
+        let native_source_supported = native_preflight.is_ok();
+        let native_source_refusal = native_preflight.err().map(|error| error.to_string());
         {
             let mut p = tmp.pages().get(0)?;
             // La copie relit le flux de contenu : mêmes objets, même ordre, sinon on refuse.
@@ -431,6 +441,7 @@ impl Document<'_> {
         Ok(ObjectClip {
             pdf: tmp.save_to_bytes()?,
             native_source_supported,
+            native_source_refusal,
             count: keep.len(),
             text,
             bounds,
@@ -452,9 +463,15 @@ impl<'a> Document<'a> {
             || clip.count == 0
             || clip.count > 10_000
             || clip.pdf.len() > 64 * 1024 * 1024
-            || !clip.native_source_supported
         {
             return Err(native_unsupported());
+        }
+        if !clip.native_source_supported {
+            return Err(EngineError::Other(
+                clip.native_source_refusal
+                    .clone()
+                    .unwrap_or_else(|| native_unsupported().to_string()),
+            ));
         }
         let target_geo = self.page_geometry(page_index)?;
         let source = Document {
@@ -693,11 +710,17 @@ impl<'a> Document<'a> {
                 .zip(&before)
                 .all(|(new, old)| same_native_object(new, old, 0.0, 0.0))
         {
-            return Err(native_unsupported());
+            return Err(native_stage(
+                "existing destination objects changed during import",
+            ));
         }
         for (new, old) in after[before.len()..].iter().zip(&source_infos) {
             if !same_native_object(new, old, tx, ty) {
-                return Err(native_unsupported());
+                return Err(EngineError::Other(format!(
+                    "native paste changed object geometry or style: source {:?}, size {}, opacity {:?}, angle {}, bounds {:?}; pasted {:?}, size {}, opacity {:?}, angle {}, bounds {:?}",
+                    old.kind, old.font_size, old.opacity, old.angle_deg, old.bounds,
+                    new.kind, new.font_size, new.opacity, new.angle_deg, new.bounds,
+                )));
             }
         }
         let indices = (before.len()..after.len()).collect();

@@ -7,7 +7,9 @@
 
 use crate::annot_write::LinkTarget;
 use crate::geometry::geometry_of;
-use crate::{Document, EngineError, PageGeometry, PointRect, Rotation};
+use crate::{Document, EngineError, PointRect};
+#[cfg(test)]
+use crate::{PageGeometry, Rotation};
 use pdfium_render::prelude::*;
 
 /// An internal destination, with coordinates in the target page's display space.
@@ -69,6 +71,7 @@ pub fn is_safe_external_uri(uri: &str) -> bool {
     }
 }
 
+#[cfg(test)]
 fn display_axes(geo: PageGeometry, x: Option<f32>, y: Option<f32>) -> (Option<f32>, Option<f32>) {
     let b = geo.bbox;
     match geo.rotation {
@@ -79,6 +82,7 @@ fn display_axes(geo: PageGeometry, x: Option<f32>, y: Option<f32>) -> (Option<f3
     }
 }
 
+#[cfg(test)]
 fn destination_view(
     geo: PageGeometry,
     settings: PdfDestinationViewSettings,
@@ -113,38 +117,6 @@ fn destination_view(
 }
 
 impl Document<'_> {
-    pub(crate) fn resolve_local_action(
-        &self,
-        action: &PdfAction<'_>,
-    ) -> (Option<usize>, Option<Destination>) {
-        // PDFium's generic destination getter also accepts remote actions; discriminate first.
-        action
-            .as_local_destination_action()
-            .and_then(|a| a.destination().ok())
-            .map(|d| self.resolve_destination(&d))
-            .unwrap_or((None, None))
-    }
-
-    pub(crate) fn resolve_destination(
-        &self,
-        destination: &PdfDestination<'_>,
-    ) -> (Option<usize>, Option<Destination>) {
-        let Some(page) = destination
-            .page_index()
-            .ok()
-            .and_then(|page| usize::try_from(page).ok())
-            .filter(|page| *page < self.page_count())
-        else {
-            return (None, None);
-        };
-        let view = self
-            .page_geometry(page)
-            .ok()
-            .zip(destination.view_settings().ok())
-            .and_then(|(geo, settings)| destination_view(geo, settings));
-        (Some(page), view.map(|view| Destination { page, view }))
-    }
-
     /// Zones de lien de la page, dans l'ordre de `/Annots`.
     pub fn page_links(&self, page_index: usize) -> Result<Vec<LinkInfo>, EngineError> {
         let pdf = crate::security::load(&self.snapshot()?, self.password())?;

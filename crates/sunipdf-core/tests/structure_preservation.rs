@@ -1,10 +1,55 @@
 use lopdf::{dictionary, Dictionary, Object, ObjectId, Stream};
+use std::collections::BTreeMap;
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use sunipdf_core::{
     bookmarks::{self, BookmarkEdit},
     security, Engine, Protection,
 };
 #[path = "support/feature_evidence.rs"]
 mod feature_evidence;
+
+static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
+
+fn engine() -> MutexGuard<'static, Engine> {
+    ENGINE
+        .get_or_init(|| Mutex::new(Engine::new().unwrap()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+#[derive(Debug, PartialEq)]
+struct LogicalSnapshot {
+    encrypted: bool,
+    encryption: Option<Dictionary>,
+    objects: BTreeMap<ObjectId, Object>,
+    trailer: Dictionary,
+}
+
+fn logical_snapshot(document: &sunipdf_core::Document<'_>) -> LogicalSnapshot {
+    let bytes = document.snapshot().unwrap();
+    let raw = lopdf::Document::load_mem(&bytes).unwrap();
+    let encrypted = raw.is_encrypted();
+    let encryption = raw.get_encrypted().ok().cloned();
+    assert_eq!(encrypted, document.properties().encrypted);
+    let mut pdf = lopdf::Document::load_mem_with_options(
+        &bytes,
+        lopdf::LoadOptions::with_password(document.password().unwrap_or("")),
+    )
+    .unwrap();
+    let mut ids = pdf.trailer.get(b"ID").unwrap().as_array().unwrap().clone();
+    assert_eq!(ids.len(), 2);
+    let Object::String(_, format) = &ids[1] else {
+        panic!("second trailer ID is not a string");
+    };
+    ids[1] = Object::String(Vec::new(), *format);
+    pdf.trailer.set("ID", ids);
+    LogicalSnapshot {
+        encrypted,
+        encryption,
+        objects: pdf.objects,
+        trailer: pdf.trailer,
+    }
+}
 
 fn fixture() -> Vec<u8> {
     let mut pdf = lopdf::Document::with_version("1.7");
@@ -39,6 +84,13 @@ fn fixture() -> Vec<u8> {
     let spec=pdf.add_object(dictionary!{"Type"=>"Filespec","F"=>Object::string_literal("note.txt"),"UF"=>lopdf::text_string("note.txt"),"EF"=>dictionary!{"F"=>attachment},"AFRelationship"=>"Data"});
     let catalog=pdf.add_object(dictionary!{"Type"=>"Catalog","Pages"=>root,"AcroForm"=>dictionary!{"Fields"=>vec![Object::Reference(field)],"DR"=>dictionary!{"Font"=>dictionary!{"Helv"=>font}},"DA"=>Object::string_literal("/Helv 12 Tf 0 g")},"Names"=>dictionary!{"Dests"=>dictionary!{"Names"=>vec![Object::string_literal("target"),Object::Array(vec![Object::Reference(pages[1]),Object::Name(b"XYZ".to_vec()),Object::Null,120.into(),Object::Null])]},"EmbeddedFiles"=>dictionary!{"Names"=>vec![Object::string_literal("note.txt"),Object::Reference(spec)]}},"AF"=>vec![Object::Reference(spec)],"OCProperties"=>dictionary!{"OCGs"=>vec![Object::Reference(group)],"D"=>dictionary!{"BaseState"=>"ON","Order"=>vec![Object::Reference(group)],"OFF"=>vec![Object::Reference(group)]}}});
     pdf.trailer.set("Root", catalog);
+    pdf.trailer.set(
+        "ID",
+        vec![
+            Object::string_literal(b"SuniPDFStructure".to_vec()),
+            Object::string_literal(b"SuniPDFStructure".to_vec()),
+        ],
+    );
     let mut bytes = Vec::new();
     pdf.save_to(&mut bytes).unwrap();
     let bytes = bookmarks::edit(
@@ -146,7 +198,7 @@ fn check_attachments_layers_fields(pdf: &lopdf::Document, count: usize) {
 }
 #[test]
 fn merge_extract_insert_preserve_independent_structure_encryption_and_originals() {
-    let engine = Engine::new().unwrap();
+    let engine = engine();
     let dir = tempfile::tempdir().unwrap();
     let mut evidence = feature_evidence::Evidence::new("structure");
     let original = fixture();
@@ -264,6 +316,7 @@ fn merge_extract_insert_preserve_independent_structure_encryption_and_originals(
     }
     let mut target = engine.open(&first, None).unwrap();
     let before = target.snapshot().unwrap();
+    let logical_before = logical_snapshot(&target);
     target.insert_pages_from(&second, None, &[], 1).unwrap();
     assert_eq!(target.page_count(), 4);
     let inserted = dir.path().join("inserted.pdf");
@@ -276,14 +329,14 @@ fn merge_extract_insert_preserve_independent_structure_encryption_and_originals(
         None,
     );
     target.restore(before.clone()).unwrap();
-    assert_eq!(target.snapshot().unwrap(), before);
+    assert_eq!(logical_snapshot(&target), logical_before);
     assert_eq!(std::fs::read(&first).unwrap(), original);
     assert_eq!(std::fs::read(&second).unwrap(), original);
     evidence.finish();
 }
 #[test]
 fn malformed_graphs_copy_restrictions_and_duplicate_widgets_fail_without_outputs_or_changes() {
-    let engine = Engine::new().unwrap();
+    let engine = engine();
     let dir = tempfile::tempdir().unwrap();
     let original = fixture();
     let path = dir.path().join("source.pdf");
@@ -306,34 +359,46 @@ fn malformed_graphs_copy_restrictions_and_duplicate_widgets_fail_without_outputs
         },
     )
     .unwrap();
-    let doc = engine.open_bytes(restricted, None, &path);
-    assert!(doc.is_err());
-    let doc = engine
-        .open_bytes(
-            security::protect(
-                &original,
-                None,
-                &Protection {
-                    user_password: "reader".into(),
-                    owner_password: "owner".into(),
-                    allow_copy: false,
-                    allow_modify: true,
-                    allow_print: true,
-                    allow_annotate: true,
-                    aes256: true,
-                },
-            )
-            .unwrap(),
-            Some("reader"),
-            &path,
-        )
+    assert!(engine.open_bytes(restricted.clone(), None, &path).is_err());
+    let restricted_path = dir.path().join("restricted-source.pdf");
+    std::fs::write(&restricted_path, &restricted).unwrap();
+    let doc = engine.open(&restricted_path, Some("reader")).unwrap();
+    let original_permissions = doc.properties();
+    let output = dir.path().join("restricted-derivative.pdf");
+    assert_eq!(doc.extract_to(&[0], &output).unwrap(), 1);
+    assert!(engine.open(&output, None).is_err());
+    for password in ["reader", "owner"] {
+        let derivative = engine.open(&output, Some(password)).unwrap();
+        let properties = derivative.properties();
+        assert!(properties.encrypted && !properties.can_copy);
+        assert_eq!(properties.can_modify, original_permissions.can_modify);
+        assert_eq!(properties.can_print, original_permissions.can_print);
+        assert_eq!(properties.can_annotate, original_permissions.can_annotate);
+        check_attachments_layers_fields(&load(&output, Some(password)), 1);
+    }
+    let mut imported_target = engine.open(&path, None).unwrap();
+    let before_import = imported_target.snapshot().unwrap();
+    for password in ["reader", "owner"] {
+        assert!(matches!(
+            imported_target.insert_pages_from(&restricted_path, Some(password), &[0], 1),
+            Err(sunipdf_core::EngineError::SecurityRestricted)
+        ));
+        assert_eq!(imported_target.snapshot().unwrap(), before_import);
+    }
+    let mut owner_target = engine.open(&restricted_path, Some("owner")).unwrap();
+    owner_target
+        .insert_pages_from(&path, None, &[0], 1)
         .unwrap();
-    let output = dir.path().join("restricted.pdf");
-    assert!(matches!(
-        doc.extract_to(&[0], &output),
-        Err(sunipdf_core::EngineError::SecurityRestricted)
-    ));
-    assert!(!output.exists());
+    assert_eq!(owner_target.page_count(), 3);
+    let inserted_output = dir.path().join("restricted-target-inserted.pdf");
+    owner_target.save_as(&inserted_output).unwrap();
+    assert!(engine.open(&inserted_output, None).is_err());
+    for password in ["reader", "owner"] {
+        let reopened = engine.open(&inserted_output, Some(password)).unwrap();
+        assert_eq!(reopened.page_count(), 3);
+        assert!(reopened.properties().encrypted && !reopened.properties().can_copy);
+    }
+    assert_eq!(std::fs::read(&restricted_path).unwrap(), restricted);
     let mut pdf = lopdf::Document::load_mem(&original).unwrap();
     let root = pdf
         .catalog()
@@ -355,9 +420,9 @@ fn malformed_graphs_copy_restrictions_and_duplicate_widgets_fail_without_outputs
     let bad = dir.path().join("bad.pdf");
     std::fs::write(&bad, &malformed).unwrap();
     let mut target = engine.open(&path, None).unwrap();
-    let before = target.snapshot().unwrap();
+    let before = logical_snapshot(&target);
     assert!(target.insert_pages_from(&bad, None, &[0], 0).is_err());
-    assert_eq!(target.snapshot().unwrap(), before);
+    assert_eq!(logical_snapshot(&target), before);
     let output = dir.path().join("bad-merge.pdf");
     assert!(engine.merge(&[path.clone(), bad], &output).is_err());
     assert!(!output.exists());

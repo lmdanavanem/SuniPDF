@@ -58,13 +58,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
           .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: Pinned independent QPDF checker (x64)
-        if: always() && matrix.arch == 'x64' && steps.workspace_tests.outcome == 'success'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-qpdf.ps1
       - name: Independent feature-reader checker self-test (x64)
-        if: matrix.arch == 'x64'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: python .\scripts\test-feature-reader.py --self-test
       - name: Rich annotation and document structure independent readers (x64)
-        if: always() && matrix.arch == 'x64' && steps.workspace_tests.outcome == 'success'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-feature-reader.py
@@ -79,13 +79,13 @@ jobs:
             target/feature-030-evidence/
           if-no-files-found: ignore
       - name: Pinned independent font reader (x64)
-        if: always() && matrix.arch == 'x64' && steps.workspace_tests.outcome == 'success'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
       - name: Native DX12 software renderer and texture limits (x64)
-        if: always() && matrix.arch == 'x64' && steps.workspace_tests.outcome == 'success'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: cargo test -p sunipdf-desktop --test native_wgpu --locked -j 2 -- --ignored --nocapture
       - name: Native renderer evidence (x64)
         if: always() && matrix.arch == 'x64'
@@ -104,19 +104,19 @@ jobs:
             target/font-embedding-evidence/
           if-no-files-found: ignore
       - name: Synthetic corpus and generated PDF structural checks (x64)
-        if: matrix.arch == 'x64'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: cargo test -p sunipdf-cli --test qpdf_corpus --locked -j 2 -- --ignored --nocapture
       - name: Pinned licensed real PDF corpus (x64)
-        if: matrix.arch == 'x64'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-regression-corpus.ps1
       - name: Real PDFs and independent output regression (x64)
-        if: matrix.arch == 'x64'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: cargo test -p sunipdf-cli --test real_corpus --locked -j 2 -- --ignored --nocapture
       - name: Pinned local Office converter on disposable runner (x64)
-        if: matrix.arch == 'x64'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-test-libreoffice.ps1
       - name: Measured licensed Office exports and local converter profiles (x64)
-        if: matrix.arch == 'x64'
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         env:
           SUNIPDF_REQUIRE_OFFICE_CONVERTER: '1'
         run: |

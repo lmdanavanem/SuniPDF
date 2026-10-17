@@ -244,9 +244,11 @@ impl<'a> Document<'a> {
         }
         let size = self.page_size(page)?;
         let scale = (900.0 / size.width_pt.max(size.height_pt)).min(1.5);
-        let before = self.render_page(page, scale)?;
-        cancelled(&cancel)?;
         let mut scratch = self.redaction_scratch(original.clone())?;
+        // Form rendering may materialize widget appearance resources. Keep even those native
+        // cache updates on the candidate, so preparation cannot change its protected source.
+        let before = scratch.render_page(page, scale)?;
+        cancelled(&cancel)?;
         let report = scratch.redact_in_place(marks, options, appearance, &cancel)?;
         let after = scratch.render_page(page, scale)?;
         let candidate = scratch.snapshot()?;

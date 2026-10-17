@@ -51,7 +51,9 @@ fn preflight(bytes: &[u8], password: Option<&str>, page_index: usize) -> Result<
         let expected = match op.operator.as_str() {
             "Tc" | "Tw" | "Ts" | "Tr" => Some(0.0),
             "Tz" => Some(100.0),
-            "BMC" | "BDC" => return Err(unsupported()),
+            // A clip containing the old text can be optimized away by PDFium. A longer
+            // replacement could leave it, so reject before any native normalization.
+            "BMC" | "BDC" | "W" | "W*" => return Err(unsupported()),
             _ => None,
         };
         if let Some(expected) = expected {
@@ -394,5 +396,38 @@ impl<'a> Document<'a> {
             region,
             objects: indices.len(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raw_preflight_rejects_clips_and_complex_text_state_before_native_normalization() {
+        for (prefix, suffix) in [
+            ("1 Tw\n", ""),
+            ("/Span BMC\n", "\nEMC"),
+            ("q 0 0 612 792 re W n\n", "\nQ"),
+            ("q 0 0 612 792 re W* n\n", "\nQ"),
+        ] {
+            let mut pdf =
+                lopdf::Document::load_mem(include_bytes!("../tests/fixtures/two-pages.pdf"))
+                    .unwrap();
+            let page = pdf.get_pages()[&1];
+            let mut content = prefix.as_bytes().to_vec();
+            content.extend(pdf.get_page_content(page));
+            content.extend(suffix.as_bytes());
+            let stream = pdf.add_object(lopdf::Stream::new(lopdf::Dictionary::new(), content));
+            pdf.get_dictionary_mut(page)
+                .unwrap()
+                .set("Contents", stream);
+            let mut bytes = Vec::new();
+            pdf.save_to(&mut bytes).unwrap();
+            assert!(
+                preflight(&bytes, None, 0).is_err(),
+                "unsupported state {prefix:?}"
+            );
+        }
     }
 }

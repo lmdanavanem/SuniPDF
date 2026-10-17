@@ -792,6 +792,7 @@ mod paragraph_tests {
         for language in ["en-US", "fr-FR"] {
             let (mut app, requests, _) = crate::app::tests::test_app();
             let ctx = egui::Context::default();
+            let _ = crate::icons::install(&ctx);
             ctx.enable_accesskit();
             app.settings.language = language.into();
             app.edit.selection = Some(selection());

@@ -165,12 +165,16 @@ A second paragraph with preserved original font.";
         let mut doc = engine.open(&source, None).unwrap();
         let original = doc.page_objects(0).unwrap();
         let pixels = doc.render_page(0, 1.0).unwrap().rgba;
-        assert!(doc
-            .preview_paragraph(0, &[0], "Safe refusal", 150.0, 1.2)
-            .is_err());
-        assert!(doc
-            .reflow_paragraph(0, &[0], "Safe refusal", 150.0, 1.2)
-            .is_err());
+        assert!(
+            doc.preview_paragraph(0, &[0], "Safe refusal", 150.0, 1.2)
+                .is_err(),
+            "preview must refuse unsupported state {prefix:?}"
+        );
+        assert!(
+            doc.reflow_paragraph(0, &[0], "Safe refusal", 150.0, 1.2)
+                .is_err(),
+            "apply must refuse unsupported state {prefix:?}"
+        );
         assert_eq!(doc.page_objects(0).unwrap(), original);
         assert_eq!(doc.render_page(0, 1.0).unwrap().rgba, pixels);
         assert_eq!(std::fs::read(source).unwrap(), bytes);

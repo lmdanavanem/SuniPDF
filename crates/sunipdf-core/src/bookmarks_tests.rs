@@ -1,6 +1,9 @@
 use super::*;
 fn input() -> Vec<u8> {
-    include_bytes!("../tests/fixtures/two-pages.pdf").to_vec()
+    let mut pdf = loaded(include_bytes!("../tests/fixtures/two-pages.pdf"));
+    pdf.catalog_mut().unwrap().remove(b"Outlines");
+    pdf.prune_objects();
+    crate::security::save(pdf).unwrap()
 }
 fn loaded(bytes: &[u8]) -> lopdf::Document {
     crate::security::load(bytes, None).unwrap()

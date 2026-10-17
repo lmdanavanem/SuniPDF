@@ -511,12 +511,23 @@ impl<'a> Document<'a> {
         page.regenerate_content()?;
         drop(page);
         for object in tmp.page_objects(0)? {
+            // The authored background/border is deliberately clipped by the appearance BBox.
+            // PDFium reports conservative stroked-path bounds; only glyphs must fit unclipped.
+            if object.kind == crate::ObjectKind::Path {
+                continue;
+            }
+            if object.kind != crate::ObjectKind::Text {
+                return Err(bad());
+            }
             if object.bounds.left < -0.01
                 || object.bounds.bottom < -0.01
                 || object.bounds.right > w + 0.01
                 || object.bounds.top > h + 0.01
             {
-                return Err(bad());
+                return Err(EngineError::Other(format!(
+                    "FreeText glyph bounds {:?} exceed its {w} x {h} pt appearance",
+                    object.bounds
+                )));
             }
         }
         let bytes = tmp.snapshot()?;

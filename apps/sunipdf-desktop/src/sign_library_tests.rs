@@ -102,7 +102,45 @@ fn saved_signature_is_dpapi_protected_round_trips_and_deletes() {
     unsafe {
         LocalFree(text.cast());
     }
-    assert_eq!(sddl, format!("D:P(A;;FA;;;{})", native::sid().unwrap()));
+    let expected: Vec<u16> = format!("D:P(A;;FA;;;{})", native::sid().unwrap())
+        .encode_utf16()
+        .chain(Some(0))
+        .collect();
+    let mut expected_descriptor = std::ptr::null_mut();
+    assert_ne!(
+        unsafe {
+            ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                expected.as_ptr(),
+                SDDL_REVISION_1,
+                &mut expected_descriptor,
+                std::ptr::null_mut(),
+            )
+        },
+        0
+    );
+    assert!(!expected_descriptor.is_null());
+    let mut expected_text = std::ptr::null_mut();
+    let converted = unsafe {
+        ConvertSecurityDescriptorToStringSecurityDescriptorW(
+            expected_descriptor,
+            SDDL_REVISION_1,
+            DACL_SECURITY_INFORMATION,
+            &mut expected_text,
+            std::ptr::null_mut(),
+        )
+    };
+    unsafe { LocalFree(expected_descriptor) };
+    assert_ne!(converted, 0);
+    assert!(!expected_text.is_null());
+    let mut expected_len = 0;
+    while unsafe { *expected_text.add(expected_len) } != 0 {
+        expected_len += 1;
+    }
+    let expected_sddl =
+        String::from_utf16(unsafe { std::slice::from_raw_parts(expected_text, expected_len) })
+            .unwrap();
+    unsafe { LocalFree(expected_text.cast()) };
+    assert_eq!(sddl, expected_sddl, "exact protected current-user DACL");
     delete(dir.path(), &saved).unwrap();
     assert!(!saved.exists());
 }

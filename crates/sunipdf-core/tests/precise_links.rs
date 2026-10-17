@@ -1,5 +1,6 @@
 //! Native save/reopen and retained-viewport evidence for precise local link editing.
 use lopdf::{dictionary, Object};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use sunipdf_core::{
     security, Destination, DestinationView, Engine, EngineError, LinkTarget, Protection, Rotation,
@@ -9,8 +10,54 @@ fn fixture() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/two-pages.pdf")
 }
 
+#[derive(Debug, PartialEq)]
+struct LogicalSnapshot {
+    encrypted: bool,
+    encryption: Option<lopdf::Dictionary>,
+    objects: BTreeMap<lopdf::ObjectId, Object>,
+    trailer: lopdf::Dictionary,
+}
+
+fn logical_snapshot(document: &sunipdf_core::Document<'_>) -> LogicalSnapshot {
+    let bytes = document.snapshot().unwrap();
+    let raw = lopdf::Document::load_mem(&bytes).unwrap();
+    let encrypted = raw.is_encrypted();
+    let encryption = raw.get_encrypted().ok().cloned();
+    assert_eq!(encrypted, document.properties().encrypted);
+    let mut pdf = lopdf::Document::load_mem_with_options(
+        &bytes,
+        lopdf::LoadOptions::with_password(document.password().unwrap_or("")),
+    )
+    .unwrap();
+    // Only the second save identifier varies. The original cryptographic ID stays exact.
+    let mut ids = pdf.trailer.get(b"ID").unwrap().as_array().unwrap().clone();
+    assert_eq!(ids.len(), 2);
+    let Object::String(_, format) = &ids[1] else {
+        panic!("second trailer ID is not a string");
+    };
+    let format = *format;
+    ids[1] = Object::String(Vec::new(), format);
+    pdf.trailer.set("ID", ids);
+    LogicalSnapshot {
+        encrypted,
+        encryption,
+        objects: pdf.objects,
+        trailer: pdf.trailer,
+    }
+}
+
 fn source(rotation: i32, locked: bool) -> Vec<u8> {
     let mut pdf = lopdf::Document::load(fixture()).unwrap();
+    let mut id = b"SuniPDFLinksTest".to_vec();
+    id[14] = u8::try_from(rotation / 90).unwrap();
+    id[15] = u8::from(locked);
+    pdf.trailer.set(
+        "ID",
+        vec![
+            Object::String(id.clone(), lopdf::StringFormat::Hexadecimal),
+            Object::String(id, lopdf::StringFormat::Hexadecimal),
+        ],
+    );
     let pages = pdf.get_pages();
     let target = *pages.get(&2).unwrap();
     let page = *pages.get(&1).unwrap();
@@ -111,7 +158,7 @@ fn precise_links_keep_viewport_semantics_comments_locks_undo_and_encryption() {
                 document.annotation_details(0).unwrap()[0].link,
                 Some(LinkTarget::Destination(target))
             );
-            let unchanged = document.snapshot().unwrap();
+            let unchanged = logical_snapshot(&document);
             let invalid = LinkTarget::Destination(Destination {
                 page: 1,
                 view: DestinationView::Xyz {
@@ -121,7 +168,7 @@ fn precise_links_keep_viewport_semantics_comments_locks_undo_and_encryption() {
                 },
             });
             assert!(document.set_link_target(0, 0, &invalid).is_err());
-            assert_eq!(document.snapshot().unwrap(), unchanged);
+            assert_eq!(logical_snapshot(&document), unchanged);
             document.save_as(&path).unwrap();
             let reopened = engine.open(&path, password).unwrap();
             assert_eq!(reopened.properties().encrypted, encrypted);
@@ -205,10 +252,10 @@ fn precise_links_keep_viewport_semantics_comments_locks_undo_and_encryption() {
     let mut locked = engine
         .open_bytes(source(90, true), None, &directory.path().join("locked.pdf"))
         .unwrap();
-    let unchanged = locked.snapshot().unwrap();
+    let unchanged = logical_snapshot(&locked);
     assert!(matches!(
         locked.set_link_target(0, 0, &LinkTarget::Page(1)),
         Err(EngineError::SecurityRestricted)
     ));
-    assert_eq!(locked.snapshot().unwrap(), unchanged);
+    assert_eq!(logical_snapshot(&locked), unchanged);
 }

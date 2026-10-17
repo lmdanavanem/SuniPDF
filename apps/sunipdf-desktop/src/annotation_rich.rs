@@ -856,6 +856,7 @@ mod tests {
             let (mut app, requests, _) = crate::app::tests::test_app();
             app.settings.language = language.into();
             let ctx = egui::Context::default();
+            let _ = crate::icons::install(&ctx);
             ctx.enable_accesskit();
             app.open_rich_annotations(&ctx);
             app.annotate.adv.rich.as_mut().unwrap().text = "Draft".into();

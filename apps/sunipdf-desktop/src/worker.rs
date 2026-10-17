@@ -3715,6 +3715,7 @@ mod tests {
                 _ => panic!("bookmarks response"),
             }
         };
+        let original_bookmarks = bookmarks();
         worker.send(Request::Edit(EditOp::Bytes(BytesOp::Bookmark(
             sunipdf_core::bookmarks::BookmarkEdit::Add {
                 parent: None,
@@ -3726,19 +3727,26 @@ mod tests {
             next_response(worker),
             Response::DocumentChanged(_)
         ));
-        assert_eq!(bookmarks()[0].page, Some(1));
+        let edited_bookmarks = bookmarks();
+        assert_eq!(edited_bookmarks.len(), original_bookmarks.len() + 1);
+        assert_eq!(
+            edited_bookmarks[..original_bookmarks.len()],
+            original_bookmarks
+        );
+        assert_eq!(edited_bookmarks.last().unwrap().page, Some(1));
         worker.send(Request::Undo);
         assert!(matches!(
             next_response(worker),
             Response::DocumentChanged(_)
         ));
-        assert!(bookmarks().is_empty());
+        assert_eq!(bookmarks(), original_bookmarks);
         worker.send(Request::Redo);
         assert!(matches!(
             next_response(worker),
             Response::DocumentChanged(_)
         ));
-        assert_eq!(bookmarks()[0].title, "Undo bookmark");
+        assert_eq!(bookmarks(), edited_bookmarks);
+        assert_eq!(edited_bookmarks.last().unwrap().title, "Undo bookmark");
         worker.send(Request::Edit(EditOp::Bytes(BytesOp::Bookmark(
             sunipdf_core::bookmarks::BookmarkEdit::Delete { index: 999 },
         ))));
@@ -3746,13 +3754,13 @@ mod tests {
             next_response(worker),
             Response::OperationFailed(_)
         ));
-        assert_eq!(bookmarks().len(), 1);
+        assert_eq!(bookmarks(), edited_bookmarks);
         worker.send(Request::Undo);
         assert!(matches!(
             next_response(worker),
             Response::DocumentChanged(_)
         ));
-        assert!(bookmarks().is_empty());
+        assert_eq!(bookmarks(), original_bookmarks);
         worker.send(Request::Open {
             path,
             password: None,

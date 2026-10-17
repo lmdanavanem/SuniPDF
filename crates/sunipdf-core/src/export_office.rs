@@ -91,6 +91,134 @@ struct TextPage {
     rows: Vec<Vec<ObjectInfo>>,
 }
 
+fn opaque_gstate(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    name: &[u8],
+) -> Result<bool, EngineError> {
+    let mut current = page;
+    let mut seen = std::collections::HashSet::new();
+    for _ in 0..32 {
+        if !seen.insert(current) {
+            return Ok(false);
+        }
+        let dictionary = pdf
+            .get_dictionary(current)
+            .map_err(crate::security::lopdf_err)?;
+        if let Ok(resources) = dictionary.get(b"Resources") {
+            let resources = pdf
+                .dereference(resources)
+                .map_err(crate::security::lopdf_err)?
+                .1
+                .as_dict()
+                .map_err(crate::security::lopdf_err)?;
+            let Ok(states) = resources.get(b"ExtGState") else {
+                return Ok(false);
+            };
+            let states = pdf
+                .dereference(states)
+                .map_err(crate::security::lopdf_err)?
+                .1
+                .as_dict()
+                .map_err(crate::security::lopdf_err)?;
+            let Ok(state) = states.get(name) else {
+                return Ok(false);
+            };
+            let state = pdf
+                .dereference(state)
+                .map_err(crate::security::lopdf_err)?
+                .1
+                .as_dict()
+                .map_err(crate::security::lopdf_err)?;
+            return Ok(state.iter().all(|(key, value)| match key.as_slice() {
+                b"Type" => value.as_name().ok() == Some(b"ExtGState".as_slice()),
+                b"ca" | b"CA" => value.as_float().ok() == Some(1.0),
+                b"BM" => value.as_name().ok() == Some(b"Normal".as_slice()),
+                b"SMask" => value.as_name().ok() == Some(b"None".as_slice()),
+                _ => false,
+            }));
+        }
+        let Ok(parent) = dictionary
+            .get(b"Parent")
+            .and_then(lopdf::Object::as_reference)
+        else {
+            return Ok(false);
+        };
+        current = parent;
+    }
+    Ok(false)
+}
+
+fn simple_text_content(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    content: &lopdf::content::Content,
+) -> Result<bool, EngineError> {
+    if content.operations.len() > 200000 {
+        return Ok(false);
+    }
+    let mut depth = 0usize;
+    for operation in &content.operations {
+        match operation.operator.as_str() {
+            "W" | "W*" | "Do" | "BMC" | "BDC" | "EMC" => return Ok(false),
+            "Tr" => {
+                if operation.operands.len() != 1
+                    || operation.operands[0].as_float().ok() != Some(0.0)
+                {
+                    return Ok(false);
+                }
+            }
+            "q" => {
+                if !operation.operands.is_empty() || depth >= 32 {
+                    return Ok(false);
+                }
+                depth += 1;
+            }
+            "Q" => {
+                if !operation.operands.is_empty() || depth == 0 {
+                    return Ok(false);
+                }
+                depth -= 1;
+            }
+            "cm" => {
+                if operation.operands.len() != 6 {
+                    return Ok(false);
+                }
+                let mut matrix = [0.0f32; 6];
+                for (slot, operand) in matrix.iter_mut().zip(&operation.operands) {
+                    let Ok(value) = operand.as_float() else {
+                        return Ok(false);
+                    };
+                    *slot = value;
+                }
+                if matrix
+                    .iter()
+                    .any(|value| !value.is_finite() || value.abs() > 1.0e9)
+                    || matrix[0] <= 0.0
+                    || matrix[3] <= 0.0
+                    || matrix[1] != 0.0
+                    || matrix[2] != 0.0
+                {
+                    return Ok(false);
+                }
+            }
+            "gs" => {
+                if operation.operands.len() != 1 {
+                    return Ok(false);
+                }
+                let Ok(name) = operation.operands[0].as_name() else {
+                    return Ok(false);
+                };
+                if !opaque_gstate(pdf, page, name)? {
+                    return Ok(false);
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(depth == 0)
+}
+
 fn text_page(doc: &Document<'_>, page: usize, format: Format) -> Result<TextPage, EngineError> {
     if !doc.annotations(page)?.is_empty() {
         return Err(failure(
@@ -243,13 +371,7 @@ impl Document<'_> {
                 }
                 let operations = lopdf::content::Content::decode_strict(&content)
                     .map_err(crate::security::lopdf_err)?;
-                if operations.operations.len() > 200000
-                    || operations.operations.iter().any(|o| {
-                        matches!(o.operator.as_str(), "W" | "W*" | "gs" | "Do" | "cm")
-                            || (o.operator == "Tr"
-                                && o.operands.first().and_then(|n| n.as_i64().ok()) != Some(0))
-                    })
-                {
+                if !simple_text_content(&pdf, *id, &operations)? {
                     return Err(failure("Editable Office export refuses clipping, hidden text, nested content and graphics-state effects"));
                 }
             }
@@ -311,4 +433,4 @@ impl Document<'_> {
 
 #[cfg(test)]
 #[path = "export_office_tests.rs"]
-mod tests;
+pub(crate) mod tests;

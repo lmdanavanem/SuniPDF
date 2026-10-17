@@ -2864,6 +2864,7 @@ mod tests {
         let input = dir.path().join("input.pdf");
         let original = include_bytes!("../../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
         std::fs::write(&input, original).unwrap();
+        let original_bookmarks = engine.open(&input, None).unwrap().bookmarks();
         let output = dir.path().join("output.pdf");
         let result = bookmark_copy(
             &engine,
@@ -2877,11 +2878,14 @@ mod tests {
             },
         )
         .unwrap();
-        assert_eq!(result["bookmarks"], 1);
-        assert_eq!(
-            engine.open(&output, None).unwrap().bookmarks()[0].page,
-            Some(1)
-        );
+        let bookmarks = engine.open(&output, None).unwrap().bookmarks();
+        assert_eq!(result["bookmarks"].as_u64(), Some(bookmarks.len() as u64));
+        assert_eq!(bookmarks.len(), original_bookmarks.len() + 1);
+        assert_eq!(bookmarks[..original_bookmarks.len()], original_bookmarks);
+        let added = bookmarks.last().unwrap();
+        assert_eq!(added.title, "CLI Chapter");
+        assert_eq!(added.page, Some(1));
+        assert_eq!(added.depth, 0);
         assert_eq!(std::fs::read(&input).unwrap(), original);
         assert!(matches!(
             bookmark_copy(

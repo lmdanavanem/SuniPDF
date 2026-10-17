@@ -233,9 +233,10 @@ fn page_labels_refresh_after_structural_changes_matches_saved_document() {
     assert!(doc.page_text(2).unwrap().contains("physical page 1"));
     assert_eq!(
         doc.info().page_label(0),
-        Some("i"),
-        "existing number-tree ranges remain attached to physical indices"
+        Some("ii"),
+        "semantic labels move with their original page"
     );
+    assert_eq!(doc.info().page_label(2), Some("i"));
     doc.delete_page(1).unwrap();
     doc.insert_pages_from(&fixture("two-pages.pdf"), None, &[0], 0)
         .unwrap();

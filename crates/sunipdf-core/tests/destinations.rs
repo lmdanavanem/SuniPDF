@@ -31,7 +31,12 @@ fn expected(page: usize, row: usize) -> Option<Destination> {
             let (x, y) = axes(page, None, Some(400.0));
             DestinationView::FitWidth { x, y }
         }
-        7..=11 => return None,
+        7 => DestinationView::FitWidth { x: None, y: None },
+        8 => {
+            let (x, y) = axes(page, None, Some(0.0));
+            DestinationView::FitWidth { x, y }
+        }
+        9..=11 => return None,
         _ => unreachable!(),
     };
     Some(Destination { page, view })

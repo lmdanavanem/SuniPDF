@@ -2,6 +2,23 @@
 
 [Français](CODE_SCANNING_REVIEW.fr.md) · [Per-alert critical inventory (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
+## 0.30.0 review — 2026-10-17 (validation in progress)
+
+The [first complete scan](https://github.com/lmdanavanem/SuniPDF/actions/runs/38994022178) of source
+`b87beea529196e7f93308908eef1e96be4feff25` passed its Rust, Python and Actions analysis jobs and reported
+**27 new critical test-fixture findings** (#129–155) and **five high native-pointer findings** (#124–128).
+
+All 27 criticals were reviewed individually against that exact source and dismissed by `lmdanavanem`
+as `used in tests`. They are deterministic encrypted-PDF passwords and synthetic PFX identities in
+Cargo integration tests or explicit `cfg(test)` modules. No production credential or application default
+was identified. The [per-alert CSV](qa/CODE_SCANNING_0.30.0_2026-10-17.csv) records scope, source, location,
+reason, author, timestamp and the verified dismissal comment for every finding.
+
+The five high findings require explicit guards and checked ownership of native certificate, chain and
+timestamp pointers. The source correction includes null/missing certificate regressions; a fresh scan
+and Windows test run must verify it before publication. These high findings have not been dismissed.
+Queries, test fixtures and source coverage remain enabled without exclusions.
+
 ## Verified 0.21.0 remediation
 
 [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/38957648825) passed all Rust/Actions/Python jobs
@@ -19,7 +36,7 @@ Rust analysis still contains **115 already-triaged findings**, Actions/Python ze
 471 local/CI tests, formatting/Clippy, 912 keys, 75 qpdf checks, 4/744 corpus, helper, 19 portable cases,
 13 MSI baselines/65 logs, ARM64, six public packages/sidecars and updater passed. Three new CMS and UTF-8/UTF-16
 XMP/XFDF DTD/entity regressions passed; bounded XML 1.0 parsing and accurate license notices are retained.
-[0.21.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) is stable Latest. See [Project status](PROJECT_STATUS.md) for evidence.
+[0.21.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.0) was stable Latest at publication. See [Project status](PROJECT_STATUS.md) for evidence.
 Exhaustive fuzzing, certificate trust/revocation/timestamps and hardware remain unchecked.
 
 The initial snapshot below is historical: its open states describe the original review rather than the current state.

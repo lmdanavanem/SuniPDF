@@ -67,8 +67,16 @@ fn query(cms: &[u8]) -> Result<(Store, Message), u32> {
             None,
         )
     };
-    let store = (!store.0.is_null()).then_some(Store(store));
-    let message = (!message.is_null()).then_some(Message(message));
+    let store = if store.0.is_null() {
+        None
+    } else {
+        Some(Store(store))
+    };
+    let message = if message.is_null() {
+        None
+    } else {
+        Some(Message(message))
+    };
     result.map_err(|e| e.code().0 as u32)?;
     let store = store.ok_or(INVALID)?;
     let message = message.ok_or(INVALID)?;
@@ -195,6 +203,9 @@ fn strong_digest(message: &Message) -> Result<(), u32> {
 }
 
 fn signing_key_usage(cert: *const CERT_CONTEXT) -> Result<(), u32> {
+    if cert.is_null() {
+        return Err(INVALID);
+    }
     let info = unsafe { (*cert).pCertInfo.as_ref() }.ok_or(INVALID)?;
     if info.cExtension > 256 || (info.cExtension != 0 && info.rgExtension.is_null()) {
         return Err(INVALID);
@@ -225,6 +236,9 @@ fn chain(
     time: Option<&FILETIME>,
     timestamp: bool,
 ) -> Result<(ChainTrust, RevocationStatus, Option<u32>), u32> {
+    if cert.is_null() {
+        return Err(INVALID);
+    }
     let mut usages = if timestamp {
         vec![PSTR(szOID_PKIX_KP_TIMESTAMP_SIGNING.0.cast_mut())]
     } else {
@@ -260,7 +274,7 @@ fn chain(
     };
     let mut context = std::ptr::null_mut();
     // SAFETY: all native buffers and certificate/store contexts live through the bounded chain build.
-    unsafe {
+    let result = unsafe {
         CertGetCertificateChain(
             None,
             cert,
@@ -271,12 +285,14 @@ fn chain(
             None,
             &mut context,
         )
-    }
-    .map_err(|e| e.code().0 as u32)?;
-    if context.is_null() {
-        return Err(INVALID);
-    }
-    let context = Chain(context);
+    };
+    let context = if context.is_null() {
+        None
+    } else {
+        Some(Chain(context))
+    };
+    result.map_err(|e| e.code().0 as u32)?;
+    let context = context.ok_or(INVALID)?;
     let policy = CERT_CHAIN_POLICY_PARA {
         cbSize: std::mem::size_of::<CERT_CHAIN_POLICY_PARA>() as u32,
         dwFlags: CERT_CHAIN_POLICY_IGNORE_ALL_REV_UNKNOWN_FLAGS,
@@ -294,10 +310,14 @@ fn chain(
     {
         return Err(windows::core::Error::from_thread().code().0 as u32);
     }
-    let native = unsafe { &*context.0 };
-    let checked_leaf = native.cChain > 0
-        && !native.rgpChain.is_null()
-        && unsafe { !(*native.rgpChain).is_null() && (**native.rgpChain).cElement > 1 };
+    let native = unsafe { context.0.as_ref() }.ok_or(INVALID)?;
+    let checked_leaf = if native.cChain == 0 {
+        false
+    } else {
+        let first = unsafe { native.rgpChain.as_ref() }.ok_or(INVALID)?;
+        let first = unsafe { (*first).as_ref() }.ok_or(INVALID)?;
+        first.cElement > 1
+    };
     let (trust, revocation) = chain_result(
         native.TrustStatus.dwErrorStatus,
         status.dwError,
@@ -310,6 +330,9 @@ fn chain(
 }
 
 fn timestamp_eku(cert: *const CERT_CONTEXT) -> Result<(), u32> {
+    if cert.is_null() {
+        return Err(INVALID);
+    }
     let info = unsafe { (*cert).pCertInfo.as_ref() }.ok_or(INVALID)?;
     if info.cExtension > 256 || (info.cExtension != 0 && info.rgExtension.is_null()) {
         return Err(INVALID);
@@ -398,14 +421,27 @@ fn verify_timestamp(
                 Some(&mut token_store),
             )
         };
-        let context = (!context.is_null()).then_some(Timestamp(context));
-        let signer = (!signer.is_null()).then_some(Cert(signer));
-        let token_store = (!token_store.0.is_null()).then_some(Store(token_store));
+        let context = if context.is_null() {
+            None
+        } else {
+            Some(Timestamp(context))
+        };
+        let signer = if signer.is_null() {
+            None
+        } else {
+            Some(Cert(signer))
+        };
+        let token_store = if token_store.0.is_null() {
+            None
+        } else {
+            Some(Store(token_store))
+        };
         result.map_err(|e| e.code().0 as u32)?;
         let context = context.ok_or(INVALID)?;
         let signer = signer.ok_or(INVALID)?;
         let token_store = token_store.ok_or(INVALID)?;
-        let time = unsafe { (*context.0).pTimeStamp.as_ref() }.ok_or(INVALID)?;
+        let native = unsafe { context.0.as_ref() }.ok_or(INVALID)?;
+        let time = unsafe { native.pTimeStamp.as_ref() }.ok_or(INVALID)?;
         let algorithm = time.HashAlgorithm.pszObjId;
         if algorithm.is_null() {
             return Err(INVALID);
@@ -421,7 +457,8 @@ fn verify_timestamp(
         let date = timestamp_date(time.ftTime)?;
         timestamp_eku(signer.0)?;
         signing_key_usage(signer.0)?;
-        let info = unsafe { (*signer.0).pCertInfo.as_ref() }.ok_or(INVALID)?;
+        let native = unsafe { signer.0.as_ref() }.ok_or(INVALID)?;
+        let info = unsafe { native.pCertInfo.as_ref() }.ok_or(INVALID)?;
         if unsafe { CertVerifyTimeValidity(Some(&time.ftTime), info) } != 0 {
             return Err(0x800B0101);
         }

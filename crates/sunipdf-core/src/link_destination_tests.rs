@@ -13,6 +13,36 @@ fn fixture() -> (lopdf::Document, ObjectId) {
     (pdf, page)
 }
 
+#[test]
+fn page_only_fallback_is_bounded_local_and_never_makes_malformed_views_editable() {
+    let (mut pdf, page) = fixture();
+    let malformed = destination(page, "XYZ", vec![100.into()]);
+    let annotation = dictionary! { "Dest" => malformed.clone() };
+    let resolver = Resolver::new(&pdf);
+    assert_eq!(resolver.fallback_page(&annotation), Some(0));
+    assert!(resolver
+        .link(&annotation, &|_| Ok(geometry(Rotation::R0)))
+        .is_err());
+    assert_eq!(
+        resolver.fallback_page(
+            &dictionary! { "A" => dictionary! { "S" => "GoToR", "D" => malformed } }
+        ),
+        None
+    );
+    assert_eq!(
+        resolver.fallback_page(&dictionary! { "Dest" => destination((999, 0), "Fit", vec![]) }),
+        None
+    );
+    pdf.catalog_mut().unwrap().set(
+        "Dests",
+        dictionary! { "one" => Object::Name(b"two".to_vec()), "two" => Object::Name(b"one".to_vec()) },
+    );
+    assert_eq!(
+        Resolver::new(&pdf).fallback_page(&dictionary! { "Dest" => Object::Name(b"one".to_vec()) }),
+        None
+    );
+}
+
 fn geometry(rotation: Rotation) -> PageGeometry {
     PageGeometry {
         bbox: PointRect {

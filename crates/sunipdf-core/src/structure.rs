@@ -18,6 +18,19 @@ pub(crate) struct Source {
 }
 impl Source {
     pub(crate) fn from_bytes(bytes: &[u8], password: Option<&str>) -> Result<Self, EngineError> {
+        Self::load(bytes, password, true)
+    }
+
+    /// Retain the active document's structure during an operation that preserves its protection.
+    /// Incoming documents must use `from_bytes`, which enforces the import-copy restriction.
+    pub(crate) fn from_current_document(
+        bytes: &[u8],
+        password: Option<&str>,
+    ) -> Result<Self, EngineError> {
+        Self::load(bytes, password, false)
+    }
+
+    fn load(bytes: &[u8], password: Option<&str>, importing: bool) -> Result<Self, EngineError> {
         if bytes.len() > 128 * 1024 * 1024 {
             return Err(invalid("input exceeds 128 MiB"));
         }
@@ -25,10 +38,11 @@ impl Source {
         if pdf.objects.len() > MAX_NODES {
             return Err(invalid("input object limit"));
         }
-        if pdf
-            .encryption_state
-            .as_ref()
-            .is_some_and(|state| state.permissions().bits() & (1 << 4) == 0)
+        if importing
+            && pdf
+                .encryption_state
+                .as_ref()
+                .is_some_and(|state| state.permissions().bits() & (1 << 4) == 0)
         {
             return Err(EngineError::SecurityRestricted);
         }

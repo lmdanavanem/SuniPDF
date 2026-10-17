@@ -72,7 +72,7 @@ pub static TABLE: [WsInfo; 14] = [
         icon: (glyph::EXPORT, "↗"),
         color: theme::CAT_VIEW,
         entry: Some(Entry::Direct(C::ExportImages)),
-        groups: &[&[C::ExportImages]],
+        groups: &[&[C::ExportImages, C::ExportOffice]],
     },
     WsInfo {
         ws: Workspace::FillSign,
@@ -130,7 +130,7 @@ pub static TABLE: [WsInfo; 14] = [
         icon: (glyph::ADD, "+"),
         color: theme::CAT_CONVERT,
         entry: Some(Entry::Direct(C::CreateFromImages)),
-        groups: &[&[C::CreateFromImages]],
+        groups: &[&[C::CreateFromImages, C::OfficeToPdf]],
     },
     WsInfo {
         ws: Workspace::Combine,
@@ -187,6 +187,7 @@ pub static TABLE: [WsInfo; 14] = [
                 C::ToolAnnotLine,
                 C::ToolLink,
             ],
+            &[C::RichAnnotations, C::EraseInkStrokes],
             &[C::ToggleComments, C::CopyText],
         ],
     },
@@ -208,7 +209,7 @@ pub static TABLE: [WsInfo; 14] = [
         entry: Some(Entry::Mode(C::HubProtect)),
         groups: &[
             &[C::Protect, C::Unprotect],
-            &[C::StripMetadata, C::Properties],
+            &[C::StripMetadata, C::Sanitize, C::Properties],
         ],
     },
     WsInfo {
@@ -875,6 +876,7 @@ mod tests {
         C::CopyObjects,
         C::CutObjects,
         C::PasteObjects,
+        C::PasteEditableObjects,
         C::SelectAllObjects,
     ];
 
