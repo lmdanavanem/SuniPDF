@@ -3831,7 +3831,7 @@ dependencies = [
  "image",
  "log",
  "lopdf",
- "pollster 0.4.0",
+ "pollster 1.0.1",
  "rfd",
  "semver",
  "serde",
