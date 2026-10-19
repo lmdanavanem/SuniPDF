@@ -757,3 +757,11 @@ restent des validations séparées des tests automatisés. Voir `docs/KNOWN_ISSU
 ## Comparaison locale et recherche dans plusieurs PDF (0.31.0)
 
 Utilisez **Fichier → Comparer des fichiers PDF…** ou **Édition → Rechercher dans des fichiers PDF…**. Enregistrez les modifications avant de sélectionner les fichiers. Comparez les pages physiques avec des positions initiales ajustables ; cliquez sur une paire modifiée pour ses trois aperçus. Un résultat de recherche ouvre sa page physique. Opérations locales, en lecture seule et annulables. Un résultat partiel ne valide jamais les fichiers restants. Consultez le [guide complet et ses limites](LOCAL_REVIEW.fr.md) pour les fichiers protégés, scans, commandes JSON et résolution.
+
+## Réorganiser les objets par glisser-déposer
+
+Ouvrez le panneau Objets avec F3. Le haut de la liste correspond au premier plan. Glissez une ligne au-dessus ou au-dessous d’une autre ; le trait bleu indique la destination. Glisser une ligne sélectionnée déplace toute la sélection en un bloc, dans son ordre relatif d’origine. Glisser une ligne non sélectionnée déplace cet objet uniquement.
+
+Échap annule. Un dépôt hors d’une ligne valide, sur une ligne sélectionnée ou à la même position ne fait rien. Un dépôt dans une autre page/document ou après une modification intermédiaire est refusé. La sélection suit les objets déplacés. Les boutons avancer/reculer et commandes clavier existants restent disponibles ; un déplacement terminé utilise une seule étape Annuler et le Rétablir de la transaction existante.
+
+[Guide](OBJECT_ORDER.fr.md).

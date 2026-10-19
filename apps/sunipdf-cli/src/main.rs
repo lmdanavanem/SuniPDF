@@ -553,6 +553,22 @@ enum Command {
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
+    /// Move content objects together in drawing order, preserving their relative order.
+    ReorderObjects {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// Comma-separated 0-based object indices from `objects`.
+        #[arg(long)]
+        objects: String,
+        /// Final 0-based index of the first object in the moved block; 0 is the back.
+        #[arg(long)]
+        at: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add text (one object per line, "\n" separated) with its first baseline at (x, y) points.
     AddText {
         file: PathBuf,
@@ -1865,6 +1881,21 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 })).collect::<Vec<_>>(),
             }))
         }
+        Command::ReorderObjects {
+            file,
+            page,
+            objects,
+            at,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            let new_indices = doc.reorder_objects(p, &indices, sunipdf_core::ZOrder::At(at))?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "page": page, "new_indices": new_indices }))
+        }
         Command::AddText {
             file,
             page,
@@ -2579,6 +2610,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Optimize { out, .. }
         | Command::CompressImages { out, .. }
         | Command::AddText { out, .. }
+        | Command::ReorderObjects { out, .. }
         | Command::SetOpacity { out, .. }
         | Command::RotateObject { out, .. }
         | Command::RotateObjects { out, .. }

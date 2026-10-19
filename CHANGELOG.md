@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-10-19
+
+## Features and corrections
+
+- Drag one object or the selected group in the Objects panel, with an insertion line, stale-drop guards and Escape cancellation.
+- JSON `reorder-objects` command with an explicit final destination, relative-order preservation and existing save/password safeguards.
+- Check effective modify permission before changing drawing order; reject invalid destinations and return from unchanged permutations before mutation.
+- The public 0.31.0 packages join portable/MSI upgrade regressions.
+
+[Scope and usage](OBJECT_ORDER.md).
+
+Windows packages remain unsigned; no independent publication key is available. ARM64 is cross-built without hardware execution. Native/manual flows, physical printers, independent readers and PDF/A/PDF/UA certification remain separate qualification.
+
+
 ## [0.31.0] - 2026-10-19
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) under `lmdanavanem`, release `417463135`, immutable source `362c7f3979533000e454769e48a8cfbd4084dc0d`.

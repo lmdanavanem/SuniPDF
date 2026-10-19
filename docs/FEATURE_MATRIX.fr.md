@@ -2,6 +2,21 @@
 
 [English](FEATURE_MATRIX.md)
 
+## 0.32.0 : ordre des objets (qualification)
+
+## Nouveautés et corrections
+
+- Réorganisation d’un objet ou de toute la sélection par glisser-déposer dans le panneau Objets, trait d’insertion, refus des déplacements obsolètes et annulation par Échap.
+- Commande JSON `reorder-objects` : destination finale explicite, ordre relatif, sauvegarde et mots de passe existants.
+- Contrôle de permission de modification avant changement de l’ordre ; les destinations invalides et opérations identiques sont refusées/ignorées avant mutation.
+- La version publique 0.31.0 rejoint les régressions de mise à jour portable et MSI.
+
+[Périmètre et utilisation](OBJECT_ORDER.fr.md).
+
+Paquets Windows non signés ; aucune clé indépendante de publication disponible. ARM64 est compilé sans exécution matérielle. Les vérifications natives, imprimantes, lecteurs tiers et certifications PDF/A/PDF/UA restent séparées.
+
+Validation en cours.
+
 ## 0.31.0 : comparaison locale et recherche multi-PDF (Latest stable)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) sous `lmdanavanem`, release `417463135`, source immuable `362c7f3979533000e454769e48a8cfbd4084dc0d`.
@@ -196,7 +211,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Livré en 0.30.0** : Garde des glyphes absents 0.21.1 conservée ; aperçu/réagencement multiligne borné avec métriques natives et Appliquer explicite. Polices/texte/états graphiques dangereux refusés. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Transformation d'objets | Déclaré | **Livré en 0.30.0** : Opérations antérieures conservées ; pivot mémorisé stable, remplacement/lecture explicites de l'opacité et état inconnu. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Livré en 0.30.0** : Collage groupé conservé ; **Coller éditable** explicite recrée les objets natifs pris en charge en un Annuler. Graphes dangereux refusés sans repli groupé silencieux. [Périmètre](RELEASE_0.30.0.fr.md). |
-| Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) |
+| Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) ; glisser-déposer d’objets/sélections implémenté pour la 0.32.0 ([guide](OBJECT_ORDER.fr.md)) |
 | Liens | Déclaré | **Livré en 0.30.0** : Liens page/URI antérieurs conservés ; création nommée/XYZ/Fit/FitH et résolution brute bornée, axes/zoom nuls et cadrage/rotation affichés conservés. Actions actives non prises en charge jamais exécutées. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | **Livré en 0.30.0** : Annotations standard prédéfinies présentes ; création arbitraire de tampons toujours planifiée. [Types](RICH_ANNOTATIONS.fr.md). |

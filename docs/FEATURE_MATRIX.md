@@ -2,6 +2,21 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
+## 0.32.0: object ordering (qualification)
+
+## Features and corrections
+
+- Drag one object or the selected group in the Objects panel, with an insertion line, stale-drop guards and Escape cancellation.
+- JSON `reorder-objects` command with an explicit final destination, relative-order preservation and existing save/password safeguards.
+- Check effective modify permission before changing drawing order; reject invalid destinations and return from unchanged permutations before mutation.
+- The public 0.31.0 packages join portable/MSI upgrade regressions.
+
+[Scope and usage](OBJECT_ORDER.md).
+
+Windows packages remain unsigned; no independent publication key is available. ARM64 is cross-built without hardware execution. Native/manual flows, physical printers, independent readers and PDF/A/PDF/UA certification remain separate qualification.
+
+Validation in progress.
+
 ## 0.31.0: local comparison and multi-document search (stable Latest)
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) under `lmdanavanem`, release `417463135`, immutable source `362c7f3979533000e454769e48a8cfbd4084dc0d`.
@@ -194,7 +209,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Modifying existing text | Partial (weak in CJK/bidi) | **Delivered in 0.30.0**: 0.21.1 missing-glyph guard retained; bounded multiline paragraph preview/reflow with native metrics and explicit Apply. Unsafe fonts/text/graphics states refused. [Scope](RELEASE_0.30.0.md). |
 | Object transformation | Declared | **Delivered in 0.30.0**: Earlier object operations retained; stable remembered rotation pivot, explicit opacity replacement/readback and unknown state. [Scope](RELEASE_0.30.0.md). |
 | Multiple selection, cut/copy/paste of objects | Declared | **Delivered in 0.30.0**: Grouped paste retained; explicit **Paste editable** recreates supported native objects in one Undo. Unsafe graphs refused without silent grouped fallback. [Scope](RELEASE_0.30.0.md). |
-| Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover) |
+| Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover); object/group drag-and-drop implemented for 0.32.0 ([guide](OBJECT_ORDER.md)) |
 | Links | Declared | **Delivered in 0.30.0**: Earlier page/URI links retained; named/XYZ/Fit/FitH authoring and bounded raw resolution preserve null axes/zoom and displayed crop/rotation. Active unsupported actions never run. [Scope](RELEASE_0.30.0.md). |
 | Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
 | Custom stamps | Not documented | **Delivered in 0.30.0**: Standard preset annotations present; arbitrary custom stamp design remains planned. [Types](RICH_ANNOTATIONS.md). |

@@ -719,3 +719,11 @@ See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.
 ## Local comparison and search across selected PDFs (0.31.0)
 
 Use **File → Compare PDF files…** or **Edit → Search in PDF files…**. Save current edits before selecting the files. Compare physical page pairs with adjustable starting pages; select a changed pair for three previews. Search results open their physical page. Both operations are read-only, local and cancellable. Partial results never mean the remaining files are clean. See the [complete guide and limits](LOCAL_REVIEW.md), including protected files, image-only pages, JSON commands and preview resolution.
+
+## Reorder objects by dragging
+
+Open the Objects panel with F3. Rows at the top are in front. Drag a row above or below another row; the blue insertion line shows the destination. Dragging a selected row moves the entire selection as one block, keeping its original relative drawing order. Dragging an unselected row moves that object only.
+
+Escape cancels. Dropping outside a valid row, onto a selected row or at the same position does nothing. A drop into another page/document or after an intervening edit is refused. Selection follows the moved objects. Existing forward/backward buttons and keyboard commands remain available; one completed drag uses one Undo step and supports Redo through the existing worker transaction.
+
+[Guide](OBJECT_ORDER.md).

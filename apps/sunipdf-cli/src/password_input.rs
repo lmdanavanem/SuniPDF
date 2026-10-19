@@ -109,6 +109,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         | Command::Compare { password, .. }
         | Command::Info { password, .. }
         | Command::Objects { password, .. }
+        | Command::ReorderObjects { password, .. }
         | Command::AddText { password, .. }
         | Command::SetOpacity { password, .. }
         | Command::RotateObject { password, .. }

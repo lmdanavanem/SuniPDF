@@ -48,8 +48,9 @@ function PreviousPackages([string]$Workspace) {
         '0.21.1' = 'F00AD8124906B4259C0F4EF96CDECE8A1C28788609384DD151C340AFBDF80BBE'
         '0.30.0' = '99C37B81191CB97A3F7821594DCAED0E11E1FF1180F0BBAFC5FAE41B1B53620F'
         '0.30.1' = '6B743641F41DC57416C3044FCFF48839072A9C1C178A686A7E1B8A7E86761DAF'
+        '0.31.0' = 'DB62F18AD6AA96FB8D59E04B87049C08A2F630616375FFEF2104091134D35BB9'
     }
-    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1')) {
+    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0')) {
         if ([version]$version -ge [version]$incoming.version) { continue }
         $name = "SuniPDF-$version-win-x64-portable.zip"
         $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content
