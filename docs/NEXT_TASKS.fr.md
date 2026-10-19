@@ -2,22 +2,19 @@
 
 [English](NEXT_TASKS.md)
 
-## 0.32.0 : ordre des objets (qualification)
+## 0.32.0 : ordre des objets (Latest stable)
 
-## Nouveautés et corrections
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) sous `lmdanavanem`, release `417623635`, source immuable `8c492db35f1712648d5472593146077230befb7c`.
 
-- Réorganisation d’un objet ou de toute la sélection par glisser-déposer dans le panneau Objets, trait d’insertion, refus des déplacements obsolètes et annulation par Échap.
-- Commande JSON `reorder-objects` : destination finale explicite, ordre relatif, sauvegarde et mots de passe existants.
-- Contrôle de permission de modification avant changement de l’ordre ; les destinations invalides et opérations identiques sont refusées/ignorées avant mutation.
-- La version publique 0.31.0 rejoint les régressions de mise à jour portable et MSI.
+Réorganisation d’un objet ou de la sélection par glisser-déposer dans le panneau Objets, trait d’insertion, contrôle de la page du cache et du contexte, Échap et une seule étape Annuler. Commande JSON `reorder-objects` avec destination finale explicite, ordre relatif, permissions, sauvegarde et mots de passe existants. [Périmètre et utilisation](OBJECT_ORDER.fr.md).
 
-[Périmètre et utilisation](OBJECT_ORDER.fr.md).
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306550382) et [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306651110) réussis : **588 tests**, zéro échec, 9 ignorés par défaut ; **1092 clés EN/FR**, 84 contrôles qpdf + 9 sorties indépendantes, 4 cas de polices, rendu logiciel DX12, 14 allers-retours Office, 4 PDF sous licence/744 pages, **24 scénarios portables**, **18 références MSI/90 journaux**. CodeQL Rust/Python/Actions réussit sans alerte ouverte. La CLI empaquetée passe **11 scénarios d’ordre d’objets et 3 contrôles qpdf supplémentaires**, plus 11 scénarios d’analyse locale et 8 de sécurité conservés.
 
-Paquets Windows non signés ; aucune clé indépendante de publication disponible. ARM64 est compilé sans exécution matérielle. Les vérifications natives, imprimantes, lecteurs tiers et certifications PDF/A/PDF/UA restent séparées.
+Six fichiers publics et copies `dist/` vérifiés par SHA256. Le harnais fraîchement compilé sur cette source a téléchargé et vérifié le ZIP x64 de **27,119,935 octets en 1.75 s**, sans installation. Projects : **43 cartes, 25 Done, 18 Todo, zéro In Progress** ; Suggestion P3 livrée, critères conservés, description relue après rechargement et trois filtres enregistrés vérifiés.
 
-Validation en cours.
+Paquets Windows non signés ; aucune clé indépendante de publication. Les validations matérielles, natives/manuelles et lecteurs tiers restent séparées ; aucun certificat PDF/A/PDF/UA/LTV. [Preuves](qa/RELEASE_0.32.0.json).
 
-## 0.31.0 : comparaison locale et recherche multi-PDF (Latest stable)
+## 0.31.0 : comparaison locale et recherche multi-PDF (publiée ; Latest à cette date)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) sous `lmdanavanem`, release `417463135`, source immuable `362c7f3979533000e454769e48a8cfbd4084dc0d`.
 
@@ -429,9 +426,9 @@ groupé, redimensionnement, rotation libre, duplication, ordre Z (un cran ou ext
 des pages, pages pivotées et rognées.
 La version 0.30.0 ajoute les [sous-ensembles/faces statiques de collections](FONT_EMBEDDING.fr.md), découverte
 Unicode des polices Windows, aperçu/réagencement borné des paragraphes, collage natif éditable explicite, pivots
-mémorisés stables et lecture de l'opacité. Le collage groupé existant reste disponible. contrôles de la source publiée réussis ; A7, A8, A18–A22.
-Restent : polices variables/CFF2/couleur, composition complexe/bidirectionnelle, XObjects arbitraires éditables,
-couleur/opacité des groupes et glisser-déposer du panneau Objets. Une opacité inconnue est explicite ; un cas non
+mémorisés stables et lecture de l'opacité. Le collage groupé existant reste disponible. Contrôles de la source publiée réussis ; A7, A8, A18–A22.
+Couleur/opacité des groupes livrée en 0.30.0. Glisser-déposer d’objets/sélections livré en 0.32.0 dans le [périmètre documenté](OBJECT_ORDER.fr.md).
+Restent : polices variables/CFF2/couleur, composition complexe/bidirectionnelle et XObjects arbitraires éditables. Une opacité inconnue est explicite ; un cas non
 pris en charge doit préserver le document, sans aplatissement ni substitution de police silencieux.
 Acceptation : chaque opération couverte par un test moteur avec rendu vérifié.
 

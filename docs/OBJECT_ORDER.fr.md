@@ -2,7 +2,7 @@
 
 [English](OBJECT_ORDER.md)
 
-Implémenté pour la 0.32.0 ; qualification consignée dans [État du projet](PROJECT_STATUS.fr.md).
+Publié dans la 0.32.0 ; qualification consignée dans [État du projet](PROJECT_STATUS.fr.md).
 
 ## Bureau
 

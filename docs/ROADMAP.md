@@ -5,22 +5,19 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## 0.32.0: object ordering (qualification)
+## 0.32.0: object ordering (stable Latest)
 
-## Features and corrections
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) under `lmdanavanem`, release `417623635`, immutable source `8c492db35f1712648d5472593146077230befb7c`.
 
-- Drag one object or the selected group in the Objects panel, with an insertion line, stale-drop guards and Escape cancellation.
-- JSON `reorder-objects` command with an explicit final destination, relative-order preservation and existing save/password safeguards.
-- Check effective modify permission before changing drawing order; reject invalid destinations and return from unchanged permutations before mutation.
-- The public 0.31.0 packages join portable/MSI upgrade regressions.
+Drag one object or the selected group in the Objects panel, with an insertion line, page-cache/context guards, Escape and one Undo step. New `reorder-objects` JSON command shares the explicit final destination, relative order, permission, atomic-save and password safeguards. [Scope and usage](OBJECT_ORDER.md).
 
-[Scope and usage](OBJECT_ORDER.md).
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306550382) and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306651110) passed: **588 tests**, zero failures, 9 default ignored; **1092 EN/FR keys**, 84 qpdf corpus checks + 9 independent feature cases, 4 font-reader cases, DX12 software rendering, 14 Office round trips, 4 licensed PDFs/744 pages, **24 portable scenarios**, **18 MSI baselines/90 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. The packaged CLI passed **11 object-order scenarios and 3 additional qpdf checks**, plus 11 retained local-review and 8 security scenarios.
 
-Windows packages remain unsigned; no independent publication key is available. ARM64 is cross-built without hardware execution. Native/manual flows, physical printers, independent readers and PDF/A/PDF/UA certification remain separate qualification.
+Six public files and `dist/` copies verified by SHA256. The freshly built harness from this source downloaded and verified the **27,119,935-byte x64 ZIP in 1.75 s**, without installation. Projects: **43 items, 25 Done, 18 Todo, zero In Progress**; the P3 Suggestion is delivered, original criteria preserved, description read back after a server reload and all three saved filters verified.
 
-Validation in progress.
+Windows packages remain unsigned; no independent publication key is available. Hardware, native/manual flows and reader interoperability remain separate qualification; no PDF/A/PDF/UA/LTV certification. [Evidence](qa/RELEASE_0.32.0.json).
 
-## 0.31.0: local comparison and multi-document search (stable Latest)
+## 0.31.0: local comparison and multi-document search (published; Latest at the time)
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) under `lmdanavanem`, release `417463135`, immutable source `362c7f3979533000e454769e48a8cfbd4084dc0d`.
 
@@ -369,11 +366,11 @@ findings, without confirming a production secret. Remediation/triage and explici
 included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
 This historical result does not establish the scan status of 0.30.0.
 
-## Work beyond 0.31.0
+## Work beyond 0.32.0
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
-3. Keep P1 Roadmap items and Suggestions deferred: dedicated PDF/A/PDF/UA validation, broader corpus/fuzzing/
+3. Keep the remaining P1 Roadmap items and Suggestions open: dedicated PDF/A/PDF/UA validation, broader corpus/fuzzing/
    hardware measurement and integrations need their own accepted scope. Extend editing, Office fidelity and
    archival trust only beyond the explicit limits of this release.
 

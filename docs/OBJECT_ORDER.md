@@ -2,7 +2,7 @@
 
 [Français](OBJECT_ORDER.fr.md)
 
-Implemented for 0.32.0; release qualification is recorded in [Project status](PROJECT_STATUS.md).
+Published in 0.32.0; release qualification is recorded in [Project status](PROJECT_STATUS.md).
 
 ## Desktop
 

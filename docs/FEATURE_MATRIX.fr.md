@@ -2,22 +2,19 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.32.0 : ordre des objets (qualification)
+## 0.32.0 : ordre des objets (Latest stable)
 
-## Nouveautés et corrections
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) sous `lmdanavanem`, release `417623635`, source immuable `8c492db35f1712648d5472593146077230befb7c`.
 
-- Réorganisation d’un objet ou de toute la sélection par glisser-déposer dans le panneau Objets, trait d’insertion, refus des déplacements obsolètes et annulation par Échap.
-- Commande JSON `reorder-objects` : destination finale explicite, ordre relatif, sauvegarde et mots de passe existants.
-- Contrôle de permission de modification avant changement de l’ordre ; les destinations invalides et opérations identiques sont refusées/ignorées avant mutation.
-- La version publique 0.31.0 rejoint les régressions de mise à jour portable et MSI.
+Réorganisation d’un objet ou de la sélection par glisser-déposer dans le panneau Objets, trait d’insertion, contrôle de la page du cache et du contexte, Échap et une seule étape Annuler. Commande JSON `reorder-objects` avec destination finale explicite, ordre relatif, permissions, sauvegarde et mots de passe existants. [Périmètre et utilisation](OBJECT_ORDER.fr.md).
 
-[Périmètre et utilisation](OBJECT_ORDER.fr.md).
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306550382) et [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306651110) réussis : **588 tests**, zéro échec, 9 ignorés par défaut ; **1092 clés EN/FR**, 84 contrôles qpdf + 9 sorties indépendantes, 4 cas de polices, rendu logiciel DX12, 14 allers-retours Office, 4 PDF sous licence/744 pages, **24 scénarios portables**, **18 références MSI/90 journaux**. CodeQL Rust/Python/Actions réussit sans alerte ouverte. La CLI empaquetée passe **11 scénarios d’ordre d’objets et 3 contrôles qpdf supplémentaires**, plus 11 scénarios d’analyse locale et 8 de sécurité conservés.
 
-Paquets Windows non signés ; aucune clé indépendante de publication disponible. ARM64 est compilé sans exécution matérielle. Les vérifications natives, imprimantes, lecteurs tiers et certifications PDF/A/PDF/UA restent séparées.
+Six fichiers publics et copies `dist/` vérifiés par SHA256. Le harnais fraîchement compilé sur cette source a téléchargé et vérifié le ZIP x64 de **27,119,935 octets en 1.75 s**, sans installation. Projects : **43 cartes, 25 Done, 18 Todo, zéro In Progress** ; Suggestion P3 livrée, critères conservés, description relue après rechargement et trois filtres enregistrés vérifiés.
 
-Validation en cours.
+Paquets Windows non signés ; aucune clé indépendante de publication. Les validations matérielles, natives/manuelles et lecteurs tiers restent séparées ; aucun certificat PDF/A/PDF/UA/LTV. [Preuves](qa/RELEASE_0.32.0.json).
 
-## 0.31.0 : comparaison locale et recherche multi-PDF (Latest stable)
+## 0.31.0 : comparaison locale et recherche multi-PDF (publiée ; Latest à cette date)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) sous `lmdanavanem`, release `417463135`, source immuable `362c7f3979533000e454769e48a8cfbd4084dc0d`.
 
@@ -211,7 +208,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Modification de texte existant | Partiel (faible en CJK/bidi) | **Livré en 0.30.0** : Garde des glyphes absents 0.21.1 conservée ; aperçu/réagencement multiligne borné avec métriques natives et Appliquer explicite. Polices/texte/états graphiques dangereux refusés. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Transformation d'objets | Déclaré | **Livré en 0.30.0** : Opérations antérieures conservées ; pivot mémorisé stable, remplacement/lecture explicites de l'opacité et état inconnu. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Sélection multiple, couper/copier/coller d'objets | Déclaré | **Livré en 0.30.0** : Collage groupé conservé ; **Coller éditable** explicite recrée les objets natifs pris en charge en un Annuler. Graphes dangereux refusés sans repli groupé silencieux. [Périmètre](RELEASE_0.30.0.fr.md). |
-| Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) ; glisser-déposer d’objets/sélections implémenté pour la 0.32.0 ([guide](OBJECT_ORDER.fr.md)) |
+| Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) ; glisser-déposer d’objets/sélections livré dans la 0.32.0 ([guide](OBJECT_ORDER.fr.md)) |
 | Liens | Déclaré | **Livré en 0.30.0** : Liens page/URI antérieurs conservés ; création nommée/XYZ/Fit/FitH et résolution brute bornée, axes/zoom nuls et cadrage/rotation affichés conservés. Actions actives non prises en charge jamais exécutées. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Filigranes, en-têtes/pieds de page, numérotation | Partiel | **Fait** : tampon/filigrane texte (angle, opacité, position) et numérotation `{n}`/`{total}` (UI + CLI `stamp`, `page-numbers`) ; filigrane image et en-têtes multi-zones planifiés (P3) |
 | Tampons personnalisés | Non documenté | **Livré en 0.30.0** : Annotations standard prédéfinies présentes ; création arbitraire de tampons toujours planifiée. [Types](RICH_ANNOTATIONS.fr.md). |
