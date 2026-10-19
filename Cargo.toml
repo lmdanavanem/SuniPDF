@@ -23,7 +23,7 @@ pdfium-render = "0.9.4"
 # shortcut: fixes absent from registry 0.45.0; return to a registry release containing upstream fixes 573 and 586.
 lopdf = { version = "0.45", git = "https://github.com/J-F-Liu/lopdf", rev = "6ce451328c5caa65d50462daaf4ee8db9c85bb8e" }
 stringprep = "0.1"
-eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "glow", "wgpu", "links"] }
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "glow", "wgpu", "links"] }
 egui = "0.36"
 rfd = "0.17"
 serde = { version = "1", features = ["derive"] }
