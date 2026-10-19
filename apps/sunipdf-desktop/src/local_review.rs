@@ -566,6 +566,7 @@ mod tests {
         let (mut app, _, _) = test_app();
         let ctx = egui::Context::default();
         app.engine = EngineState::Ready;
+        app.document = None;
         app.execute(&ctx, Command::CompareFiles);
         assert!(app.review.open && app.review.compare && app.document.is_none());
         app.review.open = false;
@@ -648,6 +649,7 @@ mod tests {
                 app.settings.set_language(language);
                 app.open_local_review(compare);
                 let ctx = egui::Context::default();
+                crate::icons::install(&ctx);
                 let input = || egui::RawInput {
                     screen_rect: Some(egui::Rect::from_min_size(
                         egui::Pos2::ZERO,
@@ -655,8 +657,10 @@ mod tests {
                     )),
                     ..Default::default()
                 };
-                let _ = ctx.run_ui(input(), |ui| app.local_review_dialog(ui.ctx()));
-                let output = ctx.run_ui(input(), |ui| app.local_review_dialog(ui.ctx()));
+                let mut first = ctx.run_ui(input(), |ui| app.local_review_dialog(ui.ctx()));
+                first.textures_delta.clear();
+                let mut output = ctx.run_ui(input(), |ui| app.local_review_dialog(ui.ctx()));
+                output.textures_delta.clear();
                 let mut labels = String::new();
                 for shape in output.shapes {
                     text(&shape.shape, &mut labels);
@@ -672,7 +676,8 @@ mod tests {
                     repeat: false,
                     modifiers: egui::Modifiers::NONE,
                 });
-                let _ = ctx.run_ui(escape, |ui| app.local_review_dialog(ui.ctx()));
+                let mut cancelled = ctx.run_ui(escape, |ui| app.local_review_dialog(ui.ctx()));
+                cancelled.textures_delta.clear();
                 assert!(app.review.cancel.load(Ordering::Relaxed));
             }
         }

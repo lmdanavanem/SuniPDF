@@ -315,11 +315,37 @@ fn native_review_preserves_sources_reports_partial_failures_and_verifies_preview
     .unwrap();
     assert!(image_only.pages[0].no_text_on_either_page);
     let excessive_text = temp.path().join("excessive-text.pdf");
-    std::fs::write(
-        &excessive_text,
-        pdf(&[&"X".repeat(MAX_PAGE_CHARS + 1)], 200),
-    )
-    .unwrap();
+    let mut oversized = Pdf::load_mem(&pdf(&[""], 14_400)).unwrap();
+    let page_id = *oversized.get_pages().values().next().unwrap();
+    let stream_id = oversized
+        .get_dictionary(page_id)
+        .unwrap()
+        .get(b"Contents")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    // Keep every glyph inside the page: clipped text does not exercise the extraction bound.
+    let block = "X".repeat(16_000);
+    let content = (0..16)
+        .map(|line| format!("BT /F1 1 Tf 20 {} Td ({block}) Tj ET\n", 150 - line * 8))
+        .collect::<String>();
+    oversized
+        .get_object_mut(stream_id)
+        .unwrap()
+        .as_stream_mut()
+        .unwrap()
+        .set_plain_content(content.into_bytes());
+    oversized.save(&excessive_text).unwrap();
+    assert!(
+        engine
+            .open(&excessive_text, None)
+            .unwrap()
+            .page_text(0)
+            .unwrap()
+            .chars()
+            .count()
+            > MAX_PAGE_CHARS
+    );
     let excessive = search_files(
         &engine,
         &[excessive_text],
