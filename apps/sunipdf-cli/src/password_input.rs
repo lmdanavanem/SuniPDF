@@ -74,6 +74,7 @@ fn read_secret(variable: Option<&str>, stdin: bool) -> Result<String, EngineErro
 fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
     match command {
         Command::AddFormField { password, .. }
+        | Command::Inspect { password, .. }
         | Command::Ocr { password, .. }
         | Command::ExportOffice { password, .. }
         | Command::Signatures { password, .. }

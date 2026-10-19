@@ -6,6 +6,7 @@
 use sha2::{Digest, Sha256};
 use std::cell::Cell;
 use std::collections::VecDeque;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender, TryIter, TryRecvError};
 use std::sync::Arc;
@@ -47,10 +48,25 @@ impl SignatureSource {
         if modified {
             return Err(EngineError::Other(CERTIFICATE_SAVE_FIRST.into()));
         }
-        let current = std::fs::read(path)
-            .map_err(|_| EngineError::Other(CERTIFICATE_SOURCE_CHANGED.into()))?;
-        let digest: [u8; 32] = Sha256::digest(&current).into();
-        if digest != self.sha256 {
+        let changed = || EngineError::Other(CERTIFICATE_SOURCE_CHANGED.into());
+        let file = std::fs::File::open(path).map_err(|_| changed())?;
+        if file.metadata().map_err(|_| changed())?.len() != self.bytes.len() as u64 {
+            return Err(changed());
+        }
+        let mut current = file.take(self.bytes.len() as u64 + 1);
+        let mut hasher = Sha256::new();
+        let mut buffer = [0; 64 * 1024];
+        let mut length = 0;
+        loop {
+            let count = current.read(&mut buffer).map_err(|_| changed())?;
+            if count == 0 {
+                break;
+            }
+            length += count;
+            hasher.update(&buffer[..count]);
+        }
+        let digest: [u8; 32] = hasher.finalize().into();
+        if length != self.bytes.len() || digest != self.sha256 {
             return Err(EngineError::Other(CERTIFICATE_SOURCE_CHANGED.into()));
         }
         // Only the captured revision is ever signed or verified, even if disk changes after checking.
@@ -609,6 +625,9 @@ pub enum Request {
     /// Champs du formulaire du document actif (`FormInfo::default()` s'il n'en a pas).
     FormInfo,
     Properties,
+    Inspect {
+        epoch: u64,
+    },
     Bookmarks,
     ObjectAt {
         page: usize,
@@ -798,6 +817,10 @@ pub enum Response {
     },
     FormInfo(Result<FormInfo, EngineError>),
     Properties(Properties),
+    Inspection {
+        epoch: u64,
+        result: Result<sunipdf_core::inspection::Inspection, EngineError>,
+    },
     Bookmarks(Vec<Bookmark>),
     BatchDone(BatchResult),
     ObjectSelected {
@@ -1182,6 +1205,26 @@ impl State<'_> {
 #[cfg(test)]
 mod save_point_tests {
     use super::*;
+
+    #[test]
+    fn saved_revision_guard_refuses_large_replacements_before_loading_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("replacement.pdf");
+        let original = b"saved revision".to_vec();
+        let source = SignatureSource::new(original.clone());
+        std::fs::write(&path, original.iter().rev().copied().collect::<Vec<_>>()).unwrap();
+        assert!(
+            matches!(source.checked_bytes(&path, false), Err(EngineError::Other(message)) if message == CERTIFICATE_SOURCE_CHANGED)
+        );
+        let file = std::fs::File::create(&path).unwrap();
+        file.set_len(512 * 1024 * 1024).unwrap();
+        assert!(
+            matches!(source.checked_bytes(&path, false), Err(EngineError::Other(message)) if message == CERTIFICATE_SOURCE_CHANGED)
+        );
+        drop(file);
+        std::fs::write(&path, &original).unwrap();
+        assert_eq!(source.checked_bytes(&path, false).unwrap(), original);
+    }
 
     #[test]
     fn signature_source_rejects_changed_missing_and_unsaved_documents() {
@@ -2446,6 +2489,27 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &state.document else { continue };
                 Response::Properties(doc.properties())
             }
+            Request::Inspect { epoch } => {
+                let result = state
+                    .signature_source
+                    .as_ref()
+                    .filter(|source| {
+                        source.bytes.len() <= sunipdf_core::inspection::MAX_INPUT_BYTES
+                    })
+                    .ok_or_else(|| {
+                        EngineError::Other(
+                            "PDF inspection input unavailable or exceeds 128 MiB".into(),
+                        )
+                    })
+                    .and_then(|_| state.signature_bytes())
+                    .and_then(|bytes| {
+                        sunipdf_core::inspection::inspect(
+                            bytes,
+                            state.document.as_ref().and_then(|doc| doc.password()),
+                        )
+                    });
+                Response::Inspection { epoch, result }
+            }
             Request::Bookmarks => {
                 let Some(doc) = &state.document else { continue };
                 Response::Bookmarks(doc.bookmarks())
@@ -2605,6 +2669,7 @@ mod tests {
         encrypted_recovery_after_redaction(&worker);
         signatures_bind_to_loaded_saved_and_resumed_bytes(&worker);
         reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
+        inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
     }
 
     fn next_response(worker: &Worker) -> Response {
@@ -2619,6 +2684,48 @@ mod tests {
                 return response;
             }
         }
+    }
+
+    fn inspection_uses_saved_bytes_and_refuses_unsaved_changes(worker: &Worker) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("inspect.pdf");
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&path, &original).unwrap();
+        worker.send(Request::Open {
+            path: path.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Inspect { epoch: 197 });
+        match next_response(worker) {
+            Response::Inspection {
+                epoch: 197,
+                result: Ok(report),
+            } => {
+                assert!(report.complete);
+                assert_eq!(report.source_bytes, original.len());
+            }
+            _ => panic!("saved inspection response"),
+        }
+        worker.send(Request::Edit(EditOp::Bytes(BytesOp::SetMetadata(
+            Metadata {
+                title: Some("unsaved inspection draft".into()),
+                ..Default::default()
+            },
+        ))));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Inspect { epoch: 198 });
+        assert!(
+            matches!(next_response(worker), Response::Inspection { epoch: 198, result: Err(EngineError::Other(message)) } if message == CERTIFICATE_SAVE_FIRST)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), original);
     }
 
     fn signatures_bind_to_loaded_saved_and_resumed_bytes(worker: &Worker) {

@@ -7,6 +7,10 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+- Préparation 0.34.0 : inspection du PDF enregistré en lecture seule depuis Propriétés et la CLI JSON
+  `inspect`, résultats partiels explicites et identifiants hors arguments ; empreinte par blocs de la
+  version sauvegardée. Quatorze scénarios indépendants et migrations depuis 0.33.0. [Périmètre](docs/RELEASE_0.34.0.fr.md).
+
 ## [0.33.0] - 2026-10-20
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.33.0) sous `lmdanavanem`, release `417802490`, source immuable `c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb`.
