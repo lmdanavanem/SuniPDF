@@ -700,6 +700,15 @@ other field kinds reject this flag. Predefined choices are still required.
 
 ## Current limits
 
+PDF password input since 0.30.1: prefer `--password-env NAME` or `--password-stdin` with piped UTF-8
+input. New protection credentials also support `--user-password-env`/`--user-password-stdin` and
+`--owner-password-env`/`--owner-password-stdin`. Only one credential may use stdin per invocation;
+one trailing line ending is removed. Populate environment variables through a suitable secret source
+and clear them afterwards. Literal legacy password arguments remain visible in process/history tools.
+Changing existing encryption requires the current owner password. `signatures` prints its complete
+JSON report then exits with code 2 if verification fails; a PDF with no signatures remains a successful
+listing. [Security behavior and limits](SECURITY_MODEL.md).
+
 Office conversion has the bounded local scope above; editable XFA forms remain unavailable; form scripts are never run. Complex column reading
 order is not inferred. Field creation supports text, checkbox, radio, combo and list widgets; FDF interchange has the value-only limits above. OCR accuracy depends on the scan
 and language; existing text is not replaced. Windows trust, revocation and supported RFC3161 timestamps have explicit results; archival LTV validation and AATL/EUTL qualification remain unsupported.

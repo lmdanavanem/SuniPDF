@@ -738,6 +738,14 @@ texte libre ; les autres types refusent ce drapeau. Des choix prédéfinis reste
 
 ## Limites actuelles
 
+Depuis 0.30.1, préférez `--password-env NOM` ou `--password-stdin` avec une entrée UTF-8 redirigée.
+Les nouveaux mots de passe de protection acceptent aussi `--user-password-env`/`--user-password-stdin`
+et `--owner-password-env`/`--owner-password-stdin`. Une seule lecture stdin par appel ; une fin de ligne
+finale est retirée. Définissez les variables depuis une source de secrets adaptée puis effacez-les.
+Les anciens arguments restent visibles dans les outils de processus/historique. Remplacer un chiffrement
+demande le mot de passe propriétaire actuel. `signatures` imprime son JSON complet puis retourne 2 en
+cas d'échec ; un PDF sans signature conserve un listing réussi. [Limites de sécurité](SECURITY_MODEL.fr.md).
+
 Conversion Office locale bornée comme décrit plus haut ; formulaires XFA modifiables indisponibles et scripts jamais exécutés.
 L'ordre complexe de colonnes n'est pas déduit. Création texte/case/radio/listes disponible ; FDF limité au sous-ensemble de valeurs décrit ci-dessus.
 La précision OCR dépend de la numérisation et de la langue ; le texte existant n'est pas remplacé. Confiance Windows,

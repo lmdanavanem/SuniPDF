@@ -1,7 +1,23 @@
 # Décisions sur le stockage et la vérification des signatures
 
-Implémentation du lot 0.30.0 non publié, 17 octobre 2026. Les résultats exécutés seront consignés dans
+Implémentation jusqu'à la version 0.30.1. Les résultats exécutés sont consignés dans
 `PROJECT_STATUS.fr.md` ; ce document décrit les garanties et limites.
+
+Depuis 0.30.1, l'intégrité exige un CMS détaché avec SHA-256, SHA-384 ou SHA-512. MD5, SHA-1,
+autres empreintes et contenu CMS attaché sont refusés. `identity_trusted` exige simultanément
+l'intégrité actuelle valide, le certificat du signataire et la réussite des contrôles chaîne/révocation.
+La méthode `SignatureTrust::chain_and_revocation_trusted()` porte uniquement sur chaîne/révocation.
+
+L'application vérifie les octets précisément chargés/enregistrés. Fichier disque modifié ou manquant
+et modifications non enregistrées imposent rechargement/enregistrement ; un changement ultérieur ne
+substitue pas les octets contrôlés. Champ, motif, lieu et date déclarés sont filtrés, limités à 256
+caractères et séparés du verdict. Sujet/émetteur utilisent des noms X.500 bornés. Les PFX sont limités
+à 16 Mio/256 certificats ; plusieurs identités avec clé privée sont refusées.
+
+La CLI `signatures` imprime son JSON complet puis retourne 2 si une vérification échoue. Un document
+sans signature garde le code 0 et les deux indicateurs de vérification à false. `failure_cause` fournit
+la raison exploitable par programme ; `declared_signing_time`/`signing_time_source` identifient une date
+déclarative. L'ancien champ `signing_time` reste un alias de cette déclaration.
 
 ## Signatures visuelles réutilisables
 
