@@ -1,5 +1,10 @@
 # Redaction
 
+In 0.30.1, default hidden-data cleanup also removes XFA and replacement accessibility text
+(`ActualText`/`Alt`) in retained page, form and pattern content/resources. The confirmation describes
+this document-wide scope. Switching cleanup off shows a warning: sensitive duplicates may remain
+outside the marked regions. Earlier files, backups and other copies need separate handling.
+
 Draw or search for rectangles, then open Apply redactions. Choose the fill and optional intentional replacement text. Preview prepares and verifies **all** marked pages; the page selector shows the exact before/after candidate for one marked page. Apply commits those prepared bytes in one Undo step. Editing settings, changing documents, cancelling or closing invalidates the candidate. Cancellation is checked around rendering/cleanup and between pages, objects and painted rows; a single native rendering call must finish before cancellation takes effect. No source file is overwritten by preparation.
 
 Uncomplicated visible, opaque Base14 Latin text is conservatively split into selectable glyphs at its original native positions. Only glyphs whose expanded bounds are completely outside every rectangle survive. Embedded fonts, shaping/spacing, clipping, semantic layers, OCR, images and nested objects use the established pixel-patch fallback. The preview reports both counts explicitly. The visible remainder survives; text within a fallback object's remainder may lose selection. Complex/unsafe cleanup graphs are refused atomically.

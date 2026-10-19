@@ -492,6 +492,7 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    LocalReview(crate::local_review::Job),
     Office(crate::office::Job),
     ProcessFiles(crate::processing::ProcessingJob),
     Print {
@@ -703,6 +704,13 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    LocalReviewProgress {
+        done: usize,
+        total: usize,
+        page: usize,
+        pages: usize,
+    },
+    LocalReviewDone(Result<crate::local_review::Outcome, EngineError>),
     ProtectionAuthorization {
         epoch: u64,
         encrypted: bool,
@@ -1734,6 +1742,19 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         };
         // 2. Traitement.
         let response = match request {
+            Request::LocalReview(job) => {
+                let result =
+                    crate::local_review::run_job(&engine, job, |done, total, page, pages| {
+                        let _ = tx.send(Response::LocalReviewProgress {
+                            done,
+                            total,
+                            page,
+                            pages,
+                        });
+                        ctx.request_repaint();
+                    });
+                Response::LocalReviewDone(result)
+            }
             Request::AcknowledgeSuspendFailure => {
                 navigation_failed = false;
                 continue;

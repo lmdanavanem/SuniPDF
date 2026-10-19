@@ -7,7 +7,7 @@ pub fn terminal_text(text: &str) -> String {
 pub fn escape_c1(serialized_json: &str) -> String {
     let mut output = String::with_capacity(serialized_json.len());
     for character in serialized_json.chars() {
-        if ('\u{80}'..='\u{9f}').contains(&character) {
+        if ('\u{7f}'..='\u{9f}').contains(&character) {
             use std::fmt::Write;
             write!(output, "\\u{:04x}", character as u32).expect("string output");
         } else {
@@ -41,7 +41,7 @@ mod tests {
 
     #[test]
     fn json_controls_are_escaped_and_round_trip_without_data_loss() {
-        let value = serde_json::json!({"title":"\u{1b}\u{80}\u{9b}\u{9f}été"});
+        let value = serde_json::json!({"title":"\u{1b}\u{7f}\u{80}\u{9b}\u{9f}été"});
         for serialized in [
             serde_json::to_string(&value).unwrap(),
             serde_json::to_string_pretty(&value).unwrap(),
@@ -52,6 +52,7 @@ mod tests {
                     || output.chars().filter(|c| c.is_control()).all(|c| c == '\n')
             );
             assert!(output.contains("\\u009b"));
+            assert!(output.contains("\\u007f"));
             assert_eq!(
                 serde_json::from_str::<serde_json::Value>(&output).unwrap(),
                 value

@@ -1,4 +1,4 @@
-use lopdf::{dictionary, Document, Object, Stream, StringFormat};
+use lopdf::{dictionary, Document, Object, Stream};
 use std::process::Command;
 
 #[test]
@@ -21,7 +21,7 @@ fn pdf_controls_are_filtered_in_text_and_escaped_in_json_without_modifying_the_p
     let catalog = pdf.add_object(dictionary! {"Type"=>"Catalog", "Pages"=>pages});
     pdf.trailer.set("Root", catalog);
     let title = "Title\u{9b} with control";
-    let info = pdf.add_object(dictionary! {"Title"=>Object::String(lopdf::encode_text_string(title), StringFormat::Hexadecimal)});
+    let info = pdf.add_object(dictionary! {"Title"=>lopdf::text_string(title)});
     pdf.trailer.set("Info", info);
     pdf.save(&path).unwrap();
     let original = std::fs::read(&path).unwrap();

@@ -738,9 +738,30 @@ texte libre ; les autres types refusent ce drapeau. Des choix prédéfinis reste
 
 ## Limites actuelles
 
+Depuis 0.30.1, préférez `--password-env NOM` ou `--password-stdin` avec une entrée UTF-8 redirigée.
+Les nouveaux mots de passe de protection acceptent aussi `--user-password-env`/`--user-password-stdin`
+et `--owner-password-env`/`--owner-password-stdin`. Une seule lecture stdin par appel ; une fin de ligne
+finale est retirée. Définissez les variables depuis une source de secrets adaptée puis effacez-les.
+Les anciens arguments restent visibles dans les outils de processus/historique. Remplacer un chiffrement
+demande le mot de passe propriétaire actuel. `signatures` imprime son JSON complet puis retourne 2 en
+cas d'échec ; un PDF sans signature conserve un listing réussi. [Limites de sécurité](SECURITY_MODEL.fr.md).
+
 Conversion Office locale bornée comme décrit plus haut ; formulaires XFA modifiables indisponibles et scripts jamais exécutés.
 L'ordre complexe de colonnes n'est pas déduit. Création texte/case/radio/listes disponible ; FDF limité au sous-ensemble de valeurs décrit ci-dessus.
 La précision OCR dépend de la numérisation et de la langue ; le texte existant n'est pas remplacé. Confiance Windows,
 révocation et horodatages RFC3161 compatibles ont des états explicites ; validation d’archivage LTV et qualification
 AATL/EUTL restent indisponibles. Imprimante réelle, fenêtres natives interactives et matériel ARM64
 restent des validations séparées des tests automatisés. Voir `docs/KNOWN_ISSUES.fr.md` et `docs/ROADMAP.fr.md`.
+
+
+## Comparaison locale et recherche dans plusieurs PDF (0.31.0)
+
+Utilisez **Fichier → Comparer des fichiers PDF…** ou **Édition → Rechercher dans des fichiers PDF…**. Enregistrez les modifications avant de sélectionner les fichiers. Comparez les pages physiques avec des positions initiales ajustables ; cliquez sur une paire modifiée pour ses trois aperçus. Un résultat de recherche ouvre sa page physique. Opérations locales, en lecture seule et annulables. Un résultat partiel ne valide jamais les fichiers restants. Consultez le [guide complet et ses limites](LOCAL_REVIEW.fr.md) pour les fichiers protégés, scans, commandes JSON et résolution.
+
+## Réorganiser les objets par glisser-déposer
+
+Ouvrez le panneau Objets avec F3. Le haut de la liste correspond au premier plan. Glissez une ligne au-dessus ou au-dessous d’une autre ; le trait bleu indique la destination. Glisser une ligne sélectionnée déplace toute la sélection en un bloc, dans son ordre relatif d’origine. Glisser une ligne non sélectionnée déplace cet objet uniquement.
+
+Échap annule. Un dépôt hors d’une ligne valide, sur une ligne sélectionnée ou à la même position ne fait rien. Un dépôt dans une autre page/document ou après une modification intermédiaire est refusé. La sélection suit les objets déplacés. Les boutons avancer/reculer et commandes clavier existants restent disponibles ; un déplacement terminé utilise une seule étape Annuler et le Rétablir de la transaction existante.
+
+[Guide](OBJECT_ORDER.fr.md).

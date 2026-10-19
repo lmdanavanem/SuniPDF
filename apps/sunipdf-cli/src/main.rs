@@ -36,6 +36,32 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Search only explicitly selected PDF files, with per-file failures and bounded page results.
+    SearchFiles {
+        #[arg(required = true, num_args = 1..=64)]
+        files: Vec<PathBuf>,
+        #[arg(long)]
+        query: String,
+        #[arg(long)]
+        match_case: bool,
+        /// One credential for the selected files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Compare extracted text and 768-pixel previews of aligned physical pages, without modifying inputs.
+    Compare {
+        left: PathBuf,
+        right: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        left_start: usize,
+        #[arg(long, default_value_t = 1)]
+        right_start: usize,
+        #[arg(long, default_value_t = 200)]
+        max_pages: usize,
+        /// One credential for both files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add a fillable text, checkbox, radio, combo or list field and save to --out.
     AddFormField {
         file: PathBuf,
@@ -524,6 +550,22 @@ enum Command {
         /// 1-based page number.
         #[arg(long, default_value_t = 1)]
         page: usize,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Move content objects together in drawing order, preserving their relative order.
+    ReorderObjects {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// Comma-separated 0-based object indices from `objects`.
+        #[arg(long)]
+        objects: String,
+        /// Final 0-based index of the first object in the moved block; 0 is the back.
+        #[arg(long)]
+        at: usize,
+        #[arg(long)]
+        out: PathBuf,
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
@@ -1744,6 +1786,42 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 jpeg_quality,
             },
         ),
+        Command::SearchFiles {
+            files,
+            query,
+            match_case,
+            password,
+        } => sunipdf_core::local_review::search_files(
+            &engine,
+            &files,
+            &query,
+            match_case,
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _, _, _| {},
+        )
+        .map(|report| report.json()),
+        Command::Compare {
+            left,
+            right,
+            left_start,
+            right_start,
+            max_pages,
+            password,
+        } => sunipdf_core::local_review::compare_files(
+            &engine,
+            &left,
+            &right,
+            sunipdf_core::local_review::CompareOptions {
+                left_start,
+                right_start,
+                max_pages,
+            },
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _| {},
+        )
+        .map(|report| report.json()),
         Command::Search {
             file,
             query,
@@ -1802,6 +1880,21 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     "stroke": hex(o.stroke_rgb),
                 })).collect::<Vec<_>>(),
             }))
+        }
+        Command::ReorderObjects {
+            file,
+            page,
+            objects,
+            at,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            let new_indices = doc.reorder_objects(p, &indices, sunipdf_core::ZOrder::At(at))?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "page": page, "new_indices": new_indices }))
         }
         Command::AddText {
             file,
@@ -2517,6 +2610,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Optimize { out, .. }
         | Command::CompressImages { out, .. }
         | Command::AddText { out, .. }
+        | Command::ReorderObjects { out, .. }
         | Command::SetOpacity { out, .. }
         | Command::RotateObject { out, .. }
         | Command::RotateObjects { out, .. }
@@ -2706,6 +2800,10 @@ fn main() -> ExitCode {
 fn cli_main() -> ExitCode {
     let cli = Cli::parse();
     let signature_check = matches!(&cli.command, Command::Signatures { .. });
+    let local_review_check = matches!(
+        &cli.command,
+        Command::SearchFiles { .. } | Command::Compare { .. }
+    );
     match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
@@ -2713,7 +2811,9 @@ fn cli_main() -> ExitCode {
                 "{}",
                 safe_output::escape_c1(&serde_json::to_string_pretty(&value).expect("json"))
             );
-            if signature_check && value["verification_failed"] == true {
+            if (signature_check && value["verification_failed"] == true)
+                || (local_review_check && value["complete"] == false)
+            {
                 ExitCode::from(2)
             } else {
                 ExitCode::SUCCESS

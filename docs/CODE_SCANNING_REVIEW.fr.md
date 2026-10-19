@@ -1,5 +1,13 @@
 # Revue Code Scanning — 2026-10-17
 
+## Complément 0.31.0
+
+Quatre nouvelles alertes #178–181 concernent uniquement des mots de passe de PDF synthétiques dans des cibles de tests Cargo. Revue individuelle sous `lmdanavanem`, classées « used in tests » ; aucun secret de production confirmé. Aucune exclusion ; CodeQL Rust/Python/Actions réussit sur la source publiée sans alerte ouverte. [CSV](qa/CODE_SCANNING_0.31.0.csv) · [QA](qa/RELEASE_0.31.0.json).
+
+## Complément 0.30.1 - 19 octobre 2026
+
+22 nouvelles alertes revues individuellement sous `lmdanavanem` : 21 limitées aux tests et un faux positif sur le candidat de mot de passe propriétaire vide. Aucun secret de production confirmé. CodeQL Rust/Python/Actions réussit sur la source publiée, sans alerte ouverte ni exclusion. [CSV des décisions](qa/CODE_SCANNING_0.30.1.csv) · [Preuves de release](qa/RELEASE_0.30.1.json).
+
 [English](CODE_SCANNING_REVIEW.md) · [Inventaire critique par alerte (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
 ## Revue Code Scanning 0.30.0 — 2026-10-17
