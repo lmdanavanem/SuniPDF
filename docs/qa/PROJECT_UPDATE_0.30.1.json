@@ -1,0 +1,123 @@
+{
+  "source": "697a963c756b316e1eb1e678298886bc08521da1",
+  "releaseId": 417149160,
+  "targetRelease": "0.30.1",
+  "published": true,
+  "updated": true,
+  "account": "lmdanavanem",
+  "project": "https://github.com/users/lmdanavanem/projects/1",
+  "verifiedAt": "2026-10-19T10:59:40.199Z",
+  "totalItems": 43,
+  "uniqueVisibleItemTitles": 43,
+  "aggregate": {
+    "Todo": 21,
+    "In Progress": 0,
+    "Done": 22
+  },
+  "unsavedChanges": false,
+  "method": "Authenticated browser description-editor saves, server reloads and exact Markdown readback. All six existing descriptions retain their complete original criteria/history as an unchanged suffix. One independent-update-authentication draft was added with Todo/Roadmap fields. Live DOM readback covered all three saved views and 43 unique titles. No issue conversation comments or public issues were created.",
+  "updatedItems": [
+    {
+      "id": 276004767,
+      "title": "[P1] Independently authenticate update metadata and packages",
+      "status": "Todo",
+      "created": true,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "afterLength": 1222
+    },
+    {
+      "id": 274053300,
+      "title": "[P2] Add a separate document sanitization tool and security model",
+      "status": "Done",
+      "created": false,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "beforeLength": 2093,
+      "afterLength": 2985
+    },
+    {
+      "id": 274054515,
+      "title": "[P2] Add certificate trust, revocation and trusted timestamp verification",
+      "status": "Done",
+      "created": false,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "beforeLength": 2048,
+      "afterLength": 3223
+    },
+    {
+      "id": 274053418,
+      "title": "[P2] Improve redaction precision, persistent marks and before/after preview",
+      "status": "Done",
+      "created": false,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "beforeLength": 2274,
+      "afterLength": 3329
+    },
+    {
+      "id": 274054117,
+      "title": "[P2] Convert local Office documents to PDF and reuse conversion profiles",
+      "status": "Done",
+      "created": false,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "beforeLength": 2307,
+      "afterLength": 3269
+    },
+    {
+      "id": 274049453,
+      "title": "[P1] Fuzz PDF and CMS boundaries and publish hardware benchmarks",
+      "status": "Todo",
+      "created": false,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "beforeLength": 765,
+      "afterLength": 1911
+    },
+    {
+      "id": 274044225,
+      "title": "[P1] Resolve the 117 Code Scanning alerts for 0.21.0",
+      "status": "Done",
+      "created": false,
+      "descriptionReadbackExact": true,
+      "originalCriteriaAndHistoryPreserved": true,
+      "beforeLength": 1250,
+      "afterLength": 2266
+    }
+  ],
+  "views": [
+    {
+      "view": "Bugs",
+      "filter": "category:Bug ",
+      "items": 8,
+      "Todo": 0,
+      "In Progress": 0,
+      "Done": 8
+    },
+    {
+      "view": "Roadmap",
+      "filter": "category:Roadmap",
+      "items": 24,
+      "Todo": 10,
+      "In Progress": 0,
+      "Done": 14
+    },
+    {
+      "view": "Suggestions",
+      "filter": "category:Suggestion",
+      "items": 11,
+      "Todo": 11,
+      "In Progress": 0,
+      "Done": 0
+    }
+  ],
+  "screenshot": {
+    "saved": false,
+    "previewEmitted": true,
+    "previewView": "Suggestions",
+    "exportLimitation": "Browser URL policy refused data-URL navigation for an image export. No workaround was attempted. The recorded proof uses saved Markdown readback and the live DOM view inventories."
+  },
+  "limits": "The independent publication key is unavailable; its new Roadmap item remains Todo. Existing P1 hardware, signing, conformance and broad-fuzzing criteria remain open. Done statuses refer to their bounded delivered scope and retain all original criteria/history."
+}

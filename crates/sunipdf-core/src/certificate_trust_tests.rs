@@ -9,7 +9,7 @@ fn valid_saved_bytes_do_not_trust_a_self_signed_identity_or_declared_time() {
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].status, SignatureStatus::Valid);
     assert_eq!(result[0].trust.chain, ChainTrust::Untrusted);
-    assert!(!result[0].trust.identity_trusted());
+    assert!(!result[0].identity_trusted());
     assert!(!result[0].trust.network_allowed);
     assert_eq!(result[0].trust.timestamp.status, TimestampStatus::Absent);
     assert!(result[0].trust.timestamp.time.is_none());
@@ -58,7 +58,7 @@ fn identity_requires_successful_chain_and_revocation_separately() {
                 ..Default::default()
             };
             assert_eq!(
-                report.identity_trusted(),
+                report.chain_and_revocation_trusted(),
                 chain == ChainTrust::Trusted && revocation == RevocationStatus::Good
             );
         }

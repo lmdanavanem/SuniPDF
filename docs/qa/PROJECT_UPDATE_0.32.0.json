@@ -1,0 +1,59 @@
+{
+  "source": "8c492db35f1712648d5472593146077230befb7c",
+  "targetRelease": "0.32.0",
+  "project": "https://github.com/users/lmdanavanem/projects/1",
+  "updated": true,
+  "verifiedAt": "2026-10-19T19:29:52.406574+00:00",
+  "totalItems": 43,
+  "uniqueVisibleItemTitles": 43,
+  "aggregate": {
+    "Todo": 18,
+    "In Progress": 0,
+    "Done": 25
+  },
+  "unsavedChanges": false,
+  "views": [
+    {
+      "view": "Bugs",
+      "filter": "category:Bug ",
+      "items": 8,
+      "Todo": 0,
+      "In Progress": 0,
+      "Done": 8
+    },
+    {
+      "view": "Roadmap",
+      "filter": "category:Roadmap",
+      "items": 24,
+      "Todo": 10,
+      "In Progress": 0,
+      "Done": 14
+    },
+    {
+      "view": "Suggestions",
+      "filter": "category:Suggestion",
+      "items": 11,
+      "Todo": 8,
+      "In Progress": 0,
+      "Done": 3
+    }
+  ],
+  "updatedItems": [
+    {
+      "id": 274056842,
+      "title": "[P3] Reorder objects by drag and drop in the Objects panel",
+      "status": "Done",
+      "beforeLength": 357,
+      "afterLength": 2763,
+      "criteriaPreserved": true,
+      "exactMarkdownReadback": true,
+      "serverReloadVerified": true
+    }
+  ],
+  "screenshot": {
+    "saved": false,
+    "previewCaptured": true,
+    "reason": "Browser screenshot preview captured; no supported local-file screenshot export is available. Exact Markdown server readback and all three view/filter/status DOM readbacks are the retained evidence."
+  },
+  "notes": "Existing draft description edited under lmdanavanem; all 357 original criteria characters preserved after the published evidence prefix. Exact 2763-character Markdown readback verified after server reload. Done status verified after a separate server reload. No issue or conversation comment was created. All three saved filters retained, with no unsaved view changes. Suggestions was left open as the deliverable and the temporary viewport override was reset."
+}

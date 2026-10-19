@@ -22,8 +22,17 @@ fn fixture() -> Vec<u8> {
     ));
     let attachment = pdf.add_object(dictionary! {"Type"=>"Filespec","F"=>Object::string_literal("private.txt"),"EF"=>dictionary! {"F"=>attachment_bytes}});
     let annot = pdf.add_object(dictionary! {"Type"=>"Annot","Subtype"=>"FileAttachment","Rect"=>vec![600.into(),780.into(),610.into(),790.into()],"FS"=>attachment});
+    let screen = pdf.add_object(dictionary! {"Type"=>"Annot","Subtype"=>"Screen","Rect"=>vec![600.into(),780.into(),610.into(),790.into()],
+        "A"=>dictionary! {"S"=>"Rendition","R"=>dictionary! {"S"=>"MR","C"=>dictionary! {"S"=>"MCD","D"=>dictionary! {"FS"=>"URL","F"=>Object::string_literal("https://example.invalid/SCREEN-MEDIA-REMOVED")}}}}});
+    let template = pdf.add_object(Stream::new(Dictionary::new(),
+        b"<template><script contentType=\"application/x-javascript\">XFA-SCRIPT-REMOVED</script></template>".to_vec()));
+    let datasets = pdf.add_object(Stream::new(
+        Dictionary::new(),
+        b"<datasets><value>XFA-DATA-REMOVED</value></datasets>".to_vec(),
+    ));
+    let form = pdf.add_object(dictionary! {"Fields"=>Vec::<Object>::new(),"XFA"=>vec![Object::string_literal("template"),Object::Reference(template),Object::string_literal("datasets"),Object::Reference(datasets)]});
     let page = pdf.add_object(dictionary! {"Type"=>"Page","Parent"=>root,"MediaBox"=>vec![0.into(),0.into(),500.into(),700.into()],
-        "Resources"=>dictionary! {"Font"=>dictionary! {"FUsed"=>font,"Unused"=>unused}},"Contents"=>content,"Annots"=>vec![Object::Reference(annot)]});
+        "Resources"=>dictionary! {"Font"=>dictionary! {"FUsed"=>font,"Unused"=>unused}},"Contents"=>content,"Annots"=>vec![Object::Reference(annot),Object::Reference(screen)]});
     pdf.objects.insert(
         root,
         Object::Dictionary(
@@ -45,7 +54,7 @@ fn fixture() -> Vec<u8> {
         dictionary! {"Type"=>"Metadata","Subtype"=>"XML"},
         b"METADATA-SECRET".to_vec(),
     ));
-    let catalog = pdf.add_object(dictionary! {"Type"=>"Catalog","Pages"=>root,"Outlines"=>outlines,"Metadata"=>metadata,
+    let catalog = pdf.add_object(dictionary! {"Type"=>"Catalog","Pages"=>root,"Outlines"=>outlines,"Metadata"=>metadata,"AcroForm"=>form,
         "OpenAction"=>script,"Names"=>dictionary! {
             "EmbeddedFiles"=>dictionary! {"Names"=>vec![Object::string_literal("ATTACHMENT-NAME-SECRET"),Object::Reference(attachment)]},
             "JavaScript"=>dictionary! {"Names"=>vec![Object::string_literal("script"),Object::Reference(script)]},
@@ -72,6 +81,51 @@ fn contains(object: &Object, marker: &[u8]) -> bool {
                 || stream.dict.iter().any(|(_, value)| contains(value, marker))
         }
         _ => false,
+    }
+}
+
+#[test]
+fn sanitization_removes_inline_and_indirect_xfa_packets() {
+    for inline_form in [false, true] {
+        for packet_array in [false, true] {
+            let mut pdf = lopdf::Document::load_mem(&fixture()).unwrap();
+            let form = pdf.catalog().unwrap().get(b"AcroForm").unwrap().clone();
+            let mut form = pdf.dereference(&form).unwrap().1.as_dict().unwrap().clone();
+            if !packet_array {
+                let packet = pdf.add_object(Stream::new(Dictionary::new(),
+                    b"<xfa><script>XFA-SCRIPT-REMOVED</script><value>XFA-DATA-REMOVED</value></xfa>".to_vec()));
+                form.set("XFA", packet);
+            }
+            let form = if inline_form {
+                Object::Dictionary(form)
+            } else {
+                Object::Reference(pdf.add_object(form))
+            };
+            pdf.catalog_mut().unwrap().set("AcroForm", form);
+            let mut input = Vec::new();
+            pdf.save_to(&mut input).unwrap();
+            let (output, report) = sanitize_document(&input, None).unwrap();
+            assert!(report.verified);
+            let cleaned = lopdf::Document::load_mem(&output).unwrap();
+            let form = cleaned.catalog().unwrap().get(b"AcroForm").unwrap();
+            assert!(!cleaned
+                .dereference(form)
+                .unwrap()
+                .1
+                .as_dict()
+                .unwrap()
+                .has(b"XFA"));
+            for marker in [
+                b"XFA-SCRIPT-REMOVED".as_slice(),
+                b"XFA-DATA-REMOVED",
+                b"SCREEN-MEDIA-REMOVED",
+            ] {
+                assert!(!cleaned
+                    .objects
+                    .values()
+                    .any(|object| contains(object, marker)));
+            }
+        }
     }
 }
 
@@ -104,7 +158,7 @@ fn sanitization_rewrites_verified_new_copies_preserving_visible_content_and_prot
         let rendered = original.render_page(0, 1.0).unwrap();
         let text = original.page_text(0).unwrap();
         let (output, report) = sanitize_document(&input, password).unwrap();
-        assert!(report.verified && report.removed_entries >= 5 && report.removed_annotations == 1);
+        assert!(report.verified && report.removed_entries >= 6 && report.removed_annotations == 2);
         assert!(report.unused_font_entries >= 1 && report.unreachable_objects >= 5);
         let copy = temp.path().join(format!("sanitized-{encryption:?}.pdf"));
         sunipdf_core::write_new_copy(&copy, &output).unwrap();
@@ -128,6 +182,9 @@ fn sanitization_rewrites_verified_new_copies_preserving_visible_content_and_prot
                 b"METADATA-SECRET",
                 b"DESTINATION-SECRET",
                 b"INFO-SECRET",
+                b"XFA-SCRIPT-REMOVED",
+                b"XFA-DATA-REMOVED",
+                b"SCREEN-MEDIA-REMOVED",
             ] {
                 assert!(
                     !decoded

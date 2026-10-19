@@ -3,6 +3,8 @@
 
 mod annot_cmd;
 mod feature_cmd;
+mod password_input;
+mod safe_output;
 mod v010_cmd;
 
 use clap::{Parser, Subcommand};
@@ -26,12 +28,40 @@ struct Cli {
     /// anything (exit code 6, error "already_exists").
     #[arg(long, global = true)]
     overwrite: bool,
+    #[command(flatten)]
+    passwords: password_input::PasswordSources,
     #[command(subcommand)]
     command: Command,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// Search only explicitly selected PDF files, with per-file failures and bounded page results.
+    SearchFiles {
+        #[arg(required = true, num_args = 1..=64)]
+        files: Vec<PathBuf>,
+        #[arg(long)]
+        query: String,
+        #[arg(long)]
+        match_case: bool,
+        /// One credential for the selected files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Compare extracted text and 768-pixel previews of aligned physical pages, without modifying inputs.
+    Compare {
+        left: PathBuf,
+        right: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        left_start: usize,
+        #[arg(long, default_value_t = 1)]
+        right_start: usize,
+        #[arg(long, default_value_t = 200)]
+        max_pages: usize,
+        /// One credential for both files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add a fillable text, checkbox, radio, combo or list field and save to --out.
     AddFormField {
         file: PathBuf,
@@ -55,7 +85,7 @@ enum Command {
         page: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add a searchable, invisible text layer using local English/French OCR; existing text is skipped.
@@ -68,7 +98,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Convert a guarded macro-free Office document with an already installed local LibreOffice.
@@ -86,13 +116,13 @@ enum Command {
         format: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Verify digital signatures over the saved PDF bytes; certificate identity is not trusted automatically.
     Signatures {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
         /// Permit Windows certificate-chain, revocation and timestamp network checks for this call.
         #[arg(long)]
@@ -129,7 +159,7 @@ enum Command {
         /// 1-based page number; omit for the whole document.
         #[arg(long)]
         page: Option<usize>,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Merge several PDFs (in order) into one output file.
@@ -147,7 +177,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Split into files of N pages each, written to a directory.
@@ -158,7 +188,7 @@ enum Command {
         every: usize,
         #[arg(long)]
         out_dir: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rotate pages (1-based list, or "all") by 90, 180 or 270 degrees and save to --out.
@@ -170,7 +200,7 @@ enum Command {
         degrees: i32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Stamp a single line of text (watermark).
@@ -197,7 +227,7 @@ enum Command {
         bold: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add single-line page numbers.
@@ -214,7 +244,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Set navigation page labels for a physical page range; visible page content is unchanged.
@@ -234,7 +264,7 @@ enum Command {
         prefix: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Remove all navigation page labels; visible page content is unchanged.
@@ -242,7 +272,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Insert pages of another PDF (1-based list, default all) before page --at (1-based; 0 = append).
@@ -256,7 +286,7 @@ enum Command {
         at: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Move one page (1-based) to a new position (1-based).
@@ -268,25 +298,25 @@ enum Command {
         to: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Print document properties (metadata, version, encryption, permissions) as JSON.
     Properties {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List existing local named destinations, refusing ambiguous or malformed name trees.
     LinkDestinations {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Print the bookmark tree (title, page, depth) as JSON.
     Bookmarks {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add a page bookmark to a new copy. Bookmark/page indices start at 1; omit --parent for root.
@@ -300,7 +330,7 @@ enum Command {
         parent: Option<usize>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rename a bookmark in a new copy, preserving its original action and children.
@@ -312,7 +342,7 @@ enum Command {
         title: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Replace a bookmark action with a local page destination in a new copy.
@@ -324,7 +354,7 @@ enum Command {
         page: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Move a bookmark subtree. --position is the 1-based sibling slot after removing the item.
@@ -338,7 +368,7 @@ enum Command {
         position: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Delete a bookmark and its children in a new copy; the input cannot be replaced.
@@ -348,7 +378,7 @@ enum Command {
         index: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Encrypt with AES-256 (or AES-128 with --aes128): passwords and permissions.
@@ -356,9 +386,9 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", help = password_input::ARGV_USER_PASSWORD_HELP)]
         user_password: String,
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", help = password_input::ARGV_OWNER_PASSWORD_HELP)]
         owner_password: String,
         #[arg(long)]
         no_print: bool,
@@ -370,17 +400,17 @@ enum Command {
         no_annotate: bool,
         #[arg(long)]
         aes128: bool,
-        /// Password of the input file if it is already encrypted.
-        #[arg(long)]
+        /// Owner password of the input file if it is already encrypted.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Remove encryption (owner or user password required).
+    /// Remove encryption (the owner password is required).
     Unprotect {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
-        password: String,
+        #[arg(long, required_unless_present_any = ["password_env", "password_stdin"], help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
     },
     /// Set title, author, subject, keywords (omitted fields are left unchanged; "" clears).
     SetMetadata {
@@ -395,7 +425,7 @@ enum Command {
         subject: Option<String>,
         #[arg(long)]
         keywords: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Remove all document metadata (Info dictionary and XMP stream).
@@ -403,7 +433,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Sanitize hidden structures into a verified new copy; existing files are never replaced.
@@ -411,7 +441,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Irreversibly redact rectangles and/or every occurrence of a text, then save to --out.
@@ -433,7 +463,8 @@ enum Command {
         /// Replace every redacted page by an image of itself (no text left on these pages).
         #[arg(long)]
         rasterize: bool,
-        /// Keep metadata and the structure tree (removed by default).
+        /// Keep hidden metadata, scripts, attachments, bookmarks, named destinations and accessibility data.
+        /// These may retain sensitive content. Removed by default; prefer the default cleanup.
         #[arg(long)]
         keep_hidden_data: bool,
         /// Resolution of the image patches and rasterized pages (72 to 600).
@@ -452,7 +483,7 @@ enum Command {
         /// Save visible, unapplied standard /Redact annotations. This does not remove content.
         #[arg(long)]
         marks_only: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Build a PDF from image files (one page per image).
@@ -472,7 +503,7 @@ enum Command {
         out_dir: PathBuf,
         #[arg(long, default_value_t = 150.0)]
         dpi: f32,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Lossless size optimisation (stream recompression, unused objects removed).
@@ -480,7 +511,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Reduce supported image dimensions/JPEG quality while keeping page text, links and fields.
@@ -494,7 +525,7 @@ enum Command {
         /// New compressed copy; existing files and the input cannot be replaced, even with --overwrite.
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Search text; prints matches (page, rectangles in points, origin bottom-left of the page as
@@ -504,13 +535,13 @@ enum Command {
         query: String,
         #[arg(long)]
         match_case: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Print document information (page count, page sizes, title) as JSON.
     Info {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the content objects of a page (0-based indices, display-space coordinates in points).
@@ -519,7 +550,23 @@ enum Command {
         /// 1-based page number.
         #[arg(long, default_value_t = 1)]
         page: usize,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Move content objects together in drawing order, preserving their relative order.
+    ReorderObjects {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// Comma-separated 0-based object indices from `objects`.
         #[arg(long)]
+        objects: String,
+        /// Final 0-based index of the first object in the moved block; 0 is the back.
+        #[arg(long)]
+        at: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add text (one object per line, "\n" separated) with its first baseline at (x, y) points.
@@ -554,7 +601,7 @@ enum Command {
         italic: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Set the opacity (0 to 1) of objects (0-based indices, e.g. "0,3").
@@ -568,7 +615,7 @@ enum Command {
         opacity: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rotate one object by any angle (degrees, clockwise) around its centre.
@@ -582,7 +629,7 @@ enum Command {
         degrees: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rotate objects together (clockwise degrees), preserving their relative positions.
@@ -597,7 +644,7 @@ enum Command {
         degrees: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Resize objects together to displayed page bounds, preserving their relative positions.
@@ -613,7 +660,7 @@ enum Command {
         rect: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Copy objects (pasted as one group) to another page, optionally of another file (--into).
@@ -635,7 +682,7 @@ enum Command {
         dy: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Replace the content of an image object with another image file (same frame).
@@ -649,7 +696,7 @@ enum Command {
         image: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Place an image on a page, e.g. a scanned handwritten signature. Visual mark only: this is
@@ -679,7 +726,7 @@ enum Command {
         remove_background: Option<u8>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Crop pages (hides the margins; content stays in the file) or restore them with --reset.
@@ -702,7 +749,7 @@ enum Command {
         reset: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Resize pages: keep the content (anchored top-left) or scale it to fit (centred).
@@ -724,7 +771,7 @@ enum Command {
         annotations: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Insert blank pages before page --at (1-based; 0 = append), sized explicitly or like a page.
@@ -745,7 +792,7 @@ enum Command {
         like: Option<usize>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the installed TrueType (.ttf) system fonts that can be embedded by add-text.
@@ -769,7 +816,7 @@ enum Command {
         region: Option<sunipdf_core::PixelRect>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the AcroForm fields (name, type, value, options, widgets with 1-based pages) as JSON.
@@ -779,7 +826,7 @@ enum Command {
         /// read-only fields are included with their current value, password fields never).
         #[arg(long)]
         values_only: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Export non-password field values as JSON or XFDF (selected by output extension).
@@ -787,7 +834,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Fill fields from JSON/XFDF/FDF (--values FILE, "-" = JSON stdin) and/or --set NAME=VALUE
@@ -807,7 +854,7 @@ enum Command {
         /// Flatten the whole document after filling (fields become page content).
         #[arg(long)]
         flatten: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Flatten form fields and annotations into the page content ("all" or "1,3-5"); flattening
@@ -818,7 +865,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the annotations of one page (--page) or of every page as JSON: index (0-based, the
@@ -828,7 +875,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         page: Option<usize>,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add a real PDF annotation: ink, square, circle, line, arrow, freetext or link. Coordinates
@@ -889,7 +936,7 @@ enum Command {
         author: Option<String>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Change an existing link's target without replacing its annotation or appearance.
@@ -922,7 +969,7 @@ enum Command {
         zoom: Option<f32>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Delete an annotation by index; --thread also deletes its replies and review states.
@@ -936,7 +983,7 @@ enum Command {
         thread: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Reply to an annotation (comment thread, no icon on the page).
@@ -952,7 +999,7 @@ enum Command {
         author: Option<String>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Set the review state of an annotation thread: none, accepted, rejected, cancelled, completed.
@@ -968,7 +1015,7 @@ enum Command {
         author: Option<String>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
 }
@@ -996,7 +1043,8 @@ fn parse_region(spec: &str) -> Result<sunipdf_core::PixelRect, String> {
     }
 }
 
-fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
+fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
+    cli.passwords.apply(&mut cli.command)?;
     if let Command::Fonts { filter } = &cli.command {
         let filter = filter.as_deref().unwrap_or("").to_lowercase();
         return Ok(serde_json::json!(sunipdf_core::fonts::system_fonts()
@@ -1212,7 +1260,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let mut out = std::io::stdout().lock();
             for p in pages {
                 let text = doc.page_text(p)?;
-                writeln!(out, "{text}").map_err(EngineError::Io)?;
+                writeln!(out, "{}", safe_output::terminal_text(&text)).map_err(EngineError::Io)?;
                 if page.is_none() {
                     writeln!(out, "\u{c}").map_err(EngineError::Io)?;
                 }
@@ -1551,7 +1599,10 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let input = std::fs::read(&file)?;
-            let bytes = sunipdf_core::security::unprotect(&input, &password)?;
+            let bytes = sunipdf_core::security::unprotect(
+                &input,
+                password.as_deref().ok_or(EngineError::PasswordRequired)?,
+            )?;
             sunipdf_core::write_atomic(&out, &bytes)?;
             Ok(serde_json::json!({ "out": out }))
         }
@@ -1735,6 +1786,42 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 jpeg_quality,
             },
         ),
+        Command::SearchFiles {
+            files,
+            query,
+            match_case,
+            password,
+        } => sunipdf_core::local_review::search_files(
+            &engine,
+            &files,
+            &query,
+            match_case,
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _, _, _| {},
+        )
+        .map(|report| report.json()),
+        Command::Compare {
+            left,
+            right,
+            left_start,
+            right_start,
+            max_pages,
+            password,
+        } => sunipdf_core::local_review::compare_files(
+            &engine,
+            &left,
+            &right,
+            sunipdf_core::local_review::CompareOptions {
+                left_start,
+                right_start,
+                max_pages,
+            },
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _| {},
+        )
+        .map(|report| report.json()),
         Command::Search {
             file,
             query,
@@ -1793,6 +1880,21 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     "stroke": hex(o.stroke_rgb),
                 })).collect::<Vec<_>>(),
             }))
+        }
+        Command::ReorderObjects {
+            file,
+            page,
+            objects,
+            at,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            let new_indices = doc.reorder_objects(p, &indices, sunipdf_core::ZOrder::At(at))?;
+            doc.save_as(&out)?;
+            Ok(serde_json::json!({ "out": out, "page": page, "new_indices": new_indices }))
         }
         Command::AddText {
             file,
@@ -2508,6 +2610,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Optimize { out, .. }
         | Command::CompressImages { out, .. }
         | Command::AddText { out, .. }
+        | Command::ReorderObjects { out, .. }
         | Command::SetOpacity { out, .. }
         | Command::RotateObject { out, .. }
         | Command::RotateObjects { out, .. }
@@ -2695,11 +2798,26 @@ fn main() -> ExitCode {
 }
 
 fn cli_main() -> ExitCode {
-    match run(Cli::parse()) {
+    let cli = Cli::parse();
+    let signature_check = matches!(&cli.command, Command::Signatures { .. });
+    let local_review_check = matches!(
+        &cli.command,
+        Command::SearchFiles { .. } | Command::Compare { .. }
+    );
+    match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
-            println!("{}", serde_json::to_string_pretty(&value).expect("json"));
-            ExitCode::SUCCESS
+            println!(
+                "{}",
+                safe_output::escape_c1(&serde_json::to_string_pretty(&value).expect("json"))
+            );
+            if (signature_check && value["verification_failed"] == true)
+                || (local_review_check && value["complete"] == false)
+            {
+                ExitCode::from(2)
+            } else {
+                ExitCode::SUCCESS
+            }
         }
         Err(e) => {
             // Numéros de page affichés en base 1, comme à la saisie.
@@ -2711,7 +2829,9 @@ fn cli_main() -> ExitCode {
             };
             eprintln!(
                 "{}",
-                serde_json::json!({ "error": e.code(), "message": message })
+                safe_output::escape_c1(
+                    &serde_json::json!({ "error": e.code(), "message": message }).to_string()
+                )
             );
             ExitCode::from(match e {
                 EngineError::PasswordRequired => 3,

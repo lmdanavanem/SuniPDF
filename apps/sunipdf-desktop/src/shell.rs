@@ -144,6 +144,8 @@ pub fn tool_row(
 /// Icône associée à une commande (glyphe Fluent + repli texte).
 pub fn command_icon(command: Command) -> (&'static str, &'static str) {
     match command {
+        Command::CompareFiles => (glyph::PAGES, "◫"),
+        Command::SearchFiles => (glyph::FIND, "⌕"),
         Command::CompressImages => (glyph::PHOTO, "⤓"),
         Command::ProcessFiles => (glyph::PAGES, "▣"),
         Command::RichAnnotations => (glyph::EDIT_DOC, "A"),

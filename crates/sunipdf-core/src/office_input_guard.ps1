@@ -64,7 +64,7 @@ try {
                 if ($reader.NodeType -ne [Xml.XmlNodeType]::Element) { continue }
                 $local = $reader.LocalName
                 $ns = $reader.NamespaceURI
-                if ($local -match '^(instrText|fldSimple|fldChar|altChunk|oleObject|control|externalData|attachedTemplate|dataBinding|DDE|ddeLink|dde-links|dde-connection|event-listener|script|scripts|object|object-ole|f|formula|annotation|annotation-end|encryption-data)$' -or $ns -match 'script|xml-events') { throw 'Active fields, formulas, scripts, encryption or embedded objects are unsupported' }
+                if ($local -match '^(instrText|fldSimple|fldChar|altChunk|oleObject|control|externalData|attachedTemplate|dataBinding|DDE|ddeLink|dde-links|dde-connection|event-listener|script|scripts|object|object-ole|binary-data|f|formula|conditional-format|conditional-formats|condition|annotation|annotation-end|encryption-data)$' -or $ns -match 'script|xml-events') { throw 'Active fields, formulas, scripts, encryption or embedded objects are unsupported' }
                 if ($local -eq 'Relationship') {
                     $target = $reader.GetAttribute('Target')
                     $type = $reader.GetAttribute('Type')
@@ -84,7 +84,7 @@ try {
                 }
                 if ($reader.HasAttributes) {
                     while ($reader.MoveToNextAttribute()) {
-                        if ($reader.LocalName -in @('formula','update-mode','code','macro-name') -or $reader.NamespaceURI -match 'script|xml-events') { throw 'Active Office attribute is unsupported' }
+                        if ($reader.LocalName -in @('formula','condition','update-mode','code','macro-name') -or $reader.NamespaceURI -match 'script|xml-events') { throw 'Active Office attribute is unsupported' }
                         if ($reader.LocalName -eq 'ContentType' -and $reader.Value -match '(?i)macro|vba|activeX|oleObject') { throw 'Active Office content type is unsupported' }
                         if ($reader.LocalName -eq 'href') {
                             $href = $reader.Value

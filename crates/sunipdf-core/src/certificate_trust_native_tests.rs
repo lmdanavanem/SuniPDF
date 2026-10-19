@@ -262,9 +262,9 @@ fn rfc3161_token_is_bound_to_the_cms_signature_and_self_signed_tsa_is_untrusted(
         VerificationOptions::default(),
     )
     .unwrap();
-    assert_eq!(info.subject, "SuniPDF Test Identity");
+    assert!(info.subject.starts_with("CN=") && info.subject.contains("SuniPDF Test Identity"));
     assert_eq!(trust.timestamp.status, TimestampStatus::Untrusted);
-    assert!(!trust.identity_trusted() && !trust.network_allowed);
+    assert!(!trust.chain_and_revocation_trusted() && !trust.network_allowed);
     let duplicate = add_timestamp(&message, &token);
     let (_, ambiguous) = super::super::verify_trust(
         &duplicate,

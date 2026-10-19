@@ -281,8 +281,11 @@ pub fn protect(
 ) -> Result<Vec<u8>, EngineError> {
     p.validate()?;
     let mut doc = load(input, current_password)?;
-    // Remplacer la protection existante, pas la superposer.
-    doc.encryption_state = None;
+    if let Some(state) = doc.encryption_state.take() {
+        if !owner_password_matches(&doc, &state, current_password.unwrap_or(""))? {
+            return Err(EngineError::PasswordRequired);
+        }
+    }
     // Les algorithmes R4 dérivent la clé de l'identifiant de fichier : en créer un s'il manque.
     if doc.trailer.get(b"ID").is_err() {
         let mut id = [0u8; 16];

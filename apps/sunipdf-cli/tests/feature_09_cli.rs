@@ -24,6 +24,15 @@ fn json(output: Output) -> serde_json::Value {
     serde_json::from_slice(&output.stdout).unwrap()
 }
 
+fn failed_signature_report(output: Output) -> serde_json::Value {
+    assert_eq!(output.status.code(), Some(2));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["verification_failed"], true);
+    assert_eq!(report["verification_passed"], false);
+    assert_eq!(report["identity_trusted"], false);
+    report
+}
+
 fn failed(output: Output, out: &Path) -> serde_json::Value {
     assert!(!output.status.success());
     assert!(!out.exists(), "a failed operation created output");
@@ -301,7 +310,8 @@ fn digital_signatures_verify_saved_bytes_and_never_replace_the_source_or_disclos
     bytes[offset] = b'T';
     std::fs::write(&tampered, bytes).unwrap();
     assert_eq!(
-        json(cli().arg("signatures").arg(&tampered).output().unwrap())["signatures"][0]["status"],
+        failed_signature_report(cli().arg("signatures").arg(&tampered).output().unwrap())
+            ["signatures"][0]["status"],
         "invalid"
     );
     let appended = temp.path().join("appended.pdf");
@@ -309,7 +319,8 @@ fn digital_signatures_verify_saved_bytes_and_never_replace_the_source_or_disclos
     bytes.extend_from_slice(b"\n% changed after signing\n");
     std::fs::write(&appended, bytes).unwrap();
     assert_eq!(
-        json(cli().arg("signatures").arg(&appended).output().unwrap())["signatures"][0]["status"],
+        failed_signature_report(cli().arg("signatures").arg(&appended).output().unwrap())
+            ["signatures"][0]["status"],
         "modified_after_signing"
     );
 

@@ -199,6 +199,7 @@ const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
 ];
 
 pub struct SuniApp {
+    pub review: crate::local_review::ReviewState,
     pub processing: crate::processing::ProcessingState,
     pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
@@ -284,6 +285,7 @@ impl SuniApp {
         let mut app = Self {
             processing: Default::default(),
             office: Default::default(),
+            review: Default::default(),
             reading_full_screen: false,
             recovery,
             printing: Default::default(),
@@ -599,6 +601,15 @@ impl SuniApp {
                     self.engine = EngineState::Ready;
                     self.open_next_pending();
                 }
+                Response::LocalReviewProgress {
+                    done,
+                    total,
+                    page,
+                    pages,
+                } => {
+                    self.review.progress = (done, total, page, pages);
+                }
+                Response::LocalReviewDone(result) => self.on_local_review(ctx, result),
                 Response::EngineFailed(e) => {
                     self.error = Some(error_key(&e));
                     log::error!("moteur indisponible : {e}");
@@ -682,6 +693,9 @@ impl SuniApp {
                         }
                     }
                 }
+                Response::ProtectionAuthorization { epoch, encrypted } => {
+                    self.protection_authorized(epoch, encrypted);
+                }
                 Response::Signatures(result) => {
                     self.certificate.busy = false;
                     match result {
@@ -714,6 +728,7 @@ impl SuniApp {
                     }
                 }
                 Response::SuspendFailed(error) => {
+                    self.review.pending_page = None;
                     self.opening = None;
                     self.tabs.resuming = None;
                     if let Some(index) = self.tabs.suspending.take() {
@@ -773,6 +788,15 @@ impl SuniApp {
                     self.view.request(crate::view::ScrollRequest::Page(0));
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
+                    if let Some((path, page)) = self.review.pending_page.take() {
+                        if self
+                            .document
+                            .as_ref()
+                            .is_some_and(|doc| doc.info.path == path)
+                        {
+                            self.go_to_page(page.saturating_sub(1));
+                        }
+                    }
                     self.dirty = restored.is_some();
                     self.worker.send(Request::SetRecovery(self.recovery_slot()));
                     self.status_msg = None;
@@ -797,6 +821,9 @@ impl SuniApp {
                     self.open_next_pending();
                 }
                 Response::OpenFailed { path, error } => {
+                    if !matches!(error, EngineError::PasswordRequired) {
+                        self.review.pending_page = None;
+                    }
                     self.opening = None;
                     if let Some(i) = self.tabs.resuming.take() {
                         if i < self.tabs.tabs.len() {
@@ -1329,7 +1356,8 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.edit.paragraph.is_some()
+        self.review.busy
+            || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.processing.busy
             || self.office.busy
@@ -1343,7 +1371,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.edit.paragraph.is_some()
+        self.review.busy
+            || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.ink_draft_active()
             || self.processing.busy
@@ -1642,7 +1671,9 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.processing.open
+        self.review.open
+            || self.review.busy
+            || self.processing.open
             || self.office.open
             || self.office.busy
             || self.sign.busy
@@ -1695,7 +1726,8 @@ impl SuniApp {
             self.ink_blocks_action();
             return;
         }
-        if (self.processing.busy
+        if (self.review.busy
+            || self.processing.busy
             || self.printing.busy
             || self.ocr.busy
             || self.certificate.busy
@@ -1708,6 +1740,9 @@ impl SuniApp {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            self.review
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             self.processing
                 .cancel
                 .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1754,6 +1789,8 @@ impl SuniApp {
             self.form_builder.cancel();
         }
         match command {
+            Command::CompareFiles => self.open_local_review(true),
+            Command::SearchFiles => self.open_local_review(false),
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
             Command::RichAnnotations => self.open_rich_annotations(ctx),
@@ -2119,14 +2156,22 @@ impl SuniApp {
             Command::Protect => {
                 self.docinfo.protection = sunipdf_core::Protection::default();
                 self.docinfo.protect_error = None;
-                self.docinfo.protect_open = true;
+                self.docinfo.current_owner = None;
+                self.docinfo.protect_open = false;
+                self.docinfo.protection_epoch = Some(self.view.epoch);
+                self.worker.send(Request::BeginProtection {
+                    epoch: self.view.epoch,
+                });
             }
             Command::Unprotect => {
+                self.docinfo.protection_epoch = None;
+                self.docinfo.current_owner = None;
                 let encrypted = self.docinfo.properties.as_ref().map(|p| p.encrypted);
                 if encrypted == Some(false) {
                     self.error = Some("error.not_encrypted");
                 } else {
                     self.docinfo.unprotect_password.clear();
+                    self.docinfo.unprotect_for_reprotect = false;
                     self.docinfo.unprotect_open = true;
                 }
             }
@@ -2813,6 +2858,7 @@ impl SuniApp {
             });
         } else if cancel {
             self.password_prompt = None;
+            self.review.pending_page = None;
             self.cancel_after_save();
         }
     }
@@ -3252,6 +3298,12 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::FormXfa => "error.form_xfa",
         EngineError::RedactionIncomplete => "error.redact_incomplete",
         EngineError::Cancelled => "error.cancelled",
+        EngineError::Other(message) if message == crate::worker::CERTIFICATE_SOURCE_CHANGED => {
+            "error.certificate_source_changed"
+        }
+        EngineError::Other(message) if message == crate::worker::CERTIFICATE_SAVE_FIRST => {
+            "error.certificate_save_first"
+        }
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -3269,6 +3321,7 @@ pub(crate) mod tests {
         let mut app = SuniApp {
             processing: Default::default(),
             office: Default::default(),
+            review: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),
@@ -4144,6 +4197,7 @@ pub(crate) mod tests {
             click_tab_control(&mut app, &ctx, "✕", 1);
             responses
                 .send(Response::Suspended(crate::worker::SuspendedDoc {
+                    signature_source: None,
                     bytes: vec![],
                     password: None,
                     path: PathBuf::from("test/first.pdf"),
@@ -4196,6 +4250,7 @@ pub(crate) mod tests {
             dirty,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4396,6 +4451,7 @@ pub(crate) mod tests {
                 dirty: false,
                 ui: Some(second_ui),
                 doc: Some(crate::worker::SuspendedDoc {
+                    signature_source: None,
                     bytes: vec![],
                     password: None,
                     path: PathBuf::from("test/second.pdf"),
@@ -4590,6 +4646,7 @@ pub(crate) mod tests {
             dirty: true,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4667,6 +4724,7 @@ pub(crate) mod tests {
             dirty: false,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4701,6 +4759,7 @@ pub(crate) mod tests {
         }
         responses
             .send(Response::Suspended(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/first.pdf"),
@@ -4843,6 +4902,7 @@ pub(crate) mod tests {
         );
         responses
             .send(Response::Suspended(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/first.pdf"),

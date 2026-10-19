@@ -630,6 +630,18 @@ impl SuniApp {
                             tr(lang, "security.redact.confirm.clean"),
                         )
                         .changed();
+                    if !r.clean_hidden {
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(tr(
+                                    lang,
+                                    "security.redact.confirm.keep_warning",
+                                ))
+                                .color(egui::Color32::from_rgb(220, 70, 70)),
+                            )
+                            .wrap(),
+                        );
+                    }
                     ui.horizontal(|ui| {
                         ui.label(tr(lang, "security.redact.fill"));
                         changed |= ui.color_edit_button_srgb(&mut r.fill_rgb).changed();
@@ -824,6 +836,41 @@ mod tests {
             bottom: b,
             right: r,
             top: t,
+        }
+    }
+
+    #[test]
+    fn confirmation_displays_hidden_data_warning_only_when_cleanup_is_disabled() {
+        for lang in sunipdf_i18n::Language::ALL {
+            let (mut app, _, _) = crate::app::tests::test_app();
+            app.settings.set_language(lang);
+            let ctx = egui::Context::default();
+            app.has_icons = crate::icons::install(&ctx);
+            app.annotate.redact.confirm_open = true;
+            app.annotate.redact.marks.push(RedactMark {
+                page: 0,
+                rect: rect(10.0, 10.0, 50.0, 50.0),
+            });
+            for clean in [true, false] {
+                app.annotate.redact.clean_hidden = clean;
+                let warning = tr(lang, "security.redact.confirm.keep_warning");
+                assert_ne!(warning, "security.redact.confirm.keep_warning");
+                let mut output =
+                    ctx.run_ui(Default::default(), |_| app.redact_confirm_dialog(&ctx));
+                output.textures_delta.clear();
+                output = ctx.run_ui(Default::default(), |_| app.redact_confirm_dialog(&ctx));
+                let shown = output.shapes.iter().any(|shape| match &shape.shape {
+                    egui::epaint::Shape::Text(text) => text.galley.job.text == warning,
+                    _ => false,
+                });
+                output.textures_delta.clear();
+                assert_eq!(
+                    shown,
+                    !clean,
+                    "cleanup warning visibility in {}",
+                    lang.code()
+                );
+            }
         }
     }
 

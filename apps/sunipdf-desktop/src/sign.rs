@@ -294,9 +294,9 @@ enum Act {
     Cancel,
 }
 
-/// Dossier des signatures enregistrées : `SUNIPDF_SIGNATURES_DIR` (tests, captures), sinon
-/// `%APPDATA%\SuniPDF\signatures`, protected for the current Windows user with DPAPI.
+/// User-profile signatures, protected with DPAPI. Debug builds may override the test directory.
 pub fn signatures_dir() -> Option<PathBuf> {
+    #[cfg(debug_assertions)]
     if let Some(dir) = std::env::var_os("SUNIPDF_SIGNATURES_DIR") {
         return Some(PathBuf::from(dir));
     }
@@ -779,9 +779,11 @@ impl SuniApp {
                 self.refresh_library();
             }
             Some(Act::PickImage) => {
-                // `SUNIPDF_PICK_FILE` remplace le sélecteur (captures et automatisation, comme
-                // `SUNIPDF_STARTUP_COMMANDS`) : le sélecteur natif ne se pilote pas.
-                let picked = match std::env::var_os("SUNIPDF_PICK_FILE") {
+                #[cfg(debug_assertions)]
+                let override_path = std::env::var_os("SUNIPDF_PICK_FILE");
+                #[cfg(not(debug_assertions))]
+                let override_path: Option<std::ffi::OsString> = None;
+                let picked = match override_path {
                     Some(p) => Some(PathBuf::from(p)),
                     None => rfd::FileDialog::new()
                         .set_title(tr(lang, "signature.import.pick_title"))

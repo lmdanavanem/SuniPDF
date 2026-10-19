@@ -11,16 +11,16 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           cache-on-failure: true
       - name: Cache pinned offline OCR runtime
         id: ocr_runtime
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: third_party/ocr/win-x64
           key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
@@ -30,12 +30,14 @@ jobs:
         run: .\scripts\fetch-ocr.ps1 -Arch x64
       - name: Save verified OCR build before application checks
         if: steps.ocr_runtime.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: third_party/ocr/win-x64
           key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Translation catalog parity
         run: .\scripts\check-i18n.ps1
+      - name: WiX download checksum guard self-test
+        run: .\scripts\package-msi.ps1 -SelfTest
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy
@@ -53,7 +55,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
       - name: Independent font reader evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: font-independent-reader-evidence
           path: |
@@ -66,7 +68,7 @@ jobs:
         run: .\scripts\run-built-ci-test.ps1 -TestName native_wgpu
       - name: Native renderer evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: native-wgpu-evidence
           path: target/native-wgpu-evidence/
@@ -85,7 +87,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Independent feature reader regression failed.' }
       - name: Independent feature reader evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: feature-independent-reader-evidence
           path: |
@@ -126,7 +128,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Office regression failed.' }
       - name: Office regression evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: office-regression-evidence
           path: |
@@ -135,7 +137,7 @@ jobs:
           if-no-files-found: ignore
       - name: Real corpus regression evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: real-corpus-evidence
           path: target/regression-corpus-report.json
@@ -144,6 +146,8 @@ jobs:
         run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: "Portable x64 package (including licenses and notices)"
         run: .\scripts\package-portable.ps1 -Arch x64
+      - name: Release native-library loading boundary
+        run: .\scripts\test-release-native-loading.ps1
       - name: Test-only software OpenGL checksum self-test
         run: .\scripts\fetch-test-opengl.ps1 -SelfTest
       - name: Test-only software OpenGL for the isolated application
@@ -152,7 +156,7 @@ jobs:
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: portable-update-evidence
           path: target/portable-update-*.json
@@ -177,14 +181,17 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.20.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.31.0
       - name: MSI upgrade regression evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: msi-upgrade-evidence
           path: target/msi-upgrade-*/*.log
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sunipdf-win-x64-portable
           path: |

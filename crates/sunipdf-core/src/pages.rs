@@ -568,9 +568,14 @@ impl Document<'_> {
 
     /// Enregistre l'état courant (atomiquement) dans `output`. Le chemin peut être l'original.
     pub fn save_as(&self, output: &Path) -> Result<(), EngineError> {
+        self.save_as_bytes(output).map(|_| ())
+    }
+
+    /// Atomically save and return the exact bytes written, for consumers bound to that revision.
+    pub fn save_as_bytes(&self, output: &Path) -> Result<Vec<u8>, EngineError> {
         let bytes = self.inner.save_to_bytes()?;
         write_atomic(output, &bytes)?;
-        Ok(())
+        Ok(bytes)
     }
 
     pub(crate) fn page_handle(&self, page_index: usize) -> Result<PdfPage<'_>, EngineError> {

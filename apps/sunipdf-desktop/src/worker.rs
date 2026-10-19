@@ -3,6 +3,7 @@
 //! (`SetWanted`) et rendue une tuile à la fois entre deux requêtes, journal d'annulation par
 //! instantanés (octets PDF) pour toutes les modifications de pages.
 
+use sha2::{Digest, Sha256};
 use std::cell::Cell;
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -23,6 +24,40 @@ const CACHE_BYTES: usize = 256 * 1024 * 1024;
 const UNDO_MAX_ENTRIES: usize = 50;
 const UNDO_MAX_BYTES: usize = 512 * 1024 * 1024;
 
+pub(crate) const CERTIFICATE_SOURCE_CHANGED: &str =
+    "certificate source changed; reload the document";
+pub(crate) const CERTIFICATE_SAVE_FIRST: &str = "save changes before signing or verifying";
+
+/// Exact bytes last opened or saved, independent of PDFium's rewritten snapshots.
+#[derive(Clone)]
+pub struct SignatureSource {
+    bytes: Arc<[u8]>,
+    sha256: [u8; 32],
+}
+
+impl SignatureSource {
+    fn new(bytes: Vec<u8>) -> Self {
+        Self {
+            sha256: Sha256::digest(&bytes).into(),
+            bytes: bytes.into(),
+        }
+    }
+
+    fn checked_bytes(&self, path: &std::path::Path, modified: bool) -> Result<&[u8], EngineError> {
+        if modified {
+            return Err(EngineError::Other(CERTIFICATE_SAVE_FIRST.into()));
+        }
+        let current = std::fs::read(path)
+            .map_err(|_| EngineError::Other(CERTIFICATE_SOURCE_CHANGED.into()))?;
+        let digest: [u8; 32] = Sha256::digest(&current).into();
+        if digest != self.sha256 {
+            return Err(EngineError::Other(CERTIFICATE_SOURCE_CHANGED.into()));
+        }
+        // Only the captured revision is ever signed or verified, even if disk changes after checking.
+        Ok(&self.bytes)
+    }
+}
+
 /// Document suspendu (onglet inactif) : octets, mot de passe, chemin, historique d'annulation.
 pub struct SuspendedDoc {
     pub bytes: Vec<u8>,
@@ -34,6 +69,7 @@ pub struct SuspendedDoc {
     pub save_point: Option<usize>,
     /// Modifié depuis l'ouverture ou le dernier enregistrement.
     pub modified: bool,
+    pub signature_source: Option<SignatureSource>,
 }
 
 /// Instantané d'annulation : octets du document et mot de passe nécessaire pour les recharger
@@ -118,7 +154,10 @@ pub enum BatchResult {
 /// Transformation d'octets (lopdf) : chiffrement, métadonnées.
 pub enum BytesOp {
     Bookmark(sunipdf_core::bookmarks::BookmarkEdit),
-    Protect(Protection),
+    Protect {
+        protection: Protection,
+        current_owner: Option<zeroize::Zeroizing<String>>,
+    },
     /// Mot de passe propriétaire saisi par l'utilisateur.
     Unprotect(String),
     SetMetadata(Metadata),
@@ -453,6 +492,7 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    LocalReview(crate::local_review::Job),
     Office(crate::office::Job),
     ProcessFiles(crate::processing::ProcessingJob),
     Print {
@@ -476,6 +516,9 @@ pub enum Request {
         cancel: Arc<std::sync::atomic::AtomicBool>,
     },
     VerifySignatures,
+    BeginProtection {
+        epoch: u64,
+    },
     VerifySignaturesWithOptions(sunipdf_core::certificate::VerificationOptions),
     SignCertificate {
         pfx: PathBuf,
@@ -661,6 +704,17 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    LocalReviewProgress {
+        done: usize,
+        total: usize,
+        page: usize,
+        pages: usize,
+    },
+    LocalReviewDone(Result<crate::local_review::Outcome, EngineError>),
+    ProtectionAuthorization {
+        epoch: u64,
+        encrypted: bool,
+    },
     OfficeProgress {
         done: usize,
         total: usize,
@@ -893,6 +947,7 @@ impl Worker {
 struct State<'a> {
     recovery: Option<crate::recovery::Slot>,
     document: Option<Document<'a>>,
+    signature_source: Option<SignatureSource>,
     cache: RenderCache,
     /// Tuiles voulues par l'UI, rendues une à une quand aucune requête n'attend.
     wanted: WantedQueue,
@@ -914,6 +969,17 @@ struct State<'a> {
 }
 
 impl State<'_> {
+    fn signature_bytes(&self) -> Result<&[u8], EngineError> {
+        let doc = self
+            .document
+            .as_ref()
+            .ok_or_else(|| EngineError::Other("no document".into()))?;
+        self.signature_source
+            .as_ref()
+            .ok_or_else(|| EngineError::Other(CERTIFICATE_SOURCE_CHANGED.into()))?
+            .checked_bytes(&doc.info().path, self.modified())
+    }
+
     fn render_cached(&mut self, page: usize, scale: f32) -> Result<Arc<RenderedPage>, EngineError> {
         if let Some(hit) = self.cache.get(page, scale) {
             return Ok(hit);
@@ -1117,10 +1183,43 @@ impl State<'_> {
 mod save_point_tests {
     use super::*;
 
+    #[test]
+    fn signature_source_rejects_changed_missing_and_unsaved_documents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("loaded.pdf");
+        let original = b"original displayed revision".to_vec();
+        std::fs::write(&path, &original).unwrap();
+        let source = SignatureSource::new(original.clone());
+        assert_eq!(source.checked_bytes(&path, false).unwrap(), original);
+        assert!(
+            matches!(source.checked_bytes(&path, true), Err(EngineError::Other(message))
+            if message == CERTIFICATE_SAVE_FIRST)
+        );
+        std::fs::write(&path, b"replacement revision").unwrap();
+        assert!(
+            matches!(source.checked_bytes(&path, false), Err(EngineError::Other(message))
+            if message == CERTIFICATE_SOURCE_CHANGED)
+        );
+        std::fs::remove_file(&path).unwrap();
+        assert!(
+            matches!(source.checked_bytes(&path, false), Err(EngineError::Other(message))
+            if message == CERTIFICATE_SOURCE_CHANGED)
+        );
+        // A concurrent change after the check cannot redirect operations to the replacement bytes.
+        std::fs::write(&path, &original).unwrap();
+        let captured = source.checked_bytes(&path, false).unwrap();
+        std::fs::write(&path, b"changed after checking").unwrap();
+        assert_eq!(captured, original);
+        let resumed = source.clone();
+        std::fs::write(&path, &original).unwrap();
+        assert_eq!(resumed.checked_bytes(&path, false).unwrap(), original);
+    }
+
     fn state() -> State<'static> {
         State {
             recovery: None,
             document: None,
+            signature_source: None,
             cache: RenderCache::new(1024),
             wanted: WantedQueue::default(),
             undo: Vec::new(),
@@ -1469,8 +1568,15 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             let password = doc.password().map(str::to_owned);
             match op {
                 BytesOp::Bookmark(edit) => doc.edit_bookmark(&edit),
-                BytesOp::Protect(p) => {
-                    let bytes = security::protect(&current, password.as_deref(), &p)?;
+                BytesOp::Protect {
+                    protection: p,
+                    current_owner,
+                } => {
+                    let password = current_owner
+                        .as_ref()
+                        .map(|value| value.as_str())
+                        .or(password.as_deref());
+                    let bytes = security::protect(&current, password, &p)?;
                     let typed = if p.user_password.is_empty() {
                         p.owner_password
                     } else {
@@ -1592,6 +1698,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     let mut state = State {
         recovery: None,
         document: None,
+        signature_source: None,
         cache: RenderCache::new(CACHE_BYTES),
         wanted: WantedQueue::default(),
         undo: Vec::new(),
@@ -1635,6 +1742,19 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         };
         // 2. Traitement.
         let response = match request {
+            Request::LocalReview(job) => {
+                let result =
+                    crate::local_review::run_job(&engine, job, |done, total, page, pages| {
+                        let _ = tx.send(Response::LocalReviewProgress {
+                            done,
+                            total,
+                            page,
+                            pages,
+                        });
+                        ctx.request_repaint();
+                    });
+                Response::LocalReviewDone(result)
+            }
             Request::AcknowledgeSuspendFailure => {
                 navigation_failed = false;
                 continue;
@@ -1838,6 +1958,15 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     },
                 }
             }
+            Request::BeginProtection { epoch } => {
+                let Some(doc) = state.document.as_ref() else {
+                    continue;
+                };
+                Response::ProtectionAuthorization {
+                    epoch,
+                    encrypted: doc.is_encrypted(),
+                }
+            }
             request @ (Request::VerifySignatures | Request::VerifySignaturesWithOptions(_)) => {
                 let options = match request {
                     Request::VerifySignaturesWithOptions(options) => options,
@@ -1848,9 +1977,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     .as_ref()
                     .ok_or_else(|| EngineError::Other("no document".into()))
                     .and_then(|doc| {
-                        let bytes = std::fs::read(&doc.info().path)?;
+                        let bytes = state.signature_bytes()?;
                         sunipdf_core::certificate::verify_signatures_with_options(
-                            &bytes,
+                            bytes,
                             doc.password(),
                             options,
                         )
@@ -1864,30 +1993,29 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 output,
             } => {
                 let result = (|| {
-                    let doc = state
-                        .document
-                        .as_ref()
-                        .ok_or_else(|| EngineError::Other("no document".into()))?;
-                    if state.modified() {
-                        return Err(EngineError::Other("save changes before signing".into()));
-                    }
+                    let source = state.signature_bytes()?;
                     // A fresh path also excludes hard-link aliases of the source.
                     if output.exists() {
                         return Err(EngineError::AlreadyExists(output));
                     }
-                    let source = std::fs::read(&doc.info().path)?;
                     let identity = zeroize::Zeroizing::new(std::fs::read(pfx)?);
                     let signed = sunipdf_core::certificate::sign_pdf(
-                        &source, &identity, &password, &options,
+                        source, &identity, &password, &options,
                     )?;
                     write_new_copy(&output, &signed)?;
                     Ok(output)
                 })();
                 Response::SignedCopy(result)
             }
-            Request::Open { path, password } => match engine.open(&path, password.as_deref()) {
-                Ok(doc) => {
+            Request::Open { path, password } => match std::fs::read(&path)
+                .map_err(EngineError::from)
+                .and_then(|bytes| {
+                    let doc = engine.open_bytes(bytes.clone(), password.as_deref(), &path)?;
+                    Ok((doc, SignatureSource::new(bytes)))
+                }) {
+                Ok((doc, source)) => {
                     state.document = Some(doc);
+                    state.signature_source = Some(source);
                     state.invalidate();
                     state.undo.clear();
                     state.redo.clear();
@@ -2118,6 +2246,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     undo: std::mem::take(&mut state.undo),
                     redo: std::mem::take(&mut state.redo),
                     save_point: state.save_point.replace(0),
+                    signature_source: state.signature_source.take(),
                 };
                 state.recovery = None;
                 state.invalidate();
@@ -2131,6 +2260,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 match engine.open_bytes(s.bytes, s.password.as_deref(), &s.path) {
                     Ok(doc) => {
                         state.document = Some(doc);
+                        state.signature_source = s.signature_source;
                         state.invalidate();
                         state.undo = s.undo;
                         state.redo = s.redo;
@@ -2358,8 +2488,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &mut state.document else {
                     continue;
                 };
-                match doc.save_as(&path) {
-                    Ok(()) => {
+                match doc.save_as_bytes(&path) {
+                    Ok(bytes) => {
+                        state.signature_source = Some(SignatureSource::new(bytes));
                         // « Enregistrer sous » : le document suit son nouveau chemin (Ctrl+S, onglets).
                         doc.set_path(path.clone());
                         state.save_point = Some(state.undo.len());
@@ -2384,6 +2515,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     }
                 }
                 state.document = None;
+                state.signature_source = None;
                 state.invalidate();
                 state.undo.clear();
                 state.redo.clear();
@@ -2471,6 +2603,8 @@ mod tests {
         editable_combo_creation_and_filling_undo_redo(&worker);
         prepared_redaction_has_one_undo_and_cancellation_keeps_history(&worker);
         encrypted_recovery_after_redaction(&worker);
+        signatures_bind_to_loaded_saved_and_resumed_bytes(&worker);
+        reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
     }
 
     fn next_response(worker: &Worker) -> Response {
@@ -2484,6 +2618,186 @@ mod tests {
             } else {
                 return response;
             }
+        }
+    }
+
+    fn signatures_bind_to_loaded_saved_and_resumed_bytes(worker: &Worker) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("loaded.pdf");
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&path, &original).unwrap();
+        worker.send(Request::Open {
+            path: path.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let mut replaced = original.clone();
+        replaced.extend_from_slice(b"\n% external revision\n");
+        std::fs::write(&path, &replaced).unwrap();
+        worker.send(Request::VerifySignatures);
+        assert!(
+            matches!(next_response(worker), Response::Signatures(Err(EngineError::Other(message)))
+            if message == CERTIFICATE_SOURCE_CHANGED)
+        );
+        let output = dir.path().join("signed.pdf");
+        let sign = || Request::SignCertificate {
+            pfx: dir.path().join("identity-must-not-be-read.pfx"),
+            password: zeroize::Zeroizing::new(String::new()),
+            options: Default::default(),
+            output: output.clone(),
+        };
+        worker.send(sign());
+        assert!(
+            matches!(next_response(worker), Response::SignedCopy(Err(EngineError::Other(message)))
+            if message == CERTIFICATE_SOURCE_CHANGED)
+        );
+        assert!(!output.exists());
+        std::fs::write(&path, &original).unwrap();
+        worker.send(Request::Suspend);
+        let suspended = match next_response(worker) {
+            Response::Suspended(suspended) => suspended,
+            _ => panic!("suspend loaded signature source"),
+        };
+        assert_eq!(
+            suspended.signature_source.as_ref().unwrap().bytes.as_ref(),
+            original
+        );
+        worker.send(Request::ResumeDoc(suspended));
+        assert!(matches!(next_response(worker), Response::Resumed(_)));
+        worker.send(Request::VerifySignatures);
+        assert!(matches!(next_response(worker), Response::Signatures(Ok(list)) if list.is_empty()));
+        worker.send(Request::Edit(EditOp::AddText {
+            page: 0,
+            text: "Saved signing revision".into(),
+            x: 30.0,
+            y: 60.0,
+            style: TextStyle::default(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::VerifySignatures);
+        assert!(
+            matches!(next_response(worker), Response::Signatures(Err(EngineError::Other(message)))
+            if message == CERTIFICATE_SAVE_FIRST)
+        );
+        worker.send(sign());
+        assert!(
+            matches!(next_response(worker), Response::SignedCopy(Err(EngineError::Other(message)))
+            if message == CERTIFICATE_SAVE_FIRST)
+        );
+        worker.send(Request::Save { path: path.clone() });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::VerifySignatures);
+        assert!(
+            matches!(next_response(worker), Response::Signatures(Ok(list)) if list.is_empty()),
+            "saving must capture the exact written bytes, not a separately rewritten snapshot"
+        );
+        worker.send(Request::Suspend);
+        let suspended = match next_response(worker) {
+            Response::Suspended(suspended) => suspended,
+            _ => panic!("suspend saved signature source"),
+        };
+        assert_eq!(
+            suspended.signature_source.as_ref().unwrap().bytes.as_ref(),
+            std::fs::read(&path).unwrap()
+        );
+        worker.send(Request::ResumeDoc(suspended));
+        assert!(matches!(next_response(worker), Response::Resumed(_)));
+    }
+
+    fn reprotection_requires_the_current_owner_without_removing_existing_restrictions(
+        worker: &Worker,
+    ) {
+        let dir = tempfile::tempdir().unwrap();
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        for aes256 in [false, true] {
+            let path = dir.path().join(format!("restricted-{aes256}.pdf"));
+            let protected = security::protect(
+                &original,
+                None,
+                &Protection {
+                    owner_password: "current-owner".into(),
+                    allow_copy: false,
+                    allow_modify: false,
+                    aes256,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            std::fs::write(&path, &protected).unwrap();
+            worker.send(Request::Open {
+                path: path.clone(),
+                password: None,
+            });
+            assert!(matches!(next_response(worker), Response::Opened(_)));
+            worker.send(Request::BeginProtection { epoch: 81 });
+            assert!(matches!(
+                next_response(worker),
+                Response::ProtectionAuthorization {
+                    epoch: 81,
+                    encrypted: true
+                }
+            ));
+            let replacement = || Protection {
+                owner_password: "new-owner".into(),
+                aes256,
+                ..Default::default()
+            };
+            worker.send(Request::Edit(EditOp::Bytes(BytesOp::Protect {
+                protection: replacement(),
+                current_owner: None,
+            })));
+            assert!(matches!(
+                next_response(worker),
+                Response::OperationFailed(EngineError::PasswordRequired)
+            ));
+            worker.send(Request::Properties);
+            assert!(
+                matches!(
+                    next_response(worker),
+                    Response::Properties(Properties {
+                        encrypted: true,
+                        can_copy: false,
+                        can_modify: false,
+                        ..
+                    })
+                ),
+                "refused reprotection must preserve restrictions"
+            );
+            worker.send(Request::Edit(EditOp::Bytes(BytesOp::Protect {
+                protection: replacement(),
+                current_owner: Some(zeroize::Zeroizing::new("current-owner".into())),
+            })));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            worker.send(Request::Undo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            worker.send(Request::Properties);
+            assert!(matches!(
+                next_response(worker),
+                Response::Properties(Properties {
+                    encrypted: true,
+                    can_copy: false,
+                    can_modify: false,
+                    ..
+                })
+            ));
+            assert_eq!(std::fs::read(&path).unwrap(), protected);
         }
     }
 

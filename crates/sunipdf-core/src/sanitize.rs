@@ -19,10 +19,19 @@ const REMOVE: &[&[u8]] = &[
     b"Collection",
     b"Metadata",
     b"PieceInfo",
+    b"XFA",
 ];
 const MAX_NODES: usize = 1_000_000;
 const MAX_CONTENT: usize = 8 * 1024 * 1024;
 const MAX_TOTAL_CONTENT: usize = 256 * 1024 * 1024;
+const REMOVED_ANNOTATIONS: &[&[u8]] = &[
+    b"FileAttachment",
+    b"RichMedia",
+    b"Movie",
+    b"Sound",
+    b"3D",
+    b"Screen",
+];
 
 #[derive(Debug, Clone)]
 pub struct SanitizeReport {
@@ -230,10 +239,7 @@ fn clean(
         for annotation in original {
             let subtype = name(pdf, dictionary(pdf, annotation)?, b"Subtype")
                 .ok_or_else(|| invalid("invalid annotation subtype"))?;
-            if matches!(
-                subtype,
-                b"FileAttachment" | b"RichMedia" | b"Movie" | b"Sound" | b"3D"
-            ) {
+            if REMOVED_ANNOTATIONS.contains(&subtype) {
                 report.removed_annotations += 1;
             } else {
                 kept.push(annotation.clone());
@@ -289,6 +295,7 @@ fn verify(
     if REMOVE.iter().any(|key| dict.has(key))
         || name(pdf, dict, b"Type") == Some(b"EmbeddedFile")
         || name(pdf, dict, b"S") == Some(b"JavaScript")
+        || name(pdf, dict, b"Subtype").is_some_and(|subtype| REMOVED_ANNOTATIONS.contains(&subtype))
     {
         return Err(invalid("cleanup could not be verified"));
     }
@@ -344,5 +351,24 @@ pub fn sanitize_document(
 impl Document<'_> {
     pub fn sanitized_copy(&self) -> Result<(Vec<u8>, SanitizeReport), EngineError> {
         sanitize_document(&self.snapshot()?, self.password())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use lopdf::dictionary;
+
+    #[test]
+    fn cleanup_verification_rejects_remaining_xfa_and_screen_annotations() {
+        let pdf = lopdf::Document::new();
+        for object in [
+            Object::Dictionary(
+                dictionary! {"AcroForm"=>dictionary! {"XFA"=>Object::string_literal("remaining")}},
+            ),
+            Object::Dictionary(dictionary! {"Subtype"=>"Screen"}),
+        ] {
+            assert!(verify(&pdf, &object, 0, &mut 0).is_err());
+        }
     }
 }

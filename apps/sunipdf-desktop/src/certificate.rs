@@ -2,7 +2,9 @@
 
 use crate::dialog::{self, Spec};
 use std::path::PathBuf;
-use sunipdf_core::certificate::{CertSignOptions, DigitalSignature, VerificationOptions};
+use sunipdf_core::certificate::{
+    display_declared_text, CertSignOptions, DigitalSignature, SignatureStatus, VerificationOptions,
+};
 use sunipdf_i18n::{tr, Language};
 use zeroize::Zeroizing;
 
@@ -31,6 +33,20 @@ pub struct CertificateState {
 }
 
 impl CertificateState {
+    fn summary_key(signatures: &[DigitalSignature]) -> &'static str {
+        if signatures.is_empty() {
+            "certificate.none"
+        } else if signatures
+            .iter()
+            .any(|signature| signature.status != SignatureStatus::Valid)
+        {
+            "certificate.summary.failed"
+        } else if signatures.iter().all(DigitalSignature::identity_trusted) {
+            "certificate.summary.trusted"
+        } else {
+            "certificate.summary.integrity_only"
+        }
+    }
     pub fn open(&mut self, signing: bool) {
         self.visible = true;
         self.signing = signing;
@@ -83,6 +99,9 @@ impl CertificateState {
             )
             .width(520.0),
             |ui| {
+                if let Some(signatures) = &self.signatures {
+                    ui.strong(tr(lang, Self::summary_key(signatures)));
+                }
                 ui.label(tr(lang, "certificate.trust_unknown"));
                 ui.label(tr(lang, "certificate.scope"));
                 if !self.signing {
@@ -131,7 +150,7 @@ impl CertificateState {
                     }
                     for signature in signatures {
                         ui.separator();
-                        ui.strong(&signature.field_name);
+                        ui.strong(tr(lang, "certificate.verifier_verdict"));
                         ui.label(tr(
                             lang,
                             &format!("certificate.status.{}", signature.status.id()),
@@ -165,12 +184,12 @@ impl CertificateState {
                             ui.label(format!(
                                 "{}: {}",
                                 tr(lang, "certificate.subject"),
-                                cert.subject
+                                display_declared_text(&cert.subject)
                             ));
                             ui.label(format!(
                                 "{}: {}",
                                 tr(lang, "certificate.issuer"),
-                                cert.issuer
+                                display_declared_text(&cert.issuer)
                             ));
                             ui.label(format!(
                                 "{}: {} — {}",
@@ -180,15 +199,27 @@ impl CertificateState {
                             ));
                             ui.label(format!("SHA-256: {}", cert.sha256_hex));
                         }
-                        for (key, value) in [
-                            ("certificate.reason", &signature.reason),
-                            ("certificate.location", &signature.location),
-                            ("certificate.declared_time", &signature.signing_time),
-                        ] {
-                            if let Some(value) = value {
-                                ui.label(format!("{}: {}", tr(lang, key), value));
+                        ui.group(|ui| {
+                            ui.label(tr(lang, "certificate.declared_by_signer"));
+                            ui.label(format!(
+                                "{}: {}",
+                                tr(lang, "certificate.field_name"),
+                                display_declared_text(&signature.field_name)
+                            ));
+                            for (key, value) in [
+                                ("certificate.reason", &signature.reason),
+                                ("certificate.location", &signature.location),
+                                ("certificate.declared_time", &signature.signing_time),
+                            ] {
+                                if let Some(value) = value {
+                                    ui.label(format!(
+                                        "{}: {}",
+                                        tr(lang, key),
+                                        display_declared_text(value)
+                                    ));
+                                }
                             }
-                        }
+                        });
                     }
                 }
                 if self.busy {

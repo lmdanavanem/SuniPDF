@@ -1058,6 +1058,7 @@ impl SuniApp {
                 ZOrder::Backward => {
                     Pick::Indices(indices.iter().map(|i| i.saturating_sub(1)).collect())
                 }
+                ZOrder::At(index) => Pick::Indices((index..index + n).collect()),
             };
             self.edit.reselect_many = Some((page, pick));
             self.worker

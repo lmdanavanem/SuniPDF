@@ -1,5 +1,11 @@
 # Caviardage
 
+En 0.30.1, le nettoyage par défaut retire aussi XFA et les textes de remplacement d'accessibilité
+(`ActualText`/`Alt`) des contenus/ressources de pages, formulaires et motifs conservés. La confirmation
+décrit cette portée sur tout le document. Désactiver le nettoyage affiche un avertissement : des copies
+sensibles peuvent subsister hors des zones. Fichiers antérieurs, sauvegardes et autres copies demandent
+un traitement séparé.
+
 Tracez ou recherchez les zones, puis ouvrez Appliquer. Choisissez le remplissage et le texte volontaire de remplacement. L’aperçu prépare et vérifie toutes les pages marquées ; le sélecteur présente le résultat exact pour une page. Appliquer valide ces mêmes octets en une annulation. Modifier les réglages, changer de document, annuler ou fermer invalide le candidat. L’annulation est contrôlée entre pages, objets et lignes de pixels, ainsi qu’autour des rendus et du nettoyage. Un appel natif de rendu doit se terminer avant l’arrêt. Le fichier source reste inchangé.
 
 Le texte latin Base14 visible et opaque, sans état complexe, conserve hors zone des glyphes natifs sélectionnables à leurs positions d’origine. Les limites agrandies de chaque glyphe doivent être entièrement hors de toutes les zones. Polices incorporées, espacement complexe, découpage, couches sémantiques, OCR, images et objets imbriqués utilisent une image : le reste visible est préservé, mais peut perdre sa sélection. L’aperçu affiche les deux comptes. Un nettoyage non prouvable échoue sans modifier le document.
