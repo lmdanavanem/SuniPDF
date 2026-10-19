@@ -590,7 +590,7 @@ impl SuniApp {
                             let (rect, resp) = ui.allocate_exact_size(CARD, Sense::click());
                             resp.widget_info(|| {
                                 egui::WidgetInfo::labeled(
-                                    egui::WidgetType::Button,
+                                    egui::Role::Button,
                                     true,
                                     tr_args(
                                         lang,
@@ -1192,11 +1192,7 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
     let (resp, painter) = ui.allocate_painter(egui::vec2(width, PAD_H), Sense::drag());
     let rect = resp.rect;
     resp.widget_info(|| {
-        egui::WidgetInfo::labeled(
-            egui::WidgetType::Other,
-            true,
-            tr(lang, "a11y.signature_pad"),
-        )
+        egui::WidgetInfo::labeled(egui::Role::Unknown, true, tr(lang, "a11y.signature_pad"))
     });
     painter.rect(
         rect,
@@ -1281,12 +1277,7 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
             let (r, resp) = ui.allocate_exact_size(egui::vec2(24.0, 24.0), Sense::click());
             let selected = st.pen_blue == blue;
             resp.widget_info(|| {
-                egui::WidgetInfo::selected(
-                    egui::WidgetType::RadioButton,
-                    true,
-                    selected,
-                    tr(lang, key),
-                )
+                egui::WidgetInfo::selected(egui::Role::RadioButton, true, selected, tr(lang, key))
             });
             let resp = resp
                 .on_hover_text(tr(lang, key))

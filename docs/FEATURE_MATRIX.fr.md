@@ -287,8 +287,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Fait** : 0.20.0 ZIP/MSI publiés en Latest ; dix-huit scénarios portables et douze bases MSI réussis (60 journaux MSI) ; six fichiers publics/SHA256 et contrôles embarqués vérifiés ; mise à jour de production vérifiée sans installation ; preuves dans `PROJECT_STATUS.fr.md` ; UX interactive non vérifiée |
-| Windows ARM64 | Déclaré | **Fait** : ZIP portable 0.19.0 de même source compilé en CI et publié ; SHA256 public, architecture, modèles, notices et icônes vérifiés ; preuves dans `PROJECT_STATUS.fr.md` ; exécution matérielle non vérifiée |
+| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.32.0** : 24 scénarios portables et 18 références MSI/90 journaux réussis ; six fichiers publics/SHA256 et contrôles des paquets vérifiés ; le metteur à jour a téléchargé et vérifié le paquet sans installation sur le poste. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.32.0.json). |
+| Windows ARM64 | Déclaré | **Compilé et distribué en 0.32.0** : ZIP de source exacte, SHA256 public, architecture PE, modèles, notices et icônes vérifiés ; exécution expérimentale jusqu’à qualification sur un vrai appareil. [Preuves](qa/RELEASE_0.32.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

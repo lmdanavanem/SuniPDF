@@ -1,6 +1,6 @@
 # Run the exact ignored integration-test executable recorded by the workspace test gate.
 param(
-    [ValidateSet('native_wgpu','qpdf_corpus','real_corpus','office_fidelity_corpus')]
+    [ValidateSet('native_wgpu','qpdf_corpus','real_corpus','interop_corpus','office_fidelity_corpus')]
     [string]$TestName = 'native_wgpu',
     [switch]$SelfTest
 )

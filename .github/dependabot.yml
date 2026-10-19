@@ -9,6 +9,9 @@ updates:
       timezone: "Europe/Zurich"
     open-pull-requests-limit: 5
     groups:
+      # These crates expose the same UI types and must migrate together.
+      egui-framework:
+        patterns: ["egui", "eframe"]
       cargo-minor-patch:
         update-types: ["minor", "patch"]
 

@@ -21,11 +21,18 @@ dans assets/licenses/upstream-sources.json. Une licence indisponible reste signa
 bloque la génération si le paquet appartient à un graphe Windows. Le paquet macOS
 dispatch est ainsi signalé et exclu des deux graphes Windows.
 
+L’inventaire 0.33.0 actualise les versions et chemins sources d’AccessKit et d’egui/eframe.
+L’objet VCS publié de huit composants egui 0.37.0 est indisponible en amont ; leurs
+déclarations vérifiées par empreinte et l’octroi de licence du README egui publié sont
+associés aux textes complets de la release officielle 0.37.0 épinglée. Chaque entrée
+concernée signale cette exception de provenance, sans annoncer une identité complète
+des sources. Les textes AccessKit et eframe proviennent de leurs révisions VCS exactes.
+
 Le dossier licenses contient également :
 
 - les notices natives originales de PDFium 151.0.7881.0, ses révisions et empreintes ;
 - les textes complets et références des polices Ubuntu Light, Hack, Noto Emoji et
-  emoji-icon-font ;
+  emoji-icon-font et de son sous-ensemble egui-icons, avec la notice de modification ;
 - les licences, auteurs, copyrights et provenances de Tesseract 5.5.3, Leptonica 1.87.0
   et des modèles anglais/français tessdata_fast verrouillés ;
 - les mentions complètes de la bibliothèque standard Rust et de la chaîne réellement

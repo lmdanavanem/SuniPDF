@@ -5,6 +5,10 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
+La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.0_CRITERIA.fr.md).
+Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
+d’authenticité ou de conformité.
+
 ## 0.32.0 : ordre des objets (Latest stable)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) sous `lmdanavanem`, release `417623635`, source immuable `8c492db35f1712648d5472593146077230befb7c`.

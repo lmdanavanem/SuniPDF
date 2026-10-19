@@ -1586,7 +1586,7 @@ impl SuniApp {
         let has_icons = self.has_icons;
         const GAP: f32 = 14.0;
         let max_w = (bounds.width() - 2.0 * GAP - 18.0).max(80.0);
-        let id = egui::Id::new("annot-bar");
+        let id = egui::Id::unique("annot-bar");
         let bar_h = ctx.memory(|m| m.area_rect(id)).map_or(44.0, |r| r.height());
         let pos = match (selected.as_ref(), self.annot_screen_rect()) {
             (Some(_), Some(r)) if r.bottom() + 16.0 + bar_h <= bounds.bottom() - 8.0 => {
@@ -1887,7 +1887,7 @@ impl SuniApp {
         let rect = prompt.screen_rect(page_rect, k, height);
         let (mut submit, mut cancel) = (false, false);
         let mut rich_font = false;
-        egui::Area::new(egui::Id::new("inline-free-text"))
+        egui::Area::new(egui::Id::unique("inline-free-text"))
             .order(egui::Order::Foreground)
             .fixed_pos(rect.min)
             .constrain(true)

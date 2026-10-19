@@ -86,7 +86,7 @@ pub fn show<R>(
     // État de l'image précédente : la liste était ouverte quand Échap a été pressé.
     let popup_open = egui::Popup::is_any_open(ctx);
     let body_max_h = (ctx.content_rect().height() - CHROME_H).max(120.0);
-    egui::Modal::new(egui::Id::new(spec.id))
+    egui::Modal::new(egui::Id::unique(spec.id))
         .backdrop_color(Color32::from_black_alpha(if spec.dark { 150 } else { 110 }))
         .frame(frame(&p, spec.dark))
         .show(ctx, |ui| {

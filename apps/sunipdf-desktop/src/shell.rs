@@ -74,9 +74,7 @@ pub fn tool_row(
     let p = theme::palette(dark);
     let (rect, resp) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), 40.0), egui::Sense::click());
-    resp.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, active, label)
-    });
+    resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, active, label));
     let resp = resp
         .on_hover_cursor(egui::CursorIcon::PointingHand)
         .on_hover_text(desc.to_string());
@@ -432,7 +430,7 @@ impl SuniApp {
                                 .frame(false),
                             );
                             name.widget_info(|| {
-                                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &title)
+                                egui::WidgetInfo::labeled(egui::Role::Button, true, &title)
                             });
                             if name.clicked() {
                                 name.surrender_focus();
@@ -819,7 +817,7 @@ impl SuniApp {
         let w = ui.available_width().min(1100.0);
         let (rect, resp) = ui.allocate_exact_size(egui::vec2(w, 84.0), egui::Sense::click());
         let label = tr(lang, "home.open_file");
-        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
         let resp = resp.on_hover_cursor(egui::CursorIcon::PointingHand);
         if !ui.is_rect_visible(rect) {
             return resp;
@@ -923,8 +921,12 @@ impl SuniApp {
                 egui::vec2(card_w, CARD_H),
             );
             let name = tr(lang, info.name_key);
-            let resp = ui.interact(rect, egui::Id::new(("home-tool", i)), egui::Sense::click());
-            resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+            let resp = ui.interact(
+                rect,
+                egui::Id::unique(("home-tool", i)),
+                egui::Sense::click(),
+            );
+            resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name));
             let resp = resp
                 .on_hover_cursor(egui::CursorIcon::PointingHand)
                 .on_hover_text(tr(lang, info.desc_key));
@@ -1009,14 +1011,14 @@ impl SuniApp {
         ui.vertical_centered(|ui| {
             // Fenêtre basse : le groupe du haut défile au lieu de chevaucher celui du bas (hauteur
             // de ce dernier mesurée à l'image précédente).
-            let bottom_id = ui.id().with("rail-bottom");
+            let bottom_id = ui.scope_id().with("rail-bottom");
             let bottom_h = ui
                 .ctx()
                 .data(|d| d.get_temp::<f32>(bottom_id))
                 .unwrap_or(340.0);
             // Icônes entières seulement (pas « tranchées ») ; pas d'une icône mesuré à l'image
             // précédente. Barre visible sans survol : signale les icônes masquées.
-            let pitch_id = ui.id().with("rail-pitch");
+            let pitch_id = ui.scope_id().with("rail-pitch");
             let gap = ui.spacing().item_spacing.y;
             let room = (ui.available_height() - bottom_h - 12.0).max(34.0);
             let room = match ui.ctx().data(|d| d.get_temp::<f32>(pitch_id)) {
@@ -1211,7 +1213,7 @@ impl SuniApp {
                 let field = ui.add(
                     egui::TextEdit::singleline(&mut self.page_input)
                         .desired_width(48.0)
-                        .horizontal_align(Align::Center)
+                        .align(egui::Align2::CENTER_TOP)
                         .font(egui::TextStyle::Small),
                 );
                 field.widget_info(|| {
@@ -1257,7 +1259,7 @@ impl SuniApp {
         }
         let mut chosen = None;
         let mut close = false;
-        egui::Modal::new(egui::Id::new("palette")).show(ctx, |ui| {
+        egui::Modal::new(egui::Id::unique("palette")).show(ctx, |ui| {
             ui.set_width(520.0);
             let field = ui.add(
                 egui::TextEdit::singleline(&mut self.palette.query)

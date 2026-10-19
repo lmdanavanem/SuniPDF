@@ -46,12 +46,13 @@ pub(crate) struct Tree {
 pub(crate) fn invalid(reason: &str) -> EngineError {
     EngineError::Other(format!("Invalid bookmarks: {reason}"))
 }
-fn title(value: &str, allow_empty: bool) -> Result<(), EngineError> {
-    if (!allow_empty && value.trim().is_empty())
+fn title(value: &str, existing: bool) -> Result<(), EngineError> {
+    if (!existing && value.trim().is_empty())
         || value.len() > MAX_TITLE_BYTES
-        || value
-            .chars()
-            .any(|c| c.is_control() || matches!(c, '\u{2028}' | '\u{2029}'))
+        || value.chars().any(|c| {
+            let whitespace = matches!(c, '\t' | '\n' | '\r' | '\u{2028}' | '\u{2029}');
+            (c.is_control() || whitespace) && !(existing && whitespace)
+        })
     {
         return Err(invalid(
             "title must contain 1–1024 UTF-8 bytes without control characters",

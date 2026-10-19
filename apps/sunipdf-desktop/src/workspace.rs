@@ -442,12 +442,7 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
     };
     let (rect, resp) = ui.allocate_exact_size(egui::vec2(w, BAR_BUTTON_H), sense);
     resp.widget_info(|| {
-        egui::WidgetInfo::selected(
-            egui::WidgetType::SelectableLabel,
-            b.enabled,
-            b.selected,
-            b.label,
-        )
+        egui::WidgetInfo::selected(egui::Role::Button, b.enabled, b.selected, b.label)
     });
     let resp = resp
         .on_hover_text(b.tooltip.to_string())

@@ -116,7 +116,7 @@ A6. **Content editing: editing an existing text reuses its original font.** If t
     **Published in 0.21.1:** keep that original font, atomically refuse
     unsupported text and reopen the correct draft. This fix is absent from 0.21.0 packages; see [executed checks](PROJECT_STATUS.md).
 A7. **Rotation and pivot**: earlier free/group rotation remains. 0.30.0 remembers the selected
-    rotation pivot so asymmetric paths do not acquire a new bounding-box centre at each turn; validation is pending.
+    rotation pivot so asymmetric paths do not acquire a new bounding-box centre at each turn; release-source regression gates passed.
     Corner resizing handles remain unavailable for non-orthogonal objects to avoid distortion. See [scope](RELEASE_0.30.0.md).
 A8. **Reordering and clipboard**: Z-order changes merge page content streams before reordering. Existing grouped
     duplication/paste uses form XObjects and does not turn their contents into editable text; group color/opacity
