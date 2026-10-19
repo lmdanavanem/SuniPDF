@@ -10,6 +10,9 @@
 - Migrer egui/eframe ensemble vers la 0.37, avec les API de rôles d’accessibilité, identifiants stables et
   défilement prises en charge. Les coordonnées PDF restent bornées pour restaurer la position avec
   Précédent/Suivant après un changement de zoom de destination. Dependabot groupe désormais ces mises à jour.
+- Actualiser les 17 références de licences du framework selon les paquets verrouillés. Les textes complets
+  restent exigés pour les deux graphes Windows ; l’indisponibilité des objets VCS egui concernés est
+  explicitée dans les [mentions des composants tiers](THIRD_PARTY_NOTICES.fr.md).
 - Ajouter sept exemples indépendants de la PDF Association, épinglés par révision et SHA256, sous licence
   CC BY-SA 4.0. Texte/pixels, annotations, qpdf et sources inchangées sont contrôlés pendant optimisation et
   extraction ; ces exemples pédagogiques sont distincts des quatre documents NIST.

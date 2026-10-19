@@ -21,6 +21,13 @@ dans assets/licenses/upstream-sources.json. Une licence indisponible reste signa
 bloque la génération si le paquet appartient à un graphe Windows. Le paquet macOS
 dispatch est ainsi signalé et exclu des deux graphes Windows.
 
+L’inventaire 0.33.0 actualise les versions et chemins sources d’AccessKit et d’egui/eframe.
+L’objet VCS publié de huit composants egui 0.37.0 est indisponible en amont ; leurs
+déclarations vérifiées par empreinte et l’octroi de licence du README egui publié sont
+associés aux textes complets de la release officielle 0.37.0 épinglée. Chaque entrée
+concernée signale cette exception de provenance, sans annoncer une identité complète
+des sources. Les textes AccessKit et eframe proviennent de leurs révisions VCS exactes.
+
 Le dossier licenses contient également :
 
 - les notices natives originales de PDFium 151.0.7881.0, ses révisions et empreintes ;

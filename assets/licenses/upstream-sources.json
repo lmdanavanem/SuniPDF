@@ -2,26 +2,26 @@
   "packages": [
     {
       "name": "accesskit",
-      "version": "0.24.1",
+      "version": "0.25.1",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969",
-      "path": "common",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "accesskit",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/a55d3e1a18bb9ef0e4bccc9083fb13c3e0ad8969/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -30,26 +30,26 @@
     },
     {
       "name": "accesskit_atspi_common",
-      "version": "0.18.1",
+      "version": "0.21.0",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "f40dfc01a0c0e76de535969f82fb35e19513737d",
-      "path": "platforms/atspi-common",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "adapters/atspi-common",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -58,26 +58,26 @@
     },
     {
       "name": "accesskit_consumer",
-      "version": "0.35.0",
+      "version": "0.39.1",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24",
-      "path": "consumer",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "accesskit_consumer",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -85,55 +85,27 @@
       ]
     },
     {
-      "name": "accesskit_consumer",
-      "version": "0.36.0",
+      "name": "accesskit_ios",
+      "version": "0.2.1",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "f40dfc01a0c0e76de535969f82fb35e19513737d",
-      "path": "consumer",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "adapters/ios",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE.chromium",
-          "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
-          "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
-          "upstream_file": "LICENSE.chromium"
-        }
-      ]
-    },
-    {
-      "name": "accesskit_consumer",
-      "version": "0.38.0",
-      "license": "MIT OR Apache-2.0",
-      "repo": "AccessKit/accesskit",
-      "revision": "c88605b96d04431f9c3c792464a0f2f253480e94",
-      "path": "consumer",
-      "texts": [
-        {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
-          "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
-          "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
-          "upstream_file": "LICENSE-APACHE"
-        },
-        {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
-          "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
-          "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
-          "upstream_file": "LICENSE-MIT"
-        },
-        {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -142,26 +114,26 @@
     },
     {
       "name": "accesskit_macos",
-      "version": "0.26.3",
+      "version": "0.27.1",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "c88605b96d04431f9c3c792464a0f2f253480e94",
-      "path": "platforms/macos",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "adapters/macos",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -170,26 +142,26 @@
     },
     {
       "name": "accesskit_unix",
-      "version": "0.21.1",
+      "version": "0.24.0",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "f40dfc01a0c0e76de535969f82fb35e19513737d",
-      "path": "platforms/unix",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "adapters/unix",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/f40dfc01a0c0e76de535969f82fb35e19513737d/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -198,26 +170,26 @@
     },
     {
       "name": "accesskit_windows",
-      "version": "0.32.1",
+      "version": "0.35.1",
       "license": "MIT OR Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24",
-      "path": "platforms/windows",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "adapters/windows",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -226,26 +198,26 @@
     },
     {
       "name": "accesskit_winit",
-      "version": "0.32.2",
+      "version": "0.34.1",
       "license": "Apache-2.0",
       "repo": "AccessKit/accesskit",
-      "revision": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24",
-      "path": "platforms/winit",
+      "revision": "ce8164ba92995cfa86005b6259115e08c8244253",
+      "path": "adapters/winit",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-APACHE",
           "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
           "file": "assets/licenses/upstream/62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE-MIT",
           "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
           "file": "assets/licenses/upstream/23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3.txt",
           "upstream_file": "LICENSE-MIT"
         },
         {
-          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE.chromium",
+          "source": "https://raw.githubusercontent.com/AccessKit/accesskit/ce8164ba92995cfa86005b6259115e08c8244253/LICENSE.chromium",
           "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
           "file": "assets/licenses/upstream/845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308.txt",
           "upstream_file": "LICENSE.chromium"
@@ -374,42 +346,45 @@
     },
     {
       "name": "ecolor",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/ecolor",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "eframe",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "3c6eb8261c3293ad9c7ea1ed58487e038860ebef",
       "path": "crates/eframe",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/3c6eb8261c3293ad9c7ea1ed58487e038860ebef/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
           "upstream_file": "LICENSE-APACHE"
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/3c6eb8261c3293ad9c7ea1ed58487e038860ebef/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
           "upstream_file": "LICENSE-MIT"
@@ -418,157 +393,178 @@
     },
     {
       "name": "egui",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/egui",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "egui-wgpu",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/egui-wgpu",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "egui-winit",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/egui-winit",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "egui_glow",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/egui_glow",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "emath",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/emath",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "epaint",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "MIT OR Apache-2.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/epaint",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "epaint_default_fonts",
-      "version": "0.36.2",
+      "version": "0.37.0",
       "license": "(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0",
       "repo": "emilk/egui",
-      "revision": "49682f8baa058bf49e011035cfbd6e825f88a5ef",
+      "revision": "7c0b40402271e8d40cda69f87cf3c2617c2e4382",
       "path": "crates/epaint_default_fonts",
       "texts": [
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-APACHE",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-APACHE",
           "sha256": "8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90",
           "file": "assets/licenses/upstream/8173d5c29b4f956d532781d2b86e4e30f83e6b7878dce18c919451d6ba707c90.txt",
-          "upstream_file": "LICENSE-APACHE"
+          "upstream_file": "LICENSE-APACHE",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         },
         {
-          "source": "https://raw.githubusercontent.com/emilk/egui/49682f8baa058bf49e011035cfbd6e825f88a5ef/LICENSE-MIT",
+          "source": "https://raw.githubusercontent.com/emilk/egui/841a328ba2dd8f6996beb7189ebb7fc00e668a2a/LICENSE-MIT",
           "sha256": "95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c",
           "file": "assets/licenses/upstream/95ca92f5f8ea5231f1580b3a2a799e8260af3114b900e1def5355a7f44bcf60c.txt",
-          "upstream_file": "LICENSE-MIT"
+          "upstream_file": "LICENSE-MIT",
+          "linked_by": "Checksum-verified published Cargo.toml license declaration; egui 0.37.0 README.md explicitly links the upstream MIT and Apache texts."
         }
-      ]
+      ],
+      "upstream_revision_unavailable": "Published VCS SHA 7c0b40402271e8d40cda69f87cf3c2617c2e4382 returns 422 via the GitHub commit API and 404 for raw legal files. Full legal texts are pinned to the official 0.37.0 release commit 841a328ba2dd8f6996beb7189ebb7fc00e668a2a, as linked by the checksum-verified published license declaration and egui README. This does not attest a complete source-tree match."
     },
     {
       "name": "gl_generator",
@@ -1175,6 +1171,52 @@
       ]
     },
     {
+      "name": "pathfinder_geometry",
+      "version": "0.5.1",
+      "license": "MIT/Apache-2.0",
+      "repo": "servo/pathfinder",
+      "revision": "a5e98fac00f433fe2ff4b2135383d82491b8bfc5",
+      "path": "",
+      "texts": [
+        {
+          "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "file": "assets/licenses/upstream/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt",
+          "upstream_file": "Explicit Apache2 alternative linked by original source"
+        },
+        {
+          "source": "registry archive checksum0b7b7e7b4ea703700ce73ebf128e1450eb69c3a8329199ffbfb9b2a0418e5ad3::pathfinder_geometry0.5.1/src/lib.rs (original license header)",
+          "sha256": "a830c3e1ca7ae32b804500428e0dd1fbaf34e997174af1ff2296227bd537c0d3",
+          "file": "assets/licenses/upstream/a830c3e1ca7ae32b804500428e0dd1fbaf34e997174af1ff2296227bd537c0d3.txt",
+          "upstream_file": "Original copyright and license grant"
+        }
+      ],
+      "distribution_choice": "Apache-2.0",
+      "upstream_revision_unavailable": "Published VCS SHA returns404 upstream. License evidence comes from the original checksum-verified crate source header and its explicit Apache2 link."
+    },
+    {
+      "name": "pathfinder_simd",
+      "version": "0.5.6",
+      "license": "MIT OR Apache-2.0",
+      "repo": "servo/pathfinder",
+      "revision": "6c3c0466f451c5bd2007087728cd168798cd64e8",
+      "path": "simd",
+      "texts": [
+        {
+          "source": "https://raw.githubusercontent.com/servo/pathfinder/6c3c0466f451c5bd2007087728cd168798cd64e8/LICENSE-APACHE",
+          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
+          "file": "assets/licenses/upstream/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
+          "upstream_file": "LICENSE-APACHE"
+        },
+        {
+          "source": "https://raw.githubusercontent.com/servo/pathfinder/6c3c0466f451c5bd2007087728cd168798cd64e8/LICENSE-MIT",
+          "sha256": "0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
+          "file": "assets/licenses/upstream/0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720.txt",
+          "upstream_file": "LICENSE-MIT"
+        }
+      ]
+    },
+    {
       "name": "profiling",
       "version": "1.0.18",
       "license": "MIT OR Apache-2.0",
@@ -1259,52 +1301,6 @@
           "sha256": "0dc18d924dc0a5f41172a393012843a5eaaef338e795b3645da9cc3b6068220b",
           "file": "assets/licenses/upstream/0dc18d924dc0a5f41172a393012843a5eaaef338e795b3645da9cc3b6068220b.txt",
           "upstream_file": "LICENSE"
-        }
-      ]
-    },
-    {
-      "name": "pathfinder_geometry",
-      "version": "0.5.1",
-      "license": "MIT/Apache-2.0",
-      "repo": "servo/pathfinder",
-      "revision": "a5e98fac00f433fe2ff4b2135383d82491b8bfc5",
-      "path": "",
-      "texts": [
-        {
-          "source": "https://www.apache.org/licenses/LICENSE-2.0.txt",
-          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-          "file": "assets/licenses/upstream/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt",
-          "upstream_file": "Explicit Apache2 alternative linked by original source"
-        },
-        {
-          "source": "registry archive checksum0b7b7e7b4ea703700ce73ebf128e1450eb69c3a8329199ffbfb9b2a0418e5ad3::pathfinder_geometry0.5.1/src/lib.rs (original license header)",
-          "sha256": "a830c3e1ca7ae32b804500428e0dd1fbaf34e997174af1ff2296227bd537c0d3",
-          "file": "assets/licenses/upstream/a830c3e1ca7ae32b804500428e0dd1fbaf34e997174af1ff2296227bd537c0d3.txt",
-          "upstream_file": "Original copyright and license grant"
-        }
-      ],
-      "distribution_choice": "Apache-2.0",
-      "upstream_revision_unavailable": "Published VCS SHA returns404 upstream. License evidence comes from the original checksum-verified crate source header and its explicit Apache2 link."
-    },
-    {
-      "name": "pathfinder_simd",
-      "version": "0.5.6",
-      "license": "MIT OR Apache-2.0",
-      "repo": "servo/pathfinder",
-      "revision": "6c3c0466f451c5bd2007087728cd168798cd64e8",
-      "path": "simd",
-      "texts": [
-        {
-          "source": "https://raw.githubusercontent.com/servo/pathfinder/6c3c0466f451c5bd2007087728cd168798cd64e8/LICENSE-APACHE",
-          "sha256": "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2",
-          "file": "assets/licenses/upstream/a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2.txt",
-          "upstream_file": "LICENSE-APACHE"
-        },
-        {
-          "source": "https://raw.githubusercontent.com/servo/pathfinder/6c3c0466f451c5bd2007087728cd168798cd64e8/LICENSE-MIT",
-          "sha256": "0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720",
-          "file": "assets/licenses/upstream/0621878e61f0d0fda054bcbe02df75192c28bde1ecc8289cbd86aeba2dd72720.txt",
-          "upstream_file": "LICENSE-MIT"
         }
       ]
     }
