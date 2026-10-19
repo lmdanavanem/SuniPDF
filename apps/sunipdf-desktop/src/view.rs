@@ -1011,6 +1011,8 @@ impl SuniApp {
         let pinned = self.pinned_pages();
 
         // 4. Zone de défilement : seules les pages visibles sont dessinées.
+        // PDF navigation and hit testing use bounded document coordinates, without elastic overscroll.
+        ui.spacing_mut().scroll.kinetic.rubber_band = false;
         let mut area = egui::ScrollArea::both()
             .id_salt("doc-scroll")
             .auto_shrink([false, false]);
@@ -2273,7 +2275,11 @@ mod tests {
         app.navigate_reading_history(true);
         frame(&mut app);
         assert_eq!(app.effective_zoom, 1.0);
-        assert!((app.view.offset - original).length() < 1.0);
+        assert!(
+            (app.view.offset - original).length() < 1.0,
+            "back: original {original:?}, restored {:?}, destination {destination:?}",
+            app.view.offset
+        );
         app.navigate_reading_history(false);
         frame(&mut app);
         assert_eq!(app.effective_zoom, 2.0);
