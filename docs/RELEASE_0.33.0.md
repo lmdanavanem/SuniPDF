@@ -13,6 +13,8 @@
 - Refresh all 17 affected framework license records against the locked crates. Full terms remain required
   for both Windows graphs; unavailable core egui VCS objects have an explicit official-release provenance
   exception in the [third-party notices](THIRD_PARTY_NOTICES.md).
+  Include the fifth default-font source, the MIT-licensed `egui-icons` subset, with its modification notice;
+  unknown font sets or missing notices still prevent packaging.
 - Add seven independently authored PDF Association examples, pinned to an exact upstream revision and
   SHA256, under CC BY-SA 4.0. Text/pixels, annotations, qpdf output and immutable sources are checked during
   optimization/extraction; these are teaching examples, distinct from the four NIST documents.

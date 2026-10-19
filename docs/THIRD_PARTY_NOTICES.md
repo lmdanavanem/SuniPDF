@@ -31,7 +31,7 @@ AccessKit and eframe legal texts use their exact published VCS revisions.
 | Component | Evidence in licenses/ |
 |---|---|
 | Rust crates, including egui/eframe/wgpu, PDF bindings, TLS, codecs and XML | Exact inventory and full deduplicated license/NOTICE texts |
-| Ubuntu Light, Hack, Noto Emoji, emoji-icon-font | Source hashes and font notice references; full UFL, MIT/Bitstream Vera, OFL and MIT terms |
+| Ubuntu Light, Hack, Noto Emoji, emoji-icon-font and its egui-icons subset | Source hashes and font notice references; full UFL, MIT/Bitstream Vera, OFL and MIT terms, plus the icon-subset modification notice |
 | PDFium 151.0.7881.0 and native libraries | Original pdfium.txt, pdfium-binaries-MIT.txt and all upstream native notices, with revisions and binary hashes |
 | Tesseract 5.5.3 / Leptonica 1.87.0 / pinned English/French tessdata_fast | ocr-tesseract.txt, ocr-leptonica.txt, ocr-tessdata-fast.txt, AUTHORS, COPYRIGHTS, NOTICE, exact source/model revisions and payload hashes |
 | Rust standard library | Actual selected toolchain rust-standard-library.html with full component notices and rust-toolchain.txt revision |

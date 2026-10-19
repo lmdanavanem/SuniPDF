@@ -32,7 +32,7 @@ Le dossier licenses contient également :
 
 - les notices natives originales de PDFium 151.0.7881.0, ses révisions et empreintes ;
 - les textes complets et références des polices Ubuntu Light, Hack, Noto Emoji et
-  emoji-icon-font ;
+  emoji-icon-font et de son sous-ensemble egui-icons, avec la notice de modification ;
 - les licences, auteurs, copyrights et provenances de Tesseract 5.5.3, Leptonica 1.87.0
   et des modèles anglais/français tessdata_fast verrouillés ;
 - les mentions complètes de la bibliothèque standard Rust et de la chaîne réellement

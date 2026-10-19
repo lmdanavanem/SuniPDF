@@ -355,12 +355,9 @@ def toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_v
     return components
 
 
-def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version, cargo_version):
-    packages, texts = rust_inventory(root, metadata, target_metadata)
-    components = bundled_inventory(root, stage, arch, texts)
-    components.extend(toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_version))
+def font_inventory(metadata):
     fonts = []
-    font_licenses = {'Ubuntu-Light.ttf': ('Ubuntu-font-1.0', 'UFL.txt'), 'Hack-Regular.ttf': ('MIT AND Bitstream-Vera', 'Hack-Regular.txt'), 'NotoEmoji-Regular.ttf': ('OFL-1.1', 'OFL.txt'), 'emoji-icon-font.ttf': ('MIT', 'emoji-icon-font-mit-license.txt')}
+    font_licenses = {'Ubuntu-Light.ttf': ('Ubuntu-font-1.0', 'UFL.txt'), 'Hack-Regular.ttf': ('MIT AND Bitstream-Vera', 'Hack-Regular.txt'), 'NotoEmoji-Regular.ttf': ('OFL-1.1', 'OFL.txt'), 'emoji-icon-font.ttf': ('MIT', 'emoji-icon-font-mit-license.txt'), 'egui-icons.ttf': ('MIT', 'emoji-icon-font-mit-license.txt')}
     for package in metadata['packages']:
         if package['name'] != 'epaint_default_fonts':
             continue
@@ -368,7 +365,20 @@ def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version
         if {path.name for path in directory.glob('*.ttf')} != set(font_licenses):
             raise ValueError('Default font source set differs from the reviewed inventory')
         for filename, (license_expression, notice) in sorted(font_licenses.items()):
-            fonts.append({'name': filename, 'version': 'epaint_default_fonts ' + package['version'], 'sha256': digest((directory / filename).read_bytes()), 'license': license_expression, 'noticeSource': 'epaint_default_fonts@' + package['version'] + '/fonts/' + notice, 'scope': 'Desktop default-font source; notices retained even if a font is optimized out of the executable'})
+            legal_text(inside(directory / notice, directory))
+            entry = {'name': filename, 'version': 'epaint_default_fonts ' + package['version'], 'sha256': digest((directory / filename).read_bytes()), 'license': license_expression, 'noticeSource': 'epaint_default_fonts@' + package['version'] + '/fonts/' + notice, 'scope': 'Desktop default-font source; notices retained even if a font is optimized out of the executable'}
+            if filename == 'egui-icons.ttf':
+                legal_text(inside(directory / 'egui-icons.txt', directory))
+                entry['modificationNoticeSource'] = 'epaint_default_fonts@' + package['version'] + '/fonts/egui-icons.txt'
+            fonts.append(entry)
+    return fonts
+
+
+def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version, cargo_version):
+    packages, texts = rust_inventory(root, metadata, target_metadata)
+    components = bundled_inventory(root, stage, arch, texts)
+    components.extend(toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_version))
+    fonts = font_inventory(metadata)
     fixture_root = root / 'crates/sunipdf-core/tests/fixtures/fonts'
     test_fonts = []
     for filename, evidence in sorted(read_json(fixture_root / 'source-provenance.json').items()):
@@ -470,6 +480,30 @@ class InventoryTests(unittest.TestCase):
             path = Path(directory) / 'metadata.json'
             path.write_text('{"name":"日本語"}', encoding='utf-16')
             self.assertEqual(read_json(path)['name'], '日本語')
+
+    def test_default_icon_subset_retains_terms_and_refuses_unknown_or_unnoted_fonts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fonts = root / 'fonts'
+            fonts.mkdir()
+            for name in ('Ubuntu-Light.ttf', 'Hack-Regular.ttf', 'NotoEmoji-Regular.ttf', 'emoji-icon-font.ttf', 'egui-icons.ttf'):
+                (fonts / name).write_bytes(b'font source fixture')
+            for name in ('UFL.txt', 'Hack-Regular.txt', 'OFL.txt', 'emoji-icon-font-mit-license.txt', 'egui-icons.txt'):
+                (fonts / name).write_text('Full original terms or modification notice')
+            metadata = {'packages': [{'name': 'epaint_default_fonts', 'version': '0.37.0', 'manifest_path': str(root / 'Cargo.toml')}]}
+            entries = font_inventory(metadata)
+            icon = next(entry for entry in entries if entry['name'] == 'egui-icons.ttf')
+            self.assertEqual(icon['license'], 'MIT')
+            self.assertTrue(icon['noticeSource'].endswith('/emoji-icon-font-mit-license.txt'))
+            self.assertTrue(icon['modificationNoticeSource'].endswith('/egui-icons.txt'))
+            extra = fonts / 'unknown.ttf'
+            extra.write_bytes(b'unknown source')
+            with self.assertRaisesRegex(ValueError, 'source set'):
+                font_inventory(metadata)
+            extra.unlink()
+            (fonts / 'egui-icons.txt').unlink()
+            with self.assertRaises(OSError):
+                font_inventory(metadata)
 
     def test_payload_verification_rejects_modified_missing_and_added_notices(self):
         with tempfile.TemporaryDirectory() as directory:

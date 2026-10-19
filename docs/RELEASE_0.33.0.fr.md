@@ -13,6 +13,8 @@
 - Actualiser les 17 références de licences du framework selon les paquets verrouillés. Les textes complets
   restent exigés pour les deux graphes Windows ; l’indisponibilité des objets VCS egui concernés est
   explicitée dans les [mentions des composants tiers](THIRD_PARTY_NOTICES.fr.md).
+  Inclure la cinquième police source, le sous-ensemble `egui-icons` sous MIT, et sa notice de modification ;
+  une police inconnue ou sans notice empêche toujours le paquetage.
 - Ajouter sept exemples indépendants de la PDF Association, épinglés par révision et SHA256, sous licence
   CC BY-SA 4.0. Texte/pixels, annotations, qpdf et sources inchangées sont contrôlés pendant optimisation et
   extraction ; ces exemples pédagogiques sont distincts des quatre documents NIST.
