@@ -836,6 +836,8 @@ mod tests {
 
     /// Commandes système, de vue ou de navigation : volontairement hors outils.
     const SYSTEM_COMMANDS: &[Command] = &[
+        C::CompareFiles,
+        C::SearchFiles,
         C::RotateViewClockwise,
         C::RotateViewCounterClockwise,
         C::FullScreenReading,

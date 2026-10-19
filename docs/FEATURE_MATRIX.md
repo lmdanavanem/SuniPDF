@@ -2,7 +2,11 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.30.0: editing, document safety and local conversion (published stable Latest)
+## 0.31.0: local comparison and multi-document search (in qualification)
+
+Two P2 Suggestions are implemented: explicit saved-file search and bounded text/visual PDF comparison, with progress, cancellation and source preservation. [Scope and limits](LOCAL_REVIEW.md). Release tests and publication are not yet complete.
+
+## 0.30.0: editing, document safety and local conversion (published; Latest at the time)
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 
@@ -199,7 +203,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Extraction preserving links, fields, layers, attachments | Declared | **Delivered in 0.30.0**: Earlier encryption/source guards retained; bounded graph preservation and omitted-page destination removal. XFA/unsafe graphs refused; documented independent reader gates passed. [Limits](BOOKMARKS_AND_PAGE_STRUCTURE.md). |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save. **Delivered in 0.14.0**: preserve navigation through label/content Undo/Redo when page geometry is unchanged; executed checks passed (D105) |
-| Comparison of two versions | Declared (compare crate) | Planned (P5) |
+| Comparison of two versions | Declared | Implemented for 0.31.0: local text/geometry/768-pixel comparison, explicit physical offsets, bounded original/revised/difference previews. [Limits](LOCAL_REVIEW.md). |
+| Search across selected PDFs | Declared | Implemented for 0.31.0: explicit files, literal text, per-file failures, page excerpts/navigation and cancellation. [Limits](LOCAL_REVIEW.md). |
 | Batch processing | Declared (CLI batch) | **Delivered in 0.30.0**: Compression/OCR shipped in 0.10.0; Office batches now present, 1–128 inputs, 64 MiB/input, 120 s/conversion, cancel/new copies. [Limits](OFFICE_CONVERSION.md). |
 
 ## D. Conversion and OCR

@@ -2,6 +2,10 @@
 
 [English](FEATURE_MATRIX.md)
 
+## 0.31.0 : comparaison locale et recherche multi-PDF (qualification)
+
+Deux Suggestions P2 sont implémentées : recherche dans des fichiers enregistrés explicitement sélectionnés et comparaison texte/visuelle bornée, avec progression, annulation et préservation des sources. [Périmètre et limites](LOCAL_REVIEW.fr.md). Tests de release et publication encore en cours.
+
 ## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
@@ -201,7 +205,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Extraction préservant liens, champs, calques, pièces jointes | Déclaré | **Livré en 0.30.0** : Gardes chiffrement/source conservées ; graphes bornés préservés, destinations de pages omises retirées. XFA/graphes dangereux refusés ; contrôles documentés du lecteur indépendant réussis. [Limites](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde. **Livré en 0.14.0** : navigation conservée lors d'Annuler/Rétablir contenu/étiquettes si géométrie inchangée ; contrôles exécutés réussis (D105) |
-| Comparaison de deux versions | Déclaré (crate compare) | Planifié (P5) |
+| Comparaison de deux versions | Déclaré | Implémenté pour la 0.31.0 : comparaison locale texte/dimensions/aperçus 768 pixels, décalages physiques explicites et aperçus bornés original/révision/différences. [Limites](LOCAL_REVIEW.fr.md). |
+| Recherche dans les PDF sélectionnés | Déclaré | Implémenté pour la 0.31.0 : fichiers explicites, texte littéral, échecs par fichier, extraits/navigation et annulation. [Limites](LOCAL_REVIEW.fr.md). |
 | Traitement par lots | Déclaré (CLI batch) | **Livré en 0.30.0** : Compression/OCR livrés en 0.10.0 ; lots Office présents, 1–128 entrées, 64 Mio/entrée, 120 s/conversion, annulation/nouvelles copies. [Limites](OFFICE_CONVERSION.fr.md). |
 
 ## D. Conversion et OCR

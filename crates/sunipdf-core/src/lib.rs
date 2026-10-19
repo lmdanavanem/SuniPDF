@@ -29,6 +29,7 @@ pub mod forms;
 pub mod geometry;
 mod link_destination;
 pub mod links;
+pub mod local_review;
 pub mod ocr;
 pub mod office;
 pub mod page_labels;

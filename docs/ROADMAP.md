@@ -5,6 +5,10 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
+## 0.31.0: local comparison and multi-document search (in qualification)
+
+Two P2 Suggestions are implemented: explicit saved-file search and bounded text/visual PDF comparison, with progress, cancellation and source preservation. [Scope and limits](LOCAL_REVIEW.md). Release tests and publication are not yet complete.
+
 ## 0.30.1: security patch (stable Latest)
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) under `lmdanavanem`, release `417149160`, immutable source `697a963c756b316e1eb1e678298886bc08521da1`.
@@ -316,7 +320,8 @@ and a general workflow designer remain future work. Compression/OCR batch UI was
 Delivered: AES-128/256 and permissions, owner-authorised protection removal, metadata cleanup, irreversible redaction,
 CMS integrity verification and incremental PFX/P12 signed copies, JSON CLI and automation commands.
 
-Remaining: comparison, multi-document search, confined opt-in MCP, Explorer integration and configurable shortcuts.
+0.31.0 implements bounded local comparison and search across selected saved files; [scope](LOCAL_REVIEW.md).
+Remaining: confined opt-in MCP, Explorer integration and configurable shortcuts.
 0.30.0 adds [Windows chain/revocation and RFC3161 timestamp verification, plus per-user DPAPI
 signature storage](SIGNATURE_SECURITY.md), and [redaction preview, persistent marks, bounded text splitting
 and hidden-data sanitization](REDACTION.md). Release-source regression gates passed. Network retrieval needs explicit consent

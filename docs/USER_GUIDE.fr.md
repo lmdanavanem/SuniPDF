@@ -752,3 +752,8 @@ La précision OCR dépend de la numérisation et de la langue ; le texte existan
 révocation et horodatages RFC3161 compatibles ont des états explicites ; validation d’archivage LTV et qualification
 AATL/EUTL restent indisponibles. Imprimante réelle, fenêtres natives interactives et matériel ARM64
 restent des validations séparées des tests automatisés. Voir `docs/KNOWN_ISSUES.fr.md` et `docs/ROADMAP.fr.md`.
+
+
+## Comparaison locale et recherche dans plusieurs PDF (0.31.0)
+
+Utilisez **Fichier → Comparer des fichiers PDF…** ou **Édition → Rechercher dans des fichiers PDF…**. Enregistrez les modifications avant de sélectionner les fichiers. Comparez les pages physiques avec des positions initiales ajustables ; cliquez sur une paire modifiée pour ses trois aperçus. Un résultat de recherche ouvre sa page physique. Opérations locales, en lecture seule et annulables. Un résultat partiel ne valide jamais les fichiers restants. Consultez le [guide complet et ses limites](LOCAL_REVIEW.fr.md) pour les fichiers protégés, scans, commandes JSON et résolution.

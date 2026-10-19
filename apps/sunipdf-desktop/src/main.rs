@@ -14,6 +14,7 @@ mod form_builder;
 mod forms;
 mod icons;
 mod inline_text;
+mod local_review;
 mod objects;
 mod ocr;
 mod office;

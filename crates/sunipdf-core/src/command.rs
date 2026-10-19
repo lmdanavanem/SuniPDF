@@ -3,6 +3,8 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    CompareFiles,
+    SearchFiles,
     HubCompress,
     CompressImages,
     ProcessFiles,
@@ -183,6 +185,22 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        CompareFiles,
+        "file.compare",
+        "review.compare",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        SearchFiles,
+        "edit.search_files",
+        "review.search",
+        None,
+        false,
+        Edit
+    ),
     cmd!(
         RichAnnotations,
         "annotations.rich",

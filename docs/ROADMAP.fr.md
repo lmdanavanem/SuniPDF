@@ -5,6 +5,10 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
+## 0.31.0 : comparaison locale et recherche multi-PDF (qualification)
+
+Deux Suggestions P2 sont implémentées : recherche dans des fichiers enregistrés explicitement sélectionnés et comparaison texte/visuelle bornée, avec progression, annulation et préservation des sources. [Périmètre et limites](LOCAL_REVIEW.fr.md). Tests de release et publication encore en cours.
+
 ## 0.30.1 : correctif de sécurité (Latest stable)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) sous `lmdanavanem`, release `417149160`, source immuable `697a963c756b316e1eb1e678298886bc08521da1`.
@@ -321,7 +325,8 @@ Office et concepteur général de workflows restent futurs. Lots compression/OCR
 Livrés : AES-128/256 et permissions, retrait de protection autorisé par le propriétaire, nettoyage des métadonnées,
 caviardage irréversible, vérification CMS et copies signées PFX/P12 incrémentales, CLI JSON et automatisation.
 
-Restent : comparaison, recherche multi-documents, MCP opt-in confiné, intégration Explorateur et raccourcis configurables.
+La 0.31.0 implémente la comparaison locale bornée et la recherche dans des fichiers enregistrés sélectionnés ; [périmètre](LOCAL_REVIEW.fr.md).
+Restent : MCP opt-in confiné, intégration Explorateur et raccourcis configurables.
 La version 0.30.0 ajoute la [vérification Windows des chaînes/révocations et jetons RFC3161, ainsi que le stockage
 DPAPI par utilisateur](SIGNATURE_SECURITY.fr.md), et l'[aperçu de caviardage, les marques persistantes, la découpe
 bornée du texte et l'assainissement](REDACTION.fr.md). contrôles de la source publiée réussis. Chaque vérification réseau demande un

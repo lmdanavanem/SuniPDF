@@ -52,6 +52,7 @@ impl SuniApp {
     pub(crate) fn feature_dialogs(&mut self, ctx: &egui::Context) {
         self.processing_dialog(ctx);
         self.office_dialog(ctx);
+        self.local_review_dialog(ctx);
         let lang = self.lang();
         let dark = self.settings.dark_theme;
         let icons = self.has_icons;

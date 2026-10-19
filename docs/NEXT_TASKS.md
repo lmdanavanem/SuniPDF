@@ -2,7 +2,11 @@
 
 [Français](NEXT_TASKS.fr.md)
 
-## 0.30.0: editing, document safety and local conversion (published stable Latest)
+## 0.31.0: local comparison and multi-document search (in qualification)
+
+Two P2 Suggestions are implemented: explicit saved-file search and bounded text/visual PDF comparison, with progress, cancellation and source preservation. [Scope and limits](LOCAL_REVIEW.md). Release tests and publication are not yet complete.
+
+## 0.30.0: editing, document safety and local conversion (published; Latest at the time)
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 

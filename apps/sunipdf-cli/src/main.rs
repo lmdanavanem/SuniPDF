@@ -36,6 +36,32 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Search only explicitly selected PDF files, with per-file failures and bounded page results.
+    SearchFiles {
+        #[arg(required = true, num_args = 1..=64)]
+        files: Vec<PathBuf>,
+        #[arg(long)]
+        query: String,
+        #[arg(long)]
+        match_case: bool,
+        /// One credential for the selected files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Compare extracted text and 768-pixel previews of aligned physical pages, without modifying inputs.
+    Compare {
+        left: PathBuf,
+        right: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        left_start: usize,
+        #[arg(long, default_value_t = 1)]
+        right_start: usize,
+        #[arg(long, default_value_t = 200)]
+        max_pages: usize,
+        /// One credential for both files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add a fillable text, checkbox, radio, combo or list field and save to --out.
     AddFormField {
         file: PathBuf,
@@ -1744,6 +1770,42 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 jpeg_quality,
             },
         ),
+        Command::SearchFiles {
+            files,
+            query,
+            match_case,
+            password,
+        } => sunipdf_core::local_review::search_files(
+            &engine,
+            &files,
+            &query,
+            match_case,
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _, _, _| {},
+        )
+        .map(|report| report.json()),
+        Command::Compare {
+            left,
+            right,
+            left_start,
+            right_start,
+            max_pages,
+            password,
+        } => sunipdf_core::local_review::compare_files(
+            &engine,
+            &left,
+            &right,
+            sunipdf_core::local_review::CompareOptions {
+                left_start,
+                right_start,
+                max_pages,
+            },
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _| {},
+        )
+        .map(|report| report.json()),
         Command::Search {
             file,
             query,
@@ -2706,6 +2768,10 @@ fn main() -> ExitCode {
 fn cli_main() -> ExitCode {
     let cli = Cli::parse();
     let signature_check = matches!(&cli.command, Command::Signatures { .. });
+    let local_review_check = matches!(
+        &cli.command,
+        Command::SearchFiles { .. } | Command::Compare { .. }
+    );
     match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
@@ -2713,7 +2779,9 @@ fn cli_main() -> ExitCode {
                 "{}",
                 safe_output::escape_c1(&serde_json::to_string_pretty(&value).expect("json"))
             );
-            if signature_check && value["verification_failed"] == true {
+            if (signature_check && value["verification_failed"] == true)
+                || (local_review_check && value["complete"] == false)
+            {
                 ExitCode::from(2)
             } else {
                 ExitCode::SUCCESS

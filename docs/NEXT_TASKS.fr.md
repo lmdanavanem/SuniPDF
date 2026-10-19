@@ -2,6 +2,10 @@
 
 [English](NEXT_TASKS.md)
 
+## 0.31.0 : comparaison locale et recherche multi-PDF (qualification)
+
+Deux Suggestions P2 sont implémentées : recherche dans des fichiers enregistrés explicitement sélectionnés et comparaison texte/visuelle bornée, avec progression, annulation et préservation des sources. [Périmètre et limites](LOCAL_REVIEW.fr.md). Tests de release et publication encore en cours.
+
 ## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
 Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.

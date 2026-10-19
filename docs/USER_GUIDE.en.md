@@ -714,3 +714,8 @@ order is not inferred. Field creation supports text, checkbox, radio, combo and 
 and language; existing text is not replaced. Windows trust, revocation and supported RFC3161 timestamps have explicit results; archival LTV validation and AATL/EUTL qualification remain unsupported.
 Real printer, installation/update and ARM64 hardware validation remain separate from automated tests.
 See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.
+
+
+## Local comparison and search across selected PDFs (0.31.0)
+
+Use **File → Compare PDF files…** or **Edit → Search in PDF files…**. Save current edits before selecting the files. Compare physical page pairs with adjustable starting pages; select a changed pair for three previews. Search results open their physical page. Both operations are read-only, local and cancellable. Partial results never mean the remaining files are clean. See the [complete guide and limits](LOCAL_REVIEW.md), including protected files, image-only pages, JSON commands and preview resolution.
