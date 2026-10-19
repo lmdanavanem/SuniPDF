@@ -80,6 +80,9 @@ impl SuniApp {
         }
         let Some(doc) = &self.document else { return };
         let page = doc.page;
+        if self.edit.objects_page != Some(page) {
+            return;
+        }
         let Some(at) = drag.destination(
             page,
             self.view.epoch,
@@ -109,7 +112,8 @@ impl SuniApp {
         let ready = self.form_builder_ready()
             && !self.dialog_open()
             && !self.palette.open
-            && ui.is_enabled();
+            && ui.is_enabled()
+            && self.edit.objects_page == Some(page);
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             ui.add_space(4.0);
@@ -388,9 +392,10 @@ mod tests {
 
     #[test]
     fn object_drop_dispatches_one_group_edit_and_keeps_pending_editor_guards() {
-        for blocked in 0..5 {
+        for blocked in 0..6 {
             let (mut app, requests, _) = crate::app::tests::test_app();
             app.edit.objects = (0..5).map(object).collect();
+            app.edit.objects_page = Some(0);
             let drag = ObjectsDrag {
                 page: 0,
                 epoch: app.view.epoch,
@@ -402,6 +407,7 @@ mod tests {
                 2 => app.saving = true,
                 3 => app.tabs.suspending = Some(0),
                 4 => app.view.bump_epoch(),
+                5 => app.edit.objects_page = Some(1),
                 _ => {}
             }
             app.drop_objects(&drag, 4, true);
@@ -444,6 +450,7 @@ mod tests {
                 let (mut app, requests, _) = crate::app::tests::test_app();
                 app.settings.set_language(language);
                 app.edit.objects = (0..5).map(object).collect();
+                app.edit.objects_page = Some(0);
                 let ctx = egui::Context::default();
                 crate::icons::install(&ctx);
                 let frame = |app: &mut SuniApp, events: Vec<egui::Event>| {
