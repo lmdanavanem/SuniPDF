@@ -38,4 +38,4 @@ winresource = "0.1"
 
 [dev-dependencies]
 lopdf = { workspace = true }
-pollster = "=0.4.0"
+pollster = "=1.0.1"
