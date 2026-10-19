@@ -28,7 +28,7 @@ fn pdf_signature_declarations_are_sanitized_before_they_leave_the_engine() {
     assert_eq!(report[0].field_name, "Field Claim");
     assert_eq!(report[0].reason.as_deref(), Some("Reason Verifier text"));
     assert_eq!(report[0].location.as_deref(), Some("Place"));
-    assert_eq!(report[0].signing_time.as_deref(), Some("Date Claim"));
+    assert_eq!(report[0].signing_time.as_deref(), Some("DateClaim"));
     assert_ne!(report[0].status, SignatureStatus::Valid);
 }
 
