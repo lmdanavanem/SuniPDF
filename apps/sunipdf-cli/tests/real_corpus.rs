@@ -1,97 +1,14 @@
 //! Pinned, licensed public research PDFs. Downloads and derived copies stay outside Git/packages.
 #![cfg(target_os = "windows")]
 
+#[path = "support/bounded_process.rs"]
+mod process;
+use process::{bounded, sha256, MAX_MEMORY, MAX_OUTPUT, PEAK_MEMORY};
 use std::io::Write;
-use std::os::windows::io::AsRawHandle;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Output, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
-
-const MAX_MEMORY: usize = 768 * 1024 * 1024;
-const MAX_OUTPUT: u64 = 2 * 1024 * 1024;
-static PEAK_MEMORY: AtomicUsize = AtomicUsize::new(0);
-
-#[repr(C)]
-#[derive(Default)]
-struct ProcessMemory {
-    size: u32,
-    page_faults: u32,
-    peak_working_set: usize,
-    working_set: usize,
-    quota_peak_paged: usize,
-    quota_paged: usize,
-    quota_peak_nonpaged: usize,
-    quota_nonpaged: usize,
-    pagefile: usize,
-    peak_pagefile: usize,
-}
-
-#[link(name = "kernel32")]
-unsafe extern "system" {
-    fn K32GetProcessMemoryInfo(
-        process: *mut std::ffi::c_void,
-        counters: *mut ProcessMemory,
-        size: u32,
-    ) -> i32;
-}
-
-fn memory(child: &Child) -> Option<ProcessMemory> {
-    let mut counters = ProcessMemory {
-        size: std::mem::size_of::<ProcessMemory>() as u32,
-        ..Default::default()
-    };
-    let size = counters.size;
-    // The live Child owns this process handle; the writable structure has the required ABI size.
-    let ok = unsafe { K32GetProcessMemoryInfo(child.as_raw_handle(), &mut counters, size) };
-    (ok != 0).then_some(counters)
-}
-
-fn bounded(mut command: Command) -> Output {
-    // File capture keeps a large report/text extraction from blocking on full stdout/stderr pipes.
-    let stdout = tempfile::NamedTempFile::new().unwrap();
-    let stderr = tempfile::NamedTempFile::new().unwrap();
-    let mut child = command
-        .stdin(Stdio::null())
-        .stdout(stdout.as_file().try_clone().unwrap())
-        .stderr(stderr.as_file().try_clone().unwrap())
-        .spawn()
-        .expect("real-corpus subprocess must start");
-    let start = Instant::now();
-    let status = loop {
-        let measured = memory(&child);
-        if let Some(counters) = &measured {
-            PEAK_MEMORY.fetch_max(counters.peak_working_set, Ordering::Relaxed);
-            if counters.working_set > MAX_MEMORY || counters.peak_working_set > MAX_MEMORY {
-                let _ = child.kill();
-                let _ = child.wait();
-                panic!("real-corpus subprocess exceeded the 768 MiB memory guard");
-            }
-        }
-        if start.elapsed() > Duration::from_secs(180)
-            || stdout.as_file().metadata().unwrap().len() > MAX_OUTPUT
-            || stderr.as_file().metadata().unwrap().len() > MAX_OUTPUT
-        {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("real-corpus subprocess exceeded its 180-second/2-MiB-output guard");
-        }
-        if let Some(status) = child.try_wait().unwrap() {
-            break status;
-        }
-        if measured.is_none() {
-            let _ = child.kill();
-            let _ = child.wait();
-            panic!("memory counters unavailable for a running real-corpus subprocess");
-        }
-        std::thread::sleep(Duration::from_millis(20));
-    };
-    Output {
-        status,
-        stdout: std::fs::read(stdout.path()).unwrap(),
-        stderr: std::fs::read(stderr.path()).unwrap(),
-    }
-}
+use std::process::{Command, Output};
+use std::sync::atomic::Ordering;
+use std::time::Instant;
 
 fn cli(subcommand: &str, file: &Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_sunipdf-cli"));
@@ -107,20 +24,6 @@ fn success(command: Command) -> serde_json::Value {
         String::from_utf8_lossy(&output.stderr)
     );
     serde_json::from_slice(&output.stdout).unwrap()
-}
-
-fn sha256(path: &Path) -> String {
-    let mut command = Command::new("powershell.exe");
-    command.args(["-NoProfile", "-NonInteractive", "-Command",
-        "$s=[IO.File]::OpenRead($env:SUNIPDF_CORPUS_HASH_FILE);$h=[Security.Cryptography.SHA256]::Create();try{[BitConverter]::ToString($h.ComputeHash($s)).Replace('-','')}finally{$s.Dispose();$h.Dispose()}"])
-        .env("SUNIPDF_CORPUS_HASH_FILE", path);
-    let output = bounded(command);
-    assert!(
-        output.status.success(),
-        "SHA256 process failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap().trim().to_owned()
 }
 
 fn qpdf_output(qpdf: &Path, file: &Path) -> Output {
@@ -342,7 +245,7 @@ fn licensed_real_documents_preserve_sources_and_pass_bounded_independent_regress
             entry["id"], entry["page_count"]
         );
     }
-    let report = serde_json::json!({"documents":report,"elapsed_ms":started.elapsed().as_millis(),
+    let report = serde_json::json!({"documents":report,"elapsed_ms":started.elapsed().as_millis(),"commands":*process::COMMAND_METRICS.lock().unwrap(),"hardware":process::hardware(),
         "peak_child_working_set_bytes":PEAK_MEMORY.load(Ordering::Relaxed),"memory_guard_bytes":MAX_MEMORY,
         "process_timeout_seconds":180,"output_limit_bytes":MAX_OUTPUT,"qpdf_version":"12.4.2",
         "corpus_distributed":false,"license_policy_url":manifest["license_policy_url"]});

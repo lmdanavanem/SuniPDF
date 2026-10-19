@@ -2,6 +2,8 @@
 
 [Français](NEXT_TASKS.fr.md)
 
+The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
+
 ## 0.32.0: object ordering (stable Latest)
 
 Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) under `lmdanavanem`, release `417623635`, immutable source `8c492db35f1712648d5472593146077230befb7c`.

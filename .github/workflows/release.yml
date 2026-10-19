@@ -115,6 +115,23 @@ jobs:
       - name: Real PDFs and independent output regression (x64)
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\run-built-ci-test.ps1 -TestName real_corpus
+      - name: Pinned PDF 2.0 interoperability corpus (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
+        run: |
+          .\scripts\fetch-regression-corpus.ps1 -Interop -SelfTest
+          .\scripts\fetch-regression-corpus.ps1 -Interop
+      - name: PDF 2.0 text, pixels, annotations and immutable sources (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
+        run: .\scripts\run-built-ci-test.ps1 -TestName interop_corpus
+      - name: Interoperability and bounded mutation evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: interoperability-and-mutation-evidence
+          path: |
+            target/interop-corpus-report.json
+            target/adversarial-corpus-report.json
+          if-no-files-found: error
       - name: Pinned local Office converter on disposable runner (x64)
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: |
@@ -194,6 +211,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.1
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.31.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.32.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

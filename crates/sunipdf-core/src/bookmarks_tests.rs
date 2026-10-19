@@ -9,6 +9,82 @@ fn loaded(bytes: &[u8]) -> lopdf::Document {
     crate::security::load(bytes, None).unwrap()
 }
 #[test]
+fn existing_pdf20_utf8_bookmark_whitespace_survives_without_relaxing_authoring_guards() {
+    let original = edit(
+        &input(),
+        None,
+        &BookmarkEdit::Add {
+            parent: None,
+            title: "Root".into(),
+            page: 0,
+        },
+    )
+    .unwrap();
+    let mut pdf = loaded(&original);
+    pdf.version = "2.0".into();
+    let root = pdf
+        .catalog()
+        .unwrap()
+        .get(b"Outlines")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    let first = pdf
+        .get_dictionary(root)
+        .unwrap()
+        .get(b"First")
+        .unwrap()
+        .as_reference()
+        .unwrap();
+    let foreign_title = Object::String(
+        [
+            b"\xef\xbb\xbf".as_slice(),
+            "🌈\u{fe0f}\nTitle\t\r\u{2028}\u{2029}".as_bytes(),
+        ]
+        .concat(),
+        lopdf::StringFormat::Hexadecimal,
+    );
+    pdf.get_object_mut(first)
+        .unwrap()
+        .as_dict_mut()
+        .unwrap()
+        .set("Title", foreign_title.clone());
+    let foreign = crate::security::save(pdf).unwrap();
+    let edited = edit(
+        &foreign,
+        None,
+        &BookmarkEdit::Destination { index: 0, page: 1 },
+    )
+    .unwrap();
+    let tree = Tree::read(&loaded(&edited)).unwrap();
+    assert_eq!(tree.nodes[0].dict.get(b"Title").unwrap(), &foreign_title);
+    for invalid in ["new\nline", "new\tlabel", "new\0label", "new\u{2028}line"] {
+        assert!(edit(
+            &foreign,
+            None,
+            &BookmarkEdit::Rename {
+                index: 0,
+                title: invalid.into()
+            }
+        )
+        .is_err());
+    }
+    let mut forbidden = loaded(&foreign);
+    forbidden
+        .get_object_mut(first)
+        .unwrap()
+        .as_dict_mut()
+        .unwrap()
+        .set(
+            "Title",
+            Object::String(
+                b"\xef\xbb\xbfbad\x01title".to_vec(),
+                lopdf::StringFormat::Hexadecimal,
+            ),
+        );
+    assert!(Tree::read(&forbidden).is_err());
+}
+#[test]
 fn bookmark_authoring_preserves_hierarchy_destinations_and_inert_actions() {
     let original = input();
     let bytes = edit(

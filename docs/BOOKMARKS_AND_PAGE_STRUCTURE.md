@@ -1,5 +1,9 @@
 # Bookmarks and page structure
 
+From 0.33.0, bounded imported titles retain their original UTF-8 bytes and existing tabs/line breaks during
+page operations and destination edits. Newly added or renamed titles still require a nonempty single-line
+label without control characters; other imported controls, oversized titles and malformed graphs remain refused.
+
 The bookmarks panel supports adding top-level or child bookmarks, renaming, setting a page destination, reordering siblings and deleting a selected subtree. Edits use the existing Undo/Redo history. The core API additionally supports moving an item to a different parent. Limits are 4,096 bookmarks, 32 levels and 1,024 UTF-8 bytes per title. Cycles, invalid indices, excessive nesting and malformed outline links are refused before applying changes. Renaming and moving preserve the original action, destination coordinates, style and metadata. Setting a destination explicitly replaces that item's action with a local page destination. Existing unsupported actions are retained as PDF data and are never executed by the editor.
 
 Merge, extraction and insertion preserve authored page labels and now rebuild outlines, local destinations, annotations, selected AcroForm fields, layer references, named attachments and associated files from the selected source graphs. Local XYZ/Fit destinations retain their original axes and null values. Destinations to omitted pages are removed; unselected page dictionaries and page-tree nodes are unavailable to the copy traversal, preventing hidden copies of omitted pages. A destination to a repeated source page resolves to its first output occurrence. Non-widget annotations on repeated pages receive separate owners; repeating a page containing form widgets is explicitly refused.

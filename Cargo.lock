@@ -3692,7 +3692,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sunipdf-cli"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "clap",
  "image",
@@ -3705,7 +3705,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-core"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "allsorts",
  "chrono",
@@ -3726,7 +3726,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-desktop"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "chrono",
  "eframe",
@@ -3735,7 +3735,7 @@ dependencies = [
  "image",
  "log",
  "lopdf",
- "pollster 0.4.0",
+ "pollster 1.0.1",
  "rfd",
  "semver",
  "serde",
@@ -3752,7 +3752,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-i18n"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "serde_json",
 ]
@@ -4629,14 +4629,13 @@ dependencies = [
 
 [[package]]
 name = "windows"
-version = "0.62.0"
+version = "0.62.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9579d0e6970fd5250aa29aba5994052385ff55cf7b28a059e484bb79ea842e42"
+checksum = "527fadee13e0c05939a6a05d5bd6eec6cd2e3dbd648b9f8e447c6518133d8580"
 dependencies = [
  "windows-collections",
  "windows-core",
  "windows-future",
- "windows-link",
  "windows-numerics",
 ]
 

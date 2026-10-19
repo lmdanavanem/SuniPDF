@@ -1,5 +1,10 @@
 # Signets et structure des pages
 
+À partir de la 0.33.0, les titres importés bornés conservent leurs octets UTF-8 et leurs tabulations/retours
+à la ligne lors des opérations de pages et modifications de destination. Un titre ajouté ou renommé doit
+toujours être non vide, sur une ligne et sans caractères de contrôle ; les autres contrôles importés,
+titres trop longs et graphes mal formés restent refusés.
+
 Le panneau des signets permet d’ajouter un signet principal ou enfant, de le renommer, de définir sa page, de réordonner des éléments frères et de supprimer une branche. Les modifications passent par Annuler/Rétablir. L’API permet aussi de changer le parent d’une branche. Limites : 4 096 signets, 32 niveaux et 1 024 octets UTF-8 par titre.
 
 Les cycles, indices incorrects, profondeurs excessives et liens de structure incohérents sont refusés avant modification. Renommer ou déplacer conserve l’action, les coordonnées, le style et les métadonnées existants. Définir explicitement une nouvelle destination remplace l’action du signet concerné par une destination locale. Les actions non prises en charge restent des données PDF et ne sont jamais exécutées par l’éditeur.
