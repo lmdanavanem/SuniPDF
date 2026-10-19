@@ -35,7 +35,14 @@ physique, fenêtres/GPU réels, Narrator, dialogues natifs d’installation/mise
 Acrobat/Foxit, élargissement du corpus réel/hostile et fuzzing guidé restent à qualifier. Aucune certification
 PDF/A/PDF/UA ou LTV d’archivage. Les PDF téléchargés et dérivés sont exclus de Git et des paquets.
 
-## Validation
+## Validation et distribution
 
-Qualification de publication en cours. Les résultats exacts de CI, paquets, téléchargements publics,
-metteur à jour et Projects seront consignés après validation ; la version publique stable reste la 0.32.0.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.33.0) sous `lmdanavanem`, release `417802490`, source immuable `c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb`.
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39332569906) et [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39332607929) réussis : **592 tests**, zéro échec, 10 ignorés par défaut, **1092 clés EN/FR** ; 84 contrôles qpdf et 9 sorties indépendantes, 4 cas de polices, rendu logiciel DX12, 14 allers-retours Office, quatre documents NIST/744 pages ; **7 exemples PDF 2.0/8 pages/21 contrôles qpdf**, **64 mutations et 2 contrôles de garde**, **25 scénarios portables**, **19 références MSI/95 journaux**. La CLI empaquetée passe aussi les 7 exemples/21 contrôles qpdf, 11 scénarios d’ordre d’objets/3 contrôles qpdf, 11 d’analyse locale et 8 de sécurité. CodeQL Rust/Python/Actions réussit, sans alerte ouverte.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256. Le harnais conservé de la 0.32.0, dont le module du metteur à jour est inchangé et vérifié par empreinte, a téléchargé et vérifié le ZIP x64 de **26,726,762 octets en 1.65 s**, sans installation.
+
+La mise à jour Projects est reportée à la demande explicite du propriétaire. Le dernier contrôle public montre **43 cartes, 25 Done, 18 Todo** ; les deux P1 ont une livraison partielle documentée, sans clôture ni changement de statut annoncé.
+
+[Preuves détaillées](qa/RELEASE_0.33.0.json).

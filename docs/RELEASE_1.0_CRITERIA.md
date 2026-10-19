@@ -3,7 +3,7 @@
 [Français](RELEASE_1.0_CRITERIA.fr.md)
 
 This is the accepted preparation track after 0.32.0, not a claim that 1.0 is qualified. The current
-stable release remains [0.32.0](RELEASE_0.32.0.md). Existing supported operations and conservative refusals
+stable release is now [0.33.0](RELEASE_0.33.0.md). Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
 
@@ -11,7 +11,7 @@ signature, XFA or PDF-conformance support.
 |---|---|---|
 | Update authenticity | Verify signed metadata and exact packages against an embedded public key; version/expiry checks, rejected tampering and documented key custody/rotation | GitHub HTTPS and same-channel SHA256 only; no independent publication key configured |
 | Windows publisher identity | Verify timestamped Authenticode signatures on distributed EXE/MSI payloads | No production code-signing certificate supplied; test certificates do not qualify |
-| Document safety | Pinned licensed samples, corruption/large-input campaigns, atomic failure, source immutability and recorded reopening/rendering checks | Four NIST documents/744 pages are the released baseline; broader customer, hostile and large-file coverage remains open |
+| Document safety | Pinned licensed samples, corruption/large-input campaigns, atomic failure, source immutability and recorded reopening/rendering checks | Four NIST documents/744 pages and seven PDF Association teaching examples/8 pages are released QA baselines; broader customer, hostile and large-file coverage remains open |
 | Independent interoperability | Saved encrypted documents, forms, annotations and signatures checked in the named external readers with exact versions and outcomes | Existing qpdf/MuPDF gates cover bounded cases; Acrobat/Foxit qualification remains open |
 | Native Windows experience | Clean installation and upgrade, startup notification/install/cancel/rollback, save/recovery dialogs, keyboard/Narrator, DPI/GPU and physical printing | Scripted/headless/offscreen tests do not qualify native interactions or a physical printer |
 | ARM64 support | Run the actual public package on real Windows ARM64 and record OS/device/results | Cross-compilation and PE inspection only; keep runtime support experimental until qualified |
@@ -20,7 +20,7 @@ signature, XFA or PDF-conformance support.
 For every gate, an unsupported or unavailable result must stay explicit. A partial report, a successful
 build, an ignored test or a signed test fixture must not close an unverified acceptance criterion.
 
-The implementation lot now in progress adds seven pinned PDF Association teaching examples under
+The first preparation lot, released in 0.33.0, adds seven pinned PDF Association teaching examples under
 CC BY-SA 4.0, deterministic PDF/CMS mutation smoke tests, per-command measurements and hardware metadata.
 The examples cover UTF-8 annotations, incremental saves, a displaced header and colour/output-intent
 structures. They are distinct from the NIST research documents and from a real customer/hostile corpus.

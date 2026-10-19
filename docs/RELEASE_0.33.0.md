@@ -34,7 +34,14 @@ Narrator, interactive installation/update/save flows, Acrobat/Foxit interoperabi
 corpus coverage and coverage-guided fuzzing remain separate qualification. No PDF/A/PDF/UA or archival-LTV
 certification is claimed. Downloaded examples and derived PDF copies are excluded from Git/packages.
 
-## Validation
+## Validation and distribution
 
-Release qualification is in progress. Exact CI, package, public-download, updater and Projects results
-will be recorded after successful validation; the stable public release is still 0.32.0.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.33.0) under `lmdanavanem`, release `417802490`, immutable source `c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb`.
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39332569906) and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39332607929) passed: **592 tests**, zero failures, 10 default ignored, **1092 EN/FR keys**; 84 qpdf corpus checks and 9 independent feature outputs, 4 font cases, DX12 software rendering, 14 Office round trips, four NIST documents/744 pages; **7 PDF 2.0 examples/8 pages/21 qpdf checks**, **64 mutations and 2 guard controls**, **25 portable scenarios**, **19 MSI baselines/95 logs**. The packaged CLI additionally passed the 7-example/21-qpdf suite, 11 object-order scenarios/3 qpdf checks, 11 local-review and 8 security scenarios. CodeQL Rust/Python/Actions passed with zero open alerts.
+
+Six public files and `dist/` copies verified by SHA256. The preserved 0.32.0 test harness, with its unchanged updater module verified by hash, downloaded and verified the **26,726,762-byte x64 ZIP in 1.65 s**, without installation.
+
+Project edits are deferred at the owner’s explicit request. The public readback shows **43 items, 25 Done, 18 Todo**; both P1 tasks have documented partial progress, with no claimed closure or status change.
+
+[Detailed evidence](qa/RELEASE_0.33.0.json).
