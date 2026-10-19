@@ -1741,9 +1741,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             },
         };
         // 2. Traitement.
-        let response =
-            match request {
-                Request::LocalReview(job) => Response::LocalReviewDone(
+        let response = match request {
+            Request::LocalReview(job) => {
+                let result =
                     crate::local_review::run_job(&engine, job, |done, total, page, pages| {
                         let _ = tx.send(Response::LocalReviewProgress {
                             done,
@@ -1752,776 +1752,778 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             pages,
                         });
                         ctx.request_repaint();
-                    }),
-                ),
-                Request::AcknowledgeSuspendFailure => {
-                    navigation_failed = false;
-                    continue;
-                }
-                Request::Open { .. } | Request::Resume(_) | Request::ResumeDoc(_)
-                    if navigation_failed =>
-                {
-                    continue
-                }
-                Request::SetRecovery(slot) => {
-                    state.recovery = slot;
-                    continue;
-                }
-                Request::Autosave => {
-                    let result = if state.modified() {
-                        match (state.document.as_ref(), state.recovery.as_ref()) {
-                            (Some(doc), Some(slot)) => doc
-                                .snapshot()
-                                .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from)),
-                            _ => Ok(()),
-                        }
-                    } else {
-                        Ok(())
-                    };
-                    Response::RecoverySaved(result)
-                }
-                Request::MarkRecovered { path } => {
-                    if let Some(doc) = &mut state.document {
-                        doc.set_path(path);
+                    });
+                Response::LocalReviewDone(result)
+            }
+            Request::AcknowledgeSuspendFailure => {
+                navigation_failed = false;
+                continue;
+            }
+            Request::Open { .. } | Request::Resume(_) | Request::ResumeDoc(_)
+                if navigation_failed =>
+            {
+                continue
+            }
+            Request::SetRecovery(slot) => {
+                state.recovery = slot;
+                continue;
+            }
+            Request::Autosave => {
+                let result = if state.modified() {
+                    match (state.document.as_ref(), state.recovery.as_ref()) {
+                        (Some(doc), Some(slot)) => doc
+                            .snapshot()
+                            .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from)),
+                        _ => Ok(()),
                     }
-                    state.save_point = None;
-                    match state.doc_state() {
-                        Some(doc) => Response::DocumentChanged(doc),
-                        None => continue,
-                    }
+                } else {
+                    Ok(())
+                };
+                Response::RecoverySaved(result)
+            }
+            Request::MarkRecovered { path } => {
+                if let Some(doc) = &mut state.document {
+                    doc.set_path(path);
                 }
-                Request::ProcessFiles(job) => {
-                    let results = crate::processing::run_job(
-                        &engine,
-                        state.document.as_ref(),
-                        job,
-                        |done, total, item_done, item_total| {
-                            let _ = tx.send(Response::ProcessingProgress {
-                                done,
-                                total,
-                                item_done,
-                                item_total,
-                            });
-                            ctx.request_repaint();
-                        },
-                    );
-                    Response::ProcessingDone(results)
+                state.save_point = None;
+                match state.doc_state() {
+                    Some(doc) => Response::DocumentChanged(doc),
+                    None => continue,
                 }
-                Request::Office(job) => {
-                    let results = crate::office::run_job(
-                        &engine,
-                        state.document.as_ref(),
-                        job,
-                        |done, total, item_done, item_total| {
-                            let _ = tx.send(Response::OfficeProgress {
-                                done,
-                                total,
-                                item_done,
-                                item_total,
-                            });
-                            ctx.request_repaint();
-                        },
-                    );
-                    Response::OfficeDone(results)
-                }
-                Request::Print { job, cancel } => {
-                    let result = state
-                        .document
-                        .as_ref()
-                        .ok_or_else(|| EngineError::Other("no document".into()))
-                        .and_then(|doc| {
-                            crate::printing::print(
-                                doc,
-                                job,
-                                &doc.info().path.display().to_string(),
-                                &cancel,
-                                |done, total| {
-                                    let _ = tx.send(Response::TaskProgress {
-                                        kind: TaskKind::Print,
-                                        done,
-                                        total,
-                                    });
-                                    ctx.request_repaint();
-                                },
-                            )
-                        })
-                        .map(|report| {
-                            log::debug!("Submitted {} pages to Windows printing", report.pages)
+            }
+            Request::ProcessFiles(job) => {
+                let results = crate::processing::run_job(
+                    &engine,
+                    state.document.as_ref(),
+                    job,
+                    |done, total, item_done, item_total| {
+                        let _ = tx.send(Response::ProcessingProgress {
+                            done,
+                            total,
+                            item_done,
+                            item_total,
                         });
-                    Response::TaskDone {
-                        kind: TaskKind::Print,
-                        result,
-                    }
-                }
-                Request::Ocr { options, cancel } => {
-                    let result = (|| {
-                        let doc = state
-                            .document
-                            .as_mut()
-                            .ok_or_else(|| EngineError::Other("no document".into()))?;
-                        let snapshot = Snapshot {
-                            bytes: doc.snapshot()?,
-                            password: doc.password().map(str::to_owned),
-                            pages_unchanged: true,
-                        };
-                        let report = doc.ocr(&options, &cancel, |done, total| {
-                            let _ = tx.send(Response::TaskProgress {
-                                kind: TaskKind::Ocr,
-                                done,
-                                total,
-                            });
-                            ctx.request_repaint();
-                        })?;
-                        Ok::<_, EngineError>((snapshot, report))
-                    })();
-                    match result {
-                        Ok((snapshot, report)) => {
-                            if report.words != 0 {
-                                state.push_undo(snapshot);
-                                state.invalidate();
-                                state.last_nudge = None;
-                                let _ = tx.send(Response::TaskDone {
-                                    kind: TaskKind::Ocr,
-                                    result: Ok(()),
-                                });
-                                let mut changed = state.doc_state().expect("OCR document");
-                                changed.pages_unchanged = true;
-                                Response::DocumentChanged(changed)
-                            } else {
-                                Response::TaskDone {
-                                    kind: TaskKind::Ocr,
-                                    result: Ok(()),
-                                }
-                            }
-                        }
-                        Err(error) => Response::TaskDone {
-                            kind: TaskKind::Ocr,
-                            result: Err(error),
-                        },
-                    }
-                }
-                Request::RenderSignature { id, text, style } => Response::SignatureRendered {
-                    id,
-                    result: engine.typed_signature(&text, &style),
-                },
-                Request::PlaceSignature {
-                    pages,
-                    image,
-                    center,
-                    width_pt,
-                    cancel,
-                } => {
-                    let result = (|| {
-                        let doc = state
-                            .document
-                            .as_mut()
-                            .ok_or_else(|| EngineError::Other("no document".into()))?;
-                        let snapshot = Snapshot {
-                            bytes: doc.snapshot()?,
-                            password: doc.password().map(str::to_owned),
-                            pages_unchanged: true,
-                        };
-                        doc.place_signature_image(
-                            &pages,
-                            &image,
-                            center,
-                            width_pt,
+                        ctx.request_repaint();
+                    },
+                );
+                Response::ProcessingDone(results)
+            }
+            Request::Office(job) => {
+                let results = crate::office::run_job(
+                    &engine,
+                    state.document.as_ref(),
+                    job,
+                    |done, total, item_done, item_total| {
+                        let _ = tx.send(Response::OfficeProgress {
+                            done,
+                            total,
+                            item_done,
+                            item_total,
+                        });
+                        ctx.request_repaint();
+                    },
+                );
+                Response::OfficeDone(results)
+            }
+            Request::Print { job, cancel } => {
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| {
+                        crate::printing::print(
+                            doc,
+                            job,
+                            &doc.info().path.display().to_string(),
                             &cancel,
                             |done, total| {
                                 let _ = tx.send(Response::TaskProgress {
-                                    kind: TaskKind::Signature,
+                                    kind: TaskKind::Print,
                                     done,
                                     total,
                                 });
                                 ctx.request_repaint();
                             },
-                        )?;
-                        Ok::<_, EngineError>(snapshot)
-                    })();
-                    match result {
-                        Ok(snapshot) => {
+                        )
+                    })
+                    .map(|report| {
+                        log::debug!("Submitted {} pages to Windows printing", report.pages)
+                    });
+                Response::TaskDone {
+                    kind: TaskKind::Print,
+                    result,
+                }
+            }
+            Request::Ocr { options, cancel } => {
+                let result = (|| {
+                    let doc = state
+                        .document
+                        .as_mut()
+                        .ok_or_else(|| EngineError::Other("no document".into()))?;
+                    let snapshot = Snapshot {
+                        bytes: doc.snapshot()?,
+                        password: doc.password().map(str::to_owned),
+                        pages_unchanged: true,
+                    };
+                    let report = doc.ocr(&options, &cancel, |done, total| {
+                        let _ = tx.send(Response::TaskProgress {
+                            kind: TaskKind::Ocr,
+                            done,
+                            total,
+                        });
+                        ctx.request_repaint();
+                    })?;
+                    Ok::<_, EngineError>((snapshot, report))
+                })();
+                match result {
+                    Ok((snapshot, report)) => {
+                        if report.words != 0 {
                             state.push_undo(snapshot);
                             state.invalidate();
                             state.last_nudge = None;
                             let _ = tx.send(Response::TaskDone {
-                                kind: TaskKind::Signature,
+                                kind: TaskKind::Ocr,
                                 result: Ok(()),
                             });
-                            let mut changed = state.doc_state().expect("signature document");
+                            let mut changed = state.doc_state().expect("OCR document");
                             changed.pages_unchanged = true;
                             Response::DocumentChanged(changed)
-                        }
-                        Err(error) => Response::TaskDone {
-                            kind: TaskKind::Signature,
-                            result: Err(error),
-                        },
-                    }
-                }
-                Request::BeginProtection { epoch } => {
-                    let Some(doc) = state.document.as_ref() else {
-                        continue;
-                    };
-                    Response::ProtectionAuthorization {
-                        epoch,
-                        encrypted: doc.is_encrypted(),
-                    }
-                }
-                request @ (Request::VerifySignatures | Request::VerifySignaturesWithOptions(_)) => {
-                    let options = match request {
-                        Request::VerifySignaturesWithOptions(options) => options,
-                        _ => sunipdf_core::certificate::VerificationOptions::default(),
-                    };
-                    let result = state
-                        .document
-                        .as_ref()
-                        .ok_or_else(|| EngineError::Other("no document".into()))
-                        .and_then(|doc| {
-                            let bytes = state.signature_bytes()?;
-                            sunipdf_core::certificate::verify_signatures_with_options(
-                                bytes,
-                                doc.password(),
-                                options,
-                            )
-                        });
-                    Response::Signatures(result)
-                }
-                Request::SignCertificate {
-                    pfx,
-                    password,
-                    options,
-                    output,
-                } => {
-                    let result = (|| {
-                        let source = state.signature_bytes()?;
-                        // A fresh path also excludes hard-link aliases of the source.
-                        if output.exists() {
-                            return Err(EngineError::AlreadyExists(output));
-                        }
-                        let identity = zeroize::Zeroizing::new(std::fs::read(pfx)?);
-                        let signed = sunipdf_core::certificate::sign_pdf(
-                            source, &identity, &password, &options,
-                        )?;
-                        write_new_copy(&output, &signed)?;
-                        Ok(output)
-                    })();
-                    Response::SignedCopy(result)
-                }
-                Request::Open { path, password } => match std::fs::read(&path)
-                    .map_err(EngineError::from)
-                    .and_then(|bytes| {
-                        let doc = engine.open_bytes(bytes.clone(), password.as_deref(), &path)?;
-                        Ok((doc, SignatureSource::new(bytes)))
-                    }) {
-                    Ok((doc, source)) => {
-                        state.document = Some(doc);
-                        state.signature_source = Some(source);
-                        state.invalidate();
-                        state.undo.clear();
-                        state.redo.clear();
-                        state.save_point = Some(0);
-                        state.last_nudge = None;
-                        Response::Opened(state.doc_state().expect("document ouvert"))
-                    }
-                    Err(error) => Response::OpenFailed { path, error },
-                },
-                Request::SetWanted { epoch, jobs } => {
-                    if state.document.is_some() {
-                        state.wanted.replace(epoch, jobs);
-                    }
-                    continue;
-                }
-                Request::Thumbnail { page, width_px } => {
-                    let image = state
-                        .document
-                        .as_ref()
-                        .ok_or(EngineError::PageOutOfRange(page))
-                        .and_then(|doc| doc.page_size(page))
-                        .and_then(|size| {
-                            state.render_cached(page, width_px.max(1) as f32 / size.width_pt)
-                        });
-                    match image {
-                        Ok(image) => Response::Thumbnail { page, image },
-                        Err(e) => {
-                            log::warn!("miniature page {page} impossible : {e}");
-                            Response::ThumbnailFailed { page, width_px }
-                        }
-                    }
-                }
-                Request::Search {
-                    query,
-                    match_case,
-                    generation,
-                } => {
-                    let Some(doc) = &state.document else { continue };
-                    let matches = doc.search(&query, match_case).unwrap_or_else(|e| {
-                        log::warn!("recherche impossible : {e}");
-                        Vec::new()
-                    });
-                    Response::SearchResults {
-                        generation,
-                        matches,
-                    }
-                }
-                Request::Edit(op) => state.edit(op),
-                Request::CommitRedactionPreview { epoch, generation } => {
-                    let result = match state.redaction_preview.take() {
-                        Some((saved_epoch, saved_generation, prepared))
-                            if saved_epoch == epoch && saved_generation == generation =>
-                        {
-                            state.redact_candidate(|doc| doc.commit_redaction_preview(prepared))
-                        }
-                        _ => Err(EngineError::Other(
-                            "redaction preview is stale; preview again".into(),
-                        )),
-                    };
-                    match result {
-                        Ok((report, doc_state)) => {
-                            if let Some(slot) = &state.recovery {
-                                let refreshed = state
-                                    .document
-                                    .as_ref()
-                                    .expect("redacted document")
-                                    .snapshot()
-                                    .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from));
-                                if let Err(error) = refreshed {
-                                    // A failed refresh must not retain a snapshot containing the removed data.
-                                    if let Err(cleanup) = slot.remove() {
-                                        log::error!("Redaction recovery cleanup failed: {cleanup}");
-                                    }
-                                    let _ = tx.send(Response::RecoverySaved(Err(error)));
-                                }
-                            }
-                            if tx.send(Response::Redacted(report)).is_err() {
-                                break;
-                            }
-                            Response::DocumentChanged(doc_state)
-                        }
-                        Err(e) => Response::OperationFailed(e),
-                    }
-                }
-                Request::PreviewRedaction {
-                    marks,
-                    options,
-                    appearance,
-                    page,
-                    epoch,
-                    generation,
-                    cancel,
-                } => {
-                    state.redaction_preview = None;
-                    let result = state
-                        .document
-                        .as_ref()
-                        .ok_or(EngineError::PageOutOfRange(page))
-                        .and_then(|doc| {
-                            doc.preview_redaction_cancelable(
-                                &marks,
-                                &options,
-                                &appearance,
-                                page,
-                                cancel,
-                            )
-                        });
-                    let result = result.and_then(|mut preview| {
-                        let prepared = preview.prepared.take().ok_or_else(|| {
-                            EngineError::Other("missing prepared redaction".into())
-                        })?;
-                        state.redaction_preview = Some((epoch, generation, prepared));
-                        Ok(preview)
-                    });
-                    Response::RedactionPreview {
-                        epoch,
-                        generation,
-                        result,
-                    }
-                }
-                Request::DiscardRedactionPreview { epoch, generation } => {
-                    if state.redaction_preview.as_ref().is_some_and(
-                        |(saved_epoch, saved_generation, _)| {
-                            *saved_epoch == epoch && *saved_generation == generation
-                        },
-                    ) {
-                        state.redaction_preview = None;
-                    }
-                    continue;
-                }
-                Request::GetRedactionMarks { epoch } => Response::RedactionMarks {
-                    epoch,
-                    result: state
-                        .document
-                        .as_ref()
-                        .ok_or_else(|| EngineError::Other("no document".into()))
-                        .and_then(Document::redaction_marks),
-                },
-                Request::PersistRedactionMarks {
-                    marks,
-                    appearance,
-                    author,
-                } => {
-                    match state.redact_candidate(|doc| {
-                        doc.persist_redaction_marks(&marks, &appearance, author.as_deref())?;
-                        Ok(RedactReport::default())
-                    }) {
-                        Ok((_, doc_state)) => Response::DocumentChanged(doc_state),
-                        Err(error) => Response::OperationFailed(error),
-                    }
-                }
-                Request::RedactSearch {
-                    query,
-                    match_case,
-                    verify,
-                } => {
-                    let Some(doc) = &state.document else { continue };
-                    let marks = doc
-                        .redact_marks_for_text(&query, match_case)
-                        .unwrap_or_else(|e| {
-                            log::warn!("recherche à caviarder impossible : {e}");
-                            Vec::new()
-                        });
-                    Response::RedactMatches {
-                        query,
-                        verify,
-                        marks,
-                    }
-                }
-                Request::TextInRect { page, rect } => {
-                    let Some(doc) = &state.document else { continue };
-                    match doc.text_in_rect(page, rect) {
-                        Ok(selection) => Response::TextSelected { page, selection },
-                        Err(e) => {
-                            log::warn!("sélection impossible : {e}");
-                            continue;
-                        }
-                    }
-                }
-                Request::ReadingSelection {
-                    epoch,
-                    generation,
-                    anchor,
-                    focus,
-                    word,
-                } => {
-                    let result = state
-                        .document
-                        .as_ref()
-                        .ok_or_else(|| EngineError::Other("no document".into()))
-                        .and_then(|doc| doc.reading_selection(anchor, focus, word));
-                    Response::ReadingSelected {
-                        epoch,
-                        generation,
-                        result,
-                    }
-                }
-                Request::Batch(op) => {
-                    Response::BatchDone(run_batch(&engine, state.document.as_ref(), op))
-                }
-                Request::Suspend => {
-                    let Some(doc) = state.document.as_ref() else {
-                        continue;
-                    };
-                    let bytes = match doc.snapshot() {
-                        Ok(bytes) => bytes,
-                        Err(error) => {
-                            navigation_failed = true;
-                            let _ = tx.send(Response::SuspendFailed(error));
-                            ctx.request_repaint();
-                            continue;
-                        }
-                    };
-                    if state.modified() {
-                        if let Some(slot) = &state.recovery {
-                            if let Err(error) = slot.save(&bytes) {
-                                let _ = tx.send(Response::RecoverySaved(Err(error.into())));
+                        } else {
+                            Response::TaskDone {
+                                kind: TaskKind::Ocr,
+                                result: Ok(()),
                             }
                         }
                     }
-                    let doc = state.document.take().expect("snapshotted document");
-                    let suspended = SuspendedDoc {
-                        bytes,
+                    Err(error) => Response::TaskDone {
+                        kind: TaskKind::Ocr,
+                        result: Err(error),
+                    },
+                }
+            }
+            Request::RenderSignature { id, text, style } => Response::SignatureRendered {
+                id,
+                result: engine.typed_signature(&text, &style),
+            },
+            Request::PlaceSignature {
+                pages,
+                image,
+                center,
+                width_pt,
+                cancel,
+            } => {
+                let result = (|| {
+                    let doc = state
+                        .document
+                        .as_mut()
+                        .ok_or_else(|| EngineError::Other("no document".into()))?;
+                    let snapshot = Snapshot {
+                        bytes: doc.snapshot()?,
                         password: doc.password().map(str::to_owned),
-                        path: doc.info().path.clone(),
-                        modified: state.modified(),
-                        undo: std::mem::take(&mut state.undo),
-                        redo: std::mem::take(&mut state.redo),
-                        save_point: state.save_point.replace(0),
-                        signature_source: state.signature_source.take(),
+                        pages_unchanged: true,
                     };
-                    state.recovery = None;
-                    state.invalidate();
-                    Response::Suspended(suspended)
-                }
-                Request::Resume(index) => {
-                    log::debug!("reprise de l'onglet {index}");
-                    continue;
-                }
-                Request::ResumeDoc(s) => {
-                    match engine.open_bytes(s.bytes, s.password.as_deref(), &s.path) {
-                        Ok(doc) => {
-                            state.document = Some(doc);
-                            state.signature_source = s.signature_source;
-                            state.invalidate();
-                            state.undo = s.undo;
-                            state.redo = s.redo;
-                            state.save_point = s.save_point;
-                            state.last_nudge = None;
-                            Response::Resumed(state.doc_state().expect("document repris"))
-                        }
-                        Err(error) => Response::ResumeFailed(error),
-                    }
-                }
-                Request::ObjectAt { page, x, y } => {
-                    let Some(doc) = &state.document else { continue };
-                    let info = doc.object_at(page, x, y).unwrap_or_default();
-                    Response::ObjectSelected { page, info }
-                }
-                Request::ObjectInfo { page, index } => {
-                    let Some(doc) = &state.document else { continue };
-                    // `usize::MAX` = dernier objet (après duplication ou passage au premier plan).
-                    let count = doc.page_objects(page).map(|v| v.len()).unwrap_or(0);
-                    let index = if count > 0 {
-                        index.min(count - 1)
-                    } else {
-                        index
-                    };
-                    let info = doc.object_info(page, index).ok();
-                    Response::ObjectSelected { page, info }
-                }
-                Request::Pick { page, pick, mode } => {
-                    let Some(doc) = &state.document else { continue };
-                    let infos = match pick {
-                        Pick::At { x, y } => {
-                            doc.object_at(page, x, y).map(|o| o.into_iter().collect())
-                        }
-                        Pick::InRect { rect, touching } => doc.objects_in_rect(
-                            page,
-                            rect,
-                            if touching {
-                                RectMode::Touching
-                            } else {
-                                RectMode::Contained
-                            },
-                        ),
-                        Pick::Indices(v) => Ok(v
-                            .into_iter()
-                            .filter_map(|i| doc.object_info(page, i).ok())
-                            .collect()),
-                        Pick::Last(n) => doc.page_objects(page).map(|all| {
-                            let skip = all.len().saturating_sub(n);
-                            all.into_iter().skip(skip).collect()
-                        }),
-                        Pick::All => doc.page_objects(page),
-                    };
-                    Response::ObjectsSelected {
-                        page,
-                        infos: infos.unwrap_or_default(),
-                        mode,
-                    }
-                }
-                Request::Objects { page } => {
-                    let Some(doc) = &state.document else { continue };
-                    Response::Objects {
-                        page,
-                        list: doc.page_objects(page).unwrap_or_default(),
-                    }
-                }
-                Request::RotationCenter {
-                    page,
-                    indices,
-                    epoch,
-                    generation,
-                } => {
-                    let center = state
-                        .document
-                        .as_ref()
-                        .and_then(|doc| doc.rotation_center(page, &indices).ok());
-                    Response::RotationCenter {
-                        page,
-                        indices,
-                        epoch,
-                        generation,
+                    doc.place_signature_image(
+                        &pages,
+                        &image,
                         center,
-                    }
-                }
-                Request::PreviewParagraph {
-                    page,
-                    indices,
-                    text,
-                    width,
-                    leading,
-                    epoch,
-                    generation,
-                } => {
-                    let result = match state.document.as_ref() {
-                        Some(doc) => doc.preview_paragraph(page, &indices, &text, width, leading),
-                        None => Err(EngineError::PageOutOfRange(page)),
-                    };
-                    Response::ParagraphPreview {
-                        epoch,
-                        generation,
-                        result,
-                    }
-                }
-                Request::CopyObjects { page, indices, cut } => {
-                    let Some(doc) = &state.document else { continue };
-                    match doc.copy_objects(page, &indices) {
-                        Ok(clip) => {
-                            let (count, text) = (clip.count, clip.text.clone());
-                            state.clip = Some(clip);
-                            if !cut {
-                                Response::Copied { count, text }
-                            } else if tx.send(Response::Copied { count, text }).is_err() {
-                                break;
-                            } else {
-                                state.edit(EditOp::DeleteObjects { page, indices })
-                            }
-                        }
-                        Err(e) => Response::OperationFailed(e),
-                    }
-                }
-                Request::PreviewRichAnnotation {
-                    page,
-                    annotation,
-                    author,
-                    epoch,
-                    generation,
-                } => {
-                    state.rich_preview = None;
-                    let result = state
-                        .document
-                        .as_ref()
-                        .ok_or(EngineError::PageOutOfRange(page))
-                        .and_then(|doc| {
-                            doc.preview_rich_annotation(page, &annotation, author.as_deref())
-                        });
-                    let result = result.and_then(|mut preview| {
-                        let prepared = preview.prepared.take().ok_or_else(|| {
-                            EngineError::Other("missing prepared annotation preview".into())
-                        })?;
-                        state.rich_preview = Some((epoch, generation, prepared));
-                        Ok(preview)
-                    });
-                    Response::RichAnnotationPreview {
-                        epoch,
-                        generation,
-                        result,
-                    }
-                }
-                Request::DiscardRichAnnotationPreview { epoch, generation } => {
-                    if state.rich_preview.as_ref().is_some_and(
-                        |(saved_epoch, saved_generation, _)| {
-                            *saved_epoch == epoch && *saved_generation == generation
+                        width_pt,
+                        &cancel,
+                        |done, total| {
+                            let _ = tx.send(Response::TaskProgress {
+                                kind: TaskKind::Signature,
+                                done,
+                                total,
+                            });
+                            ctx.request_repaint();
                         },
-                    ) {
-                        state.rich_preview = None;
+                    )?;
+                    Ok::<_, EngineError>(snapshot)
+                })();
+                match result {
+                    Ok(snapshot) => {
+                        state.push_undo(snapshot);
+                        state.invalidate();
+                        state.last_nudge = None;
+                        let _ = tx.send(Response::TaskDone {
+                            kind: TaskKind::Signature,
+                            result: Ok(()),
+                        });
+                        let mut changed = state.doc_state().expect("signature document");
+                        changed.pages_unchanged = true;
+                        Response::DocumentChanged(changed)
                     }
+                    Err(error) => Response::TaskDone {
+                        kind: TaskKind::Signature,
+                        result: Err(error),
+                    },
+                }
+            }
+            Request::BeginProtection { epoch } => {
+                let Some(doc) = state.document.as_ref() else {
                     continue;
+                };
+                Response::ProtectionAuthorization {
+                    epoch,
+                    encrypted: doc.is_encrypted(),
                 }
-                Request::LoadImage { path, max_side } => {
-                    let (path, result) = if let Some(dir) =
-                        crate::sign::signatures_dir().filter(|dir| {
-                            path.parent() == Some(dir.as_path())
-                                && path.file_name().and_then(|n| n.to_str()).is_some_and(|n| {
-                                    n.starts_with("signature-") || n.starts_with("initials-")
-                                })
-                        }) {
-                        match crate::sign::library::load(&dir, &path) {
-                            Ok((path, image)) => (path, Ok(image)),
-                            Err(error) => (path, Err(error)),
-                        }
-                    } else {
-                        let result = sunipdf_core::signature_image::load(&path, max_side);
-                        (path, result)
-                    };
-                    Response::ImageLoaded { path, result }
-                }
-                Request::SystemFonts => Response::SystemFonts(
-                    state
-                        .fonts
-                        .get_or_insert_with(|| Arc::new(sunipdf_core::fonts::system_fonts()))
-                        .clone(),
-                ),
-                Request::Properties => {
-                    let Some(doc) = &state.document else { continue };
-                    Response::Properties(doc.properties())
-                }
-                Request::Bookmarks => {
-                    let Some(doc) = &state.document else { continue };
-                    Response::Bookmarks(doc.bookmarks())
-                }
-                Request::Annotations { page, detailed } => {
-                    let Some(doc) = &state.document else { continue };
-                    let list = doc.annotations(page).unwrap_or_default();
-                    // La lecture détaillée relit tout le document : seulement si la page porte autre
-                    // chose que des fenêtres contextuelles et des champs de formulaire.
-                    let details = (detailed
-                        && list.iter().any(|a| !matches!(a.kind, "popup" | "widget")))
-                    .then(|| doc.annotation_details(page).ok())
-                    .flatten();
-                    Response::Annotations {
-                        page,
-                        list,
-                        details,
+            }
+            request @ (Request::VerifySignatures | Request::VerifySignaturesWithOptions(_)) => {
+                let options = match request {
+                    Request::VerifySignaturesWithOptions(options) => options,
+                    _ => sunipdf_core::certificate::VerificationOptions::default(),
+                };
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| {
+                        let bytes = state.signature_bytes()?;
+                        sunipdf_core::certificate::verify_signatures_with_options(
+                            bytes,
+                            doc.password(),
+                            options,
+                        )
+                    });
+                Response::Signatures(result)
+            }
+            Request::SignCertificate {
+                pfx,
+                password,
+                options,
+                output,
+            } => {
+                let result = (|| {
+                    let source = state.signature_bytes()?;
+                    // A fresh path also excludes hard-link aliases of the source.
+                    if output.exists() {
+                        return Err(EngineError::AlreadyExists(output));
                     }
-                }
-                Request::Links { page } => {
-                    let Some(doc) = &state.document else { continue };
-                    Response::Links {
-                        page,
-                        list: doc.page_links(page).unwrap_or_default(),
-                    }
-                }
-                Request::FormInfo => {
-                    let Some(doc) = &state.document else { continue };
-                    Response::FormInfo(doc.form_info())
-                }
-                Request::Undo => match state.undo_redo(true) {
-                    Some(r) => r,
-                    None => continue,
-                },
-                Request::Redo => match state.undo_redo(false) {
-                    Some(r) => r,
-                    None => continue,
-                },
-                Request::Save { path } => {
-                    let Some(doc) = &mut state.document else {
-                        continue;
-                    };
-                    match doc.save_as_bytes(&path) {
-                        Ok(bytes) => {
-                            state.signature_source = Some(SignatureSource::new(bytes));
-                            // « Enregistrer sous » : le document suit son nouveau chemin (Ctrl+S, onglets).
-                            doc.set_path(path.clone());
-                            state.save_point = Some(state.undo.len());
-                            // Le prochain décalage clavier prend son propre instantané (sinon il serait
-                            // fusionné avec celui d'avant l'enregistrement et passerait pour « intact »).
-                            state.last_nudge = None;
-                            if let Some(slot) = &state.recovery {
-                                if let Err(error) = slot.remove() {
-                                    let _ = tx.send(Response::RecoverySaved(Err(error.into())));
-                                }
-                            }
-                            Response::Saved { path }
-                        }
-                        Err(e) => Response::SaveFailed(e),
-                    }
-                }
-                Request::FinishMutation => Response::MutationFinished,
-                Request::Close => {
-                    if let Some(slot) = state.recovery.take() {
-                        if let Err(error) = slot.remove() {
-                            let _ = tx.send(Response::RecoverySaved(Err(error.into())));
-                        }
-                    }
-                    state.document = None;
-                    state.signature_source = None;
+                    let identity = zeroize::Zeroizing::new(std::fs::read(pfx)?);
+                    let signed = sunipdf_core::certificate::sign_pdf(
+                        source, &identity, &password, &options,
+                    )?;
+                    write_new_copy(&output, &signed)?;
+                    Ok(output)
+                })();
+                Response::SignedCopy(result)
+            }
+            Request::Open { path, password } => match std::fs::read(&path)
+                .map_err(EngineError::from)
+                .and_then(|bytes| {
+                    let doc = engine.open_bytes(bytes.clone(), password.as_deref(), &path)?;
+                    Ok((doc, SignatureSource::new(bytes)))
+                }) {
+                Ok((doc, source)) => {
+                    state.document = Some(doc);
+                    state.signature_source = Some(source);
                     state.invalidate();
                     state.undo.clear();
                     state.redo.clear();
                     state.save_point = Some(0);
                     state.last_nudge = None;
-                    continue;
+                    Response::Opened(state.doc_state().expect("document ouvert"))
                 }
-            };
+                Err(error) => Response::OpenFailed { path, error },
+            },
+            Request::SetWanted { epoch, jobs } => {
+                if state.document.is_some() {
+                    state.wanted.replace(epoch, jobs);
+                }
+                continue;
+            }
+            Request::Thumbnail { page, width_px } => {
+                let image = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| doc.page_size(page))
+                    .and_then(|size| {
+                        state.render_cached(page, width_px.max(1) as f32 / size.width_pt)
+                    });
+                match image {
+                    Ok(image) => Response::Thumbnail { page, image },
+                    Err(e) => {
+                        log::warn!("miniature page {page} impossible : {e}");
+                        Response::ThumbnailFailed { page, width_px }
+                    }
+                }
+            }
+            Request::Search {
+                query,
+                match_case,
+                generation,
+            } => {
+                let Some(doc) = &state.document else { continue };
+                let matches = doc.search(&query, match_case).unwrap_or_else(|e| {
+                    log::warn!("recherche impossible : {e}");
+                    Vec::new()
+                });
+                Response::SearchResults {
+                    generation,
+                    matches,
+                }
+            }
+            Request::Edit(op) => state.edit(op),
+            Request::CommitRedactionPreview { epoch, generation } => {
+                let result = match state.redaction_preview.take() {
+                    Some((saved_epoch, saved_generation, prepared))
+                        if saved_epoch == epoch && saved_generation == generation =>
+                    {
+                        state.redact_candidate(|doc| doc.commit_redaction_preview(prepared))
+                    }
+                    _ => Err(EngineError::Other(
+                        "redaction preview is stale; preview again".into(),
+                    )),
+                };
+                match result {
+                    Ok((report, doc_state)) => {
+                        if let Some(slot) = &state.recovery {
+                            let refreshed = state
+                                .document
+                                .as_ref()
+                                .expect("redacted document")
+                                .snapshot()
+                                .and_then(|bytes| slot.save(&bytes).map_err(EngineError::from));
+                            if let Err(error) = refreshed {
+                                // A failed refresh must not retain a snapshot containing the removed data.
+                                if let Err(cleanup) = slot.remove() {
+                                    log::error!("Redaction recovery cleanup failed: {cleanup}");
+                                }
+                                let _ = tx.send(Response::RecoverySaved(Err(error)));
+                            }
+                        }
+                        if tx.send(Response::Redacted(report)).is_err() {
+                            break;
+                        }
+                        Response::DocumentChanged(doc_state)
+                    }
+                    Err(e) => Response::OperationFailed(e),
+                }
+            }
+            Request::PreviewRedaction {
+                marks,
+                options,
+                appearance,
+                page,
+                epoch,
+                generation,
+                cancel,
+            } => {
+                state.redaction_preview = None;
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| {
+                        doc.preview_redaction_cancelable(
+                            &marks,
+                            &options,
+                            &appearance,
+                            page,
+                            cancel,
+                        )
+                    });
+                let result = result.and_then(|mut preview| {
+                    let prepared = preview
+                        .prepared
+                        .take()
+                        .ok_or_else(|| EngineError::Other("missing prepared redaction".into()))?;
+                    state.redaction_preview = Some((epoch, generation, prepared));
+                    Ok(preview)
+                });
+                Response::RedactionPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::DiscardRedactionPreview { epoch, generation } => {
+                if state.redaction_preview.as_ref().is_some_and(
+                    |(saved_epoch, saved_generation, _)| {
+                        *saved_epoch == epoch && *saved_generation == generation
+                    },
+                ) {
+                    state.redaction_preview = None;
+                }
+                continue;
+            }
+            Request::GetRedactionMarks { epoch } => Response::RedactionMarks {
+                epoch,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(Document::redaction_marks),
+            },
+            Request::PersistRedactionMarks {
+                marks,
+                appearance,
+                author,
+            } => {
+                match state.redact_candidate(|doc| {
+                    doc.persist_redaction_marks(&marks, &appearance, author.as_deref())?;
+                    Ok(RedactReport::default())
+                }) {
+                    Ok((_, doc_state)) => Response::DocumentChanged(doc_state),
+                    Err(error) => Response::OperationFailed(error),
+                }
+            }
+            Request::RedactSearch {
+                query,
+                match_case,
+                verify,
+            } => {
+                let Some(doc) = &state.document else { continue };
+                let marks = doc
+                    .redact_marks_for_text(&query, match_case)
+                    .unwrap_or_else(|e| {
+                        log::warn!("recherche à caviarder impossible : {e}");
+                        Vec::new()
+                    });
+                Response::RedactMatches {
+                    query,
+                    verify,
+                    marks,
+                }
+            }
+            Request::TextInRect { page, rect } => {
+                let Some(doc) = &state.document else { continue };
+                match doc.text_in_rect(page, rect) {
+                    Ok(selection) => Response::TextSelected { page, selection },
+                    Err(e) => {
+                        log::warn!("sélection impossible : {e}");
+                        continue;
+                    }
+                }
+            }
+            Request::ReadingSelection {
+                epoch,
+                generation,
+                anchor,
+                focus,
+                word,
+            } => {
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.reading_selection(anchor, focus, word));
+                Response::ReadingSelected {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::Batch(op) => {
+                Response::BatchDone(run_batch(&engine, state.document.as_ref(), op))
+            }
+            Request::Suspend => {
+                let Some(doc) = state.document.as_ref() else {
+                    continue;
+                };
+                let bytes = match doc.snapshot() {
+                    Ok(bytes) => bytes,
+                    Err(error) => {
+                        navigation_failed = true;
+                        let _ = tx.send(Response::SuspendFailed(error));
+                        ctx.request_repaint();
+                        continue;
+                    }
+                };
+                if state.modified() {
+                    if let Some(slot) = &state.recovery {
+                        if let Err(error) = slot.save(&bytes) {
+                            let _ = tx.send(Response::RecoverySaved(Err(error.into())));
+                        }
+                    }
+                }
+                let doc = state.document.take().expect("snapshotted document");
+                let suspended = SuspendedDoc {
+                    bytes,
+                    password: doc.password().map(str::to_owned),
+                    path: doc.info().path.clone(),
+                    modified: state.modified(),
+                    undo: std::mem::take(&mut state.undo),
+                    redo: std::mem::take(&mut state.redo),
+                    save_point: state.save_point.replace(0),
+                    signature_source: state.signature_source.take(),
+                };
+                state.recovery = None;
+                state.invalidate();
+                Response::Suspended(suspended)
+            }
+            Request::Resume(index) => {
+                log::debug!("reprise de l'onglet {index}");
+                continue;
+            }
+            Request::ResumeDoc(s) => {
+                match engine.open_bytes(s.bytes, s.password.as_deref(), &s.path) {
+                    Ok(doc) => {
+                        state.document = Some(doc);
+                        state.signature_source = s.signature_source;
+                        state.invalidate();
+                        state.undo = s.undo;
+                        state.redo = s.redo;
+                        state.save_point = s.save_point;
+                        state.last_nudge = None;
+                        Response::Resumed(state.doc_state().expect("document repris"))
+                    }
+                    Err(error) => Response::ResumeFailed(error),
+                }
+            }
+            Request::ObjectAt { page, x, y } => {
+                let Some(doc) = &state.document else { continue };
+                let info = doc.object_at(page, x, y).unwrap_or_default();
+                Response::ObjectSelected { page, info }
+            }
+            Request::ObjectInfo { page, index } => {
+                let Some(doc) = &state.document else { continue };
+                // `usize::MAX` = dernier objet (après duplication ou passage au premier plan).
+                let count = doc.page_objects(page).map(|v| v.len()).unwrap_or(0);
+                let index = if count > 0 {
+                    index.min(count - 1)
+                } else {
+                    index
+                };
+                let info = doc.object_info(page, index).ok();
+                Response::ObjectSelected { page, info }
+            }
+            Request::Pick { page, pick, mode } => {
+                let Some(doc) = &state.document else { continue };
+                let infos = match pick {
+                    Pick::At { x, y } => doc.object_at(page, x, y).map(|o| o.into_iter().collect()),
+                    Pick::InRect { rect, touching } => doc.objects_in_rect(
+                        page,
+                        rect,
+                        if touching {
+                            RectMode::Touching
+                        } else {
+                            RectMode::Contained
+                        },
+                    ),
+                    Pick::Indices(v) => Ok(v
+                        .into_iter()
+                        .filter_map(|i| doc.object_info(page, i).ok())
+                        .collect()),
+                    Pick::Last(n) => doc.page_objects(page).map(|all| {
+                        let skip = all.len().saturating_sub(n);
+                        all.into_iter().skip(skip).collect()
+                    }),
+                    Pick::All => doc.page_objects(page),
+                };
+                Response::ObjectsSelected {
+                    page,
+                    infos: infos.unwrap_or_default(),
+                    mode,
+                }
+            }
+            Request::Objects { page } => {
+                let Some(doc) = &state.document else { continue };
+                Response::Objects {
+                    page,
+                    list: doc.page_objects(page).unwrap_or_default(),
+                }
+            }
+            Request::RotationCenter {
+                page,
+                indices,
+                epoch,
+                generation,
+            } => {
+                let center = state
+                    .document
+                    .as_ref()
+                    .and_then(|doc| doc.rotation_center(page, &indices).ok());
+                Response::RotationCenter {
+                    page,
+                    indices,
+                    epoch,
+                    generation,
+                    center,
+                }
+            }
+            Request::PreviewParagraph {
+                page,
+                indices,
+                text,
+                width,
+                leading,
+                epoch,
+                generation,
+            } => {
+                let result = match state.document.as_ref() {
+                    Some(doc) => doc.preview_paragraph(page, &indices, &text, width, leading),
+                    None => Err(EngineError::PageOutOfRange(page)),
+                };
+                Response::ParagraphPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::CopyObjects { page, indices, cut } => {
+                let Some(doc) = &state.document else { continue };
+                match doc.copy_objects(page, &indices) {
+                    Ok(clip) => {
+                        let (count, text) = (clip.count, clip.text.clone());
+                        state.clip = Some(clip);
+                        if !cut {
+                            Response::Copied { count, text }
+                        } else if tx.send(Response::Copied { count, text }).is_err() {
+                            break;
+                        } else {
+                            state.edit(EditOp::DeleteObjects { page, indices })
+                        }
+                    }
+                    Err(e) => Response::OperationFailed(e),
+                }
+            }
+            Request::PreviewRichAnnotation {
+                page,
+                annotation,
+                author,
+                epoch,
+                generation,
+            } => {
+                state.rich_preview = None;
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| {
+                        doc.preview_rich_annotation(page, &annotation, author.as_deref())
+                    });
+                let result = result.and_then(|mut preview| {
+                    let prepared = preview.prepared.take().ok_or_else(|| {
+                        EngineError::Other("missing prepared annotation preview".into())
+                    })?;
+                    state.rich_preview = Some((epoch, generation, prepared));
+                    Ok(preview)
+                });
+                Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::DiscardRichAnnotationPreview { epoch, generation } => {
+                if state
+                    .rich_preview
+                    .as_ref()
+                    .is_some_and(|(saved_epoch, saved_generation, _)| {
+                        *saved_epoch == epoch && *saved_generation == generation
+                    })
+                {
+                    state.rich_preview = None;
+                }
+                continue;
+            }
+            Request::LoadImage { path, max_side } => {
+                let (path, result) = if let Some(dir) =
+                    crate::sign::signatures_dir().filter(|dir| {
+                        path.parent() == Some(dir.as_path())
+                            && path.file_name().and_then(|n| n.to_str()).is_some_and(|n| {
+                                n.starts_with("signature-") || n.starts_with("initials-")
+                            })
+                    }) {
+                    match crate::sign::library::load(&dir, &path) {
+                        Ok((path, image)) => (path, Ok(image)),
+                        Err(error) => (path, Err(error)),
+                    }
+                } else {
+                    let result = sunipdf_core::signature_image::load(&path, max_side);
+                    (path, result)
+                };
+                Response::ImageLoaded { path, result }
+            }
+            Request::SystemFonts => Response::SystemFonts(
+                state
+                    .fonts
+                    .get_or_insert_with(|| Arc::new(sunipdf_core::fonts::system_fonts()))
+                    .clone(),
+            ),
+            Request::Properties => {
+                let Some(doc) = &state.document else { continue };
+                Response::Properties(doc.properties())
+            }
+            Request::Bookmarks => {
+                let Some(doc) = &state.document else { continue };
+                Response::Bookmarks(doc.bookmarks())
+            }
+            Request::Annotations { page, detailed } => {
+                let Some(doc) = &state.document else { continue };
+                let list = doc.annotations(page).unwrap_or_default();
+                // La lecture détaillée relit tout le document : seulement si la page porte autre
+                // chose que des fenêtres contextuelles et des champs de formulaire.
+                let details = (detailed
+                    && list.iter().any(|a| !matches!(a.kind, "popup" | "widget")))
+                .then(|| doc.annotation_details(page).ok())
+                .flatten();
+                Response::Annotations {
+                    page,
+                    list,
+                    details,
+                }
+            }
+            Request::Links { page } => {
+                let Some(doc) = &state.document else { continue };
+                Response::Links {
+                    page,
+                    list: doc.page_links(page).unwrap_or_default(),
+                }
+            }
+            Request::FormInfo => {
+                let Some(doc) = &state.document else { continue };
+                Response::FormInfo(doc.form_info())
+            }
+            Request::Undo => match state.undo_redo(true) {
+                Some(r) => r,
+                None => continue,
+            },
+            Request::Redo => match state.undo_redo(false) {
+                Some(r) => r,
+                None => continue,
+            },
+            Request::Save { path } => {
+                let Some(doc) = &mut state.document else {
+                    continue;
+                };
+                match doc.save_as_bytes(&path) {
+                    Ok(bytes) => {
+                        state.signature_source = Some(SignatureSource::new(bytes));
+                        // « Enregistrer sous » : le document suit son nouveau chemin (Ctrl+S, onglets).
+                        doc.set_path(path.clone());
+                        state.save_point = Some(state.undo.len());
+                        // Le prochain décalage clavier prend son propre instantané (sinon il serait
+                        // fusionné avec celui d'avant l'enregistrement et passerait pour « intact »).
+                        state.last_nudge = None;
+                        if let Some(slot) = &state.recovery {
+                            if let Err(error) = slot.remove() {
+                                let _ = tx.send(Response::RecoverySaved(Err(error.into())));
+                            }
+                        }
+                        Response::Saved { path }
+                    }
+                    Err(e) => Response::SaveFailed(e),
+                }
+            }
+            Request::FinishMutation => Response::MutationFinished,
+            Request::Close => {
+                if let Some(slot) = state.recovery.take() {
+                    if let Err(error) = slot.remove() {
+                        let _ = tx.send(Response::RecoverySaved(Err(error.into())));
+                    }
+                }
+                state.document = None;
+                state.signature_source = None;
+                state.invalidate();
+                state.undo.clear();
+                state.redo.clear();
+                state.save_point = Some(0);
+                state.last_nudge = None;
+                continue;
+            }
+        };
         if tx.send(response).is_err() {
             break;
         }
