@@ -109,6 +109,11 @@ et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 
 ## Application
 
+**Inspection du PDF enregistré (0.34.0) :** inventaire borné incluant les objets inutilisés, sans examen
+des contenus, vérification d’intégrité des signatures ni garantie d’innocuité/conformité. Les compteurs
+partiels restent explicites. Enregistrer/recharger après changement de source ; interface native/Narrator
+restent à qualifier séparément. [Utilisation et bornes](PDF_INSPECTION.fr.md).
+
 A1. **Icônes Fluent** : lues dans `C:\Windows\Fonts\SegoeIcons.ttf` (ou `segmdl2.ttf`). Sur un Windows sans ces
     polices (cas rare : LTSC allégé), les icônes sont remplacées par des symboles texte, moins élégants mais lisibles.
 A2. ~~Affichage page par page~~ **Résolu (SUNI-012b)** : défilement continu par défaut, page unique en option (F5).

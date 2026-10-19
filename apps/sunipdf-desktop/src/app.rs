@@ -884,6 +884,8 @@ impl SuniApp {
                     modified,
                     has_signatures,
                 }) => {
+                    self.docinfo.inspection_epoch = None;
+                    self.docinfo.inspection = None;
                     if self.edit.paragraph.as_ref().is_some_and(|d| d.applying) {
                         self.edit.paragraph = None;
                     }
@@ -1090,6 +1092,7 @@ impl SuniApp {
                     self.docinfo.metadata_edit = props.metadata.clone();
                     self.docinfo.properties = Some(props);
                 }
+                Response::Inspection { epoch, result } => self.inspection_received(epoch, result),
                 Response::Bookmarks(list) => {
                     self.docinfo.bookmarks = list;
                 }
@@ -2150,6 +2153,8 @@ impl SuniApp {
             }
             Command::Properties => {
                 self.docinfo.properties = None;
+                self.docinfo.inspection_epoch = None;
+                self.docinfo.inspection = None;
                 self.docinfo.properties_open = true;
                 self.worker.send(Request::Properties);
             }

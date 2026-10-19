@@ -110,6 +110,11 @@ and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 
 ## Application
 
+**Saved-PDF inspection (0.34.0):** the bounded dictionary inventory includes unreachable objects and
+does not examine payloads, verify signature integrity or establish file safety/conformance. Partial
+counts stay explicit. Save/reload is required for changed source files; native UI/Narrator qualification
+remains separate. [Usage and limits](PDF_INSPECTION.md).
+
 A1. **Fluent icons**: read from `C:\Windows\Fonts\SegoeIcons.ttf` (or `segmdl2.ttf`). On a Windows without these
     fonts (rare case: stripped-down LTSC), the icons are replaced by text symbols, less elegant but legible.
 A2. ~~Page-by-page display~~ **Resolved (SUNI-012b)**: continuous scrolling by default, single page as an option (F5).

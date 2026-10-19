@@ -3,9 +3,23 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.30.0. Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.30.0.md) lists supported inputs
+This guide covers SuniPDF 0.34.0. Publication status and executed checks are recorded in
+[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.34.0.md) lists supported inputs
 and documented refusals; English remains the default language and French is available in Settings.
+
+## Inspect a saved PDF
+
+Choose **File → Properties** (`Ctrl+D`), expand **Inspect saved PDF**, and choose **Inspect**.
+Save edits first; if the file has changed outside the app, reload it. The report displays the saved
+revision's SHA256 and declarations of JavaScript, automatic/external actions, embedded files, XFA,
+multimedia and signatures. Counts refer to matching dictionaries, including unused objects.
+No action is run and no document is changed. An incomplete report retains partial counts explicitly.
+Metadata drafts in Properties are applied only by **Apply**, independently of inspection.
+
+For automation, use `sunipdf-cli inspect document.pdf` or provide `--password-env NAME` / `--password-stdin`.
+JSON exit `0` means the bounded inventory completed; exit `2` means partial results. Findings do not
+establish file safety or PDF/A/PDF/UA compliance and do not verify signature integrity. Payloads are not
+inspected. The input limit is 128 MiB; object/traversal limits can also produce a refusal or partial result.
 
 ## New editing and document tools
 

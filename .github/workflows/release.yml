@@ -167,6 +167,20 @@ jobs:
           if-no-files-found: ignore
       - name: Portable (${{ matrix.arch }})
         run: .\scripts\package-portable.ps1 -Arch ${{ matrix.arch }}
+      - name: Packaged PDF inspection regression (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-pdf-inspection.py --cli $cli --report target\pdf-inspection-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged PDF inspection regression failed.' }
+      - name: PDF inspection evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: pdf-inspection-evidence
+          path: target/pdf-inspection-report.json
+          if-no-files-found: ignore
       - name: Release native-library loading boundary (x64)
         if: matrix.arch == 'x64'
         run: .\scripts\test-release-native-loading.ps1
@@ -212,6 +226,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.1
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.31.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.32.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.33.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

@@ -36,6 +36,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Inventory stored PDF dictionaries without executing actions or inspecting payload contents.
+    Inspect {
+        file: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Search only explicitly selected PDF files, with per-file failures and bounded page results.
     SearchFiles {
         #[arg(required = true, num_args = 1..=64)]
@@ -1098,6 +1104,10 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
     }
     match &cli.command {
+        Command::Inspect { file, password } => {
+            return sunipdf_core::inspection::inspect_file(file, password.as_deref())
+                .map(|report| report.json());
+        }
         Command::Signatures {
             file,
             password,
@@ -1129,6 +1139,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
     let engine = Engine::new()?;
     match cli.command {
         Command::Commands
+        | Command::Inspect { .. }
         | Command::Fonts { .. }
         | Command::Signatures { .. }
         | Command::Sign { .. } => unreachable!(),
@@ -2802,7 +2813,7 @@ fn cli_main() -> ExitCode {
     let signature_check = matches!(&cli.command, Command::Signatures { .. });
     let local_review_check = matches!(
         &cli.command,
-        Command::SearchFiles { .. } | Command::Compare { .. }
+        Command::SearchFiles { .. } | Command::Compare { .. } | Command::Inspect { .. }
     );
     match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,

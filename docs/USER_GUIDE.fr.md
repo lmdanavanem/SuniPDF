@@ -3,10 +3,25 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.30.0. État de publication et contrôles exécutés dans
-[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.30.0.fr.md) décrit
+Ce guide couvre SuniPDF 0.34.0. État de publication et contrôles exécutés dans
+[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.34.0.fr.md) décrit
 les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
 dans les réglages.
+
+## Inspecter un PDF enregistré
+
+Choisir **Fichier → Propriétés** (`Ctrl+D`), développer **Inspecter le PDF enregistré**, puis **Inspecter**.
+Enregistrer les modifications d’abord ; si le fichier a changé hors de l’app, le recharger. Le rapport
+affiche son SHA256 et les déclarations de JavaScript, actions automatiques/externes, fichiers embarqués,
+XFA, multimédia et signatures. Les compteurs portent sur les dictionnaires correspondants, y compris
+les objets inutilisés. Aucune action exécutée ni modification du PDF. Un rapport incomplet conserve
+explicitement les compteurs partiels. Les brouillons de métadonnées sont appliqués uniquement par
+**Appliquer**, indépendamment de l’inspection.
+
+En automatisation : `sunipdf-cli inspect document.pdf`, avec `--password-env NOM` ou `--password-stdin`
+si nécessaire. Code JSON `0` : inventaire borné terminé ; `2` : résultats partiels. Cet inventaire ne
+garantit ni l’innocuité ni la conformité PDF/A/PDF/UA et ne vérifie pas l’intégrité des signatures.
+Les contenus ne sont pas inspectés. Entrée limitée à 128 Mio ; objets et parcours ont aussi des limites.
 
 ## Nouveaux outils d’édition et de documents
 

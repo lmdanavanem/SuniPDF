@@ -18,6 +18,8 @@ pub struct DocInfoState {
     pub bookmark_child: bool,
     pub properties: Option<Properties>,
     pub properties_open: bool,
+    pub inspection_epoch: Option<u64>,
+    pub inspection: Option<Result<sunipdf_core::inspection::Inspection, String>>,
     pub metadata_edit: Metadata,
     pub protect_open: bool,
     pub protection: Protection,
@@ -53,6 +55,21 @@ fn protection_error_key(p: ProtectionProblem) -> &'static str {
 }
 
 impl SuniApp {
+    pub(crate) fn inspection_received(
+        &mut self,
+        epoch: u64,
+        result: Result<sunipdf_core::inspection::Inspection, sunipdf_core::EngineError>,
+    ) {
+        if self.docinfo.properties_open
+            && self.docinfo.inspection_epoch == Some(epoch)
+            && self.view.epoch == epoch
+            && self.document.is_some()
+            && !self.dirty
+        {
+            self.docinfo.inspection = Some(result.map_err(|error| error.code().to_owned()));
+        }
+    }
+
     pub(crate) fn protection_authorized(&mut self, epoch: u64, encrypted: bool) {
         if self.docinfo.protection_epoch != Some(epoch) || self.view.epoch != epoch {
             return;
@@ -276,6 +293,14 @@ impl SuniApp {
         let p = theme::palette(self.settings.dark_theme);
         let mut apply = false;
         let mut close = false;
+        let mut inspect = false;
+        if self.docinfo.inspection_epoch != Some(self.view.epoch) || self.dirty {
+            self.docinfo.inspection_epoch = None;
+            self.docinfo.inspection = None;
+        }
+        let inspection = self.docinfo.inspection.clone();
+        let inspecting = self.docinfo.inspection_epoch.is_some() && inspection.is_none();
+        let can_inspect = self.document.is_some() && !self.dirty && !inspecting;
         let spec = crate::dialog::Spec::new(
             "properties",
             tr(lang, "properties.title"),
@@ -379,6 +404,58 @@ impl SuniApp {
                                 row(ui, "properties.perm_annotate", yn(props.can_annotate));
                             });
                     });
+                ui.add_space(8.0);
+                ui.collapsing(tr(lang, "inspection.title"), |ui| {
+                    ui.label(tr(lang, "inspection.scope"));
+                    if self.dirty {
+                        ui.label(tr(lang, "inspection.save_first"));
+                    }
+                    if ui
+                        .add_enabled(can_inspect, Button::new(tr(lang, "inspection.run")))
+                        .clicked()
+                    {
+                        inspect = true;
+                    }
+                    if inspecting {
+                        ui.spinner();
+                    }
+                    if let Some(result) = &inspection {
+                        match result {
+                            Ok(report) => {
+                                ui.label(tr(
+                                    lang,
+                                    if report.complete {
+                                        "inspection.complete"
+                                    } else {
+                                        "inspection.incomplete"
+                                    },
+                                ));
+                                egui::Grid::new("inspection-findings").num_columns(2).show(
+                                    ui,
+                                    |ui| {
+                                        for finding in &report.findings {
+                                            ui.label(tr(
+                                                lang,
+                                                &format!("inspection.{}", finding.kind),
+                                            ));
+                                            ui.label(finding.dictionaries.to_string());
+                                            ui.end_row();
+                                        }
+                                    },
+                                );
+                                ui.label(tr_args(
+                                    lang,
+                                    "inspection.sha256",
+                                    &[("hash", &report.source_sha256)],
+                                ));
+                            }
+                            Err(_) => {
+                                ui.label(tr(lang, "inspection.failed"));
+                            }
+                        }
+                    }
+                    ui.label(RichText::new(tr(lang, "inspection.limits")).color(p.text_muted));
+                });
             },
             |ui| {
                 // Avant l'arrivée des propriétés, « Appliquer » enverrait des champs vides et
@@ -395,6 +472,13 @@ impl SuniApp {
                 }
             },
         );
+        if inspect {
+            self.docinfo.inspection_epoch = Some(self.view.epoch);
+            self.docinfo.inspection = None;
+            self.worker.send(Request::Inspect {
+                epoch: self.view.epoch,
+            });
+        }
         if apply && loaded {
             let meta = self.docinfo.metadata_edit.clone();
             self.worker
@@ -608,6 +692,39 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn inspection_ignores_closed_changed_and_stale_document_replies() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let epoch = app.view.epoch;
+        app.docinfo.inspection_epoch = Some(epoch);
+        app.inspection_received(epoch, Err(sunipdf_core::EngineError::InvalidFormat));
+        assert!(app.docinfo.inspection.is_none());
+        app.docinfo.properties_open = true;
+        app.inspection_received(
+            epoch.wrapping_add(1),
+            Err(sunipdf_core::EngineError::InvalidFormat),
+        );
+        assert!(app.docinfo.inspection.is_none());
+        app.dirty = true;
+        app.inspection_received(epoch, Err(sunipdf_core::EngineError::InvalidFormat));
+        assert!(app.docinfo.inspection.is_none());
+        app.dirty = false;
+        let document = app.document.take();
+        app.inspection_received(epoch, Err(sunipdf_core::EngineError::InvalidFormat));
+        assert!(app.docinfo.inspection.is_none());
+        app.document = document;
+        app.inspection_received(epoch, Err(sunipdf_core::EngineError::InvalidFormat));
+        assert_eq!(
+            app.docinfo
+                .inspection
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .unwrap_err(),
+            "invalid_format"
+        );
+    }
 
     #[test]
     fn reprotection_prompts_for_owner_without_unprotecting_and_ignores_stale_replies() {
