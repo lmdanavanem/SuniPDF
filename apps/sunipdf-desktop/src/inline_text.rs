@@ -474,7 +474,7 @@ impl SuniApp {
                 .fold(0.0, f32::max)
         });
         let width = (text_w + size_px * 1.5).max(140.0);
-        let editor = egui::Area::new(egui::Id::new("inline-text"))
+        let editor = egui::Area::new(egui::Id::unique("inline-text"))
             .order(egui::Order::Foreground)
             .fixed_pos(anchor)
             .show(ctx, |ui| {
@@ -510,7 +510,7 @@ impl SuniApp {
             });
         let edit_rect = editor.response.rect;
         // Mini-barre au-dessus du champ (hauteur connue depuis l'image précédente).
-        let bar_id = egui::Id::new("inline-text-bar");
+        let bar_id = egui::Id::unique("inline-text-bar");
         let bar_h = ctx
             .memory(|m| m.area_rect(bar_id))
             .map_or(64.0, |r| r.height());

@@ -2378,7 +2378,7 @@ impl SuniApp {
                     let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
                     resp.widget_info(|| {
                         egui::WidgetInfo::labeled(
-                            egui::WidgetType::Image,
+                            egui::Role::Image,
                             true,
                             tr_args(lang, "a11y.thumbnail", &[("page", &caption)]),
                         )
@@ -2439,7 +2439,7 @@ impl SuniApp {
                 });
             }
         });
-        self.view.thumb_view = Some((out.state.offset.y, out.inner_rect.height()));
+        self.view.thumb_view = Some((out.state.unclamped_offset().y, out.inner_rect.height()));
         if let Some(page) = clicked {
             self.go_to_page(page);
         }
@@ -3147,7 +3147,7 @@ impl eframe::App for SuniApp {
             }
         }
         if self.reading_full_screen {
-            egui::Area::new(egui::Id::new("reading_exit"))
+            egui::Area::new(egui::Id::unique("reading_exit"))
                 .anchor(egui::Align2::RIGHT_TOP, [-12.0, 12.0])
                 .order(egui::Order::Foreground)
                 .show(&ctx, |ui| {
@@ -3721,23 +3721,30 @@ pub(crate) mod tests {
     }
 
     fn organize_frame(app: &mut SuniApp, ctx: &egui::Context, offset: f32) {
-        let mut out = ctx.run_ui(
-            egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(900.0, 600.0),
-                )),
-                ..Default::default()
-            },
-            |ui| {
-                let id = ui.make_persistent_id(egui::IdSalt::new("scroll_area"));
-                let mut state = egui::scroll_area::State::load(ctx, id).unwrap_or_default();
-                state.offset.y = offset;
-                state.store(ctx, id);
-                app.organize_grid(ctx, ui);
-            },
-        );
-        out.textures_delta.clear();
+        for scroll in [true, false] {
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::PointerMoved(egui::pos2(450.0, 300.0))],
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(900.0, 600.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    let id = ui.make_persistent_id(egui::IdSalt::new("scroll_area"));
+                    let current = egui::scroll_area::State::load(ctx, id)
+                        .unwrap_or_default()
+                        .clamped_offset()
+                        .y;
+                    ui.input_mut(|input| {
+                        input.smooth_scroll_delta.y = if scroll { current - offset } else { 0.0 }
+                    });
+                    app.organize_grid(ctx, ui);
+                },
+            );
+            out.textures_delta.clear();
+        }
     }
 
     fn sidebar_frame(app: &mut SuniApp, ctx: &egui::Context) {

@@ -1048,9 +1048,12 @@ impl SuniApp {
         });
 
         // 5. Après la zone : état, page courante, tuiles voulues, mémoire.
-        let viewport = Rect::from_min_size(out.state.offset.to_pos2(), out.inner_rect.size());
+        let viewport = Rect::from_min_size(
+            out.state.unclamped_offset().to_pos2(),
+            out.inner_rect.size(),
+        );
         let v = &mut self.view;
-        v.offset = out.state.offset;
+        v.offset = out.state.unclamped_offset();
         v.inner = out.inner_rect;
         v.k_prev = Some(k);
         v.avail_prev = avail;
@@ -1058,8 +1061,8 @@ impl SuniApp {
         v.wheel_anchor = None;
         if let Some(lock) = &mut v.nav_lock {
             if forced.is_some() || lock.expected_y.is_none() {
-                lock.expected_y = Some(out.state.offset.y);
-            } else if !lock_still_valid(lock.expected_y, out.state.offset.y) {
+                lock.expected_y = Some(out.state.unclamped_offset().y);
+            } else if !lock_still_valid(lock.expected_y, out.state.unclamped_offset().y) {
                 v.nav_lock = None;
             }
         }
@@ -1177,7 +1180,7 @@ impl SuniApp {
 
         let interact = ui.interact(
             s.rect,
-            egui::Id::new(("page-interact", s.page)),
+            egui::Id::unique(("page-interact", s.page)),
             egui::Sense::click_and_drag(),
         );
         let alt = tr_args(
@@ -1200,7 +1203,7 @@ impl SuniApp {
             ),
             None => alt,
         };
-        interact.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &alt));
+        interact.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, true, &alt));
         let (rect, zoom) = (s.rect, self.effective_zoom);
         let to_pdf = |pos: Pos2| {
             let source = s

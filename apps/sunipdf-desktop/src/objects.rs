@@ -225,12 +225,7 @@ impl SuniApp {
                         .on_hover_text(tr(lang, "objects.drag_hint"));
                     // Libellé lisible pour les lecteurs d'écran (sélection comprise).
                     row.widget_info(|| {
-                        egui::WidgetInfo::selected(
-                            egui::WidgetType::SelectableLabel,
-                            ready,
-                            is_sel,
-                            &label,
-                        )
+                        egui::WidgetInfo::selected(egui::Role::Button, ready, is_sel, &label)
                     });
                     if row.hovered() {
                         hover = Some(o.index);

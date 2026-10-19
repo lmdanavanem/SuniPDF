@@ -486,11 +486,11 @@ impl SuniApp {
                 )
             };
             let widget_type = match f.kind {
-                FieldKind::Checkbox => egui::WidgetType::Checkbox,
-                FieldKind::Radio => egui::WidgetType::RadioButton,
-                FieldKind::Combo | FieldKind::List => egui::WidgetType::ComboBox,
-                FieldKind::Text => egui::WidgetType::TextEdit,
-                _ => egui::WidgetType::Button,
+                FieldKind::Checkbox => egui::Role::CheckBox,
+                FieldKind::Radio => egui::Role::RadioButton,
+                FieldKind::Combo | FieldKind::List => egui::Role::ComboBox,
+                FieldKind::Text => egui::Role::TextInput,
+                _ => egui::Role::Button,
             };
             for (wi, w) in f.widgets.iter().enumerate() {
                 if w.page != page {
@@ -502,7 +502,7 @@ impl SuniApp {
                 }
                 let resp = ui.interact(
                     r,
-                    egui::Id::new(("form-widget", page, fi, wi)),
+                    egui::Id::unique(("form-widget", page, fi, wi)),
                     if fillable {
                         egui::Sense::click()
                     } else {
@@ -752,7 +752,7 @@ impl SuniApp {
         };
         let font = egui::FontId::proportional(font_px);
         let a11y = tr_args(lang, "a11y.forms.editor", &[("name", &field)]);
-        let area = egui::Area::new(egui::Id::new(("form-editor", page)))
+        let area = egui::Area::new(egui::Id::unique(("form-editor", page)))
             .order(egui::Order::Foreground)
             .fixed_pos(r.min)
             // Collé au widget (jamais déplacé) et découpé à la vue : la partie hors de la zone du
@@ -787,7 +787,7 @@ impl SuniApp {
                         let out = edit.show(ui);
                         let resp = &out.response.response;
                         resp.widget_info(|| {
-                            egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, &a11y)
+                            egui::WidgetInfo::labeled(egui::Role::TextInput, true, &a11y)
                         });
                         if e.focus {
                             // Comme un formulaire : le contenu est sélectionné à l'entrée.
@@ -914,7 +914,7 @@ impl SuniApp {
         let mut new_value: Option<Vec<String>> = None;
         let mut custom_input = false;
         let mut focused = false;
-        let area = egui::Area::new(egui::Id::new(("form-choice", page)))
+        let area = egui::Area::new(egui::Id::unique(("form-choice", page)))
             .order(egui::Order::Foreground)
             .fixed_pos(r.left_bottom() + egui::vec2(0.0, 2.0))
             .constrain_to(view)
@@ -961,7 +961,7 @@ impl SuniApp {
                                     }
                                     resp.widget_info(|| {
                                         egui::WidgetInfo::selected(
-                                            egui::WidgetType::Checkbox,
+                                            egui::Role::CheckBox,
                                             true,
                                             b,
                                             &a11y,
@@ -984,7 +984,7 @@ impl SuniApp {
                                     }
                                     resp.widget_info(|| {
                                         egui::WidgetInfo::selected(
-                                            egui::WidgetType::SelectableLabel,
+                                            egui::Role::Button,
                                             true,
                                             on,
                                             &a11y,
@@ -1559,7 +1559,7 @@ fn field_card(
                         egui::TextEdit::singleline(&mut text)
                     }
                     .desired_width(f32::INFINITY)
-                    .id(egui::Id::new(("form-panel-input", &f.name)));
+                    .id(egui::Id::unique(("form-panel-input", &f.name)));
                     if f.kind == FieldKind::Combo {
                         edit = edit.hint_text(tr(lang, "forms.panel.custom_value"));
                     }
@@ -1994,7 +1994,7 @@ mod tests {
         app.annotate.tool = Tool::FillForm;
         app.effective_zoom = 1.0;
         let ctx = egui::Context::default();
-        let id = egui::Id::new(("form-widget", 0usize, 0usize, 0usize));
+        let id = egui::Id::unique(("form-widget", 0usize, 0usize, 0usize));
         let frame = |app: &mut SuniApp, events| {
             let mut out = ctx.run_ui(
                 egui::RawInput {
@@ -2133,7 +2133,7 @@ mod tests {
             app.stage_form_values(commits);
         };
         frame(&mut app, Vec::new());
-        ctx.memory_mut(|m| m.request_focus(egui::Id::new(("form-panel-input", "Country"))));
+        ctx.memory_mut(|m| m.request_focus(egui::Id::unique(("form-panel-input", "Country"))));
         frame(&mut app, vec![egui::Event::Text("Zürich".into())]);
         assert_eq!(app.forms.drafts["Country"], "Zürich");
         frame(&mut app, vec![enter(true)]);
