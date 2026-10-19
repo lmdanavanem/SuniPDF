@@ -2,7 +2,7 @@
 
 [English](LOCAL_REVIEW.md)
 
-Implémenté pour la 0.31.0. La qualification exécutée figure dans [État du projet](PROJECT_STATUS.fr.md).
+Publié dans la 0.31.0. La qualification exécutée figure dans [État du projet](PROJECT_STATUS.fr.md).
 
 ## Rechercher dans les fichiers sélectionnés
 

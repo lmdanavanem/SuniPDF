@@ -2,9 +2,17 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.31.0 : comparaison locale et recherche multi-PDF (qualification)
+## 0.31.0 : comparaison locale et recherche multi-PDF (Latest stable)
 
-Deux Suggestions P2 sont implémentées : recherche dans des fichiers enregistrés explicitement sélectionnés et comparaison texte/visuelle bornée, avec progression, annulation et préservation des sources. [Périmètre et limites](LOCAL_REVIEW.fr.md). Tests de release et publication encore en cours.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) sous `lmdanavanem`, release `417463135`, source immuable `362c7f3979533000e454769e48a8cfbd4084dc0d`.
+
+Comparaison locale de deux PDF enregistrés (texte, dimensions et aperçus), alignement physique explicite et refus des aperçus obsolètes. Recherche littérale dans plusieurs fichiers sélectionnés, extraits et navigation, progression, annulation et résultats partiels explicites. Commandes JSON `compare` et `search-files` ; interface EN/FR. [Périmètre et limites](LOCAL_REVIEW.fr.md).
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39280498112) et [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39280650040) réussis : **582 tests**, zéro échec, 9 ignorés par défaut ; **1091 clés EN/FR**, 84 contrôles qpdf + 9 sorties indépendantes, 4 cas de polices, rendu logiciel DX12, 14 allers-retours Office, 4 PDF sous licence/744 pages, **23 scénarios portables**, **17 références MSI/85 journaux**. CodeQL Rust/Python/Actions réussit sans alerte ouverte après revue individuelle de quatre secrets de tests synthétiques.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; onze scénarios d’analyse locale et huit de sécurité réussissent avec la CLI empaquetée. Le harnais fraîchement compilé sur cette source a téléchargé et vérifié le ZIP x64 de **27,090,504 octets en 1.71 s**, sans installation. Projects : **43 cartes, 24 Done, 19 Todo, zéro In Progress** ; les deux Suggestions P2 sont livrées, les critères conservés et les trois filtres relus.
+
+Paquets Windows non signés ; aucune clé de publication indépendante. ARM64, matériel et parcours manuels restent à qualifier. La comparaison bornée ne prouve ni identité des PDF ni conformité. [Preuves](qa/RELEASE_0.31.0.json).
 
 ## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
 
@@ -205,8 +213,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Extraction préservant liens, champs, calques, pièces jointes | Déclaré | **Livré en 0.30.0** : Gardes chiffrement/source conservées ; graphes bornés préservés, destinations de pages omises retirées. XFA/graphes dangereux refusés ; contrôles documentés du lecteur indépendant réussis. [Limites](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md). |
 | Réorganisation par glisser-déposer | Déclaré | **Fait** (miniatures et vue Organiser) |
 | Undo/redo nommé survivant à la sauvegarde | Déclaré | Undo/redo **Fait** (instantanés, non nommé) ; survit à la sauvegarde. **Livré en 0.14.0** : navigation conservée lors d'Annuler/Rétablir contenu/étiquettes si géométrie inchangée ; contrôles exécutés réussis (D105) |
-| Comparaison de deux versions | Déclaré | Implémenté pour la 0.31.0 : comparaison locale texte/dimensions/aperçus 768 pixels, décalages physiques explicites et aperçus bornés original/révision/différences. [Limites](LOCAL_REVIEW.fr.md). |
-| Recherche dans les PDF sélectionnés | Déclaré | Implémenté pour la 0.31.0 : fichiers explicites, texte littéral, échecs par fichier, extraits/navigation et annulation. [Limites](LOCAL_REVIEW.fr.md). |
+| Comparaison de deux versions | Déclaré | Livré en 0.31.0 : comparaison locale texte/dimensions/aperçus 768 pixels, décalages physiques explicites et aperçus bornés original/révision/différences. [Limites](LOCAL_REVIEW.fr.md). |
+| Recherche dans les PDF sélectionnés | Déclaré | Livré en 0.31.0 : fichiers explicites, texte littéral, échecs par fichier, extraits/navigation et annulation. [Limites](LOCAL_REVIEW.fr.md). |
 | Traitement par lots | Déclaré (CLI batch) | **Livré en 0.30.0** : Compression/OCR livrés en 0.10.0 ; lots Office présents, 1–128 entrées, 64 Mio/entrée, 120 s/conversion, annulation/nouvelles copies. [Limites](OFFICE_CONVERSION.fr.md). |
 
 ## D. Conversion et OCR

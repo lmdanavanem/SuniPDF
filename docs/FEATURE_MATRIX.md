@@ -2,9 +2,17 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.31.0: local comparison and multi-document search (in qualification)
+## 0.31.0: local comparison and multi-document search (stable Latest)
 
-Two P2 Suggestions are implemented: explicit saved-file search and bounded text/visual PDF comparison, with progress, cancellation and source preservation. [Scope and limits](LOCAL_REVIEW.md). Release tests and publication are not yet complete.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) under `lmdanavanem`, release `417463135`, immutable source `362c7f3979533000e454769e48a8cfbd4084dc0d`.
+
+Local comparison of two saved PDFs (text, geometry and previews), explicit physical alignment and stale-preview refusal. Literal search across selected files, excerpts/page navigation, progress, cancellation and explicit partial results. New `compare` and `search-files` JSON commands; EN/FR interface. [Scope and limits](LOCAL_REVIEW.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39280498112) and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39280650040) passed: **582 tests**, zero failures, 9 default ignored; **1091 EN/FR keys**, 84 qpdf corpus checks + 9 independent feature cases, 4 font-reader cases, DX12 software rendering, 14 Office round trips, 4 licensed PDFs/744 pages, **23 portable scenarios**, **17 MSI baselines/85 logs**. CodeQL Rust/Python/Actions passed with zero open alerts after individual review of four synthetic test credentials.
+
+Six public files and `dist/` copies verified by SHA256; eleven local-review and eight security scenarios passed with the packaged CLI. The freshly built harness from this source downloaded and verified the **27,090,504-byte x64 ZIP in 1.71 s**, without installation. Projects: **43 items, 24 Done, 19 Todo, zero In Progress**; both P2 Suggestions are delivered, their criteria retained and all three filters read back.
+
+Windows packages remain unsigned; no independent publication key is available. ARM64 hardware and manual flows remain separate qualification. Bounded comparison does not establish PDF identity or conformance. [Evidence](qa/RELEASE_0.31.0.json).
 
 ## 0.30.0: editing, document safety and local conversion (published; Latest at the time)
 
@@ -203,8 +211,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Extraction preserving links, fields, layers, attachments | Declared | **Delivered in 0.30.0**: Earlier encryption/source guards retained; bounded graph preservation and omitted-page destination removal. XFA/unsafe graphs refused; documented independent reader gates passed. [Limits](BOOKMARKS_AND_PAGE_STRUCTURE.md). |
 | Drag-and-drop reordering | Declared | **Done** (thumbnails and Organize view) |
 | Named undo/redo surviving save | Declared | Undo/redo **Done** (snapshots, unnamed); survives save. **Delivered in 0.14.0**: preserve navigation through label/content Undo/Redo when page geometry is unchanged; executed checks passed (D105) |
-| Comparison of two versions | Declared | Implemented for 0.31.0: local text/geometry/768-pixel comparison, explicit physical offsets, bounded original/revised/difference previews. [Limits](LOCAL_REVIEW.md). |
-| Search across selected PDFs | Declared | Implemented for 0.31.0: explicit files, literal text, per-file failures, page excerpts/navigation and cancellation. [Limits](LOCAL_REVIEW.md). |
+| Comparison of two versions | Declared | Delivered in 0.31.0: local text/geometry/768-pixel comparison, explicit physical offsets, bounded original/revised/difference previews. [Limits](LOCAL_REVIEW.md). |
+| Search across selected PDFs | Declared | Delivered in 0.31.0: explicit files, literal text, per-file failures, page excerpts/navigation and cancellation. [Limits](LOCAL_REVIEW.md). |
 | Batch processing | Declared (CLI batch) | **Delivered in 0.30.0**: Compression/OCR shipped in 0.10.0; Office batches now present, 1–128 inputs, 64 MiB/input, 120 s/conversion, cancel/new copies. [Limits](OFFICE_CONVERSION.md). |
 
 ## D. Conversion and OCR

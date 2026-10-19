@@ -2,7 +2,7 @@
 
 [Français](LOCAL_REVIEW.fr.md)
 
-Implemented for 0.31.0. Executed release qualification is recorded in [Project status](PROJECT_STATUS.md).
+Published in 0.31.0. Executed release qualification is recorded in [Project status](PROJECT_STATUS.md).
 
 ## Search selected files
 
