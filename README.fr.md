@@ -25,9 +25,21 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
+## 0.30.1 : correctif de sécurité (Latest stable)
 
-Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](docs/RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) sous `lmdanavanem`, release `417149160`, source immuable `697a963c756b316e1eb1e678298886bc08521da1`.
+
+Nettoyage XFA/Screen et des textes d'accessibilité, autorisation propriétaire avant reprotection, signatures renforcées, mots de passe CLI par environnement/entrée standard et gardes Office/runtime renforcées. Les P1 Roadmap et Suggestions non traités restent différés. [Détails](docs/RELEASE_0.30.1.fr.md).
+
+Le [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39235567730) et la [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39234732417) réussissent sur cette source : **575 tests**, zéro échec, 9 ignorés par défaut ; **1060 clés EN/FR**, **84 contrôles qpdf du corpus** et **9 sorties de fonctions indépendantes**, **4 cas de polices**, rendu logiciel DX12, **14 allers-retours Office**, 4 PDF sous licence/744 pages, **22 scénarios portables**, **16 références MSI/80 journaux de transactions**. CodeQL Rust, Python et Actions réussissent sans alerte ouverte.
+
+Les six fichiers publics et les copies `dist/` correspondent aux paquets inspectés et aux SHA256. Huit régressions de sécurité passent aussi avec la CLI publiée. Le code du metteur à jour a vérifié le ZIP x64 de **27,029,229 octets** en **1.21 s**, sans installation sur ce poste, avec le harnais déjà compilé et le module inchangé.
+
+Les mises à jour dépendent encore de GitHub HTTPS/SHA256 du même canal : aucune clé de publication indépendante n'est disponible. Les paquets Windows restent non signés ; le matériel ARM64 et les parcours manuels restent à qualifier. [Preuves et limites](docs/qa/RELEASE_0.30.1.json).
+
+## 0.30.0 : édition, protection des documents et conversion locale (publiée ; Latest à cette date)
+
+Publiée (Latest à cette date) en [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](docs/RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
 [Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
 
@@ -56,7 +68,7 @@ publics et mise à jour en ligne vérifiés. Voir l'[état du projet](docs/PROJE
 | Tampons | Filigrane texte (angle, opacité, position), numérotation des pages |
 | Convertir | Images → PDF, PDF → PNG, optimisation sans perte, compression des images avec perte vers une nouvelle copie ; OCR anglais/français embarqué hors ligne, texte invisible recherchable, pages textuelles ignorées, annulation et undo ; lots séquentiels compression/OCR |
 | Protéger | Chiffrement AES-128 / AES-256 avec permissions, retrait de la protection, nettoyage des métadonnées, propriétés et caviardage irréversible |
-| Certificats | Intégrité des octets enregistrés, copie signée PFX/P12 incrémentale ; confiance/révocation/horodatage fiable non établis ; signature de PDF chiffré refusée |
+| Certificats | CMS détaché sur les octets chargés/enregistrés (SHA-256/384/512), résultats Windows de confiance/révocation et RFC3161 ; copie PFX/P12 incrémentale ; signature des PDF chiffrés refusée |
 | Automatiser | `sunipdf-cli` : 62 commandes JSON et codes stables, dont `set-link-target`, `set-page-labels`, `reset-page-labels`, `compress-images`, `add-form-field`, `ocr`, `signatures` et `sign` |
 
 Les 14 outils possèdent de vraies commandes. La sélection suit l'ordre logique PDFium, sans reconstruire des colonnes

@@ -5,9 +5,21 @@
 Cette roadmap distingue les fonctions livrées et le travail futur.
 Les contrôles exécutés et preuves de publication sont dans [PROJECT_STATUS.fr.md](PROJECT_STATUS.fr.md).
 
-## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
+## 0.30.1 : correctif de sécurité (Latest stable)
 
-Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) sous `lmdanavanem`, release `417149160`, source immuable `697a963c756b316e1eb1e678298886bc08521da1`.
+
+Nettoyage XFA/Screen et des textes d'accessibilité, autorisation propriétaire avant reprotection, signatures renforcées, mots de passe CLI par environnement/entrée standard et gardes Office/runtime renforcées. Les P1 Roadmap et Suggestions non traités restent différés. [Détails](RELEASE_0.30.1.fr.md).
+
+Le [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39235567730) et la [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39234732417) réussissent sur cette source : **575 tests**, zéro échec, 9 ignorés par défaut ; **1060 clés EN/FR**, **84 contrôles qpdf du corpus** et **9 sorties de fonctions indépendantes**, **4 cas de polices**, rendu logiciel DX12, **14 allers-retours Office**, 4 PDF sous licence/744 pages, **22 scénarios portables**, **16 références MSI/80 journaux de transactions**. CodeQL Rust, Python et Actions réussissent sans alerte ouverte.
+
+Les six fichiers publics et les copies `dist/` correspondent aux paquets inspectés et aux SHA256. Huit régressions de sécurité passent aussi avec la CLI publiée. Le code du metteur à jour a vérifié le ZIP x64 de **27,029,229 octets** en **1.21 s**, sans installation sur ce poste, avec le harnais déjà compilé et le module inchangé.
+
+Les mises à jour dépendent encore de GitHub HTTPS/SHA256 du même canal : aucune clé de publication indépendante n'est disponible. Les paquets Windows restent non signés ; le matériel ARM64 et les parcours manuels restent à qualifier. [Preuves et limites](qa/RELEASE_0.30.1.json).
+
+## 0.30.0 : édition, protection des documents et conversion locale (publiée ; Latest à cette date)
+
+Publiée (Latest à cette date) en [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
 [Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
 
@@ -334,7 +346,7 @@ La [revue Code Scanning historique](CODE_SCANNING_REVIEW.fr.md) a examiné 117 a
 sans confirmer de secret de production. Corrections/triage et permissions explicites des workflows font partie
 du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). La source exacte 0.30.0 réussit CodeQL Rust, Python et Actions, sans alerte ouverte ; preuves exécutées ci-dessus.
 
-## Suite au-delà de la version 0.30.0
+## Suite au-delà de la version 0.30.1
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

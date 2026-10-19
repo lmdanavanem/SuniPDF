@@ -38,3 +38,13 @@ ne certifie pas la conformité PDF/A ou PDF/UA.
 Le rapport privé fourni n'est pas distribué. Comportements et limites :
 [nettoyage](SECURITY_MODEL.fr.md), [signatures](SIGNATURE_SECURITY.fr.md),
 [caviardage](REDACTION.fr.md) et [conversion Office](OFFICE_CONVERSION.fr.md).
+
+## Validation et distribution
+
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) sous `lmdanavanem`, release `417149160`, source immuable `697a963c756b316e1eb1e678298886bc08521da1`.
+
+Le [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39235567730) et la [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39234732417) réussissent sur cette source : **575 tests**, zéro échec, 9 ignorés par défaut ; **1060 clés EN/FR**, **84 contrôles qpdf du corpus** et **9 sorties de fonctions indépendantes**, **4 cas de polices**, rendu logiciel DX12, **14 allers-retours Office**, 4 PDF sous licence/744 pages, **22 scénarios portables**, **16 références MSI/80 journaux de transactions**. CodeQL Rust, Python et Actions réussissent sans alerte ouverte.
+
+Les six fichiers publics et les copies `dist/` correspondent aux paquets inspectés et aux SHA256. Huit régressions de sécurité passent aussi avec la CLI publiée. Le code du metteur à jour a vérifié le ZIP x64 de **27,029,229 octets** en **1.21 s**, sans installation sur ce poste, avec le harnais déjà compilé et le module inchangé.
+
+[Preuves détaillées](qa/RELEASE_0.30.1.json).

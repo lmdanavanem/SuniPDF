@@ -5,9 +5,21 @@
 This roadmap separates delivered features and future work.
 Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
-## 0.30.0: editing, document safety and local conversion (published stable Latest)
+## 0.30.1: security patch (stable Latest)
 
-Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) under `lmdanavanem`, release `417149160`, immutable source `697a963c756b316e1eb1e678298886bc08521da1`.
+
+XFA/Screen and accessibility-text cleanup, owner authorization before reprotection, stronger signature verification, environment/stdin PDF passwords and hardened Office/runtime inputs. Unresolved P1 Roadmap items and Suggestions remain deferred. [Details](RELEASE_0.30.1.md).
+
+[Release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39235567730) and [main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39234732417) passed on this source: **575 tests**, zero failures, 9 default ignored; **1060 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature cases**, **4 font-reader cases**, DX12 software rendering, **14 Office round trips**, 4 licensed PDFs/744 pages, **22 portable scenarios**, **16 MSI baselines/80 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
+
+The six public files and `dist/` copies match the inspected packages and SHA256 digests. Eight security scenarios also pass with the packaged CLI. The production updater verified the **27,029,229-byte** x64 ZIP in **1.21 s**, without installation on this host, using the previously built harness and unchanged updater module.
+
+Updates still depend on GitHub HTTPS and same-channel SHA256: no independent publication key is available. Windows packages remain unsigned; ARM64 hardware and manual flows remain separate qualification. [Evidence and limits](qa/RELEASE_0.30.1.json).
+
+## 0.30.0: editing, document safety and local conversion (published; Latest at the time)
+
+Published (Latest at the time) as [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
 
 The [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) and [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) passed on this source: **551 tests**, zero failures, 9 default ignored; **1047 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature outputs**, **4 MuPDF font cases**, DX12 software WARP, **14 Office round trips**, 4 licensed PDFs/744 pages, **21 portable scenarios**, **15 MSI baselines/75 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
 
@@ -329,7 +341,7 @@ findings, without confirming a production secret. Remediation/triage and explici
 included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
 This historical result does not establish the scan status of 0.30.0.
 
-## Work beyond 0.30.0
+## Work beyond 0.30.1
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

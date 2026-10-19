@@ -1,13 +1,27 @@
-# État du projet — mis à jour le 2026-10-17 (0.30.0 publiée en Latest stable)
+# État du projet - 2026-10-19 (0.30.1 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.30.0 : édition, protection des documents et conversion locale (publiée en Latest stable)
+## 0.30.1 : correctif de sécurité (Latest stable)
 
-Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
+Publiée en [Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) sous `lmdanavanem`, release `417149160`, source immuable `697a963c756b316e1eb1e678298886bc08521da1`.
+
+Nettoyage XFA/Screen et des textes d'accessibilité, autorisation propriétaire avant reprotection, signatures renforcées, mots de passe CLI par environnement/entrée standard et gardes Office/runtime renforcées. Les P1 Roadmap et Suggestions non traités restent différés. [Détails](RELEASE_0.30.1.fr.md).
+
+Le [workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39235567730) et la [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39234732417) réussissent sur cette source : **575 tests**, zéro échec, 9 ignorés par défaut ; **1060 clés EN/FR**, **84 contrôles qpdf du corpus** et **9 sorties de fonctions indépendantes**, **4 cas de polices**, rendu logiciel DX12, **14 allers-retours Office**, 4 PDF sous licence/744 pages, **22 scénarios portables**, **16 références MSI/80 journaux de transactions**. CodeQL Rust, Python et Actions réussissent sans alerte ouverte.
+
+Les six fichiers publics et les copies `dist/` correspondent aux paquets inspectés et aux SHA256. Huit régressions de sécurité passent aussi avec la CLI publiée. Le code du metteur à jour a vérifié le ZIP x64 de **27,029,229 octets** en **1.21 s**, sans installation sur ce poste, avec le harnais déjà compilé et le module inchangé.
+
+Les mises à jour dépendent encore de GitHub HTTPS/SHA256 du même canal : aucune clé de publication indépendante n'est disponible. Les paquets Windows restent non signés ; le matériel ARM64 et les parcours manuels restent à qualifier. [Preuves et limites](qa/RELEASE_0.30.1.json).
+
+GitHub Projects est mis à jour et relu : **43 cartes uniques, 22 Done, 21 Todo, zéro In Progress**. Sept descriptions enregistrées/vérifiées, dont une nouvelle carte Todo pour la signature indépendante des mises à jour ; critères/historique des six cartes existantes et trois filtres conservés. Bugs : 8 Done ; Roadmap : 14 Done/10 Todo ; Suggestions : 11 Todo. [Preuves Projects](qa/PROJECT_UPDATE_0.30.1.json). Les 22 alertes supplémentaires figurent dans le [CSV de triage](qa/CODE_SCANNING_0.30.1.csv) : 21 données de tests et un faux positif du candidat de mot de passe propriétaire vide ; aucun secret de production confirmé, aucune exclusion de scan.
+
+## 0.30.0 : édition, protection des documents et conversion locale (publiée ; Latest à cette date)
+
+Publiée (Latest à cette date) en [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) sous `lmdanavanem`, release `415568680`, source immuable `4db31c0ee62cfae9d65239edf1eac93db147841e`. Les cinq Bugs et quatorze P2 Roadmap sont livrés dans leurs [limites documentées](RELEASE_0.30.0.fr.md). P1 Roadmap et Suggestions restent différés.
 
 [Workflow de release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) et [CI main](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) réussis sur cette source : **551 tests**, zéro échec, 9 ignorés par défaut ; **1047 clés EN/FR**, **84 contrôles qpdf** plus **9 sorties de fonctions indépendantes**, **4 cas de polices MuPDF**, DX12 logiciel WARP, **14 allers-retours Office**, 4 PDF licenciés/744 pages, **21 scénarios portables**, **15 bases MSI/75 journaux**. CodeQL Rust, Python et Actions réussis ; zéro alerte ouverte.
 

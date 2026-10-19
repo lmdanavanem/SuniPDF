@@ -1,5 +1,9 @@
 # Code Scanning review — 2026-10-17
 
+## 0.30.1 follow-up - 19 October 2026
+
+22 additional findings individually reviewed under `lmdanavanem`: 21 test-only findings and one intentional empty-owner-credential false positive. No production secret confirmed. CodeQL Rust/Python/Actions passed on the published source with zero open alerts and no exclusions. [Decision CSV](qa/CODE_SCANNING_0.30.1.csv) · [Release evidence](qa/RELEASE_0.30.1.json).
+
 [Français](CODE_SCANNING_REVIEW.fr.md) · [Per-alert critical inventory (CSV)](qa/CODE_SCANNING_2026-10-16.csv)
 
 ## 0.30.0 code scanning review — 2026-10-17
