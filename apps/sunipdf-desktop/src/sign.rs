@@ -36,6 +36,8 @@ const MAX_SAVED: usize = 12;
 const RASTER_SCALE: f32 = 2.0;
 /// Marge de rognage autour de l'encre, en pixels tramés.
 const TRIM_PX: u32 = 6;
+const MAX_DRAW_POINTS: usize = 20_000;
+const MAX_DRAW_STROKES: usize = 256;
 const PAD_H: f32 = 170.0;
 const CARD: egui::Vec2 = egui::Vec2::new(150.0, 60.0);
 const INK_BLACK: [u8; 3] = [0x10, 0x10, 0x10];
@@ -118,12 +120,32 @@ pub enum Placing {
 struct Import {
     /// Image décodée par le thread moteur, au plus `MAX_SIDE` de côté.
     source: image::RgbaImage,
-    /// Réduction pour l'aperçu.
-    small: image::RgbaImage,
     remove_bg: bool,
+    reduce_shadows: bool,
     threshold: u8,
-    /// Aperçu construit pour (`remove_bg`, `threshold`).
-    preview: Option<(bool, u8, egui::TextureHandle)>,
+    /// Settings, exact prepared pixels and their reduced display texture.
+    preview: Option<(bool, bool, u8, image::RgbaImage, egui::TextureHandle)>,
+}
+
+impl Import {
+    fn prepare(&self) -> Result<image::RgbaImage, EngineError> {
+        if !self.remove_bg {
+            Ok(self.source.clone())
+        } else if self.reduce_shadows {
+            sig::remove_uneven_background(&self.source, self.threshold)
+        } else {
+            Ok(sig::remove_background(&self.source, self.threshold))
+        }
+    }
+    fn preview_matches(&self) -> bool {
+        self.preview
+            .as_ref()
+            .is_some_and(|(bg, shadows, threshold, _, _)| {
+                *bg == self.remove_bg
+                    && *shadows == self.reduce_shadows
+                    && *threshold == self.threshold
+            })
+    }
 }
 
 pub struct SignState {
@@ -141,6 +163,9 @@ pub struct SignState {
     selected_pages: Vec<usize>,
     /// Traits relatifs au coin haut-gauche du pavé, en points logiques.
     strokes: Vec<Vec<Pos2>>,
+    smooth: bool,
+    draw_points: usize,
+    draw_limit_reached: bool,
     drawing: bool,
     /// Largeur du pavé telle que dessinée (échelle du tramage).
     pad_w: f32,
@@ -174,6 +199,9 @@ impl Default for SignState {
             scope: Scope::Current,
             selected_pages: Vec::new(),
             strokes: Vec::new(),
+            smooth: false,
+            draw_points: 0,
+            draw_limit_reached: false,
             drawing: false,
             pad_w: 556.0,
             pen_blue: false,
@@ -193,6 +221,61 @@ impl Default for SignState {
 }
 
 impl SignState {
+    fn strokes_for_export(&self, scale: f32) -> Vec<Vec<(f32, f32)>> {
+        self.strokes
+            .iter()
+            .map(|stroke| {
+                let points = stroke.iter().map(|p| (p.x, p.y)).collect::<Vec<_>>();
+                let points = if self.smooth {
+                    sunipdf_core::smooth_polyline(&points, 4)
+                } else {
+                    points
+                };
+                points
+                    .into_iter()
+                    .map(|(x, y)| (x * scale, y * scale))
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn drawing_changed(&mut self) {
+        self.draw_points = self.strokes.iter().map(Vec::len).sum();
+        self.draw_limit_reached = false;
+        if self.error == Some("signature.error.draw_limit") {
+            self.error = None;
+        }
+    }
+
+    fn push_draw_point(&mut self, point: Pos2) {
+        if self.draw_limit_reached || !point.x.is_finite() || !point.y.is_finite() {
+            return;
+        }
+        let Some(stroke) = self.strokes.last_mut() else {
+            return;
+        };
+        if stroke.last().is_some_and(|p| p.distance(point) <= 0.5) {
+            return;
+        }
+        if self.draw_points >= MAX_DRAW_POINTS {
+            self.draw_limit_reached = true;
+            self.error = Some("signature.error.draw_limit");
+            return;
+        }
+        stroke.push(point);
+        self.draw_points += 1;
+    }
+
+    fn begin_stroke(&mut self) {
+        if self.strokes.len() >= MAX_DRAW_STROKES {
+            self.draw_limit_reached = true;
+            self.error = Some("signature.error.draw_limit");
+        } else {
+            self.strokes.push(Vec::new());
+            self.drawing = true;
+        }
+    }
+
     fn invalidate_preview(&mut self) {
         self.preview_id = self.preview_id.wrapping_add(1);
         self.preview_pending = None;
@@ -201,9 +284,12 @@ impl SignState {
 
     fn ready(&self) -> bool {
         match self.mode {
-            Mode::Draw => !self.strokes.is_empty(),
+            Mode::Draw => !self.strokes.is_empty() && !self.draw_limit_reached,
             Mode::Type => self.typed_preview.is_some() && self.preview_pending.is_none(),
-            Mode::Import => self.import.is_some() && self.import_pending.is_none(),
+            Mode::Import => {
+                self.import.as_ref().is_some_and(Import::preview_matches)
+                    && self.import_pending.is_none()
+            }
         }
     }
 
@@ -836,15 +922,7 @@ impl SuniApp {
         let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
         let st = &mut self.sign;
         let img = if st.mode == Mode::Draw {
-            let pts: Vec<Vec<(f32, f32)>> = st
-                .strokes
-                .iter()
-                .map(|s| {
-                    s.iter()
-                        .map(|q| (q.x * RASTER_SCALE, q.y * RASTER_SCALE))
-                        .collect()
-                })
-                .collect();
+            let pts = st.strokes_for_export(RASTER_SCALE);
             let w = (st.pad_w * RASTER_SCALE).round() as u32;
             let h = (PAD_H * RASTER_SCALE).round() as u32;
             let rgb = ink(st.pen_blue);
@@ -862,10 +940,16 @@ impl SuniApp {
             st.typed_preview.as_ref().map(|p| p.source.clone())
         } else {
             let Some(imp) = &st.import else { return };
-            let src = if imp.remove_bg {
-                sig::remove_background(&imp.source, imp.threshold)
+            let src = if imp.preview_matches() {
+                imp.preview.as_ref().unwrap().3.clone()
             } else {
-                imp.source.clone()
+                match imp.prepare() {
+                    Ok(image) => image,
+                    Err(_) => {
+                        st.error = Some("signature.error.cleanup");
+                        return;
+                    }
+                }
             };
             sig::trim(&src, TRIM_PX)
         };
@@ -907,6 +991,7 @@ impl SuniApp {
         }
         st.open = None;
         st.strokes.clear();
+        st.drawing_changed();
         st.drawing = false;
         st.import = None;
         st.invalidate_preview();
@@ -963,19 +1048,12 @@ impl SuniApp {
             st.import_pending = None;
             match result {
                 Ok(source) => {
-                    let small = if source.width() > PREVIEW_W {
-                        DynamicImage::ImageRgba8(source.clone())
-                            .thumbnail(PREVIEW_W, PREVIEW_W)
-                            .into_rgba8()
-                    } else {
-                        source.clone()
-                    };
                     // Un PNG déjà transparent est pris tel quel ; une photo a besoin du seuil.
                     let has_alpha = source.pixels().any(|p| p[3] < 255);
                     st.import = Some(Import {
                         source,
-                        small,
                         remove_bg: !has_alpha,
+                        reduce_shadows: false,
                         threshold: 200,
                         preview: None,
                     });
@@ -1211,11 +1289,10 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
     let down = resp.is_pointer_button_down_on();
     // L'image du relâchement compte aussi : un trait appuyé et relâché dans la même image (stylet
     // rapide, automatisation) garderait sinon son seul point d'appui.
-    if down || (st.drawing && resp.drag_stopped()) {
+    if !st.draw_limit_reached && (down || (st.drawing && resp.drag_stopped())) {
         let first = !st.drawing;
         if first {
-            st.strokes.push(Vec::new());
-            st.drawing = true;
+            st.begin_stroke();
         }
         // Tous les déplacements reçus pendant l'image (souris à 125–1000 Hz), sauf à la première
         // image du trait, où ils précèdent l'appui.
@@ -1233,22 +1310,21 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
             })
         };
         pts.extend(resp.interact_pointer_pos());
-        if let Some(stroke) = st.strokes.last_mut() {
-            for q in pts {
-                let q = (q.clamp(rect.min, rect.max) - rect.min).to_pos2();
-                if stroke.last().is_none_or(|l| l.distance(q) > 0.5) {
-                    stroke.push(q);
-                }
-            }
+        for q in pts {
+            let q = (q.clamp(rect.min, rect.max) - rect.min).to_pos2();
+            st.push_draw_point(q);
         }
-        st.drawing = down;
+        st.drawing = down && !st.draw_limit_reached;
     } else {
         st.drawing = false;
     }
     let rgb = ink(st.pen_blue);
     let color = Color32::from_rgb(rgb[0], rgb[1], rgb[2]);
-    for s in &st.strokes {
-        let pts: Vec<Pos2> = s.iter().map(|q| rect.min + q.to_vec2()).collect();
+    for s in st.strokes_for_export(1.0) {
+        let pts: Vec<Pos2> = s
+            .iter()
+            .map(|&(x, y)| rect.min + egui::vec2(x, y))
+            .collect();
         match pts.as_slice() {
             [] => {}
             [one] => {
@@ -1311,15 +1387,19 @@ fn draw_pad(ui: &mut egui::Ui, st: &mut SignState, lang: Language, p: &theme::Pa
                 .clicked()
             {
                 st.strokes.clear();
+                st.drawing_changed();
             }
             if ui
                 .add_enabled(has, egui::Button::new(tr(lang, "signature.pad.undo")))
                 .clicked()
             {
                 st.strokes.pop();
+                st.drawing_changed();
             }
         });
     });
+    ui.checkbox(&mut st.smooth, tr(lang, "signature.pad.smooth"))
+        .on_hover_text(tr(lang, "signature.pad.smooth_hint"));
 }
 
 /// Saisie et aperçu produit par le moteur, avec le même sélecteur de polices que l'édition.
@@ -1434,23 +1514,31 @@ fn import_section(
             Color32::from_gray(120),
         );
     } else if let Some(imp) = &mut st.import {
-        let stale = imp
-            .preview
-            .as_ref()
-            .is_none_or(|(bg, t, _)| *bg != imp.remove_bg || *t != imp.threshold);
+        let stale = !imp.preview_matches();
         if stale {
-            let shown = if imp.remove_bg {
-                sig::remove_background(&imp.small, imp.threshold)
-            } else {
-                imp.small.clone()
-            };
-            imp.preview = Some((
-                imp.remove_bg,
-                imp.threshold,
-                texture(ui.ctx(), "sign-import", &shown),
-            ));
+            match imp.prepare() {
+                Ok(prepared) => {
+                    if st.error == Some("signature.error.cleanup") {
+                        st.error = None;
+                    }
+                    let small = DynamicImage::ImageRgba8(prepared.clone())
+                        .thumbnail(PREVIEW_W, PREVIEW_W)
+                        .into_rgba8();
+                    imp.preview = Some((
+                        imp.remove_bg,
+                        imp.reduce_shadows,
+                        imp.threshold,
+                        prepared,
+                        texture(ui.ctx(), "sign-import", &small),
+                    ));
+                }
+                Err(_) => {
+                    st.error = Some("signature.error.cleanup");
+                    imp.preview = None;
+                }
+            }
         }
-        if let Some((_, _, tex)) = &imp.preview {
+        if let Some((_, _, _, _, tex)) = &imp.preview {
             ui.painter().image(
                 tex.id(),
                 fit(rect.shrink(10.0), tex.size_vec2()),
@@ -1484,6 +1572,15 @@ fn import_section(
             });
         }
     });
+    if let Some(imp) = &mut st.import {
+        ui.add_enabled_ui(imp.remove_bg, |ui| {
+            ui.checkbox(
+                &mut imp.reduce_shadows,
+                tr(lang, "signature.import.reduce_shadows"),
+            )
+            .on_hover_text(tr(lang, "signature.import.shadow_hint"));
+        });
+    }
     if st.import.is_some() {
         ui.label(
             RichText::new(tr(lang, "signature.import.threshold_hint"))
@@ -1497,6 +1594,104 @@ fn import_section(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn drawn_smoothing_preserves_raw_strokes_endpoints_and_preview_export_geometry() {
+        let mut state = SignState {
+            strokes: vec![
+                vec![
+                    egui::pos2(0.0, 0.0),
+                    egui::pos2(50.0, 80.0),
+                    egui::pos2(100.0, 0.0),
+                ],
+                vec![egui::pos2(3.0, 4.0)],
+            ],
+            ..Default::default()
+        };
+        let raw = state.strokes.clone();
+        assert_eq!(
+            state.strokes_for_export(1.0)[0],
+            vec![(0.0, 0.0), (50.0, 80.0), (100.0, 0.0)]
+        );
+        state.smooth = true;
+        let preview = state.strokes_for_export(1.0);
+        let exported = state.strokes_for_export(RASTER_SCALE);
+        assert!(preview[0].len() > raw[0].len());
+        assert_eq!(preview[0].first(), Some(&(0.0, 0.0)));
+        assert_eq!(preview[0].last(), Some(&(100.0, 0.0)));
+        assert_eq!(preview[1], vec![(3.0, 4.0)]);
+        for (shown, placed) in preview.iter().flatten().zip(exported.iter().flatten()) {
+            assert_eq!((shown.0 * RASTER_SCALE, shown.1 * RASTER_SCALE), *placed);
+        }
+        assert_eq!(state.strokes, raw);
+        state.smooth = false;
+        assert_eq!(state.strokes_for_export(1.0)[0].len(), 3);
+    }
+
+    #[test]
+    fn drawing_budget_blocks_placement_until_undo_or_clear_without_growing_the_draft() {
+        let mut state = SignState::default();
+        state.strokes.push(Vec::new());
+        for x in 0..MAX_DRAW_POINTS {
+            state.push_draw_point(egui::pos2(x as f32, 0.0));
+        }
+        state.push_draw_point(egui::pos2(f32::NAN, 0.0));
+        assert_eq!(state.draw_points, MAX_DRAW_POINTS);
+        state.push_draw_point(egui::pos2(MAX_DRAW_POINTS as f32, 0.0));
+        assert!(state.draw_limit_reached);
+        assert!(!state.ready());
+        assert_eq!(state.strokes[0].len(), MAX_DRAW_POINTS);
+        state.strokes.clear();
+        state.drawing_changed();
+        assert!(!state.draw_limit_reached && state.error.is_none());
+        state.strokes.push(Vec::new());
+        state.push_draw_point(egui::pos2(2.0, 3.0));
+        assert!(state.ready());
+        state.strokes.clear();
+        state.drawing_changed();
+        for _ in 0..MAX_DRAW_STROKES {
+            state.begin_stroke();
+            state.push_draw_point(egui::pos2(1.0, 1.0));
+        }
+        state.begin_stroke();
+        assert!(state.draw_limit_reached && !state.ready());
+        assert_eq!(state.strokes.len(), MAX_DRAW_STROKES);
+        state.strokes.pop();
+        state.drawing_changed();
+        assert!(state.ready());
+    }
+
+    #[test]
+    fn imported_preview_is_bound_to_all_cleanup_settings_and_retains_exact_prepared_pixels() {
+        let ctx = egui::Context::default();
+        let source = image::RgbaImage::from_pixel(4, 4, image::Rgba([40, 60, 100, 150]));
+        let mut import = Import {
+            source: source.clone(),
+            remove_bg: false,
+            reduce_shadows: false,
+            threshold: 200,
+            preview: None,
+        };
+        let prepared = import.prepare().unwrap();
+        import.preview = Some((
+            false,
+            false,
+            200,
+            prepared.clone(),
+            texture(&ctx, "signature-test", &prepared),
+        ));
+        assert!(import.preview_matches());
+        assert_eq!(import.preview.as_ref().unwrap().3, source);
+        import.reduce_shadows = true;
+        assert!(!import.preview_matches());
+        import.reduce_shadows = false;
+        import.remove_bg = true;
+        assert!(!import.preview_matches());
+        import.remove_bg = false;
+        import.threshold = 201;
+        assert!(!import.preview_matches());
+        assert_eq!(import.source, source);
+    }
 
     #[test]
     fn placement_is_centered_and_clamped() {

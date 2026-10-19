@@ -8,6 +8,47 @@ fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
 }
 
+pub fn prepare_signature_image(
+    file: &Path,
+    out: &Path,
+    background: &str,
+    threshold: u8,
+) -> Result<serde_json::Value, EngineError> {
+    use sunipdf_core::signature_image as sig;
+    if !out
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("png"))
+    {
+        return Err(failure("Choose a PNG output file for the visual signature"));
+    }
+    let source = std::fs::canonicalize(file)?;
+    if out.exists() && std::fs::canonicalize(out)? == source {
+        return Err(failure(
+            "Visual signature preparation cannot replace its input image",
+        ));
+    }
+    let metadata = std::fs::metadata(&source)?;
+    if !metadata.is_file() || metadata.len() > 64 * 1024 * 1024 {
+        return Err(failure(
+            "Visual signature input must be a regular image of at most 64 MiB",
+        ));
+    }
+    let input = sig::load(&source, 1600)?;
+    let prepared = match background {
+        "keep" => input,
+        "threshold" => sig::remove_background(&input, threshold),
+        "adaptive" => sig::remove_uneven_background(&input, threshold)?,
+        _ => return Err(failure("Unknown visual signature background mode")),
+    };
+    let prepared = sig::trim(&prepared, 6)
+        .ok_or_else(|| failure("No visible signature remains; adjust the background settings"))?;
+    sig::save_png(&prepared, out)?;
+    Ok(
+        serde_json::json!({"out":out,"width":prepared.width(),"height":prepared.height(),"background":background,"threshold":if background=="keep" {None}else {Some(threshold)},"input_written":false,"cryptographic_signature":false}),
+    )
+}
+
 fn certificate_json(info: &CertificateInfo, trusted: bool) -> serde_json::Value {
     serde_json::json!({
         "subject":info.subject,"issuer":info.issuer,"serial_hex":info.serial_hex,
