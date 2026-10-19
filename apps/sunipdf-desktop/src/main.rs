@@ -36,6 +36,7 @@ mod worker;
 mod workspace;
 
 fn main() -> eframe::Result<()> {
+    initialize_dll_search().map_err(|error| eframe::Error::AppCreation(Box::new(error)))?;
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     // Chemins absolus dès l'entrée : fichiers récents et titres ne dépendent pas du dossier courant.
     let initial_files: Vec<std::path::PathBuf> = std::env::args_os()
@@ -59,6 +60,20 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(move |cc| Ok(Box::new(app::SuniApp::new(cc, initial_files)))),
     )
+}
+
+fn initialize_dll_search() -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::System::LibraryLoader::{
+            SetDefaultDllDirectories, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS,
+        };
+        // Remove the working directory and PATH before any runtime library is loaded.
+        if unsafe { SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) } == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
+    Ok(())
 }
 
 fn renderer(requested: Option<&str>) -> eframe::Renderer {

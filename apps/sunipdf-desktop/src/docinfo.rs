@@ -22,8 +22,11 @@ pub struct DocInfoState {
     pub protect_open: bool,
     pub protection: Protection,
     pub protect_error: Option<&'static str>,
+    pub protection_epoch: Option<u64>,
+    pub current_owner: Option<zeroize::Zeroizing<String>>,
     pub unprotect_open: bool,
     pub unprotect_password: String,
+    pub unprotect_for_reprotect: bool,
 }
 
 /// Taille lisible, unités et séparateur décimal du catalogue (« 2,3 Mo » / « 2.3 MB »).
@@ -50,6 +53,20 @@ fn protection_error_key(p: ProtectionProblem) -> &'static str {
 }
 
 impl SuniApp {
+    pub(crate) fn protection_authorized(&mut self, epoch: u64, encrypted: bool) {
+        if self.docinfo.protection_epoch != Some(epoch) || self.view.epoch != epoch {
+            return;
+        }
+        self.docinfo.protection_epoch = None;
+        if encrypted {
+            self.docinfo.unprotect_password.clear();
+            self.docinfo.unprotect_for_reprotect = true;
+            self.docinfo.unprotect_open = true;
+        } else {
+            self.docinfo.protect_open = true;
+        }
+    }
+
     pub fn bookmarks_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         let p = theme::palette(self.settings.dark_theme);
@@ -471,12 +488,16 @@ impl SuniApp {
                     self.docinfo.protect_open = false;
                     self.docinfo.protect_error = None;
                     self.worker
-                        .send(Request::Edit(EditOp::Bytes(BytesOp::Protect(protection))));
+                        .send(Request::Edit(EditOp::Bytes(BytesOp::Protect {
+                            protection,
+                            current_owner: self.docinfo.current_owner.take(),
+                        })));
                 }
             }
         } else if close {
             self.docinfo.protect_open = false;
             self.docinfo.protect_error = None;
+            self.docinfo.current_owner = None;
         }
     }
 
@@ -488,13 +509,28 @@ impl SuniApp {
         let muted = theme::palette(self.settings.dark_theme).text_muted;
         let mut submit = false;
         let mut close = false;
+        let reprotect = self.docinfo.unprotect_for_reprotect;
         let spec = crate::dialog::Spec::new(
             "unprotect",
-            tr(lang, "unprotect.title"),
+            tr(
+                lang,
+                if reprotect {
+                    "protect.current_owner.title"
+                } else {
+                    "unprotect.title"
+                },
+            ),
             self.settings.dark_theme,
             self.has_icons,
         )
-        .subtitle(tr(lang, "unprotect.subtitle"))
+        .subtitle(tr(
+            lang,
+            if reprotect {
+                "protect.current_owner.subtitle"
+            } else {
+                "unprotect.subtitle"
+            },
+        ))
         .icon(icons::glyph::UNLOCK, "🔓")
         .width(440.0);
         let password = &mut self.docinfo.unprotect_password;
@@ -516,13 +552,30 @@ impl SuniApp {
                     enter = true;
                 }
                 ui.label(
-                    RichText::new(tr(lang, "unprotect.hint"))
-                        .size(12.5)
-                        .color(muted),
+                    RichText::new(tr(
+                        lang,
+                        if reprotect {
+                            "protect.current_owner.hint"
+                        } else {
+                            "unprotect.hint"
+                        },
+                    ))
+                    .size(12.5)
+                    .color(muted),
                 );
             },
             |ui| {
-                if crate::dialog::primary(ui, tr(lang, "unprotect.ok")) {
+                if crate::dialog::primary(
+                    ui,
+                    tr(
+                        lang,
+                        if reprotect {
+                            "protect.current_owner.ok"
+                        } else {
+                            "unprotect.ok"
+                        },
+                    ),
+                ) {
                     submit = true;
                 }
                 if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
@@ -535,11 +588,19 @@ impl SuniApp {
         if submit || enter {
             let owner = std::mem::take(&mut self.docinfo.unprotect_password);
             self.docinfo.unprotect_open = false;
-            self.worker
-                .send(Request::Edit(EditOp::Bytes(BytesOp::Unprotect(owner))));
+            self.docinfo.unprotect_for_reprotect = false;
+            if reprotect {
+                self.docinfo.current_owner = Some(zeroize::Zeroizing::new(owner));
+                self.docinfo.protect_open = true;
+            } else {
+                self.worker
+                    .send(Request::Edit(EditOp::Bytes(BytesOp::Unprotect(owner))));
+            }
         } else if close {
             self.docinfo.unprotect_open = false;
             self.docinfo.unprotect_password.clear();
+            self.docinfo.unprotect_for_reprotect = false;
+            self.docinfo.current_owner = None;
         }
     }
 }
@@ -547,6 +608,31 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reprotection_prompts_for_owner_without_unprotecting_and_ignores_stale_replies() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let epoch = app.view.epoch;
+        app.docinfo.protection_epoch = Some(epoch);
+        app.protection_authorized(epoch.wrapping_add(1), true);
+        assert!(!app.docinfo.unprotect_open && !app.docinfo.protect_open);
+        app.protection_authorized(epoch, true);
+        assert!(app.docinfo.unprotect_open && app.docinfo.unprotect_for_reprotect);
+        assert!(!app.docinfo.protect_open);
+        assert!(
+            requests.try_recv().is_err(),
+            "authorization never removes protection"
+        );
+        app.docinfo = Default::default();
+        app.docinfo.protection_epoch = Some(epoch);
+        app.protection_authorized(epoch, false);
+        assert!(app.docinfo.protect_open && !app.docinfo.unprotect_open);
+        app.protection_authorized(epoch, true);
+        assert!(
+            !app.docinfo.unprotect_open,
+            "a consumed reply cannot reopen another prompt"
+        );
+    }
 
     #[test]
     fn sizes_follow_the_catalog_units_and_decimal_separator() {

@@ -202,6 +202,17 @@ fn strong_digest(message: &Message) -> Result<(), u32> {
     Ok(())
 }
 
+pub(super) fn allowed_signer_digest(cms: &[u8]) -> Result<(), u32> {
+    let (_store, message) = query(cms)?;
+    strong_digest(&message).map_err(|code| {
+        if code == 0x80090008 {
+            super::super::WEAK_DIGEST
+        } else {
+            code
+        }
+    })
+}
+
 fn signing_key_usage(cert: *const CERT_CONTEXT) -> Result<(), u32> {
     if cert.is_null() {
         return Err(INVALID);

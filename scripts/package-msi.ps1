@@ -2,10 +2,34 @@
 # Prérequis : dossier portable préparé par package-portable.ps1 (dist\SuniPDF-<version>-win-<arch>-portable).
 # WiX 3.14 est préinstallé sur les runners GitHub windows-latest ; localement : winget install WiXToolset.WiXToolset.
 param(
-    [ValidateSet("x64", "arm64")] [string]$Arch = "x64"
+    [ValidateSet("x64", "arm64")] [string]$Arch = "x64",
+    [switch]$SelfTest
 )
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+
+function Assert-ArchiveChecksum([string]$Path, [string]$Expected) {
+    if ($Expected -notmatch '^[a-fA-F0-9]{64}$' -or
+        (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ine $Expected) {
+        throw 'WiX archive checksum mismatch; refusing extraction.'
+    }
+}
+
+if ($SelfTest) {
+    $directory = Join-Path $root ('target/wix-download-self-test-' + [guid]::NewGuid().ToString('N'))
+    [IO.Directory]::CreateDirectory($directory) | Out-Null
+    $fixture = Join-Path $directory 'archive-fixture.bin'
+    $expected = 'BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD'
+    [IO.File]::WriteAllText($fixture, 'abc', [Text.Encoding]::ASCII)
+    Assert-ArchiveChecksum $fixture $expected
+    [IO.File]::WriteAllText($fixture, 'abcX', [Text.Encoding]::ASCII)
+    $rejected = $false
+    try { Assert-ArchiveChecksum $fixture $expected } catch { $rejected = $true }
+    if (-not $rejected) { throw 'Modified archive was accepted.' }
+    Write-Host 'WiX download checksum self-test: matching archive accepted, modified archive refused.'
+    return
+}
+
 Set-Location $root
 $version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
 $stage = Join-Path $root "dist\SuniPDF-$version-win-$Arch-portable"
@@ -26,6 +50,8 @@ if (-not $wixBin) {
     $dl = Join-Path $root "third_party\wix314"
     New-Item -ItemType Directory -Force $dl | Out-Null
     Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip" -OutFile "$dl\wix.zip" -UseBasicParsing
+    # Official wix3141rtm asset 158158052 (41,297,555 bytes), verified before extraction.
+    Assert-ArchiveChecksum "$dl\wix.zip" '6AC824E1642D6F7277D0ED7EA09411A508F6116BA6FAE0AA5F2C7DAA2FF43D31'
     Expand-Archive -Path "$dl\wix.zip" -DestinationPath $dl -Force
     Remove-Item "$dl\wix.zip"
     $wixBin = $dl

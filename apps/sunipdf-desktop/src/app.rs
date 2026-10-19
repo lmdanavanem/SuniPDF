@@ -682,6 +682,9 @@ impl SuniApp {
                         }
                     }
                 }
+                Response::ProtectionAuthorization { epoch, encrypted } => {
+                    self.protection_authorized(epoch, encrypted);
+                }
                 Response::Signatures(result) => {
                     self.certificate.busy = false;
                     match result {
@@ -2119,14 +2122,22 @@ impl SuniApp {
             Command::Protect => {
                 self.docinfo.protection = sunipdf_core::Protection::default();
                 self.docinfo.protect_error = None;
-                self.docinfo.protect_open = true;
+                self.docinfo.current_owner = None;
+                self.docinfo.protect_open = false;
+                self.docinfo.protection_epoch = Some(self.view.epoch);
+                self.worker.send(Request::BeginProtection {
+                    epoch: self.view.epoch,
+                });
             }
             Command::Unprotect => {
+                self.docinfo.protection_epoch = None;
+                self.docinfo.current_owner = None;
                 let encrypted = self.docinfo.properties.as_ref().map(|p| p.encrypted);
                 if encrypted == Some(false) {
                     self.error = Some("error.not_encrypted");
                 } else {
                     self.docinfo.unprotect_password.clear();
+                    self.docinfo.unprotect_for_reprotect = false;
                     self.docinfo.unprotect_open = true;
                 }
             }
@@ -3252,6 +3263,12 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::FormXfa => "error.form_xfa",
         EngineError::RedactionIncomplete => "error.redact_incomplete",
         EngineError::Cancelled => "error.cancelled",
+        EngineError::Other(message) if message == crate::worker::CERTIFICATE_SOURCE_CHANGED => {
+            "error.certificate_source_changed"
+        }
+        EngineError::Other(message) if message == crate::worker::CERTIFICATE_SAVE_FIRST => {
+            "error.certificate_save_first"
+        }
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -4144,6 +4161,7 @@ pub(crate) mod tests {
             click_tab_control(&mut app, &ctx, "✕", 1);
             responses
                 .send(Response::Suspended(crate::worker::SuspendedDoc {
+                    signature_source: None,
                     bytes: vec![],
                     password: None,
                     path: PathBuf::from("test/first.pdf"),
@@ -4196,6 +4214,7 @@ pub(crate) mod tests {
             dirty,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4396,6 +4415,7 @@ pub(crate) mod tests {
                 dirty: false,
                 ui: Some(second_ui),
                 doc: Some(crate::worker::SuspendedDoc {
+                    signature_source: None,
                     bytes: vec![],
                     password: None,
                     path: PathBuf::from("test/second.pdf"),
@@ -4590,6 +4610,7 @@ pub(crate) mod tests {
             dirty: true,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4667,6 +4688,7 @@ pub(crate) mod tests {
             dirty: false,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4701,6 +4723,7 @@ pub(crate) mod tests {
         }
         responses
             .send(Response::Suspended(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/first.pdf"),
@@ -4843,6 +4866,7 @@ pub(crate) mod tests {
         );
         responses
             .send(Response::Suspended(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/first.pdf"),

@@ -208,6 +208,7 @@ fn normalized_fallback(password: Option<&str>) -> Option<String> {
 /// Répertoires explorés pour trouver `pdfium.dll`, dans l'ordre.
 pub fn default_library_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
+    #[cfg(debug_assertions)]
     if let Some(dir) = std::env::var_os("SUNIPDF_PDFIUM_DIR") {
         dirs.push(PathBuf::from(dir));
     }
@@ -218,7 +219,7 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
         dirs.push(dir);
     }
     // Confort de développement seulement : en version publiée, pdfium.dll est cherché à côté de
-    // l'exécutable (ou dans SUNIPDF_PDFIUM_DIR), jamais dans le répertoire courant ni dans un
+    // l'exécutable, jamais dans une variable d'environnement, le répertoire courant ni dans un
     // chemin de la machine de build.
     #[cfg(debug_assertions)]
     {

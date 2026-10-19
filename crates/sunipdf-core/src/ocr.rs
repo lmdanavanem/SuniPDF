@@ -63,9 +63,10 @@ fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
     }
 }
 
-/// Search only an explicit override or the application directory, never PATH or the current directory.
+/// Search the application directory; debug builds also accept an explicit development override.
 pub fn runtime_dir() -> Result<PathBuf, EngineError> {
     let mut candidates = Vec::new();
+    #[cfg(debug_assertions)]
     if let Some(path) = std::env::var_os("SUNIPDF_OCR_DIR") {
         candidates.push(PathBuf::from(path));
     }

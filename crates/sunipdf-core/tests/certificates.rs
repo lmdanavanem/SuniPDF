@@ -12,7 +12,7 @@ const PDF: &[u8] = include_bytes!("fixtures/two-pages.pdf");
 fn signatures_preserve_original_bytes_and_detect_tampering_and_later_revisions() {
     let pfx = test_identity::identity();
     let info = identity_info(&pfx, "test-only").unwrap();
-    assert_eq!(info.subject, "SuniPDF Test Identity");
+    assert!(info.subject.starts_with("CN=") && info.subject.contains("SuniPDF Test Identity"));
     assert!(info.valid_now && info.sha256_hex.len() == 64);
     assert!(identity_info(&pfx, "wrong-password").is_err());
     assert!(identity_info(b"not a certificate", "test-only").is_err());

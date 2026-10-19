@@ -3,6 +3,10 @@ pub fn identity() -> Vec<u8> {
 }
 
 pub fn identity_with_password(password: &str) -> Vec<u8> {
+    identity_with_subject(password, "/CN=SuniPDF Test Identity")
+}
+
+pub fn identity_with_subject(password: &str, subject: &str) -> Vec<u8> {
     use std::process::Command;
     let temp = tempfile::tempdir().unwrap();
     let executable = openssl();
@@ -11,15 +15,7 @@ pub fn identity_with_password(password: &str) -> Vec<u8> {
     let pfx = temp.path().join("identity.pfx");
     let result = Command::new(&executable)
         .args([
-            "req",
-            "-x509",
-            "-newkey",
-            "rsa:2048",
-            "-nodes",
-            "-subj",
-            "/CN=SuniPDF Test Identity",
-            "-days",
-            "2",
+            "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-subj", subject, "-days", "2",
             "-keyout",
         ])
         .arg(&key)
