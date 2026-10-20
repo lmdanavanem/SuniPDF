@@ -39,13 +39,16 @@ mod watermark_tests {
         let ctx = egui::Context::default();
         let mut out = ctx.run_ui(
             egui::RawInput {
-                events: vec![egui::Event::Key {
-                    key: Key::Enter,
-                    physical_key: None,
-                    pressed: true,
-                    repeat: false,
-                    modifiers: egui::Modifiers::COMMAND,
-                }],
+                events: vec![
+                    egui::Event::ModifiersChanged(egui::Modifiers::COMMAND),
+                    egui::Event::Key {
+                        key: Key::Enter,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::COMMAND,
+                    },
+                ],
                 ..Default::default()
             },
             |ui| app.stamp_dialog(ui.ctx()),
