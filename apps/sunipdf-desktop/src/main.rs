@@ -30,6 +30,7 @@ mod shell;
 mod shortcut_defaults;
 mod shortcuts;
 mod sign;
+mod stamp_presets;
 mod tabs;
 mod theme;
 mod tools;

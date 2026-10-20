@@ -14,6 +14,45 @@ mod watermark_tests {
     use super::*;
 
     #[test]
+    fn choosing_a_preset_then_cancelling_keeps_preferences_and_document_unchanged() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.tools.stamp.text = "Draft".into();
+        let data =
+            crate::stamp_presets::PresetData::capture(&app.tools.stamp, StampKind::Watermark)
+                .unwrap();
+        app.settings
+            .stamp_presets
+            .insert("Draft", data.clone())
+            .unwrap();
+        let before = app.settings.clone();
+        let ctx = egui::Context::default();
+        for language in Language::ALL {
+            app.settings.set_language(language);
+            let expected = app.settings.clone();
+            data.apply(&mut app.tools.stamp);
+            app.tools.preset_selected = Some("Draft".into());
+            app.tools.stamp_open = Some(StampKind::Watermark);
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::Key {
+                        key: Key::Escape,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }],
+                    ..Default::default()
+                },
+                |ui| app.stamp_dialog(ui.ctx()),
+            );
+            out.textures_delta.clear();
+            assert!(requests.try_recv().is_err() && app.tools.stamp_open.is_none());
+            assert_eq!(app.settings, expected);
+        }
+        assert_eq!(app.settings.stamp_presets, before.stamp_presets);
+    }
+
+    #[test]
     fn header_mode_validates_its_own_draft_independently_of_page_numbers() {
         let mut form = StampForm {
             header_mode: true,
@@ -164,6 +203,9 @@ pub struct ToolsState {
     pub running: Option<&'static str>,
     pub stamp_open: Option<StampKind>,
     pub stamp: StampForm,
+    pub preset_name: String,
+    pub preset_selected: Option<String>,
+    pub preset_error: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -358,12 +400,84 @@ impl SuniApp {
             "#",
         )
         .width(520.0);
+        let presets = self
+            .settings
+            .stamp_presets
+            .entries()
+            .iter()
+            .filter(|p| p.data.matches(kind))
+            .cloned()
+            .collect::<Vec<_>>();
+        if !presets
+            .iter()
+            .any(|p| Some(&p.name) == self.tools.preset_selected.as_ref())
+        {
+            self.tools.preset_selected = None;
+        }
+        let preset_error = self.tools.preset_error.clone();
+        let selected = &mut self.tools.preset_selected;
+        let preset_name = &mut self.tools.preset_name;
+        let mut save_preset = false;
+        let mut delete_preset = false;
         let form = &mut self.tools.stamp;
         let ready = std::cell::Cell::new(form.ready(kind));
         crate::dialog::show(
             ctx,
             spec,
             |ui| {
+                ui.label(tr(lang, "presets.scope"));
+                if let Some(error) = &preset_error {
+                    ui.colored_label(crate::theme::ERROR, error);
+                }
+                ui.horizontal_wrapped(|ui| {
+                    let previous = selected.clone();
+                    egui::ComboBox::from_id_salt("decoration-presets")
+                        .selected_text(selected.as_deref().unwrap_or(tr(lang, "presets.choose")))
+                        .show_ui(ui, |ui| {
+                            for preset in &presets {
+                                ui.selectable_value(
+                                    selected,
+                                    Some(preset.name.clone()),
+                                    &preset.name,
+                                );
+                            }
+                        });
+                    if *selected != previous {
+                        if let Some(preset) =
+                            presets.iter().find(|p| Some(&p.name) == selected.as_ref())
+                        {
+                            if preset.data.apply(form) {
+                                *preset_name = preset.name.clone();
+                            }
+                        }
+                    }
+                    ui.add(
+                        egui::TextEdit::singleline(preset_name)
+                            .hint_text(tr(lang, "presets.name"))
+                            .char_limit(64)
+                            .desired_width(145.0),
+                    );
+                    if ui
+                        .add_enabled(
+                            !preset_name.trim().is_empty()
+                                && crate::stamp_presets::PresetData::capture(form, kind).is_some(),
+                            egui::Button::new(tr(lang, "presets.save")),
+                        )
+                        .clicked()
+                    {
+                        save_preset = true;
+                    }
+                    if ui
+                        .add_enabled(
+                            selected.is_some(),
+                            egui::Button::new(tr(lang, "presets.delete")),
+                        )
+                        .clicked()
+                    {
+                        delete_preset = true;
+                    }
+                });
+                ui.separator();
                 if numbers {
                     ui.horizontal_wrapped(|ui| {
                         ui.radio_value(&mut form.header_mode, false, tr(lang, "headers.numbers"));
@@ -557,6 +671,61 @@ impl SuniApp {
                 }
             },
         );
+        if !cancel && (save_preset || delete_preset) {
+            let mut candidate = self.settings.stamp_presets.clone();
+            let result = if save_preset {
+                crate::stamp_presets::PresetData::capture(&self.tools.stamp, kind)
+                    .ok_or_else(|| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            "invalid decoration draft",
+                        )
+                    })
+                    .and_then(|data| candidate.insert(&self.tools.preset_name, data))
+            } else if self
+                .tools
+                .preset_selected
+                .as_deref()
+                .is_some_and(|name| candidate.remove(name))
+            {
+                Ok(())
+            } else {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "preset no longer exists",
+                ))
+            };
+            let result = result.and_then(|()| {
+                self.settings.commit_stamp_presets(candidate, |next| {
+                    if crate::settings::Settings::path().is_none() {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "user settings directory unavailable",
+                        ));
+                    }
+                    next.save()
+                })
+            });
+            match result {
+                Ok(()) => {
+                    self.tools.preset_error = None;
+                    if save_preset {
+                        self.tools.preset_selected =
+                            Some(self.tools.preset_name.trim().to_string());
+                    } else {
+                        self.tools.preset_selected = None;
+                        self.tools.preset_name.clear();
+                    }
+                }
+                Err(error) => {
+                    self.tools.preset_error = Some(tr_args(
+                        lang,
+                        "presets.error",
+                        &[("error", &error.to_string())],
+                    ))
+                }
+            }
+        }
         if submit && !cancel && self.tools.stamp.ready(kind) {
             let form = &self.tools.stamp;
             if numbers && form.header_mode {

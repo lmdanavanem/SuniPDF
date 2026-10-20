@@ -1,6 +1,7 @@
 //! Préférences utilisateur persistées dans `%APPDATA%\SuniPDF\settings.json` (écriture atomique).
 
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 use std::path::PathBuf;
 use sunipdf_i18n::Language;
 
@@ -22,6 +23,7 @@ pub struct Settings {
     pub check_updates: bool,
     pub office_profile: String,
     pub shortcuts: crate::shortcuts::Bindings,
+    pub stamp_presets: crate::stamp_presets::StampPresets,
 }
 
 impl Default for Settings {
@@ -39,6 +41,7 @@ impl Default for Settings {
             check_updates: true,
             office_profile: "standard".into(),
             shortcuts: Default::default(),
+            stamp_presets: Default::default(),
         }
     }
 }
@@ -67,10 +70,27 @@ impl Settings {
 
     pub fn load() -> Self {
         Self::path()
-            .and_then(|p| std::fs::read_to_string(p).ok())
+            .and_then(|p| {
+                let file = std::fs::File::open(p).ok()?;
+                let mut text = String::new();
+                file.take(1024 * 1024 + 1).read_to_string(&mut text).ok()?;
+                (text.len() <= 1024 * 1024).then_some(text)
+            })
             // Tolère le BOM UTF-8 ajouté par certains éditeurs (Bloc-notes, PowerShell 5).
             .and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok())
             .unwrap_or_default()
+    }
+
+    pub fn commit_stamp_presets(
+        &mut self,
+        presets: crate::stamp_presets::StampPresets,
+        writer: impl FnOnce(&Self) -> std::io::Result<()>,
+    ) -> std::io::Result<()> {
+        let mut next = self.clone();
+        next.stamp_presets = presets;
+        writer(&next)?;
+        *self = next;
+        Ok(())
     }
 
     #[cfg_attr(test, allow(dead_code))]
