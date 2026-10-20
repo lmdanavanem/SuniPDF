@@ -921,6 +921,9 @@ impl SuniApp {
     fn place_new(&mut self, ctx: &egui::Context, kind: SignKind) {
         let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
         let st = &mut self.sign;
+        if !st.ready() {
+            return;
+        }
         let img = if st.mode == Mode::Draw {
             let pts = st.strokes_for_export(RASTER_SCALE);
             let w = (st.pad_w * RASTER_SCALE).round() as u32;
