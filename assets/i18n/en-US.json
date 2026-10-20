@@ -1141,5 +1141,11 @@
   "headers.top_right": "Header right",
   "headers.bottom_left": "Footer left",
   "headers.bottom_center": "Footer center",
-  "headers.bottom_right": "Footer right"
+  "headers.bottom_right": "Footer right",
+  "presets.scope": "Local presets: 16 maximum. Save/delete updates preferences; choosing only loads a draft. Image presets reference the original file.",
+  "presets.choose": "Choose preset",
+  "presets.name": "New preset name",
+  "presets.save": "Save preset",
+  "presets.delete": "Delete preset",
+  "presets.error": "Preset was not saved: {error}"
 }

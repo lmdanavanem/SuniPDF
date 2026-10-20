@@ -1,5 +1,15 @@
 # Décorations de page
 
+## Modèles réutilisables (0.39.0)
+
+Dans Filigrane ou Numéros de page, choisir un modèle enregistré pour charger ses réglages. Modifier et vérifier le brouillon, puis cliquer sur le bouton habituel d’application pour modifier le PDF. Le choix du modèle ne change pas le document. Annuler abandonne l’opération en attente.
+
+Pour conserver une configuration, saisir un nouveau nom puis cliquer sur **Enregistrer le modèle**. Choisir un modèle et cliquer sur **Supprimer le modèle** retire cette préférence. Ces boutons enregistrent immédiatement ; annuler ensuite la fenêtre du document ne revient pas sur un enregistrement/suppression explicite. Les noms sont uniques sans distinction de casse ; un nom existant est refusé, utiliser un nouveau nom ou supprimer d’abord l’ancien. Un échec d’écriture conserve les préférences actives.
+
+Jusqu’à 16 modèles, avec un nom de 64 caractères, sont conservés dans le fichier local de préférences. Filigranes texte/image, numéros et six zones d’en-tête/pied sont pris en charge. La sélection des pages n’est pas enregistrée : vérifier toutes/page courante à chaque usage. Texte sur une ligne, 256 caractères par zone/modèle. Les modèles image gardent le chemin du fichier original : le conserver disponible. Le choix ne décode pas l’image ; l’application signale un fichier absent/invalide et préserve le document. Aucun contenu d’image ou identité de signature n’est stocké par cette fonction.
+
+Les anciennes préférences gardent leurs valeurs par défaut ; les modèles mal formés sont ignorés sans réinitialiser les autres préférences valides. Un fichier de préférences dépassant 1 Mio est refusé au chargement et les valeurs par défaut sont utilisées. Une écriture dépassant cette limite est refusée avant de remplacer les préférences existantes. Pas d’import/export CLI de modèles, synchronisation cloud, macro ou coffre de mots de passe. Les contrôles CLI conservent les opérations image/en-tête ; les tests de préférences et dialogues sans fenêtre couvrent persistance et annulation. L’interaction Windows native reste à qualifier.
+
 ## En-têtes et pieds de page (0.38.0)
 
 Ouvrir **Pages → Numéros de page**, puis choisir **En-têtes et pieds de page**. Renseigner une ou plusieurs des six zones : en-tête gauche/centre/droite et pied gauche/centre/droite. Choisir la taille, la marge et toutes les pages ou la page courante. `{n}` désigne le numéro absolu et `{total}` le nombre total de pages du document. Une annulation retire toute l’opération.

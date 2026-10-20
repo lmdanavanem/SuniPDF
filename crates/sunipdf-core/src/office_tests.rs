@@ -148,4 +148,23 @@ fn local_process_is_bounded_and_pre_cancel_does_not_launch() {
     )
     .is_err());
     assert!(start.elapsed() < Duration::from_secs(10));
+    let mut command = Command::new(system_tool("WindowsPowerShell/v1.0/powershell.exe").unwrap());
+    command.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Write-Output 'ready'",
+    ]);
+    assert_eq!(
+        run(
+            command,
+            &cancel,
+            Duration::from_secs(30),
+            &dir.path().join("ready.log"),
+            None
+        )
+        .unwrap()
+        .trim(),
+        "ready"
+    );
 }

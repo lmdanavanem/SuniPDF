@@ -1,8 +1,11 @@
 //! Préférences utilisateur persistées dans `%APPDATA%\SuniPDF\settings.json` (écriture atomique).
 
 use serde::{Deserialize, Serialize};
+use std::io::Read;
 use std::path::PathBuf;
 use sunipdf_i18n::Language;
+
+const MAX_SETTINGS_BYTES: usize = 1024 * 1024;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
@@ -22,6 +25,7 @@ pub struct Settings {
     pub check_updates: bool,
     pub office_profile: String,
     pub shortcuts: crate::shortcuts::Bindings,
+    pub stamp_presets: crate::stamp_presets::StampPresets,
 }
 
 impl Default for Settings {
@@ -39,6 +43,7 @@ impl Default for Settings {
             check_updates: true,
             office_profile: "standard".into(),
             shortcuts: Default::default(),
+            stamp_presets: Default::default(),
         }
     }
 }
@@ -67,10 +72,29 @@ impl Settings {
 
     pub fn load() -> Self {
         Self::path()
-            .and_then(|p| std::fs::read_to_string(p).ok())
+            .and_then(|p| {
+                let file = std::fs::File::open(p).ok()?;
+                let mut text = String::new();
+                file.take((MAX_SETTINGS_BYTES + 1) as u64)
+                    .read_to_string(&mut text)
+                    .ok()?;
+                (text.len() <= MAX_SETTINGS_BYTES).then_some(text)
+            })
             // Tolère le BOM UTF-8 ajouté par certains éditeurs (Bloc-notes, PowerShell 5).
             .and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok())
             .unwrap_or_default()
+    }
+
+    pub fn commit_stamp_presets(
+        &mut self,
+        presets: crate::stamp_presets::StampPresets,
+        writer: impl FnOnce(&Self) -> std::io::Result<()>,
+    ) -> std::io::Result<()> {
+        let mut next = self.clone();
+        next.stamp_presets = presets;
+        writer(&next)?;
+        *self = next;
+        Ok(())
     }
 
     #[cfg_attr(test, allow(dead_code))]
@@ -78,7 +102,18 @@ impl Settings {
         let Some(path) = Self::path() else {
             return Ok(());
         };
-        sunipdf_core::write_atomic(&path, &serde_json::to_vec_pretty(self)?)
+        self.save_to(&path)
+    }
+
+    fn save_to(&self, path: &std::path::Path) -> std::io::Result<()> {
+        let bytes = serde_json::to_vec_pretty(self)?;
+        if bytes.len() > MAX_SETTINGS_BYTES {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "preferences exceed 1 MiB",
+            ));
+        }
+        sunipdf_core::write_atomic(path, &bytes)
     }
 }
 
@@ -95,7 +130,14 @@ mod tests {
         s.set_language(Language::French);
         s.dark_theme = true;
         s.check_updates = false;
-        sunipdf_core::write_atomic(&path, &serde_json::to_vec(&s).unwrap()).unwrap();
+        s.save_to(&path).unwrap();
+        let stored = std::fs::read(&path).unwrap();
+        let oversized = Settings {
+            recent: vec!["x".repeat(MAX_SETTINGS_BYTES + 1)],
+            ..Default::default()
+        };
+        assert!(oversized.save_to(&path).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), stored);
         let back: Settings =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(back, s);

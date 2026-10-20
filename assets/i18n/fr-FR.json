@@ -1141,5 +1141,11 @@
   "headers.top_right": "En-tête droite",
   "headers.bottom_left": "Pied gauche",
   "headers.bottom_center": "Pied centre",
-  "headers.bottom_right": "Pied droite"
+  "headers.bottom_right": "Pied droite",
+  "presets.scope": "Modèles locaux : 16 maximum. Enregistrer/supprimer modifie les préférences ; choisir charge seulement un brouillon. Les images référencent le fichier original.",
+  "presets.choose": "Choisir un modèle",
+  "presets.name": "Nom du nouveau modèle",
+  "presets.save": "Enregistrer le modèle",
+  "presets.delete": "Supprimer le modèle",
+  "presets.error": "Modèle non enregistré : {error}"
 }

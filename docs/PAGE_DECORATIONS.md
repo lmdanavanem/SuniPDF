@@ -1,5 +1,15 @@
 # Page decorations
 
+## Reusable presets (0.39.0)
+
+In Watermark or Page numbers, choose a saved preset to load its settings into the dialog. Edit the draft, inspect its settings and click the usual Apply button to change the PDF. Choosing a preset does not change the document. Cancel discards the pending document operation.
+
+To keep a configuration, enter a new name and click **Save preset**. Select an existing preset and click **Delete preset** to remove that preference. These explicit buttons save preferences immediately; cancelling the document dialog afterwards does not undo an explicit preset save/delete. Names are unique ignoring case; an existing name is refused, so use a new name or delete it first. Failed writes preserve the active preferences.
+
+Up to 16 presets with names of 64 characters are stored locally in the existing settings file. Text watermarks, image watermarks, page numbers and six-zone headers/footers are supported. Page selection is deliberately not saved: check all/current page each time. Text is limited to one line and 256 characters per zone/template. Image presets retain the original file path; keep that file available. Choosing a preset does not decode the image; Apply reports a missing/invalid image and preserves the document. Neither image bytes nor signing identities are stored by this feature.
+
+Older settings retain defaults; malformed preset entries are skipped without resetting other valid preferences. Settings files above 1 MiB are refused on load and defaults are used. Writes above that limit are refused before replacing the existing preferences. Presets are desktop preferences; no CLI preset import/export, cloud synchronization, macro or credential store is added. The packaged CLI gate retains the image/header operations; headless preference/dialog tests cover persistence and cancellation. Native Windows interaction remains separate qualification.
+
 ## Headers and footers (0.38.0)
 
 Open **Pages → Page numbers**, then choose **Headers and footers**. Fill any of the six zones: header left/center/right and footer left/center/right. Set text size and margin; choose all pages or the current page. `{n}` means the absolute page number and `{total}` the full document page count. One Undo removes the whole operation.

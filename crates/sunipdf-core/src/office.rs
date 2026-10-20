@@ -264,6 +264,15 @@ fn supported_version(text: &str) -> bool {
         .and_then(|v| v.split_whitespace().next())
         .is_some_and(|v| v.starts_with("26.2.") || v.starts_with("26.8."))
 }
+
+const HEADLESS_ARGS: [&str; 6] = [
+    "--headless",
+    "--nologo",
+    "--nodefault",
+    "--nofirststartwizard",
+    "--norestore",
+    "--quickstart=no",
+];
 fn file_url(path: &Path) -> Result<String, EngineError> {
     let path = path
         .to_str()
@@ -397,11 +406,15 @@ pub fn convert(
         )?;
         let profile_arg = format!("-env:UserInstallation={}", file_url(&profile_dir)?);
         let mut version_command = Command::new(&converter.path);
-        version_command.arg(&profile_arg).arg("--version");
+        version_command
+            .arg(&profile_arg)
+            .args(HEADLESS_ARGS)
+            .arg("--version");
         let version = run(
             version_command,
             cancel,
-            Duration::from_secs(10),
+            // Cold startup on a loaded Windows machine can exceed ten seconds.
+            Duration::from_secs(30),
             &stage.path().join("version.log"),
             None,
         )?;
@@ -415,15 +428,8 @@ pub fn convert(
         let mut command = Command::new(&converter.path);
         command
             .arg(&profile_arg)
-            .args([
-                "--headless",
-                "--nologo",
-                "--nodefault",
-                "--nofirststartwizard",
-                "--norestore",
-                "--quickstart=no",
-                "--convert-to",
-            ])
+            .args(HEADLESS_ARGS)
+            .arg("--convert-to")
             .arg(format!("pdf:{filter}:{}", profile.filter_options()))
             .arg("--outdir")
             .arg(&out)
