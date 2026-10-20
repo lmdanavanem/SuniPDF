@@ -1,0 +1,5181 @@
+{
+  "version": "0.35.0",
+  "source": "aab39beaffa88a7a970441f647498920e432bf27",
+  "release_id": 417882428,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0",
+  "author": "lmdanavanem",
+  "author_id": 287339505,
+  "stable_latest": true,
+  "published_at": "2026-10-20T00:58:23Z",
+  "verified_at": "2026-10-20T00:59:01.687715+00:00",
+  "quality_job": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "conclusion": "success",
+    "run": 39347959736,
+    "job": 118385059701,
+    "runUrl": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736",
+    "requiredSteps": [
+      {
+        "name": "Translation catalog parity",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "WiX download checksum guard self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Format",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Clippy",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Tests",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned independent font reader",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Native DX12 software renderer and texture limits",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned independent QPDF checker",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Independent feature-reader checker self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Rich annotation and document structure independent readers",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "QPDF archive checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Synthetic corpus and generated PDF structural checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real corpus checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned licensed real PDF corpus",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real PDFs and independent output regression",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned PDF 2.0 interoperability corpus",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "PDF 2.0 text, pixels, annotations and immutable sources",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Interoperability and bounded mutation evidence",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Pinned local Office converter on disposable runner",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Measured licensed Office exports and local converter profiles",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Update helper checks",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Portable x64 package (including licenses and notices)",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Packaged PDF inspection regression",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Packaged visual signature preparation regression",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Release native-library loading boundary",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Test-only software OpenGL checksum self-test",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Test-only software OpenGL for the isolated application",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real isolated portable upgrades, rollback and close cancellation",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "MSI x64 package",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Real MSI installation and upgrade on disposable runner",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "codeqlAnalyses": [
+      {
+        "id": 1985250301,
+        "commit_sha": "aab39beaffa88a7a970441f647498920e432bf27",
+        "ref": "refs/heads/main",
+        "category": "/language:rust",
+        "error": "",
+        "created_at": "2026-10-20T00:40:00Z"
+      },
+      {
+        "id": 1985210527,
+        "commit_sha": "aab39beaffa88a7a970441f647498920e432bf27",
+        "ref": "refs/heads/main",
+        "category": "/language:python",
+        "error": "",
+        "created_at": "2026-10-20T00:30:35Z"
+      },
+      {
+        "id": 1985208763,
+        "commit_sha": "aab39beaffa88a7a970441f647498920e432bf27",
+        "ref": "refs/heads/main",
+        "category": "/language:actions",
+        "error": "",
+        "created_at": "2026-10-20T00:30:09Z"
+      }
+    ],
+    "openAlerts": 0,
+    "verifiedAt": "2026-10-20T00:55:15.8974073Z"
+  },
+  "release_workflow": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "run": 39347970752,
+    "runUrl": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752",
+    "conclusion": "success",
+    "repository": "lmdanavanem/SuniPDF",
+    "repositoryId": 1418108842,
+    "verifiedAt": "2026-10-20T00:55:22.5456466Z",
+    "evidenceDirectory": "C:\\dev_suniworks\\SuniPDF\\target\\release-artifacts-0.35.0-39347970752-370634299f214161aec3ab5fc9937449",
+    "stagedDirectory": "C:\\dev_suniworks\\SuniPDF\\target\\staged-packages-0.35.0",
+    "tests": 606,
+    "failed": 0,
+    "ignored": 10,
+    "suites": 61,
+    "i18n": 1114,
+    "qpdf": 84,
+    "qpdfFeatureCases": 9,
+    "qpdfCombined": 93,
+    "minimumWorkspaceTests": 606,
+    "expectedDefaultIgnored": 10,
+    "x64Job": 118385096365,
+    "x64Log": "C:\\dev_suniworks\\SuniPDF\\target\\release-artifacts-0.35.0-39347970752-370634299f214161aec3ab5fc9937449\\release-x64.log",
+    "jobs": [
+      {
+        "id": 118385096365,
+        "name": "build (x64)",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Cache pinned offline OCR runtime",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Offline OCR (x64, including English and French)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save verified OCR build before application checks",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Format and Clippy (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Tests (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pinned independent QPDF checker (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Independent feature-reader checker self-test (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Rich annotation and document structure independent readers (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Independent feature reader evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pinned independent font reader (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Independent font reader evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Native DX12 software renderer and texture limits (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Native renderer evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Synthetic corpus and generated PDF structural checks (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pinned licensed real PDF corpus (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Real PDFs and independent output regression (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pinned PDF 2.0 interoperability corpus (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "PDF 2.0 text, pixels, annotations and immutable sources (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Interoperability and bounded mutation evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pinned local Office converter on disposable runner (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Measured licensed Office exports and local converter profiles (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Office regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Real corpus regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Portable (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Packaged PDF inspection regression (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "PDF inspection evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Packaged visual signature preparation regression (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Visual signature preparation evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Release native-library loading boundary (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test-only software OpenGL checksum self-test (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test-only software OpenGL for the isolated application (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Real isolated portable upgrades, rollback and close cancellation (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Portable update regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "MSI (x64 only)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Real MSI installation and upgrade on disposable runner (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "MSI upgrade regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Code signing (when a certificate is configured)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Cache pinned offline OCR runtime",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 118385096370,
+        "name": "build (arm64)",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Cache pinned offline OCR runtime",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Offline OCR (arm64, including English and French)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Save verified OCR build before application checks",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Format and Clippy (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Tests (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Pinned independent QPDF checker (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Independent feature-reader checker self-test (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Rich annotation and document structure independent readers (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Independent feature reader evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Pinned independent font reader (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Independent font reader evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Native DX12 software renderer and texture limits (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Native renderer evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Synthetic corpus and generated PDF structural checks (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Pinned licensed real PDF corpus (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Real PDFs and independent output regression (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Pinned PDF 2.0 interoperability corpus (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "PDF 2.0 text, pixels, annotations and immutable sources (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Interoperability and bounded mutation evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Pinned local Office converter on disposable runner (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Measured licensed Office exports and local converter profiles (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Office regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Real corpus regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Portable (arm64)",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Packaged PDF inspection regression (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "PDF inspection evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Packaged visual signature preparation regression (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Visual signature preparation evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Release native-library loading boundary (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Test-only software OpenGL checksum self-test (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Test-only software OpenGL for the isolated application (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Real isolated portable upgrades, rollback and close cancellation (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Portable update regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "MSI (x64 only)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Real MSI installation and upgrade on disposable runner (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "MSI upgrade regression evidence (x64)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Code signing (when a certificate is configured)",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Cache pinned offline OCR runtime",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 118391041615,
+        "name": "publish",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "visual-signature-evidence",
+        "id": 12232401986,
+        "size": 814,
+        "sha256": "5B6A4A3ED443F574A74FEB80B3E0599F6F980666BC8A64F244A60786A28E1507",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "pdf-inspection-evidence",
+        "id": 12231654129,
+        "size": 716,
+        "sha256": "45FE38B6890A00581BA83197D77007F849A32E2DFB78E83E69455FB5396DF969",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "interoperability-and-mutation-evidence",
+        "id": 12232027502,
+        "size": 3963,
+        "sha256": "B3611DC049390067E828FB953E357148776A4D0B4014D342D94997274BF6F146",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "sunipdf-x64",
+        "id": 12233170106,
+        "size": 51080623,
+        "sha256": "D5D2BF37922D3A7DC4A2309DC8B966B7D267814AC414D295D5A53DA8504452C4",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "sunipdf-arm64",
+        "id": 12231809954,
+        "size": 24931081,
+        "sha256": "7F600AE6F403AE4EC3E69D9D1A97432B808A8ED60AE136B34D6E5CC26DACBDFB",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "portable-update-evidence",
+        "id": 12231769794,
+        "size": 1803,
+        "sha256": "ABACC6D33DF687FCA82E012929C1562DD925C53C7826D6D5C92CBCB2A79EDD69",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "release-msi-upgrade-evidence",
+        "id": 12232865938,
+        "size": 2641334,
+        "sha256": "C64E8B8B1788B4252FEB4DFEC8DE25F76F8927CD219FD03E72253A77805E0FB1",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "real-corpus-evidence",
+        "id": 12231798230,
+        "size": 2268,
+        "sha256": "C11CD66368691B65771D06F2A35483F41667D2425303168C30CC3EE950670550",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "font-independent-reader-evidence",
+        "id": 12232615103,
+        "size": 289611,
+        "sha256": "B47BE28C48059115423388422DD12FBDD02073A44177CBCA8A6E4AD8BD38407B",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "native-wgpu-evidence",
+        "id": 12232166330,
+        "size": 6487,
+        "sha256": "8212F51ECEA1BD82A07E014D55CF7A553F3002BB3C649410D76673D5AB5303E9",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "feature-independent-reader-evidence",
+        "id": 12232325921,
+        "size": 166181,
+        "sha256": "AD56A5A1A5770C7C48FB6C460EF68633E61E370E50103D34BC353022AEF105EA",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      {
+        "name": "office-regression-evidence",
+        "id": 12231648622,
+        "size": 4538,
+        "sha256": "23FF6C55692A05EBE7EA5F37B9D283B3294B6C4506D41E23E38B0E33E9B71909",
+        "source": "aab39beaffa88a7a970441f647498920e432bf27"
+      }
+    ],
+    "packages": [
+      {
+        "name": "SuniPDF-0.35.0-win-x64-portable.zip",
+        "size": 26752605,
+        "sha256": "359BBBA8A45D9B96D56DD79845F3EB5E4EF0CA97522330783CB4B594FC11B255",
+        "artifact": "sunipdf-x64"
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64.msi",
+        "size": 24727552,
+        "sha256": "F9F9C2277210D8B4069B609E9D6E5DBD1CC967054032400EB04FFC39D65427B8",
+        "artifact": "sunipdf-x64"
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-arm64-portable.zip",
+        "size": 25109277,
+        "sha256": "25C448518B0BA021FAC46BE84A5A74AC35D48B166D90F7DE640CB289B40C7835",
+        "artifact": "sunipdf-arm64"
+      }
+    ],
+    "portableScenarios": 27,
+    "portableUpgrades": 23,
+    "portableGuards": 4,
+    "msiBaselines": 21,
+    "msiLogs": 105,
+    "msiExitCodesVerified": true,
+    "corpusDocuments": 4,
+    "corpusPages": 744,
+    "corpusElapsedMs": 38104,
+    "corpusPeakChildBytes": 581095424,
+    "fontReaderStatus": "passed",
+    "fontReaderCases": 4,
+    "fontReader": {
+      "schema": 1,
+      "status": "passed",
+      "reader": "mutool version 1.28.5",
+      "readerSha256": "1ff045eeab80a108a39760578001a547a31e8b663905f064088c4b2f82cbcf7f",
+      "scope": "Independent extraction and glyph raster comparison against original full-font PDFium baselines; four bounded fixture cases",
+      "cases": [
+        {
+          "name": "truetype-unicode-subset",
+          "pdfSha256": "f5aea8311f713e0127f811d5ab4a98cb5e977b52a1f0d7384972db3a7b5ccf7a",
+          "baselineSha256": "66338926cfae73f5ff101a81b4b54dc2ebeb65ce11dbfaa3cf1db57031a38319",
+          "readerRasterSha256": "ebc803d77aaa02cd46fe226fd74e051e0cc8b3d46f9dc97cb902351013ff4ecf",
+          "pagePixels": [
+            1224,
+            1584
+          ],
+          "unicodeTextPassed": true,
+          "regions": [
+            {
+              "baselineBox": [
+                122,
+                1045,
+                284,
+                1068
+              ],
+              "readerBox": [
+                122,
+                1046,
+                284,
+                1067
+              ],
+              "maxBoxDeltaPixels": 1,
+              "baselineInkPixels": 716,
+              "readerInkPixels": 625,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.7259
+            },
+            {
+              "baselineBox": [
+                121,
+                965,
+                291,
+                987
+              ],
+              "readerBox": [
+                122,
+                965,
+                292,
+                987
+              ],
+              "maxBoxDeltaPixels": 1,
+              "baselineInkPixels": 722,
+              "readerInkPixels": 641,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.7102
+            }
+          ],
+          "readerDiagnostics": "page target\\font-embedding-evidence\\truetype-unicode-subset.pdf 1\r\npage target\\font-embedding-evidence\\truetype-unicode-subset.pdf 1"
+        },
+        {
+          "name": "cff-otf-subset",
+          "pdfSha256": "613fc9b0b53afcce83923561c9f5478c6c090625921aea4dac009df1b63a08a5",
+          "baselineSha256": "a37e48e4306e85de1ebf2903878fecc9a4ef7a9a4d546cf7536e847dc9eeda0e",
+          "readerRasterSha256": "390a0231ecde26fb573e127aba414fde427ce8e9f4f6b503ae44bfa41a3a4b98",
+          "pagePixels": [
+            1224,
+            1584
+          ],
+          "unicodeTextPassed": true,
+          "regions": [
+            {
+              "baselineBox": [
+                121,
+                1045,
+                142,
+                1066
+              ],
+              "readerBox": [
+                122,
+                1045,
+                141,
+                1066
+              ],
+              "maxBoxDeltaPixels": 1,
+              "baselineInkPixels": 206,
+              "readerInkPixels": 202,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.9806
+            },
+            {
+              "baselineBox": [
+                121,
+                965,
+                142,
+                986
+              ],
+              "readerBox": [
+                122,
+                965,
+                141,
+                986
+              ],
+              "maxBoxDeltaPixels": 1,
+              "baselineInkPixels": 206,
+              "readerInkPixels": 202,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.9806
+            }
+          ],
+          "readerDiagnostics": "page target\\font-embedding-evidence\\cff-otf-subset.pdf 1\r\npage target\\font-embedding-evidence\\cff-otf-subset.pdf 1"
+        },
+        {
+          "name": "ttc-second-cff-face",
+          "pdfSha256": "f313c042757ac106c518c466312b04dc3bf1e9e5750e9857ca3b448646dc778d",
+          "baselineSha256": "a37e48e4306e85de1ebf2903878fecc9a4ef7a9a4d546cf7536e847dc9eeda0e",
+          "readerRasterSha256": "390a0231ecde26fb573e127aba414fde427ce8e9f4f6b503ae44bfa41a3a4b98",
+          "pagePixels": [
+            1224,
+            1584
+          ],
+          "unicodeTextPassed": true,
+          "regions": [
+            {
+              "baselineBox": [
+                121,
+                1045,
+                142,
+                1066
+              ],
+              "readerBox": [
+                122,
+                1045,
+                141,
+                1066
+              ],
+              "maxBoxDeltaPixels": 1,
+              "baselineInkPixels": 206,
+              "readerInkPixels": 202,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.9806
+            },
+            {
+              "baselineBox": [
+                121,
+                965,
+                142,
+                986
+              ],
+              "readerBox": [
+                122,
+                965,
+                141,
+                986
+              ],
+              "maxBoxDeltaPixels": 1,
+              "baselineInkPixels": 206,
+              "readerInkPixels": 202,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.9806
+            }
+          ],
+          "readerDiagnostics": "page target\\font-embedding-evidence\\ttc-second-cff-face.pdf 1\r\npage target\\font-embedding-evidence\\ttc-second-cff-face.pdf 1"
+        },
+        {
+          "name": "cff-cjk-subset",
+          "pdfSha256": "ebbf1a855ef73f36e1a86daa97047967cbe4435290472ed0eccfa692879c44c9",
+          "baselineSha256": "bc7b1224174698dd6805333a8bef451702a12e700ebeef95dd6760f15324aac3",
+          "readerRasterSha256": "e96264cbacc3d95a209c5f4429a15b04875abc03cd7a3237903b6a8352199e05",
+          "pagePixels": [
+            1224,
+            1584
+          ],
+          "unicodeTextPassed": true,
+          "regions": [
+            {
+              "baselineBox": [
+                124,
+                1044,
+                238,
+                1065
+              ],
+              "readerBox": [
+                124,
+                1044,
+                238,
+                1065
+              ],
+              "maxBoxDeltaPixels": 0,
+              "baselineInkPixels": 780,
+              "readerInkPixels": 747,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.9064
+            },
+            {
+              "baselineBox": [
+                124,
+                964,
+                238,
+                985
+              ],
+              "readerBox": [
+                124,
+                964,
+                238,
+                985
+              ],
+              "maxBoxDeltaPixels": 0,
+              "baselineInkPixels": 780,
+              "readerInkPixels": 747,
+              "coverageWithinOnePixel": 1.0,
+              "reverseCoverageWithinOnePixel": 1.0,
+              "rawMaskIoU": 0.9064
+            }
+          ],
+          "readerDiagnostics": "page target\\font-embedding-evidence\\cff-cjk-subset.pdf 1\r\npage target\\font-embedding-evidence\\cff-cjk-subset.pdf 1"
+        }
+      ]
+    },
+    "featureReaderStatus": "passed",
+    "featureReaderCases": 9,
+    "featureReader": {
+      "schema": 1,
+      "status": "passed",
+      "reader": "mutool version 1.28.5",
+      "readerSha256": "1ff045eeab80a108a39760578001a547a31e8b663905f064088c4b2f82cbcf7f",
+      "qpdf": "qpdf version 12.4.2\r\nRun qpdf --copyright to see copyright and license information.",
+      "scope": "Synthetic rich-annotation and document-structure output; strict QPDF syntax and independent MuPDF page appearance, with documented raster tolerances",
+      "cases": [
+        {
+          "group": "rich",
+          "name": "rotation-0",
+          "pdfSha256": "7b84603112daff6ca544094c5c52e445e7b87006302091d9780b65eccde168b6",
+          "baselineSha256": "74493be9b02ab13e4e086c6f5a7fb5a0600bf4dfe6ed1c8a447196342727597f",
+          "readerRasterSha256": "c1908997632cdf2538e5fe2da5e045a3624802bd3994245b010362fbab7661a6",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 29953,
+            "readerInkPixels": 29779,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.6149
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\rich\\rotation-0.pdf 1"
+        },
+        {
+          "group": "rich",
+          "name": "rotation-90",
+          "pdfSha256": "ae51222c9b1cb47837ebac813dc951123bf08822201a5ea5e7155eaddb498293",
+          "baselineSha256": "e757c92627a45bd75cb686c1b8992440523bf795e50cb741da4651533918086f",
+          "readerRasterSha256": "22bceb41dc1d7d25e01096e3254fe8425cb53558d82f97115776632ee85945c8",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 29953,
+            "readerInkPixels": 29781,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.6144
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\rich\\rotation-90.pdf 1"
+        },
+        {
+          "group": "rich",
+          "name": "embedded-cjk",
+          "pdfSha256": "f947cb81fd8c498924d118b3cf0b8d28f9ac36a115ee6bb8ac302d8f442acb04",
+          "baselineSha256": "76e199b97bc738ff58cd0cd0587a9e7378230435d0a8e75e704cdbbed22db016",
+          "readerRasterSha256": "ddec44f9969b8d7cf67f6f4ebf48365abc52dee0190c15886ca17bb1cc40421c",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 31412,
+            "readerInkPixels": 31295,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.1108
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\rich\\embedded-cjk.pdf 1"
+        },
+        {
+          "group": "rich",
+          "name": "encrypted-rich",
+          "pdfSha256": "dabde8f36bfeb95e36a2fc332392f965b9113c9749696d4f21c343cfd4034bd6",
+          "baselineSha256": "885157d959d0cea614153757e98fe3d5a941fd63c676ad9ac12f3b92a68f703a",
+          "readerRasterSha256": "4d9c86d81e38664c7f21dcf1a0be381c5721cb6f61f8a5392e243ef3813e95cb",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 33187,
+            "readerInkPixels": 32982,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.1593
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\rich\\encrypted-rich.pdf 1"
+        },
+        {
+          "group": "structure",
+          "name": "merged",
+          "pdfSha256": "67cbe7239e47aa21f468abc45cdd31d8e26175c233cc15bd466b2d98469acc16",
+          "baselineSha256": "c608c5ff04f34481d626c348a19a8821ed5bfdeff5781a08e6b6ec3b415e3323",
+          "readerRasterSha256": "3d6cb719b36b2112960d0856bb067e1eef558f716bd2bd028935b1fa75b220ee",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 280,
+            "readerInkPixels": 277,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.3755
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\structure\\merged.pdf 1"
+        },
+        {
+          "group": "structure",
+          "name": "extracted-plain",
+          "pdfSha256": "f62624eb237d31cd5d4786a1612ba72539e31d5e52d44cc47221a306d0137982",
+          "baselineSha256": "c608c5ff04f34481d626c348a19a8821ed5bfdeff5781a08e6b6ec3b415e3323",
+          "readerRasterSha256": "3d6cb719b36b2112960d0856bb067e1eef558f716bd2bd028935b1fa75b220ee",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 280,
+            "readerInkPixels": 277,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.3755
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\structure\\extracted-plain.pdf 1"
+        },
+        {
+          "group": "structure",
+          "name": "extracted-aes128",
+          "pdfSha256": "2a7b350d31870838be4af3eb061821cf9dc40e3e1890bc7d52f9194927585ca8",
+          "baselineSha256": "c608c5ff04f34481d626c348a19a8821ed5bfdeff5781a08e6b6ec3b415e3323",
+          "readerRasterSha256": "3d6cb719b36b2112960d0856bb067e1eef558f716bd2bd028935b1fa75b220ee",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 280,
+            "readerInkPixels": 277,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.3755
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\structure\\extracted-aes128.pdf 1"
+        },
+        {
+          "group": "structure",
+          "name": "extracted-aes256",
+          "pdfSha256": "1e31a999ae1d2aae48e732d42fc53a656c351d4724a30b7f5a843e0dff83806a",
+          "baselineSha256": "c608c5ff04f34481d626c348a19a8821ed5bfdeff5781a08e6b6ec3b415e3323",
+          "readerRasterSha256": "3d6cb719b36b2112960d0856bb067e1eef558f716bd2bd028935b1fa75b220ee",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 280,
+            "readerInkPixels": 277,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.3755
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\structure\\extracted-aes256.pdf 1"
+        },
+        {
+          "group": "structure",
+          "name": "inserted",
+          "pdfSha256": "89476582525c8fbbd22140fbaea3c9236e2d9f90cf7b39f254270bd796198e74",
+          "baselineSha256": "c608c5ff04f34481d626c348a19a8821ed5bfdeff5781a08e6b6ec3b415e3323",
+          "readerRasterSha256": "3d6cb719b36b2112960d0856bb067e1eef558f716bd2bd028935b1fa75b220ee",
+          "qpdfPassed": true,
+          "appearance": {
+            "baselineInkPixels": 280,
+            "readerInkPixels": 277,
+            "coverageWithinTwoPixels": 1.0,
+            "reverseCoverageWithinTwoPixels": 1.0,
+            "rgbMeanAbsoluteError": 0.3755
+          },
+          "diagnostics": "page D:\\a\\SuniPDF\\SuniPDF\\target\\feature-030-evidence\\structure\\inserted.pdf 1"
+        }
+      ]
+    },
+    "nativeRendererStatus": "passed",
+    "nativeRenderer": {
+      "adapter": {
+        "backend": "Dx12",
+        "device": 140,
+        "deviceType": "Cpu",
+        "driver": "10.0.26100.33438",
+        "driverInfo": "",
+        "name": "Microsoft Basic Render Driver",
+        "vendor": 5140
+      },
+      "defaultRendererChanged": false,
+      "eguiTextInkPixels": 932,
+      "imageColorProbesPassed": true,
+      "largePdfTileCount": 6,
+      "nonFiniteZoomRefused": true,
+      "outputPixels": [
+        512,
+        384
+      ],
+      "overLimitTextureRefused": "Validation Error\n\nCaused by:\n  In Device::create_texture, label = 'Intentional over-limit descriptor; no backing allocation'\n    Dimension X value 2049 exceeds the limit of 2048\n",
+      "pdfTexture": {
+        "channelTolerance": 2,
+        "comparedPixels": 30294,
+        "matchingInkPixels": 2025,
+        "matchingPixels": 30294,
+        "minimumInkMatchingFraction": 0.9,
+        "minimumMatchingFraction": 0.99,
+        "sourceInkPixels": 2025,
+        "sourcePixels": [
+          153,
+          198
+        ]
+      },
+      "pngSha256": "124413b88b13167e0a6697d4dd48ef473880d8b1e1e24131b3c192b50ead8142",
+      "qualification": "DX12 software WARP only; physical GPUs, ARM64 hardware and native window presentation remain unverified",
+      "requestedAdapter": "warp",
+      "rgbaSha256": "29508d46320d0158805902d1f611df0e01c547c7506c0a3d682b0dcda41abe55",
+      "schema": 1,
+      "status": "passed",
+      "textureDimension2d": {
+        "adapter": 16384,
+        "device": 2048,
+        "requested": 2048
+      },
+      "tileSide": 1024
+    },
+    "nativeRendererTests": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "suites": 1
+    },
+    "officeStatus": "passed",
+    "officeRoundtrips": 14,
+    "officeFormatProfiles": [
+      "excel/print",
+      "excel/standard",
+      "powerpoint/print",
+      "powerpoint/standard",
+      "word/print",
+      "word/standard"
+    ],
+    "officeTests": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0,
+      "suites": 1
+    },
+    "officeReport": {
+      "build_version": "0.35.0",
+      "completed_local_roundtrips": 14,
+      "controlled_fixture_records": [
+        {
+          "exported_text_chars": 80,
+          "format": "word",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 1852,
+                "original_unchanged": true,
+                "output_bytes": 20590,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 0.6974677361853833,
+              "first_page_render_dimensions_equal": true,
+              "first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "layout_fidelity": "measured only; original layout not guaranteed for editable exports",
+              "nonwhitespace_text_sequence_equal_to_source": true,
+              "output_sha256": "75AEF4741EAAB78FA8B076E6E993D067A7A4A7EDAC7F916817482C7FFC784F9B",
+              "source_size_pt": [
+                612.0,
+                792.0
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 1852,
+                "original_unchanged": true,
+                "output_bytes": 20590,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 0.6974677361853833,
+              "first_page_render_dimensions_equal": true,
+              "first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "layout_fidelity": "measured only; original layout not guaranteed for editable exports",
+              "nonwhitespace_text_sequence_equal_to_source": true,
+              "output_sha256": "B61F3E50B09D2D2BD7D5149D87A1FE585E459858E3F2895715D180B6179E3828",
+              "source_size_pt": [
+                612.0,
+                792.0
+              ]
+            }
+          ],
+          "nonwhitespace_text_sequence_equal_to_source": true,
+          "original_unchanged": true,
+          "output_sha256": "FD474ECFFB1894BF9F432DF8E782FA6763A342900F7D7924BECF87DC6B55C5A6",
+          "report": {
+            "bytes": 1852,
+            "cells": 3,
+            "editable_text_chars": 80,
+            "fidelity": "simple text reflow; no original fonts or semantic tables",
+            "format": "word",
+            "original_unchanged": true,
+            "page_images": 0,
+            "rows": 3,
+            "source_pages": 1
+          },
+          "semantic_table_and_original_font_reconstruction": "not supported",
+          "source_kind": "controlled synthetic repository fixture; not a NIST sample or customer document",
+          "source_sha256": "986ACDA4884D30AAE9783E8F417CE9EC2F39CF8D3952D8F7A6A6E371A69B5B7C",
+          "source_text_chars": 84,
+          "status": "exported"
+        },
+        {
+          "exported_text_chars": 80,
+          "format": "excel",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 2481,
+                "original_unchanged": true,
+                "output_bytes": 14244,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 0.6761590017825312,
+              "first_page_render_dimensions_equal": true,
+              "first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "layout_fidelity": "measured only; original layout not guaranteed for editable exports",
+              "nonwhitespace_text_sequence_equal_to_source": true,
+              "output_sha256": "88218FA56EAB42395FCC4ADBBEEC9847924D039C08A9CB09A1593B31D1CA25CD",
+              "source_size_pt": [
+                612.0,
+                792.0
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 2481,
+                "original_unchanged": true,
+                "output_bytes": 14244,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 0.6761590017825312,
+              "first_page_render_dimensions_equal": true,
+              "first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "layout_fidelity": "measured only; original layout not guaranteed for editable exports",
+              "nonwhitespace_text_sequence_equal_to_source": true,
+              "output_sha256": "8B34C58C1696CAC0BECC474A52AB94EB3D61BA168C74643B037EF1CBBF7E4361",
+              "source_size_pt": [
+                612.0,
+                792.0
+              ]
+            }
+          ],
+          "nonwhitespace_text_sequence_equal_to_source": true,
+          "original_unchanged": true,
+          "output_sha256": "D84B25D08127098683BB79806D0B1B813AE3DD9BE9649957E5C896946843CF4B",
+          "report": {
+            "bytes": 2481,
+            "cells": 3,
+            "editable_text_chars": 80,
+            "fidelity": "aligned text-object string cells; no formulas or semantic table inference",
+            "format": "excel",
+            "original_unchanged": true,
+            "page_images": 0,
+            "rows": 3,
+            "source_pages": 1
+          },
+          "semantic_table_and_original_font_reconstruction": "not supported",
+          "source_kind": "controlled synthetic repository fixture; not a NIST sample or customer document",
+          "source_sha256": "986ACDA4884D30AAE9783E8F417CE9EC2F39CF8D3952D8F7A6A6E371A69B5B7C",
+          "source_text_chars": 84,
+          "status": "exported"
+        },
+        {
+          "format": "powerpoint",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 80888,
+                "original_unchanged": true,
+                "output_bytes": 32107,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 0.17327094474153298,
+              "first_page_render_dimensions_equal": true,
+              "first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "layout_fidelity": "measured only; original layout not guaranteed for editable exports",
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "446D7C26A93949978A7C142C7560FAF129C8935CFF11CE0E6D03C18300970AD3",
+              "source_size_pt": [
+                612.0,
+                792.0
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 80888,
+                "original_unchanged": true,
+                "output_bytes": 28851,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 0.16626310160427807,
+              "first_page_render_dimensions_equal": true,
+              "first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "layout_fidelity": "measured only; original layout not guaranteed for editable exports",
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "6AFA4EA9A2829BAEDA14CF14CFE9E651B0ED5B503544673D4825BEB46A3A666B",
+              "source_size_pt": [
+                612.0,
+                792.0
+              ]
+            }
+          ],
+          "original_unchanged": true,
+          "output_sha256": "4BC3B3FBC6C03AF23AC8608E010E9744D533B5EF2DB1A02279D77BA391016C1D",
+          "page_image_pixel_equality": true,
+          "report": {
+            "bytes": 80888,
+            "cells": 0,
+            "editable_text_chars": 0,
+            "fidelity": "150 dpi page images; no editable text, vectors or tables",
+            "format": "powerpoint",
+            "original_unchanged": true,
+            "page_images": 1,
+            "rows": 0,
+            "source_pages": 1
+          },
+          "semantic_table_and_original_font_reconstruction": "not supported",
+          "source_kind": "controlled synthetic repository fixture; not a NIST sample or customer document",
+          "source_sha256": "986ACDA4884D30AAE9783E8F417CE9EC2F39CF8D3952D8F7A6A6E371A69B5B7C",
+          "source_text_chars": 84,
+          "status": "exported"
+        }
+      ],
+      "converter_detected": true,
+      "license_policy": "https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications",
+      "measurement": "actual pinned public source samples and separately labeled controlled fixtures; no inferred accuracy percentages",
+      "records": [
+        {
+          "format": "word",
+          "license_evidence": "NIST staff author and the publication's Authority section explicitly excludes copyright; NIST Technical Series worldwide reproduction/derivatives policy also applies.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 10,
+          "sample_page_zero_based": 9,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nist-sp-800-38a",
+          "source_image_objects": 0,
+          "source_path_objects": 137,
+          "source_sample_sha256": "7B30B4B428A893E6D0C72C643B78E27F945DE05A875787E8A8DECB90C5CA0AF0",
+          "source_sha256": "66821162DE1E7130C5FB5EEDB22140D8D6D013EC51AF4550BB095C2A9481A00E",
+          "source_text_chars": 1461,
+          "status": "refused"
+        },
+        {
+          "format": "excel",
+          "license_evidence": "NIST staff author and the publication's Authority section explicitly excludes copyright; NIST Technical Series worldwide reproduction/derivatives policy also applies.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 10,
+          "sample_page_zero_based": 9,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nist-sp-800-38a",
+          "source_image_objects": 0,
+          "source_path_objects": 137,
+          "source_sample_sha256": "7B30B4B428A893E6D0C72C643B78E27F945DE05A875787E8A8DECB90C5CA0AF0",
+          "source_sha256": "66821162DE1E7130C5FB5EEDB22140D8D6D013EC51AF4550BB095C2A9481A00E",
+          "source_text_chars": 1461,
+          "status": "refused"
+        },
+        {
+          "editable_text_reconstruction": false,
+          "format": "powerpoint",
+          "license_evidence": "NIST staff author and the publication's Authority section explicitly excludes copyright; NIST Technical Series worldwide reproduction/derivatives policy also applies.",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 488985,
+                "original_unchanged": true,
+                "output_bytes": 224475,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 2.984514081996435,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "40CBC0546CA263EB80E82C4D922C29D5DEEDD0E8597C3AB5A6447B299E2BEE43",
+              "roundtrip_first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                612.0,
+                792.0
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 488985,
+                "original_unchanged": true,
+                "output_bytes": 215614,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 2.8466163992869875,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "2550368FD6F0A9E74B049D3780312327F032F3932415A0D8F9D14C9F8A7BF9D9",
+              "roundtrip_first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                612.0,
+                792.0
+              ]
+            }
+          ],
+          "original_unchanged": true,
+          "output_sha256": "5CBC6B307F0FFA0D9B06044E34496479A0DDF1B095F51DD9409BEC6E56C59675",
+          "page_image_pixel_equality": true,
+          "page_image_pixels": 2103750,
+          "report": {
+            "bytes": 488985,
+            "cells": 0,
+            "editable_text_chars": 0,
+            "fidelity": "150 dpi page images; no editable text, vectors or tables",
+            "format": "powerpoint",
+            "original_unchanged": true,
+            "page_images": 1,
+            "rows": 0,
+            "source_pages": 1
+          },
+          "sample_page_one_based": 10,
+          "sample_page_zero_based": 9,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nist-sp-800-38a",
+          "source_image_objects": 0,
+          "source_path_objects": 137,
+          "source_sample_sha256": "7B30B4B428A893E6D0C72C643B78E27F945DE05A875787E8A8DECB90C5CA0AF0",
+          "source_sha256": "66821162DE1E7130C5FB5EEDB22140D8D6D013EC51AF4550BB095C2A9481A00E",
+          "source_text_chars": 1461,
+          "status": "exported"
+        },
+        {
+          "format": "word",
+          "license_evidence": "The title page identifies the sole federal NBS author; the official NIST station library hosts this historical NBS Technical Note. NIST copying policy and library government-publication policy apply.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 7,
+          "sample_page_zero_based": 6,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nbs-tn-656-scan",
+          "source_image_objects": 1,
+          "source_path_objects": 1,
+          "source_sample_sha256": "C3A838819AB32459DD64C9D87AE95EE82916D8C9E6E250F9141CC2FE30002579",
+          "source_sha256": "501C06BFB3C9F2CDC187458D68AD59151A0C6154B73CF9EEA20B56D9537E670D",
+          "source_text_chars": 2250,
+          "status": "refused"
+        },
+        {
+          "format": "excel",
+          "license_evidence": "The title page identifies the sole federal NBS author; the official NIST station library hosts this historical NBS Technical Note. NIST copying policy and library government-publication policy apply.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 7,
+          "sample_page_zero_based": 6,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nbs-tn-656-scan",
+          "source_image_objects": 1,
+          "source_path_objects": 1,
+          "source_sample_sha256": "C3A838819AB32459DD64C9D87AE95EE82916D8C9E6E250F9141CC2FE30002579",
+          "source_sha256": "501C06BFB3C9F2CDC187458D68AD59151A0C6154B73CF9EEA20B56D9537E670D",
+          "source_text_chars": 2250,
+          "status": "refused"
+        },
+        {
+          "editable_text_reconstruction": false,
+          "format": "powerpoint",
+          "license_evidence": "The title page identifies the sole federal NBS author; the official NIST station library hosts this historical NBS Technical Note. NIST copying policy and library government-publication policy apply.",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 708830,
+                "original_unchanged": true,
+                "output_bytes": 308095,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 3.208926200726927,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "9BE6DB2F169F2D28B2BACD8771B897B10C49A7FE6732327AFC6D302401905245",
+              "roundtrip_first_page_size_pt": [
+                613.1905517578125,
+                792.4818725585938
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                613.19970703125,
+                792.47900390625
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 708830,
+                "original_unchanged": true,
+                "output_bytes": 320272,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 3.0077581655976515,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "43F566D2DE4ED6077D8DFF627BCEC6309E31DBA96DE312AB4B5494A7400F51B8",
+              "roundtrip_first_page_size_pt": [
+                613.1905517578125,
+                792.4818725585938
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                613.19970703125,
+                792.47900390625
+              ]
+            }
+          ],
+          "original_unchanged": true,
+          "output_sha256": "BB5692F68E87D2345EE635DD9AA8B7282A77AC35343195C857B7CBB3DE386A73",
+          "page_image_pixel_equality": true,
+          "page_image_pixels": 2108327,
+          "report": {
+            "bytes": 708830,
+            "cells": 0,
+            "editable_text_chars": 0,
+            "fidelity": "150 dpi page images; no editable text, vectors or tables",
+            "format": "powerpoint",
+            "original_unchanged": true,
+            "page_images": 1,
+            "rows": 0,
+            "source_pages": 1
+          },
+          "sample_page_one_based": 7,
+          "sample_page_zero_based": 6,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nbs-tn-656-scan",
+          "source_image_objects": 1,
+          "source_path_objects": 1,
+          "source_sample_sha256": "C3A838819AB32459DD64C9D87AE95EE82916D8C9E6E250F9141CC2FE30002579",
+          "source_sha256": "501C06BFB3C9F2CDC187458D68AD59151A0C6154B73CF9EEA20B56D9537E670D",
+          "source_text_chars": 2250,
+          "status": "exported"
+        },
+        {
+          "format": "word",
+          "license_evidence": "Title page identifies NIST employee authors; acknowledgements identify NIST illustration contributors. The NIST Technical Series worldwide reproduction/derivatives policy applies.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 10,
+          "sample_page_zero_based": 9,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nist-sp-250-67-digital",
+          "source_image_objects": 0,
+          "source_path_objects": 7,
+          "source_sample_sha256": "1E3954FEE8148C089D96082868ACC40EC98BA42D3BE1CAD2D02E3654560E714A",
+          "source_sha256": "F2BEB796E9B3208D269E834716F515E7378887C5B72A37CD83B7372604837673",
+          "source_text_chars": 2756,
+          "status": "refused"
+        },
+        {
+          "format": "excel",
+          "license_evidence": "Title page identifies NIST employee authors; acknowledgements identify NIST illustration contributors. The NIST Technical Series worldwide reproduction/derivatives policy applies.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 10,
+          "sample_page_zero_based": 9,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nist-sp-250-67-digital",
+          "source_image_objects": 0,
+          "source_path_objects": 7,
+          "source_sample_sha256": "1E3954FEE8148C089D96082868ACC40EC98BA42D3BE1CAD2D02E3654560E714A",
+          "source_sha256": "F2BEB796E9B3208D269E834716F515E7378887C5B72A37CD83B7372604837673",
+          "source_text_chars": 2756,
+          "status": "refused"
+        },
+        {
+          "editable_text_reconstruction": false,
+          "format": "powerpoint",
+          "license_evidence": "Title page identifies NIST employee authors; acknowledgements identify NIST illustration contributors. The NIST Technical Series worldwide reproduction/derivatives policy applies.",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 888973,
+                "original_unchanged": true,
+                "output_bytes": 332134,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 2.8346969696969695,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "E2D1B9460DA14F21C61640700A5960690C4C2312B093C84DEA510186EBF6D3E9",
+              "roundtrip_first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                612.0,
+                792.0
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 888973,
+                "original_unchanged": true,
+                "output_bytes": 329334,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 2.6206217468805706,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "852A7F90F8BDA30DAFBDDE9CCEC46438EAED76319FD5CE536C5BF529479086F4",
+              "roundtrip_first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                612.0,
+                792.0
+              ]
+            }
+          ],
+          "original_unchanged": true,
+          "output_sha256": "83CAC813EC52C02E2B8E65F3475D446D822A79E8424EF4776FC229E51984293E",
+          "page_image_pixel_equality": true,
+          "page_image_pixels": 2103750,
+          "report": {
+            "bytes": 888973,
+            "cells": 0,
+            "editable_text_chars": 0,
+            "fidelity": "150 dpi page images; no editable text, vectors or tables",
+            "format": "powerpoint",
+            "original_unchanged": true,
+            "page_images": 1,
+            "rows": 0,
+            "source_pages": 1
+          },
+          "sample_page_one_based": 10,
+          "sample_page_zero_based": 9,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 0,
+          "source_id": "nist-sp-250-67-digital",
+          "source_image_objects": 0,
+          "source_path_objects": 7,
+          "source_sample_sha256": "1E3954FEE8148C089D96082868ACC40EC98BA42D3BE1CAD2D02E3654560E714A",
+          "source_sha256": "F2BEB796E9B3208D269E834716F515E7378887C5B72A37CD83B7372604837673",
+          "source_text_chars": 2756,
+          "status": "exported"
+        },
+        {
+          "format": "word",
+          "license_evidence": "PDF page 3 explicitly states that this publication is not subject to US copyright; NIST Technical Series worldwide reproduction/derivatives policy also applies.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 3,
+          "sample_page_zero_based": 2,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 4,
+          "source_id": "nist-sp-800-53r5",
+          "source_image_objects": 1,
+          "source_path_objects": 7,
+          "source_sample_sha256": "27360BB4B5FA5BB8F25B23B62B4291FC4165370A8FF484AF45BBA84EB9E301A9",
+          "source_sha256": "FC63BCD61715D0181DD8E85998B1E6201AE3515FC6626102101CAB1841E11EC6",
+          "source_text_chars": 3405,
+          "status": "refused"
+        },
+        {
+          "format": "excel",
+          "license_evidence": "PDF page 3 explicitly states that this publication is not subject to US copyright; NIST Technical Series worldwide reproduction/derivatives policy also applies.",
+          "original_unchanged": true,
+          "reason": "engine error: Editable Office export refuses clipping, hidden text, nested content and graphics-state effects",
+          "sample_page_one_based": 3,
+          "sample_page_zero_based": 2,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 4,
+          "source_id": "nist-sp-800-53r5",
+          "source_image_objects": 1,
+          "source_path_objects": 7,
+          "source_sample_sha256": "27360BB4B5FA5BB8F25B23B62B4291FC4165370A8FF484AF45BBA84EB9E301A9",
+          "source_sha256": "FC63BCD61715D0181DD8E85998B1E6201AE3515FC6626102101CAB1841E11EC6",
+          "source_text_chars": 3405,
+          "status": "refused"
+        },
+        {
+          "editable_text_reconstruction": false,
+          "format": "powerpoint",
+          "license_evidence": "PDF page 3 explicitly states that this publication is not subject to US copyright; NIST Technical Series worldwide reproduction/derivatives policy also applies.",
+          "local_roundtrips": [
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 840732,
+                "original_unchanged": true,
+                "output_bytes": 324845,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "standard"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 3.069156743909685,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "05434EC47B89360A9158AFD5081749F8DE0F7940451ECFD8C6834D0A80E02170",
+              "roundtrip_first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                612.0,
+                792.0
+              ]
+            },
+            {
+              "conversion": {
+                "converter_version": "LibreOffice 26.8.1.1 bf6ef2662401c7d6dce671ab4deb26ee0af3a7c1",
+                "input_bytes": 840732,
+                "original_unchanged": true,
+                "output_bytes": 324845,
+                "pages": 1,
+                "processing": "local isolated LibreOffice; macro and external-content inputs refused",
+                "profile": "print"
+              },
+              "first_page_mean_absolute_rgba_error_0_to_255": 3.069156743909685,
+              "first_page_render_dimensions_equal": true,
+              "nonwhitespace_text_sequence_equal_to_source": false,
+              "output_sha256": "03A778D65BE1FD87721E2B1FBA4475073E7D15369D77F638C14FF723D98DD27F",
+              "roundtrip_first_page_size_pt": [
+                612.0,
+                792.0
+              ],
+              "semantic_table_and_font_reconstruction": "not supported; no inferred fidelity score",
+              "source_sample_page_size_pt": [
+                612.0,
+                792.0
+              ]
+            }
+          ],
+          "original_unchanged": true,
+          "output_sha256": "5ACE9F451D40410C77FF2FFB16E1974DCCA808FD2532E06EB9A005948FB1E755",
+          "page_image_pixel_equality": true,
+          "page_image_pixels": 2103750,
+          "report": {
+            "bytes": 840732,
+            "cells": 0,
+            "editable_text_chars": 0,
+            "fidelity": "150 dpi page images; no editable text, vectors or tables",
+            "format": "powerpoint",
+            "original_unchanged": true,
+            "page_images": 1,
+            "rows": 0,
+            "source_pages": 1
+          },
+          "sample_page_one_based": 3,
+          "sample_page_zero_based": 2,
+          "semantic_table_reconstruction": "not supported",
+          "source_annotation_count": 4,
+          "source_id": "nist-sp-800-53r5",
+          "source_image_objects": 1,
+          "source_path_objects": 7,
+          "source_sample_sha256": "27360BB4B5FA5BB8F25B23B62B4291FC4165370A8FF484AF45BBA84EB9E301A9",
+          "source_sha256": "FC63BCD61715D0181DD8E85998B1E6201AE3515FC6626102101CAB1841E11EC6",
+          "source_text_chars": 3405,
+          "status": "exported"
+        }
+      ],
+      "schema": 2,
+      "source_documents": 4,
+      "source_pages": 744,
+      "source_revision": "aab39beaffa88a7a970441f647498920e432bf27"
+    },
+    "officeConverter": {
+      "source_revision": "aab39beaffa88a7a970441f647498920e432bf27",
+      "workflow_run": "39347970752",
+      "converter_version": "26.8.1",
+      "installer_sha256": "C6298B10CFA1748BCBEDAD94C62CE771E240E5021BFD6D7A967CD571B04B5312",
+      "installer_bytes": 374870016,
+      "source_url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi",
+      "metadata_url": "https://download.documentfoundation.org/libreoffice/stable/26.8.1/win/x86_64/LibreOffice_26.8.1_Win_x86-64.msi.meta4",
+      "authenticode_status": "Valid",
+      "publisher_subject": "CN=The Document Foundation, O=The Document Foundation, L=Berlin, S=Berlin, C=DE",
+      "publisher_thumbprint": "6B5DA216489DE6C1D7DB498ED672B7ED0F599513",
+      "installed_path": "C:\\Program Files\\LibreOffice\\program\\soffice.com",
+      "installation_exit_code": 0,
+      "scope": "disposable GitHub-hosted runner only"
+    },
+    "interoperabilityStatus": "passed",
+    "interoperabilityDocuments": 7,
+    "interoperabilityPages": 8,
+    "interoperabilityQpdfChecks": 21,
+    "interoperability": {
+      "commands": [
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--version",
+          "peak_working_set_bytes": 7270400
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67325952
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67321856
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 14430208
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8699904
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 14123008
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 17272832
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17190912
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14680064
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8753152
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 14462976
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 14155776
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 17276928
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16588800
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 17698816
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8769536
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 13987840
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17080320
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67244032
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16400384
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8806400
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16203776
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18640896
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16986112
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14778368
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8839168
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16412672
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16269312
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 19058688
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17088512
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 19402752
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8822784
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16252928
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17195008
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67293184
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16338944
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8691712
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16322560
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18661376
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16560128
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14700544
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8777728
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16396288
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16093184
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18583552
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17018880
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 19161088
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8753152
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16179200
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16449536
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67293184
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16343040
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8716288
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16113664
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18472960
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16666624
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14929920
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8753152
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16375808
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16211968
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18452480
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16596992
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 19193856
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8749056
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16158720
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16666624
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67289088
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16351232
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8708096
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16191488
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18653184
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17100800
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14753792
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8720384
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16441344
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16257024
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 19214336
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16625664
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 19451904
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8728576
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16228352
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16982016
+        },
+        {
+          "elapsed_ms": 122,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67321856
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16379904
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8704000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16158720
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18538496
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16461824
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14708736
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8716288
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16510976
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16257024
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18984960
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 16568320
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 19292160
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8720384
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16232448
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17096704
+        },
+        {
+          "elapsed_ms": 142,
+          "exit_code": 0,
+          "operation": "-NoProfile",
+          "peak_working_set_bytes": 67223552
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16441344
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8941568
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16289792
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18726912
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17199104
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14802944
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8962048
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16560128
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16293888
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "annotations",
+          "peak_working_set_bytes": 18776064
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17281024
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "extract",
+          "peak_working_set_bytes": 19689472
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "--check",
+          "peak_working_set_bytes": 8949760
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "text",
+          "peak_working_set_bytes": 16502784
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "render",
+          "peak_working_set_bytes": 17063936
+        }
+      ],
+      "conformance_certification": false,
+      "corpus_distributed": false,
+      "documents": [
+        {
+          "id": "pdf-association-pdf20-01",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 1811,
+            "before": 4504,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-01\\optimized.pdf",
+            "saved_percent": 59.791296625222024
+          },
+          "page_count": 1,
+          "source_sha256": "F3A018213564A420DB81062A0E584FBCC5F705E353ED477DA43BAB6222F137B6",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        },
+        {
+          "id": "pdf-association-pdf20-02",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 6168,
+            "before": 8989,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-02\\optimized.pdf",
+            "saved_percent": 31.382801201468457
+          },
+          "page_count": 1,
+          "source_sha256": "FC517DD0D4C72D1B11E3449ACC3E816D2719DC14E69A7E14B84DA02808103370",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        },
+        {
+          "id": "pdf-association-pdf20-03",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 2321,
+            "before": 5607,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-03\\optimized.pdf",
+            "saved_percent": 58.605314785090066
+          },
+          "page_count": 1,
+          "source_sha256": "9B25D59D07034634A990E79DB6EF82B9F86769D9B94D8D8635F20D06AAEC9D18",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        },
+        {
+          "id": "pdf-association-pdf20-04",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 2277,
+            "before": 5264,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-04\\optimized.pdf",
+            "saved_percent": 56.74392097264438
+          },
+          "page_count": 1,
+          "source_sha256": "A5B92313770F16BA1DB649CCDC97D42F7744659C691897538734EEBDC1BC9E9A",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        },
+        {
+          "id": "pdf-association-pdf20-05",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 5677,
+            "before": 10538,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-05\\optimized.pdf",
+            "saved_percent": 46.12829758967546
+          },
+          "page_count": 2,
+          "source_sha256": "7C13AFE3078A4C202184EDCE3169F7BC842C8FD3DB9DA7140AF6BC0B3B2FA44A",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        },
+        {
+          "id": "pdf-association-pdf20-06",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 2814,
+            "before": 5211,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-06\\optimized.pdf",
+            "saved_percent": 45.99884858952217
+          },
+          "page_count": 1,
+          "source_sha256": "296D2A0B2CE19B606F29265694F194A754FBC61783982B5B8D730E8637482236",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        },
+        {
+          "id": "pdf-association-pdf20-07",
+          "optimization_annotations_preserved": true,
+          "optimize": {
+            "after": 11058,
+            "before": 13926,
+            "out": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\.tmpbpvaeN\\pdf-association-pdf20-07\\optimized.pdf",
+            "saved_percent": 20.594571305471774
+          },
+          "page_count": 1,
+          "source_sha256": "A7CA717EF062DF0A65E58487D26358C81424B76084A2000CA1C74B9E5776B7A1",
+          "source_unchanged": true,
+          "text_and_pixels_preserved": true
+        }
+      ],
+      "elapsed_ms": 4178,
+      "hardware": {
+        "architecture": "x86_64",
+        "ci": true,
+        "image_version": "20261007.264.1",
+        "logical_processors": 4,
+        "os": "windows",
+        "processor_identifier": "AMD64 Family 26 Model 2 Stepping 1, AuthenticAMD",
+        "run_id": "39347970752",
+        "runner_image": "win25-vs2026",
+        "source_revision": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      "license": "https://github.com/pdf-association/pdf20examples/blob/c20f2c17bfcc4baab7cfe62e70fae64caf14d5fa/LICENSE.md",
+      "memory_guard_bytes": 805306368,
+      "output_limit_bytes": 2097152,
+      "qpdf_sha256": "1BDAF878F37EAFFEA1EA3C30591214C77636A0F2FC7432427516B6E22E36C0FF",
+      "qpdf_version": "12.4.2",
+      "timeout_seconds": 180,
+      "upstream_revision": "c20f2c17bfcc4baab7cfe62e70fae64caf14d5fa"
+    },
+    "mutationStatus": "passed",
+    "mutationCases": 64,
+    "mutationGuards": 2,
+    "mutation": {
+      "campaign": "deterministic mutation smoke",
+      "campaign_budget_seconds": 180,
+      "cases": [
+        {
+          "index": 0,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 1,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 2,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 3,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 4,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 5,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 6,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 7,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "index": 8,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 9,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 10,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 11,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 12,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 13,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 14,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 15,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 16,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 17,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 18,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 19,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 20,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 21,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 22,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 23,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 24,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 25,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 26,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 27,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 28,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 29,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 30,
+          "info_exit": 0,
+          "kind": "pdf",
+          "optimize_exit": 0,
+          "source_unchanged": true
+        },
+        {
+          "index": 31,
+          "info_exit": 4,
+          "kind": "pdf",
+          "optimize_exit": 4,
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 0,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 1,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 2,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 3,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 4,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 5,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 6,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 7,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 8,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 9,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 10,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 11,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 12,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 13,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 14,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 15,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 16,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 17,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 18,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 19,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 20,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 21,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 22,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 23,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 24,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 25,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 26,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 27,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 28,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 29,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 30,
+          "kind": "cms",
+          "source_unchanged": true
+        },
+        {
+          "exit_code": 2,
+          "index": 31,
+          "kind": "cms",
+          "source_unchanged": true
+        }
+      ],
+      "commands": [
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13135872
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13570048
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13574144
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13213696
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13541376
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13213696
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13590528
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13549568
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13635584
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13209600
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13316096
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13582336
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13848576
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13651968
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13578240
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13627392
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16588800
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14753792
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16388096
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16203776
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14827520
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16379904
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16371712
+        },
+        {
+          "elapsed_ms": 60,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14942208
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16375808
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16375808
+        },
+        {
+          "elapsed_ms": 81,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14721024
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16343040
+        },
+        {
+          "elapsed_ms": 61,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14716928
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16379904
+        },
+        {
+          "elapsed_ms": 61,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14708736
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16371712
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16408576
+        },
+        {
+          "elapsed_ms": 60,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14716928
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16408576
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16416768
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14737408
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16519168
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16547840
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14741504
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16396288
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16347136
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14991360
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16379904
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16371712
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14954496
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16375808
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16564224
+        },
+        {
+          "elapsed_ms": 60,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14708736
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16670720
+        },
+        {
+          "elapsed_ms": 60,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14733312
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16429056
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14745600
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16396288
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16400384
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14688256
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16388096
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 15114240
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14733312
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 15134720
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16371712
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14704640
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16388096
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16596992
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14712832
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16388096
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16347136
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14962688
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16351232
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14823424
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16572416
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14729216
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14921728
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16384000
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16359424
+        },
+        {
+          "elapsed_ms": 41,
+          "exit_code": 0,
+          "operation": "optimize",
+          "peak_working_set_bytes": 14958592
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 0,
+          "operation": "info",
+          "peak_working_set_bytes": 16392192
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "info",
+          "peak_working_set_bytes": 13578240
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 4,
+          "operation": "optimize",
+          "peak_working_set_bytes": 13877248
+        },
+        {
+          "elapsed_ms": 40,
+          "exit_code": 0,
+          "operation": "signatures",
+          "peak_working_set_bytes": 15966208
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11145216
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11186176
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11149312
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11198464
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11177984
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11137024
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11137024
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11153408
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11165696
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11317248
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11202560
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11186176
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11108352
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11182080
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11640832
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11624448
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 12013568
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 12034048
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 12038144
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 12013568
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 12050432
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11841536
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11161600
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11149312
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11190272
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11153408
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11124736
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11165696
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11575296
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11616256
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 12226560
+        },
+        {
+          "elapsed_ms": 20,
+          "exit_code": 2,
+          "operation": "signatures",
+          "peak_working_set_bytes": 11632640
+        }
+      ],
+      "coverage_guided_fuzzing": false,
+      "elapsed_ms": 4032,
+      "hardware": {
+        "architecture": "x86_64",
+        "ci": true,
+        "image_version": "20261007.264.1",
+        "logical_processors": 4,
+        "os": "windows",
+        "processor_identifier": "AMD64 Family 26 Model 2 Stepping 1, AuthenticAMD",
+        "run_id": "39347970752",
+        "runner_image": "win25-vs2026",
+        "source_revision": "aab39beaffa88a7a970441f647498920e432bf27"
+      },
+      "memory_guard_bytes": 805306368,
+      "output_limit_bytes": 2097152,
+      "per_command_timeout_seconds": 10,
+      "production_identity_used": false
+    },
+    "inspectionStatus": "passed",
+    "inspectionCases": 14,
+    "inspection": {
+      "status": "passed",
+      "gate": "pdf-inspection-0.35.0",
+      "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+      "cases": [
+        "ordinary-dictionaries",
+        "all-seven-features-and-unreachable-objects",
+        "stream-body-is-not-interpreted-as-dictionaries",
+        "dangling-reference-is-partial",
+        "cyclic-feature-name-is-partial",
+        "malformed-input-has-typed-error",
+        "missing-input-has-typed-error",
+        "oversized-file-is-refused",
+        "aes128-missing-credential-is-explicit",
+        "aes128-user-environment-credential",
+        "aes128-owner-environment-credential",
+        "aes256-missing-credential-is-explicit",
+        "aes256-user-environment-credential",
+        "aes256-owner-environment-credential"
+      ],
+      "completed_cases": 14,
+      "subprocess_calls": 16,
+      "elapsed_seconds": 0.344,
+      "source_revision": "aab39beaffa88a7a970441f647498920e432bf27",
+      "os": "nt",
+      "production_credentials_used": false,
+      "secret_argv_used": false,
+      "application_installed": false,
+      "native_gui_qualified": false,
+      "input_sources": "independently written PDF/xref bytes; encrypted copies made by packaged CLI"
+    },
+    "visualSignatureStatus": "passed",
+    "visualSignatureCases": 20,
+    "visualSignature": {
+      "gate": "visual-signature-0.35.0",
+      "status": "passed",
+      "completed_cases": 20,
+      "cases": [
+        "keep-preserves-visible-rgba",
+        "adaptive-removes-gradient-preserves-ink-and-alpha",
+        "global-threshold-remains-distinct",
+        "blank-cleanup-refuses-empty-signature",
+        "same-input-output-refused-even-with-overwrite",
+        "existing-output-requires-explicit-overwrite",
+        "png-output-required",
+        "decoder-side-bound",
+        "encoded-file-size-bound",
+        "malformed-image-typed-failure",
+        "exif-orientation-1",
+        "exif-orientation-2",
+        "exif-orientation-3",
+        "exif-orientation-4",
+        "exif-orientation-5",
+        "exif-orientation-6",
+        "exif-orientation-7",
+        "exif-orientation-8",
+        "prepared-alpha-embeds-renders-and-passes-qpdf",
+        "missing-input-typed-failure"
+      ],
+      "commands": 22,
+      "qpdf_checks": 1,
+      "qpdf_sha256": "1bdaf878f37eaffea1ea3c30591214c77636a0f2fc7432427516b6e22e36c0ff",
+      "pillow_version": "12.3.0",
+      "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+      "source_revision": "aab39beaffa88a7a970441f647498920e432bf27",
+      "platform": "nt",
+      "input_files_unchanged": true,
+      "generated_fixtures_only": true,
+      "production_identity_used": false,
+      "host_installation_performed": false,
+      "native_gui_qualified": false,
+      "elapsed_seconds": 0.875
+    },
+    "hostInstallation": false,
+    "published": false
+  },
+  "staged_inspection": {
+    "version": "0.35.0",
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "success": true,
+    "license_verification": {
+      "x64": {
+        "own_inventory_verified": true,
+        "inventory_sha256": "3A49BFC1C9C5759D8B3C1757409A4855EFD892575CDE501A2DEE518544E021B6",
+        "rust_packages": 514,
+        "full_texts": 336,
+        "payload_files": 59
+      },
+      "arm64": {
+        "own_inventory_verified": true,
+        "inventory_sha256": "019D36BE42B739131847F3E8FC47D8F7359AA443323A1A1329E5D7BA61D16A16",
+        "rust_packages": 514,
+        "full_texts": 336,
+        "payload_files": 59
+      },
+      "msi": {
+        "own_inventory_verified": true,
+        "inventory_sha256": "FC293BB321563AAB8448EFD619668681FC680D0A05238996836DC8134E349AD3",
+        "common_license_hashes_verified": true,
+        "common_license_files": 50,
+        "only_difference": "dependency-inventory.json selected-WiX fields and added wix-build-provenance.json",
+        "selected_wix": {
+          "schema": 1,
+          "tools": [
+            {
+              "name": "candle.exe",
+              "version": "3.14.1.8722",
+              "sha256": "a464676e2a2191d58e6ca643e89505bfb9628d3e721873a14994d3f4667987e5"
+            },
+            {
+              "name": "light.exe",
+              "version": "3.14.1.8722",
+              "sha256": "8ee3d7fa5592511152a4d1fc605780eae1b27ac7b41d75d518c958515de39529"
+            }
+          ],
+          "scope": "MSI build only; WiX executables are not included",
+          "origin": "Actual selected local executable versions and hashes; a hash alone does not attest upstream download origin"
+        },
+        "inspected_payload": "C:\\dev_suniworks\\SuniPDF\\target\\staged-verification-0.35.0-86ded017ecac4c40bfa55bd60e50213e\\msi-license-payload-83fa555405b14f68b5a258c7593b154e"
+      }
+    },
+    "scope": "local staged CI package inspection only",
+    "staged_directory": "C:\\dev_suniworks\\SuniPDF\\target\\staged-packages-0.35.0",
+    "assets": [
+      {
+        "name": "SuniPDF-0.35.0-win-x64-portable.zip",
+        "sha256": "359BBBA8A45D9B96D56DD79845F3EB5E4EF0CA97522330783CB4B594FC11B255",
+        "size": 26752605
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-arm64-portable.zip",
+        "sha256": "25C448518B0BA021FAC46BE84A5A74AC35D48B166D90F7DE640CB289B40C7835",
+        "size": 25109277
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64.msi",
+        "sha256": "F9F9C2277210D8B4069B609E9D6E5DBD1CC967054032400EB04FFC39D65427B8",
+        "size": 24727552
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64-portable.zip.sha256",
+        "sha256": "ECE94BA55E6E8210A3B3F21C8BDBAA6543168626A8689880E808C331FA171885",
+        "size": 103
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-arm64-portable.zip.sha256",
+        "sha256": "4FD3B6CBE18210296B3ED064401CA35B63B2AFC5105529A6C19E13584F364CA1",
+        "size": 105
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64.msi.sha256",
+        "sha256": "BC60C68D5433291725443B48D7C4B886904437539BDA25A9FE55E12305038D70",
+        "size": 94
+      }
+    ],
+    "checked": [
+      "six staged package/sidecar names and SHA256",
+      "x64/ARM64 GUI/CLI/PDFium/Tesseract PE architecture",
+      "pinned English/French models",
+      "complete OCR/dependency notices including xml-rs and lopdf MIT",
+      "0.8.x portable ZIP allowlist",
+      "exact seven source ICO frame payloads in both GUI executables",
+      "GUI/CLI English metadata and versions",
+      "packaged x64 CLI info/render/form field",
+      "packaged multiline FreeText geometry/style on plain and AES128/256, both passwords, qpdf and immutable source",
+      "packaged all-eight EXIF/DCT byte preservation, alpha, cumulative raster refusal, DPI and output/source guards",
+      "packaged dashed square/circle/line/arrow readback, distinct solid/dashed renders, plain and AES128/256 both passwords, qpdf and immutable source",
+      "packaged link-target replacement with stable annotation identity/geometry, plain and AES128/256 both passwords, qpdf and unchanged page rendering",
+      "packaged page labels and immutable source",
+      "packaged range label authoring/reset, Unicode and outside rules, plain/AES128/256 both passwords, independent qpdf and unchanged rendering",
+      "AES128/256 protected copies, owner metadata, both passwords, independent qpdf and readable content",
+      "packaged image compression gain and immutable input",
+      "packaged radio/combo/list creation and XFDF round trip",
+      "packaged editable combo flag and custom text",
+      "packaged signature batch deduplication and fitted geometry on plain and owner-opened AES128/256 files",
+      "QPDF-generated radio Opt exports on plain and owner-opened AES128/256 files",
+      "packaged grouped ink as one annotation on plain and owner-opened AES128/256 files, both passwords, source/protection/render checks",
+      "packaged short/long CLI help literal page variables",
+      "packaged grouped rotation/resize bounds and rendering",
+      "packaged offline French OCR",
+      "MSI read-only language/upgrade transaction",
+      "MSI/ZIP executable and common license/OCR hashes; separate own inventories with selected-WiX-only delta"
+    ],
+    "not_checked": [
+      "GitHub public files",
+      "release publication or Latest state",
+      "real MSI installation/upgrade",
+      "complete portable updater installation",
+      "ARM64 execution",
+      "physical printer",
+      "native GUI startup or user profile"
+    ],
+    "portable": "C:\\dev_suniworks\\SuniPDF\\target\\staged-verification-0.35.0-86ded017ecac4c40bfa55bd60e50213e\\portable-x64-24dc08046e8448518e7ca18cda10d42c",
+    "smoke": "C:\\dev_suniworks\\SuniPDF\\target\\staged-verification-0.35.0-86ded017ecac4c40bfa55bd60e50213e\\smoke-eda8f7b7703f4c8180612b4990eb8fa3",
+    "msi_inspection": "C:\\dev_suniworks\\SuniPDF\\target\\staged-verification-0.35.0-86ded017ecac4c40bfa55bd60e50213e\\msi-inspect-a99fb5c942ba4fb881166b1fdc563b28"
+  },
+  "public_verification": {
+    "version": "0.35.0",
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "success": true,
+    "license_verification": {
+      "x64": {
+        "own_inventory_verified": true,
+        "inventory_sha256": "3A49BFC1C9C5759D8B3C1757409A4855EFD892575CDE501A2DEE518544E021B6",
+        "rust_packages": 514,
+        "full_texts": 336,
+        "payload_files": 59
+      },
+      "arm64": {
+        "own_inventory_verified": true,
+        "inventory_sha256": "019D36BE42B739131847F3E8FC47D8F7359AA443323A1A1329E5D7BA61D16A16",
+        "rust_packages": 514,
+        "full_texts": 336,
+        "payload_files": 59
+      },
+      "msi": {
+        "own_inventory_verified": true,
+        "inventory_sha256": "FC293BB321563AAB8448EFD619668681FC680D0A05238996836DC8134E349AD3",
+        "common_license_hashes_verified": true,
+        "common_license_files": 50,
+        "only_difference": "dependency-inventory.json selected-WiX fields and added wix-build-provenance.json",
+        "selected_wix": {
+          "schema": 1,
+          "tools": [
+            {
+              "name": "candle.exe",
+              "version": "3.14.1.8722",
+              "sha256": "a464676e2a2191d58e6ca643e89505bfb9628d3e721873a14994d3f4667987e5"
+            },
+            {
+              "name": "light.exe",
+              "version": "3.14.1.8722",
+              "sha256": "8ee3d7fa5592511152a4d1fc605780eae1b27ac7b41d75d518c958515de39529"
+            }
+          ],
+          "scope": "MSI build only; WiX executables are not included",
+          "origin": "Actual selected local executable versions and hashes; a hash alone does not attest upstream download origin"
+        },
+        "inspected_payload": "C:\\dev_suniworks\\SuniPDF\\target\\public-release-0.35.0-cdf09834a04c42818221969694f71caf\\msi-license-payload-043c66679c204cf8b62d516148857072"
+      }
+    },
+    "staged_directory": "C:\\dev_suniworks\\SuniPDF\\target\\public-release-0.35.0-cdf09834a04c42818221969694f71caf",
+    "release_id": 417882428,
+    "repository": "lmdanavanem/SuniPDF",
+    "repository_id": 1418108842,
+    "owner_id": 287339505,
+    "author": "lmdanavanem",
+    "author_id": 287339505,
+    "latest": true,
+    "verified_at": "2026-10-20T00:58:55.9752769Z",
+    "assets": [
+      {
+        "name": "SuniPDF-0.35.0-win-arm64-portable.zip",
+        "sha256": "25C448518B0BA021FAC46BE84A5A74AC35D48B166D90F7DE640CB289B40C7835",
+        "size": 25109277,
+        "uploader": "github-actions[bot]",
+        "uploader_id": 41898282
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-arm64-portable.zip.sha256",
+        "sha256": "4FD3B6CBE18210296B3ED064401CA35B63B2AFC5105529A6C19E13584F364CA1",
+        "size": 105,
+        "uploader": "github-actions[bot]",
+        "uploader_id": 41898282
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64-portable.zip",
+        "sha256": "359BBBA8A45D9B96D56DD79845F3EB5E4EF0CA97522330783CB4B594FC11B255",
+        "size": 26752605,
+        "uploader": "github-actions[bot]",
+        "uploader_id": 41898282
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64-portable.zip.sha256",
+        "sha256": "ECE94BA55E6E8210A3B3F21C8BDBAA6543168626A8689880E808C331FA171885",
+        "size": 103,
+        "uploader": "github-actions[bot]",
+        "uploader_id": 41898282
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64.msi",
+        "sha256": "F9F9C2277210D8B4069B609E9D6E5DBD1CC967054032400EB04FFC39D65427B8",
+        "size": 24727552,
+        "uploader": "github-actions[bot]",
+        "uploader_id": 41898282
+      },
+      {
+        "name": "SuniPDF-0.35.0-win-x64.msi.sha256",
+        "sha256": "BC60C68D5433291725443B48D7C4B886904437539BDA25A9FE55E12305038D70",
+        "size": 94,
+        "uploader": "github-actions[bot]",
+        "uploader_id": 41898282
+      }
+    ],
+    "checked": [
+      "public six-asset downloads and SHA256",
+      "x64/ARM64 PE architecture including OCR",
+      "pinned English/French models",
+      "0.8.x portable ZIP allowlist",
+      "GUI/CLI English metadata and versions",
+      "packaged CLI info/render/form field",
+      "packaged local French OCR",
+      "MSI read-only language/upgrade transaction",
+      "MSI/ZIP executable and common license/OCR hashes; separate own inventories with selected-WiX-only delta"
+    ],
+    "not_checked": [
+      "real installation",
+      "ARM64 execution",
+      "physical printer"
+    ],
+    "portable": "C:\\dev_suniworks\\SuniPDF\\target\\public-release-0.35.0-cdf09834a04c42818221969694f71caf\\portable-x64-ac80a571c2db4afc9a95dc1574c78480",
+    "smoke": "C:\\dev_suniworks\\SuniPDF\\target\\public-release-0.35.0-cdf09834a04c42818221969694f71caf\\smoke-a7c9afedf72d4f0283d9070ad50dc242",
+    "msi_inspection": "C:\\dev_suniworks\\SuniPDF\\target\\public-release-0.35.0-cdf09834a04c42818221969694f71caf\\msi-inspect-0b0ed3f6a5fd41dba4fcf4cae26cf9f4"
+  },
+  "live_updater": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "version": "0.35.0",
+    "release_id": 417882428,
+    "verified": true,
+    "installation_performed": false,
+    "bytes": 26752605,
+    "seconds": 2.078182,
+    "sha256": "359bbba8a45d9b96d56dd79845f3eb5e4ef0ca97522330783cb4b594fc11b255",
+    "verified_at": "2026-10-20T00:58:58.4301095Z",
+    "provenance": {
+      "test_binary_sha256": "e8b4d43a00c8d2a583d6414463aa41b033ed89388c12f61ecac2db6602f33931",
+      "test_name": "updater::tests::live_release_download_verifies_sha256",
+      "previously_built": true,
+      "binary_build_source": "8c492db35f1712648d5472593146077230befb7c",
+      "updater_source_unchanged": true,
+      "updater_source_sha256": "d735fa45eb3abe542e9752e8fe090064e823c35da3d70acb7326a24314e76c1c"
+    }
+  },
+  "packaged_inspection": {
+    "status": "passed",
+    "gate": "pdf-inspection-0.35.0",
+    "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+    "cases": [
+      "ordinary-dictionaries",
+      "all-seven-features-and-unreachable-objects",
+      "stream-body-is-not-interpreted-as-dictionaries",
+      "dangling-reference-is-partial",
+      "cyclic-feature-name-is-partial",
+      "malformed-input-has-typed-error",
+      "missing-input-has-typed-error",
+      "oversized-file-is-refused",
+      "aes128-missing-credential-is-explicit",
+      "aes128-user-environment-credential",
+      "aes128-owner-environment-credential",
+      "aes256-missing-credential-is-explicit",
+      "aes256-user-environment-credential",
+      "aes256-owner-environment-credential"
+    ],
+    "completed_cases": 14,
+    "subprocess_calls": 16,
+    "elapsed_seconds": 4.172,
+    "source_revision": "aab39beaffa88a7a970441f647498920e432bf27",
+    "os": "nt",
+    "production_credentials_used": false,
+    "secret_argv_used": false,
+    "application_installed": false,
+    "native_gui_qualified": false,
+    "input_sources": "independently written PDF/xref bytes; encrypted copies made by packaged CLI"
+  },
+  "packaged_visual_signature": {
+    "gate": "visual-signature-0.35.0",
+    "status": "passed",
+    "completed_cases": 20,
+    "cases": [
+      "keep-preserves-visible-rgba",
+      "adaptive-removes-gradient-preserves-ink-and-alpha",
+      "global-threshold-remains-distinct",
+      "blank-cleanup-refuses-empty-signature",
+      "same-input-output-refused-even-with-overwrite",
+      "existing-output-requires-explicit-overwrite",
+      "png-output-required",
+      "decoder-side-bound",
+      "encoded-file-size-bound",
+      "malformed-image-typed-failure",
+      "exif-orientation-1",
+      "exif-orientation-2",
+      "exif-orientation-3",
+      "exif-orientation-4",
+      "exif-orientation-5",
+      "exif-orientation-6",
+      "exif-orientation-7",
+      "exif-orientation-8",
+      "prepared-alpha-embeds-renders-and-passes-qpdf",
+      "missing-input-typed-failure"
+    ],
+    "commands": 22,
+    "qpdf_checks": 1,
+    "qpdf_sha256": "1bdaf878f37eaffea1ea3c30591214c77636a0f2fc7432427516b6e22e36c0ff",
+    "pillow_version": "12.3.0",
+    "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+    "source_revision": "aab39beaffa88a7a970441f647498920e432bf27",
+    "platform": "nt",
+    "input_files_unchanged": true,
+    "generated_fixtures_only": true,
+    "production_identity_used": false,
+    "host_installation_performed": false,
+    "native_gui_qualified": false,
+    "elapsed_seconds": 5.735
+  },
+  "packaged_interoperability": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "version": "0.35.0",
+    "success": true,
+    "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+    "cases": [
+      {
+        "id": "pdf-association-pdf20-01",
+        "pages": 1,
+        "source_sha256": "F3A018213564A420DB81062A0E584FBCC5F705E353ED477DA43BAB6222F137B6",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      },
+      {
+        "id": "pdf-association-pdf20-02",
+        "pages": 1,
+        "source_sha256": "FC517DD0D4C72D1B11E3449ACC3E816D2719DC14E69A7E14B84DA02808103370",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      },
+      {
+        "id": "pdf-association-pdf20-03",
+        "pages": 1,
+        "source_sha256": "9B25D59D07034634A990E79DB6EF82B9F86769D9B94D8D8635F20D06AAEC9D18",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      },
+      {
+        "id": "pdf-association-pdf20-04",
+        "pages": 1,
+        "source_sha256": "A5B92313770F16BA1DB649CCDC97D42F7744659C691897538734EEBDC1BC9E9A",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      },
+      {
+        "id": "pdf-association-pdf20-05",
+        "pages": 2,
+        "source_sha256": "7C13AFE3078A4C202184EDCE3169F7BC842C8FD3DB9DA7140AF6BC0B3B2FA44A",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      },
+      {
+        "id": "pdf-association-pdf20-06",
+        "pages": 1,
+        "source_sha256": "296D2A0B2CE19B606F29265694F194A754FBC61783982B5B8D730E8637482236",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      },
+      {
+        "id": "pdf-association-pdf20-07",
+        "pages": 1,
+        "source_sha256": "A7CA717EF062DF0A65E58487D26358C81424B76084A2000CA1C74B9E5776B7A1",
+        "source_unchanged": true,
+        "text_pixels_annotations_preserved": true
+      }
+    ],
+    "qpdf_checks": 21,
+    "commands": [
+      {
+        "operation": "--version",
+        "elapsed_ms": 16.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--version",
+        "elapsed_ms": 16.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 16.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 282.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 31.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 500.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 422.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 125.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 547.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 391.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 63.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 297.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 297.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 32.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 31.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 15.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 234.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 16.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 235.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 31.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 234.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 15.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 32.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 297.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 15.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 234.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 313.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 15.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 359.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 360.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 31.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 282.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 282.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 47.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 313.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 31.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 297.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 16.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 265.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 297.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 16.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 31.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 250.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 266.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 312.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "optimize",
+        "elapsed_ms": 312.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 110.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "info",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 281.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "annotations",
+        "elapsed_ms": 360.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 296.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "extract",
+        "elapsed_ms": 329.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "--check",
+        "elapsed_ms": 46.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "text",
+        "elapsed_ms": 313.0,
+        "exit_code": 0
+      },
+      {
+        "operation": "render",
+        "elapsed_ms": 312.0,
+        "exit_code": 0
+      }
+    ],
+    "license": "https://github.com/pdf-association/pdf20examples/blob/c20f2c17bfcc4baab7cfe62e70fae64caf14d5fa/LICENSE.md",
+    "upstream_revision": "c20f2c17bfcc4baab7cfe62e70fae64caf14d5fa",
+    "corpus_distributed": false,
+    "conformance_certification": false,
+    "elapsed_seconds": 24.907,
+    "verified_at": "2026-10-20T00:58:11.305281+00:00"
+  },
+  "retained_packaged_security": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "version": "0.35.0",
+    "success": true,
+    "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+    "cases": [
+      "protect with environment opening credential and piped owner credential",
+      "open encrypted PDF without a secret argv value",
+      "opening credential cannot replace protection or publish output",
+      "current owner credential authorizes atomic reprotection",
+      "unprotect accepts piped owner credential",
+      "unsigned PDF listing preserves successful exit and explicit false flags",
+      "invalid signature emits complete JSON and exit 2",
+      "encrypted and fixture inputs remain byte-for-byte unchanged"
+    ],
+    "secret_argv_used": false,
+    "user_profile_modified": false
+  },
+  "retained_packaged_local_review": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "version": "sunipdf-cli 0.35.0",
+    "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+    "success": true,
+    "cases": [
+      "unchanged files have no observed text, geometry or pixel differences",
+      "changed text and pixels, unchanged pair, added page and source fingerprint",
+      "comparison limit emits full incomplete JSON and exit 2",
+      "explicit one-based physical page offsets",
+      "multi-file literal search, original-case snippets and physical page links",
+      "completed case-sensitive no-match remains distinct from an error",
+      "missing and malformed inputs do not hide a later successful file",
+      "protected file is unknown and password-required, never a clean zero",
+      "both new commands accept an environment credential without exposing it",
+      "copy restrictions are preserved by local review",
+      "plain and protected source bytes remain immutable"
+    ],
+    "count": 11,
+    "elapsed_seconds": 3.657,
+    "secret_argv_used": false,
+    "user_profile_modified": false,
+    "verified_at": "2026-10-20T00:57:33.596280+00:00"
+  },
+  "retained_packaged_object_order": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "version": "sunipdf-cli 0.35.0",
+    "cli_sha256": "a51ee8da07215efcf002c19bc954a40b018c17f8e41bf34a088e03c466387e31",
+    "success": true,
+    "cases": [
+      "multiple original content streams honor the new visible stacking order",
+      "non-contiguous unsorted duplicate selections retain relative order, content and geometry",
+      "back, intermediate and front block destinations report exact final indices",
+      "unchanged placement retains every object without content regeneration",
+      "out-of-range and oversized destinations publish no file",
+      "invalid object indices and physical pages publish no file",
+      "the common existing-output guard preserves the original destination",
+      "AES-128 outputs remain encrypted and readable with both original credentials, without secret argv",
+      "AES-256 outputs remain encrypted and readable with both original credentials, without secret argv",
+      "effective modify restrictions are enforced for both AES variants before output publication",
+      "all plain, encrypted and restricted source files remain byte-for-byte unchanged"
+    ],
+    "qpdf_checks": 3,
+    "qpdf_sha256": "1bdaf878f37eaffea1ea3c30591214c77636a0f2fc7432427516b6e22e36c0ff",
+    "secret_argv_used": false,
+    "user_profile_modified": false,
+    "elapsed_seconds": 12.344,
+    "verified_at": "2026-10-20T00:57:46.187103+00:00"
+  },
+  "integration": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "merged_pull_requests": [
+      {
+        "number": 9,
+        "head": "a0f76dc31a217b1281d971b3b4656a27b08699ea",
+        "merged": true,
+        "merge_commit": "aab39beaffa88a7a970441f647498920e432bf27",
+        "tree": "18843387f96577851de596e0dc20da7929ed3488",
+        "merged_by": "lmdanavanem",
+        "verified_at": "2026-10-20T00:29:39.7912323Z",
+        "checks": [
+          {
+            "name": "windows",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39345579954/job/118377579673"
+          },
+          {
+            "name": "Analyze (python)",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39345576575/job/118377228364"
+          },
+          {
+            "name": "Analyze (actions)",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39345576575/job/118377228281"
+          },
+          {
+            "name": "Analyze (rust)",
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39345576575/job/118377227779"
+          }
+        ]
+      }
+    ],
+    "branches_deleted": false,
+    "dirty_secondary_worktree_preserved": true
+  },
+  "projects": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "targetRelease": "0.35.0",
+    "updated": false,
+    "deferredByUser": true,
+    "lastRecordedReadback": {
+      "source": "521618f4aab6cd17f7f829bc739bb3f7a93c9c5e",
+      "targetRelease": "0.34.0",
+      "updated": false,
+      "deferredByUser": true,
+      "lastRecordedReadback": {
+        "source": "c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb",
+        "targetRelease": "0.33.0",
+        "project": "https://github.com/users/lmdanavanem/projects/1",
+        "updated": false,
+        "verifiedAt": "2026-10-19T21:19:43.985Z",
+        "totalItems": 43,
+        "uniqueVisibleItemTitles": 43,
+        "aggregate": {
+          "Todo": 18,
+          "In Progress": 0,
+          "Done": 25
+        },
+        "unsavedChanges": false,
+        "views": [
+          {
+            "view": "Bugs",
+            "filter": "category:Bug ",
+            "items": 8,
+            "Todo": 0,
+            "In Progress": 0,
+            "Done": 8
+          },
+          {
+            "view": "Roadmap",
+            "filter": "category:Roadmap",
+            "items": 24,
+            "Todo": 10,
+            "In Progress": 0,
+            "Done": 14
+          },
+          {
+            "view": "Suggestions",
+            "filter": "category:Suggestion",
+            "items": 11,
+            "Todo": 8,
+            "In Progress": 0,
+            "Done": 3
+          }
+        ],
+        "updatedItems": [],
+        "unavailableReason": "The connected Chrome session is signed out of GitHub and the repository token lacks Project access. The user explicitly requested continuing the release without Projects for now; no permission scopes were expanded.",
+        "intendedUpdates": [
+          {
+            "title": "[P1] Expand the licensed real, hostile and large PDF regression corpus",
+            "status": "In Progress",
+            "qualification": "Partial first preparation lot; original acceptance criteria remain open."
+          },
+          {
+            "title": "[P1] Fuzz PDF and CMS boundaries and publish hardware benchmarks",
+            "status": "In Progress",
+            "qualification": "Deterministic mutation smoke and CI command measurements only; coverage-guided fuzzing and physical-device benchmarks remain open."
+          }
+        ],
+        "notes": "Read-only public DOM snapshots verified all 43 unique item titles and all three saved filters before the user explicitly deferred Project edits. No project description or status was changed and no issue/conversation comment was created. This is a readback with deferred edits, not successful Project synchronization.",
+        "deferredByUser": true
+      },
+      "evidenceInheritedFrom": "docs/qa/PROJECT_UPDATE_0.33.0.json",
+      "notes": "Project edits remain deferred at the explicit request of the owner. This release did not reread or change Projects; inherited counts are historical, not fresh synchronization."
+    },
+    "evidenceInheritedFrom": "docs/qa/PROJECT_UPDATE_0.34.0.json",
+    "notes": "Project edits remain deferred at the explicit request of the owner. No fresh readback or edit was performed for this release; inherited counts are historical."
+  },
+  "local_qualification": {
+    "final_version_workspace_all_targets_clippy_passed": true,
+    "format_and_i18n_passed": true,
+    "pre_version_signature_core_tests": 10,
+    "pre_version_generated_image_cases": 20,
+    "native_gui_qualified": false,
+    "full_final_source_qualification": "Hosted Windows CI; packaged checks rerun on actual downloaded release CLI."
+  },
+  "limits": [
+    "Visual marks do not authenticate identity or provide cryptographic integrity. Adaptive cleanup can remove faint ink and is intended for thin dark marks on light paper; preview before placement.",
+    "Generated image/EXIF/placement tests do not qualify native pointer/tablet/Narrator interaction or real customer photos.",
+    "Windows packages remain unsigned without an independent publication key. ARM64 is cross-built only.",
+    "Interactive installed/portable updates/save, physical printing/GPU/ARM64 and named third-party readers remain separate qualification.",
+    "Broader hostile/customer corpus, coverage-guided fuzzing and PDF/A/PDF/UA conformance remain open under the 1.0 criteria."
+  ],
+  "delivery": "PR #9 squash-merged after exact-head Windows and CodeQL checks. Immutable main/tag source and downloaded packages qualified. Post-publication commit contains documentation only; documentation-only main pushes skip rebuilding packages, while PR and code checks remain enabled."
+}

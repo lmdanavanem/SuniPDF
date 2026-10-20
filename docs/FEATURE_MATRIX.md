@@ -2,7 +2,19 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.34.0: saved PDF inspection (stable Latest)
+## 0.35.0: visual signature preparation (stable Latest)
+
+[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines. [Usage and bounds](VISUAL_SIGNATURE_PREPARATION.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) passed: **606 tests, zero failures**, 10 default ignored, **1114 EN/FR keys**, **20 image cases**, **14 PDF-inspection cases**, **27 portable scenarios**, **21 MSI baselines/105 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent readers, fonts, DX12 software rendering, PDF, mutation and Office gates remain included.
+
+Six public files and `dist/` copies verified by SHA256; image and inspection suites were also rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,752,605-byte** x64 ZIP without installing it on the workstation.
+
+Visual signatures provide no identity proof; cleanup may remove faint ink and needs preview review. Native pointer/tablet/Narrator interaction and customer photos remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request, with no fresh synchronization claimed. [Evidence](qa/RELEASE_0.35.0.json).
+
+## 0.34.0: saved PDF inspection (published; Latest at the time)
 
 [0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
 
@@ -275,7 +287,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Add/change password, AES-256 | Declared | **Done** (AES-128/256, permissions; AES-128 limited to Latin-1 passwords, typed refusal; accessibility always granted) through `lopdf`, re-read by PDFium; explicit AES-256 key length and synthetic qpdf gate added for 0.9.1; results in `PROJECT_STATUS.md` |
 | Irreversible redaction | Declared (redact crate) | **Delivered in 0.30.0**: Native preview, fill/overlay, persistent unapplied marks, safe Base14 Latin glyph splitting and shared cleanup. Complex objects use raster fallback; marks alone do not redact. [Guarantees](REDACTION.md). |
 | Metadata cleanup | Declared | **Delivered in 0.30.0**: Earlier PDF/A metadata preservation retained, without conformance claim. Separate sanitized copy removes supported hidden data/full rewrite; backups/Undo/disk sectors not erased. [Security model](SECURITY_MODEL.md). |
-| Visual signature (image) | Declared | **Delivered in 0.30.0**: Earlier drawing/typing/import retained; optional user-DPAPI library with verified migration, opt-out/delete and profile/ACL safeguards. Profile keys required for recovery; session access permits reuse. No identity/integrity proof. [Details](SIGNATURE_SECURITY.md). |
+| Visual signature (image) | Declared | **Delivered in 0.35.0**: optional smoothing, paper-shadow cleanup, prepared-pixel previews and PNG command; [usage and bounds](VISUAL_SIGNATURE_PREPARATION.md). Optional DPAPI library retained; [recovery and security](SIGNATURE_SECURITY.md). No identity/integrity proof; pen pressure and native/customer-photo qualification remain open. |
 | CMS/PKCS#12 digital signature, timestamping | Declared | **Delivered in 0.30.0**: Earlier integrity/PFX signing retained; separate Windows chain/revocation/RFC3161 verification. Offline default, per-check network consent, unknown never trusted. DSS unverified; no archival LTV/timestamp creation. [Limits](SIGNATURE_SECURITY.md). |
 | PKCS#11, online LTV, AATL/EUTL | Absent | Out of initial scope |
 
@@ -311,8 +323,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Distributed in 0.34.0**: 26 portable cases and 20 MSI baselines/100 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.34.0.json). |
-| Windows ARM64 | Declared | **Cross-built and distributed in 0.34.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.34.0.json). |
+| Windows x64 | Declared (MSI, zip) | **Distributed in 0.35.0**: 27 portable cases and 21 MSI baselines/105 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.35.0.json). |
+| Windows ARM64 | Declared | **Cross-built and distributed in 0.35.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.35.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

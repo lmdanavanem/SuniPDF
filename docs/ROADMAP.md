@@ -8,7 +8,19 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
-## 0.34.0: saved PDF inspection (stable Latest)
+## 0.35.0: visual signature preparation (stable Latest)
+
+[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines. [Usage and bounds](VISUAL_SIGNATURE_PREPARATION.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) passed: **606 tests, zero failures**, 10 default ignored, **1114 EN/FR keys**, **20 image cases**, **14 PDF-inspection cases**, **27 portable scenarios**, **21 MSI baselines/105 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent readers, fonts, DX12 software rendering, PDF, mutation and Office gates remain included.
+
+Six public files and `dist/` copies verified by SHA256; image and inspection suites were also rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,752,605-byte** x64 ZIP without installing it on the workstation.
+
+Visual signatures provide no identity proof; cleanup may remove faint ink and needs preview review. Native pointer/tablet/Narrator interaction and customer photos remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request, with no fresh synchronization claimed. [Evidence](qa/RELEASE_0.35.0.json).
+
+## 0.34.0: saved PDF inspection (published; Latest at the time)
 
 [0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
 
@@ -395,7 +407,7 @@ findings, without confirming a production secret. Remediation/triage and explici
 included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
 This historical result does not establish the scan status of 0.30.0.
 
-## Work beyond 0.34.0
+## Work beyond 0.35.0
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

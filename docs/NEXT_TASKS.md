@@ -4,7 +4,19 @@
 
 The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
 
-## 0.34.0: saved PDF inspection (stable Latest)
+## 0.35.0: visual signature preparation (stable Latest)
+
+[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines. [Usage and bounds](VISUAL_SIGNATURE_PREPARATION.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) passed: **606 tests, zero failures**, 10 default ignored, **1114 EN/FR keys**, **20 image cases**, **14 PDF-inspection cases**, **27 portable scenarios**, **21 MSI baselines/105 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent readers, fonts, DX12 software rendering, PDF, mutation and Office gates remain included.
+
+Six public files and `dist/` copies verified by SHA256; image and inspection suites were also rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,752,605-byte** x64 ZIP without installing it on the workstation.
+
+Visual signatures provide no identity proof; cleanup may remove faint ink and needs preview review. Native pointer/tablet/Narrator interaction and customer photos remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request, with no fresh synchronization claimed. [Evidence](qa/RELEASE_0.35.0.json).
+
+## 0.34.0: saved PDF inspection (published; Latest at the time)
 
 [0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
 
@@ -412,10 +424,10 @@ Typed signatures and all/selected-page placement were delivered in 0.13.0 (D102�
 
 Remaining, non-blocking (see `KNOWN_ISSUES.md` A35–A37, decisions D054–D060):
 - 0.30.0 implements optional per-user DPAPI storage, verified atomic plaintext migration,
-  opt-out/delete and profile/ACL safeguards; validation is pending. Recovery and session-access limits are in
+  opt-out/delete and profile/ACL safeguards; release-source regression gates passed. Recovery and session-access limits are in
   [signature security](SIGNATURE_SECURITY.md).
-- stroke smoothing (Chaikin) if fast curves look angular; adaptive threshold for photos with a
-  cast shadow; pen pressure if egui ever exposes it.
+- **Delivered in 0.35.0**: optional quadratic-curve smoothing, adaptive paper-shadow cleanup, prepared-pixel preview binding and the PNG command. [Usage and bounds](VISUAL_SIGNATURE_PREPARATION.md).
+- Remaining: pen pressure, native pointer/tablet/Narrator qualification and real customer photos; cleanup can remove faint ink.
 
 Rest of the hub (non-blocking): keyboard focus placed on the active row when the panel opens (F9);
 final visual validation by the user. The short-window right-rail overlap is already fixed (A15).

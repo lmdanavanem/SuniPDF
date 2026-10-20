@@ -2,7 +2,19 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.34.0 : inspection du PDF enregistré (Latest stable)
+## 0.35.0 : préparation des signatures visuelles (Latest stable)
+
+[0.35.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) sous `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Signatures visuelles : lissage facultatif du dessin, réduction des ombres du papier et commande PNG `prepare-signature-image`. Aperçu lié aux pixels préparés, conservation des points bruts et fichiers sources, limites explicites du dessin. Les paquets publiés de la 0.34.0 rejoignent les références de migration. [Utilisation et bornes](VISUAL_SIGNATURE_PREPARATION.fr.md).
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) réussies : **606 tests, zéro échec**, 10 ignorés par défaut, **1114 clés EN/FR**, **20 scénarios d’image**, **14 scénarios d’inspection PDF**, **27 scénarios portables**, **21 références MSI/105 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Les contrôles qpdf, lecteurs indépendants, polices, rendu DX12 logiciel, PDF, mutations et Office restent inclus.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; les suites image et inspection ont aussi été rejouées sur la CLI téléchargée. Le harnais conservé de la 0.32.0, avec module de mise à jour inchangé et vérifié, a téléchargé et contrôlé les **26,752,605 octets** du ZIP x64, sans installation sur le poste.
+
+Signatures visuelles sans preuve d’identité ; le nettoyage peut supprimer l’encre pâle et doit être vérifié dans l’aperçu. Interaction native/tablette/Narrateur et photos clients encore à qualifier. Paquets non signés, ARM64 compilé uniquement et critères 1.0 ouverts. Projects reste reporté à la demande du propriétaire, sans synchronisation nouvelle annoncée. [Preuves](qa/RELEASE_0.35.0.json).
+
+## 0.34.0 : inspection du PDF enregistré (publiée ; Latest à cette date)
 
 [0.34.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) sous `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
 
@@ -293,10 +305,10 @@ A36. **Signatures visuelles enregistrées** : la version 0.30.0 utilise des fich
      Fichiers illisibles conservés ; autre utilisateur ou profil perdu/réinitialisé : le fichier chiffré seul ne
      permet pas de récupérer l'image. Une session ouverte permet encore la réutilisation. contrôles de la source publiée réussis ;
      [récupération et bornes](SIGNATURE_SECURITY.fr.md).
-A37. **Pavé et import** : trait d'épaisseur constante (egui ne transmet pas la pression du stylet), polyligne brute
-     sans lissage ; suppression du fond par **seuil de luminance global** à rampe douce (une photo très inégalement
-     éclairée demanderait un seuil adaptatif : juger sur l'aperçu, baisser ou monter le seuil, ou préférer un PNG
-     transparent) ; images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
+A37. **Pavé et import** : la 0.35.0 ajoute le lissage facultatif par courbes quadratiques, le nettoyage adaptatif du papier clair et un aperçu lié aux pixels préparés.
+     Les points bruts et fichiers sources sont conservés ; au plus 20 000 points et 256 traits, avec refus de placement à la limite.
+     La pression du stylet reste absente ; l’encre pâle, les traits larges et les fonds texturés exigent un contrôle de l’aperçu. Interaction native et photos clients restent à qualifier ;
+     images importées limitées à 16 384 px de côté et 512 Mio décodés (refus à la lecture de
      l'en-tête, même borne de 512 Mio par image pour Insérer une image, Remplacer l'image et Images → PDF), puis réduites
      à 1600 px de côté ; la date posée est maintenue dans la page sur une largeur **estimée** (0,556 em par
      caractère, chiffres Helvetica), non mesurée. **0.13.0** : nom/paraphe saisi et aperçu natif

@@ -7,9 +7,15 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-Préparation de la 0.35.0 : lissage facultatif des signatures dessinées, réduction des ombres du papier et commande PNG locale, avec contrôles indépendants des pixels, EXIF et insertion PDF. Qualification finale et publication encore à exécuter.
+## [0.35.0] - 2026-10-20
 
-[Périmètre et limites](docs/RELEASE_0.35.0.fr.md).
+[0.35.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) sous `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Signatures visuelles : lissage facultatif du dessin, réduction des ombres du papier et commande PNG `prepare-signature-image`. Aperçu lié aux pixels préparés, conservation des points bruts et fichiers sources, limites explicites du dessin. Les paquets publiés de la 0.34.0 rejoignent les références de migration.
+
+PR #9 fusionnée après CI/CodeQL sur la révision exacte.
+
+[Notes, validation et limites](docs/RELEASE_0.35.0.fr.md).
 
 ## [0.34.0] - 2026-10-20
 

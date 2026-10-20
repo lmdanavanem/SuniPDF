@@ -2,7 +2,19 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.34.0 : inspection du PDF enregistré (Latest stable)
+## 0.35.0 : préparation des signatures visuelles (Latest stable)
+
+[0.35.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) sous `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Signatures visuelles : lissage facultatif du dessin, réduction des ombres du papier et commande PNG `prepare-signature-image`. Aperçu lié aux pixels préparés, conservation des points bruts et fichiers sources, limites explicites du dessin. Les paquets publiés de la 0.34.0 rejoignent les références de migration. [Utilisation et bornes](VISUAL_SIGNATURE_PREPARATION.fr.md).
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) réussies : **606 tests, zéro échec**, 10 ignorés par défaut, **1114 clés EN/FR**, **20 scénarios d’image**, **14 scénarios d’inspection PDF**, **27 scénarios portables**, **21 références MSI/105 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Les contrôles qpdf, lecteurs indépendants, polices, rendu DX12 logiciel, PDF, mutations et Office restent inclus.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; les suites image et inspection ont aussi été rejouées sur la CLI téléchargée. Le harnais conservé de la 0.32.0, avec module de mise à jour inchangé et vérifié, a téléchargé et contrôlé les **26,752,605 octets** du ZIP x64, sans installation sur le poste.
+
+Signatures visuelles sans preuve d’identité ; le nettoyage peut supprimer l’encre pâle et doit être vérifié dans l’aperçu. Interaction native/tablette/Narrateur et photos clients encore à qualifier. Paquets non signés, ARM64 compilé uniquement et critères 1.0 ouverts. Projects reste reporté à la demande du propriétaire, sans synchronisation nouvelle annoncée. [Preuves](qa/RELEASE_0.35.0.json).
+
+## 0.34.0 : inspection du PDF enregistré (publiée ; Latest à cette date)
 
 [0.34.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) sous `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
 
@@ -277,7 +289,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Ajouter/modifier mot de passe, AES-256 | Déclaré | **Fait** (AES-128/256, permissions ; AES-128 limité aux mots de passe Latin-1, refus typé ; accessibilité toujours accordée) via `lopdf`, relu par PDFium ; longueur AES-256 explicite et contrôle qpdf synthétique ajoutés pour 0.9.1 ; résultats dans `PROJECT_STATUS.fr.md` |
 | Caviardage irréversible | Déclaré (crate redact) | **Livré en 0.30.0** : Aperçu natif, remplissage/texte, marques non appliquées persistantes, découpe sûre Base14 latine et nettoyage partagé. Repli image des objets complexes ; marques seules sans caviardage. [Garanties](REDACTION.fr.md). |
 | Nettoyage des métadonnées | Déclaré | **Livré en 0.30.0** : Préservation des métadonnées PDF/A conservée, sans promesse de conformité. Copie assainie séparée/données cachées prises en charge retirées/réécriture ; sauvegardes/Annuler/secteurs non effacés. [Modèle de sécurité](SECURITY_MODEL.fr.md). |
-| Signature visuelle (image) | Déclaré | **Livré en 0.30.0** : Dessin/saisie/import conservés ; bibliothèque DPAPI utilisateur facultative, migration vérifiée, désactivation/suppression et gardes profil/ACL. Clés du profil requises pour récupérer ; session ouverte permettant réutilisation. Sans preuve d'identité/intégrité. [Détails](SIGNATURE_SECURITY.fr.md). |
+| Signature visuelle (image) | Déclaré | **Livré en 0.35.0** : lissage facultatif, nettoyage des ombres, aperçu lié aux pixels et commande PNG ; [utilisation et bornes](VISUAL_SIGNATURE_PREPARATION.fr.md). Bibliothèque DPAPI facultative conservée ; [récupération et sécurité](SIGNATURE_SECURITY.fr.md). Sans preuve d’identité/intégrité ; pression du stylet et qualification native/photos clients ouvertes. |
 | Signature numérique CMS/PKCS#12, horodatage | Déclaré | **Livré en 0.30.0** : Intégrité/signature PFX conservées ; chaînes/révocations Windows/RFC3161 distincts. Hors ligne par défaut, réseau consenti par vérification, inconnu jamais fiable. DSS non vérifié ; sans LTV d'archivage/création d'horodatage. [Limites](SIGNATURE_SECURITY.fr.md). |
 | PKCS#11, LTV en ligne, AATL/EUTL | Absent | Hors périmètre initial |
 
@@ -313,8 +325,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.34.0** : 26 scénarios portables et 20 références MSI/100 journaux réussis ; six fichiers publics/SHA256 et contrôles des paquets vérifiés ; le metteur à jour a téléchargé et vérifié le paquet sans installation sur le poste. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.34.0.json). |
-| Windows ARM64 | Déclaré | **Compilé et distribué en 0.34.0** : ZIP de source exacte, SHA256 public, architecture PE, modèles, notices et icônes vérifiés ; exécution expérimentale jusqu’à qualification sur un vrai appareil. [Preuves](qa/RELEASE_0.34.0.json). |
+| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.35.0** : 27 scénarios portables et 21 références MSI/105 journaux réussis ; six fichiers publics/SHA256 et contrôles des paquets vérifiés ; le metteur à jour a téléchargé et vérifié le paquet sans installation sur le poste. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.35.0.json). |
+| Windows ARM64 | Déclaré | **Compilé et distribué en 0.35.0** : ZIP de source exacte, SHA256 public, architecture PE, modèles, notices et icônes vérifiés ; exécution expérimentale jusqu’à qualification sur un vrai appareil. [Preuves](qa/RELEASE_0.35.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

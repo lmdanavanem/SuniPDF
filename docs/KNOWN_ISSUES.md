@@ -2,7 +2,19 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.34.0: saved PDF inspection (stable Latest)
+## 0.35.0: visual signature preparation (stable Latest)
+
+[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines. [Usage and bounds](VISUAL_SIGNATURE_PREPARATION.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) passed: **606 tests, zero failures**, 10 default ignored, **1114 EN/FR keys**, **20 image cases**, **14 PDF-inspection cases**, **27 portable scenarios**, **21 MSI baselines/105 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent readers, fonts, DX12 software rendering, PDF, mutation and Office gates remain included.
+
+Six public files and `dist/` copies verified by SHA256; image and inspection suites were also rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,752,605-byte** x64 ZIP without installing it on the workstation.
+
+Visual signatures provide no identity proof; cleanup may remove faint ink and needs preview review. Native pointer/tablet/Narrator interaction and customer photos remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request, with no fresh synchronization claimed. [Evidence](qa/RELEASE_0.35.0.json).
+
+## 0.34.0: saved PDF inspection (published; Latest at the time)
 
 [0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
 
@@ -292,10 +304,10 @@ A36. **Saved visual signatures**: 0.30.0 uses current-user DPAPI `.dpapi` files 
      optional; two-click deletion removes the selected entry without securely erasing sectors/backups. Unreadable
      files are retained; another user or a lost/reset profile cannot recover them from ciphertext alone. Anyone
      operating the signed-in session can still reuse an image. Release-source regression gates passed; [recovery and bounds](SIGNATURE_SECURITY.md).
-A37. **Pad and import**: constant-thickness stroke (egui does not pass on pen pressure), raw polyline
-     without smoothing; background removal by a **global luminance threshold** with a soft ramp (a very unevenly
-     lit photo would need an adaptive threshold: judge on the preview, lower or raise the threshold, or prefer a
-     transparent PNG); imported images limited to 16,384 px per side and 512 MiB decoded (refused when reading
+A37. **Pad and import**: 0.35.0 adds optional quadratic-curve smoothing, adaptive light-paper cleanup and prepared-pixel preview binding.
+     Raw points and source files are retained; drafts accept 20,000 points and 256 strokes, with placement blocked at the limit.
+     Pen pressure remains unavailable; faint ink, broad strokes and textured backgrounds require preview review. Native interaction and customer photos remain unqualified;
+     imported images limited to 16,384 px per side and 512 MiB decoded (refused when reading
      the header, same per-image 512 MiB bound for Insert Image, Replace Image and Images → PDF), then reduced
      to 1600 px per side; the placed date is kept inside the page over an **estimated** width (0.556 em per
      character, Helvetica digits), not measured. **0.13.0** adds typed name/initials with explicit

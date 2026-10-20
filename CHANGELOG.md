@@ -7,9 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-Preparing 0.35.0: optional drawn-signature smoothing, paper-shadow reduction and a local PNG command, with independent pixels, EXIF and PDF-placement checks. Final-source qualification and publication remain pending.
+## [0.35.0] - 2026-10-20
 
-[Scope and limits](docs/RELEASE_0.35.0.md).
+[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines.
+
+PR #9 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.35.0.md).
 
 ## [0.34.0] - 2026-10-20
 
