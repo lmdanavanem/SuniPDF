@@ -2,7 +2,19 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.36.0: configurable keyboard shortcuts (stable Latest)
+## 0.37.0: image watermarks (stable Latest)
+
+[0.37.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.37.0) under `lmdanavanem`, source `e206f6b8d7e7fe61101005ad86e1d26c40a8e448`.
+
+Image watermarks in Pages and the CLI: transparency, proportional width, angle, seven positions and margins. Rotated/cropped pages fit on both axes. Atomic selected-page edits, one desktop Undo and copy-only CLI output preserve allowed encryption. Published 0.36.0 packages join upgrade baselines. [Usage and limits](PAGE_DECORATIONS.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39387964703) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39387976826) passed: **618 tests, zero failures**, 10 default ignored, **1134 EN/FR keys**, **29 portable scenarios**, **23 MSI baselines/115 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **24 cases, 113 CLI calls and 1 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included. Two fixture-password findings were reviewed and dismissed as “used in tests” under `lmdanavanem`; code scanning remains enabled.
+
+Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,806,746-byte** x64 ZIP without installing it on the workstation.
+
+Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.37.0.json).
+
+## 0.36.0: configurable keyboard shortcuts (published; Latest at the time)
 
 [0.36.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) under `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
 
@@ -258,7 +270,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Multiple selection, cut/copy/paste of objects | Declared | **Delivered in 0.30.0**: Grouped paste retained; explicit **Paste editable** recreates supported native objects in one Undo. Unsafe graphs refused without silent grouped fallback. [Scope](RELEASE_0.30.0.md). |
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover); object/group drag-and-drop delivered in 0.32.0 ([guide](OBJECT_ORDER.md)) |
 | Links | Declared | **Delivered in 0.30.0**: Earlier page/URI links retained; named/XYZ/Fit/FitH authoring and bounded raw resolution preserve null axes/zoom and displayed crop/rotation. Active unsupported actions never run. [Scope](RELEASE_0.30.0.md). |
-| Watermarks, headers/footers, numbering | Partial | **Done**: text stamp/watermark (angle, opacity, position) and `{n}`/`{total}` numbering (UI + CLI `stamp`, `page-numbers`); image watermark and multi-zone headers planned (P3) |
+| Watermarks, headers/footers, numbering | Partial | Existing text/numbering retained; image watermarks delivered in 0.37.0. Multi-zone headers remain open. [Bounds](PAGE_DECORATIONS.md). |
 | Custom stamps | Not documented | **Delivered in 0.30.0**: Standard preset annotations present; arbitrary custom stamp design remains planned. [Types](RICH_ANNOTATIONS.md). |
 
 ## C. Organisation
@@ -326,6 +338,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | JSON CLI | Declared | **Done** (reading, pages, security, conversion, stamps and content editing: `objects`, `add-text`, `set-opacity`, `rotate-object`, `copy-objects`, `replace-image`, `crop`, `resize-pages`, `insert-blank`, `fonts`); P5 extension |
 | Common UI/CLI command registry | Declared (tool table) | **Done** (`sunipdf-cli commands`) |
 | Local MCP server, confined to `--root` | Declared | Planned (P5, opt-in) |
+| image watermarks | Delivered in 0.37.0 | Image watermarks in Pages and the CLI: transparency, proportional width, angle, seven positions and margins. Rotated/cropped pages fit on both axes. Atomic selected-page edits, one desktop Undo and copy-only CLI output preserve allowed encryption. Published 0.36.0 packages join upgrade baselines. [Guide](PAGE_DECORATIONS.md). |
 | Configurable shortcuts | Delivered in 0.36.0 | Existing commands, conflict refusal, cancellable drafts and atomic preferences; [bounds](KEYBOARD_SHORTCUTS.md). Native keyboard/Narrator and Explorer remain open. |
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
@@ -336,8 +349,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Distributed in 0.36.0**: 28 portable cases and 22 MSI baselines/110 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.36.0.json). |
-| Windows ARM64 | Declared | **Cross-built and distributed in 0.36.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.36.0.json). |
+| Windows x64 | Declared (MSI, zip) | **Distributed in 0.37.0**: 29 portable cases and 23 MSI baselines/115 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.37.0.json). |
+| Windows ARM64 | Declared | **Cross-built and distributed in 0.37.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.37.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

@@ -9,7 +9,19 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.36.0 : raccourcis personnalisables (Latest stable)
+## 0.37.0 : filigranes image (Latest stable)
+
+[0.37.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.37.0) sous `lmdanavanem`, source `e206f6b8d7e7fe61101005ad86e1d26c40a8e448`.
+
+Filigranes image dans Pages et la CLI : transparence, largeur proportionnelle, angle, sept positions et marges. Ajustement aux pages tournées/recadrées. Modification atomique, une annulation dans l’application et nouvelle copie en CLI ; chiffrement autorisé conservé. Paquets 0.36.0 ajoutés aux migrations. [Utilisation et limites](PAGE_DECORATIONS.fr.md).
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39387964703) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39387976826) réussies : **618 tests, zéro échec**, 10 ignorés par défaut, **1134 clés EN/FR**, **29 scénarios portables**, **23 références MSI/115 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **24 scénarios, 113 appels CLI et 1 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés. Deux alertes de mots de passe fictifs ont été examinées et classées « used in tests » sous `lmdanavanem` ; analyse de sécurité maintenue.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; les scénarios de décorations, **20 d’image** et **14 d’inspection PDF**, ainsi que les suites conservées, ont été rejoués sur la CLI téléchargée. Le harnais conservé de la 0.32.0, dont le module de mise à jour inchangé a été vérifié, a téléchargé et contrôlé les **26,806,746 octets** du ZIP x64 sans installation sur le poste.
+
+Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets non signés, ARM64 compilé uniquement et critères 1.0 ouverts. Modifications Projects différées à la demande du propriétaire ; aucune synchronisation nouvelle annoncée. [Preuves](qa/RELEASE_0.37.0.json).
+
+## 0.36.0 : raccourcis personnalisables (publiée ; Latest à cette date)
 
 [0.36.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) sous `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
 
@@ -425,7 +437,7 @@ La [revue Code Scanning historique](CODE_SCANNING_REVIEW.fr.md) a examiné 117 a
 sans confirmer de secret de production. Corrections/triage et permissions explicites des workflows font partie
 du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). La source exacte 0.30.0 réussit CodeQL Rust, Python et Actions, sans alerte ouverte ; preuves exécutées ci-dessus.
 
-## Suite au-delà de la version 0.36.0
+## Suite au-delà de la version 0.37.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.
