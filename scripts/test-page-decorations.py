@@ -181,10 +181,75 @@ def main():
                         assert len(result["objects"]) == 1
                         assert not any(value in json.dumps(result) for value in credentials.values())
                 cases.append(f"aes{aes}-" + ("modification-restriction-preserved" if restricted else "both-credentials-preserved"))
+        zones = ["--header-left", "Left", "--header-center", "Center", "--header-right", "Right",
+                 "--footer-left", "Author", "--footer-center", "{n} / {total}", "--footer-right", "Copy"]
+
+        def headers(document, name, extra=(), content=zones, success=True, env=None):
+            out = root / (name + ".pdf")
+            report = run(["headers-footers", document, *content, "--out", out, *extra], success, env)
+            if success:
+                assert report["original_unchanged"] and out.exists()
+            else:
+                assert not out.exists()
+            return out, report
+
+        for rotation in [0, 90, 180, 270]:
+            document = root / f"rotated-{rotation}.pdf"
+            out, report = headers(document, f"headers-{rotation}", ["--pages", "1,1"])
+            assert report["decorated"] == 1
+            result = run(["objects", out])
+            objects = result["objects"]
+            assert len(objects) == 6
+            assert [obj["text"] for obj in objects] == ["Left", "Center", "Right", "Author", "1 / 2", "Copy"]
+            for index, obj in enumerate(objects):
+                left, bottom, right, top = obj["bounds"]
+                assert left >= 27.8 and bottom >= 27.8
+                assert right <= result["size"]["width_pt"] - 27.8 and top <= result["size"]["height_pt"] - 27.8
+                if index % 3 != 2:
+                    assert right < objects[index + 1]["bounds"][0]
+            assert not run(["objects", out, "--page", 2])["objects"]
+            cases.append(f"headers-rotation-{rotation}-six-zones-numbering-and-non-overlap")
+        header_copy, report = headers(source, "headers-all")
+        assert report["decorated"] == 2
+        assert run(["objects", header_copy, "--page", 2])["objects"][4]["text"] == "2 / 2"
+        checked = subprocess.run([str(qpdf), "--check", str(header_copy)], capture_output=True, timeout=25)
+        assert checked.returncode == 0, checked.stderr[:1000]
+        cases.append("headers-all-pages-numbering-and-independent-qpdf")
+        for name, extra, content in [
+            ("empty", [], []), ("control", [], ["--header-left", "a\tb"]),
+            ("long", [], ["--header-left", "x" * 257]),
+            ("overflow", [], ["--header-left", "Fits", "--footer-right", "W" * 200]),
+            ("size", ["--size", "NaN"], zones), ("margin", ["--margin", "1000"], zones),
+            ("page", ["--pages", "1,3"], zones),
+        ]:
+            headers(source, "headers-invalid-" + name, extra, content, False)
+            cases.append("headers-invalid-" + name + "-refuses-copy")
+        before = sha(header_copy)
+        run(["headers-footers", source, *zones, "--out", header_copy, "--overwrite"], False)
+        assert sha(header_copy) == before
+        cases.append("headers-existing-copy-preserved-even-with-overwrite")
+        run(["headers-footers", source, *zones, "--out", source, "--overwrite"], False)
+        cases.append("headers-original-cannot-be-output")
+        for aes in [128, 256]:
+            for restricted in [False, True]:
+                encrypted = root / f"headers-protected-{aes}-{restricted}.pdf"
+                run(["protect", source, "--user-password-env", "SUNIPDF_DECORATION_USER",
+                     "--owner-password-env", "SUNIPDF_DECORATION_OWNER", "--out", encrypted]
+                    + (["--aes128"] if aes == 128 else []) + (["--no-modify"] if restricted else []), env=credentials)
+                remember(encrypted)
+                out, report = headers(encrypted, f"headers-protected-result-{aes}-{restricted}",
+                                      ["--password-env", "SUNIPDF_DECORATION_USER"], success=not restricted, env=credentials)
+                if not restricted:
+                    assert report["encrypted"]
+                    for role in ["USER", "OWNER"]:
+                        result = run(["objects", out, "--password-env", f"SUNIPDF_DECORATION_{role}"], env=credentials)
+                        assert len(result["objects"]) == 6
+                        assert not any(value in json.dumps(result) for value in credentials.values())
+                cases.append(f"headers-aes{aes}-" + ("restriction-preserved" if restricted else "both-credentials-preserved"))
         assert all(sha(path) == digest for path, digest in sources.items())
-        assert len(cases) == len(set(cases)) == 24
+        assert len(cases) == len(set(cases)) == 42
     report = dict(gate="page-decorations-v1", status="passed", completed_cases=len(cases), cases=cases,
-                  commands=commands, qpdf_checks=1, qpdf_sha256=sha(qpdf), pillow_version=pillow_version,
+                  commands=commands, qpdf_checks=2, qpdf_sha256=sha(qpdf), pillow_version=pillow_version,
                   cli_sha256=sha(cli), source_revision=os.environ.get("GITHUB_SHA"), platform=os.name,
                   input_files_unchanged=True, generated_fixtures_only=True, secret_argv_used=False,
                   production_identity_used=False, host_installation_performed=False, native_gui_qualified=False,

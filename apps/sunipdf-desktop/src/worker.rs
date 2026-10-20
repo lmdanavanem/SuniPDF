@@ -351,6 +351,10 @@ pub enum EditOp {
         width_pt: f32,
         height_pt: f32,
     },
+    HeadersFooters {
+        pages: Option<Vec<usize>>,
+        options: sunipdf_core::header_footer::HeaderFooter,
+    },
     ImageWatermark {
         pages: Option<Vec<usize>>,
         path: PathBuf,
@@ -1607,6 +1611,9 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             width_pt,
             height_pt,
         } => doc.insert_blank_pages(at, count, width_pt, height_pt),
+        EditOp::HeadersFooters { pages, options } => {
+            doc.headers_footers(pages.as_deref(), &options).map(|_| ())
+        }
         EditOp::ImageWatermark {
             pages,
             path,

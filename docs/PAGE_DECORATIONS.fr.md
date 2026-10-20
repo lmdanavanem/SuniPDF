@@ -1,4 +1,18 @@
-# Filigranes image
+# Décorations de page
+
+## En-têtes et pieds de page (0.38.0)
+
+Ouvrir **Pages → Numéros de page**, puis choisir **En-têtes et pieds de page**. Renseigner une ou plusieurs des six zones : en-tête gauche/centre/droite et pied gauche/centre/droite. Choisir la taille, la marge et toutes les pages ou la page courante. `{n}` désigne le numéro absolu et `{total}` le nombre total de pages du document. Une annulation retire toute l’opération.
+
+```powershell
+sunipdf-cli headers-footers input.pdf --header-left "Report" --header-right "Internal" --footer-center "{n} / {total}" --pages 1-3 --size 10 --margin 28 --out decorated.pdf
+```
+
+Chaque zone occupe un tiers de la largeur utile, avec 8 points entre les colonnes. Le texte respecte la rotation et le recadrage affichés. Un texte dépassant sa colonne ou la moitié de la hauteur utile est refusé, sans réduction ni troncature silencieuse. Toutes les pages sélectionnées sont validées ensemble ; six objets texte modifiables au maximum sont ajoutés par page. Le contenu existant peut chevaucher ces zones : inspecter avant d’enregistrer.
+
+Limites : 256 caractères sur une ligne par zone, aucun caractère de contrôle, taille de 4 à 72 points, marge de 0 à 1000 points et 1000 pages au maximum. Une zone non vide est obligatoire ; les zones vides sont omises. Les restrictions, le chiffrement autorisé, les mots de passe et la nouvelle copie en CLI suivent les mêmes gardes que ci-dessous. Pas de date automatique, compteur de section, règle première/paire/impaire ou balisage PDF. Les polices suivent le moteur texte existant ; les écritures complexes ne sont pas nouvellement qualifiées.
+
+## Filigranes image (0.37.0)
 
 Ouvrir **Pages → Filigrane**, choisir **Image** puis sélectionner un fichier PNG, JPEG, BMP, GIF, TIFF ou WebP. Régler la largeur en pourcentage de la page affichée, l’opacité, l’angle, la position et la marge. Appliquer à toutes les pages ou à la page courante. Une annulation retire toute l’opération. Enregistrer le PDF pour conserver le résultat.
 

@@ -246,6 +246,33 @@ enum Command {
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
+    /// Add six non-overlapping header/footer zones as a new copy, with per-page template variables.
+    #[command(help_template = STAMP_HELP_TEMPLATE)]
+    HeadersFooters {
+        file: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value = "")]
+        header_left: String,
+        #[arg(long, default_value = "")]
+        header_center: String,
+        #[arg(long, default_value = "")]
+        header_right: String,
+        #[arg(long, default_value = "")]
+        footer_left: String,
+        #[arg(long, default_value = "")]
+        footer_center: String,
+        #[arg(long, default_value = "")]
+        footer_right: String,
+        #[arg(long, default_value_t = 10.0)]
+        size: f32,
+        #[arg(long, default_value_t = 28.0)]
+        margin: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add an editable foreground image watermark to selected pages, as a new copy.
     ImageWatermark {
         file: PathBuf,
@@ -1404,6 +1431,43 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "stamped": count }))
+        }
+        Command::HeadersFooters {
+            file,
+            pages,
+            header_left,
+            header_center,
+            header_right,
+            footer_left,
+            footer_center,
+            footer_right,
+            size,
+            margin,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let targets = parse_pages(&pages, doc.page_count())?;
+            let options = sunipdf_core::header_footer::HeaderFooter {
+                zones: [
+                    header_left,
+                    header_center,
+                    header_right,
+                    footer_left,
+                    footer_center,
+                    footer_right,
+                ],
+                style: TextStyle {
+                    size_pt: size,
+                    ..Default::default()
+                },
+                margin_pt: margin,
+            };
+            let count = doc.headers_footers(Some(&targets), &options)?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"decorated":count,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
+            )
         }
         Command::ImageWatermark {
             file,
@@ -2677,6 +2741,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Rotate { out, .. }
         | Command::Stamp { out, .. }
         | Command::ImageWatermark { out, .. }
+        | Command::HeadersFooters { out, .. }
         | Command::PageNumbers { out, .. }
         | Command::SetPageLabels { out, .. }
         | Command::ResetPageLabels { out, .. }
@@ -3206,7 +3271,7 @@ mod tests {
 
     #[test]
     fn stamp_help_preserves_literal_page_variables() {
-        for command in ["stamp", "page-numbers"] {
+        for command in ["stamp", "page-numbers", "headers-footers"] {
             for flag in ["-h", "--help"] {
                 let error = parse_cli(["sunipdf-cli", command, flag])
                     .err()
@@ -3681,6 +3746,38 @@ mod tests {
             "source.pdf",
             "--out",
             "copy.pdf"
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn header_footer_cli_parses_zones_and_participates_in_output_guard() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "headers-footers",
+            "input.pdf",
+            "--header-left",
+            "Report",
+            "--footer-center",
+            "{n} / {total}",
+            "--password-stdin",
+            "--out",
+            "copy.pdf",
+        ])
+        .unwrap();
+        assert!(
+            matches!(&cli.command,Command::HeadersFooters {header_left, footer_center, ..} if header_left=="Report" && footer_center=="{n} / {total}")
+        );
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("copy.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "headers-footers",
+            "input.pdf",
+            "--header-left",
+            "Report"
         ])
         .is_err());
     }

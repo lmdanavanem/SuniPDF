@@ -424,7 +424,7 @@
   "stamp.scope.current": "Page courante seulement",
   "stamp.placeholders": "{n} = numéro de page, {total} = nombre de pages",
   "stamp.ok": "Apposer",
-  "numbers.title": "Numéroter les pages",
+  "numbers.title": "Numéros, en-têtes et pieds de page",
   "numbers.subtitle": "Ajoute un numéro sur chaque page.",
   "numbers.template": "Format",
   "numbers.preset.simple": "1",
@@ -1132,5 +1132,14 @@
   "watermark.choose_image": "Choisir une image de filigrane…",
   "watermark.width_percent": "Largeur par rapport à la page",
   "watermark.margin": "Marge",
-  "watermark.image_scope": "Image au premier plan, ajustée dans les marges. Transparence conservée. Annuler retire tout le lot."
+  "watermark.image_scope": "Image au premier plan, ajustée dans les marges. Transparence conservée. Annuler retire tout le lot.",
+  "headers.numbers": "Numéros de page",
+  "headers.title": "En-têtes et pieds de page",
+  "headers.scope": "Six zones sur une ligne, chacune limitée au tiers de la largeur. Le dépassement est refusé. Une annulation retire toute l’opération.",
+  "headers.top_left": "En-tête gauche",
+  "headers.top_center": "En-tête centre",
+  "headers.top_right": "En-tête droite",
+  "headers.bottom_left": "Pied gauche",
+  "headers.bottom_center": "Pied centre",
+  "headers.bottom_right": "Pied droite"
 }

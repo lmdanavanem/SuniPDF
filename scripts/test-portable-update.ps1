@@ -54,8 +54,9 @@ function PreviousPackages([string]$Workspace) {
         '0.34.0' = '2BB5985D9916621A353ED988567246B7CAEA67BDEC34B66634CB16E33E7EAC94'
         '0.35.0' = '359BBBA8A45D9B96D56DD79845F3EB5E4EF0CA97522330783CB4B594FC11B255'
         '0.36.0' = 'F94DE5EA66D660941B8582B19BF85B5BE45CBE54758E307A257CBA6A62ED8BB5'
+        '0.37.0' = '2FCD3B76114CBFC6E6ED2A96309737A39A0DBCDAD3A8AD069B7E99EA2DD67E30'
     }
-    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0')) {
+    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0')) {
         if ([version]$version -ge [version]$incoming.version) { continue }
         $name = "SuniPDF-$version-win-x64-portable.zip"
         $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content
