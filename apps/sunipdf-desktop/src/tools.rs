@@ -14,6 +14,70 @@ mod watermark_tests {
     use super::*;
 
     #[test]
+    fn header_mode_validates_its_own_draft_independently_of_page_numbers() {
+        let mut form = StampForm {
+            header_mode: true,
+            ..Default::default()
+        };
+        assert!(!form.ready(StampKind::PageNumbers));
+        form.headers.zones[4] = "{n} / {total}".into();
+        assert!(form.ready(StampKind::PageNumbers));
+        form.headers.zones[0] = "bad\nline".into();
+        assert!(!form.ready(StampKind::PageNumbers));
+        form.header_mode = false;
+        assert!(form.ready(StampKind::PageNumbers));
+    }
+
+    #[test]
+    fn header_footer_dialog_captures_six_zones_and_escape_never_edits() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        for language in Language::ALL {
+            app.settings.set_language(language);
+            app.tools.stamp_open = Some(StampKind::PageNumbers);
+            app.tools.stamp.header_mode = true;
+            app.tools.stamp.headers.zones[0] = "Report".into();
+            app.tools.stamp.headers.zones[4] = "{n} / {total}".into();
+            for key in [Key::Escape, Key::Enter] {
+                app.tools.stamp_open = Some(StampKind::PageNumbers);
+                let mut out = ctx.run_ui(
+                    egui::RawInput {
+                        events: vec![
+                            egui::Event::ModifiersChanged(if key == Key::Enter {
+                                egui::Modifiers::COMMAND
+                            } else {
+                                egui::Modifiers::NONE
+                            }),
+                            egui::Event::Key {
+                                key,
+                                physical_key: None,
+                                pressed: true,
+                                repeat: false,
+                                modifiers: if key == Key::Enter {
+                                    egui::Modifiers::COMMAND
+                                } else {
+                                    egui::Modifiers::NONE
+                                },
+                            },
+                        ],
+                        ..Default::default()
+                    },
+                    |ui| app.stamp_dialog(ui.ctx()),
+                );
+                out.textures_delta.clear();
+                assert!(app.tools.stamp_open.is_none());
+                if key == Key::Escape {
+                    assert!(requests.try_recv().is_err());
+                } else {
+                    assert!(
+                        matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::HeadersFooters { pages: None, options }) if options.zones[0]=="Report" && options.zones[4]=="{n} / {total}")
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn watermark_mode_changes_cannot_submit_an_empty_or_invalid_image_draft() {
         let mut form = StampForm {
             text: "Previous text".into(),
@@ -120,6 +184,8 @@ pub struct StampForm {
     pub numbers_template: String,
     pub numbers_position: StampPosition,
     pub numbers_size: f32,
+    pub header_mode: bool,
+    pub headers: sunipdf_core::header_footer::HeaderFooter,
 }
 
 impl Default for StampForm {
@@ -140,12 +206,17 @@ impl Default for StampForm {
             numbers_template: "{n} / {total}".into(),
             numbers_position: StampPosition::BottomCenter,
             numbers_size: 10.0,
+            header_mode: false,
+            headers: Default::default(),
         }
     }
 }
 
 impl StampForm {
     fn ready(&self, kind: StampKind) -> bool {
+        if kind == StampKind::PageNumbers && self.header_mode {
+            return self.headers.validate().is_ok();
+        }
         if kind == StampKind::PageNumbers {
             return !self.numbers_template.trim().is_empty();
         }
@@ -289,6 +360,52 @@ impl SuniApp {
             spec,
             |ui| {
                 if numbers {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.radio_value(&mut form.header_mode, false, tr(lang, "headers.numbers"));
+                        ui.radio_value(&mut form.header_mode, true, tr(lang, "headers.title"));
+                    });
+                }
+                if numbers && form.header_mode {
+                    ui.label(tr(lang, "headers.scope"));
+                    egui::Grid::new("header-footer-zones")
+                        .num_columns(2)
+                        .show(ui, |ui| {
+                            for (index, key) in [
+                                "headers.top_left",
+                                "headers.top_center",
+                                "headers.top_right",
+                                "headers.bottom_left",
+                                "headers.bottom_center",
+                                "headers.bottom_right",
+                            ]
+                            .iter()
+                            .enumerate()
+                            {
+                                ui.label(tr(lang, key));
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut form.headers.zones[index])
+                                        .char_limit(256)
+                                        .desired_width(300.0),
+                                );
+                                ui.end_row();
+                            }
+                        });
+                    ui.label(tr(lang, "stamp.placeholders"));
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(tr(lang, "stamp.size"));
+                        ui.add(
+                            egui::DragValue::new(&mut form.headers.style.size_pt)
+                                .range(4.0..=72.0)
+                                .suffix(" pt"),
+                        );
+                        ui.label(tr(lang, "watermark.margin"));
+                        ui.add(
+                            egui::DragValue::new(&mut form.headers.margin_pt)
+                                .range(0.0..=1000.0)
+                                .suffix(" pt"),
+                        );
+                    });
+                } else if numbers {
                     crate::dialog::field_label(ui, tr(lang, "numbers.template"));
                     ui.horizontal(|ui| {
                         ui.add(
@@ -437,6 +554,18 @@ impl SuniApp {
         );
         if submit && !cancel && self.tools.stamp.ready(kind) {
             let form = &self.tools.stamp;
+            if numbers && form.header_mode {
+                let pages = if form.all_pages {
+                    None
+                } else {
+                    current_page.map(|p| vec![p])
+                };
+                let options = form.headers.clone();
+                self.tools.stamp_open = None;
+                self.worker
+                    .send(Request::Edit(EditOp::HeadersFooters { pages, options }));
+                return;
+            }
             if !numbers && form.image_mode {
                 let pages = if form.all_pages {
                     None

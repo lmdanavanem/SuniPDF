@@ -424,7 +424,7 @@
   "stamp.scope.current": "Current page only",
   "stamp.placeholders": "{n} = page number, {total} = page count",
   "stamp.ok": "Apply",
-  "numbers.title": "Number Pages",
+  "numbers.title": "Page numbers, headers and footers",
   "numbers.subtitle": "Adds a number on every page.",
   "numbers.template": "Format",
   "numbers.preset.simple": "1",
@@ -1132,5 +1132,14 @@
   "watermark.choose_image": "Choose watermark image…",
   "watermark.width_percent": "Width relative to page",
   "watermark.margin": "Margin",
-  "watermark.image_scope": "Foreground image, fitted inside the margins. Existing transparency is retained. Undo removes the whole batch."
+  "watermark.image_scope": "Foreground image, fitted inside the margins. Existing transparency is retained. Undo removes the whole batch.",
+  "headers.numbers": "Page numbers",
+  "headers.title": "Headers and footers",
+  "headers.scope": "Six single-line zones, one third of page width each. Overflow is refused. One Undo removes the entire operation.",
+  "headers.top_left": "Header left",
+  "headers.top_center": "Header center",
+  "headers.top_right": "Header right",
+  "headers.bottom_left": "Footer left",
+  "headers.bottom_center": "Footer center",
+  "headers.bottom_right": "Footer right"
 }

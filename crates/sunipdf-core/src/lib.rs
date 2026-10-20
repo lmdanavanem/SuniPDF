@@ -27,6 +27,7 @@ pub mod fonts;
 pub mod form_data;
 pub mod forms;
 pub mod geometry;
+pub mod header_footer;
 pub mod image_watermark;
 pub mod inspection;
 mod link_destination;

@@ -1,4 +1,18 @@
-# Image watermarks
+# Page decorations
+
+## Headers and footers (0.38.0)
+
+Open **Pages → Page numbers**, then choose **Headers and footers**. Fill any of the six zones: header left/center/right and footer left/center/right. Set text size and margin; choose all pages or the current page. `{n}` means the absolute page number and `{total}` the full document page count. One Undo removes the whole operation.
+
+```powershell
+sunipdf-cli headers-footers input.pdf --header-left "Report" --header-right "Internal" --footer-center "{n} / {total}" --pages 1-3 --size 10 --margin 28 --out decorated.pdf
+```
+
+Each zone has one third of the available width, with an 8-point gap between columns. Text is aligned to its zone and fitted to displayed rotation/crop coordinates. Text that exceeds its column or half the usable page height is refused; text is never silently shrunk or truncated. All selected pages are committed together, with at most six editable foreground text objects per page. Existing content can overlap these zones; inspect before saving.
+
+Limits: 256 characters on one line per zone, no control characters, 4–72-point text, 0–1000-point margins and at most 1000 selected pages. At least one non-empty zone is required. Modification restrictions, allowed encryption, credential inputs and copy-only CLI output use the same guards described below. Empty zones are omitted. No automatic date, section counter, first/odd/even page rule or PDF tagging is added. Font support follows the existing PDF text engine; complex-script shaping is not newly qualified.
+
+## Image watermarks (0.37.0)
 
 Open **Pages → Watermark**, choose **Image** and select a PNG, JPEG, BMP, GIF, TIFF or WebP file. Set width as a percentage of the displayed page, opacity, angle, position and margin. Apply to every page or the current page. One Undo removes the whole operation. Save the PDF to keep the result.
 
