@@ -136,7 +136,7 @@ def main():
                 cases.append(f"aes{aes}-{role.lower()}-environment-credential")
         assert sha(plain) == hashlib.sha256(pdf(base())).hexdigest()
     assert len(cases) == 14
-    report = dict(status="passed", gate="pdf-inspection-0.34.0", cli_sha256=sha(cli), cases=cases,
+    report = dict(status="passed", gate="pdf-inspection-0.35.0", cli_sha256=sha(cli), cases=cases,
                   completed_cases=len(cases), subprocess_calls=commands, elapsed_seconds=round(time.monotonic()-started, 3),
                   source_revision=os.environ.get("GITHUB_SHA"), os=os.name, production_credentials_used=False,
                   secret_argv_used=False, application_installed=False, native_gui_qualified=False,

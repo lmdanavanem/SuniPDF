@@ -3,10 +3,18 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.34.0. État de publication et contrôles exécutés dans
-[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.34.0.fr.md) décrit
+Ce guide couvre SuniPDF 0.35.0. État de publication et contrôles exécutés dans
+[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.35.0.fr.md) décrit
 les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
 dans les réglages.
+
+## Préparer une signature visuelle
+
+Dans **Remplir et signer**, activer éventuellement **Lisser les traits** pour un dessin ou **Réduire les ombres
+du papier** après le retrait du fond d’une photo importée. Comparer l’aperçu avant placement.
+Les traits bruts et les fichiers image sources sont conservés. Ces marques sont visuelles ; la signature par
+certificat est distincte. La CLI peut exporter un PNG séparé avec `prepare-signature-image`.
+[Utilisation, limites de dessin et de nettoyage](VISUAL_SIGNATURE_PREPARATION.fr.md).
 
 ## Inspecter un PDF enregistré
 

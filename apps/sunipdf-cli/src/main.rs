@@ -36,6 +36,16 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Prepare a local visual-signature PNG; this does not create a cryptographic signature.
+    PrepareSignatureImage {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, default_value = "keep", value_parser = ["keep", "threshold", "adaptive"])]
+        background: String,
+        #[arg(long, default_value_t = 200, value_parser = clap::value_parser!(u8).range(60..=250))]
+        threshold: u8,
+    },
     /// Inventory stored PDF dictionaries without executing actions or inspecting payload contents.
     Inspect {
         file: PathBuf,
@@ -1104,6 +1114,14 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
     }
     match &cli.command {
+        Command::PrepareSignatureImage {
+            file,
+            out,
+            background,
+            threshold,
+        } => {
+            return feature_cmd::prepare_signature_image(file, out, background, *threshold);
+        }
         Command::Inspect { file, password } => {
             return sunipdf_core::inspection::inspect_file(file, password.as_deref())
                 .map(|report| report.json());
@@ -1139,6 +1157,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
     let engine = Engine::new()?;
     match cli.command {
         Command::Commands
+        | Command::PrepareSignatureImage { .. }
         | Command::Inspect { .. }
         | Command::Fonts { .. }
         | Command::Signatures { .. }
@@ -2600,6 +2619,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::BookmarkDelete { out, .. }
         | Command::OfficeToPdf { out, .. }
         | Command::ExportOffice { out, .. }
+        | Command::PrepareSignatureImage { out, .. }
         | Command::AddFormField { out, .. }
         | Command::Ocr { out, .. }
         | Command::Sign { out, .. }

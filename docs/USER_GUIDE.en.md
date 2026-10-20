@@ -3,9 +3,17 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.34.0. Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.34.0.md) lists supported inputs
+This guide covers SuniPDF 0.35.0. Publication status and executed checks are recorded in
+[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.35.0.md) lists supported inputs
 and documented refusals; English remains the default language and French is available in Settings.
+
+## Prepare a visual signature
+
+In **Fill & Sign**, optionally enable **Smooth strokes** for a drawn signature or **Reduce paper shadows**
+after enabling background removal for an imported photo. Compare the preview before placing it.
+Original strokes and source image files are retained. These are visual marks; certificate signing is separate.
+The CLI can export a separate PNG with `prepare-signature-image`.
+[Instructions, drawing limits and cleanup bounds](VISUAL_SIGNATURE_PREPARATION.md).
 
 ## Inspect a saved PDF
 

@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Preparing 0.35.0: optional drawn-signature smoothing, paper-shadow reduction and a local PNG command, with independent pixels, EXIF and PDF-placement checks. Final-source qualification and publication remain pending.
+
+[Scope and limits](docs/RELEASE_0.35.0.md).
+
 ## [0.34.0] - 2026-10-20
 
 [0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.

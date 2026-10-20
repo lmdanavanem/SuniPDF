@@ -181,6 +181,22 @@ jobs:
           name: pdf-inspection-evidence
           path: target/pdf-inspection-report.json
           if-no-files-found: ignore
+      - name: Packaged visual signature preparation regression (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r scripts/qa-image-requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned test-only image reader installation failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-signature-preparation.py --cli $cli --report target\visual-signature-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged visual signature preparation failed.' }
+      - name: Visual signature preparation evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: visual-signature-evidence
+          path: target/visual-signature-report.json
+          if-no-files-found: ignore
       - name: Release native-library loading boundary (x64)
         if: matrix.arch == 'x64'
         run: .\scripts\test-release-native-loading.ps1
@@ -227,6 +243,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.31.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.32.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.33.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.34.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
