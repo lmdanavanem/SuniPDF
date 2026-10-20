@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Preparing 0.36.0: configurable keyboard shortcuts, conflict refusal, atomic preferences and reset. Published 0.35.0 packages join upgrade regression. Final-source qualification and publication remain pending.
+
 ## [0.35.0] - 2026-10-20
 
 [0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.

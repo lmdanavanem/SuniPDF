@@ -245,7 +245,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::SignInitials => (glyph::EDIT_DOC, "✎"),
         Command::InsertDate => (glyph::CALENDAR, "📅"),
         Command::HubLeave => (glyph::CLOSE, "✕"),
-        Command::About => (glyph::INFO, "i"),
+        Command::KeyboardShortcuts | Command::About => (glyph::INFO, "i"),
         Command::ToggleObjects => (glyph::LAYERS, "☰"),
         Command::CopyObjects => (glyph::DUPLICATE, "⎘"),
         Command::CutObjects => (glyph::CUT, "✂"),
@@ -303,9 +303,11 @@ impl SuniApp {
         let lang = self.lang();
         let info = command.info();
         let label = tr(lang, info.label_key);
-        let tooltip = match info.shortcut_key {
-            Some(k) => format!("{label}  ({})", tr(lang, k)),
-            None => label.to_string(),
+        let shortcut = self.shortcut_text(info.command);
+        let tooltip = if shortcut.is_empty() {
+            label.to_string()
+        } else {
+            format!("{label}  ({shortcut})")
         };
         let r = bar_button(
             ui,
@@ -591,7 +593,7 @@ impl SuniApp {
             let tools_tip = format!(
                 "{}  ({})",
                 tr(lang, "menu.view.tools"),
-                tr(lang, "shortcut.tools")
+                self.shortcut_text(Command::ToggleTools)
             );
             let all_tools = bar_button(
                 ui,
@@ -635,7 +637,7 @@ impl SuniApp {
                             );
                             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                 ui.label(
-                                    RichText::new(tr(lang, "shortcut.palette"))
+                                    RichText::new(self.shortcut_text(Command::CommandPalette))
                                         .color(p.text_muted)
                                         .size(11.0),
                                 );
@@ -871,7 +873,7 @@ impl SuniApp {
         painter.text(
             egui::pos2(rect.right() - 24.0, rect.center().y),
             egui::Align2::RIGHT_CENTER,
-            tr(lang, "shortcut.open"),
+            self.shortcut_text(Command::OpenDocument),
             egui::FontId::proportional(13.0),
             Color32::from_white_alpha(200),
         );
@@ -1105,7 +1107,7 @@ impl SuniApp {
                             .on_hover_text(format!(
                                 "{}  ({})",
                                 tr(lang, "menu.view.objects"),
-                                tr(lang, "shortcut.objects")
+                                self.shortcut_text(Command::ToggleObjects)
                             ));
                         if objects.clicked() {
                             self.execute(ctx, Command::ToggleObjects);
@@ -1316,9 +1318,10 @@ impl SuniApp {
                                     ui.label(self.icon(g, f, 15.0).color(tint));
                                     ui.label(tr(lang, info.label_key));
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if let Some(k) = info.shortcut_key {
+                                        let shortcut = self.shortcut_text(*command);
+                                        if !shortcut.is_empty() {
                                             ui.label(
-                                                RichText::new(tr(lang, k))
+                                                RichText::new(shortcut)
                                                     .size(12.0)
                                                     .color(p.text_muted),
                                             );

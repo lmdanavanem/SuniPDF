@@ -85,118 +85,8 @@ pub struct PaletteState {
     pub focus_requested: bool,
 }
 
-/// Raccourcis qui restent actifs quand un champ de saisie a le clavier (Ctrl seulement).
-const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::S,
-        Command::SaveAs,
-    ),
-    (Modifiers::COMMAND, Key::O, Command::OpenDocument),
-    (Modifiers::COMMAND, Key::S, Command::Save),
-    (Modifiers::COMMAND, Key::P, Command::PrintDocument),
-    (Modifiers::COMMAND, Key::K, Command::CommandPalette),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::F,
-        Command::ToggleForms,
-    ),
-    (Modifiers::COMMAND, Key::F, Command::Find),
-];
-
-/// Raccourcis globaux, dans l'ordre de lecture : une combinaison avec Maj précède toujours la
-/// même touche sans Maj (`consume_key` ignore un Maj en trop ; invariant testé).
-const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
-    (Modifiers::COMMAND, Key::O, Command::OpenDocument),
-    (Modifiers::COMMAND, Key::P, Command::PrintDocument),
-    (Modifiers::COMMAND, Key::W, Command::CloseDocument),
-    (Modifiers::COMMAND, Key::Plus, Command::ZoomIn),
-    (Modifiers::COMMAND, Key::Equals, Command::ZoomIn),
-    (Modifiers::COMMAND, Key::Minus, Command::ZoomOut),
-    (Modifiers::COMMAND, Key::Num0, Command::ActualSize),
-    (Modifiers::NONE, Key::PageDown, Command::NextPage),
-    (Modifiers::NONE, Key::ArrowRight, Command::NextPage),
-    (Modifiers::NONE, Key::PageUp, Command::PreviousPage),
-    (Modifiers::NONE, Key::ArrowLeft, Command::PreviousPage),
-    (Modifiers::NONE, Key::Home, Command::FirstPage),
-    (Modifiers::NONE, Key::End, Command::LastPage),
-    (Modifiers::NONE, Key::F4, Command::ToggleThumbnails),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::F,
-        Command::ToggleForms,
-    ),
-    (Modifiers::COMMAND, Key::F, Command::Find),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::S,
-        Command::SaveAs,
-    ),
-    (Modifiers::COMMAND, Key::S, Command::Save),
-    // Après Ctrl+S et Ctrl+Maj+S : `consume_key` exige la même touche Ctrl.
-    (Modifiers::NONE, Key::S, Command::SignDocument),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::R,
-        Command::RotateCounterClockwise,
-    ),
-    (Modifiers::COMMAND, Key::R, Command::RotateClockwise),
-    (Modifiers::COMMAND, Key::Delete, Command::DeletePage),
-    (Modifiers::NONE, Key::F9, Command::ToggleTools),
-    (Modifiers::NONE, Key::F8, Command::OrganizePages),
-    (Modifiers::NONE, Key::F7, Command::ToggleComments),
-    (Modifiers::NONE, Key::F6, Command::ToggleBookmarks),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::D,
-        Command::DuplicateObject,
-    ),
-    (Modifiers::COMMAND, Key::D, Command::Properties),
-    (Modifiers::NONE, Key::F3, Command::ToggleObjects),
-    (Modifiers::NONE, Key::V, Command::ToolSelect),
-    (Modifiers::NONE, Key::H, Command::ToolHighlight),
-    (Modifiers::NONE, Key::U, Command::ToolUnderline),
-    (Modifiers::NONE, Key::X, Command::ToolStrikeOut),
-    (Modifiers::NONE, Key::N, Command::ToolNote),
-    (Modifiers::NONE, Key::E, Command::ToolSelectObject),
-    (Modifiers::NONE, Key::T, Command::ToolAddText),
-    (Modifiers::NONE, Key::I, Command::ToolAddImage),
-    (Modifiers::NONE, Key::R, Command::ToolRectangle),
-    (Modifiers::NONE, Key::O, Command::ToolEllipse),
-    (Modifiers::NONE, Key::L, Command::ToolLine),
-    (Modifiers::NONE, Key::A, Command::ToolSelectAnnot),
-    (Modifiers::NONE, Key::D, Command::ToolInk),
-    (Modifiers::NONE, Key::F, Command::ToolFreeText),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::B,
-        Command::RedactApply,
-    ),
-    (Modifiers::NONE, Key::B, Command::ToolRedact),
-    (Modifiers::NONE, Key::Delete, Command::DeleteObject),
-    (Modifiers::NONE, Key::F2, Command::EditObjectText),
-    (Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront),
-    (Modifiers::COMMAND, Key::OpenBracket, Command::SendToBack),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::Z,
-        Command::Redo,
-    ),
-    (Modifiers::COMMAND, Key::Z, Command::Undo),
-    (Modifiers::COMMAND, Key::Y, Command::Redo),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::I,
-        Command::InsertPages,
-    ),
-    (Modifiers::COMMAND, Key::K, Command::CommandPalette),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::Tab,
-        Command::PrevTab,
-    ),
-    (Modifiers::COMMAND, Key::Tab, Command::NextTab),
-];
+#[cfg(test)]
+use crate::shortcut_defaults::DEFAULTS as SHORTCUTS;
 
 pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
@@ -211,6 +101,7 @@ pub struct SuniApp {
     has_signatures: bool,
     signed_save_confirm: Option<bool>,
     pub settings: Settings,
+    pub shortcuts: crate::shortcuts::State,
     pub worker: Worker,
     pub engine: EngineState,
     pub document: Option<OpenDocument>,
@@ -339,6 +230,7 @@ impl SuniApp {
             error: recovery_failed.then_some("error.recovery_failed"),
             password_prompt: None,
             show_about: false,
+            shortcuts: Default::default(),
             pending_files: initial_files,
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
@@ -1440,7 +1332,10 @@ impl SuniApp {
             self.cancel_ink_draft();
             return;
         }
-        if self.document.is_some() && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F11)) {
+        if self.document.is_some()
+            && !self.dialog_open()
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F11))
+        {
             self.execute(ctx, Command::FullScreenReading);
             return;
         }
@@ -1478,11 +1373,11 @@ impl SuniApp {
             // La combinaison avec Maj est lue d'abord (`consume_key` ignore un Maj en trop).
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
-                for &(m, k, c) in FIELD_SHORTCUTS {
-                    if i.consume_key(m, k) {
-                        cmds.push(c);
-                    }
-                }
+                cmds.extend(
+                    crate::shortcuts::consume(i, &self.settings.shortcuts, true)
+                        .into_iter()
+                        .filter(|c| !self.palette.open || *c == Command::CommandPalette),
+                );
             });
             for c in cmds {
                 self.execute(ctx, c);
@@ -1492,9 +1387,11 @@ impl SuniApp {
         if self.palette.open {
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
-                if i.consume_key(Modifiers::COMMAND, Key::K) {
-                    cmds.push(Command::CommandPalette);
-                }
+                cmds.extend(
+                    crate::shortcuts::consume(i, &self.settings.shortcuts, true)
+                        .into_iter()
+                        .filter(|c| *c == Command::CommandPalette),
+                );
             });
             for c in cmds {
                 self.execute(ctx, c);
@@ -1640,11 +1537,11 @@ impl SuniApp {
             }
         }
         ctx.input_mut(|i| {
-            for &(m, k, c) in SHORTCUTS {
-                if i.consume_key(m, k) {
-                    commands.push(c);
-                }
-            }
+            commands.extend(crate::shortcuts::consume(
+                i,
+                &self.settings.shortcuts,
+                false,
+            ));
             if i.consume_key(Modifiers::ALT, Key::ArrowLeft) {
                 commands.push(Command::HistoryBack);
             }
@@ -1689,6 +1586,7 @@ impl SuniApp {
             || self.signed_save_confirm.is_some()
             || self.password_prompt.is_some()
             || self.show_about
+            || self.shortcuts.draft.is_some()
             || self.unsaved_prompt.is_some()
             || self.tools.split_open
             || self.tools.sanitize_open
@@ -2220,6 +2118,10 @@ impl SuniApp {
                 self.palette.selected = 0;
                 self.palette.focus_requested = self.palette.open;
             }
+            Command::KeyboardShortcuts => {
+                self.shortcuts.draft = Some(crate::shortcuts::Draft::new(&self.settings.shortcuts));
+                self.palette.open = false;
+            }
             Command::About => self.show_about = true,
         }
     }
@@ -2242,7 +2144,7 @@ impl SuniApp {
                 if separators_before.contains(&info.command) {
                     ui.separator();
                 }
-                let shortcut = info.shortcut_key.map(|k| tr(lang, k)).unwrap_or("");
+                let shortcut = self.shortcut_text(info.command);
                 let enabled = !info.needs_document || has_doc;
                 // Mode de vue actif surligné (les deux entrées partagent F5).
                 let active = has_doc
@@ -2253,7 +2155,7 @@ impl SuniApp {
                         Command::ViewBook => self.view.mode == ViewMode::Book,
                         _ => false,
                     };
-                if menu_item(ui, tr(lang, info.label_key), shortcut, enabled, active) {
+                if menu_item(ui, tr(lang, info.label_key), &shortcut, enabled, active) {
                     self.execute(ctx, info.command);
                 }
             }
@@ -3243,6 +3145,7 @@ impl eframe::App for SuniApp {
         self.adv_dialogs(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
+        self.shortcut_dialog(&ctx);
         self.update_install_dialog(&ctx);
         self.command_palette(&ctx);
         self.focus_last_frame = ctx.memory(|m| m.focused().is_some());
@@ -3347,6 +3250,7 @@ pub(crate) mod tests {
             error: None,
             password_prompt: None,
             show_about: false,
+            shortcuts: Default::default(),
             pending_files: vec![],
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
@@ -5059,7 +4963,7 @@ pub(crate) mod tests {
     /// Ctrl+Maj+Z annule au lieu de rétablir (constats des revues).
     #[test]
     fn shift_shortcuts_precede_their_plain_variant() {
-        for (name, table) in [("field", FIELD_SHORTCUTS), ("global", SHORTCUTS)] {
+        for (name, table) in [("global", SHORTCUTS)] {
             for (i, (m, k, c)) in table.iter().enumerate() {
                 if !m.shift {
                     continue;
@@ -5080,31 +4984,6 @@ pub(crate) mod tests {
         assert!(pos(Command::DuplicateObject) < pos(Command::Properties));
         assert!(pos(Command::Redo) < pos(Command::Undo));
         assert!(pos(Command::RotateCounterClockwise) < pos(Command::RotateClockwise));
-        assert_eq!(FIELD_SHORTCUTS[0].2, Command::SaveAs);
-        // Le scénario réel : Ctrl+Maj+S avec un champ focalisé donne « Enregistrer sous ».
-        let ctx = egui::Context::default();
-        let input = egui::RawInput {
-            events: vec![egui::Event::Key {
-                key: Key::S,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: Modifiers::COMMAND | Modifiers::SHIFT,
-            }],
-            ..Default::default()
-        };
-        let mut seen = Vec::new();
-        let mut out = ctx.run_ui(input, |ui| {
-            ui.ctx().input_mut(|i| {
-                for &(m, k, c) in FIELD_SHORTCUTS {
-                    if i.consume_key(m, k) {
-                        seen.push(c);
-                    }
-                }
-            });
-        });
-        out.textures_delta.clear();
-        assert_eq!(seen, vec![Command::SaveAs]);
     }
 
     #[test]

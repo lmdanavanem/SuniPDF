@@ -7,6 +7,8 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+Préparation de la 0.36.0 : raccourcis clavier personnalisables, conflits refusés, sauvegarde atomique et restauration. Ajout des paquets 0.35.0 aux contrôles de mise à niveau. Qualification finale et publication à exécuter.
+
 ## [0.35.0] - 2026-10-20
 
 [0.35.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) sous `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.

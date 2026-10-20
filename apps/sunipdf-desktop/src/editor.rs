@@ -1467,14 +1467,15 @@ impl SuniApp {
                     .show(ui, |ui| {
                         // Fixe la largeur de coupure (l'Area ne connaît que sa taille précédente).
                         ui.set_max_width(max_w);
+                        let shortcut_bindings = &self.settings.shortcuts;
                         let icon = |ui: &mut egui::Ui, c: Command, enabled: bool| {
                             let (g, f) = crate::shell::command_icon(c);
                             let info = c.info();
-                            let tip = match info.shortcut_key {
-                                Some(key) => {
-                                    format!("{}  ({})", tr(lang, info.label_key), tr(lang, key))
-                                }
-                                None => tr(lang, info.label_key).to_string(),
+                            let shortcut = crate::shortcuts::text_for(shortcut_bindings, lang, c);
+                            let tip = if shortcut.is_empty() {
+                                tr(lang, info.label_key).to_string()
+                            } else {
+                                format!("{}  ({shortcut})", tr(lang, info.label_key))
                             };
                             ui.add_enabled(
                                 enabled,
