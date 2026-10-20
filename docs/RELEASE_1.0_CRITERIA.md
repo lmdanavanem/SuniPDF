@@ -3,7 +3,7 @@
 [Français](RELEASE_1.0_CRITERIA.fr.md)
 
 This is the accepted preparation track after 0.32.0, not a claim that 1.0 is qualified. The current
-stable release is now [0.33.0](RELEASE_0.33.0.md). Existing supported operations and conservative refusals
+stable release is now [0.34.0](RELEASE_0.34.0.md). Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
 

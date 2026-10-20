@@ -7,9 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-- 0.34.0 preparation: read-only saved-PDF inspection in Properties and `inspect` JSON CLI,
-  explicit partial results and encrypted/non-argv credential support; saved-revision hashing in chunks.
-  Fourteen independent packaged scenarios and public 0.33.0 update baselines. [Scope](docs/RELEASE_0.34.0.md).
+## [0.34.0] - 2026-10-20
+
+[0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
+
+Inspect the saved PDF from Properties and the `inspect` JSON command: seven declaration categories, source SHA256, explicit partial results, encrypted input and stale-reply refusal. The saved-revision guard hashes disk bytes in chunks.
+
+PR #8 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.34.0.md).
 
 ## [0.33.0] - 2026-10-20
 
