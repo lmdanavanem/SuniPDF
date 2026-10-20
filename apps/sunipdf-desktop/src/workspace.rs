@@ -870,6 +870,7 @@ mod tests {
         C::NextTab,
         C::PrevTab,
         C::About,
+        C::KeyboardShortcuts,
         // Presse-papiers d'objets : clavier, menu Édition, palette et barre d'objet (comme
         // Annuler / Rétablir), pas dans la barre d'outil (DECISIONS.md).
         C::CopyObjects,
