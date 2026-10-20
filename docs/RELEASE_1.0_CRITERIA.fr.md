@@ -3,7 +3,7 @@
 [English](RELEASE_1.0_CRITERIA.md)
 
 Ce document décrit la préparation acceptée après la 0.32.0 ; il ne déclare pas la 1.0 validée. La version
-stable est maintenant la [0.35.0](RELEASE_0.35.0.fr.md). Les fonctions et refus prudents de la
+stable est maintenant la [0.36.0](RELEASE_0.36.0.fr.md). Les fonctions et refus prudents de la
 [matrice](FEATURE_MATRIX.fr.md) restent applicables : le numéro 1.0 n’élargit pas la prise en charge des
 polices, des exports Office, des signatures, de XFA ou de la conformité PDF.
 
@@ -38,5 +38,4 @@ régressions, puis qualifier cette source et les paquets réellement télécharg
 metteur à jour et des installations, les guides anglais/français, les inventaires de licences, les liens
 vers les sources exactes et les instructions de récupération.
 
-Les huit suggestions P3 restantes peuvent suivre la 1.0, sauf problème utilisateur concret qui rend l’une
-d’elles nécessaire. Cette liste ne promet aucune date ni aucun résultat matériel non observé.
+Les suggestions P3 restantes peuvent suivre la 1.0, sauf besoin utilisateur concret. Les lots signatures visuelles 0.35.0 et raccourcis 0.36.0 sont livrés dans leurs limites documentées ; qualification native et Explorer restent ouverts. Les compteurs Projects sont historiques tant que les modifications restent différées. Cette liste ne promet aucune date ni aucun résultat matériel non observé.

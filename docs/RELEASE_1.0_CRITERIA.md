@@ -3,7 +3,7 @@
 [Français](RELEASE_1.0_CRITERIA.fr.md)
 
 This is the accepted preparation track after 0.32.0, not a claim that 1.0 is qualified. The current
-stable release is now [0.35.0](RELEASE_0.35.0.md). Existing supported operations and conservative refusals
+stable release is now [0.36.0](RELEASE_0.36.0.md). Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
 
@@ -37,5 +37,5 @@ all P1 criteria in the advertised 1.0 scope are met. Freeze features for pilot u
 then qualify the same source and its actual downloaded packages. Retain updater and installer evidence,
 English/French guides, license inventories, reproducible source links and recovery instructions.
 
-The eight remaining P3 Suggestions can follow 1.0 unless a concrete user failure makes one necessary.
+Remaining P3 Suggestions can follow 1.0 unless a concrete user failure makes one necessary. The 0.35.0 visual-signature and 0.36.0 keyboard-shortcut slices are delivered within their documented bounds; native qualification and Explorer remain open. Project counts are historical while edits remain deferred.
 No release date or hardware-validation result is implied by this checklist.

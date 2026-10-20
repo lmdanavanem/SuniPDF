@@ -9,7 +9,19 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.35.0 : préparation des signatures visuelles (Latest stable)
+## 0.36.0 : raccourcis personnalisables (Latest stable)
+
+[0.36.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) sous `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
+
+Raccourcis clavier personnalisables dans Aide et la palette : filtre, attribution, refus des conflits, désactivation et restauration. Brouillon annulable, préférences atomiques et libellés cohérents. Saisie et touches réservées préservées ; paquets 0.35.0 ajoutés aux références de migration. [Utilisation et bornes](KEYBOARD_SHORTCUTS.fr.md).
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39355377383) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39355387902) réussies : **613 tests, zéro échec**, 10 ignorés par défaut, **1128 clés EN/FR**, **28 scénarios portables**, **22 références MSI/110 journaux**. Sept nouveaux tests egui sans fenêtre contrôlent raccourcis, conflits, focus, affichage, annulation et compatibilité des préférences. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Contrôles qpdf, lecteurs indépendants, polices, rendu DX12 logiciel, corpus, mutations et Office conservés.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; les **20 scénarios d’image** et **14 d’inspection PDF**, ainsi que les suites conservées, ont été rejoués sur la CLI téléchargée. Le harnais conservé de la 0.32.0, avec module de mise à jour inchangé vérifié, a téléchargé et contrôlé les **26,788,530 octets** du ZIP x64 sans installation sur le poste.
+
+Claviers Windows natifs et Narrateur restent à qualifier. Explorer reste à faire ; seules les commandes de la table existante sont personnalisables. Paquets non signés, ARM64 compilé uniquement et critères 1.0 ouverts. Modifications Projects reportées à la demande du propriétaire, sans synchronisation nouvelle annoncée. [Preuves](qa/RELEASE_0.36.0.json).
+
+## 0.35.0 : préparation des signatures visuelles (publiée ; Latest à cette date)
 
 [0.35.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) sous `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
 
@@ -388,7 +400,7 @@ Livrés : AES-128/256 et permissions, retrait de protection autorisé par le pro
 caviardage irréversible, vérification CMS et copies signées PFX/P12 incrémentales, CLI JSON et automatisation.
 
 La 0.31.0 implémente la comparaison locale bornée et la recherche dans des fichiers enregistrés sélectionnés ; [périmètre](LOCAL_REVIEW.fr.md).
-Restent : MCP opt-in confiné, intégration Explorateur et raccourcis configurables.
+La 0.36.0 ajoute les [raccourcis personnalisables](KEYBOARD_SHORTCUTS.fr.md). Restent : MCP confiné facultatif, Explorateur et qualification native clavier/Narrateur.
 La version 0.30.0 ajoute la [vérification Windows des chaînes/révocations et jetons RFC3161, ainsi que le stockage
 DPAPI par utilisateur](SIGNATURE_SECURITY.fr.md), et l'[aperçu de caviardage, les marques persistantes, la découpe
 bornée du texte et l'assainissement](REDACTION.fr.md). contrôles de la source publiée réussis. Chaque vérification réseau demande un
@@ -413,7 +425,7 @@ La [revue Code Scanning historique](CODE_SCANNING_REVIEW.fr.md) a examiné 117 a
 sans confirmer de secret de production. Corrections/triage et permissions explicites des workflows font partie
 du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). La source exacte 0.30.0 réussit CodeQL Rust, Python et Actions, sans alerte ouverte ; preuves exécutées ci-dessus.
 
-## Suite au-delà de la version 0.35.0
+## Suite au-delà de la version 0.36.0
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

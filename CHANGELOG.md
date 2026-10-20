@@ -7,7 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-Preparing 0.36.0: configurable keyboard shortcuts, conflict refusal, atomic preferences and reset. Published 0.35.0 packages join upgrade regression. Final-source qualification and publication remain pending.
+## [0.36.0] - 2026-10-20
+
+[0.36.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) under `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
+
+Configurable keyboard shortcuts in Help and the palette: filter, assign, conflict refusal, disable and restore. Cancellable drafts, atomic preferences and consistent labels. Text input and reserved keys are preserved; published 0.35.0 packages join upgrade baselines.
+
+PR #10 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.36.0.md).
 
 ## [0.35.0] - 2026-10-20
 

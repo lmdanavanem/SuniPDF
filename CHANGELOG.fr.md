@@ -7,7 +7,15 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-Préparation de la 0.36.0 : raccourcis clavier personnalisables, conflits refusés, sauvegarde atomique et restauration. Ajout des paquets 0.35.0 aux contrôles de mise à niveau. Qualification finale et publication à exécuter.
+## [0.36.0] - 2026-10-20
+
+[0.36.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) sous `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
+
+Raccourcis clavier personnalisables dans Aide et la palette : filtre, attribution, refus des conflits, désactivation et restauration. Brouillon annulable, préférences atomiques et libellés cohérents. Saisie et touches réservées préservées ; paquets 0.35.0 ajoutés aux références de migration.
+
+PR #10 fusionnée après CI/CodeQL sur la révision exacte.
+
+[Notes, validation et limites](docs/RELEASE_0.36.0.fr.md).
 
 ## [0.35.0] - 2026-10-20
 
