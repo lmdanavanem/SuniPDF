@@ -1112,5 +1112,19 @@
   "review.original": "Original",
   "review.revised": "Revised",
   "review.difference": "Observed differences (red)",
-  "review.no_text": "Some page pairs have no extractable text. Only their preview and page geometry can be compared; OCR is not automatic."
+  "review.no_text": "Some page pairs have no extractable text. Only their preview and page geometry can be compared; OCR is not automatic.",
+  "shortcuts.title": "Keyboard shortcuts",
+  "shortcuts.scope": "Choose a command, then assign a Ctrl shortcut. Escape cancels; Save applies all changes. Navigation, clipboard and system keys remain reserved.",
+  "shortcuts.search": "Filter commands",
+  "shortcuts.binding": "Shortcut (for example Ctrl+Shift+J)",
+  "shortcuts.assign": "Assign",
+  "shortcuts.disable": "Disable",
+  "shortcuts.reset": "Restore command default",
+  "shortcuts.reset_all": "Restore all defaults",
+  "shortcuts.unassigned": "Unassigned",
+  "shortcuts.syntax": "Use Ctrl, optional Shift, and one letter, digit, F2–F12, Tab, Delete, Plus, Equals, Minus, OpenBracket or CloseBracket.",
+  "shortcuts.reserved": "This shortcut is reserved for text editing or Windows.",
+  "shortcuts.conflict": "Shortcut already assigned to",
+  "shortcuts.invalid": "Invalid stored shortcuts. Restore defaults before saving; the app currently uses defaults.",
+  "shortcuts.save_failed": "Preferences could not be saved. Your active shortcuts have not changed."
 }

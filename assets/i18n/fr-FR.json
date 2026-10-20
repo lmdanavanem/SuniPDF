@@ -1112,5 +1112,19 @@
   "review.original": "Original",
   "review.revised": "Révision",
   "review.difference": "Différences observées (rouge)",
-  "review.no_text": "Certaines paires n’ont aucun texte extractible. Seuls les aperçus et les dimensions sont comparés ; l’OCR n’est pas automatique."
+  "review.no_text": "Certaines paires n’ont aucun texte extractible. Seuls les aperçus et les dimensions sont comparés ; l’OCR n’est pas automatique.",
+  "shortcuts.title": "Raccourcis clavier",
+  "shortcuts.scope": "Choisissez une commande puis un raccourci Ctrl. Échap annule ; Enregistrer applique les changements. Navigation, presse-papiers et touches système restent réservés.",
+  "shortcuts.search": "Filtrer les commandes",
+  "shortcuts.binding": "Raccourci (par exemple Ctrl+Shift+J)",
+  "shortcuts.assign": "Attribuer",
+  "shortcuts.disable": "Désactiver",
+  "shortcuts.reset": "Rétablir cette commande",
+  "shortcuts.reset_all": "Tout rétablir",
+  "shortcuts.unassigned": "Non attribué",
+  "shortcuts.syntax": "Utilisez Ctrl, éventuellement Shift, et une lettre, un chiffre, F2–F12, Tab, Delete, Plus, Equals, Minus, OpenBracket ou CloseBracket.",
+  "shortcuts.reserved": "Ce raccourci est réservé à la saisie ou à Windows.",
+  "shortcuts.conflict": "Raccourci déjà attribué à",
+  "shortcuts.invalid": "Raccourcis enregistrés invalides. Rétablissez les valeurs par défaut avant de sauvegarder ; l’application utilise les valeurs par défaut.",
+  "shortcuts.save_failed": "Échec de sauvegarde des préférences. Les raccourcis actifs restent inchangés."
 }

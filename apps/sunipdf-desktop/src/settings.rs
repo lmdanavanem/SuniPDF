@@ -21,6 +21,7 @@ pub struct Settings {
     pub author: String,
     pub check_updates: bool,
     pub office_profile: String,
+    pub shortcuts: crate::shortcuts::Bindings,
 }
 
 impl Default for Settings {
@@ -37,6 +38,7 @@ impl Default for Settings {
             author: String::new(),
             check_updates: true,
             office_profile: "standard".into(),
+            shortcuts: Default::default(),
         }
     }
 }

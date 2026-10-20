@@ -787,9 +787,11 @@ impl SuniApp {
         let lang = self.lang();
         let ci = c.info();
         let label = tr(lang, ci.label_key);
-        let tooltip = match ci.shortcut_key {
-            Some(k) => format!("{label}  ({})", tr(lang, k)),
-            None => label.to_string(),
+        let shortcut = self.shortcut_text(ci.command);
+        let tooltip = if shortcut.is_empty() {
+            label.to_string()
+        } else {
+            format!("{label}  ({shortcut})")
         };
         let is_tool = Tool::from_command(c).is_some();
         let selected = self.command_selected(c);
@@ -868,6 +870,7 @@ mod tests {
         C::NextTab,
         C::PrevTab,
         C::About,
+        C::KeyboardShortcuts,
         // Presse-papiers d'objets : clavier, menu Édition, palette et barre d'objet (comme
         // Annuler / Rétablir), pas dans la barre d'outil (DECISIONS.md).
         C::CopyObjects,

@@ -102,6 +102,7 @@ pub enum Command {
     HubStamp,
     HubLeave,
     About,
+    KeyboardShortcuts,
     ToggleObjects,
     CopyObjects,
     CutObjects,
@@ -1222,6 +1223,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         None,
         true,
         Tools
+    ),
+    cmd!(
+        KeyboardShortcuts,
+        "help.shortcuts",
+        "shortcuts.title",
+        None,
+        false,
+        Help
     ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),
 ];

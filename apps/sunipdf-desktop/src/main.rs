@@ -27,6 +27,8 @@ mod recovery;
 mod redact;
 mod settings;
 mod shell;
+mod shortcut_defaults;
+mod shortcuts;
 mod sign;
 mod tabs;
 mod theme;
