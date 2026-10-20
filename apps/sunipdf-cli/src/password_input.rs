@@ -83,6 +83,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         | Command::Split { password, .. }
         | Command::Rotate { password, .. }
         | Command::Stamp { password, .. }
+        | Command::ImageWatermark { password, .. }
         | Command::PageNumbers { password, .. }
         | Command::SetPageLabels { password, .. }
         | Command::ResetPageLabels { password, .. }

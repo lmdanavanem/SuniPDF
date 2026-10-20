@@ -1126,5 +1126,11 @@
   "shortcuts.reserved": "This shortcut is reserved for text editing or Windows.",
   "shortcuts.conflict": "Shortcut already assigned to",
   "shortcuts.invalid": "Invalid stored shortcuts. Restore defaults before saving; the app currently uses defaults.",
-  "shortcuts.save_failed": "Preferences could not be saved. Your active shortcuts have not changed."
+  "shortcuts.save_failed": "Preferences could not be saved. Your active shortcuts have not changed.",
+  "watermark.text": "Text",
+  "watermark.image": "Image",
+  "watermark.choose_image": "Choose watermark image…",
+  "watermark.width_percent": "Width relative to page",
+  "watermark.margin": "Margin",
+  "watermark.image_scope": "Foreground image, fitted inside the margins. Existing transparency is retained. Undo removes the whole batch."
 }

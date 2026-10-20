@@ -246,6 +246,28 @@ enum Command {
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
+    /// Add an editable foreground image watermark to selected pages, as a new copy.
+    ImageWatermark {
+        file: PathBuf,
+        #[arg(long)]
+        image: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value_t = 30.0)]
+        width_percent: f32,
+        #[arg(long, default_value_t = 0.3)]
+        opacity: f32,
+        #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
+        angle: f32,
+        #[arg(long, default_value = "center")]
+        position: String,
+        #[arg(long, default_value_t = 28.0)]
+        margin: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add single-line page numbers.
     #[command(help_template = STAMP_HELP_TEMPLATE)]
     PageNumbers {
@@ -1382,6 +1404,34 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
             doc.save_as(&out)?;
             Ok(serde_json::json!({ "out": out, "stamped": count }))
+        }
+        Command::ImageWatermark {
+            file,
+            image,
+            pages,
+            width_percent,
+            opacity,
+            angle,
+            position,
+            margin,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
+            let options = sunipdf_core::image_watermark::ImageWatermark {
+                width_percent,
+                opacity,
+                angle,
+                margin_pt: margin,
+                position: StampPosition::from_id(&position)
+                    .ok_or_else(|| EngineError::Other("unknown watermark position".into()))?,
+            };
+            let count = doc.image_watermark(Some(&selection), &image, &options)?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"watermarked":count,"original_unchanged":true,"foreground":true,"encrypted":doc.properties().encrypted}),
+            )
         }
         Command::PageNumbers {
             file,
@@ -2626,6 +2676,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Extract { out, .. }
         | Command::Rotate { out, .. }
         | Command::Stamp { out, .. }
+        | Command::ImageWatermark { out, .. }
         | Command::PageNumbers { out, .. }
         | Command::SetPageLabels { out, .. }
         | Command::ResetPageLabels { out, .. }
@@ -3597,5 +3648,40 @@ mod tests {
             Some(PathBuf::from("o.pdf"))
         );
         assert!(parse_cli(["sunipdf-cli", "add-image", "a.pdf", "--out", "o.pdf"]).is_err());
+    }
+
+    #[test]
+    fn image_watermark_cli_participates_in_password_and_output_guards() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "--password-env",
+            "TEST_PDF_PASSWORD",
+            "image-watermark",
+            "source.pdf",
+            "--image",
+            "logo.png",
+            "--width-percent",
+            "42",
+            "--angle",
+            "-45",
+            "--out",
+            "copy.pdf",
+        ])
+        .unwrap();
+        assert!(
+            matches!(&cli.command,Command::ImageWatermark {width_percent,angle,..} if *width_percent==42.0 && *angle== -45.0)
+        );
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("copy.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "image-watermark",
+            "source.pdf",
+            "--out",
+            "copy.pdf"
+        ])
+        .is_err());
     }
 }

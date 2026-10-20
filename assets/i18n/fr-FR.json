@@ -1126,5 +1126,11 @@
   "shortcuts.reserved": "Ce raccourci est réservé à la saisie ou à Windows.",
   "shortcuts.conflict": "Raccourci déjà attribué à",
   "shortcuts.invalid": "Raccourcis enregistrés invalides. Rétablissez les valeurs par défaut avant de sauvegarder ; l’application utilise les valeurs par défaut.",
-  "shortcuts.save_failed": "Échec de sauvegarde des préférences. Les raccourcis actifs restent inchangés."
+  "shortcuts.save_failed": "Échec de sauvegarde des préférences. Les raccourcis actifs restent inchangés.",
+  "watermark.text": "Texte",
+  "watermark.image": "Image",
+  "watermark.choose_image": "Choisir une image de filigrane…",
+  "watermark.width_percent": "Largeur par rapport à la page",
+  "watermark.margin": "Marge",
+  "watermark.image_scope": "Image au premier plan, ajustée dans les marges. Transparence conservée. Annuler retire tout le lot."
 }
