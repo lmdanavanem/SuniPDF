@@ -6,6 +6,8 @@ SuniPDF crée un fichier séparé et refuse toute sortie déjà existante. L’o
 
 Sous Windows, un **LibreOffice 26.2 ou 26.8 déjà installé** est nécessaire. SuniPDF recherche `soffice.com` dans les dossiers Program Files habituels et vérifie sa version avant conversion. En son absence, l’interface indique clairement que la conversion est indisponible. L’application ne télécharge ni n’installe de convertisseur. Chaque document utilise un profil temporaire isolé ; les sessions et profils Office existants ne sont ni modifiés ni fermés.
 
+À partir de la 0.39.0, la vérification de version utilise les mêmes options sans interface que la conversion et un budget annulable de 30 secondes au démarrage à froid. La conversion conserve sa limite de 120 secondes ; les gardes de chemins, archives, versions, diagnostics et sorties restent actives.
+
 Les entrées acceptées sont DOCX, XLSX, PPTX, ODT, ODS et ODP sans macros. Les anciens formats binaires, macros, formules, champs actifs, objets incorporés, liens externes, DTD/entités XML, chemins d’archive dangereux et images déguisées sont refusés. Les images doivent être des PNG ou JPEG. Cette politique conservatrice peut aussi refuser des documents valides complexes.
 
 Limites : 1 à 128 documents par lot, 64 Mio par entrée, 4 096 éléments d’archive, 256 Mio après décompression, 16 Mio par partie XML et 64 Mio de XML au total. Chaque conversion dispose de 120 secondes ; le PDF produit est limité à 256 Mio. Le traitement est séquentiel et annulable. Une erreur sur un document est signalée séparément. Le résultat est rouvert et contrôlé avant écriture atomique ; les octets source doivent toujours correspondre.

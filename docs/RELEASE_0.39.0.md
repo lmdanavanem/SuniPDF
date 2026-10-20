@@ -6,6 +6,7 @@
 - Load a draft, save under a unique name or delete explicitly; at most 16 presets.
 - Atomic preference activation, bounded settings loading and isolation of malformed preset entries.
 - Preserve current document/page scope and retain independent package, security and migration regression.
+- Office version probes use headless startup and a cancellable 30-second cold-start budget; conversion and security guards remain enforced.
 
 [Usage and limits](PAGE_DECORATIONS.md).
 

@@ -6,6 +6,7 @@
 - Charger un brouillon, enregistrer sous un nom unique ou supprimer explicitement ; 16 modèles au maximum.
 - Préférences atomiques, chargement borné et isolation des modèles mal formés.
 - Portée des pages à vérifier à chaque usage ; régressions de paquets, sécurité et migrations conservées.
+- Vérification de version Office sans interface avec un budget annulable de 30 secondes au démarrage à froid ; limites de conversion et gardes de sécurité conservées.
 
 [Utilisation et limites](PAGE_DECORATIONS.fr.md).
 
