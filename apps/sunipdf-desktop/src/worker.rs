@@ -351,6 +351,11 @@ pub enum EditOp {
         width_pt: f32,
         height_pt: f32,
     },
+    ImageWatermark {
+        pages: Option<Vec<usize>>,
+        path: PathBuf,
+        options: sunipdf_core::image_watermark::ImageWatermark,
+    },
     Stamp {
         pages: Option<Vec<usize>>,
         stamp: Stamp,
@@ -1602,6 +1607,13 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             width_pt,
             height_pt,
         } => doc.insert_blank_pages(at, count, width_pt, height_pt),
+        EditOp::ImageWatermark {
+            pages,
+            path,
+            options,
+        } => doc
+            .image_watermark(pages.as_deref(), &path, &options)
+            .map(|_| ()),
         EditOp::Stamp { pages, stamp } => doc.stamp_pages(pages.as_deref(), &stamp).map(|_| ()),
         EditOp::FillForm { values } => doc.fill_form(&values, FillMode::Strict).map(|_| ()),
         EditOp::ClearForm => doc.clear_form().map(|_| ()),

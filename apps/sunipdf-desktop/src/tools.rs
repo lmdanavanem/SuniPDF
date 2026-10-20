@@ -9,6 +9,75 @@ use sunipdf_core::{Stamp, StampPosition, TextStyle};
 use sunipdf_i18n::Language;
 use sunipdf_i18n::{tr, tr_args};
 
+#[cfg(test)]
+mod watermark_tests {
+    use super::*;
+
+    #[test]
+    fn watermark_mode_changes_cannot_submit_an_empty_or_invalid_image_draft() {
+        let mut form = StampForm {
+            text: "Previous text".into(),
+            ..Default::default()
+        };
+        assert!(form.ready(StampKind::Watermark));
+        form.image_mode = true;
+        assert!(!form.ready(StampKind::Watermark));
+        form.image_path = Some(PathBuf::from("logo.png"));
+        assert!(form.ready(StampKind::Watermark));
+        form.image_width_percent = f32::NAN;
+        assert!(!form.ready(StampKind::Watermark));
+        assert!(form.ready(StampKind::PageNumbers));
+    }
+
+    #[test]
+    fn image_watermark_dialog_submits_captured_options_and_escape_never_edits() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.tools.stamp_open = Some(StampKind::Watermark);
+        app.tools.stamp.image_mode = true;
+        app.tools.stamp.image_path = Some(PathBuf::from("selected-logo.png"));
+        app.tools.stamp.image_width_percent = 42.0;
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::Key {
+                    key: Key::Enter,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::COMMAND,
+                }],
+                ..Default::default()
+            },
+            |ui| app.stamp_dialog(ui.ctx()),
+        );
+        out.textures_delta.clear();
+        assert!(
+            matches!(requests.try_recv().unwrap(),Request::Edit(EditOp::ImageWatermark{pages:None,path,options}) if path==Path::new("selected-logo.png") && options.width_percent==42.0)
+        );
+        assert!(app.tools.stamp_open.is_none());
+        for language in Language::ALL {
+            app.settings.set_language(language);
+            app.tools.stamp_open = Some(StampKind::Watermark);
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::Key {
+                        key: Key::Escape,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }],
+                    ..Default::default()
+                },
+                |ui| app.stamp_dialog(ui.ctx()),
+            );
+            out.textures_delta.clear();
+            assert!(app.tools.stamp_open.is_none());
+            assert!(requests.try_recv().is_err());
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct ToolsState {
     /// Dialogue « Diviser » : taille des lots.
@@ -29,6 +98,10 @@ pub enum StampKind {
 /// Valeurs saisies pour le tampon et les numéros de page (conservées entre deux ouvertures).
 pub struct StampForm {
     pub text: String,
+    pub image_mode: bool,
+    pub image_path: Option<PathBuf>,
+    pub image_width_percent: f32,
+    pub image_margin: f32,
     pub size: f32,
     pub rgb: [u8; 3],
     pub opacity: f32,
@@ -45,6 +118,10 @@ impl Default for StampForm {
     fn default() -> Self {
         Self {
             text: String::new(),
+            image_mode: false,
+            image_path: None,
+            image_width_percent: 30.0,
+            image_margin: 28.0,
             size: 48.0,
             rgb: [0x80, 0x80, 0x80],
             opacity: 0.3,
@@ -55,6 +132,26 @@ impl Default for StampForm {
             numbers_template: "{n} / {total}".into(),
             numbers_position: StampPosition::BottomCenter,
             numbers_size: 10.0,
+        }
+    }
+}
+
+impl StampForm {
+    fn ready(&self, kind: StampKind) -> bool {
+        if kind == StampKind::PageNumbers {
+            return !self.numbers_template.trim().is_empty();
+        }
+        if self.image_mode {
+            self.image_path.is_some()
+                && self.image_width_percent.is_finite()
+                && (1.0..=100.0).contains(&self.image_width_percent)
+                && self.opacity.is_finite()
+                && (0.01..=1.0).contains(&self.opacity)
+                && self.angle.is_finite()
+                && self.image_margin.is_finite()
+                && self.image_margin >= 0.0
+        } else {
+            !self.text.trim().is_empty()
         }
     }
 }
@@ -178,13 +275,7 @@ impl SuniApp {
         )
         .width(520.0);
         let form = &mut self.tools.stamp;
-        // Sans texte, rien à apposer : bouton grisé plutôt qu'un clic sans effet (le
-        // « CONFIDENTIEL » du champ n'est qu'une suggestion). Valeur de l'image précédente.
-        let has_text = !if numbers {
-            form.numbers_template.trim().is_empty()
-        } else {
-            form.text.trim().is_empty()
-        };
+        let ready = std::cell::Cell::new(form.ready(kind));
         crate::dialog::show(
             ctx,
             spec,
@@ -223,38 +314,76 @@ impl SuniApp {
                         );
                     });
                 } else {
-                    crate::dialog::field_label(ui, tr(lang, "stamp.text"));
-                    let field = ui.add(
-                        egui::TextEdit::singleline(&mut form.text)
-                            .hint_text(tr(lang, "stamp.text_placeholder"))
-                            .desired_width(f32::INFINITY),
-                    );
-                    if ui.memory(|m| m.focused().is_none()) {
-                        field.request_focus();
-                    }
-                    ui.label(
-                        egui::RichText::new(tr(lang, "stamp.placeholders"))
-                            .size(12.0)
-                            .color(muted),
-                    );
-                    ui.add_space(6.0);
                     ui.horizontal(|ui| {
-                        ui.label(tr(lang, "stamp.size"));
-                        ui.add(
-                            egui::DragValue::new(&mut form.size)
-                                .range(6.0..=300.0)
-                                .speed(1.0),
-                        );
-                        ui.label(tr(lang, "stamp.color"));
-                        ui.color_edit_button_srgb(&mut form.rgb);
-                        ui.checkbox(&mut form.bold, tr(lang, "stamp.bold"));
-                        ui.label(tr(lang, "stamp.angle"));
-                        ui.add(
-                            egui::DragValue::new(&mut form.angle)
-                                .range(-90.0..=90.0)
-                                .speed(1.0),
-                        );
+                        ui.radio_value(&mut form.image_mode, false, tr(lang, "watermark.text"));
+                        ui.radio_value(&mut form.image_mode, true, tr(lang, "watermark.image"));
                     });
+                    if form.image_mode {
+                        if ui.button(tr(lang, "watermark.choose_image")).clicked() {
+                            if let Some(path) = rfd::FileDialog::new()
+                                .add_filter(
+                                    "Images",
+                                    &["png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"],
+                                )
+                                .pick_file()
+                            {
+                                form.image_path = Some(path);
+                            }
+                        }
+                        if let Some(path) = &form.image_path {
+                            ui.label(file_name(path));
+                        }
+                        ui.label(tr(lang, "watermark.image_scope"));
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(lang, "watermark.width_percent"));
+                            ui.add(
+                                egui::DragValue::new(&mut form.image_width_percent)
+                                    .range(1.0..=100.0)
+                                    .suffix(" %"),
+                            );
+                            ui.label(tr(lang, "stamp.angle"));
+                            ui.add(egui::DragValue::new(&mut form.angle).range(-180.0..=180.0));
+                            ui.label(tr(lang, "watermark.margin"));
+                            ui.add(
+                                egui::DragValue::new(&mut form.image_margin)
+                                    .range(0.0..=1000.0)
+                                    .suffix(" pt"),
+                            );
+                        });
+                    } else {
+                        crate::dialog::field_label(ui, tr(lang, "stamp.text"));
+                        let field = ui.add(
+                            egui::TextEdit::singleline(&mut form.text)
+                                .hint_text(tr(lang, "stamp.text_placeholder"))
+                                .desired_width(f32::INFINITY),
+                        );
+                        if ui.memory(|m| m.focused().is_none()) {
+                            field.request_focus();
+                        }
+                        ui.label(
+                            egui::RichText::new(tr(lang, "stamp.placeholders"))
+                                .size(12.0)
+                                .color(muted),
+                        );
+                        ui.add_space(6.0);
+                        ui.horizontal(|ui| {
+                            ui.label(tr(lang, "stamp.size"));
+                            ui.add(
+                                egui::DragValue::new(&mut form.size)
+                                    .range(6.0..=300.0)
+                                    .speed(1.0),
+                            );
+                            ui.label(tr(lang, "stamp.color"));
+                            ui.color_edit_button_srgb(&mut form.rgb);
+                            ui.checkbox(&mut form.bold, tr(lang, "stamp.bold"));
+                            ui.label(tr(lang, "stamp.angle"));
+                            ui.add(
+                                egui::DragValue::new(&mut form.angle)
+                                    .range(-90.0..=90.0)
+                                    .speed(1.0),
+                            );
+                        });
+                    }
                     ui.horizontal(|ui| {
                         ui.label(tr(lang, "stamp.opacity"));
                         ui.scope(|ui| {
@@ -277,9 +406,10 @@ impl SuniApp {
                     ui.radio_value(&mut form.all_pages, true, tr(lang, "stamp.scope.all"));
                     ui.radio_value(&mut form.all_pages, false, tr(lang, "stamp.scope.current"));
                 });
+                ready.set(form.ready(kind));
             },
             |ui| {
-                ui.add_enabled_ui(has_text, |ui| {
+                ui.add_enabled_ui(ready.get(), |ui| {
                     if crate::dialog::primary(
                         ui,
                         tr(lang, if numbers { "numbers.ok" } else { "stamp.ok" }),
@@ -287,7 +417,7 @@ impl SuniApp {
                         submit = true;
                     }
                 });
-                if has_text && ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter)) {
+                if ready.get() && ui.input(|i| i.modifiers.command && i.key_pressed(Key::Enter)) {
                     submit = true;
                 }
                 if crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
@@ -297,8 +427,32 @@ impl SuniApp {
                 }
             },
         );
-        if submit {
+        if submit && !cancel && self.tools.stamp.ready(kind) {
             let form = &self.tools.stamp;
+            if !numbers && form.image_mode {
+                let pages = if form.all_pages {
+                    None
+                } else {
+                    current_page.map(|p| vec![p])
+                };
+                let options = sunipdf_core::image_watermark::ImageWatermark {
+                    width_percent: form.image_width_percent,
+                    opacity: form.opacity,
+                    angle: form.angle,
+                    position: form.position,
+                    margin_pt: form.image_margin,
+                };
+                let Some(path) = form.image_path.clone() else {
+                    return;
+                };
+                self.tools.stamp_open = None;
+                self.worker.send(Request::Edit(EditOp::ImageWatermark {
+                    pages,
+                    path,
+                    options,
+                }));
+                return;
+            }
             let stamp = if numbers {
                 Stamp {
                     style: TextStyle {
