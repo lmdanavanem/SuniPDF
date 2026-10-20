@@ -5,6 +5,8 @@ use std::io::Read;
 use std::path::PathBuf;
 use sunipdf_i18n::Language;
 
+const MAX_SETTINGS_BYTES: usize = 1024 * 1024;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct Settings {
@@ -73,8 +75,10 @@ impl Settings {
             .and_then(|p| {
                 let file = std::fs::File::open(p).ok()?;
                 let mut text = String::new();
-                file.take(1024 * 1024 + 1).read_to_string(&mut text).ok()?;
-                (text.len() <= 1024 * 1024).then_some(text)
+                file.take((MAX_SETTINGS_BYTES + 1) as u64)
+                    .read_to_string(&mut text)
+                    .ok()?;
+                (text.len() <= MAX_SETTINGS_BYTES).then_some(text)
             })
             // Tolère le BOM UTF-8 ajouté par certains éditeurs (Bloc-notes, PowerShell 5).
             .and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok())
@@ -98,7 +102,18 @@ impl Settings {
         let Some(path) = Self::path() else {
             return Ok(());
         };
-        sunipdf_core::write_atomic(&path, &serde_json::to_vec_pretty(self)?)
+        self.save_to(&path)
+    }
+
+    fn save_to(&self, path: &std::path::Path) -> std::io::Result<()> {
+        let bytes = serde_json::to_vec_pretty(self)?;
+        if bytes.len() > MAX_SETTINGS_BYTES {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "preferences exceed 1 MiB",
+            ));
+        }
+        sunipdf_core::write_atomic(path, &bytes)
     }
 }
 
@@ -115,7 +130,14 @@ mod tests {
         s.set_language(Language::French);
         s.dark_theme = true;
         s.check_updates = false;
-        sunipdf_core::write_atomic(&path, &serde_json::to_vec(&s).unwrap()).unwrap();
+        s.save_to(&path).unwrap();
+        let stored = std::fs::read(&path).unwrap();
+        let oversized = Settings {
+            recent: vec!["x".repeat(MAX_SETTINGS_BYTES + 1)],
+            ..Default::default()
+        };
+        assert!(oversized.save_to(&path).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), stored);
         let back: Settings =
             serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(back, s);

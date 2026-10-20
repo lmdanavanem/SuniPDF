@@ -8,7 +8,7 @@ To keep a configuration, enter a new name and click **Save preset**. Select an e
 
 Up to 16 presets with names of 64 characters are stored locally in the existing settings file. Text watermarks, image watermarks, page numbers and six-zone headers/footers are supported. Page selection is deliberately not saved: check all/current page each time. Text is limited to one line and 256 characters per zone/template. Image presets retain the original file path; keep that file available. Choosing a preset does not decode the image; Apply reports a missing/invalid image and preserves the document. Neither image bytes nor signing identities are stored by this feature.
 
-Older settings retain defaults; malformed preset entries are skipped without resetting other valid preferences. Settings files above 1 MiB are refused on load and defaults are used. Presets are desktop preferences; no CLI preset import/export, cloud synchronization, macro or credential store is added. The packaged CLI gate retains the image/header operations; headless preference/dialog tests cover persistence and cancellation. Native Windows interaction remains separate qualification.
+Older settings retain defaults; malformed preset entries are skipped without resetting other valid preferences. Settings files above 1 MiB are refused on load and defaults are used. Writes above that limit are refused before replacing the existing preferences. Presets are desktop preferences; no CLI preset import/export, cloud synchronization, macro or credential store is added. The packaged CLI gate retains the image/header operations; headless preference/dialog tests cover persistence and cancellation. Native Windows interaction remains separate qualification.
 
 ## Headers and footers (0.38.0)
 
