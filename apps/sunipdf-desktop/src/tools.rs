@@ -72,6 +72,8 @@ mod watermark_tests {
                     assert!(
                         matches!(requests.try_recv().unwrap(), Request::Edit(EditOp::HeadersFooters { pages: None, options }) if options.zones[0]=="Report" && options.zones[4]=="{n} / {total}")
                     );
+                    assert!(matches!(requests.try_recv().unwrap(), Request::FinishMutation));
+                    app.worker.finish_mutation();
                 }
             }
         }
