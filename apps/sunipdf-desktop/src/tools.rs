@@ -58,6 +58,11 @@ mod watermark_tests {
             matches!(requests.try_recv().unwrap(),Request::Edit(EditOp::ImageWatermark{pages:None,path,options}) if path==Path::new("selected-logo.png") && options.width_percent==42.0)
         );
         assert!(app.tools.stamp_open.is_none());
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        app.worker.finish_mutation();
         for language in Language::ALL {
             app.settings.set_language(language);
             app.tools.stamp_open = Some(StampKind::Watermark);
