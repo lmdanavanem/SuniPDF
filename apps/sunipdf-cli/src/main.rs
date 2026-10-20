@@ -246,7 +246,8 @@ enum Command {
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Add six non-overlapping header/footer zones as a new copy. {n}/{total} expand per page.
+    /// Add six non-overlapping header/footer zones as a new copy, with per-page template variables.
+    #[command(help_template = STAMP_HELP_TEMPLATE)]
     HeadersFooters {
         file: PathBuf,
         #[arg(long, default_value = "all")]
@@ -3270,7 +3271,7 @@ mod tests {
 
     #[test]
     fn stamp_help_preserves_literal_page_variables() {
-        for command in ["stamp", "page-numbers"] {
+        for command in ["stamp", "page-numbers", "headers-footers"] {
             for flag in ["-h", "--help"] {
                 let error = parse_cli(["sunipdf-cli", command, flag])
                     .err()
