@@ -2,7 +2,19 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.38.0 : six zones d’en-tête et pied de page (Latest stable)
+## 0.39.0 : modèles de décoration réutilisables (Latest stable)
+
+[0.39.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.39.0) sous `lmdanavanem`, source `24e3dcd0978fd74fb63d1c43aa8e668f5774fe04`.
+
+Modèles locaux nommés pour filigranes texte/image, numéros et six zones d’en-tête/pied. Charger un brouillon, enregistrer sous un nom unique ou supprimer explicitement. Écriture atomique, préférences préservées en cas d’échec et modèles invalides isolés. Portée des pages explicite et images référencées par chemin. Paquets 0.38.0 ajoutés aux migrations. Vérification de version Office sans interface avec une limite annulable de 30 secondes au démarrage à froid ; limites de conversion et gardes de sécurité conservées. [Utilisation et limites](PAGE_DECORATIONS.fr.md).
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39404372880) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39404384844) réussies : **628 tests, zéro échec**, 10 ignorés par défaut, **1149 clés EN/FR**, **31 scénarios portables**, **25 références MSI/125 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **42 scénarios, 148 appels CLI et 2 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; les scénarios de décorations, **20 d’image** et **14 d’inspection PDF**, ainsi que les suites conservées, ont été rejoués sur la CLI téléchargée. Le harnais conservé de la 0.32.0, dont le module de mise à jour inchangé a été vérifié, a téléchargé et contrôlé les **26,879,736 octets** du ZIP x64 sans installation sur le poste.
+
+Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets non signés, ARM64 compilé uniquement et critères 1.0 ouverts. Modifications Projects différées à la demande du propriétaire ; aucune synchronisation nouvelle annoncée. [Preuves](qa/RELEASE_0.39.0.json).
+
+## 0.38.0 : six zones d’en-tête et pied de page (publiée ; Latest à cette date)
 
 [0.38.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.38.0) sous `lmdanavanem`, source `82a231fe6e423023030e099780d9a55aeebac72f`.
 
@@ -285,7 +297,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Panneau des objets de la page | Déclaré | **Fait** (F3 : ordre de dessin, sélection, avancer/reculer, suppression, repère au survol) ; glisser-déposer d’objets/sélections livré dans la 0.32.0 ([guide](OBJECT_ORDER.fr.md)) |
 | Liens | Déclaré | **Livré en 0.30.0** : Liens page/URI antérieurs conservés ; création nommée/XYZ/Fit/FitH et résolution brute bornée, axes/zoom nuls et cadrage/rotation affichés conservés. Actions actives non prises en charge jamais exécutées. [Périmètre](RELEASE_0.30.0.fr.md). |
 | Filigranes, en-têtes/pieds de page, numérotation | Livré dans les bornes décrites | Texte et numérotation conservés, filigrane image 0.37.0 et six zones d’en-tête/pied 0.38.0 ; pas de calque de fond, règles paires/impaires ou qualification d’écritures complexes. [Bornes](PAGE_DECORATIONS.fr.md). |
-| Tampons personnalisés | Non documenté | **Livré en 0.30.0** : Annotations standard prédéfinies présentes ; création arbitraire de tampons toujours planifiée. [Types](RICH_ANNOTATIONS.fr.md). |
+| Tampons personnalisés | Partiel | Annotations standard conservées ; modèles de décorations texte/image livrés en 0.39.0. Les annotations Stamp arbitraires restent planifiées. [Bornes](PAGE_DECORATIONS.fr.md). |
 
 ## C. Organisation
 
@@ -354,6 +366,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Serveur MCP local, confiné à `--root` | Déclaré | Planifié (P5, opt-in) |
 | filigranes image | Livré en 0.37.0 | Filigranes image dans Pages et la CLI : transparence, largeur proportionnelle, angle, sept positions et marges. Ajustement aux pages tournées/recadrées. Modification atomique, une annulation dans l’application et nouvelle copie en CLI ; chiffrement autorisé conservé. Paquets 0.36.0 ajoutés aux migrations. [Guide](PAGE_DECORATIONS.fr.md). |
 | six zones d’en-tête et pied de page | Livré en 0.38.0 | Six zones d’en-tête/pied via Numéros de page et la commande headers-footers. Numéro absolu, total, marges, taille et pages choisies respectent rotation et recadrage. Dépassement refusé atomiquement ; chiffrement autorisé et nouvelle copie en CLI conservés. Paquets 0.37.0 ajoutés aux migrations. [Guide](PAGE_DECORATIONS.fr.md). |
+| modèles de décoration réutilisables | Livré en 0.39.0 | Modèles locaux nommés pour filigranes texte/image, numéros et six zones d’en-tête/pied. Charger un brouillon, enregistrer sous un nom unique ou supprimer explicitement. Écriture atomique, préférences préservées en cas d’échec et modèles invalides isolés. Portée des pages explicite et images référencées par chemin. Paquets 0.38.0 ajoutés aux migrations. Vérification de version Office sans interface avec une limite annulable de 30 secondes au démarrage à froid ; limites de conversion et gardes de sécurité conservées. [Guide](PAGE_DECORATIONS.fr.md). |
 | Raccourcis configurables | Livré en 0.36.0 | Commandes existantes, conflits refusés, brouillon annulable et préférences atomiques ; [bornes](KEYBOARD_SHORTCUTS.fr.md). Claviers natifs/Narrateur et Explorer restent ouverts. |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
@@ -364,8 +377,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.38.0** : 30 scénarios portables et 24 références MSI/120 journaux réussis ; six fichiers publics/SHA256 et contrôles des paquets vérifiés ; le metteur à jour a téléchargé et vérifié le paquet sans installation sur le poste. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.38.0.json). |
-| Windows ARM64 | Déclaré | **Compilé et distribué en 0.38.0** : ZIP de source exacte, SHA256 public, architecture PE, modèles, notices et icônes vérifiés ; exécution expérimentale jusqu’à qualification sur un vrai appareil. [Preuves](qa/RELEASE_0.38.0.json). |
+| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.39.0** : 31 scénarios portables et 25 références MSI/125 journaux réussis ; six fichiers publics/SHA256 et contrôles des paquets vérifiés ; le metteur à jour a téléchargé et vérifié le paquet sans installation sur le poste. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.39.0.json). |
+| Windows ARM64 | Déclaré | **Compilé et distribué en 0.39.0** : ZIP de source exacte, SHA256 public, architecture PE, modèles, notices et icônes vérifiés ; exécution expérimentale jusqu’à qualification sur un vrai appareil. [Preuves](qa/RELEASE_0.39.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

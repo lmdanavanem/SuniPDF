@@ -7,6 +7,16 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.39.0] - 2026-10-20
+
+[0.39.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.39.0) sous `lmdanavanem`, source `24e3dcd0978fd74fb63d1c43aa8e668f5774fe04`.
+
+Modèles locaux nommés pour filigranes texte/image, numéros et six zones d’en-tête/pied. Charger un brouillon, enregistrer sous un nom unique ou supprimer explicitement. Écriture atomique, préférences préservées en cas d’échec et modèles invalides isolés. Portée des pages explicite et images référencées par chemin. Paquets 0.38.0 ajoutés aux migrations. Vérification de version Office sans interface avec une limite annulable de 30 secondes au démarrage à froid ; limites de conversion et gardes de sécurité conservées.
+
+PR #13 fusionnée après CI/CodeQL sur la révision exacte.
+
+[Notes, validation et limites](docs/RELEASE_0.39.0.fr.md).
+
 ## [0.38.0] - 2026-10-20
 
 [0.38.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.38.0) sous `lmdanavanem`, source `82a231fe6e423023030e099780d9a55aeebac72f`.
