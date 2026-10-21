@@ -1,7 +1,7 @@
 //! Calibrated local measurements with an explicit, immutable per-annotation scale.
 
 use crate::annot_rich::{checked_rect, rich_base};
-use crate::annot_write::{self, ap_stream, push_annotation};
+use crate::annot_write::{ap_stream, push_annotation};
 use crate::appearance::{fmt_num, Ap};
 use crate::security::lopdf_err;
 use crate::{Document, EngineError, PointRect};
