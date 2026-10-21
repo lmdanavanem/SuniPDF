@@ -17,7 +17,9 @@ The 0.40.0 local source slice also adds self-contained two-point calibration and
 
 ## Priorities and acceptance
 
-P1 is the next useful foundation; P2 builds on that foundation; P3 requires a separate integration or infrastructure lot. All cards remain Planned until their complete criteria are demonstrated. Partial reuse of an existing function does not close a card. Existing [1.0 qualification gates](RELEASE_1.0_CRITERIA.md) remain open independently.
+The 0.41.0 source slice adds [manual plan counts and an annotation register](MARKUP_REGISTER.md): click-to-place persistent markers, grouped totals linked to actual identities, regrouping, normal move/delete/Undo, all-page search/filters/navigation, separate business fields and CSV/JSON exports. AEC-005 is implemented within the documented limits, pending release qualification. AEC-004 remains partial: custom-key sorting, typed columns and normalized dates remain open. Cloud and collaboration remain deferred.
+
+P1 is the next useful foundation; P2 builds on that foundation; P3 requires a separate integration or infrastructure lot. Cards remain open until their complete criteria are demonstrated; the CSV records implementation progress separately from qualification. Partial reuse of an existing function does not close a card. Existing [1.0 qualification gates](RELEASE_1.0_CRITERIA.md) remain open independently.
 
 | ID | Priority | Capability | Definition of done | Dependencies |
 |---|---|---|---|---|

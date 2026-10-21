@@ -273,7 +273,7 @@ fn floats(d: &lopdf::Document, o: &Object) -> Option<Vec<f32>> {
         .collect()
 }
 
-fn text_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<String> {
+pub(crate) fn text_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<String> {
     let o = get(d, dict, key)?;
     let bytes = o.as_str().ok()?;
     // La table PDFDocEncoding de lopdf ignore les sauts de ligne : conservés à part.
@@ -1664,7 +1664,7 @@ impl Document<'_> {
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
             let c = caps(&st, flags(&dict), text_of(pdf, &dict, b"NM").as_deref());
-            if !c.can_edit_text || dict.has(b"SuniPDFMeasurement") {
+            if !c.can_edit_text || dict.has(b"SuniPDFMeasurement") || dict.has(b"SuniPDFCount") {
                 return Err(EngineError::Other(
                     "annotation text cannot be edited".into(),
                 ));
@@ -2006,6 +2006,9 @@ fn detail_of(
     }
     if d.has(b"SuniPDFMeasurement") {
         detail.can_move = false;
+        detail.can_edit_text = false;
+    }
+    if d.has(b"SuniPDFCount") {
         detail.can_edit_text = false;
     }
     if get(pdf, d, b"StateModel").is_some() {

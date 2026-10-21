@@ -776,6 +776,7 @@ impl SuniApp {
                     modified,
                     has_signatures,
                 }) => {
+                    self.annotate.register.invalidate();
                     self.docinfo.inspection_epoch = None;
                     self.docinfo.inspection = None;
                     if self.edit.paragraph.as_ref().is_some_and(|d| d.applying) {
@@ -914,6 +915,11 @@ impl SuniApp {
                         None => {}
                     }
                 }
+                Response::AnnotationRegister {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_annotation_register(epoch, generation, result),
                 Response::Annotations {
                     page,
                     list,
@@ -989,6 +995,7 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    self.register_edit_failed(&e);
                     self.rich_annotation_failed(&e);
                     if let Some(draft) = self.edit.paragraph.as_mut().filter(|d| d.applying) {
                         draft.applying = false;
@@ -1252,6 +1259,7 @@ impl SuniApp {
 
     pub(crate) fn navigation_blocked(&self) -> bool {
         self.review.busy
+            || self.annotate.register.dialog_open()
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.processing.busy
@@ -1267,6 +1275,7 @@ impl SuniApp {
 
     fn close_must_wait(&self) -> bool {
         self.review.busy
+            || self.annotate.register.dialog_open()
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.ink_draft_active()
@@ -1572,6 +1581,7 @@ impl SuniApp {
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
         self.review.open
+            || self.annotate.register.dialog_open()
             || self.review.busy
             || self.processing.open
             || self.office.open
@@ -1695,6 +1705,7 @@ impl SuniApp {
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
             Command::RichAnnotations => self.open_rich_annotations(ctx),
+            Command::AnnotationRegister => self.open_annotation_register(),
             Command::EraseInkStrokes => self.open_ink_eraser(ctx),
             Command::OfficeToPdf => self.open_office(false),
             Command::ExportOffice => self.open_office(true),
@@ -1949,6 +1960,7 @@ impl SuniApp {
             | Command::ToolUnderline
             | Command::ToolStrikeOut
             | Command::ToolNote
+            | Command::ToolCount
             | Command::ToolSelectObject
             | Command::ToolAddText
             | Command::ToolAddImage
@@ -1967,6 +1979,9 @@ impl SuniApp {
                 self.annotate.clear_reading();
                 self.annotate.tool =
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
+                if command == Command::ToolCount {
+                    self.annotate.register.count_open = true;
+                }
                 self.annotate.drag = None;
                 if !matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit.selection = None;
@@ -3140,6 +3155,8 @@ impl eframe::App for SuniApp {
         self.text_prompt_dialog(&ctx);
         self.paragraph_dialog(&ctx);
         self.rich_annotation_dialog(&ctx);
+        self.annotation_register_dialog(&ctx);
+        self.count_marker_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
         self.adv_dialogs(&ctx);

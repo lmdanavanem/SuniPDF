@@ -187,7 +187,12 @@ pub static TABLE: [WsInfo; 14] = [
                 C::ToolAnnotLine,
                 C::ToolLink,
             ],
-            &[C::RichAnnotations, C::EraseInkStrokes],
+            &[
+                C::RichAnnotations,
+                C::ToolCount,
+                C::AnnotationRegister,
+                C::EraseInkStrokes,
+            ],
             &[C::ToggleComments, C::CopyText],
         ],
     },

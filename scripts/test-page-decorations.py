@@ -1,6 +1,8 @@
 """Exercise page decorations in the actual CLI with independent fixtures and pixels."""
 
 import argparse
+import csv
+import io
 import hashlib
 import json
 import math
@@ -22,12 +24,15 @@ def sha(path):
     return digest.hexdigest()
 
 
-def blank_pdf(rotation=0):
+def blank_pdf(rotation=0, annotation=None):
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
                b"<< /Type /Pages /Count 2 /Kids [3 0 R 4 0 R] >>"]
-    for _ in range(2):
+    for page in range(2):
+        annots = " /Annots [5 0 R]" if page == 0 and annotation is not None else ""
         objects.append(("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 400 600] "
-                        f"/CropBox [10 20 390 580] /Rotate {rotation} /Resources << >> >>").encode())
+                        f"/CropBox [10 20 390 580] /Rotate {rotation}{annots} /Resources << >> >>").encode())
+    if annotation is not None:
+        objects.append(annotation)
     data = bytearray(b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")
     offsets = [0]
     for index, obj in enumerate(objects, 1):
@@ -52,7 +57,7 @@ def main():
     assert sha(mutool) == "1ff045eeab80a108a39760578001a547a31e8b663905f064088c4b2f82cbcf7f"
     qpdf = Path(os.environ["SUNIPDF_QPDF"]).resolve(strict=True)
     assert sha(qpdf) == "1bdaf878f37eaffea1ea3c30591214c77636a0f2fc7432427516b6e22e36c0ff"
-    assert pillow_version == "12.3.0", pillow_version
+    assert pillow_version == "13.0.0", pillow_version
     started = time.monotonic()
     commands = 0
     cases = []
@@ -402,6 +407,107 @@ def main():
                         assert len(run(["annotations", out, "--password-env", f"SUNIPDF_DECORATION_{role}"], env=credentials)["pages"][0]["annotations"]) == 1
                         assert run(["measurements", measured, "--password-env", f"SUNIPDF_DECORATION_{role}"], env=credentials)["pages"][0]["measurements"][0]["value"] == 10
                 cases.append(f"image-stamp-and-measurement-aes{aes}-" + ("annotation-restriction-preserved" if restricted else "annotation-only-permission-both-credentials"))
+        def count_marker(document, name, group="Lights été 中文", page=1, point="80,90", size="18", success=True, extra=(), env=None):
+            out = root / (name + ".pdf")
+            result = run(["count", document, "--group", group, "--point", point, "--size", size,
+                          "--page", page, "--author", "=1+2", "--out", out, *extra], success, env=env)
+            assert out.exists() == success
+            return out, result
+
+        for rotation in [0, 90, 180, 270]:
+            document = root / f"count-source-{rotation}.pdf"
+            document.write_bytes(blank_pdf(rotation))
+            remember(document)
+            first, _ = count_marker(document, f"count-first-{rotation}")
+            second, _ = count_marker(first, f"count-second-{rotation}", page=2, point="140,150")
+            third, _ = count_marker(second, f"count-third-{rotation}", group="Sockets", point="180,190")
+            remember(third)
+            report = run(["annotation-register", third])
+            assert report["complete"] and report["matched_annotations"] == 3
+            assert len(report["source_sha256"]) == 64
+            groups = {record["group"]: record for record in report["counts"]}
+            assert groups["Lights été 中文"]["quantity"] == 2 and groups["Sockets"]["quantity"] == 1
+            assert len({marker["annotation_id"] for group in groups.values() for marker in group["markers"]}) == 3
+            assert report["rows"][0]["rect"] == [71, 81, 89, 99]
+            assert report["rows"][0]["author"] == "=1+2"
+            assert run(["annotation-register", third, "--page", 2])["counts"][0]["quantity"] == 1
+            regrouped = root / f"count-regrouped-{rotation}.pdf"
+            run(["annotation-fields", third, "--index", 0, "--business-status", "Ready for site", "--discipline", "Electrical",
+                 "--field", "Room=A101", "--field", "Spreadsheet-like text==2+3", "--count-group", "Sockets", "--out", regrouped])
+            remember(regrouped)
+            changed = run(["annotation-register", regrouped, "--query", "a101", "--sort", "author", "--descending"])
+            assert changed["matched_annotations"] == 1 and changed["counts"][0]["quantity"] == 1
+            row = changed["rows"][0]
+            assert row["annotation_id"] == report["rows"][0]["annotation_id"] and row["rect"] == report["rows"][0]["rect"]
+            assert row["review_status"] is None and row["fields"]["business_status"] == "Ready for site"
+            assert row["fields"]["custom"]["Spreadsheet-like text"] == "=2+3"
+            assert run(["annotation-register", regrouped, "--business-status", "Ready for site", "--discipline", "Electrical", "--kind", "Stamp"])["matched_annotations"] == 1
+            assert run(["annotation-register", regrouped, "--count-group", "Sockets"])["counts"][0]["quantity"] == 2
+            output = root / f"count-register-{rotation}.csv"
+            run(["annotation-register", regrouped, "--format", "csv", "--query", "A101", "--out", output])
+            rows = list(csv.DictReader(io.StringIO(output.read_text(encoding="utf-8"))))
+            assert len(rows) == 1 and rows[0]["author"] == "'=1+2" and rows[0]["quantity"] == "1"
+            assert json.loads(rows[0]["custom_fields"])["Room"] == "A101"
+            exported = root / f"count-register-{rotation}.json"
+            run(["annotation-register", regrouped, "--count-group", "Sockets", "--out", exported])
+            assert json.loads(exported.read_text(encoding="utf-8"))["counts"][0]["quantity"] == 2
+            checked = subprocess.run([str(qpdf), "--check", str(regrouped)], capture_output=True, timeout=30)
+            assert checked.returncode == 0, checked.stderr[:1000]
+            qpdf_checks += 1
+            png = root / f"count-pdfium-{rotation}.png"
+            run(["render", regrouped, "--page", 1, "--scale", 1, "--out", png])
+            independent = root / f"count-mupdf-{rotation}.png"
+            checked = subprocess.run([str(mutool), "draw", "-q", "-r", "72", "-o", str(independent), str(regrouped), "1"], capture_output=True, timeout=30)
+            assert checked.returncode == 0, checked.stderr[:1000]
+            independent_reader_checks += 1
+            for image_path in [png, independent]:
+                with Image.open(image_path) as image:
+                    r, g, b = image.convert("RGB").getpixel((80, image.height - 1 - 90))
+                    assert b > r + 70 and b > g + 50, (rotation, image_path.name, (r,g,b))
+            cases.append(f"manual-count-register-rotation-{rotation}-crop-identity-group-totals-fields-filters-csv-json-qpdf-mupdf")
+
+        for name, kwargs in [("nan-point", {"point":"NaN,90"}), ("outside", {"point":"1,1"}),
+                             ("small-marker", {"size":"7"}), ("nan-size", {"size":"NaN"}),
+                             ("empty-group", {"group":"  "}), ("invalid-page", {"page":3})]:
+            count_marker(source, "invalid-count-" + name, success=False, **kwargs)
+            cases.append("manual-count-invalid-" + name + "-refuses-copy")
+        for destination in [source, third]:
+            run(["count", source, "--point", "80,90", "--group", "Lights", "--out", destination, "--overwrite"], False)
+            run(["annotation-fields", third, "--index", 0, "--count-group", "Changed", "--out", destination, "--overwrite"], False)
+            run(["annotation-register", third, "--out", destination, "--overwrite"], False)
+        run(["annotation-fields", third, "--index", 0, "--field", "Room=A", "--field", "Room=B", "--out", root / "duplicate-field.pdf"], False)
+        assert not (root / "duplicate-field.pdf").exists()
+        run(["annotation-register", third, "--format", "csv"], False)
+        cases.append("manual-count-register-refuses-overwrite-original-duplicate-fields-and-implicit-csv")
+        for namespace, value in [("SuniPDFCount", {"version":9,"group":"Lights"}), ("SuniPDFRegister", {"version":9,"fields":{}})]:
+            document = root / f"unknown-{namespace}.pdf"
+            payload = json.dumps(value).encode().hex()
+            annotation = f"<< /Type /Annot /Subtype /Stamp /Rect [70 80 88 98] /NM (SuniPDF-QA) /{namespace} <{payload}> >>".encode()
+            document.write_bytes(blank_pdf(annotation=annotation))
+            remember(document)
+            run(["annotation-register", document], False)
+            cases.append("manual-count-register-refuses-unknown-" + namespace)
+        run(["annotation-register", unreadable], False)
+        cases.append("manual-count-register-unreadable-annotations-never-look-like-zero")
+        for aes in [128, 256]:
+            for restricted in [False, True]:
+                encrypted = root / f"annotation-protected-{aes}-{restricted}.pdf"
+                out, result = count_marker(encrypted, f"count-aes-{aes}-{restricted}", extra=["--password-env", "SUNIPDF_DECORATION_USER"], success=not restricted, env=credentials)
+                if not restricted:
+                    assert result["encrypted"]
+                    for role in ["USER","OWNER"]:
+                        assert run(["annotation-register", out, "--password-env", f"SUNIPDF_DECORATION_{role}"], env=credentials)["counts"][0]["quantity"] == 1
+                    regrouped = root / f"regrouped-aes-{aes}.pdf"
+                    run(["annotation-fields", out, "--index", 0, "--count-group", "Sockets", "--out", regrouped, "--password-env", "SUNIPDF_DECORATION_USER"], env=credentials)
+                    assert run(["annotation-register", regrouped, "--password-env", "SUNIPDF_DECORATION_OWNER"], env=credentials)["counts"][0]["group"] == "Sockets"
+                cases.append(f"manual-count-register-aes{aes}-" + ("restriction-preserved" if restricted else "annotator-only-both-credentials"))
+            no_copy = root / f"count-no-copy-{aes}.pdf"
+            run(["protect", source, "--user-password-env", "SUNIPDF_DECORATION_USER", "--owner-password-env", "SUNIPDF_DECORATION_OWNER",
+                 "--out", no_copy, "--no-copy"] + (["--aes128"] if aes==128 else []), env=credentials)
+            remember(no_copy)
+            out, _ = count_marker(no_copy, f"count-no-copy-marked-{aes}", extra=["--password-env", "SUNIPDF_DECORATION_USER"], env=credentials)
+            run(["annotation-register", out, "--password-env", "SUNIPDF_DECORATION_USER"], False, env=credentials)
+            cases.append(f"manual-count-register-aes{aes}-copy-restriction-preserved")
         assert all(sha(path) == digest for path, digest in sources.items())
         assert len(cases) == len(set(cases))
     report = dict(gate="page-decorations-v1", status="passed", completed_cases=len(cases), cases=cases,

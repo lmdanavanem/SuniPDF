@@ -135,6 +135,8 @@ pub enum Command {
     ToolAnnotLine,
     ToolLink,
     RichAnnotations,
+    ToolCount,
+    AnnotationRegister,
     EraseInkStrokes,
     /// Caviardage irréversible : marquer des zones, marquer un texte, effacer les marques, appliquer.
     ToolRedact,
@@ -209,6 +211,22 @@ pub const REGISTRY: &[CommandInfo] = &[
         None,
         true,
         Edit
+    ),
+    cmd!(
+        ToolCount,
+        "annotations.count",
+        "register.count_tool",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        AnnotationRegister,
+        "annotations.register",
+        "register.title",
+        None,
+        true,
+        View
     ),
     cmd!(
         EraseInkStrokes,

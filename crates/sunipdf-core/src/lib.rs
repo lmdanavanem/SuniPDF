@@ -10,6 +10,7 @@
 pub mod annot;
 pub mod annot_rich;
 pub mod annot_write;
+pub mod annotation_register;
 mod appearance;
 pub mod bookmarks;
 pub mod boxes;

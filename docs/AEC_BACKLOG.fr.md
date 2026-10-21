@@ -10,11 +10,13 @@ Ce backlog reprend les besoins métier du texte fourni, sans annoncer de parité
 
 ## Base existante et statuts
 
+Le lot 0.41.0 ajoute [comptages manuels et tableau des annotations](MARKUP_REGISTER.fr.md) : repères persistants par clic, groupes et totaux reliés aux identités, changement de groupe, déplacement/suppression/Annuler, recherche/filtres/navigation sur toutes les pages, champs métier distincts et exports CSV/JSON. AEC-005 est implémenté dans les limites documentées, en attente de qualification de release. AEC-004 reste partiel : tri par clé personnalisée, colonnes typées et normalisation des dates restent ouverts. Cloud et collaboration restent reportés.
+
 L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, les formulaires, la protection, la récupération et les opérations locales existent dans les limites de la [matrice](FEATURE_MATRIX.fr.md). La comparaison et la recherche multi-PDF existent ; le recalage de plans, les nuages automatiques et la reconnaissance de symboles restent distincts. Les modèles de décoration de la 0.39 et les tampons image du lot 0.40 ne constituent pas encore une bibliothèque partagée d'annotations.
 
 Le lot local 0.40.0 ajoute aussi calibration sur deux points, cinq types de mesures et données JSON. [Guide et limites](MEASUREMENTS.fr.md). Ce progrès partiel sur AEC-001/002/003/026 ne ferme pas les cartes : saisie de coordonnées et échelles par annotation ne réalisent ni recalcul global de page, ni manipulation directe, vues multi-échelles ou corpus complet.
 
-P1 : fondations prioritaires. P2 : extensions métier. P3 : intégrations ou infrastructures distinctes. Les 26 cartes restent **À planifier** tant que leurs critères complets ne sont pas démontrés. Les progrès partiels ne ferment aucune carte ; les [critères 1.0](RELEASE_1.0_CRITERIA.fr.md) restent indépendants.
+P1 : fondations prioritaires. P2 : extensions métier. P3 : intégrations ou infrastructures distinctes. Les cartes restent ouvertes tant que leurs critères complets ne sont pas démontrés ; le CSV distingue implémentation et qualification. Les progrès partiels ne ferment aucune carte ; les [critères 1.0](RELEASE_1.0_CRITERIA.fr.md) restent indépendants.
 
 | ID | Priorité | Fonction prévue | Critères de réalisation | Dépendances |
 |---|---|---|---|---|

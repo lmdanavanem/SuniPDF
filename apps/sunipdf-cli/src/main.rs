@@ -4,6 +4,7 @@
 mod annot_cmd;
 mod feature_cmd;
 mod password_input;
+mod register_cmd;
 mod safe_output;
 mod v010_cmd;
 
@@ -36,6 +37,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Place one persistent manual count marker in a new PDF copy.
+    Count(register_cmd::CountArgs),
+    /// Filter/export the document's markup register and count totals, without editing the PDF.
+    AnnotationRegister(register_cmd::RegisterArgs),
+    /// Replace business/custom fields or regroup a count marker in a new PDF copy.
+    AnnotationFields(register_cmd::FieldsArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -1522,6 +1529,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 serde_json::json!({"out":out,"decorated":count,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
             )
         }
+        Command::Count(args) => register_cmd::count(&engine, args),
+        Command::AnnotationRegister(args) => register_cmd::register(&engine, args),
+        Command::AnnotationFields(args) => register_cmd::fields(&engine, args),
         Command::ImageStamp {
             file,
             image,
@@ -2867,6 +2877,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 /// Chemin de sortie d'une commande qui écrit un seul fichier.
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
+        Command::Count(args) => Some(&args.out),
+        Command::AnnotationFields(args) => Some(&args.out),
+        Command::AnnotationRegister(args) => args.out.as_deref(),
         Command::Merge { out, .. }
         | Command::BookmarkAdd { out, .. }
         | Command::BookmarkRename { out, .. }
@@ -3508,6 +3521,82 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn count_register_commands_require_explicit_output_and_route_credentials_and_filters() {
+        let count = parse_cli([
+            "sunipdf-cli",
+            "count",
+            "plan.pdf",
+            "--group",
+            "Lights",
+            "--point",
+            "80,90",
+            "--out",
+            "copy.pdf",
+            "--password-env",
+            "TEST_PDF_CREDENTIAL",
+        ])
+        .unwrap();
+        assert!(
+            matches!(count.command,Command::Count(args) if args.group=="Lights" && args.size==18.0 && args.page==1)
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "count",
+            "plan.pdf",
+            "--group",
+            "Lights",
+            "--point",
+            "80,90"
+        ])
+        .is_err());
+        let report = parse_cli([
+            "sunipdf-cli",
+            "annotation-register",
+            "plan.pdf",
+            "--page",
+            "2",
+            "--query",
+            "A101",
+            "--count-group",
+            "Lights",
+            "--sort",
+            "count_group",
+            "--descending",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert!(
+            matches!(report.command,Command::AnnotationRegister(args) if args.page==Some(2) && args.query=="A101" && args.descending)
+        );
+        let fields = parse_cli([
+            "sunipdf-cli",
+            "annotation-fields",
+            "plan.pdf",
+            "--index",
+            "0",
+            "--field",
+            "Room=A101",
+            "--count-group",
+            "Sockets",
+            "--out",
+            "copy.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&fields.command),
+            Some(std::path::Path::new("copy.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "annotation-register",
+            "plan.pdf",
+            "--sort",
+            "arbitrary"
+        ])
+        .is_err());
     }
 
     #[test]
