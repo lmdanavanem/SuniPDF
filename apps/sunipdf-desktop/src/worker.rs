@@ -425,6 +425,18 @@ pub enum EditOp {
         index: usize,
         text: String,
     },
+    AddCountMarker {
+        page: usize,
+        point: (f32, f32),
+        size: f32,
+        group: String,
+        author: Option<String>,
+    },
+    SetAnnotationRegisterFields {
+        target: sunipdf_core::annotation_register::RegisterTarget,
+        fields: sunipdf_core::annotation_register::RegisterFields,
+        count_group: Option<String>,
+    },
     UpdateFreeText {
         page: usize,
         index: usize,
@@ -627,6 +639,10 @@ pub enum Request {
         page: usize,
         detailed: bool,
     },
+    AnnotationRegister {
+        epoch: u64,
+        generation: u64,
+    },
     /// Zones de lien de la page (cliquables dans la vue).
     Links {
         page: usize,
@@ -819,6 +835,11 @@ pub enum Response {
         page: usize,
         list: Vec<AnnotationInfo>,
         details: Option<Vec<AnnotDetail>>,
+    },
+    AnnotationRegister {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::annotation_register::AnnotationRegister, EngineError>,
     },
     Links {
         page: usize,
@@ -1452,6 +1473,20 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         EditOp::SetAnnotationText { page, index, text } => {
             doc.set_annotation_contents(page, index, &text)
         }
+        EditOp::AddCountMarker {
+            page,
+            point,
+            size,
+            group,
+            author,
+        } => doc
+            .add_count_marker(page, point, size, &group, author.as_deref())
+            .map(|_| ()),
+        EditOp::SetAnnotationRegisterFields {
+            target,
+            fields,
+            count_group,
+        } => doc.set_annotation_register_fields(&target, &fields, count_group.as_deref()),
         EditOp::UpdateFreeText {
             page,
             index,
@@ -2533,6 +2568,15 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &state.document else { continue };
                 Response::Bookmarks(doc.bookmarks())
             }
+            Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.annotation_register()),
+            },
             Request::Annotations { page, detailed } => {
                 let Some(doc) = &state.document else { continue };
                 let list = doc.annotations(page).unwrap_or_default();
@@ -2689,6 +2733,114 @@ mod tests {
         signatures_bind_to_loaded_saved_and_resumed_bytes(&worker);
         reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
         inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
+        count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
+    }
+
+    fn count_register_edits_have_one_undo_and_stale_edits_add_no_history(worker: &Worker) {
+        use sunipdf_core::annotation_register::{RegisterFields, RegisterFilter, RegisterSort};
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let read = || {
+            worker.send(Request::AnnotationRegister {
+                epoch: 71,
+                generation: 4,
+            });
+            match next_response(worker) {
+                Response::AnnotationRegister {
+                    epoch: 71,
+                    generation: 4,
+                    result: Ok(report),
+                } => report,
+                _ => panic!("register response"),
+            }
+        };
+        assert!(read().rows.is_empty());
+        worker.send(Request::Edit(EditOp::AddCountMarker {
+            page: 0,
+            point: (80.0, 90.0),
+            size: 18.0,
+            group: "Lights".into(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        let report = read();
+        assert_eq!(
+            report.json(&RegisterFilter::default(), RegisterSort::Page, false)["counts"][0]
+                ["quantity"],
+            1
+        );
+        let id = report.rows[0].annotation_id.clone();
+        let target = report.target(&report.rows[0]);
+        worker.send(Request::Edit(EditOp::SetAnnotationRegisterFields {
+            target: target.clone(),
+            fields: RegisterFields {
+                business_status: Some("Installed".into()),
+                ..Default::default()
+            },
+            count_group: Some("Sockets".into()),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows[0].annotation_id, id);
+        assert_eq!(read().rows[0].count_group.as_deref(), Some("Sockets"));
+        worker.send(Request::Edit(EditOp::SetAnnotationRegisterFields {
+            target,
+            fields: RegisterFields::default(),
+            count_group: Some("Wrong stale edit".into()),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(
+            read().rows[0].count_group.as_deref(),
+            Some("Lights"),
+            "failed stale edit did not create history"
+        );
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                ..
+            })
+        ));
+        assert!(read().rows.is_empty());
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows[0].annotation_id, id);
+        worker.send(Request::Edit(EditOp::DeleteAnnotationThread {
+            page: 0,
+            index: 0,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(read().rows.is_empty());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows[0].annotation_id, id);
     }
 
     fn next_response(worker: &Worker) -> Response {

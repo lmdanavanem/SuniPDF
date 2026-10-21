@@ -565,7 +565,7 @@ impl<'a> Document<'a> {
             .get(b"Resources")
             .map_err(lopdf_err)?
             .clone();
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let imported = crate::forms::deep_copy(&source, pdf, &HashMap::new(), &mut HashMap::new(), 0, &resources, 32)?;
             let (a, b) = geo.vec_to_user(1.0, 0.0);
             let (c, d) = geo.vec_to_user(0.0, 1.0);
@@ -674,7 +674,7 @@ impl<'a> Document<'a> {
         rect.bottom -= margin;
         rect.right += margin;
         rect.top += margin;
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (w, h) = checked_rect(geo, rect)?;
             let mut annotation = rich_base(
                 if closed { "Polygon" } else { "PolyLine" },
@@ -728,7 +728,7 @@ impl<'a> Document<'a> {
         kind: StampKind,
         author: Option<&str>,
     ) -> Result<usize, EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (w, h) = checked_rect(geo, rect)?;
             if w < 40.0 || h < 16.0 {
                 return Err(bad());
@@ -766,7 +766,7 @@ impl<'a> Document<'a> {
         {
             return Err(bad());
         }
-        self.edit_pdf(page_index, |pdf,page,geo| { let (w,h)=checked_rect(geo,rect)?; if w<12.0 || h<12.0 || w>96.0 || h>96.0 { return Err(bad()); } let embedded=pdf.add_object(Stream::new(dictionary! {"Type"=>"EmbeddedFile", "Params"=>dictionary! {"Size"=>bytes.len() as i64}},bytes.to_vec())); let fallback:String=filename.chars().map(|c| if c.is_ascii() {c} else {'_'}).collect(); let spec=pdf.add_object(dictionary! {"Type"=>"Filespec", "F"=>Object::string_literal(fallback), "UF"=>lopdf::text_string(filename), "EF"=>dictionary! {"F"=>embedded,"UF"=>embedded}}); let mut annotation=rich_base("FileAttachment",rect,geo,author)?; annotation.set("Name",Object::Name(b"Paperclip".to_vec())); annotation.set("FS",spec); annotation.set("Contents",lopdf::text_string(filename)); annot_write::push_annotation(pdf,page,annotation,Some(annot_write::ap_stream(&crate::appearance::attachment_ap(w,h),geo))) })
+        self.edit_annotation_pdf(page_index, |pdf,page,geo| { let (w,h)=checked_rect(geo,rect)?; if w<12.0 || h<12.0 || w>96.0 || h>96.0 { return Err(bad()); } let embedded=pdf.add_object(Stream::new(dictionary! {"Type"=>"EmbeddedFile", "Params"=>dictionary! {"Size"=>bytes.len() as i64}},bytes.to_vec())); let fallback:String=filename.chars().map(|c| if c.is_ascii() {c} else {'_'}).collect(); let spec=pdf.add_object(dictionary! {"Type"=>"Filespec", "F"=>Object::string_literal(fallback), "UF"=>lopdf::text_string(filename), "EF"=>dictionary! {"F"=>embedded,"UF"=>embedded}}); let mut annotation=rich_base("FileAttachment",rect,geo,author)?; annotation.set("Name",Object::Name(b"Paperclip".to_vec())); annotation.set("FS",spec); annotation.set("Contents",lopdf::text_string(filename)); annot_write::push_annotation(pdf,page,annotation,Some(annot_write::ap_stream(&crate::appearance::attachment_ap(w,h),geo))) })
     }
 
     pub fn apply_rich_annotation(

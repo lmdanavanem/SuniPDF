@@ -86,7 +86,7 @@ impl Document<'_> {
             rgb.extend_from_slice(&pixel.0[..3]);
             alpha.push(pixel[3]);
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let image_dict = dictionary! {
                 "Type" => "XObject", "Subtype" => "Image",
                 "Width" => rgba.width() as i64, "Height" => rgba.height() as i64,

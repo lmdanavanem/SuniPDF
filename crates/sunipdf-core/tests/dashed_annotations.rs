@@ -318,7 +318,7 @@ fn protected_round_trips(engine: &Engine) {
                     allow_print: false,
                     allow_copy: false,
                     allow_modify: false,
-                    allow_annotate: false,
+                    allow_annotate: true,
                     aes256,
                 },
             )

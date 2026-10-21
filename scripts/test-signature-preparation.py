@@ -28,7 +28,7 @@ def main():
     cli = args.cli.resolve(strict=True)
     qpdf = Path(os.environ["SUNIPDF_QPDF"]).resolve(strict=True)
     assert sha(qpdf) == "1bdaf878f37eaffea1ea3c30591214c77636a0f2fc7432427516b6e22e36c0ff"
-    assert pillow_version == "12.3.0", pillow_version
+    assert pillow_version == "13.0.0", pillow_version
     started = time.monotonic()
     commands = 0
     cases = []

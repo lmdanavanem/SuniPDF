@@ -1738,6 +1738,7 @@ impl SuniApp {
                 self.annotate.selection = None;
                 match self.annotate.tool {
                     crate::annotate::Tool::Note
+                    | crate::annotate::Tool::Count
                     | crate::annotate::Tool::AddText
                     | crate::annotate::Tool::AddImage => {
                         self.finish_drag(crate::annotate::Drag {
@@ -1752,7 +1753,9 @@ impl SuniApp {
                 }
             }
             DragEvent::DoubleClick(pt) => {
-                if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
+                if self.annotate.tool == crate::annotate::Tool::Count {
+                    self.place_count_marker(page, pt);
+                } else if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit_double_click(page, pt);
                 } else {
                     self.adv_double_click(page, pt);

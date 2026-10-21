@@ -328,6 +328,7 @@ impl Document<'_> {
         rects: &[PointRect],
         rgb: (u8, u8, u8),
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         if rects.is_empty() {
             return Err(EngineError::Other("empty selection".into()));
         }
@@ -373,6 +374,7 @@ impl Document<'_> {
         y: f32,
         text: &str,
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         let mut page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;
         let mut note = page.annotations_mut().create_text_annotation(text)?;
@@ -432,6 +434,7 @@ impl Document<'_> {
         page_index: usize,
         index: usize,
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         let mut page = self.page_handle(page_index)?;
         {
             let annotations = page.annotations_mut();
