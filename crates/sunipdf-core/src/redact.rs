@@ -299,6 +299,7 @@ impl<'a> Document<'a> {
         appearance: &RedactAppearance,
         author: Option<&str>,
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         let groups = group_marks(marks, self.page_count())?;
         if author.is_some_and(|a| a.len() > 4096 || a.chars().any(char::is_control)) {
             return Err(EngineError::Other("invalid redaction author".into()));
@@ -309,7 +310,7 @@ impl<'a> Document<'a> {
         let existing = self.redaction_marks()?;
         let mut scratch = self.redaction_scratch(self.snapshot()?)?;
         for (page, rects) in groups {
-            scratch.edit_pdf(page, |pdf, page_id, geo| {
+            scratch.edit_annotation_pdf(page, |pdf, page_id, geo| {
                 for rect in rects {
                     if existing.contains(&RedactMark { page, rect }) {
                         continue;

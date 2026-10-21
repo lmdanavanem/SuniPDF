@@ -402,7 +402,7 @@ impl Document<'_> {
             right: point.0 + size / 2.0,
             top: point.1 + size / 2.0,
         };
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             checked_rect(geo, rect)?;
             let mut dict = rich_base("Stamp", rect, geo, author)?;
             dict.set("Name", Object::Name(b"SuniPDFCount".to_vec()));
@@ -623,7 +623,7 @@ impl Document<'_> {
             ));
         }
         let page = target.page.checked_sub(1).ok_or_else(bad)?;
-        self.edit_pdf(page, |pdf, page, _| {
+        self.edit_annotation_pdf(page, |pdf, page, _| {
             let (slot, mut dict) = load_annot(pdf, page, target.index)?;
             editable(&dict)?;
             if let Some(previous) = stored::<StoredFields>(&dict, b"SuniPDFRegister", &mut 0)? {

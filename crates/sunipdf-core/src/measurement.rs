@@ -340,7 +340,7 @@ impl Document<'_> {
             "{} 14 re f\n0.05 0.25 0.75 rg BT /Helv 10 Tf 4 4 Td ({label}) Tj ET Q\n",
             fmt_num(label_width - 2.0)
         ));
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             push_annotation(
                 pdf,
                 page,

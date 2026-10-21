@@ -254,6 +254,10 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
                     Some("Sockets"),
                 )
                 .unwrap();
+            encrypted.move_annotation(0, index, 3.0, 4.0).unwrap();
+            encrypted
+                .set_review_status(0, index, ReviewStatus::Accepted, None)
+                .unwrap();
             let bytes = encrypted.snapshot().unwrap();
             for password in [&user, &owner] {
                 let reopened = engine
@@ -292,6 +296,74 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
     doc.add_count_marker(0, (80.0, 90.0), 18.0, "Lights", None)
         .unwrap();
     let snapshot = doc.snapshot().unwrap();
+    for aes256 in [false, true] {
+        let user = credential();
+        let owner = credential();
+        let bytes = security::protect(
+            &snapshot,
+            None,
+            &Protection {
+                user_password: user.clone(),
+                owner_password: owner,
+                aes256,
+                allow_modify: false,
+                allow_annotate: false,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let mut restricted = engine
+            .open_bytes(
+                bytes,
+                Some(&user),
+                Path::new("existing-count-no-annotation.pdf"),
+            )
+            .unwrap();
+        let before = restricted.annotation_register().unwrap();
+        let index = before.rows[0].index;
+        assert!(
+            matches!(
+                restricted.move_annotation(0, index, 10.0, 10.0),
+                Err(EngineError::SecurityRestricted)
+            ),
+            "moving an existing count requires annotation permission"
+        );
+        assert!(
+            matches!(
+                restricted.delete_annotation_thread(0, index),
+                Err(EngineError::SecurityRestricted)
+            ),
+            "deleting an existing count requires annotation permission"
+        );
+        assert!(matches!(
+            restricted.add_reply(0, index, "Reply", None),
+            Err(EngineError::SecurityRestricted)
+        ));
+        assert!(matches!(
+            restricted.set_review_status(0, index, ReviewStatus::Accepted, None),
+            Err(EngineError::SecurityRestricted)
+        ));
+        assert!(matches!(
+            restricted.set_annotation_register_fields(
+                &before.target(&before.rows[0]),
+                &RegisterFields::default(),
+                Some("Changed")
+            ),
+            Err(EngineError::SecurityRestricted)
+        ));
+        assert!(matches!(
+            restricted.delete_annotation(0, index),
+            Err(EngineError::SecurityRestricted)
+        ));
+        assert!(matches!(
+            restricted.add_note(0, 80.0, 90.0, "Note"),
+            Err(EngineError::SecurityRestricted)
+        ));
+        let after = restricted.annotation_register().unwrap();
+        assert_eq!(after.rows.len(), before.rows.len());
+        assert_eq!(after.rows[0].rect, before.rows[0].rect);
+        assert_eq!(after.rows[0].count_group, before.rows[0].count_group);
+    }
     for fault in 0..7 {
         let mut pdf = lopdf::Document::load_mem(&snapshot).unwrap();
         let page = pdf.get_pages()[&1];

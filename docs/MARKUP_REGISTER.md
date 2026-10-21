@@ -33,7 +33,7 @@ JSON schema `sunipdf-annotation-register`, version 1, records the current in-mem
 
 CSV contains one row per matching annotation, source revision and optional `quantity=1` for supported count markers. Empty cells mean unknown; JSON preserves null versus empty text. All cells are quoted. Leading spreadsheet formula prefixes are escaped with an apostrophe, including prefixes after whitespace, control characters or a BOM. Custom fields occupy a JSON-object cell. CSV has no synthetic subtotal rows; JSON contains totals and marker references.
 
-Existing output files and originals are never replaced, even after a system overwrite prompt or with CLI `--overwrite`; choose a new path. Register viewing/export requires PDF copy permission. Adding markers requires annotation permission. AES-128/AES-256 protection is retained, including when general modification is denied.
+Existing output files and originals are never replaced, even after a system overwrite prompt or with CLI `--overwrite`; choose a new path. Register viewing/export requires PDF copy permission. Adding, moving, deleting, regrouping and replying to annotations require annotation permission. Shared annotation writers enforce this separately from page-geometry maintenance. AES-128/AES-256 protection is retained, including when general modification is denied.
 
 ```powershell
 sunipdf-cli count plan.pdf --group Lights --point 120,90 --page 1 --size 18 --out counted.pdf

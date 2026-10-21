@@ -1253,7 +1253,23 @@ impl Document<'_> {
         })
     }
 
-    /// Instantané → lopdf → rechargement PDFium. Un document chiffré garde son chiffrement.
+    pub(crate) fn require_annotation_permission(&self) -> Result<(), EngineError> {
+        if !self.properties().can_annotate {
+            return Err(EngineError::SecurityRestricted);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn edit_annotation_pdf<R>(
+        &mut self,
+        page_index: usize,
+        edit: impl FnOnce(&mut lopdf::Document, ObjectId, &PageGeometry) -> Result<R, EngineError>,
+    ) -> Result<R, EngineError> {
+        self.require_annotation_permission()?;
+        self.edit_pdf(page_index, edit)
+    }
+
+    /// Snapshot edit for page-geometry maintenance; annotation writers use `edit_annotation_pdf`.
     pub(crate) fn edit_pdf<R>(
         &mut self,
         page_index: usize,
@@ -1285,7 +1301,7 @@ impl Document<'_> {
             Model::Line { .. } => "Line",
             Model::FreeText { .. } => "FreeText",
         };
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let mut dict = base_annotation(subtype, author)?;
             let mut parsed = Parsed {
                 model,
@@ -1338,7 +1354,7 @@ impl Document<'_> {
         path: &[(f32, f32)],
         radius: f32,
     ) -> Result<(), EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (w, h) = geo.display_size();
             if path.iter().any(|&(x, y)| {
                 !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 || x > w || y > h
@@ -1449,7 +1465,7 @@ impl Document<'_> {
         if rect.right - rect.left < 2.0 || rect.top - rect.bottom < 2.0 {
             return Err(EngineError::Other("invalid rectangle".into()));
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let mut dict = base_annotation("Link", None)?;
             dict.set("Rect", rect_obj(geo.rect_to_user(rect)));
             dict.set("Border", nums(&[0.0, 0.0, 0.0]));
@@ -1466,7 +1482,7 @@ impl Document<'_> {
         target: &LinkTarget,
     ) -> Result<(), EngineError> {
         let target_geo = self.link_target_geometry(target)?;
-        self.edit_pdf(page_index, |pdf, page, _| {
+        self.edit_annotation_pdf(page_index, |pdf, page, _| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             if subtype_of(&dict) != "Link" {
                 return Err(EngineError::Other("annotation is not a link".into()));
@@ -1507,7 +1523,7 @@ impl Document<'_> {
         if !(dx.is_finite() && dy.is_finite()) {
             return Err(EngineError::Other("invalid offset".into()));
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             let st = subtype_of(&dict);
             let c = caps(&st, flags(&dict), text_of(pdf, &dict, b"NM").as_deref());
@@ -1553,7 +1569,7 @@ impl Document<'_> {
         if to.right - to.left < 4.0 || to.top - to.bottom < 4.0 {
             return Err(EngineError::Other("invalid rectangle".into()));
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             if subtype_of(&dict) == "Link" {
@@ -1582,7 +1598,7 @@ impl Document<'_> {
         style: &AnnotStyle,
     ) -> Result<(), EngineError> {
         let mut markup = false;
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
@@ -1633,7 +1649,7 @@ impl Document<'_> {
         text: &str,
         style: &FreeTextStyle,
     ) -> Result<(), EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let mut parsed = parse_ours(pdf, &dict, geo)?;
@@ -1659,7 +1675,7 @@ impl Document<'_> {
         index: usize,
         text: &str,
     ) -> Result<(), EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
@@ -1693,7 +1709,7 @@ impl Document<'_> {
         page_index: usize,
         index: usize,
     ) -> Result<usize, EngineError> {
-        self.edit_pdf(page_index, |pdf, page, _geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, _geo| {
             let entries = annots_entries(pdf, page);
             let ids: Vec<Option<ObjectId>> =
                 entries.iter().map(|e| e.as_reference().ok()).collect();
@@ -1781,7 +1797,7 @@ impl Document<'_> {
         author: Option<&str>,
         fill: impl FnOnce(&mut Dictionary),
     ) -> Result<usize, EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, pdict) = load_annot(pdf, page, parent)?;
             let Slot::Indirect(parent_id) = slot else {
                 return Err(EngineError::Other("annotation cannot be replied to".into()));

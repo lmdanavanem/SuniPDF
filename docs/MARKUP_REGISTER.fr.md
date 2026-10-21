@@ -33,7 +33,7 @@ Le JSON `sunipdf-annotation-register`, version 1, conserve SHA256 de l’instant
 
 CSV contient une ligne par annotation, la révision source et éventuellement `quantity=1`. Une cellule vide représente une valeur inconnue ; JSON distingue null et texte vide. Toutes les cellules sont entre guillemets. Une apostrophe neutralise les préfixes de formule, y compris après espaces, contrôles ou BOM. Les champs personnalisés sont dans une cellule JSON. CSV ne crée pas de fausses annotations pour les sous-totaux ; les totaux et références sont dans JSON.
 
-Aucun fichier existant ou original n’est remplacé, même après une confirmation système ou avec `--overwrite` : choisissez un nouveau chemin. Le tableau nécessite le droit de copie PDF ; ajouter des repères nécessite le droit d’annotation. AES-128/AES-256 est conservé, y compris lorsque la modification générale est interdite.
+Aucun fichier existant ou original n’est remplacé, même après une confirmation système ou avec `--overwrite` : choisissez un nouveau chemin. Le tableau nécessite le droit de copie PDF ; ajout, déplacement, suppression, changement de groupe et réponses nécessitent le droit d’annotation. Les écritures communes vérifient ce droit séparément des opérations de géométrie de page. AES-128/AES-256 est conservé, y compris lorsque la modification générale est interdite.
 
 ```powershell
 sunipdf-cli count plan.pdf --group Luminaires --point 120,90 --page 1 --size 18 --out compte.pdf
