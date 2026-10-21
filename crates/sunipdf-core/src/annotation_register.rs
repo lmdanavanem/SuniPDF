@@ -431,7 +431,13 @@ impl Document<'_> {
         let mut rows = Vec::new();
         let mut budget = 0;
         let mut names = HashMap::<String, usize>::new();
-        for (page_no, page_id) in pdf.get_pages() {
+        let pages = pdf.get_pages();
+        if pages.len() != self.page_count()
+            || pages.keys().copied().ne(1..=self.page_count() as u32)
+        {
+            return Err(bad());
+        }
+        for (page_no, page_id) in pages {
             let page = page_no as usize;
             let geo = self.page_geometry(page - 1)?;
             let page_dict = pdf.get_dictionary(page_id).map_err(lopdf_err)?;
@@ -455,6 +461,9 @@ impl Document<'_> {
             for (index, entry) in entries.iter().enumerate() {
                 let (_, obj) = pdf.dereference(entry).map_err(lopdf_err)?;
                 let dict = obj.as_dict().map_err(lopdf_err)?;
+                pdf.dereference(dict.get(b"Subtype").map_err(lopdf_err)?)
+                    .and_then(|(_, v)| v.as_name())
+                    .map_err(lopdf_err)?;
                 let kind = text(&pdf, dict, b"Subtype", &mut budget)?.ok_or_else(bad)?;
                 let annotation_id = text(&pdf, dict, b"NM", &mut budget)?;
                 if let Some(id) = &annotation_id {
@@ -511,6 +520,9 @@ impl Document<'_> {
                     None => None,
                     Some(v) => {
                         validate_count_group(&v.group)?;
+                        pdf.dereference(dict.get(b"NM").map_err(lopdf_err)?)
+                            .and_then(|(_, v)| v.as_str())
+                            .map_err(lopdf_err)?;
                         if v.version != 1
                             || kind != "Stamp"
                             || is_reply

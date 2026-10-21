@@ -364,7 +364,7 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
         assert_eq!(after.rows[0].rect, before.rows[0].rect);
         assert_eq!(after.rows[0].count_group, before.rows[0].count_group);
     }
-    for fault in 0..7 {
+    for fault in 0..9 {
         let mut pdf = lopdf::Document::load_mem(&snapshot).unwrap();
         let page = pdf.get_pages()[&1];
         let entries = pdf
@@ -397,6 +397,14 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
             5 => pdf.get_dictionary_mut(page).unwrap().set(
                 "Annots",
                 lopdf::Object::Array(vec![entries[0].clone(), entries[0].clone()]),
+            ),
+            7 => pdf
+                .get_dictionary_mut(id)
+                .unwrap()
+                .set("Subtype", lopdf::Object::string_literal("Stamp")),
+            8 => pdf.get_dictionary_mut(id).unwrap().set(
+                "NM",
+                lopdf::Object::Name(b"SuniPDF-invalid-identity".to_vec()),
             ),
             _ => pdf.get_dictionary_mut(page).unwrap().set(
                 "Annots",
