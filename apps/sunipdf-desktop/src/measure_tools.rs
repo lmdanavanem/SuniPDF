@@ -845,7 +845,7 @@ mod tests {
                 &app.document.as_ref().unwrap().info.page_sizes,
                 0,
                 k,
-                app.view.inner.size(),
+                egui::vec2(1600.0, 1000.0),
                 crate::view::ViewMode::TwoPage,
             );
             let offset = layout.page_rect(1).min - layout.page_rect(visible_page).min;
