@@ -388,12 +388,17 @@ impl SuniApp {
             self.annotate.measure.error = Some("measure.same_page");
             return;
         }
+        if double_click && matches!(self.annotate.measure.gesture, Gesture::Draw { .. }) {
+            // The first release already added the final vertex. Mouse jitter on the
+            // second release must not create a tiny extra segment or closing edge.
+            self.finish_measurement(ctx);
+            return;
+        }
         self.annotate.measure.push_point(page, point, shift);
         let state = &self.annotate.measure;
         if matches!(&state.gesture, Gesture::Draw { points, .. }
             if (state.kind == MeasurementKind::Length && points.len() == 2)
-            || (state.kind == MeasurementKind::Angle && points.len() == 3)
-            || double_click)
+            || (state.kind == MeasurementKind::Angle && points.len() == 3))
         {
             self.finish_measurement(ctx);
         }
@@ -772,6 +777,42 @@ mod tests {
         assert!(!state.push_point(0, (120.0, 120.0), false));
         assert_eq!(state.points().len(), 3);
         assert!((state.ready_result().unwrap().1.value().unwrap() - 50.0).abs() < 1e-8);
+    }
+
+    #[test]
+    fn double_click_jitter_finishes_the_captured_polygon_without_appending_a_vertex() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes.push(size);
+        let ctx = egui::Context::default();
+        app.open_measurements(&ctx);
+        app.annotate.measure = calibrated();
+        app.annotate.measure.advance_epoch(app.view.epoch);
+        app.annotate.measure.kind = MeasurementKind::Area;
+        let vertices = [(20.0, 20.0), (120.0, 20.0), (120.0, 120.0)];
+        for point in vertices {
+            app.measurement_click(&ctx, 0, point, false, false);
+        }
+        app.measurement_click(&ctx, 1, (120.5, 119.7), false, true);
+        assert_eq!(app.annotate.measure.points(), vertices);
+        assert!(
+            requests.try_recv().is_err(),
+            "another page cannot finish the draft"
+        );
+        app.measurement_click(&ctx, 0, (120.5, 119.7), false, true);
+        let request = requests.recv().unwrap();
+        let crate::worker::Request::PreviewRichAnnotation {
+            page,
+            annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(measurement),
+            ..
+        } = request
+        else {
+            panic!("expected one guarded measurement preview");
+        };
+        assert_eq!(page, 0);
+        assert_eq!(measurement.points, vertices);
+        assert!((measurement.value().unwrap() - 50.0).abs() < 1e-8);
+        assert!(requests.try_recv().is_err());
     }
 
     #[test]
