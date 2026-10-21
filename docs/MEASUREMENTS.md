@@ -1,12 +1,25 @@
-# Local calibrated measurements (0.40.0)
+# Local calibrated measurements
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-Open **Comment → Rich annotations**, then choose **Calibrated measurements**. Select Length, Polyline length, Polygon perimeter, Polygon area or Angle. Enter one `x,y` vertex per line in displayed-page points, with the origin at the bottom left after rotation and cropping. Angles use three vertices with the angle vertex in the middle. Closed polygons are closed automatically: do not repeat the first point.
+**Unreleased desktop integration:** the direct toolbar entry and on-page drawing described below are being prepared after 0.41.0. They are not included in the published 0.41.0 packages. The existing PDF measurement records and CLI remain supported.
 
-Enter two calibration points spanning a distance you know from the drawing, enter that positive distance, then choose `mm`, `cm`, `m`, `in` or `ft`. Feet and inches are decimal units; for 10 feet 6 inches enter `10.5 ft` or `126 in`. Set 0–4 decimal places. The numeric draft result updates as inputs change. Select **Preview**, inspect the actual rendered candidate, then **Apply**. Changing inputs requires a new preview. Cancel/Escape does not apply the draft. Save the PDF to keep it; one Undo removes the annotation and its metadata together.
+## Measure directly on the page
 
-Each annotation embeds its own two-point calibration, geometry, unit and precision. There is no shared page-wide scale: one measurement cannot silently change another's value. This first slice uses coordinate entry; interactive point picking, snapping, page calibration, named viewports and global recalculation remain in the backlog. Recreate a measurement to change its scale or geometry. Generic move, resize, restyle and value-text edits are refused to prevent stale labels. Delete and comment replies remain available within existing PDF permissions.
+1. Open a PDF and select **Measurements** beside **All tools** in the main toolbar. The same tool is available from **All tools → Measurements** and the first group of the **Comment** workspace. Its toolbar label remains visible in narrow windows.
+2. Choose `mm`, `cm`, `m`, `in` or `ft` and 0–4 decimal places. Select **Calibrate this page**, then click two different points spanning a distance you know from the drawing. Enter the positive **Known distance**, then select **Confirm scale**. Feet and inches use decimal values: 10 feet 6 inches is `10.5 ft` or `126 in`.
+3. Choose a measurement type and click directly on the page. **Length** opens the preview after two points. **Angle** opens it after three points: first arm, vertex, second arm; angles do not require a physical scale. For **Polyline length**, **Polygon perimeter** and **Polygon area**, add the vertices, then select **Preview measurement**, press **Enter**, or double-click the last point. Polygons close automatically; do not repeat the first vertex.
+4. Inspect the rendered candidate and its value, then select **Apply**. Nothing is added until Apply succeeds. **Cancel** or **Escape** discards the preview. Save the PDF to retain the measurement; one Undo removes the annotation and its metadata together. The tool stays active after applying, so another measurement on the calibrated page can be drawn immediately.
+
+While drawing, **Backspace** or **Undo point** removes the last point. **Shift** constrains the next segment horizontally or vertically in the displayed page's coordinate axes; this is not snapping to existing PDF lines. **Escape** or **Cancel drawing** abandons the current draft. Finish or cancel a draft before drawing on another page. Drafts are also cancelled when the document changes.
+
+## Scale lifetime and saved measurements
+
+Each page can have a separate confirmed scale for the current document session. Ordinary annotation edits and normal tab switches retain these scales; page geometry or structural edits clear them. Closing and reopening a document requires recalibration. Merely navigating between pages does not assign one page's scale to another. Changing the display unit converts the confirmed distance instead of reinterpreting its numeric value.
+
+The session scale is not saved as shared page-scale metadata. Each applied annotation embeds its own two-point calibration, geometry, unit and precision, which remain available after saving and reopening. Recalibrating for new measurements does not change existing annotations. Shared page-scale persistence, global recalculation and named multi-scale viewports remain open.
+
+Recreate an applied measurement to change its scale or vertices. Generic move, resize, restyle and value-text edits are refused to prevent stale labels. Delete and comment replies remain available within existing PDF permissions. Manual coordinate entry remains available in **Rich annotations → Calibrated measurements**; its `x,y` values use displayed-page points with the origin at the bottom left after rotation and cropping.
 
 ## CLI and quantities
 
@@ -32,4 +45,4 @@ JSON export is bounded to 1000 pages and 4096 records, with 4 MiB of measurement
 
 Known-geometry fixtures cover arithmetic, metric/imperial equivalence, rotation/crop, reopen, preview/commit, snapshot Undo, allowed encryption, invalid geometry and stale-record refusals. CLI fixtures add independent MuPDF rendering and qpdf checks. These generated fixtures do not qualify survey accuracy, real customer plans, physical printing, native pointing/Narrator interaction, PDF/A or PDF/UA.
 
-Page-wide calibration and recalculation, direct manipulation, multi-scale viewports, counts, volumes, annotation registers and advanced recognition remain open in AEC-001–026. Local tools remain free and open source; cloud and collaboration are deferred.
+Editing saved vertices, persistent shared page scales and recalculation, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open in AEC-001–026. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source; cloud and collaboration are deferred.

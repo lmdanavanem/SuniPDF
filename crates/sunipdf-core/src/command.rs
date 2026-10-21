@@ -98,6 +98,7 @@ pub enum Command {
     HubEdit,
     HubOrganize,
     HubComment,
+    HubMeasure,
     HubProtect,
     HubStamp,
     HubLeave,
@@ -135,6 +136,7 @@ pub enum Command {
     ToolAnnotLine,
     ToolLink,
     RichAnnotations,
+    ToolMeasure,
     ToolCount,
     AnnotationRegister,
     EraseInkStrokes,
@@ -202,6 +204,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "review.search",
         None,
         false,
+        Edit
+    ),
+    cmd!(
+        ToolMeasure,
+        "annotations.measure",
+        "measure.tool",
+        None,
+        true,
         Edit
     ),
     cmd!(
@@ -1226,6 +1236,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         Security
     ),
     cmd!(
+        HubMeasure,
+        "hub.measure",
+        "hub.measure.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
         HubPrepareForm,
         "hub.prepare_form",
         "hub.prepare_form.name",
@@ -1301,7 +1319,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 10);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 12);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
@@ -1310,5 +1328,18 @@ mod tests {
         for info in Command::in_menu(Menu::Tools) {
             assert!(info.id.starts_with("hub."), "{}", info.id);
         }
+    }
+
+    #[test]
+    fn measurement_entries_are_document_commands_with_stable_ids() {
+        assert_eq!(
+            Command::from_id("annotations.measure"),
+            Some(Command::ToolMeasure)
+        );
+        assert_eq!(Command::from_id("hub.measure"), Some(Command::HubMeasure));
+        assert!(Command::ToolMeasure.info().needs_document);
+        assert!(Command::HubMeasure.info().needs_document);
+        assert_eq!(Command::ToolMeasure.info().menu, Menu::Edit);
+        assert_eq!(Command::HubMeasure.info().menu, Menu::Tools);
     }
 }

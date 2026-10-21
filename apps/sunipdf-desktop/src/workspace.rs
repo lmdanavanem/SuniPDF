@@ -21,6 +21,7 @@ pub enum Workspace {
     Create,
     Combine,
     Organize,
+    Measure,
     Comment,
     ScanOcr,
     Protect,
@@ -48,7 +49,7 @@ pub struct WsInfo {
     pub color: Color32,
     /// `None` = fonction non implémentée : l'outil n'apparaît nulle part (pas de bouton factice).
     pub entry: Option<Entry>,
-    /// Commandes de l'outil, par groupes (séparateurs dans la barre). Une commande n'a qu'un outil.
+    /// Commands grouped by separators. Measure also has a shortcut in Comment.
     pub groups: &'static [&'static [Command]],
 }
 
@@ -64,7 +65,10 @@ impl WsInfo {
 
 use Command as C;
 
-pub static TABLE: [WsInfo; 14] = [
+/// Segoe Fluent Ruler with a readable fallback when the icon font is absent.
+pub const MEASURE_ICON: (&str, &str) = ("\u{ED5E}", "↔");
+
+pub static TABLE: [WsInfo; 15] = [
     WsInfo {
         ws: Workspace::Export,
         name_key: "hub.export.name",
@@ -164,6 +168,15 @@ pub static TABLE: [WsInfo; 14] = [
         ],
     },
     WsInfo {
+        ws: Workspace::Measure,
+        name_key: "hub.measure.name",
+        desc_key: "hub.measure.desc",
+        icon: MEASURE_ICON,
+        color: theme::CAT_ANNOTATE,
+        entry: Some(Entry::Mode(C::HubMeasure)),
+        groups: &[&[C::ToolMeasure]],
+    },
+    WsInfo {
         ws: Workspace::Comment,
         name_key: "hub.comment.name",
         desc_key: "hub.comment.desc",
@@ -171,6 +184,7 @@ pub static TABLE: [WsInfo; 14] = [
         color: theme::CAT_ANNOTATE,
         entry: Some(Entry::Mode(C::HubComment)),
         groups: &[
+            &[C::ToolMeasure],
             &[
                 C::ToolSelect,
                 C::ToolHighlight,
@@ -301,7 +315,7 @@ impl Workspace {
         Self::available().find(|w| w.info().entry == Some(Entry::Mode(c)))
     }
 
-    /// Outil propriétaire (unique) d'une commande du registre.
+    /// Primary workspace of a command; Measure precedes its shortcut in Comment.
     pub fn owner_of(c: Command) -> Option<Workspace> {
         Self::available().find(|w| w.info().contains(c))
     }
@@ -519,7 +533,7 @@ impl SuniApp {
         if let Some(first) = ws
             .info()
             .commands()
-            .find(|c| Tool::from_command(*c).is_some())
+            .find(|c| Tool::from_command(*c).is_some() && Workspace::owner_of(*c) == Some(ws))
         {
             self.execute(ctx, first);
         }
@@ -808,7 +822,9 @@ impl SuniApp {
                 tint: Some(info.color),
                 label,
                 // L'outil de dessin actif garde son libellé même en icônes seules (sauf compact).
-                show_label: if is_tool {
+                show_label: if c == C::ToolMeasure {
+                    true
+                } else if is_tool {
                     layout.tool_labels || (selected && !layout.compact)
                 } else {
                     layout.action_labels
@@ -891,6 +907,7 @@ mod tests {
         C::HubEdit,
         C::HubOrganize,
         C::HubComment,
+        C::HubMeasure,
         C::HubProtect,
         C::HubStamp,
         C::HubRedact,
@@ -929,7 +946,7 @@ mod tests {
 
     #[test]
     fn available_tools_are_wired() {
-        assert_eq!(Workspace::available().count(), 14);
+        assert_eq!(Workspace::available().count(), 15);
         for ws in Workspace::available() {
             let info = ws.info();
             match info.entry.unwrap() {
@@ -948,6 +965,22 @@ mod tests {
             }
             assert!(ws.activate().is_some());
         }
+    }
+
+    #[test]
+    fn measurements_have_a_dedicated_workspace_and_a_comment_shortcut() {
+        assert_eq!(Workspace::Measure.activate(), Some(C::HubMeasure));
+        assert_eq!(
+            Workspace::owner_of(C::ToolMeasure),
+            Some(Workspace::Measure)
+        );
+        assert_eq!(
+            Workspace::from_command(C::HubMeasure),
+            Some(Workspace::Measure)
+        );
+        assert_eq!(Workspace::Comment.info().groups[0], &[C::ToolMeasure]);
+        assert_eq!(Workspace::Measure.info().groups[0], &[C::ToolMeasure]);
+        assert!(Workspace::available().any(|w| w == Workspace::Measure));
     }
 
     #[test]
@@ -971,13 +1004,17 @@ mod tests {
     }
 
     #[test]
-    fn every_listed_command_is_registered_and_unique() {
+    fn listed_commands_have_unique_owners_except_the_measurement_shortcut() {
         let mut seen = std::collections::HashSet::new();
         for info in &TABLE {
             assert!(info.groups.iter().all(|g| !g.is_empty()));
             for c in info.commands() {
                 let _ = c.info(); // panique si la commande n'est pas au registre
-                assert!(seen.insert(c), "{c:?} appartient à deux outils");
+                let shared_measure_shortcut = c == C::ToolMeasure && info.ws == Workspace::Comment;
+                assert!(
+                    seen.insert(c) || shared_measure_shortcut,
+                    "{c:?} appartient à deux outils"
+                );
             }
         }
     }

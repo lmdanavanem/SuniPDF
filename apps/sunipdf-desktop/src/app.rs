@@ -365,6 +365,10 @@ impl SuniApp {
     }
 
     pub fn go_to_page(&mut self, page: usize) {
+        if self.annotate.measure.is_active_draft() {
+            self.status_msg = Some(self.t("measure.finish_first").into());
+            return;
+        }
         if self.edit.paragraph.is_some() {
             self.status_msg = Some(self.t("paragraph.finish_first").into());
             return;
@@ -822,6 +826,11 @@ impl SuniApp {
                         // Retouche : l'image reste affichée jusqu'aux nouvelles tuiles.
                         self.view
                             .on_document_changed(pages_unchanged, same_sizes, doc.page);
+                        if pages_unchanged && same_sizes {
+                            self.annotate.measure.advance_epoch(self.view.epoch);
+                        } else {
+                            self.annotate.measure.invalidate(self.view.epoch);
+                        }
                     }
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
@@ -1105,6 +1114,7 @@ impl SuniApp {
 
     pub fn has_unsaved_changes(&self) -> bool {
         self.dirty
+            || self.annotate.measure.is_active_draft()
             || self.annotate.adv.rich.is_some()
             || self.edit.paragraph.is_some()
             || self.forms.has_unsaved_input()
@@ -1259,6 +1269,7 @@ impl SuniApp {
 
     pub(crate) fn navigation_blocked(&self) -> bool {
         self.review.busy
+            || self.annotate.measure.is_active_draft()
             || self.annotate.register.dialog_open()
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
@@ -1275,6 +1286,7 @@ impl SuniApp {
 
     fn close_must_wait(&self) -> bool {
         self.review.busy
+            || self.annotate.measure.is_active_draft()
             || self.annotate.register.dialog_open()
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
@@ -1310,7 +1322,18 @@ impl SuniApp {
 
     // ----- Entrées ---------------------------------------------------------
 
-    fn handle_input(&mut self, ctx: &egui::Context) {
+    pub(crate) fn handle_input(&mut self, ctx: &egui::Context) {
+        self.validate_measurement_context();
+        if self.annotate.measure.is_active_draft()
+            && !self.dialog_open()
+            && !self.palette.open
+            && !egui::Popup::is_any_open(ctx)
+            && !ctx.egui_wants_keyboard_input()
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.cancel_measurement();
+            return;
+        }
         self.validate_free_text();
         self.validate_form_builder();
         if self.form_builder.drawing
@@ -1705,6 +1728,7 @@ impl SuniApp {
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
             Command::RichAnnotations => self.open_rich_annotations(ctx),
+            Command::ToolMeasure => self.open_measurements(ctx),
             Command::AnnotationRegister => self.open_annotation_register(),
             Command::EraseInkStrokes => self.open_ink_eraser(ctx),
             Command::OfficeToPdf => self.open_office(false),
@@ -2011,6 +2035,7 @@ impl SuniApp {
             | Command::HubEdit
             | Command::HubOrganize
             | Command::HubComment
+            | Command::HubMeasure
             | Command::HubProtect
             | Command::HubStamp
             | Command::HubPrepareForm
@@ -2965,6 +2990,11 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| self.workspace_bar(&ctx, ui));
             }
+            if self.document.is_some() && self.annotate.tool == crate::annotate::Tool::Measure {
+                egui::Panel::top("measure-controls")
+                    .frame(chrome(p.surface))
+                    .show(ui, |ui| self.measurement_bar(&ctx, ui));
+            }
             if self.find.open && self.document.is_some() {
                 egui::Panel::top("find")
                     .frame(chrome(p.chrome))
@@ -2995,7 +3025,9 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.bookmarks_panel(&ctx, ui),
                         );
                     });
@@ -3011,7 +3043,9 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.comments_panel(&ctx, ui),
                         );
                     });
@@ -3027,7 +3061,9 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.objects_panel(&ctx, ui),
                         );
                     });
@@ -3043,7 +3079,9 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.forms_panel(&ctx, ui),
                         );
                     });
@@ -3061,7 +3099,9 @@ impl eframe::App for SuniApp {
                         .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
                         .show(ui, |ui| {
                             ui.add_enabled_ui(
-                                !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                                !self.ink_draft_active()
+                                    && !self.annotate.measure.is_active_draft()
+                                    && self.annotate.adv.free_text.is_none(),
                                 |ui| self.thumbnails_panel(&ctx, ui),
                             );
                         });
@@ -3101,7 +3141,9 @@ impl eframe::App for SuniApp {
                 }
                 if !self.reading_full_screen {
                     ui.add_enabled_ui(
-                        !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                        !self.ink_draft_active()
+                            && !self.annotate.measure.is_active_draft()
+                            && self.annotate.adv.free_text.is_none(),
                         |ui| self.forms_bar(&ctx, ui),
                     );
                 }

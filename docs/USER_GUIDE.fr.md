@@ -3,10 +3,45 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.35.0. État de publication et contrôles exécutés dans
-[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.35.0.fr.md) décrit
+Ce guide couvre SuniPDF 0.42.0. État de publication et contrôles exécutés dans
+[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.42.0.fr.md) décrit
 les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
 dans les réglages.
+
+## Mesurer directement sur un PDF
+
+Ouvrez un PDF et cliquez sur **Mesures**, à côté de **Tous les outils** dans la barre principale.
+Vous pouvez aussi choisir **Tous les outils → Mesures**, ou le raccourci Mesures dans **Commenter**.
+Le bouton conserve son libellé dans les fenêtres étroites.
+
+1. Choisissez l’unité (`mm`, `cm`, `m`, `in` ou `ft`) et 0 à 4 décimales. Cliquez sur **Calibrer cette page**,
+   puis sur deux points distincts délimitant une distance connue. Saisissez la **Distance connue** réelle,
+   puis cliquez sur **Confirmer l’échelle**. Pieds et pouces sont décimaux : 10 pieds 6 pouces correspondent
+   à `10.5 ft` ou `126 in`.
+2. Choisissez **Longueur**, **Polyligne**, **Périmètre**, **Surface polygonale** ou **Angle**, puis cliquez
+   directement sur les points du PDF. Une longueur ouvre l’aperçu après deux points. Un angle utilise
+   trois points dans cet ordre : premier côté, sommet, second côté ; aucune calibration physique n’est
+   nécessaire. Terminez une polyligne ou un polygone avec **Prévisualiser la mesure**, **Entrée**, ou un
+   double-clic sur le dernier point. Les polygones se ferment automatiquement : ne répétez pas le premier point.
+3. Vérifiez l’aperçu PDF rendu et la valeur, puis cliquez sur **Appliquer**. **Annuler** ou **Échap**
+   conserve le PDF intact. Enregistrez pour conserver l’annotation et sa calibration. **Annuler la dernière
+   modification** retire l’annotation et ses données de mesure ensemble. L’outil reste actif pour la mesure suivante.
+
+Pendant le tracé, **Retour arrière** ou **Annuler le point** retire le dernier point. **Maj** aligne un
+segment horizontalement ou verticalement dans les axes de la page affichée, sans accrochage aux traits
+existants. **Échap** ou **Annuler le tracé** abandonne le brouillon. Terminez ou annulez avant de changer
+de page, de document ou d’outil.
+
+Chaque page possède sa propre échelle de session. Les modifications ordinaires d’annotations et les
+changements habituels d’onglet conservent les échelles confirmées ; les changements de géométrie ou de
+structure des pages les effacent. Fermer puis rouvrir le document demande une nouvelle calibration pour
+les prochaines mesures. Un changement d’unité convertit la distance confirmée. Les mesures enregistrées
+gardent leur propre géométrie et échelle ; une nouvelle calibration ne modifie pas les mesures existantes.
+
+Recréez une mesure appliquée pour changer ses sommets ou son échelle. Échelles de page communes
+persistantes, recalcul global, accrochage aux vecteurs et vues multi-échelles restent indisponibles.
+Vérifiez la distance connue et la révision du plan : une valeur calculée ne garantit pas la justesse
+physique. Le [guide des mesures](MEASUREMENTS.fr.md) détaille format ouvert, CLI et limites géométriques.
 
 ## Préparer une signature visuelle
 
@@ -106,26 +141,27 @@ sur **+ Ouvrir** dans la barre d'onglets.
 
 Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
 outils par tâche : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
-des fichiers, Organiser les pages, Commenter, Protéger un PDF, Caviarder un PDF, Compresser un PDF, Ajouter un tampon,
+des fichiers, Organiser les pages, Mesures, Commenter, Protéger un PDF, Caviarder un PDF, Compresser un PDF, Ajouter un tampon,
 Numériser et OCR, Préparer un formulaire, Utiliser un certificat. Le menu **Outils** et
 la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
 fichier puis démarre.
 
 - **Exporter, Créer, Combiner, Compresser** ouvrent directement leur boîte de dialogue.
-- **Remplir et signer, Modifier, Organiser, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
+- **Remplir et signer, Modifier, Organiser, Mesures, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
   **barre d'outil** sous la barre d'outils : boutons de l'outil, groupés, avec leur libellé si la largeur le
   permet (sinon l'icône seule, le libellé restant en info-bulle). Les actions qui demandent une sélection
-  (objet, texte, pages de la grille) restent grisées sans elle.
+  (objet, texte, pages de la grille) restent grisées sans elle. Mesures conserve son libellé et présente
+  ses contrôles de calibration et de tracé.
 - **Quitter l'outil** : bouton à droite de la barre, **Échap**, nouveau clic sur l'outil actif dans le panneau,
   ou la flèche de retour (qui rouvre aussi le panneau). Échap ferme d'abord ce qui est plus proche : un menu
   ou une liste déroulante ouverts, puis la recherche, puis l'objet sélectionné, puis l'outil (un Échap, un
-  seul effet).
+  seul effet). Un brouillon de mesure actif est annulé avant de quitter son outil.
 - Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N, A, D, F ouvrent **Commenter** ; E, T, I, R, O, L
   ouvrent **Modifier** ; S ouvre la boîte **Signer** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
 - Chaque onglet garde son outil actif.
-- La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir.
+- La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir, Mesures.
 
-Les 14 outils sont disponibles en 0.9.0, dont **Numériser et OCR**, **Préparer un formulaire** et
+Les 15 espaces d’outils de la 0.42.0 comprennent **Mesures**, **Numériser et OCR**, **Préparer un formulaire** et
 **Utiliser un certificat**. Remplir et signer conserve le remplissage et la signature visuelle ;
 la signature numérique dispose de son propre outil.
 

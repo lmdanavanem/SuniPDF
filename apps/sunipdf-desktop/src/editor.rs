@@ -555,6 +555,7 @@ impl SuniApp {
         }
         match self.annotate.tool {
             Tool::Note
+            | Tool::Measure
             | Tool::AddText
             | Tool::AddImage
             | Tool::Rectangle

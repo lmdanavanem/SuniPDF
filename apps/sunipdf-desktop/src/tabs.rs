@@ -134,6 +134,8 @@ impl SuniApp {
         self.status_msg = t.status_msg;
         self.organize = t.organize;
         self.annotate = t.annotate;
+        // The scales belong to this suspended document, not the shared viewport epoch.
+        self.annotate.measure.advance_epoch(self.view.epoch);
         self.annotate.clear_reading();
         // Le moteur a rechargé le document : indices et zones de lien relus.
         self.annotate.adv.invalidate();
@@ -254,6 +256,9 @@ impl SuniApp {
         match ui {
             Some(mut ui) => {
                 if let Some(doc) = &mut ui.document {
+                    if doc.info.page_sizes != state.info.page_sizes {
+                        ui.annotate.measure.invalidate(self.view.epoch);
+                    }
                     doc.info = state.info;
                 }
                 self.put_tab(ui);

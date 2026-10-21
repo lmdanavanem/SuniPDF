@@ -16,6 +16,9 @@ mod forms;
 mod icons;
 mod inline_text;
 mod local_review;
+#[cfg(test)]
+mod measure_integration_tests;
+mod measure_tools;
 mod objects;
 mod ocr;
 mod office;

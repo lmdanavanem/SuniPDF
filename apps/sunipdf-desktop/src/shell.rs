@@ -147,6 +147,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::CompressImages => (glyph::PHOTO, "⤓"),
         Command::ProcessFiles => (glyph::PAGES, "▣"),
         Command::RichAnnotations => (glyph::EDIT_DOC, "A"),
+        Command::ToolMeasure => crate::workspace::MEASURE_ICON,
         Command::ToolCount => (glyph::ADD, "+"),
         Command::AnnotationRegister => (glyph::PAGES, "▤"),
         Command::EraseInkStrokes => (glyph::ERASE, "⌫"),
@@ -230,6 +231,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         | Command::HubEdit
         | Command::HubOrganize
         | Command::HubComment
+        | Command::HubMeasure
         | Command::HubProtect
         | Command::HubStamp
         | Command::HubPrepareForm
@@ -615,6 +617,23 @@ impl SuniApp {
                 all_tools.surrender_focus();
                 run = Some(Command::ToggleTools);
             }
+            let measure = bar_button(
+                ui,
+                self.has_icons,
+                BarButton {
+                    icon: command_icon(Command::ToolMeasure),
+                    tint: Some(theme::CAT_ANNOTATE),
+                    label: tr(lang, "measure.tool"),
+                    show_label: true,
+                    tooltip: tr(lang, "hub.measure.desc"),
+                    selected: self.annotate.workspace == Some(Workspace::Measure),
+                    enabled: has_doc && self.command_enabled(Command::ToolMeasure),
+                },
+            );
+            if measure.clicked() {
+                measure.surrender_focus();
+                run = Some(Command::ToolMeasure);
+            }
             if let Some(c) = run {
                 self.execute(ctx, c);
             }
@@ -622,6 +641,13 @@ impl SuniApp {
                 ui.add_space(6.0);
                 if self.icon_button(ui, glyph::INFO, "i", tr(lang, "menu.help.about")) {
                     self.execute(ctx, Command::About);
+                }
+                if ui.available_width() < 300.0 {
+                    if self.icon_button(ui, glyph::FIND, "⌕", tr(lang, "toolbar.search_commands"))
+                    {
+                        self.execute(ctx, Command::CommandPalette);
+                    }
+                    return;
                 }
                 let search = Frame::new()
                     .fill(p.surface)
@@ -1450,6 +1476,70 @@ mod tests {
         shapes.iter().any(|c| {
             matches!(&c.shape, egui::Shape::Rect(r) if r.stroke.color == color && r.stroke.width == 2.0)
         })
+    }
+
+    #[test]
+    fn measurement_toolbar_label_remains_visible_and_clickable_at_narrow_widths() {
+        for lang in Language::ALL {
+            for width in [640.0, 800.0, 1280.0] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.settings.set_language(lang);
+                let ctx = egui::Context::default();
+                ctx.enable_accesskit();
+                let input = egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(width, 780.0),
+                    )),
+                    ..Default::default()
+                };
+                let label = tr(lang, "measure.tool");
+                let mut target = None;
+                for _ in 0..2 {
+                    let mut output = ctx.run_ui(input.clone(), |ui| app.toolbar(&ctx, ui));
+                    assert!(
+                        output.shapes.iter().any(|shape| {
+                            matches!(&shape.shape, egui::Shape::Text(text)
+                            if text.galley.text() == label
+                                && text.pos.x >= 0.0
+                                && text.pos.x + text.galley.size().x <= width)
+                        }),
+                        "measurement label must be painted inside the window at width {width}"
+                    );
+                    let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+                    let button = tree
+                        .nodes
+                        .iter()
+                        .map(|(_, n)| n)
+                        .find(|n| n.label() == Some(label))
+                        .expect("measurement button");
+                    assert!(!button.is_disabled());
+                    let bounds = button.bounds().unwrap();
+                    target = Some(egui::pos2(
+                        ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                        ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                    ));
+                    output.textures_delta.clear();
+                }
+                let pos = target.unwrap();
+                for pressed in [true, false] {
+                    let mut input = input.clone();
+                    input.events = vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ];
+                    let mut output = ctx.run_ui(input, |ui| app.toolbar(&ctx, ui));
+                    output.textures_delta.clear();
+                }
+                assert_eq!(app.annotate.workspace, Some(Workspace::Measure));
+                assert_eq!(app.annotate.tool, crate::annotate::Tool::Measure);
+            }
+        }
     }
 
     /// Une passe sans fenêtre : panneau « Tous les outils » (Commenter actif) et barre de Commenter.

@@ -3,9 +3,41 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.35.0. Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.35.0.md) lists supported inputs
+This guide covers SuniPDF 0.42.0. Publication status and executed checks are recorded in
+[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.42.0.md) lists supported inputs
 and documented refusals; English remains the default language and French is available in Settings.
+
+## Measure directly on a PDF
+
+Open a PDF and click **Measurements** beside **All tools** in the main toolbar. You can also choose
+**All tools → Measurements**, or the Measurements shortcut in **Add comments**. The button keeps its
+text label in narrow windows.
+
+1. Select the unit (`mm`, `cm`, `m`, `in` or `ft`) and 0–4 decimal places. Click **Calibrate this page**,
+   then click two different points spanning a known distance. Enter the real **Known distance** and
+   click **Confirm scale**. Decimal feet and inches are supported: 10 feet 6 inches is `10.5 ft` or `126 in`.
+2. Choose **Length**, **Polyline length**, **Polygon perimeter**, **Polygon area** or **Angle**, then
+   click the points directly on the PDF. Length opens the preview after two points. Angle uses three
+   points in this order: first arm, vertex, second arm; it does not require a physical calibration.
+   Finish a polyline or polygon with **Preview measurement**, **Enter**, or a double-click on its last
+   point. Polygons close automatically; do not repeat the first point.
+3. Inspect the rendered PDF preview and the value, then click **Apply**. **Cancel** or **Escape** leaves
+   the PDF unchanged. Save to keep the annotation and its calibration. **Undo** removes the annotation
+   and its measurement data together. The tool stays active for the next measurement.
+
+During drawing, **Backspace** or **Undo point** removes the last point. **Shift** constrains a segment
+horizontally or vertically in the displayed page axes; it does not snap to existing PDF lines.
+**Escape** or **Cancel drawing** discards the draft. Finish or cancel before changing page, document or tool.
+
+Each page has its own session scale. Ordinary annotation edits and normal tab switches retain confirmed
+scales; changes to page geometry or structure clear them. Closing and reopening a document requires a
+new calibration for new measurements. Changing units converts the confirmed distance. Saved measurements
+keep their own geometry and scale, and recalibrating new measurements does not change existing ones.
+
+Recreate an applied measurement to change its vertices or scale. Shared persistent page scales, global
+recalculation, vector snapping and multiple-scale viewports remain unavailable. Check the known distance
+and the drawing revision; a calculated value does not establish physical accuracy. See the
+[measurement guide](MEASUREMENTS.md) for the open metadata format, CLI and geometry limits.
 
 ## Prepare a visual signature
 
@@ -101,25 +133,26 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 ## All tools
 
 The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
-task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Add
+task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Measurements, Add
 comments, Protect a PDF, Redact a PDF, Compress a PDF, Add a stamp, Scan & OCR, Prepare a form and
 Use a certificate. The **Tools** menu and the Ctrl+K palette give the same access.
 Without an open document, a tool that needs one first asks for a file, then starts.
 
 - **Export, Create, Combine, Compress** open their dialog directly.
-- **Fill & Sign, Edit, Organize, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
+- **Fill & Sign, Edit, Organize, Measurements, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
   the toolbar: the tool's buttons, grouped, with their labels when the width allows (otherwise the icon only,
   the label staying in the tooltip). Actions that need a selection (object, text, grid pages) stay greyed
-  out without one.
+  out without one. Measurements keeps its label visible and exposes its calibration and drawing controls.
 - **Leave tool**: button on the right of the bar, **Esc**, clicking the active tool again in the panel, or the
   back arrow (which also reopens the panel). Esc first closes what is closer: an open menu or drop-down
   list, then the search bar, then the selected object, then the tool (one Esc, one effect).
+  An active measurement draft is cancelled before leaving its tool.
 - Single-letter shortcuts open the matching tool: H, U, X, N, A, D, F open **Add comments**; E, T, I, R, O, L open
   **Edit a PDF**; S opens the **Sign** dialog; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
 - Each tab keeps its own active tool.
-- The main toolbar keeps quick access to Open, Save, Undo and Redo.
+- The main toolbar keeps quick access to Open, Save, Undo, Redo and Measurements.
 
-All 14 tools are available in 0.9.0, including **Scan & OCR**, **Prepare a form** and **Use a certificate**.
+The 15 tool workspaces in 0.42.0 include **Measurements**, **Scan & OCR**, **Prepare a form** and **Use a certificate**.
 Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
 
 ## Tabs
