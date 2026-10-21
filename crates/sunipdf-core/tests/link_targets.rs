@@ -141,7 +141,7 @@ fn retargeting_links_preserves_annotations_content_and_protection() {
                     allow_print: false,
                     allow_copy: false,
                     allow_modify: false,
-                    allow_annotate: false,
+                    allow_annotate: true,
                     aes256,
                 },
             )
