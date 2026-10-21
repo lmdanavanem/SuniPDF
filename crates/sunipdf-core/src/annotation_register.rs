@@ -48,12 +48,15 @@ impl RegisterFields {
     pub fn validate(&self) -> Result<(), EngineError> {
         if [&self.business_status, &self.discipline].iter().any(|v| {
             v.as_ref()
-                .is_some_and(|s| s.trim().is_empty() || !short(s, 512))
+                .is_some_and(|s| s.trim().is_empty() || s != s.trim() || !short(s, 512))
         }) || self.custom.len() > 16
-            || self
-                .custom
-                .iter()
-                .any(|(k, v)| k.trim().is_empty() || !short(k, 64) || !short(v, 1024))
+            || self.custom.iter().any(|(k, v)| {
+                k.trim().is_empty()
+                    || k != k.trim()
+                    || k.contains('=')
+                    || !short(k, 64)
+                    || !short(v, 1024)
+            })
         {
             return Err(bad());
         }
@@ -695,5 +698,16 @@ mod tests {
         }
         .validate()
         .is_ok());
+        for key in ["Room=Floor", " Room", "Room "] {
+            assert!(
+                RegisterFields {
+                    custom: BTreeMap::from([(key.into(), "A101".into())]),
+                    ..Default::default()
+                }
+                .validate()
+                .is_err(),
+                "field keys must round-trip through the text editor without being renamed"
+            );
+        }
     }
 }

@@ -233,6 +233,7 @@ impl SuniApp {
         let mut cancel_edit = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
+        let row_actions_enabled = enabled && state.edit.is_none();
         let can_refresh = enabled && state.edit.is_none();
         let can_export = can_refresh && report.is_some();
         let can_close = state.edit.as_ref().is_none_or(|e| !e.applying);
@@ -393,7 +394,7 @@ impl SuniApp {
                                         ui.horizontal(|ui| {
                                             if ui
                                                 .add_enabled(
-                                                    enabled && row.rect.is_some(),
+                                                    row_actions_enabled && row.rect.is_some(),
                                                     egui::Button::new(tr(lang, "register.view")),
                                                 )
                                                 .clicked()
@@ -402,7 +403,7 @@ impl SuniApp {
                                             }
                                             if ui
                                                 .add_enabled(
-                                                    enabled
+                                                    row_actions_enabled
                                                         && !row.locked
                                                         && row.kind != "Widget"
                                                         && !row.is_reply,
@@ -591,6 +592,11 @@ mod tests {
         assert!(
             matches!(requests.try_recv().unwrap(),Request::Edit(EditOp::AddCountMarker {page:1,point:(80.0,90.0),size:18.0,group,..}) if group=="Lights")
         );
+        assert!(matches!(
+            requests.try_recv().unwrap(),
+            Request::FinishMutation
+        ));
+        app.worker.finish_mutation();
         app.annotate.register.count_open = true;
         app.place_count_marker(0, (20.0, 30.0));
         assert!(
