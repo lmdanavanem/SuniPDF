@@ -1514,7 +1514,7 @@ impl Document<'_> {
             if c.locked {
                 return Err(EngineError::SecurityRestricted);
             }
-            if !c.can_move {
+            if !c.can_move || dict.has(b"SuniPDFMeasurement") {
                 return Err(EngineError::Other("annotation cannot be moved".into()));
             }
             if c.ours
@@ -1664,7 +1664,7 @@ impl Document<'_> {
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
             let c = caps(&st, flags(&dict), text_of(pdf, &dict, b"NM").as_deref());
-            if !c.can_edit_text {
+            if !c.can_edit_text || dict.has(b"SuniPDFMeasurement") {
                 return Err(EngineError::Other(
                     "annotation text cannot be edited".into(),
                 ));
@@ -2003,6 +2003,10 @@ fn detail_of(
         if subtype == "FreeText" {
             detail.can_edit_text = false;
         }
+    }
+    if d.has(b"SuniPDFMeasurement") {
+        detail.can_move = false;
+        detail.can_edit_text = false;
     }
     if get(pdf, d, b"StateModel").is_some() {
         let state = text_of(pdf, d, b"State").unwrap_or_default();

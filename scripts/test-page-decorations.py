@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import secrets
@@ -44,14 +45,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cli", required=True, type=Path)
     parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument("--mutool", type=Path, default=Path(os.environ.get("CARGO_TARGET_DIR", "target")) / "test-mupdf/1.28.5/mutool.exe")
     args = parser.parse_args()
     cli = args.cli.resolve(strict=True)
+    mutool = args.mutool.resolve(strict=True)
+    assert sha(mutool) == "1ff045eeab80a108a39760578001a547a31e8b663905f064088c4b2f82cbcf7f"
     qpdf = Path(os.environ["SUNIPDF_QPDF"]).resolve(strict=True)
     assert sha(qpdf) == "1bdaf878f37eaffea1ea3c30591214c77636a0f2fc7432427516b6e22e36c0ff"
     assert pillow_version == "12.3.0", pillow_version
     started = time.monotonic()
     commands = 0
     cases = []
+    qpdf_checks = 2
+    independent_reader_checks = 0
     sources = {}
     with tempfile.TemporaryDirectory(prefix="sunipdf-page-decorations-") as directory:
         root = Path(directory)
@@ -60,7 +66,7 @@ def main():
             sources[path] = sha(path)
             return path
 
-        def run(arguments, success=True, env=None):
+        def run(arguments, success=True, env=None, argument_error=False):
             nonlocal commands
             output = subprocess.run([str(cli), *map(str, arguments)], cwd=root, capture_output=True,
                                     timeout=30, env={**os.environ, **(env or {})})
@@ -70,6 +76,9 @@ def main():
             if success:
                 return json.loads(output.stdout)
             assert not output.stdout
+            if argument_error:
+                assert output.returncode == 2 and b"error:" in output.stderr and b"--precision" in output.stderr
+                return {"argument_error": True}
             return json.loads(output.stderr)
 
         source = root / "original été 中文.pdf"
@@ -246,10 +255,158 @@ def main():
                         assert len(result["objects"]) == 6
                         assert not any(value in json.dumps(result) for value in credentials.values())
                 cases.append(f"headers-aes{aes}-" + ("restriction-preserved" if restricted else "both-credentials-preserved"))
+        def image_stamp(document, name, extra=(), image_path=logo, success=True, env=None):
+            out = root / (name + ".pdf")
+            result = run(["image-stamp", document, "--image", image_path, "--rect", "40,40,240,240",
+                          "--out", out, *extra], success, env)
+            assert out.exists() == success
+            if success:
+                assert result["original_unchanged"] and result["subtype"] == "Stamp"
+            return out, result
+
+        def independent_render(document, name):
+            nonlocal independent_reader_checks
+            path = root / (name + ".ppm")
+            output = subprocess.run([str(mutool), "draw", "-F", "ppm", "-c", "rgb", "-r", "72",
+                                     "-o", str(path), str(document), "1"], capture_output=True, timeout=30)
+            assert output.returncode == 0 and path.exists(), output.stderr[:1000]
+            independent_reader_checks += 1
+            with Image.open(path) as image:
+                return image.convert("RGB")
+
+        for rotation in [0, 90, 180, 270]:
+            document = root / f"rotated-{rotation}.pdf"
+            out, result = image_stamp(document, f"image-stamp-{rotation}", ["--opacity", "0.5", "--author", "Plan reviewer"])
+            annotations = run(["annotations", out])["pages"]
+            assert len(annotations[0]["annotations"]) == 1 and not annotations[1]["annotations"]
+            annotation = annotations[0]["annotations"][0]
+            assert annotation["subtype"] == "Stamp"
+            assert not run(["objects", out])["objects"], "image stamp must not become page content"
+            rendered = root / f"image-stamp-{rotation}.png"
+            run(["render", out, "--scale", 1, "--out", rendered])
+            with Image.open(rendered) as image:
+                pdfium = image.convert("RGB")
+            mupdf = independent_render(out, f"stamp-independent-{rotation}")
+            assert pdfium.size == mupdf.size
+            for image in [pdfium, mupdf]:
+                height = image.height
+                for x, expected in [(80, (255, 191, 191)), (180, (127, 127, 255))]:
+                    actual = image.getpixel((x, height - 1 - 140))
+                    assert all(abs(a - b) <= 4 for a, b in zip(actual, expected)), (rotation, actual)
+                assert image.getpixel((80, height - 1 - 60)) == (255, 255, 255), "aspect margin stays empty"
+            checked = subprocess.run([str(qpdf), "--check", str(out)], capture_output=True, timeout=25)
+            assert checked.returncode == 0, checked.stderr[:1000]
+            qpdf_checks += 1
+            cases.append(f"image-stamp-rotation-{rotation}-real-annotation-alpha-aspect-qpdf-and-mupdf")
+        oriented, _ = image_stamp(source, "image-stamp-exif", image_path=photo)
+        pixels = independent_render(oriented, "stamp-exif-independent")
+        red = [(x, y) for y in range(pixels.height) for x in range(pixels.width)
+               if pixels.getpixel((x, y))[0] > 240 and pixels.getpixel((x, y))[1] < 20]
+        assert red
+        width = max(x for x, _ in red) - min(x for x, _ in red) + 1
+        height = max(y for _, y in red) - min(y for _, y in red) + 1
+        assert abs(height / width - 2) < 0.05
+        cases.append("image-stamp-exif-orientation-visible-in-independent-reader")
+        for name, extra in [("opacity", ["--opacity", "NaN"]), ("invisible", ["--opacity", "0"]),
+                            ("page", ["--page", "3"]), ("rect", ["--rect", "0,0,1,1"]),
+                            ("outside", ["--rect=-10,0,100,100"]), ("author", ["--author", "bad\nauthor"])]:
+            # Avoid duplicate flags so clap cannot mask the geometry refusal.
+            if name in ["rect", "outside"]:
+                out = root / f"stamp-invalid-{name}.pdf"
+                run(["image-stamp", source, "--image", logo, *extra, "--out", out], False)
+                assert not out.exists()
+            else:
+                image_stamp(source, "stamp-invalid-" + name, extra, success=False)
+            cases.append("image-stamp-invalid-" + name + "-preserves-input")
+        for name in ["transparent", "oversized-side", "oversized-pixels", "malformed"]:
+            image_stamp(source, "stamp-invalid-image-" + name, image_path=root / (name + ".png"), success=False)
+            cases.append("image-stamp-" + name + "-refuses-copy")
+        saved_stamp = root / "image-stamp-0.pdf"
+        digest = sha(saved_stamp)
+        for destination in [saved_stamp, source]:
+            run(["image-stamp", source, "--image", logo, "--rect", "40,40,240,240", "--out", destination, "--overwrite"], False)
+        assert sha(saved_stamp) == digest
+        cases.append("image-stamp-source-and-existing-destination-preserved")
+
+        geometries = {"length": ("40,70 140,70", 10.0), "polyline": ("40,70 140,70 140,120", 15.0),
+                      "perimeter": ("40,70 140,70 140,120 40,120", 30.0),
+                      "area": ("40,70 140,70 140,120 40,120", 50.0), "angle": ("40,120 40,70 140,70", 90.0)}
+
+        def measure(document, name, kind="length", points="40,70 140,70", calibration="40,40 140,40", known="10",
+                    unit="m", extra=(), success=True, env=None, argument_error=False):
+            out = root / (name + ".pdf")
+            result = run(["measure", document, "--kind", kind, "--points", points, "--calibration", calibration,
+                          "--known-distance", known, "--unit", unit, "--out", out, *extra], success, env, argument_error)
+            assert out.exists() == success
+            return out, result
+
+        for rotation in [0, 90, 180, 270]:
+            document = root / f"rotated-{rotation}.pdf"
+            for kind, (points, expected) in geometries.items():
+                out, result = measure(document, f"measure-{rotation}-{kind}", kind, points)
+                assert result["original_unchanged"] and math.isclose(result["measurement"]["value"], expected, abs_tol=1e-8)
+                exported = run(["measurements", out])["pages"]
+                records = exported[0]["measurements"]
+                assert len(records) == 1 and not exported[1]["measurements"]
+                assert records[0]["kind"] == kind and math.isclose(records[0]["value"], expected, abs_tol=1e-8)
+                assert records[0]["unit"] == ("deg" if kind == "angle" else "m2" if kind == "area" else "m")
+            pixels = independent_render(out, f"measure-independent-{rotation}")
+            assert sum(b > r + 70 and b > g + 50 for r, g, b in pixels.get_flattened_data()) > 60
+            checked = subprocess.run([str(qpdf), "--check", str(out)], capture_output=True, timeout=25)
+            assert checked.returncode == 0, checked.stderr[:1000]
+            qpdf_checks += 1
+            cases.append(f"measurements-rotation-{rotation}-five-known-geometries-reopen-qpdf-mupdf")
+        for unit, metres in [("mm", 0.001), ("cm", 0.01), ("m", 1), ("in", 0.0254), ("ft", 0.3048)]:
+            out, result = measure(source, "measure-unit-" + unit, known=str(10 / metres), unit=unit)
+            assert math.isclose(result["measurement"]["value"] * metres, 10, abs_tol=1e-8)
+        cases.append("measurement-metric-decimal-feet-and-inches-known-equivalence")
+        for name, kwargs in [("zero-scale", {"known":"0"}), ("nan-scale", {"known":"NaN"}),
+                             ("zero-calibration", {"calibration":"40,40 40,40"}),
+                             ("outside", {"points":"40,70 9000,70"}), ("nonfinite", {"points":"NaN,70 140,70"}),
+                             ("degenerate", {"points":"40,70 40,70"}),
+                             ("crossed-area", {"kind":"area", "points":"40,70 140,120 40,120 140,70"}),
+                             ("precision", {"extra":["--precision", "9"], "argument_error":True})]:
+            measure(source, "measure-invalid-" + name, success=False, **kwargs)
+            cases.append("measurement-invalid-" + name + "-refuses-copy")
+        saved_measure = root / "measure-unit-m.pdf"
+        digest = sha(saved_measure)
+        for destination in [saved_measure, source]:
+            run(["measure", source, "--kind", "length", "--points", "40,70 140,70", "--calibration", "40,40 140,40",
+                 "--known-distance", "10", "--out", destination, "--overwrite"], False)
+        assert sha(saved_measure) == digest
+        cases.append("measurement-source-and-existing-destination-preserved")
+        unreadable = root / "unreadable-annotations.pdf"
+        unreadable.write_bytes(blank_pdf().replace(b"/Resources << >>", b"/Annots null /Resources << >>"))
+        remember(unreadable)
+        run(["measurements", unreadable], False)
+        cases.append("measurement-unreadable-annotations-refused-without-zero-totals")
+        for name, extra in [("overflow", ["--text", "W" * 256]), ("nan-size", ["--text", "Text", "--size", "NaN"]),
+                            ("invalid-later-page", ["--text", "Text", "--pages", "1,3"])]:
+            out = root / ("text-atomic-" + name + ".pdf")
+            run(["stamp", source, *extra, "--out", out], False)
+            assert not out.exists()
+            cases.append("text-stamp-atomic-" + name)
+        for aes in [128, 256]:
+            for restricted in [False, True]:
+                encrypted = root / f"annotation-protected-{aes}-{restricted}.pdf"
+                run(["protect", source, "--user-password-env", "SUNIPDF_DECORATION_USER", "--owner-password-env", "SUNIPDF_DECORATION_OWNER",
+                     "--out", encrypted, "--no-modify"] + (["--aes128"] if aes == 128 else [])
+                    + (["--no-annotate"] if restricted else []), env=credentials)
+                remember(encrypted)
+                flags = ["--password-env", "SUNIPDF_DECORATION_USER"]
+                out, result = image_stamp(encrypted, f"stamp-aes-{aes}-{restricted}", flags, success=not restricted, env=credentials)
+                measured, report = measure(encrypted, f"measure-aes-{aes}-{restricted}", extra=flags, success=not restricted, env=credentials)
+                if not restricted:
+                    assert result["encrypted"] and report["encrypted"]
+                    for role in ["USER", "OWNER"]:
+                        assert len(run(["annotations", out, "--password-env", f"SUNIPDF_DECORATION_{role}"], env=credentials)["pages"][0]["annotations"]) == 1
+                        assert run(["measurements", measured, "--password-env", f"SUNIPDF_DECORATION_{role}"], env=credentials)["pages"][0]["measurements"][0]["value"] == 10
+                cases.append(f"image-stamp-and-measurement-aes{aes}-" + ("annotation-restriction-preserved" if restricted else "annotation-only-permission-both-credentials"))
         assert all(sha(path) == digest for path, digest in sources.items())
-        assert len(cases) == len(set(cases)) == 42
+        assert len(cases) == len(set(cases))
     report = dict(gate="page-decorations-v1", status="passed", completed_cases=len(cases), cases=cases,
-                  commands=commands, qpdf_checks=2, qpdf_sha256=sha(qpdf), pillow_version=pillow_version,
+                  commands=commands, qpdf_checks=qpdf_checks, qpdf_sha256=sha(qpdf), pillow_version=pillow_version,
+                  independent_reader_checks=independent_reader_checks, mutool_sha256=sha(mutool),
                   cli_sha256=sha(cli), source_revision=os.environ.get("GITHUB_SHA"), platform=os.name,
                   input_files_unchanged=True, generated_fixtures_only=True, secret_argv_used=False,
                   production_identity_used=False, host_installation_performed=False, native_gui_qualified=False,

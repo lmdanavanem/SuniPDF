@@ -415,6 +415,10 @@ See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53-command count describes the 0.21.x baseline;
 0.30.0 adds commands with validation recorded in the published release evidence.
 
+## AEC backlog and optional enterprise cloud
+
+Track [AEC-001–026](AEC_BACKLOG.md) and the [cloud product contract](CLOUD_STRATEGY.md). Prioritise local calibration/measurements, quantities, registers, annotation libraries and plan revision workflows with an AEC corpus. Cloud and collaboration are deferred at the owner's request. All unfinished acceptance criteria stay open. Pricing is deferred and local PDF tools remain free and account-independent.
+
 ## Deferred work after 0.30.0
 
 1. Qualify ARM64 hardware, physical printers, Narrator, physical GPU/window behavior and native updater interaction.

@@ -37,3 +37,17 @@ Positions : `center`, `top-left`, `top-center`, `top-right`, `bottom-left`, `bot
 Le décodage est local, orientation EXIF comprise. Limites : 64 Mio encodés, 4096 pixels par côté, quatre millions de pixels par image, 1000 pages et 64 millions de pixels d’image répartis sur les pages sélectionnées. Réglages invalides, images entièrement transparentes et documents interdisant la modification sont refusés. Le document en mémoire est remplacé uniquement si toutes les pages réussissent. Le chiffrement AES-128/AES-256 autorisé et les deux mots de passe sont conservés.
 
 Les contrôles sur fichiers générés couvrent géométrie, pixels indépendants, protection, refus et qpdf. Ils ne qualifient pas le sélecteur natif, les claviers et Narrateur, les documents clients, l’impression physique ou la conformité PDF/A/PDF/UA. Pas de calque d’arrière-plan, mosaïque, animation, vérification de signature ou DRM.
+
+## Tampons image et textes atomiques (0.40.0)
+
+Ouvrez **Commentaire → Annotations enrichies**, choisissez **Tampon image**, sélectionnez une image locale, le rectangle de page affichée et l'opacité. Vérifiez l'aperçu réel avant Appliquer ; une modification impose un nouvel aperçu. Annuler/Échap conserve le document. Un Annuler retire l'annotation. Proportions et transparence sont préservées dans une vraie annotation Stamp intégrant l'image : le fichier source n'est plus nécessaire après application. Déplacement, réponses et suppression du fil restent disponibles ; redimensionnement/style génériques indisponibles. Recréez le tampon pour changer rectangle ou image.
+
+```powershell
+sunipdf-cli image-stamp input.pdf --image logo.png --rect 40,40,240,240 --opacity 0.5 --page 1 --author "Reviewer" --out stamped.pdf
+```
+
+Le droit d'annotation est requis. La CLI crée une copie et refuse originaux et destinations existantes même avec `--overwrite`. Identifiants par environnement/stdin, protection AES-128/AES-256 autorisée et deux mots de passe conservés. Décodage local avec orientation EXIF, limites de 64 Mio encodés, 4096 pixels par côté et quatre millions de pixels. Images transparentes, excessives ou invalides refusées. Aucun chemin ou nom d'image n'est intégré. Ce tampon n'est ni une signature cryptographique ni une identité vérifiée.
+
+Filigranes texte et numérotation vérifient toutes les pages et marges avant validation globale. Marges non finies/négatives, pages invalides et débordements sont refusés sans modification partielle, réduction ou troncature silencieuse. Une sélection dupliquée ne s'applique qu'une fois.
+
+Les nouvelles [mesures locales calibrées](MEASUREMENTS.fr.md) utilisent le même aperçu protégé. Cloud et collaboration sont reportés ; le local reste gratuit et open source.

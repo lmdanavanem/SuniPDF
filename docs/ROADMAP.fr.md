@@ -470,3 +470,7 @@ du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STA
    confiance d'archivage seulement au-delà des limites explicites de cette version.
 
 Aucune date/version suivante n’est engagée. L’IA facultative reste désactivée par défaut.
+
+## Plans bâtiment et cloud d’entreprise
+
+Le [backlog de 26 cartes](AEC_BACKLOG.fr.md) ajoute calibration, métrés, registre, bibliothèques, révisions et collaboration facultative. SuniPDF local reste gratuit et open source ; le cloud géré d’entreprise sera payant, sans tarifs définis. Le [cloud](CLOUD_STRATEGY.fr.md) et la collaboration sont reportés à la demande du propriétaire. Les fonctions locales de calibration, métrés, registre, bibliothèques et révisions passent en premier.

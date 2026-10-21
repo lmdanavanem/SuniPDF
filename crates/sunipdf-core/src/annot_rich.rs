@@ -68,6 +68,12 @@ pub enum RichAnnotation {
         rect: PointRect,
         kind: StampKind,
     },
+    ImageStamp {
+        rect: PointRect,
+        image: std::path::PathBuf,
+        opacity: f32,
+    },
+    Measurement(crate::measurement::Measurement),
     Attachment {
         rect: PointRect,
         filename: String,
@@ -307,7 +313,7 @@ pub(crate) fn same_document(
             .all(|key| original.trailer.get(key).ok() == current.trailer.get(key).ok()))
 }
 
-fn checked_rect(geo: &PageGeometry, rect: PointRect) -> Result<(f32, f32), EngineError> {
+pub(crate) fn checked_rect(geo: &PageGeometry, rect: PointRect) -> Result<(f32, f32), EngineError> {
     let (page_w, page_h) = geo.display_size();
     let (w, h) = (rect.right - rect.left, rect.top - rect.bottom);
     if ![rect.left, rect.bottom, rect.right, rect.top, w, h]
@@ -325,7 +331,7 @@ fn checked_rect(geo: &PageGeometry, rect: PointRect) -> Result<(f32, f32), Engin
     Ok((w, h))
 }
 
-fn rich_base(
+pub(crate) fn rich_base(
     kind: &str,
     rect: PointRect,
     geo: &PageGeometry,
@@ -783,6 +789,14 @@ impl<'a> Document<'a> {
             } => self.add_vertex_annotation(page, *kind, points, style, author),
             RichAnnotation::Stamp { rect, kind } => {
                 self.add_stamp_annotation(page, *rect, *kind, author)
+            }
+            RichAnnotation::ImageStamp {
+                rect,
+                image,
+                opacity,
+            } => self.add_image_stamp_annotation(page, *rect, image, *opacity, author),
+            RichAnnotation::Measurement(measurement) => {
+                self.add_measurement_annotation(page, measurement, author)
             }
             RichAnnotation::Attachment {
                 rect,

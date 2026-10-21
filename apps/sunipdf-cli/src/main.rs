@@ -36,6 +36,59 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Add a calibrated measurement annotation in a new PDF copy.
+    Measure {
+        file: PathBuf,
+        #[arg(long, value_parser=["length","polyline","perimeter","area","angle"])]
+        kind: String,
+        /// Displayed-page vertices: "x,y x,y ...", in points; angle vertex is the middle point.
+        #[arg(long)]
+        points: String,
+        /// Two displayed-page points delimiting the known distance: "x,y x,y".
+        #[arg(long)]
+        calibration: String,
+        #[arg(long)]
+        known_distance: f64,
+        #[arg(long, value_parser=["mm","cm","m","in","ft"], default_value="m")]
+        unit: String,
+        #[arg(long, default_value_t=2, value_parser=clap::value_parser!(u8).range(0..=4))]
+        precision: u8,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Export supported calibrated measurement records as JSON; refuse changed/unsupported metadata.
+    Measurements {
+        file: PathBuf,
+        #[arg(long)]
+        page: Option<usize>,
+        #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Add an aspect-fitted image Stamp annotation to a new PDF copy.
+    ImageStamp {
+        file: PathBuf,
+        #[arg(long)]
+        image: PathBuf,
+        /// Displayed-page rectangle: left,bottom,right,top, in points.
+        #[arg(long)]
+        rect: String,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long, default_value_t = 1.0)]
+        opacity: f32,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Prepare a local visual-signature PNG; this does not create a cryptographic signature.
     PrepareSignatureImage {
         file: PathBuf,
@@ -1469,6 +1522,95 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 serde_json::json!({"out":out,"decorated":count,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
             )
         }
+        Command::ImageStamp {
+            file,
+            image,
+            rect,
+            page,
+            opacity,
+            author,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let index = doc.add_image_stamp_annotation(
+                page_index(page, doc.page_count())?,
+                annot_cmd::parse_rect(&rect)?,
+                &image,
+                opacity,
+                author.as_deref(),
+            )?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"page":page,"index":index,"subtype":"Stamp","original_unchanged":true,"encrypted":doc.properties().encrypted}),
+            )
+        }
+        Command::Measure {
+            file,
+            kind,
+            points,
+            calibration,
+            known_distance,
+            unit,
+            precision,
+            page,
+            author,
+            out,
+            password,
+        } => {
+            use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let measurement = Measurement {
+                kind: MeasurementKind::from_id(&kind)
+                    .ok_or_else(|| EngineError::Other("invalid measurement kind".into()))?,
+                points: annot_cmd::parse_stroke(&points)?,
+                calibration: annot_cmd::parse_stroke(&calibration)?
+                    .try_into()
+                    .map_err(|_| EngineError::Other("calibration requires two points".into()))?,
+                known_distance,
+                unit: MeasurementUnit::from_id(&unit)
+                    .ok_or_else(|| EngineError::Other("invalid measurement unit".into()))?,
+                precision: usize::from(precision),
+            };
+            let index = doc.add_measurement_annotation(
+                page_index(page, doc.page_count())?,
+                &measurement,
+                author.as_deref(),
+            )?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"page":page,"index":index,"measurement":measurement.result()?,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
+            )
+        }
+        Command::Measurements {
+            file,
+            page,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            let pages: Vec<_> = match page {
+                Some(page) => vec![page_index(page, doc.page_count())?],
+                None => (0..doc.page_count()).collect(),
+            };
+            if pages.len() > 1000 {
+                return Err(EngineError::Other(
+                    "measurement export is limited to 1000 pages; select --page".into(),
+                ));
+            }
+            let mut records = Vec::new();
+            let mut count = 0usize;
+            for page in pages {
+                let measurements = doc.measurements(page)?;
+                count += measurements.len();
+                if count > 4096 {
+                    return Err(EngineError::Other(
+                        "measurement export is limited to 4096 records; select --page".into(),
+                    ));
+                }
+                records.push(serde_json::json!({"page":page+1,"measurements":measurements}));
+            }
+            Ok(serde_json::json!({"pages":records}))
+        }
         Command::ImageWatermark {
             file,
             image,
@@ -2741,6 +2883,8 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Rotate { out, .. }
         | Command::Stamp { out, .. }
         | Command::ImageWatermark { out, .. }
+        | Command::ImageStamp { out, .. }
+        | Command::Measure { out, .. }
         | Command::HeadersFooters { out, .. }
         | Command::PageNumbers { out, .. }
         | Command::SetPageLabels { out, .. }
@@ -3267,6 +3411,79 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn image_stamp_command_keeps_common_password_and_output_flags() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "image-stamp",
+            "input.pdf",
+            "--image",
+            "chosen image.png",
+            "--rect",
+            "40,40,240,240",
+            "--opacity",
+            "0.5",
+            "--password-env",
+            "SUNIPDF_STAMP_PASSWORD",
+            "--out",
+            "new copy.pdf",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(cli.overwrite);
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("new copy.pdf"))
+        );
+        assert!(
+            matches!(cli.command, Command::ImageStamp { page:1, opacity, image, password:None, .. } if opacity==0.5 && image==std::path::Path::new("chosen image.png"))
+        );
+    }
+
+    #[test]
+    fn measurement_commands_require_explicit_geometry_calibration_and_guard_output() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "area",
+            "--points",
+            "40,70 140,70 140,120 40,120",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "10",
+            "--unit",
+            "m",
+            "--out",
+            "new.pdf",
+            "--password-env",
+            "PDF_CREDENTIAL",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(matches!(
+            cli.command,
+            Command::Measure {
+                page: 1,
+                precision: 2,
+                ..
+            }
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measurements",
+            "source.pdf",
+            "--password-stdin"
+        ])
+        .is_ok());
+        assert!(parse_cli(["sunipdf-cli", "measure", "source.pdf", "--out", "new.pdf"]).is_err());
     }
 
     #[test]

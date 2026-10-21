@@ -553,3 +553,7 @@ chemins Unicode, disque plein simulé), premier benchmark (ouverture + rendu pag
   contrôles de la source publiée réussis. OpenGL reste le défaut ; GPU/fenêtres réels et matériel ARM64 non vérifiés.
 - `-j 2` imposé par la mémoire du poste ; documenter la machine de référence.
 - Option `--lang` de la CLI (D009) si des messages humains deviennent nécessaires.
+
+## Backlog bâtiment et cloud facultatif
+
+Suivre [AEC-001–026](AEC_BACKLOG.fr.md) et le [contrat produit cloud](CLOUD_STRATEGY.fr.md). Priorité aux fonctions locales : calibration/métrés, quantités, registre, bibliothèques et révisions avec corpus AEC. Cloud et collaboration sont reportés à la demande du propriétaire. Les critères non démontrés restent ouverts. Tarifs ultérieurs ; outils locaux gratuits sans compte obligatoire.

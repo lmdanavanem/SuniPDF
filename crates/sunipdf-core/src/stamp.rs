@@ -109,10 +109,36 @@ impl Document<'_> {
         if !stamp.angle.is_finite() {
             return Err(EngineError::Other("invalid angle".into()));
         }
+        if !stamp.margin_pt.is_finite() || stamp.margin_pt < 0.0 {
+            return Err(EngineError::Other("invalid stamp margin".into()));
+        }
+        if !self.properties().can_modify {
+            return Err(EngineError::SecurityRestricted);
+        }
         let total = self.page_count();
-        let targets: Vec<usize> = match pages {
+        let mut targets: Vec<usize> = match pages {
             Some(list) => list.to_vec(),
             None => (0..total).collect(),
+        };
+        targets.sort_unstable();
+        targets.dedup();
+        if targets.is_empty() || targets.len() > 1000 {
+            return Err(EngineError::Other(
+                "select between 1 and 1000 stamp pages".into(),
+            ));
+        }
+        for &page in &targets {
+            self.page_size(page)?;
+        }
+        let mut scratch = Document {
+            inner: self
+                .pdfium
+                .load_pdf_from_byte_vec(self.snapshot()?, self.password())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password: self.password.clone(),
+            font_cache: Default::default(),
         };
         for &page in &targets {
             if page >= total {
@@ -122,17 +148,26 @@ impl Document<'_> {
                 .text
                 .replace("{n}", &(page + 1).to_string())
                 .replace("{total}", &total.to_string());
-            let size = self.page_size(page)?;
-            self.add_text(page, 0.0, 0.0, &text, &stamp.style)?;
-            let index = self.page_objects(page)?.len() - 1;
+            let size = scratch.page_size(page)?;
+            scratch.add_text(page, 0.0, 0.0, &text, &stamp.style)?;
+            let index = scratch.page_objects(page)?.len() - 1;
             // Pivoter d'abord : la position se calcule sur la boîte englobante du texte pivoté,
             // sinon un tampon à 45° dans un coin déborde de la page.
             if stamp.angle != 0.0 {
-                self.rotate_object(page, index, -stamp.angle)?;
+                scratch.rotate_object(page, index, -stamp.angle.rem_euclid(360.0))?;
             }
-            let b = self.object_info(page, index)?.bounds;
+            let b = scratch.object_info(page, index)?.bounds;
             let (w, h) = (b.right - b.left, b.top - b.bottom);
             let m = stamp.margin_pt;
+            if !w.is_finite()
+                || !h.is_finite()
+                || w + 2.0 * m > size.width_pt + 0.02
+                || h + 2.0 * m > size.height_pt + 0.02
+            {
+                return Err(EngineError::Other(
+                    "stamp does not fit within the page margins".into(),
+                ));
+            }
             let (x, y) = match stamp.position {
                 StampPosition::Center => ((size.width_pt - w) / 2.0, (size.height_pt - h) / 2.0),
                 StampPosition::TopLeft => (m, size.height_pt - m - h),
@@ -142,8 +177,10 @@ impl Document<'_> {
                 StampPosition::BottomCenter => ((size.width_pt - w) / 2.0, m),
                 StampPosition::BottomRight => (size.width_pt - m - w, m),
             };
-            self.move_object(page, index, x - b.left, y - b.bottom)?;
+            scratch.move_object(page, index, x - b.left, y - b.bottom)?;
         }
+        self.inner = scratch.inner;
+        self.font_cache.clear();
         Ok(targets.len())
     }
 }
