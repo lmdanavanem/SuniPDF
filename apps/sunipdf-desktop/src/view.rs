@@ -1567,7 +1567,7 @@ impl SuniApp {
     }
 
     /// Un appui sur une page la rend courante (Pivoter, Supprimer, panneau Objets la visent).
-    fn make_current(&mut self, page: usize) {
+    pub(crate) fn make_current(&mut self, page: usize) {
         if self.view.mode == ViewMode::Single
             || self.document.as_ref().is_none_or(|d| d.page == page)
         {

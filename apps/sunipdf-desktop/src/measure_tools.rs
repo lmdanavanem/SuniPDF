@@ -391,10 +391,13 @@ impl SuniApp {
         if double_click && matches!(self.annotate.measure.gesture, Gesture::Draw { .. }) {
             // The first release already added the final vertex. Mouse jitter on the
             // second release must not create a tiny extra segment or closing edge.
+            self.make_current(page);
             self.finish_measurement(ctx);
             return;
         }
-        self.annotate.measure.push_point(page, point, shift);
+        if self.annotate.measure.push_point(page, point, shift) {
+            self.make_current(page);
+        }
         let state = &self.annotate.measure;
         if matches!(&state.gesture, Gesture::Draw { points, .. }
             if (state.kind == MeasurementKind::Length && points.len() == 2)
@@ -813,6 +816,104 @@ mod tests {
         assert_eq!(measurement.points, vertices);
         assert!((measurement.value().unwrap() - 50.0).abs() < 1e-8);
         assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn clicking_the_right_page_keeps_its_confirmed_scale_current_in_two_page_view() {
+        fn frame(app: &mut SuniApp, ctx: &egui::Context, time: &mut f64, events: Vec<egui::Event>) {
+            *time += 0.1;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1600.0, 1000.0))),
+                    time: Some(*time),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    egui::Panel::top("measurement-two-page-controls")
+                        .show(ui, |ui| app.measurement_bar(ctx, ui));
+                    app.document_view(ctx, ui);
+                },
+            );
+            output.textures_delta.clear();
+        }
+        fn click_right(app: &mut SuniApp, ctx: &egui::Context, time: &mut f64, point: Point) {
+            frame(app, ctx, time, Vec::new());
+            let (visible_page, rect, height) = app.edit.page_view.unwrap();
+            let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+            let layout = crate::view::Layout::for_mode(
+                &app.document.as_ref().unwrap().info.page_sizes,
+                0,
+                k,
+                app.view.inner.size(),
+                crate::view::ViewMode::TwoPage,
+            );
+            let offset = layout.page_rect(1).min - layout.page_rect(visible_page).min;
+            let pos = rect.min + offset + egui::vec2(point.0 * k, (height - point.1) * k);
+            *time += 0.6;
+            for pressed in [true, false] {
+                frame(
+                    app,
+                    ctx,
+                    time,
+                    vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+        }
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes.push(size);
+        app.zoom = crate::app::Zoom::Fixed(0.6);
+        app.view.mode = crate::view::ViewMode::TwoPage;
+        let ctx = egui::Context::default();
+        app.open_measurements(&ctx);
+        let mut time = 1.0;
+        for _ in 0..3 {
+            frame(&mut app, &ctx, &mut time, Vec::new());
+        }
+        click_right(&mut app, &ctx, &mut time, (60.0, 650.0));
+        assert_eq!(
+            app.document.as_ref().unwrap().page,
+            0,
+            "uncalibrated clicks do not retarget the page"
+        );
+        app.annotate.measure.start_calibration();
+        click_right(&mut app, &ctx, &mut time, (60.0, 650.0));
+        assert_eq!(app.document.as_ref().unwrap().page, 1);
+        click_right(&mut app, &ctx, &mut time, (160.0, 650.0));
+        app.annotate.measure.input_distance = "25".into();
+        assert!(app.annotate.measure.confirm_calibration());
+        frame(&mut app, &ctx, &mut time, Vec::new());
+        assert_eq!(app.document.as_ref().unwrap().page, 1);
+        assert!(!app.annotate.measure.scales.contains_key(&0));
+        assert_eq!(app.annotate.measure.scales.get(&1).unwrap().distance, 25.0);
+        click_right(&mut app, &ctx, &mut time, (60.0, 550.0));
+        click_right(&mut app, &ctx, &mut time, (160.0, 550.0));
+        let mut previews = 0;
+        for request in requests.try_iter() {
+            match request {
+                crate::worker::Request::PreviewRichAnnotation {
+                    page,
+                    annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(measurement),
+                    ..
+                } => {
+                    previews += 1;
+                    assert_eq!(page, 1);
+                    assert!((measurement.value().unwrap() - 25.0).abs() < 0.01);
+                }
+                crate::worker::Request::Edit(_) => panic!("drawing must not mutate the PDF"),
+                _ => {}
+            }
+        }
+        assert_eq!(previews, 1);
     }
 
     #[test]
