@@ -66,7 +66,7 @@ def main():
             sources[path] = sha(path)
             return path
 
-        def run(arguments, success=True, env=None):
+        def run(arguments, success=True, env=None, argument_error=False):
             nonlocal commands
             output = subprocess.run([str(cli), *map(str, arguments)], cwd=root, capture_output=True,
                                     timeout=30, env={**os.environ, **(env or {})})
@@ -76,6 +76,9 @@ def main():
             if success:
                 return json.loads(output.stdout)
             assert not output.stdout
+            if argument_error:
+                assert output.returncode == 2 and b"error:" in output.stderr and b"--precision" in output.stderr
+                return {"argument_error": True}
             return json.loads(output.stderr)
 
         source = root / "original été 中文.pdf"
@@ -330,10 +333,10 @@ def main():
                       "area": ("40,70 140,70 140,120 40,120", 50.0), "angle": ("40,120 40,70 140,70", 90.0)}
 
         def measure(document, name, kind="length", points="40,70 140,70", calibration="40,40 140,40", known="10",
-                    unit="m", extra=(), success=True, env=None):
+                    unit="m", extra=(), success=True, env=None, argument_error=False):
             out = root / (name + ".pdf")
             result = run(["measure", document, "--kind", kind, "--points", points, "--calibration", calibration,
-                          "--known-distance", known, "--unit", unit, "--out", out, *extra], success, env)
+                          "--known-distance", known, "--unit", unit, "--out", out, *extra], success, env, argument_error)
             assert out.exists() == success
             return out, result
 
@@ -362,7 +365,7 @@ def main():
                              ("outside", {"points":"40,70 9000,70"}), ("nonfinite", {"points":"NaN,70 140,70"}),
                              ("degenerate", {"points":"40,70 40,70"}),
                              ("crossed-area", {"kind":"area", "points":"40,70 140,120 40,120 140,70"}),
-                             ("precision", {"extra":["--precision", "9"]})]:
+                             ("precision", {"extra":["--precision", "9"], "argument_error":True})]:
             measure(source, "measure-invalid-" + name, success=False, **kwargs)
             cases.append("measurement-invalid-" + name + "-refuses-copy")
         saved_measure = root / "measure-unit-m.pdf"
@@ -377,7 +380,7 @@ def main():
         remember(unreadable)
         run(["measurements", unreadable], False)
         cases.append("measurement-unreadable-annotations-refused-without-zero-totals")
-        for name, extra in [("overflow", ["--text", "W" * 256]), ("nan-margin", ["--text", "Text", "--margin", "NaN"]),
+        for name, extra in [("overflow", ["--text", "W" * 256]), ("nan-size", ["--text", "Text", "--size", "NaN"]),
                             ("invalid-later-page", ["--text", "Text", "--pages", "1,3"])]:
             out = root / ("text-atomic-" + name + ".pdf")
             run(["stamp", source, *extra, "--out", out], False)
