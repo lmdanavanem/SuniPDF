@@ -455,6 +455,10 @@ findings, without confirming a production secret. Remediation/triage and explici
 included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
 This historical result does not establish the scan status of 0.30.0.
 
+## Construction workflows and enterprise cloud
+
+The [26-card AEC backlog](AEC_BACKLOG.md) adds calibrated measurements, quantities, annotation registers, libraries, plan revisions and optional collaboration. Local SuniPDF stays free and open source; managed company cloud is paid, with pricing undecided. Cloud and collaboration are deferred at the owner's request; the [cloud plan](CLOUD_STRATEGY.md) records future requirements only. Prioritise local calibration, measurements, registers, libraries and plan workflows.
+
 ## Work beyond 0.39.0
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.

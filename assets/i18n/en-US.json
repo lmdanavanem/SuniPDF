@@ -1020,6 +1020,9 @@
   "rich.polyline": "Polyline",
   "rich.cloud": "Cloud",
   "rich.stamp": "Stamp",
+  "rich.image_stamp": "Custom image stamp",
+  "rich.choose_image": "Choose stamp image…",
+  "rich.image_stamp_note": "Fits the image inside the rectangle, preserving its proportions and transparency. Preview before applying. The copy is embedded in the PDF; this is not a digital signature.",
   "rich.attachment": "File attachment",
   "rich.eraser": "Erase touched strokes",
   "rich.left": "Left",
@@ -1147,5 +1150,16 @@
   "presets.name": "New preset name",
   "presets.save": "Save preset",
   "presets.delete": "Delete preset",
-  "presets.error": "Preset was not saved: {error}"
+  "presets.error": "Preset was not saved: {error}",
+  "measure.title": "Calibrated measurements",
+  "measure.note": "Each annotation keeps its own calibration. Enter displayed-page points (bottom-left origin); preview before applying. Use decimal feet or inches. To change geometry or scale, recreate the measurement.",
+  "measure.calibration": "Calibration: two points spanning the known distance",
+  "measure.known_distance": "Known distance",
+  "measure.precision": "Decimal places",
+  "measure.invalid": "Complete a positive calibration and valid measurement geometry.",
+  "measure.length": "Length (two points)",
+  "measure.polyline": "Polyline length",
+  "measure.perimeter": "Polygon perimeter",
+  "measure.area": "Polygon area",
+  "measure.angle": "Angle (three points; vertex in the middle)"
 }

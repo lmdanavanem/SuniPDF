@@ -4,9 +4,11 @@ use crate::app::SuniApp;
 use crate::editor::{rgb_tuple, TextFont};
 use crate::worker::{EditOp, Request};
 use std::io::Read;
+use std::path::PathBuf;
 use sunipdf_core::annot_rich::{
     RichAnnotation, RichAnnotationPreview, RichFreeTextStyle, StampKind, VertexAnnotKind,
 };
+use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
 use sunipdf_i18n::tr;
 
@@ -17,6 +19,8 @@ pub enum RichMode {
     Polyline,
     Cloud,
     Stamp,
+    ImageStamp,
+    Measurement,
     Attachment,
     EraseInk,
 }
@@ -29,6 +33,8 @@ impl RichMode {
             Self::Polyline => "rich.polyline",
             Self::Cloud => "rich.cloud",
             Self::Stamp => "rich.stamp",
+            Self::ImageStamp => "rich.image_stamp",
+            Self::Measurement => "measure.title",
             Self::Attachment => "rich.attachment",
             Self::EraseInk => "rich.eraser",
         }
@@ -54,6 +60,12 @@ pub struct RichDraft {
     pub opacity: f32,
     pub radius: f32,
     pub stamp: StampKind,
+    pub image_path: Option<PathBuf>,
+    pub measure_kind: MeasurementKind,
+    pub measure_unit: MeasurementUnit,
+    pub calibration: String,
+    pub known_distance: f64,
+    pub precision: usize,
     pub filename: String,
     pub bytes: Vec<u8>,
     pub target: Option<usize>,
@@ -101,6 +113,8 @@ impl RichDraft {
             RichMode::EraseInk => self.target.is_some() && points(&self.points, 256).is_some(),
             RichMode::Attachment => !self.filename.is_empty(),
             RichMode::Stamp => true,
+            RichMode::ImageStamp => self.image_path.is_some(),
+            RichMode::Measurement => self.measurement().is_some(),
         }
     }
     fn operation(&self) -> Option<RichAnnotation> {
@@ -164,6 +178,12 @@ impl RichDraft {
                 rect: self.rect,
                 kind: self.stamp,
             },
+            RichMode::ImageStamp => RichAnnotation::ImageStamp {
+                rect: self.rect,
+                image: self.image_path.clone()?,
+                opacity: self.opacity / 100.0,
+            },
+            RichMode::Measurement => RichAnnotation::Measurement(self.measurement()?),
             RichMode::Attachment => {
                 if self.filename.is_empty() {
                     return None;
@@ -186,6 +206,20 @@ impl RichDraft {
         self.preview = None;
         self.prepared = false;
         self.error = None;
+    }
+
+    fn measurement(&self) -> Option<Measurement> {
+        let calibration: [(f32, f32); 2] = points(&self.calibration, 2)?.try_into().ok()?;
+        let measurement = Measurement {
+            kind: self.measure_kind,
+            points: points(&self.points, 128)?,
+            calibration,
+            known_distance: self.known_distance,
+            unit: self.measure_unit,
+            precision: self.precision,
+        };
+        measurement.value().ok()?;
+        Some(measurement)
     }
 }
 
@@ -284,6 +318,12 @@ impl SuniApp {
             opacity: 100.0,
             radius: 8.0,
             stamp: StampKind::Approved,
+            image_path: None,
+            measure_kind: MeasurementKind::Length,
+            measure_unit: MeasurementUnit::Metres,
+            calibration: "40,40\n140,40".into(),
+            known_distance: 10.0,
+            precision: 2,
             filename: String::new(),
             bytes: Vec::new(),
             target,
@@ -482,6 +522,8 @@ impl SuniApp {
                                     RichMode::Polyline,
                                     RichMode::Cloud,
                                     RichMode::Stamp,
+                                    RichMode::ImageStamp,
+                                    RichMode::Measurement,
                                     RichMode::Attachment,
                                 ] {
                                     ui.selectable_value(
@@ -493,6 +535,9 @@ impl SuniApp {
                             });
                         if old != draft.mode {
                             changed = true;
+                            if draft.mode == RichMode::Measurement {
+                                draft.points = "40,70\n160,70".into();
+                            }
                             if draft.mode == RichMode::Attachment {
                                 draft.rect.right = draft.rect.left + 24.0;
                                 draft.rect.top = draft.rect.bottom + 32.0;
@@ -501,7 +546,10 @@ impl SuniApp {
                     }
                     if matches!(
                         draft.mode,
-                        RichMode::FreeText | RichMode::Stamp | RichMode::Attachment
+                        RichMode::FreeText
+                            | RichMode::Stamp
+                            | RichMode::ImageStamp
+                            | RichMode::Attachment
                     ) {
                         ui.horizontal_wrapped(|ui| {
                             for (label, value) in [
@@ -518,6 +566,73 @@ impl SuniApp {
                         });
                     }
                     match draft.mode {
+                        RichMode::Measurement => {
+                            ui.label(tr(lang, "measure.note"));
+                            let old = draft.measure_kind;
+                            egui::ComboBox::from_id_salt("measure-kind")
+                                .selected_text(tr(lang, measure_key(draft.measure_kind)))
+                                .show_ui(ui, |ui| {
+                                    for kind in MeasurementKind::ALL {
+                                        ui.selectable_value(
+                                            &mut draft.measure_kind,
+                                            kind,
+                                            tr(lang, measure_key(kind)),
+                                        );
+                                    }
+                                });
+                            changed |= old != draft.measure_kind;
+                            ui.label(tr(lang, "rich.points"));
+                            changed |= ui
+                                .add(
+                                    egui::TextEdit::multiline(&mut draft.points)
+                                        .desired_rows(4)
+                                        .char_limit(8192)
+                                        .desired_width(f32::INFINITY),
+                                )
+                                .changed();
+                            ui.label(tr(lang, "measure.calibration"));
+                            changed |= ui
+                                .add(
+                                    egui::TextEdit::multiline(&mut draft.calibration)
+                                        .desired_rows(2)
+                                        .char_limit(512)
+                                        .desired_width(f32::INFINITY),
+                                )
+                                .changed();
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(tr(lang, "measure.known_distance"));
+                                changed |= ui
+                                    .add(
+                                        egui::DragValue::new(&mut draft.known_distance)
+                                            .range(0.000001..=1e9)
+                                            .speed(0.1),
+                                    )
+                                    .changed();
+                                let old = draft.measure_unit;
+                                egui::ComboBox::from_id_salt("measure-unit")
+                                    .selected_text(draft.measure_unit.id())
+                                    .show_ui(ui, |ui| {
+                                        for unit in MeasurementUnit::ALL {
+                                            ui.selectable_value(
+                                                &mut draft.measure_unit,
+                                                unit,
+                                                unit.id(),
+                                            );
+                                        }
+                                    });
+                                changed |= old != draft.measure_unit;
+                                ui.label(tr(lang, "measure.precision"));
+                                changed |= ui
+                                    .add(egui::DragValue::new(&mut draft.precision).range(0..=4))
+                                    .changed();
+                            });
+                            if let Some(result) = draft.measurement().and_then(|m| m.result().ok())
+                            {
+                                ui.strong(result["label"].as_str().unwrap_or_default());
+                            } else {
+                                ui.label(tr(lang, "measure.invalid"));
+                            }
+                        }
                         RichMode::FreeText => {
                             changed |= ui
                                 .add(
@@ -621,6 +736,25 @@ impl SuniApp {
                                 });
                             changed |= old != draft.stamp;
                         }
+                        RichMode::ImageStamp => {
+                            if ui.button(tr(lang, "rich.choose_image")).clicked() {
+                                choose_file = true;
+                            }
+                            if let Some(path) = &draft.image_path {
+                                ui.label(path.file_name().unwrap_or_default().to_string_lossy());
+                            }
+                            ui.label(tr(lang, "rich.image_stamp_note"));
+                            ui.horizontal(|ui| {
+                                ui.label(tr(lang, "bar.opacity"));
+                                changed |= ui
+                                    .add(
+                                        egui::DragValue::new(&mut draft.opacity)
+                                            .range(1.0..=100.0)
+                                            .suffix(" %"),
+                                    )
+                                    .changed();
+                            });
+                        }
                         RichMode::Attachment => {
                             if ui.button(tr(lang, "rich.choose_file")).clicked() {
                                 choose_file = true;
@@ -716,11 +850,44 @@ impl SuniApp {
             });
             self.annotate.adv.rich_generation = self.annotate.adv.rich_generation.wrapping_add(1);
         } else if choose_file {
-            self.choose_rich_attachment();
+            if self
+                .annotate
+                .adv
+                .rich
+                .as_ref()
+                .is_some_and(|draft| draft.mode == RichMode::ImageStamp)
+            {
+                self.choose_rich_image();
+            } else {
+                self.choose_rich_attachment();
+            }
         } else if preview {
             self.request_rich_preview();
         } else if apply {
             self.apply_rich_draft();
+        }
+    }
+
+    fn choose_rich_image(&mut self) {
+        let Some(path) = rfd::FileDialog::new()
+            .set_title(tr(self.lang(), "rich.choose_image"))
+            .add_filter(
+                "Images",
+                &["png", "jpg", "jpeg", "bmp", "gif", "tif", "tiff", "webp"],
+            )
+            .pick_file()
+        else {
+            return;
+        };
+        if let Some(draft) = self
+            .annotate
+            .adv
+            .rich
+            .as_mut()
+            .filter(|draft| draft.mode == RichMode::ImageStamp)
+        {
+            draft.image_path = Some(path);
+            draft.clear_preview();
         }
     }
 
@@ -770,9 +937,42 @@ fn stamp_key(kind: StampKind) -> &'static str {
     }
 }
 
+fn measure_key(kind: MeasurementKind) -> &'static str {
+    match kind {
+        MeasurementKind::Length => "measure.length",
+        MeasurementKind::Polyline => "measure.polyline",
+        MeasurementKind::Perimeter => "measure.perimeter",
+        MeasurementKind::Area => "measure.area",
+        MeasurementKind::Angle => "measure.angle",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn measurement_draft_requires_calibration_and_preview_before_any_mutation() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.open_rich_annotations(&egui::Context::default());
+        let draft = app.annotate.adv.rich.as_mut().unwrap();
+        draft.mode = RichMode::Measurement;
+        draft.points = "40,70\n160,70".into();
+        assert!((draft.measurement().unwrap().value().unwrap() - 12.0).abs() < 1e-8);
+        draft.calibration = "40,40\n40,40".into();
+        assert!(!draft.valid_inputs() && draft.operation().is_none());
+        draft.calibration = "40,40\n140,40".into();
+        app.apply_rich_draft();
+        assert!(requests.try_recv().is_err());
+        app.request_rich_preview();
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::PreviewRichAnnotation {
+                annotation: RichAnnotation::Measurement(_),
+                ..
+            }
+        ));
+    }
 
     fn preview() -> RichAnnotationPreview {
         RichAnnotationPreview {
@@ -786,6 +986,91 @@ mod tests {
             region: sunipdf_core::PixelRect::new(0, 0, 4, 2),
             index: 7,
             prepared: None,
+        }
+    }
+
+    #[test]
+    fn image_stamp_draft_requires_a_file_and_repreview_after_settings_change() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.open_rich_annotations(&egui::Context::default());
+        let draft = app.annotate.adv.rich.as_mut().unwrap();
+        draft.mode = RichMode::ImageStamp;
+        assert!(!draft.valid_inputs() && draft.operation().is_none());
+        draft.image_path = Some(PathBuf::from("chosen logo.png"));
+        draft.opacity = 50.0;
+        app.apply_rich_draft();
+        assert!(requests.try_recv().is_err());
+        app.request_rich_preview();
+        let (epoch, generation) = match requests.recv().unwrap() {
+            Request::PreviewRichAnnotation {
+                annotation: RichAnnotation::ImageStamp { image, opacity, .. },
+                epoch,
+                generation,
+                ..
+            } => {
+                assert_eq!(image, PathBuf::from("chosen logo.png"));
+                assert_eq!(opacity, 0.5);
+                (epoch, generation)
+            }
+            _ => panic!("image stamp preview"),
+        };
+        app.on_rich_preview(&egui::Context::default(), epoch, generation, Ok(preview()));
+        let draft = app.annotate.adv.rich.as_mut().unwrap();
+        assert!(draft.prepared);
+        draft.opacity = 25.0;
+        draft.clear_preview();
+        app.apply_rich_draft();
+        assert!(
+            requests.try_recv().is_err(),
+            "changed settings need an explicit fresh preview"
+        );
+    }
+
+    #[test]
+    fn image_stamp_dialog_exposes_localized_controls_and_escape_never_applies() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            let ctx = egui::Context::default();
+            let _ = crate::icons::install(&ctx);
+            ctx.enable_accesskit();
+            app.open_rich_annotations(&ctx);
+            let draft = app.annotate.adv.rich.as_mut().unwrap();
+            draft.mode = RichMode::ImageStamp;
+            draft.image_path = Some(PathBuf::from("chosen image.png"));
+            draft.prepared = true;
+            let mut input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1280.0, 900.0),
+                )),
+                ..Default::default()
+            };
+            let mut found = false;
+            for _ in 0..2 {
+                let mut output = ctx.run_ui(input.clone(), |_| app.rich_annotation_dialog(&ctx));
+                if let Some(tree) = output.platform_output.accesskit_update.as_ref() {
+                    found |= tree
+                        .nodes
+                        .iter()
+                        .any(|(_, node)| node.label() == Some(tr(app.lang(), "rich.choose_image")));
+                }
+                output.textures_delta.clear();
+            }
+            assert!(found);
+            input.events.push(egui::Event::Key {
+                key: egui::Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            });
+            let mut output = ctx.run_ui(input, |_| app.rich_annotation_dialog(&ctx));
+            output.textures_delta.clear();
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(requests
+                .try_iter()
+                .all(|request| matches!(request, Request::DiscardRichAnnotationPreview { .. })));
         }
     }
 

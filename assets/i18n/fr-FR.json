@@ -1020,6 +1020,9 @@
   "rich.polyline": "Ligne brisée",
   "rich.cloud": "Nuage",
   "rich.stamp": "Tampon",
+  "rich.image_stamp": "Tampon image personnalisé",
+  "rich.choose_image": "Choisir l’image du tampon…",
+  "rich.image_stamp_note": "Ajuste l’image au rectangle en conservant ses proportions et sa transparence. Vérifiez l’aperçu avant d’appliquer. La copie est incorporée au PDF ; ce n’est pas une signature numérique.",
   "rich.attachment": "Pièce jointe",
   "rich.eraser": "Effacer les traits touchés",
   "rich.left": "Gauche",
@@ -1147,5 +1150,16 @@
   "presets.name": "Nom du nouveau modèle",
   "presets.save": "Enregistrer le modèle",
   "presets.delete": "Supprimer le modèle",
-  "presets.error": "Modèle non enregistré : {error}"
+  "presets.error": "Modèle non enregistré : {error}",
+  "measure.title": "Mesures calibrées",
+  "measure.note": "Chaque annotation garde sa calibration. Saisissez les points de page affichée (origine en bas à gauche), puis prévisualisez. Pieds ou pouces décimaux. Recréez la mesure pour modifier sa géométrie ou son échelle.",
+  "measure.calibration": "Calibration : deux points délimitant la distance connue",
+  "measure.known_distance": "Distance connue",
+  "measure.precision": "Décimales",
+  "measure.invalid": "Complétez une calibration positive et une géométrie de mesure valide.",
+  "measure.length": "Longueur (deux points)",
+  "measure.polyline": "Longueur de polyligne",
+  "measure.perimeter": "Périmètre polygonal",
+  "measure.area": "Surface polygonale",
+  "measure.angle": "Angle (trois points ; sommet au milieu)"
 }

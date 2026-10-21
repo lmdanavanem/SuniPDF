@@ -1452,6 +1452,43 @@ fn stamps_reject_line_breaks_without_mutation() {
 }
 
 #[test]
+fn text_stamps_refuse_partial_edits_invalid_margins_and_overflow_atomically() {
+    use sunipdf_core::Stamp;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.snapshot().unwrap();
+    let base = Stamp {
+        text: "Review {n}".into(),
+        ..Default::default()
+    };
+    assert!(doc.stamp_pages(Some(&[0, 99]), &base).is_err());
+    assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+    for margin_pt in [f32::NAN, f32::INFINITY, -1.0, 9999.0] {
+        assert!(doc
+            .stamp_pages(
+                None,
+                &Stamp {
+                    margin_pt,
+                    ..base.clone()
+                }
+            )
+            .is_err());
+        assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+    }
+    assert!(doc
+        .stamp_pages(
+            None,
+            &Stamp {
+                text: "W".repeat(300),
+                ..base.clone()
+            }
+        )
+        .is_err());
+    assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+    assert_eq!(doc.stamp_pages(Some(&[0, 0]), &base).unwrap(), 1);
+}
+
+#[test]
 fn stamp_watermark_and_page_numbers() {
     use sunipdf_core::{Stamp, StampPosition, TextStyle};
     let engine = engine();

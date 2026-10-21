@@ -37,3 +37,17 @@ Positions: `center`, `top-left`, `top-center`, `top-right`, `bottom-left`, `bott
 The image is decoded locally, including EXIF orientation. Limits are 64 MiB encoded, 4096 pixels per side, four million image pixels, 1000 selected pages and 64 million image pixels across selected pages. Invalid settings, fully transparent images and modification-restricted documents are refused. The in-memory document is replaced only when every selected page succeeds. Allowed AES-128/AES-256 protection and both credentials are preserved.
 
 The generated-fixture gate checks CLI geometry, independent rendered pixels, protection, refusals and qpdf. It does not qualify native picker/keyboard/Narrator interaction, customer documents, physical printing or PDF/A/PDF/UA conformance. No background layer, tiled image, animation, signature verification or DRM is implied.
+
+## Image Stamp annotations and atomic text edits (0.40.0)
+
+Open **Comment → Rich annotations**, choose **Image stamp**, select a local image and set the displayed-page rectangle and opacity. Preview the actual candidate before Apply; changing any input requires a fresh preview. Cancel/Escape preserves the document. One Undo removes the annotation. The image keeps its proportions and alpha and is embedded into a real Stamp annotation, so the original image file is no longer needed after Apply. Common annotation tools support moving, replies and thread deletion; generic resize/restyle is unavailable. Recreate it to choose a different rectangle or image.
+
+```powershell
+sunipdf-cli image-stamp input.pdf --image logo.png --rect 40,40,240,240 --opacity 0.5 --page 1 --author "Reviewer" --out stamped.pdf
+```
+
+Creation requires annotation permission. The command writes a new copy, refusing originals and existing destinations even with `--overwrite`; environment/stdin credential inputs remain available. Allowed AES-128/AES-256 protection and both credentials are retained. Images are decoded locally with EXIF orientation and bounded to 64 MiB encoded, 4096 pixels per side and four million pixels. Fully transparent, oversized or invalid images are refused. No source path or image filename is embedded. This is a visual annotation, not a cryptographic signature or verified identity.
+
+Text watermarks and page numbering now preflight all selected pages and margins and commit only when every result fits. Non-finite/negative margins, out-of-range pages or text that exceeds the displayed page margins are refused atomically, without silent shrinking or truncation. Duplicate page selections are applied once.
+
+New [calibrated local measurements](MEASUREMENTS.md) use the same guarded rich-annotation preview flow. Cloud/collaboration are deferred; local tools remain free and open source.
