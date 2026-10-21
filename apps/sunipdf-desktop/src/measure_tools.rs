@@ -871,7 +871,9 @@ mod tests {
         let (mut app, requests, _) = crate::app::tests::test_app();
         let size = app.document.as_ref().unwrap().info.page_sizes[0];
         app.document.as_mut().unwrap().info.page_sizes.push(size);
-        app.zoom = crate::app::Zoom::Fixed(0.6);
+        // One screen pixel per PDF point keeps synthetic clicks exact after
+        // each page origin is independently snapped to the pixel grid.
+        app.zoom = crate::app::Zoom::Fixed(0.75);
         app.view.mode = crate::view::ViewMode::TwoPage;
         let ctx = egui::Context::default();
         app.open_measurements(&ctx);
