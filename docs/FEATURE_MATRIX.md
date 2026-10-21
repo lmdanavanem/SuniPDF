@@ -2,7 +2,19 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.39.0: reusable decoration presets (stable Latest)
+## 0.40.0: calibrated measurements and image stamps (stable Latest)
+
+[0.40.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) under `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
+
+Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. A 26-card AEC backlog prioritises local workflows; cloud and collaboration are deferred at the owner's request, with prices undecided. [Usage and limits](MEASUREMENTS.md).
+
+[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) passed: **637 tests, zero failures**, 10 default ignored, **1163 EN/FR keys**, **32 portable scenarios**, **26 MSI baselines/130 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **80 cases, 256 CLI calls and 10 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included.
+
+Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **27,121,645-byte** x64 ZIP without installing it on the workstation.
+
+Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.40.0.json).
+
+## 0.39.0: reusable decoration presets (published; Latest at the time)
 
 [0.39.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.39.0) under `lmdanavanem`, source `24e3dcd0978fd74fb63d1c43aa8e668f5774fe04`.
 
@@ -295,7 +307,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Page objects panel | Declared | **Done** (F3: drawing order, selection, bring forward/send backward, deletion, marker on hover); object/group drag-and-drop delivered in 0.32.0 ([guide](OBJECT_ORDER.md)) |
 | Links | Declared | **Delivered in 0.30.0**: Earlier page/URI links retained; named/XYZ/Fit/FitH authoring and bounded raw resolution preserve null axes/zoom and displayed crop/rotation. Active unsupported actions never run. [Scope](RELEASE_0.30.0.md). |
 | Watermarks, headers/footers, numbering | Delivered within documented bounds | Existing text/numbering, image watermarks in 0.37.0 and six-zone headers/footers in 0.38.0; no background layer, odd/even rules or new complex-script qualification. [Bounds](PAGE_DECORATIONS.md). |
-| Custom stamps | Partial | Standard annotations retained; reusable text/image decoration presets delivered in 0.39.0. Arbitrary Stamp annotations remain planned. [Bounds](PAGE_DECORATIONS.md). |
+| Custom stamps | Delivered within documented bounds | Image Stamp annotations with embedded pixels, aspect fitting, alpha and preview in 0.40.0; shared libraries and cryptographic identity are separate. [Guide](PAGE_DECORATIONS.md). |
 
 ## C. Organisation
 
@@ -365,6 +377,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | image watermarks | Delivered in 0.37.0 | Image watermarks in Pages and the CLI: transparency, proportional width, angle, seven positions and margins. Rotated/cropped pages fit on both axes. Atomic selected-page edits, one desktop Undo and copy-only CLI output preserve allowed encryption. Published 0.36.0 packages join upgrade baselines. [Guide](PAGE_DECORATIONS.md). |
 | six-zone headers and footers | Delivered in 0.38.0 | Six header/footer zones through Page numbers and the headers-footers CLI command. Absolute page/count placeholders, margins, size and selected pages respect displayed rotation/crop coordinates. Overflow is refused atomically; allowed encryption and copy-only CLI guards remain. Published 0.37.0 packages join migration regression. [Guide](PAGE_DECORATIONS.md). |
 | reusable decoration presets | Delivered in 0.39.0 | Named local presets for text/image watermarks, page numbers and six-zone headers/footers. Choose to load a draft, save under a unique name or delete explicitly. Atomic writes preserve active preferences on failure; malformed preset entries do not reset other valid settings. Page scope stays explicit and image files remain path references. Published 0.38.0 packages join migration regression. Office version probes run headlessly with a cancellable 30-second cold-start bound; conversion and security guards remain enforced. [Guide](PAGE_DECORATIONS.md). |
+| calibrated measurements and image stamps | Delivered in 0.40.0 | Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. A 26-card AEC backlog prioritises local workflows; cloud and collaboration are deferred at the owner's request, with prices undecided. [Guide](PAGE_DECORATIONS.md). |
 | Configurable shortcuts | Delivered in 0.36.0 | Existing commands, conflict refusal, cancellable drafts and atomic preferences; [bounds](KEYBOARD_SHORTCUTS.md). Native keyboard/Narrator and Explorer remain open. |
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
@@ -375,8 +388,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Distributed in 0.39.0**: 31 portable cases and 25 MSI baselines/125 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.39.0.json). |
-| Windows ARM64 | Declared | **Cross-built and distributed in 0.39.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.39.0.json). |
+| Windows x64 | Declared (MSI, zip) | **Distributed in 0.40.0**: 32 portable cases and 26 MSI baselines/130 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.40.0.json). |
+| Windows ARM64 | Declared | **Cross-built and distributed in 0.40.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.40.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

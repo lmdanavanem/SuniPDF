@@ -1,6 +1,8 @@
 # Critères d’acceptation de SuniPDF 1.0
 
-Dernier lot vérifié : [0.39.0 — modèles de décoration réutilisables](RELEASE_0.39.0.fr.md). Les critères restants ci-dessous restent ouverts.
+Dernier lot vérifié : [0.40.0 — mesures calibrées et tampons image](RELEASE_0.40.0.fr.md). Les critères restants ci-dessous restent ouverts.
+
+Lot précédemment vérifié : [0.39.0 — modèles de décoration réutilisables](RELEASE_0.39.0.fr.md). Les critères restants ci-dessous restent ouverts.
 
 Lot précédemment vérifié : [0.38.0 — six zones d’en-tête et pied de page](RELEASE_0.38.0.fr.md). Les critères restants ci-dessous restent ouverts.
 
@@ -9,7 +11,7 @@ Lot précédemment vérifié : [0.37.0 — filigranes image](RELEASE_0.37.0.fr.m
 [English](RELEASE_1.0_CRITERIA.md)
 
 Ce document décrit la préparation acceptée après la 0.32.0 ; il ne déclare pas la 1.0 validée. La version
-stable est maintenant la [0.39.0](RELEASE_0.39.0.fr.md). Les fonctions et refus prudents de la
+stable est maintenant la [0.40.0](RELEASE_0.40.0.fr.md). Les fonctions et refus prudents de la
 [matrice](FEATURE_MATRIX.fr.md) restent applicables : le numéro 1.0 n’élargit pas la prise en charge des
 polices, des exports Office, des signatures, de XFA ou de la conformité PDF.
 

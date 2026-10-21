@@ -8,13 +8,21 @@ Annotations locales de longueur, polyligne, périmètre, surface polygonale simp
 
 ## Validation
 
-La qualification finale sera enregistrée après les contrôles CI et des paquets sur la révision publiée.
+[0.40.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) sous `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
+
+[CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) réussies : **637 tests, zéro échec**, 10 ignorés par défaut, **1163 clés EN/FR**, **32 scénarios portables**, **26 références MSI/130 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **80 scénarios, 256 appels CLI et 10 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés.
+
+Six fichiers publics et copies `dist/` vérifiés par SHA256 ; les scénarios de décorations, **20 d’image** et **14 d’inspection PDF**, ainsi que les suites conservées, ont été rejoués sur la CLI téléchargée. Le harnais conservé de la 0.32.0, dont le module de mise à jour inchangé a été vérifié, a téléchargé et contrôlé les **27,121,645 octets** du ZIP x64 sans installation sur le poste.
+
+Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets non signés, ARM64 compilé uniquement et critères 1.0 ouverts. Modifications Projects différées à la demande du propriétaire ; aucune synchronisation nouvelle annoncée.
+
+[Preuves détaillées](qa/RELEASE_0.40.0.json).
 
 ## Limites
 
-- Measurement vertices and calibration are entered as displayed-page coordinates in Rich annotations. Maximum 128 vertices and 0–4 decimal places; simple polygons only. Feet/inches are decimal units.
-- Each annotation has its own calibration. Recreate it to change geometry or scale; generic move/resize/label edits are refused to prevent stale takeoffs. No page-wide recalibration, vector snapping, viewport scales, volume, symbol recognition or automatic counting is claimed.
-- Measurement JSON records use a documented SuniPDF format; Bluebeam proprietary measurement compatibility and universal imported-metadata support are not claimed. The AEC backlog acceptance criteria remain open where incomplete.
-- Image stamps are limited to 64 MiB encoded, 4096 pixels per side and four million pixels. Embedded pixels are independent of the source image after Apply. No digital-signature or identity verification is implied.
-- Local tools remain free and open source. Cloud/collaboration implementation, deployment and billing are deferred; no prices are defined. Projects edits remain deferred.
-- Windows packages remain unsigned without an independent publication key; ARM64 is cross-built only. Native hardware, printing, Narrator, installed updater interaction, broader hostile/customer corpus and PDF/A/PDF/UA conformance remain separate 1.0 qualification.
+- Saisie des sommets et de la calibration en coordonnées de page affichée dans les annotations enrichies. Maximum 128 sommets et 0 à 4 décimales ; polygones simples uniquement, pieds/pouces décimaux.
+- Chaque annotation possède sa calibration. Recréez-la pour changer géométrie ou échelle ; déplacement, redimensionnement et modification générique du libellé sont refusés pour éviter des valeurs périmées. Échelle globale, accrochage, vues multi-échelles, volumes, reconnaissance et comptages automatiques restent à développer.
+- Les données JSON suivent un format SuniPDF documenté. Compatibilité avec les métadonnées propriétaires Bluebeam et import universel non annoncés. Les critères AEC incomplets restent ouverts.
+- Tampons image : 64 Mio encodés, 4096 pixels par côté et quatre millions de pixels. Pixels intégrés indépendants du fichier source après application ; aucune signature numérique ou vérification d’identité.
+- Le local reste gratuit et open source. Cloud, collaboration, déploiement et facturation sont reportés ; tarifs non définis. Modifications Projects différées.
+- Paquets Windows non signés faute de clé de publication indépendante ; ARM64 compilé uniquement. Matériel physique, impression, Narrateur, interaction avec le metteur à jour installé, corpus élargi et conformité PDF/A/PDF/UA restent des qualifications 1.0 distinctes.
