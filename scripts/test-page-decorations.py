@@ -372,6 +372,11 @@ def main():
                  "--known-distance", "10", "--out", destination, "--overwrite"], False)
         assert sha(saved_measure) == digest
         cases.append("measurement-source-and-existing-destination-preserved")
+        unreadable = root / "unreadable-annotations.pdf"
+        unreadable.write_bytes(blank_pdf().replace(b"/Resources << >>", b"/Annots null /Resources << >>"))
+        remember(unreadable)
+        run(["measurements", unreadable], False)
+        cases.append("measurement-unreadable-annotations-refused-without-zero-totals")
         for name, extra in [("overflow", ["--text", "W" * 256]), ("nan-margin", ["--text", "Text", "--margin", "NaN"]),
                             ("invalid-later-page", ["--text", "Text", "--pages", "1,3"])]:
             out = root / ("text-atomic-" + name + ".pdf")

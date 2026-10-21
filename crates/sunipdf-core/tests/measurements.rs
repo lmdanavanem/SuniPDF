@@ -184,4 +184,21 @@ fn calibrated_measurements_survive_rotation_crop_preview_reopen_and_permissions_
             "unsupported or moved records cannot export a plausible stale result"
         );
     }
+    for annots in [
+        lopdf::Object::Null,
+        lopdf::Object::Array(vec![lopdf::Object::Integer(7)]),
+    ] {
+        let mut pdf = lopdf::Document::load_mem(&snapshot).unwrap();
+        let page = pdf.get_pages()[&1];
+        pdf.get_dictionary_mut(page).unwrap().set("Annots", annots);
+        let mut mutated = Vec::new();
+        pdf.save_to(&mut mutated).unwrap();
+        let changed = engine
+            .open_bytes(mutated, None, Path::new("unreadable-annotations.pdf"))
+            .unwrap();
+        assert!(
+            changed.measurements(0).is_err(),
+            "unreadable annotation lists must not look like zero quantities"
+        );
+    }
 }

@@ -483,7 +483,7 @@ pub(crate) enum Slot {
     Direct(usize),
 }
 
-pub(crate) fn annots_entries(pdf: &lopdf::Document, page: ObjectId) -> Vec<Object> {
+fn annots_entries(pdf: &lopdf::Document, page: ObjectId) -> Vec<Object> {
     pdf.get_dictionary(page)
         .ok()
         .and_then(|p| get(pdf, p, b"Annots"))

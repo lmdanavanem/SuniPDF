@@ -367,7 +367,15 @@ impl Document<'_> {
             .get_pages()
             .get(&(page_index as u32 + 1))
             .ok_or_else(bad)?;
-        let entries = annot_write::annots_entries(&pdf, page);
+        let page_dict = pdf.get_dictionary(page).map_err(lopdf_err)?;
+        let entries = match page_dict.get(b"Annots") {
+            Err(_) => Vec::new(),
+            Ok(raw) => pdf
+                .dereference(raw)
+                .and_then(|(_, object)| object.as_array())
+                .map_err(lopdf_err)?
+                .clone(),
+        };
         if entries.len() > 10000 {
             return Err(bad());
         }
@@ -377,7 +385,7 @@ impl Document<'_> {
             let dict = match entry {
                 Object::Reference(id) => pdf.get_dictionary(*id).map_err(lopdf_err)?,
                 Object::Dictionary(dict) => dict,
-                _ => continue,
+                _ => return Err(bad()),
             };
             let Ok(raw) = dict.get(b"SuniPDFMeasurement") else {
                 if dict.has(b"Measure") {
