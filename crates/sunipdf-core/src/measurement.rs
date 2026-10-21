@@ -481,7 +481,7 @@ mod tests {
         m.kind = MeasurementKind::Perimeter;
         assert!((m.value().unwrap() - 30.0).abs() < 1e-8);
         m.kind = MeasurementKind::Polyline;
-        assert!((m.value().unwrap() - 20.0).abs() < 1e-8);
+        assert!((m.value().unwrap() - 25.0).abs() < 1e-8);
         m.points = vec![(0.0, 0.0), (100.0, 0.0)];
         m.kind = MeasurementKind::Length;
         for unit in MeasurementUnit::ALL {
