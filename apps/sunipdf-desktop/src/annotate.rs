@@ -19,6 +19,7 @@ pub enum Tool {
     StrikeOut,
     Note,
     Count,
+    Measure,
     SelectObject,
     AddText,
     AddImage,
@@ -40,13 +41,14 @@ pub enum Tool {
 }
 
 impl Tool {
-    pub const ALL: [Tool; 21] = [
+    pub const ALL: [Tool; 22] = [
         Tool::Select,
         Tool::Highlight,
         Tool::Underline,
         Tool::StrikeOut,
         Tool::Note,
         Tool::Count,
+        Tool::Measure,
         Tool::SelectObject,
         Tool::AddText,
         Tool::AddImage,
@@ -72,6 +74,7 @@ impl Tool {
             Tool::StrikeOut => Command::ToolStrikeOut,
             Tool::Note => Command::ToolNote,
             Tool::Count => Command::ToolCount,
+            Tool::Measure => Command::ToolMeasure,
             Tool::SelectObject => Command::ToolSelectObject,
             Tool::AddText => Command::ToolAddText,
             Tool::AddImage => Command::ToolAddImage,
@@ -122,6 +125,7 @@ impl Drag {
 #[derive(Default)]
 pub struct AnnotateState {
     pub register: crate::annotation_register::RegisterState,
+    pub measure: crate::measure_tools::MeasurementState,
     pub tool: Tool,
     pub drag: Option<Drag>,
     pub selection: Option<(usize, TextSelection)>,
@@ -283,6 +287,7 @@ impl SuniApp {
         let rect = drag.rect();
         let tiny = (rect.right - rect.left) < 2.0 && (rect.top - rect.bottom) < 2.0;
         match self.annotate.tool {
+            Tool::Measure => {}
             Tool::Count => {
                 if tiny {
                     self.place_count_marker(drag.page, drag.start);

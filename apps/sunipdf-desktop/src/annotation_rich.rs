@@ -77,6 +77,7 @@ pub struct RichDraft {
     pub busy: bool,
     pub applying: bool,
     pub error: Option<String>,
+    interactive_measurement: bool,
     author: Option<String>,
 }
 
@@ -224,6 +225,49 @@ impl RichDraft {
 }
 
 impl SuniApp {
+    pub(crate) fn open_measurement_preview(
+        &mut self,
+        page: usize,
+        measurement: Measurement,
+    ) -> bool {
+        if self.annotate.adv.rich.is_some()
+            || measurement.value().is_err()
+            || !self
+                .document
+                .as_ref()
+                .is_some_and(|document| page < document.info.page_count())
+        {
+            return false;
+        }
+        self.open_rich_draft(false);
+        let Some(draft) = self.annotate.adv.rich.as_mut() else {
+            return false;
+        };
+        draft.page = page;
+        draft.mode = RichMode::Measurement;
+        draft.interactive_measurement = true;
+        draft.measure_kind = measurement.kind;
+        draft.measure_unit = measurement.unit;
+        draft.known_distance = measurement.known_distance;
+        draft.precision = measurement.precision;
+        draft.points = measurement
+            .points
+            .iter()
+            .map(|(x, y)| format!("{x},{y}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        draft.calibration = measurement
+            .calibration
+            .iter()
+            .map(|(x, y)| format!("{x},{y}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        draft.target = None;
+        draft.replace = false;
+        self.request_rich_preview();
+        true
+    }
+
     pub(crate) fn open_rich_from_free_text_prompt(&mut self, ctx: &egui::Context) {
         let Some(prompt) = self.annotate.adv.free_text.take() else {
             return;
@@ -335,6 +379,7 @@ impl SuniApp {
             busy: false,
             applying: false,
             error: None,
+            interactive_measurement: false,
             author: self.annot_author(),
         });
         if eraser {
@@ -505,13 +550,32 @@ impl SuniApp {
         let can_cancel = !draft.applying;
         crate::dialog::show(
             ctx,
-            crate::dialog::Spec::new("rich-annotations", tr(lang, "rich.title"), dark, has_icons)
-                .subtitle(tr(lang, "rich.note"))
-                .width(680.0),
+            crate::dialog::Spec::new(
+                "rich-annotations",
+                tr(
+                    lang,
+                    if draft.interactive_measurement {
+                        "measure.preview_title"
+                    } else {
+                        "rich.title"
+                    },
+                ),
+                dark,
+                has_icons,
+            )
+            .subtitle(tr(
+                lang,
+                if draft.interactive_measurement {
+                    "measure.page_scope"
+                } else {
+                    "rich.note"
+                },
+            ))
+            .width(680.0),
             |ui| {
                 let mut changed = false;
                 ui.add_enabled_ui(!draft.busy && !draft.applying, |ui| {
-                    if draft.mode != RichMode::EraseInk {
+                    if draft.mode != RichMode::EraseInk && !draft.interactive_measurement {
                         let old = draft.mode;
                         egui::ComboBox::from_id_salt("rich-kind")
                             .selected_text(tr(lang, draft.mode.key()))
@@ -567,70 +631,84 @@ impl SuniApp {
                     }
                     match draft.mode {
                         RichMode::Measurement => {
-                            ui.label(tr(lang, "measure.note"));
-                            let old = draft.measure_kind;
-                            egui::ComboBox::from_id_salt("measure-kind")
-                                .selected_text(tr(lang, measure_key(draft.measure_kind)))
-                                .show_ui(ui, |ui| {
-                                    for kind in MeasurementKind::ALL {
-                                        ui.selectable_value(
-                                            &mut draft.measure_kind,
-                                            kind,
-                                            tr(lang, measure_key(kind)),
-                                        );
-                                    }
-                                });
-                            changed |= old != draft.measure_kind;
-                            ui.label(tr(lang, "rich.points"));
-                            changed |= ui
-                                .add(
-                                    egui::TextEdit::multiline(&mut draft.points)
-                                        .desired_rows(4)
-                                        .char_limit(8192)
-                                        .desired_width(f32::INFINITY),
-                                )
-                                .changed();
-                            ui.label(tr(lang, "measure.calibration"));
-                            changed |= ui
-                                .add(
-                                    egui::TextEdit::multiline(&mut draft.calibration)
-                                        .desired_rows(2)
-                                        .char_limit(512)
-                                        .desired_width(f32::INFINITY),
-                                )
-                                .changed();
-                            ui.horizontal_wrapped(|ui| {
-                                ui.label(tr(lang, "measure.known_distance"));
-                                changed |= ui
-                                    .add(
-                                        egui::DragValue::new(&mut draft.known_distance)
-                                            .range(0.000001..=1e9)
-                                            .speed(0.1),
-                                    )
-                                    .changed();
-                                let old = draft.measure_unit;
-                                egui::ComboBox::from_id_salt("measure-unit")
-                                    .selected_text(draft.measure_unit.id())
+                            if draft.interactive_measurement {
+                                ui.label(tr(lang, measure_key(draft.measure_kind)));
+                                if let Some(result) =
+                                    draft.measurement().and_then(|m| m.result().ok())
+                                {
+                                    ui.heading(result["label"].as_str().unwrap_or_default());
+                                } else {
+                                    ui.label(tr(lang, "measure.invalid"));
+                                }
+                            } else {
+                                ui.label(tr(lang, "measure.note"));
+                                let old = draft.measure_kind;
+                                egui::ComboBox::from_id_salt("measure-kind")
+                                    .selected_text(tr(lang, measure_key(draft.measure_kind)))
                                     .show_ui(ui, |ui| {
-                                        for unit in MeasurementUnit::ALL {
+                                        for kind in MeasurementKind::ALL {
                                             ui.selectable_value(
-                                                &mut draft.measure_unit,
-                                                unit,
-                                                unit.id(),
+                                                &mut draft.measure_kind,
+                                                kind,
+                                                tr(lang, measure_key(kind)),
                                             );
                                         }
                                     });
-                                changed |= old != draft.measure_unit;
-                                ui.label(tr(lang, "measure.precision"));
+                                changed |= old != draft.measure_kind;
+                                ui.label(tr(lang, "rich.points"));
                                 changed |= ui
-                                    .add(egui::DragValue::new(&mut draft.precision).range(0..=4))
+                                    .add(
+                                        egui::TextEdit::multiline(&mut draft.points)
+                                            .desired_rows(4)
+                                            .char_limit(8192)
+                                            .desired_width(f32::INFINITY),
+                                    )
                                     .changed();
-                            });
-                            if let Some(result) = draft.measurement().and_then(|m| m.result().ok())
-                            {
-                                ui.strong(result["label"].as_str().unwrap_or_default());
-                            } else {
-                                ui.label(tr(lang, "measure.invalid"));
+                                ui.label(tr(lang, "measure.calibration"));
+                                changed |= ui
+                                    .add(
+                                        egui::TextEdit::multiline(&mut draft.calibration)
+                                            .desired_rows(2)
+                                            .char_limit(512)
+                                            .desired_width(f32::INFINITY),
+                                    )
+                                    .changed();
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.label(tr(lang, "measure.known_distance"));
+                                    changed |= ui
+                                        .add(
+                                            egui::DragValue::new(&mut draft.known_distance)
+                                                .range(0.000001..=1e9)
+                                                .speed(0.1),
+                                        )
+                                        .changed();
+                                    let old = draft.measure_unit;
+                                    egui::ComboBox::from_id_salt("measure-unit")
+                                        .selected_text(draft.measure_unit.id())
+                                        .show_ui(ui, |ui| {
+                                            for unit in MeasurementUnit::ALL {
+                                                ui.selectable_value(
+                                                    &mut draft.measure_unit,
+                                                    unit,
+                                                    unit.id(),
+                                                );
+                                            }
+                                        });
+                                    changed |= old != draft.measure_unit;
+                                    ui.label(tr(lang, "measure.precision"));
+                                    changed |= ui
+                                        .add(
+                                            egui::DragValue::new(&mut draft.precision).range(0..=4),
+                                        )
+                                        .changed();
+                                });
+                                if let Some(result) =
+                                    draft.measurement().and_then(|m| m.result().ok())
+                                {
+                                    ui.strong(result["label"].as_str().unwrap_or_default());
+                                } else {
+                                    ui.label(tr(lang, "measure.invalid"));
+                                }
                             }
                         }
                         RichMode::FreeText => {
@@ -950,6 +1028,46 @@ fn measure_key(kind: MeasurementKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn interactive_measurement_bridge_preserves_geometry_and_only_requests_a_preview() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let measurement = Measurement {
+            kind: MeasurementKind::Area,
+            points: vec![(40.0, 40.0), (140.0, 40.0), (140.0, 140.0)],
+            calibration: [(40.0, 20.0), (140.0, 20.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+            precision: 2,
+        };
+        assert!(app.open_measurement_preview(0, measurement.clone()));
+        let draft = app.annotate.adv.rich.as_ref().unwrap();
+        assert!(draft.interactive_measurement && draft.busy && !draft.prepared);
+        assert_eq!(draft.measurement().unwrap().points, measurement.points);
+        assert_eq!(
+            draft.measurement().unwrap().calibration,
+            measurement.calibration
+        );
+        assert!((draft.measurement().unwrap().value().unwrap() - 50.0).abs() < 1e-8);
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::PreviewRichAnnotation {
+                page: 0,
+                annotation: RichAnnotation::Measurement(_),
+                ..
+            }
+        ));
+        app.apply_rich_draft();
+        assert!(
+            requests.try_recv().is_err(),
+            "preview must complete before Apply"
+        );
+        assert!(
+            !app.open_measurement_preview(0, measurement),
+            "a live preview cannot be replaced"
+        );
+        assert!(requests.try_recv().is_err());
+    }
 
     #[test]
     fn measurement_draft_requires_calibration_and_preview_before_any_mutation() {

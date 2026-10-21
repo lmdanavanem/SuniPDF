@@ -13,7 +13,11 @@ This is a product backlog, not a claim of feature parity, Bluebeam format compat
 - Decoration presets exist in 0.39.0. Image Stamp annotations and atomic text-decoration refusals are part of the 0.40.0 source slice; these do not constitute a shared annotation library.
 - Cloud and collaboration are deferred at the owner's request. The cloud plan records future requirements only; no service is included in 0.40.0.
 
-The 0.40.0 local source slice also adds self-contained two-point calibration and five measurement kinds with JSON records. [Usage and current limits](MEASUREMENTS.md). This is partial progress on AEC-001/002/003/026: coordinate entry and per-annotation scales do not complete page-wide recalibration, direct manipulation, viewport scales or the full qualification corpus. Those cards remain open.
+The 0.40.0 local source slice introduced self-contained two-point calibration and five measurement kinds with JSON records through coordinate entry. [Usage and current limits](MEASUREMENTS.md). It provided a foundation for AEC-001/002/003/026; those cards remain open.
+
+## Unreleased measurement integration
+
+The next local source slice makes **Measurements** visible in the main toolbar, **All tools**, and **Comment**. It adds two-click page calibration with explicit distance confirmation, direct drawing of all five measurement kinds, temporary outlines, rendered preview and Apply, point removal, cancellation and horizontal/vertical constraints. A confirmed scale can be reused on that page during the document session and survives annotation edits and normal tab switches; page geometry/structural changes invalidate it, and closing/reopening a document requires recalibration. Applied annotations retain their own saved calibration. This is partial progress on AEC-001/002/003/026, not a published release or completion of those cards. Editing saved vertices, persistent shared scales and recalculation, snapping to PDF vectors, multi-scale viewports and the remaining qualification work are still open. Manual counts and the register retain their documented 0.41.0 status below.
 
 ## Priorities and acceptance
 
@@ -52,8 +56,8 @@ P1 is the next useful foundation; P2 builds on that foundation; P3 requires a se
 
 ## Delivery sequence
 
-1. Qualify the 0.40.0 local tools first. Cloud, collaboration, hosting and billing are deferred at the owner's request.
-2. Build AEC-001/002 with AEC-026, then quantity records, annotation register and counting (AEC-003/004/005).
+1. Qualify the unreleased direct measurement workflow and its visible entry points. Cloud, collaboration, hosting and billing are deferred at the owner's request.
+2. Extend AEC-001/002 with AEC-026: saved geometry editing, shared scale persistence/recalculation and remaining real-plan/accessibility checks. Build on the existing quantity records, register and counts rather than treating them as absent.
 3. Deliver reusable libraries and takeoff reports; extend overlays, plan sets and revision workflows in independently testable lots.
 4. Revisit enterprise cloud and live review only after the local feature priorities. Identity, versioning, conflicts, tenant isolation and operations will need a separate implementation and qualification.
 5. Evaluate advanced recognition, BIM/3D and optional automation against real demand and compatible licenses.

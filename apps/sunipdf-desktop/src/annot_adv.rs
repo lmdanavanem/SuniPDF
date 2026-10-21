@@ -571,6 +571,10 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if self.annotate.measure.is_active_draft() {
+            self.status_msg = Some(self.t("measure.finish_first").into());
+            return true;
+        }
         if self.annotate.adv.rich.is_some() {
             self.status_msg = Some(self.t("rich.finish_first").into());
             return true;
@@ -587,6 +591,19 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        if self.annotate.measure.is_active_draft() {
+            return !matches!(
+                command,
+                Command::ZoomIn
+                    | Command::ZoomOut
+                    | Command::ActualSize
+                    | Command::FitWidth
+                    | Command::FitPage
+                    | Command::ToggleThumbnails
+                    | Command::ToggleComments
+                    | Command::ToggleTools
+            );
+        }
         if self.annotate.adv.rich.is_some() {
             return true;
         }

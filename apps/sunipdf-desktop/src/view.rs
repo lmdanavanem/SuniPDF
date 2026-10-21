@@ -1102,7 +1102,19 @@ impl SuniApp {
             // Maj lue au moment du clic (`self.edit.shift` n'est pas mis à jour si `handle_input`
             // est sorti plus tôt).
             let shift = ctx.input(|i| i.modifiers.shift);
-            self.handle_page_event(page, ev, shift);
+            if self.annotate.tool == crate::annotate::Tool::Measure {
+                match ev {
+                    DragEvent::Click(point) => {
+                        self.measurement_click(ctx, page, point, shift, false);
+                    }
+                    DragEvent::DoubleClick(point) => {
+                        self.measurement_click(ctx, page, point, shift, true);
+                    }
+                    _ => {}
+                }
+            } else {
+                self.handle_page_event(page, ev, shift);
+            }
         }
         self.form_builder_pointer(ctx, &layout, out.inner_rect);
         if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
@@ -1150,6 +1162,7 @@ impl SuniApp {
         self.paint_selection(&overlay_painter, source_rect, s.page, h);
         self.paint_object_selection(&overlay_painter, source_rect, s.page, h);
         self.paint_annot_adv(&overlay_painter, source_rect, s.page, h);
+        self.paint_measurement(&overlay_painter, source_rect, s.page, h);
         self.paint_redact_marks(&overlay_painter, source_rect, s.page, h);
         self.form_builder.paint(
             &overlay_painter,
@@ -1250,6 +1263,9 @@ impl SuniApp {
             self.view.hover_page = Some(s.page);
         }
         let hover = interact.hover_pos().map(to_pdf);
+        if self.annotate.tool == crate::annotate::Tool::Measure {
+            self.measurement_hover(s.page, hover, ui.input(|i| i.modifiers.shift));
+        }
         if let Some(pt) = hover {
             // Fantôme de la signature ou de la date à placer, sous le pointeur.
             self.paint_placing(&painter, s.rect, s.page, h, pt);
@@ -1257,7 +1273,10 @@ impl SuniApp {
         interact.on_hover_cursor(self.page_cursor(s.page, hover));
         // Champs de formulaire : créés après le widget de la page pour avoir la priorité du clic ;
         // éditeur et liste de choix de cette page par-dessus.
-        if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
+        if !self.form_builder.drawing
+            && self.annotate.adv.free_text.is_none()
+            && self.annotate.tool != crate::annotate::Tool::Measure
+        {
             if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
                 self.forms_activate(s.page, field, widget);
             }
