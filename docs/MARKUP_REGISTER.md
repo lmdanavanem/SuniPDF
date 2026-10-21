@@ -47,8 +47,10 @@ Pages are physical and one-based; `--index` is zero-based in `/Annots`, as retur
 
 ## Bounds and evidence
 
-Limits: 1000 pages, 10000 annotations in total, 4096 per page, 4 MiB of raw text/metadata and 64 levels of replies. Standard strings are limited to 16 KiB; stored SuniPDF records to 32 KiB. Count groups contain 1–512 UTF-8 bytes; custom fields use at most 16 keys of 64 bytes and values of 1024 bytes. Newly entered business/custom values refuse control characters.
+The current PDF snapshot is limited to 128 MiB. Limits: 1000 pages, 10000 annotations in total, 4096 per page, 4 MiB of raw text/metadata and 64 levels of replies. Standard strings are limited to 16 KiB; stored SuniPDF records to 32 KiB. Count groups contain 1–512 UTF-8 bytes; custom fields use at most 16 keys of 64 bytes and values of 1024 bytes. Newly entered business/custom values refuse control characters.
 
 Unreadable arrays, malformed/unsupported SuniPDF records, cyclic/deep replies and ambiguous count identities fail the complete register; they never become plausible zero or partial totals. This is a SuniPDF exchange format independent of proprietary extensions.
 
 Regression coverage includes four rotations/CropBox offsets, PDFium/MuPDF rendering, qpdf, identities, regrouping, filters, Unicode, guarded CSV/JSON, original/output preservation, AES and both credentials. Core/worker tests cover stale edits, Undo/Redo and deletion. Release evidence records qualification separately; synthetic plans do not establish universal compatibility. [1.0 criteria remain open](RELEASE_1.0_CRITERIA.md).
+
+[0.41.0 qualification evidence](qa/RELEASE_0.41.0.json).

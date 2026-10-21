@@ -47,8 +47,10 @@ Pages physiques à partir de un ; `--index` à partir de zéro dans `/Annots`, f
 
 ## Limites et preuves
 
-Maximum 1000 pages, 10000 annotations au total, 4096 par page, 4 Mio de texte/métadonnées et 64 niveaux de réponses. Chaînes standards limitées à 16 Kio, données SuniPDF à 32 Kio. Groupe : 1 à 512 octets UTF-8. Maximum 16 champs personnalisés, noms de 64 octets et valeurs de 1024 octets. Les nouvelles valeurs métier/personnalisées refusent les caractères de contrôle.
+Instantané PDF courant limité à 128 Mio. Maximum 1000 pages, 10000 annotations au total, 4096 par page, 4 Mio de texte/métadonnées et 64 niveaux de réponses. Chaînes standards limitées à 16 Kio, données SuniPDF à 32 Kio. Groupe : 1 à 512 octets UTF-8. Maximum 16 champs personnalisés, noms de 64 octets et valeurs de 1024 octets. Les nouvelles valeurs métier/personnalisées refusent les caractères de contrôle.
 
 Tableaux illisibles, données SuniPDF malformées/inconnues, réponses cycliques/profondes et identités ambiguës refusent le tableau complet, sans faux zéro ni total partiel. Le format SuniPDF est indépendant des extensions propriétaires.
 
 La régression couvre quatre rotations/CropBox, PDFium/MuPDF, qpdf, identités, changements de groupe, filtres, Unicode, exports protégés, préservation des fichiers, AES et les deux mots de passe. Les tests moteur/worker couvrent cibles périmées, Annuler/Rétablir et suppression. Les preuves sont publiées avec la release ; des plans synthétiques ne prouvent pas une compatibilité universelle. [Les critères 1.0 restent ouverts](RELEASE_1.0_CRITERIA.md).
+
+[Preuves de qualification 0.41.0](qa/RELEASE_0.41.0.json).

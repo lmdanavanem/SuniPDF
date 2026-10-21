@@ -17,7 +17,7 @@ The 0.40.0 local source slice also adds self-contained two-point calibration and
 
 ## Priorities and acceptance
 
-The 0.41.0 source slice adds [manual plan counts and an annotation register](MARKUP_REGISTER.md): click-to-place persistent markers, grouped totals linked to actual identities, regrouping, normal move/delete/Undo, all-page search/filters/navigation, separate business fields and CSV/JSON exports. AEC-005 is implemented within the documented limits, pending release qualification. AEC-004 remains partial: custom-key sorting, typed columns and normalized dates remain open. Cloud and collaboration remain deferred.
+The 0.41.0 source slice adds [manual plan counts and an annotation register](MARKUP_REGISTER.md): click-to-place persistent markers, grouped totals linked to actual identities, regrouping, normal move/delete/Undo, all-page search/filters/navigation, separate business fields and CSV/JSON exports. AEC-005 is Done within the documented bounds and qualified in 0.41.0. AEC-004 remains partial: custom-key sorting, typed columns and normalized dates remain open. Cloud and collaboration remain deferred.
 
 P1 is the next useful foundation; P2 builds on that foundation; P3 requires a separate integration or infrastructure lot. Cards remain open until their complete criteria are demonstrated; the CSV records implementation progress separately from qualification. Partial reuse of an existing function does not close a card. Existing [1.0 qualification gates](RELEASE_1.0_CRITERIA.md) remain open independently.
 
@@ -63,3 +63,5 @@ No prices, delivery dates or complete replacement claim are implied. This CSV is
 ## Reference workflows
 
 The user brief and Bluebeam's official documentation informed the capability list: [scales and viewports](https://support.bluebeam.com/user-manual/menus/window/create-manage-viewports.html), [custom columns](https://support.bluebeam.com/kr/se/user-manual/menus/window/custom-columns.html), [region filling](https://support.bluebeam.com/revu/features/dynamic-fill-overview.html), [overlays](https://support.bluebeam.com/online-help/revu20/Content/RevuHelp/Menus/Document/Overlay/Overlay-Pages--MT.htm), [sheet replacement](https://support.bluebeam.com/revu/how-to/transfer-markups-with-batch-slip-sheet.html), [batch links](https://support.bluebeam.com/revu/how-to/tips-and-tricks/manage-pdfs-efficiently-with-batch-link.html), and [shared sessions versus versioned projects](https://support.bluebeam.com/revu/subscription/studio-and-bluebeam-cloud-comparison-guide.html). These describe reference workflows; they do not grant compatibility or qualification to SuniPDF.
+
+[Release evidence](qa/RELEASE_0.41.0.json).
