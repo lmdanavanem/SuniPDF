@@ -73,6 +73,7 @@ fn read_secret(variable: Option<&str>, stdin: bool) -> Result<String, EngineErro
 
 fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
     match command {
+        Command::AnnotationLibrary(args) => args.password(),
         Command::Count(args) => Some(&mut args.password),
         Command::AnnotationRegister(args) => Some(&mut args.password),
         Command::AnnotationFields(args) => Some(&mut args.password),

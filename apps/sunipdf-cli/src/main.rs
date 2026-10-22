@@ -4,6 +4,7 @@
 mod annot_cmd;
 mod calibration_cmd;
 mod feature_cmd;
+mod library_cmd;
 mod measurement_cmd;
 mod password_input;
 mod register_cmd;
@@ -39,6 +40,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Manage local annotation templates and groups, or place them in a new PDF copy.
+    AnnotationLibrary(library_cmd::LibraryArgs),
     /// Place one persistent manual count marker in a new PDF copy.
     Count(register_cmd::CountArgs),
     /// Filter/export the document's markup register and count totals, without editing the PDF.
@@ -1244,6 +1247,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
     }
     match &cli.command {
+        Command::AnnotationLibrary(args) => return library_cmd::run(args),
         Command::PrepareSignatureImage {
             file,
             out,
@@ -1287,6 +1291,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
     let engine = Engine::new()?;
     match cli.command {
         Command::Commands
+        | Command::AnnotationLibrary(..)
         | Command::PrepareSignatureImage { .. }
         | Command::Inspect { .. }
         | Command::Fonts { .. }
@@ -2923,6 +2928,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 /// Chemin de sortie d'une commande qui écrit un seul fichier.
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
+        Command::AnnotationLibrary(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),
         Command::AnnotationRegister(args) => args.out.as_deref(),

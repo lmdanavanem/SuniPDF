@@ -571,6 +571,10 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if self.library.blocks_document() {
+            self.status_msg = Some(self.t("library.finish_first").into());
+            return true;
+        }
         if self.annotate.measure.saved.dialog_open() {
             self.status_msg = Some(self.t("measure.saved.finish_first").into());
             return true;
@@ -595,6 +599,9 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        if self.library.blocks_document() {
+            return true;
+        }
         if self.annotate.measure.saved.dialog_open() {
             return true;
         }

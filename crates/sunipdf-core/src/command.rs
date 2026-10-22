@@ -136,6 +136,7 @@ pub enum Command {
     ToolAnnotLine,
     ToolLink,
     RichAnnotations,
+    AnnotationLibrary,
     ToolMeasure,
     ToolCount,
     AnnotationRegister,
@@ -190,6 +191,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        AnnotationLibrary,
+        "annotations.library",
+        "library.title",
+        None,
+        false,
+        Tools
+    ),
     cmd!(
         CompareFiles,
         "file.compare",

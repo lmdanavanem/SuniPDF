@@ -73,6 +73,10 @@ pub enum RichAnnotation {
         image: std::path::PathBuf,
         opacity: f32,
     },
+    LibraryPlacement {
+        entry: crate::annotation_library::LibraryEntry,
+        placement: crate::annotation_library::LibraryPlacement,
+    },
     Measurement(crate::measurement::Measurement),
     UpdateMeasurement {
         target: crate::measurement::MeasurementTarget,
@@ -871,6 +875,11 @@ impl<'a> Document<'a> {
                 image,
                 opacity,
             } => self.add_image_stamp_annotation(page, *rect, image, *opacity, author),
+            RichAnnotation::LibraryPlacement { entry, placement } => self
+                .place_library_entry(page, entry, *placement, author)?
+                .first()
+                .copied()
+                .ok_or_else(bad),
             RichAnnotation::Measurement(measurement) => {
                 self.add_measurement_annotation(page, measurement, author)
             }
@@ -923,13 +932,24 @@ impl<'a> Document<'a> {
             password: self.password.clone(),
             font_cache: Default::default(),
         };
-        let index = scratch.apply_rich_annotation(page, annotation, author)?;
+        let indices = if let RichAnnotation::LibraryPlacement { entry, placement } = annotation {
+            scratch.apply_library_entry_in_place(page, entry, *placement, author)?
+        } else {
+            vec![scratch.apply_rich_annotation(page, annotation, author)?]
+        };
+        let index = *indices.first().ok_or_else(bad)?;
         let bounds = scratch
             .annotation_details(page)?
             .into_iter()
-            .find(|detail| detail.index == index)
-            .ok_or_else(bad)?
-            .rect;
+            .filter(|detail| indices.contains(&detail.index))
+            .map(|detail| detail.rect)
+            .reduce(|a, b| PointRect {
+                left: a.left.min(b.left),
+                bottom: a.bottom.min(b.bottom),
+                right: a.right.max(b.right),
+                top: a.top.max(b.top),
+            })
+            .ok_or_else(bad)?;
         let size = scratch.page_size(page)?;
         let scale = 2.0f32
             .min(1200.0 / (bounds.right - bounds.left + 8.0).max(bounds.top - bounds.bottom + 8.0));

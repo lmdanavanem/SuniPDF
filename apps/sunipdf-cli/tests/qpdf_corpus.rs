@@ -130,6 +130,48 @@ fn check(qpdf: &Path, file: &Path, password: Option<&str>) {
     println!("qpdf OK: {}", file.file_name().unwrap().to_string_lossy());
 }
 
+fn check_annotation_library(
+    qpdf: &Path,
+    source: &Path,
+    directory: &Path,
+    prefix: &str,
+    password: Option<&str>,
+) {
+    let original = std::fs::read(source).unwrap();
+    let library = directory.join(format!("{prefix}-annotation-library.json"));
+    let output = directory.join(format!("{prefix}-library-group.pdf"));
+    std::fs::write(
+        &library,
+        serde_json::to_vec(&serde_json::json!({
+            "format":"sunipdf-annotation-library","version":1,
+            "entries":[{"id":"review","name":"Review group",
+                "provenance":{"author":null,"source":null,"license":null},
+                "primitives":[
+                    {"kind":"stamp","rect":[0,0,100,30],"stamp":"draft"},
+                    {"kind":"stamp","rect":[110,0,210,30],"stamp":"approved"}
+                ]}]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut command = cli(&["annotation-library", "place"], &[&library]);
+    command
+        .args(["--id", "review", "--file"])
+        .arg(source)
+        .args(["--page", "1", "--origin", "40,60", "--scale", "1", "--out"])
+        .arg(&output);
+    if let Some(password) = password {
+        command
+            .args(["--password-env", "SUNIPDF_QA_LIBRARY_PASSWORD"])
+            .env("SUNIPDF_QA_LIBRARY_PASSWORD", password);
+    }
+    let result = success(command);
+    assert_eq!(result["count"], 2);
+    assert_eq!(result["source_content_exported"], false);
+    check(qpdf, &output, password);
+    assert_eq!(std::fs::read(source).unwrap(), original);
+}
+
 fn check_page_calibration(
     qpdf: &Path,
     source: &Path,
@@ -299,6 +341,7 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     let original = fixture("two-pages.pdf");
     let original_bytes = std::fs::read(&original).unwrap();
     check_page_calibration(&qpdf, &original, temp.path(), "plain", None);
+    check_annotation_library(&qpdf, &original, temp.path(), "plain", None);
     let signature_image = temp.path().join("signature.png");
     image::RgbaImage::from_pixel(80, 40, image::Rgba([20, 20, 20, 255]))
         .save(&signature_image)
@@ -465,6 +508,13 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         success(command);
         check(&qpdf, &measurement_source, Some("package-user"));
         check_page_calibration(
+            &qpdf,
+            &measurement_source,
+            temp.path(),
+            name,
+            Some("package-owner"),
+        );
+        check_annotation_library(
             &qpdf,
             &measurement_source,
             temp.path(),

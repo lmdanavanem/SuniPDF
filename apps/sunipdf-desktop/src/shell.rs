@@ -148,6 +148,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ProcessFiles => (glyph::PAGES, "▣"),
         Command::RichAnnotations => (glyph::EDIT_DOC, "A"),
         Command::ToolMeasure => crate::workspace::MEASURE_ICON,
+        Command::AnnotationLibrary => (glyph::ALL_APPS, "▦"),
         Command::ToolCount => (glyph::ADD, "+"),
         Command::AnnotationRegister => (glyph::PAGES, "▤"),
         Command::EraseInkStrokes => (glyph::ERASE, "⌫"),
@@ -633,6 +634,23 @@ impl SuniApp {
             if measure.clicked() {
                 measure.surrender_focus();
                 run = Some(Command::ToolMeasure);
+            }
+            let library = bar_button(
+                ui,
+                self.has_icons,
+                BarButton {
+                    icon: command_icon(Command::AnnotationLibrary),
+                    tint: Some(theme::CAT_ANNOTATE),
+                    label: tr(lang, "library.short"),
+                    show_label: true,
+                    tooltip: tr(lang, "library.description"),
+                    selected: self.library.open,
+                    enabled: self.command_enabled(Command::AnnotationLibrary),
+                },
+            );
+            if library.clicked() {
+                library.surrender_focus();
+                run = Some(Command::AnnotationLibrary);
             }
             if let Some(c) = run {
                 self.execute(ctx, c);

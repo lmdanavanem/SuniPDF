@@ -2908,6 +2908,147 @@ mod tests {
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
         page_calibration_edits_have_history_and_survive_reopening(&worker);
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
+        library_groups_use_one_preview_and_one_history_step(&worker);
+    }
+
+    fn library_groups_use_one_preview_and_one_history_step(worker: &Worker) {
+        use sunipdf_core::annotation_library::{LibraryPlacement, LibraryPrimitive, LibraryStamp};
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        worker.send(Request::Open {
+            path: source,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let details = || {
+            worker.send(Request::Annotations {
+                page: 0,
+                detailed: true,
+            });
+            match next_response(worker) {
+                Response::Annotations {
+                    details: Some(details),
+                    ..
+                } => details,
+                Response::Annotations {
+                    list,
+                    details: None,
+                    ..
+                } if list.is_empty() => vec![],
+                _ => panic!("library group annotations"),
+            }
+        };
+        let before = details();
+        let mut entry = crate::annotation_library::tests::entry("group", "Inspection symbol");
+        entry.primitives.push(LibraryPrimitive::Stamp {
+            rect: [80.0, 0.0, 200.0, 40.0],
+            stamp: LibraryStamp::Approved,
+        });
+        let preview = |generation| {
+            worker.send(Request::PreviewRichAnnotation {
+                page: 0,
+                annotation: sunipdf_core::annot_rich::RichAnnotation::LibraryPlacement {
+                    entry: entry.clone(),
+                    placement: LibraryPlacement {
+                        origin: (50.0, 100.0),
+                        scale: 1.0,
+                    },
+                },
+                author: Some("lmdanavanem".into()),
+                epoch: 92,
+                generation,
+            });
+            assert!(
+                matches!(next_response(worker), Response::RichAnnotationPreview { epoch: 92, generation: g, result: Ok(_) } if g == generation)
+            );
+        };
+        preview(1);
+        assert_eq!(
+            details(),
+            before,
+            "preview has no document or history effects"
+        );
+        worker.send(Request::DiscardRichAnnotationPreview {
+            epoch: 92,
+            generation: 1,
+        });
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 92,
+            generation: 1,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(details(), before);
+        preview(2);
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 92,
+            generation: 2,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        let after = details();
+        assert_eq!(after.len(), before.len() + 2);
+        let added = &after[before.len()..];
+        assert_eq!(added[0].subtype, "Square");
+        assert_eq!(added[1].subtype, "Stamp");
+        assert!(added
+            .iter()
+            .all(|detail| detail.name.is_some() && detail.parent.is_none()));
+        assert_ne!(added[0].name, added[1].name);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(details(), before, "one Undo removes the complete group");
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(details(), after);
+        preview(3);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 92,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(
+            details(),
+            before,
+            "history invalidates the entire prepared group"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("grouped.pdf");
+        worker.send(Request::Save { path: path.clone() });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(details(), after);
     }
 
     fn saved_measurement_edits_replace_in_place_and_keep_history(worker: &Worker) {

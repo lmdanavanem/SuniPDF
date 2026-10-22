@@ -22,6 +22,7 @@ pub enum Workspace {
     Combine,
     Organize,
     Measure,
+    Library,
     Comment,
     ScanOcr,
     Protect,
@@ -68,7 +69,7 @@ use Command as C;
 /// Segoe Fluent Ruler with a readable fallback when the icon font is absent.
 pub const MEASURE_ICON: (&str, &str) = ("\u{ED5E}", "↔");
 
-pub static TABLE: [WsInfo; 15] = [
+pub static TABLE: [WsInfo; 16] = [
     WsInfo {
         ws: Workspace::Export,
         name_key: "hub.export.name",
@@ -177,6 +178,15 @@ pub static TABLE: [WsInfo; 15] = [
         groups: &[&[C::ToolMeasure]],
     },
     WsInfo {
+        ws: Workspace::Library,
+        name_key: "library.title",
+        desc_key: "library.description",
+        icon: (glyph::ALL_APPS, "▦"),
+        color: theme::CAT_ANNOTATE,
+        entry: Some(Entry::Direct(C::AnnotationLibrary)),
+        groups: &[&[C::AnnotationLibrary]],
+    },
+    WsInfo {
         ws: Workspace::Comment,
         name_key: "hub.comment.name",
         desc_key: "hub.comment.desc",
@@ -203,6 +213,7 @@ pub static TABLE: [WsInfo; 15] = [
             ],
             &[
                 C::RichAnnotations,
+                C::AnnotationLibrary,
                 C::ToolCount,
                 C::AnnotationRegister,
                 C::EraseInkStrokes,
@@ -822,7 +833,7 @@ impl SuniApp {
                 tint: Some(info.color),
                 label,
                 // L'outil de dessin actif garde son libellé même en icônes seules (sauf compact).
-                show_label: if c == C::ToolMeasure {
+                show_label: if matches!(c, C::ToolMeasure | C::AnnotationLibrary) {
                     true
                 } else if is_tool {
                     layout.tool_labels || (selected && !layout.compact)
@@ -1010,7 +1021,8 @@ mod tests {
             assert!(info.groups.iter().all(|g| !g.is_empty()));
             for c in info.commands() {
                 let _ = c.info(); // panique si la commande n'est pas au registre
-                let shared_measure_shortcut = c == C::ToolMeasure && info.ws == Workspace::Comment;
+                let shared_measure_shortcut = matches!(c, C::ToolMeasure | C::AnnotationLibrary)
+                    && info.ws == Workspace::Comment;
                 assert!(
                     seen.insert(c) || shared_measure_shortcut,
                     "{c:?} appartient à deux outils"

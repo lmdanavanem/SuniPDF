@@ -155,6 +155,7 @@ pub struct SuniApp {
     pub pagesetup: crate::pagesetup::PageSetupState,
     /// Signature visuelle : boîte, bibliothèque locale (globale, hors onglet) et placement.
     pub sign: crate::sign::SignState,
+    pub library: crate::annotation_library::LibraryState,
     /// Formulaire AcroForm du document actif : champs lus, panneau, saisie en place.
     pub forms: crate::forms::FormsState,
     pub can_undo: bool,
@@ -207,6 +208,7 @@ impl SuniApp {
             edit: Default::default(),
             pagesetup: Default::default(),
             sign: Default::default(),
+            library: Default::default(),
             forms: Default::default(),
             can_undo: false,
             can_redo: false,
@@ -1279,7 +1281,8 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.review.busy
+        self.library.blocks_document()
+            || self.review.busy
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
             || self.annotate.register.dialog_open()
@@ -1297,7 +1300,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.review.busy
+        self.library.blocks_document()
+            || self.review.busy
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
             || self.annotate.register.dialog_open()
@@ -1337,6 +1341,7 @@ impl SuniApp {
 
     pub(crate) fn handle_input(&mut self, ctx: &egui::Context) {
         self.validate_measurement_context();
+        self.validate_library_context(ctx);
         if self.annotate.measure.is_active_draft()
             && !self.dialog_open()
             && !self.palette.open
@@ -1616,7 +1621,8 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.review.open
+        self.library.open
+            || self.review.open
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.register.dialog_open()
             || self.review.busy
@@ -1743,6 +1749,7 @@ impl SuniApp {
             Command::ProcessFiles => self.open_processing(true),
             Command::RichAnnotations => self.open_rich_annotations(ctx),
             Command::ToolMeasure => self.open_measurements(ctx),
+            Command::AnnotationLibrary => self.open_annotation_library(),
             Command::AnnotationRegister => self.open_annotation_register(),
             Command::EraseInkStrokes => self.open_ink_eraser(ctx),
             Command::OfficeToPdf => self.open_office(false),
@@ -3009,6 +3016,11 @@ impl eframe::App for SuniApp {
                     .frame(chrome(p.surface))
                     .show(ui, |ui| self.measurement_bar(&ctx, ui));
             }
+            if self.library.placing.is_some() {
+                egui::Panel::top("library-placement")
+                    .frame(chrome(p.surface))
+                    .show(ui, |ui| self.library_placement_bar(ui));
+            }
             if self.find.open && self.document.is_some() {
                 egui::Panel::top("find")
                     .frame(chrome(p.chrome))
@@ -3211,6 +3223,7 @@ impl eframe::App for SuniApp {
         self.text_prompt_dialog(&ctx);
         self.paragraph_dialog(&ctx);
         self.rich_annotation_dialog(&ctx);
+        self.annotation_library_dialog(&ctx);
         self.saved_measurements_dialog(&ctx);
         self.annotation_register_dialog(&ctx);
         self.count_marker_dialog(&ctx);
@@ -3364,6 +3377,7 @@ pub(crate) mod tests {
             edit: Default::default(),
             pagesetup: Default::default(),
             sign: Default::default(),
+            library: Default::default(),
             forms: Default::default(),
             can_undo: false,
             can_redo: false,

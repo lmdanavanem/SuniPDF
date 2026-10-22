@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use sunipdf_core::annot_rich::{
     RichAnnotation, RichAnnotationPreview, RichFreeTextStyle, StampKind, VertexAnnotKind,
 };
+use sunipdf_core::annotation_library::{LibraryEntry, LibraryPlacement, LibraryProvenance};
 use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
 use sunipdf_i18n::tr;
@@ -23,6 +24,7 @@ pub enum RichMode {
     Measurement,
     Attachment,
     EraseInk,
+    Library,
 }
 
 impl RichMode {
@@ -37,6 +39,7 @@ impl RichMode {
             Self::Measurement => "measure.title",
             Self::Attachment => "rich.attachment",
             Self::EraseInk => "rich.eraser",
+            Self::Library => "library.preview_title",
         }
     }
 }
@@ -80,6 +83,12 @@ pub struct RichDraft {
     interactive_measurement: bool,
     measurement_edit: Option<MeasurementRecord>,
     author: Option<String>,
+    library_entry: Option<LibraryEntry>,
+    library_placement: LibraryPlacement,
+    library_name: String,
+    library_source: String,
+    library_license: String,
+    library_credit: String,
 }
 
 fn points(text: &str, limit: usize) -> Option<Vec<(f32, f32)>> {
@@ -104,6 +113,20 @@ fn points(text: &str, limit: usize) -> Option<Vec<(f32, f32)>> {
 }
 
 impl RichDraft {
+    fn library_save_supported(&self) -> bool {
+        self.target.is_none()
+            && self.measurement_edit.is_none()
+            && matches!(
+                self.mode,
+                RichMode::FreeText
+                    | RichMode::Polygon
+                    | RichMode::Polyline
+                    | RichMode::Cloud
+                    | RichMode::Stamp
+                    | RichMode::ImageStamp
+            )
+            && (self.mode != RichMode::FreeText || matches!(self.font, TextFont::Standard(_)))
+    }
     fn valid_inputs(&self) -> bool {
         match self.mode {
             RichMode::FreeText => {
@@ -117,6 +140,11 @@ impl RichDraft {
             RichMode::Stamp => true,
             RichMode::ImageStamp => self.image_path.is_some(),
             RichMode::Measurement => self.measurement().is_some(),
+            RichMode::Library => {
+                self.library_entry.is_some()
+                    && self.library_placement.scale.is_finite()
+                    && self.library_placement.scale > 0.0
+            }
         }
     }
     fn operation(&self) -> Option<RichAnnotation> {
@@ -184,6 +212,10 @@ impl RichDraft {
                 rect: self.rect,
                 image: self.image_path.clone()?,
                 opacity: self.opacity / 100.0,
+            },
+            RichMode::Library => RichAnnotation::LibraryPlacement {
+                entry: self.library_entry.clone()?,
+                placement: self.library_placement,
             },
             RichMode::Measurement => {
                 if self.measurement_edit.is_some() {
@@ -269,6 +301,82 @@ impl RichDraft {
 }
 
 impl SuniApp {
+    pub(crate) fn open_library_preview(
+        &mut self,
+        page: usize,
+        entry: LibraryEntry,
+        placement: LibraryPlacement,
+    ) -> bool {
+        if !self.ink_can_start()
+            || entry.validate().is_err()
+            || !self
+                .document
+                .as_ref()
+                .is_some_and(|d| page < d.info.page_count())
+        {
+            return false;
+        }
+        self.open_rich_draft(false);
+        let Some(draft) = self.annotate.adv.rich.as_mut() else {
+            return false;
+        };
+        draft.page = page;
+        draft.mode = RichMode::Library;
+        draft.target = None;
+        draft.replace = false;
+        draft.library_entry = Some(entry);
+        draft.library_placement = placement;
+        self.request_rich_preview();
+        true
+    }
+
+    fn save_rich_to_library(&mut self) {
+        let result = (|| {
+            let draft = self
+                .annotate
+                .adv
+                .rich
+                .as_ref()
+                .filter(|draft| draft.library_save_supported() && !draft.busy && !draft.applying)
+                .ok_or_else(|| EngineError::Other(self.t("library.unsupported").into()))?;
+            if draft.library_name.trim().is_empty() {
+                return Err(EngineError::Other(
+                    self.t("library.metadata_required").into(),
+                ));
+            }
+            let operation = draft
+                .operation()
+                .ok_or_else(|| EngineError::Other(self.t("library.unsupported").into()))?;
+            LibraryEntry::from_rich_annotation(
+                crate::annotation_library::new_entry_id(),
+                draft.library_name.trim().into(),
+                LibraryProvenance {
+                    author: (!draft.library_credit.trim().is_empty())
+                        .then(|| draft.library_credit.trim().into()),
+                    source: (!draft.library_source.trim().is_empty())
+                        .then(|| draft.library_source.trim().into()),
+                    license: (!draft.library_license.trim().is_empty())
+                        .then(|| draft.library_license.trim().into()),
+                },
+                &operation,
+            )
+        })();
+        let result = result.and_then(|entry| self.library_add_entry(entry));
+        match result {
+            Ok(()) => {
+                self.status_msg = Some(self.t("library.saved").into());
+                if let Some(draft) = self.annotate.adv.rich.as_mut() {
+                    draft.error = None;
+                }
+            }
+            Err(error) => {
+                if let Some(draft) = self.annotate.adv.rich.as_mut() {
+                    draft.error = Some(error.to_string());
+                }
+            }
+        }
+    }
+
     pub(crate) fn open_measurement_preview(
         &mut self,
         page: usize,
@@ -430,6 +538,15 @@ impl SuniApp {
             interactive_measurement: false,
             measurement_edit: None,
             author: self.annot_author(),
+            library_entry: None,
+            library_placement: LibraryPlacement {
+                origin: (0.0, 0.0),
+                scale: 1.0,
+            },
+            library_name: String::new(),
+            library_source: String::new(),
+            library_license: String::new(),
+            library_credit: String::new(),
         });
         if eraser {
             if let Some(detail) = selected {
@@ -605,6 +722,7 @@ impl SuniApp {
         let Some(draft) = self.annotate.adv.rich.as_mut() else {
             return;
         };
+        let mut save_library = false;
         let (mut preview, mut apply, mut cancel, mut choose_file, mut want_fonts) =
             (false, false, false, false, false);
         let can_preview =
@@ -617,7 +735,9 @@ impl SuniApp {
                 "rich-annotations",
                 tr(
                     lang,
-                    if draft.measurement_edit.is_some() {
+                    if draft.mode == RichMode::Library {
+                        "library.preview_title"
+                    } else if draft.measurement_edit.is_some() {
                         "measure.edit.title"
                     } else if draft.interactive_measurement {
                         "measure.preview_title"
@@ -630,7 +750,9 @@ impl SuniApp {
             )
             .subtitle(tr(
                 lang,
-                if draft.measurement_edit.is_some() {
+                if draft.mode == RichMode::Library {
+                    "library.preview_help"
+                } else if draft.measurement_edit.is_some() {
                     "measure.edit.help"
                 } else if draft.interactive_measurement {
                     "measure.page_scope"
@@ -642,7 +764,9 @@ impl SuniApp {
             |ui| {
                 let mut changed = false;
                 ui.add_enabled_ui(!draft.busy && !draft.applying, |ui| {
-                    if draft.mode != RichMode::EraseInk && !draft.interactive_measurement {
+                    if !matches!(draft.mode, RichMode::EraseInk | RichMode::Library)
+                        && !draft.interactive_measurement
+                    {
                         let old = draft.mode;
                         egui::ComboBox::from_id_salt("rich-kind")
                             .selected_text(tr(lang, draft.mode.key()))
@@ -697,6 +821,37 @@ impl SuniApp {
                         });
                     }
                     match draft.mode {
+                        RichMode::Library => {
+                            if let Some(entry) = &draft.library_entry {
+                                ui.heading(&entry.name);
+                            }
+                            for (key, value) in [
+                                ("library.origin_x", &mut draft.library_placement.origin.0),
+                                ("library.origin_y", &mut draft.library_placement.origin.1),
+                            ] {
+                                ui.horizontal(|ui| {
+                                    ui.label(tr(lang, key));
+                                    changed |= ui
+                                        .add(
+                                            egui::DragValue::new(value)
+                                                .range(0.0..=100000.0)
+                                                .speed(1.0),
+                                        )
+                                        .changed();
+                                });
+                            }
+                            ui.horizontal(|ui| {
+                                ui.label(tr(lang, "library.scale"));
+                                changed |= ui
+                                    .add(
+                                        egui::DragValue::new(&mut draft.library_placement.scale)
+                                            .range(0.01..=100.0)
+                                            .speed(0.01),
+                                    )
+                                    .changed();
+                            });
+                            ui.small(tr(lang, "library.bounds"));
+                        }
                         RichMode::Measurement => {
                             if draft.interactive_measurement {
                                 ui.label(tr(lang, measure_key(draft.measure_kind)));
@@ -993,6 +1148,35 @@ impl SuniApp {
                         });
                     }
                 });
+                if draft.library_save_supported() {
+                    ui.add_enabled_ui(!draft.busy && !draft.applying, |ui| {
+                        egui::CollapsingHeader::new(tr(lang, "library.save_draft")).show(
+                            ui,
+                            |ui| {
+                                ui.label(tr(lang, "library.save_help"));
+                                ui.small(tr(lang, "library.provenance_help"));
+                                for (key, value) in [
+                                    ("library.name", &mut draft.library_name),
+                                    ("library.source", &mut draft.library_source),
+                                    ("library.license", &mut draft.library_license),
+                                    ("library.credit", &mut draft.library_credit),
+                                ] {
+                                    ui.horizontal(|ui| {
+                                        ui.label(tr(lang, key));
+                                        ui.add(egui::TextEdit::singleline(value).char_limit(256));
+                                    });
+                                }
+                                let complete = !draft.library_name.trim().is_empty();
+                                save_library = ui
+                                    .add_enabled(
+                                        complete,
+                                        egui::Button::new(tr(lang, "library.save")),
+                                    )
+                                    .clicked();
+                            },
+                        );
+                    });
+                }
                 if changed {
                     draft.clear_preview();
                 }
@@ -1051,6 +1235,8 @@ impl SuniApp {
             } else {
                 self.choose_rich_attachment();
             }
+        } else if save_library {
+            self.save_rich_to_library();
         } else if preview {
             self.request_rich_preview();
         } else if apply {
@@ -1179,6 +1365,96 @@ mod tests {
             "a live preview cannot be replaced"
         );
         assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn library_create_from_a_selected_annotation_saves_only_a_new_explicit_draft() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let dir = crate::annotation_library::tests::storage(&mut app);
+            app.settings.language = language.into();
+            app.annotate.adv.selected = Some((
+                0,
+                sunipdf_core::AnnotDetail {
+                    index: 7,
+                    subtype: "FreeText".into(),
+                    rect: PointRect {
+                        left: 30.0,
+                        bottom: 40.0,
+                        right: 180.0,
+                        top: 100.0,
+                    },
+                    contents: Some("Existing private document text".into()),
+                    author: None,
+                    modified: None,
+                    name: Some("existing-identity".into()),
+                    rgb: None,
+                    fill_rgb: None,
+                    width_pt: None,
+                    opacity: 1.0,
+                    dash_pattern: vec![],
+                    font_size: None,
+                    parent: None,
+                    status: None,
+                    link: None,
+                    arrow: false,
+                    hidden: false,
+                    locked: false,
+                    ours: true,
+                    can_move: true,
+                    can_resize: true,
+                    can_restyle: true,
+                    can_edit_text: true,
+                    can_edit_link: false,
+                    replies: 0,
+                },
+            ));
+            let mut controls = crate::annotation_library::tests::Controls::new();
+            controls.click(&mut app, "library.short");
+            controls.click(&mut app, "library.create");
+            let draft = app.annotate.adv.rich.as_mut().expect("new template draft");
+            assert_eq!(draft.target, None);
+            assert!(draft.text.is_empty());
+            assert!(draft.library_save_supported());
+            draft.mode = RichMode::Stamp;
+            draft.library_name = "Personal approval".into();
+            controls.click(&mut app, "library.save_draft");
+            controls.click(&mut app, "library.save");
+            let path = dir.path().join("annotations.json");
+            let bytes = std::fs::read(&path).unwrap();
+            let library =
+                sunipdf_core::annotation_library::AnnotationLibrary::from_json(&bytes).unwrap();
+            assert_eq!(library.entries().len(), 1);
+            assert_eq!(library.entries()[0].name, "Personal approval");
+            assert_eq!(
+                library.entries()[0].provenance,
+                LibraryProvenance::default()
+            );
+            assert!(matches!(
+                library.entries()[0].primitives.as_slice(),
+                [sunipdf_core::annotation_library::LibraryPrimitive::Stamp { .. }]
+            ));
+            assert!(app.annotate.adv.rich.is_some());
+            assert!(
+                requests.try_recv().is_err(),
+                "saving a local template never edits the PDF"
+            );
+            controls.click(&mut app, "library.save");
+            assert!(
+                app.annotate.adv.rich.as_ref().unwrap().error.is_some(),
+                "duplicate names are refused"
+            );
+            assert_eq!(std::fs::read(path).unwrap(), bytes);
+            app.annotate.adv.rich.as_mut().unwrap().mode = RichMode::Measurement;
+            assert!(!app
+                .annotate
+                .adv
+                .rich
+                .as_ref()
+                .unwrap()
+                .library_save_supported());
+            assert!(!app.dirty);
+        }
     }
 
     #[test]
