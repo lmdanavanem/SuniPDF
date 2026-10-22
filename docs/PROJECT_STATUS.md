@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.47.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.48.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.47.0: aligned revision overlays (stable Latest)
+## 0.48.0: editing saved measurement vertices (stable Latest)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
+
+Source `6f32c20259f6bae6e1b60090fe74acfb5dc69ba7`, PR [#25](https://github.com/lmdanavanem/SuniPDF/pull/25). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39760622965) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39760636143) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39760622897). 752 tests passed, 10 default ignored. 1388 EN/FR keys. 40 portable scenarios. 34 MSI baselines. 170 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 26 packaged CLI calls verify saved/reopened page scales, explicit geometry replacement, unit conversion, precision, recalibration, stable identity, independent measurements, preserved typed quantity fields and price basis, recalculated totals, invalid/stale refusals and unchanged original files. They do not establish native desktop or ARM64 qualification.
+
+[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.48.0.md) · [Evidence](qa/RELEASE_0.48.0.json).
+
+## 0.47.0: aligned revision overlays (published; Latest at the time)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals.
 

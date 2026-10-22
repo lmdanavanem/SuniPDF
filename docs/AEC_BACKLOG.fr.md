@@ -4,6 +4,10 @@
 
 SuniPDF est une application locale gratuite et open source pour les plans, les métrés et les revues PDF, sous licence MIT OR Apache-2.0. Ce backlog décrit les fonctions à développer et leurs critères de réalisation ; les statuts distinguent les progrès partiels des fonctions qualifiées.
 
+## Modification des sommets des mesures enregistrées — 0.48.0
+
+Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées. AEC-002 et AEC-003 restent partiels. Type de mesure et nombre de sommets restent fixes dans ce parcours. Ajout/suppression de sommets, accrochage vectoriel, recalcul par lots, vues multi-échelles et qualification sur plans réels restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité, matériel et critères généraux 1.0 restent ouverts. [Preuves](qa/RELEASE_0.48.0.json).
+
 ## Superpositions de révisions alignées — 0.47.0
 
 Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux. AEC-013 reste **En cours**. AEC-013 reste partiel. Recalage automatique, comparaison vectorielle, fusion PDF et contours automatiques des changements restent ouverts ; AEC-014 n’est pas livré. Cette superposition raster de deux pages sélectionnées est limitée au cadre de la base. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts. [Preuves](qa/RELEASE_0.47.0.json).

@@ -4,6 +4,10 @@
 
 SuniPDF is a free, open-source local application for PDF plans, measurements and review, licensed under MIT OR Apache-2.0. This backlog defines planned capabilities and acceptance criteria; statuses distinguish partial implementation from qualified functionality.
 
+## Editing saved measurement vertices — 0.48.0
+
+Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded. AEC-002 and AEC-003 remain partial. Measurement type and vertex count stay fixed in this workflow. Adding/removing vertices, vector snapping, batch recalculation, multiple-scale viewports and real-plan qualification remain open. Packages remain unsigned; native ARM64, accessibility, hardware and full 1.0 qualification remain open. [Evidence](qa/RELEASE_0.48.0.json).
+
 ## Aligned revision overlays — 0.47.0
 
 Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals. AEC-013 remains **In progress**. AEC-013 remains partial. Automatic registration, vector comparison, merged PDF output and automatic change outlines remain open; AEC-014 is not delivered. This is a raster overlay of two selected pages clipped to the base. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open. [Evidence](qa/RELEASE_0.47.0.json).

@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENT_GEOMETRY.fr.md) · [Measurements](MEASUREMENTS.md)
 
-This build adds on-page vertex editing for saved SuniPDF measurements. Distribution and qualification are tracked on the [0.48.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0).
+Available in [0.48.0](RELEASE_0.48.0.md). [Evidence](qa/RELEASE_0.48.0.json).
 
 ## Workflow
 
@@ -21,6 +21,8 @@ The existing annotation keeps its identity, replies, register fields and quantit
 Preview and Apply use the existing guarded measurement operation. A changed source, unsupported record, locked annotation or missing annotation permission cannot be committed through this workflow. Invalid geometry, including collapsed or self-intersecting polygons, must be corrected before Apply. Page, tab and document changes invalidate stale drafts and previews.
 
 ## Scope
+
+If nearby handles cannot be selected unambiguously, zoom in before dragging. Coincident vertices, including repeated points in an open polyline, cannot be selected independently in this mouse-editing workflow. The existing `edit-measurement` CLI remains available for explicit geometry replacement in a new PDF copy with an expected record.
 
 This edits existing vertices of supported saved measurements. Adding or removing vertices, vector snapping, batch recalculation and multiple-scale viewports remain separate work. Raster drawings do not acquire vector snapping from this feature. Automated interaction tests do not establish native hardware or accessibility qualification.
 

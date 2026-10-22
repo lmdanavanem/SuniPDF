@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-10-22
+
+Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
+
+The documentation CI path checks actual packaged guides, links, backlog and evidence without repeating application tests for an eligible documentation-only diff; source, script and workflow changes retain full checks. The published 0.47.0 packages join upgrade regressions.
+
+[Notes and limits](docs/RELEASE_0.48.0.md) · [Evidence](docs/qa/RELEASE_0.48.0.json).
+
 ## [0.47.0] - 2026-10-22
 
 Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals.

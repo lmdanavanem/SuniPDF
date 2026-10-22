@@ -9,7 +9,7 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.44–0.47 : fonctions locales pour les plans, séquence prévue
+## 0.44–0.48 : fonctions locales pour les plans, séquence prévue
 
 | Version | Périmètre | État actuel |
 |---|---|---|
@@ -17,12 +17,19 @@ d’authenticité ou de conformité.
 | 0.45 | Bibliothèques locales d’annotations | Lot livré dans ses limites ; critères complets encore ouverts. [0.45.0](RELEASE_0.45.0.fr.md). |
 | 0.46 | Tables de quantités et champs typés | Lot livré dans ses limites ; critères complets encore ouverts. [0.46.0](RELEASE_0.46.0.fr.md). |
 | 0.47 | Superpositions de révisions alignées | Lot livré dans ses limites ; critères complets encore ouverts. [0.47.0](RELEASE_0.47.0.fr.md). |
+| 0.48 | Modification des sommets des mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.48.0](RELEASE_0.48.0.fr.md). |
 
 L'éditeur 0.44 modifie distance de référence, unité et précision en conservant sommets et points de référence. La CLI peut remplacer explicitement la géométrie avec un enregistrement attendu ; les deux parcours conservent l'identité et refusent les cibles périmées ou incompatibles. Qualification de la source finale et limites : [Preuves](qa/RELEASE_0.44.0.json). [Périmètre et audit préalable 0.44](RELEASE_0.44.0.fr.md) · [Guide des mesures](MEASUREMENTS.fr.md).
 
-Cette séquence apporte des incréments bornés. AEC-001/002/003/004/026 restent partiels ; sommets à la souris, recalcul par lot, vues multi-échelles, justesse dimensionnelle sur plans réels et critères généraux 1.0 ne sont pas clôturés par les versions proposées. Les preuves historiques ci-dessous restent attachées à leur version d'origine.
+Cette séquence apporte des incréments bornés. La modification des sommets existants est incluse en 0.48 ; ajout/suppression, accrochage vectoriel, recalcul par lots, vues multi-échelles, justesse sur plans réels et critères généraux 1.0 restent ouverts. AEC-001/002/003/004/026 restent partiels. Les preuves historiques ci-dessous restent attachées à leur version d’origine.
 
-## 0.47.0 : superpositions de révisions alignées (Latest stable)
+## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.48.0.fr.md) · [Preuves](qa/RELEASE_0.48.0.json).
+
+## 0.47.0 : superpositions de révisions alignées (publiée ; Latest à cette date)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
 
@@ -540,7 +547,7 @@ du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STA
 
 ## Suite au-delà de la version 0.43.0
 
-Priorités AEC locales : sommets enregistrés modifiables, recalcul explicite, vues multi-échelles, bibliothèques et plans réels. Les 24 cartes conservent leurs critères ; les cartes partielles restent ouvertes.
+Priorités AEC locales : insertion/suppression de sommets, accrochage vectoriel, recalcul explicite par lots, vues multi-échelles, périmètre restant des bibliothèques et plans réels. Les 24 cartes conservent leurs critères ; les cartes partielles restent ouvertes.
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

@@ -2,7 +2,7 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
-**Version 0.48.0 :** déplacez les sommets existants via **Modifier la géométrie**, puis Aperçu et Appliquer. Calibration et champs de quantité saisis sont conservés. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md).
+**Disponible en [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) :** déplacez les sommets existants via **Modifier la géométrie**, puis Aperçu et Appliquer. Calibration et champs de quantité saisis sont conservés. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md). [Preuves](qa/RELEASE_0.48.0.json).
 
 **Disponible en [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0):** Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés. [Preuves](qa/RELEASE_0.44.0.json).
 
