@@ -7,6 +7,7 @@ mod feature_cmd;
 mod library_cmd;
 mod measurement_cmd;
 mod password_input;
+mod quantity_cmd;
 mod register_cmd;
 mod safe_output;
 mod v010_cmd;
@@ -40,6 +41,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Export a filtered quantity and cost table, preserving units, missing values and source identity.
+    QuantityTable(quantity_cmd::TableArgs),
+    /// Replace typed quantity fields and unit price on one expected annotation in a new PDF copy.
+    SetQuantityFields(quantity_cmd::SetArgs),
+    /// Remove quantity fields from one expected annotation in a new PDF copy.
+    ClearQuantityFields(quantity_cmd::TargetArgs),
     /// Manage local annotation templates and groups, or place them in a new PDF copy.
     AnnotationLibrary(library_cmd::LibraryArgs),
     /// Place one persistent manual count marker in a new PDF copy.
@@ -1556,6 +1563,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             )
         }
         Command::Count(args) => register_cmd::count(&engine, args),
+        Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
+        Command::SetQuantityFields(args) => quantity_cmd::set(&engine, args),
+        Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
         Command::AnnotationRegister(args) => register_cmd::register(&engine, args),
         Command::AnnotationFields(args) => register_cmd::fields(&engine, args),
         Command::ImageStamp {
@@ -2928,6 +2938,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 /// Chemin de sortie d'une commande qui écrit un seul fichier.
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
+        Command::QuantityTable(args) => args.report.out.as_deref(),
+        Command::SetQuantityFields(args) => Some(&args.target.out),
+        Command::ClearQuantityFields(args) => Some(&args.out),
         Command::AnnotationLibrary(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),

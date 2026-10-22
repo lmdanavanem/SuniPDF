@@ -150,7 +150,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ToolMeasure => crate::workspace::MEASURE_ICON,
         Command::AnnotationLibrary => (glyph::ALL_APPS, "▦"),
         Command::ToolCount => (glyph::ADD, "+"),
-        Command::AnnotationRegister => (glyph::PAGES, "▤"),
+        Command::QuantityTable | Command::AnnotationRegister => (glyph::PAGES, "▤"),
         Command::EraseInkStrokes => (glyph::ERASE, "⌫"),
         Command::OfficeToPdf => (glyph::IMPORT, "⤵"),
         Command::ExportOffice => (glyph::EXTRACT, "⤴"),

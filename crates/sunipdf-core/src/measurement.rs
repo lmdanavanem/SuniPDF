@@ -631,8 +631,16 @@ impl Document<'_> {
         &self,
         page_index: usize,
     ) -> Result<Vec<MeasurementRecord>, EngineError> {
-        let geo = self.page_geometry(page_index)?;
         let pdf = crate::security::load(&self.snapshot()?, self.password())?;
+        self.measurement_records_from_pdf(page_index, &pdf)
+    }
+
+    pub(crate) fn measurement_records_from_pdf(
+        &self,
+        page_index: usize,
+        pdf: &lopdf::Document,
+    ) -> Result<Vec<MeasurementRecord>, EngineError> {
+        let geo = self.page_geometry(page_index)?;
         let page = *pdf
             .get_pages()
             .get(&(page_index as u32 + 1))
@@ -726,7 +734,7 @@ impl Document<'_> {
                     .ok_or_else(bad)? as usize,
             };
             measurement.value()?;
-            let annotation_id = bounded_text(&pdf, dict, b"NM", 256).ok().flatten();
+            let annotation_id = bounded_text(pdf, dict, b"NM", 256).ok().flatten();
             records.push(MeasurementRecord {
                 index,
                 annotation_id,

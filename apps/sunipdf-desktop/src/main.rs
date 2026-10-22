@@ -29,6 +29,7 @@ mod organize;
 mod pagesetup;
 mod printing;
 mod processing;
+mod quantity_table;
 mod reading;
 mod recovery;
 mod redact;
