@@ -12,9 +12,9 @@ L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, l
 
 Le lot local 0.40.0 a introduit calibration sur deux points, cinq types de mesures et données JSON par saisie de coordonnées. [Guide et limites](MEASUREMENTS.fr.md). Il constitue une base pour AEC-001/002/003/026 ; ces cartes restent ouvertes.
 
-## Édition des mesures enregistrées prévue pour 0.44.0
+## Édition des mesures enregistrées livrée en 0.44.0
 
-Le lot implémenté est en qualification : modification de la distance de référence, de l’unité et de la précision dans le parcours d’aperçu du bureau, ou de la géométrie par la CLI protégée. Le remplacement conserve identité, réponses et données du registre ; échelles de page et autres mesures restent indépendantes. Droits d’export, refus des cibles ambiguës et des redimensionnements incompatibles corrigent les constats de l’audit. AEC-001/002/003/026 restent **En cours** ; déplacement direct des sommets, recalcul par lot, échelles multiples et qualification native/sur plans réels restent ouverts. [Périmètre et audit](RELEASE_0.44.0.fr.md).
+Le lot publié, dans ses limites documentées, ajoute : modification de la distance de référence, de l’unité et de la précision dans le parcours d’aperçu du bureau, ou de la géométrie par la CLI protégée. Le remplacement conserve identité, réponses et données du registre ; échelles de page et autres mesures restent indépendantes. Droits d’export, refus des cibles ambiguës et des redimensionnements incompatibles corrigent les constats de l’audit. AEC-001/002/003/026 restent **En cours** ; déplacement direct des sommets, recalcul par lot, échelles multiples et qualification native/sur plans réels restent ouverts. [Périmètre et audit](RELEASE_0.44.0.fr.md). [Preuves](qa/RELEASE_0.44.0.json).
 
 ## Échelles persistantes et inspection livrées en 0.43.0
 

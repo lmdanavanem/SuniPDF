@@ -7,7 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-### Planned for 0.44.0
+## [0.44.0] - 2026-10-22
 
 Edit a saved measurement's scale, unit and precision through Preview and Apply while retaining its identity, replies and register data. The CLI also edits geometry in a new copy guarded by an expected record. Measurement exports enforce copying permission; unsafe measured-page resizing is refused atomically. The inspector shares cached records and labels, and temporary scales can be cleared explicitly. No implicit manual calibration is supplied.
 

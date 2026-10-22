@@ -2,7 +2,13 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+## 0.44.0 : modification des mesures enregistrées (Latest stable)
+
+[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
+
+[Guide et limites](MEASUREMENTS.fr.md) · [Notes de version](RELEASE_0.44.0.fr.md) · [Preuves](qa/RELEASE_0.44.0.json).
+
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (publiée ; Latest à cette date)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
 
@@ -410,6 +416,7 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | comptage sur plans et tableau des annotations | Livré en 0.41.0 | Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées. [Guide](MARKUP_REGISTER.fr.md). |
 | Mesures interactives sur la page | Livré en 0.42.0 | Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Calibrez avec deux clics et une distance confirmée, puis tracez longueurs, polylignes, périmètres, surfaces et angles sur le PDF. Aperçu et Appliquer contrôlent chaque insertion ; retrait de points, annulation et alignement horizontal/vertical accompagnent le tracé. Chaque page conserve son échelle de session entre modifications d’annotations et changements habituels d’onglet. [Guide](MEASUREMENTS.fr.md). |
 | Échelles de page et inspection | Livré en 0.43.0 | Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation. [Guide](MEASUREMENTS.fr.md). |
+| Modification des mesures enregistrées | Livré en 0.44.0 | Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés. |
 | Raccourcis configurables | Livré en 0.36.0 | Commandes existantes, conflits refusés, brouillon annulable et préférences atomiques ; [bornes](KEYBOARD_SHORTCUTS.fr.md). Claviers natifs/Narrateur et Explorer restent ouverts. |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
@@ -420,8 +427,8 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Distribué en 0.43.0 | Six fichiers publics/SHA256, copies dist et neuf appels CLI vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.43.0.json). |
-| Windows ARM64 | Distribué en 0.43.0 | Compilation et distribution vérifiées ; exécution sur matériel ARM64 non qualifiée. [Preuves](qa/RELEASE_0.43.0.json). |
+| Windows x64 | Distribué en 0.44.0 | Paquets publics, copies dist et contrôles CLI vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.44.0.json). |
+| Windows ARM64 | Distribué en 0.44.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.44.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

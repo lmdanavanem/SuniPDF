@@ -3,10 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide includes SuniPDF 0.44.0 changes **in preparation and undergoing validation**. The preceding
-published release is [0.43.0](RELEASE_0.43.0.md). Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [0.44 preparation scope](RELEASE_0.44.0.md) lists supported inputs
-and documented refusals; English remains the default language and French is available in Settings.
+This guide covers [0.44.0](RELEASE_0.44.0.md). The preceding [0.43.0](RELEASE_0.43.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
 
 ## Reuse local annotation templates
 

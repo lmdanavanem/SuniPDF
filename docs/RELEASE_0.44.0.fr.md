@@ -2,11 +2,11 @@
 
 [English](RELEASE_0.44.0.md) · [Guide des mesures](MEASUREMENTS.fr.md)
 
-État : **en préparation**. Les changements ci-dessous sont implémentés et en cours de validation. Aucune publication 0.44.0, vérification des paquets ou quantité de tests réussis n'est annoncée ici. La précédente version publiée et ses preuves restent [0.43.0](RELEASE_0.43.0.fr.md) · [preuve de publication](qa/RELEASE_0.43.0.json).
+État : publiée en Latest stable [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0), source `7e95078127beb81b90a9eac32e6fde0fd8e9bf50`. La version précédente et ses preuves restent [0.43.0](RELEASE_0.43.0.fr.md) · [0.43.0 evidence](qa/RELEASE_0.43.0.json).
 
 ## Audit avant cette version
 
-| Constat | Correction en validation |
+| Constat | Correction livrée |
 |---|---|
 | Le dialogue manuel fournissait une référence arbitraire de 10 m sur 100 points PDF. | Aucune distance positive implicite ; une calibration explicite valide est nécessaire avant aperçu/application. |
 | Les mesures enregistrées pouvaient être consultées ou réutilisées, sans être modifiées. | Un éditeur explicite modifie distance de référence, unité et précision de la mesure choisie, avec aperçu puis application. |
@@ -32,7 +32,7 @@ Les écritures exigent une nouvelle copie `--out`, même avec `--overwrite`. Des
 
 ## Validation et limites restantes
 
-Le périmètre de validation comprend interactions réelles avec les contrôles egui, conversion d'unités, aperçu/annulation, cibles périmées, remplacement sans doublon, Annuler/Rétablir, enregistrement/réouverture, copies chiffrées, exports restreints et contrôles qpdf indépendants. Les résultats exécutés seront consignés dans [l'état du projet](PROJECT_STATUS.fr.md) ; cette note de préparation ne certifie pas leur réussite.
+Le périmètre de validation comprend interactions réelles avec les contrôles egui, conversion d'unités, aperçu/annulation, cibles périmées, remplacement sans doublon, Annuler/Rétablir, enregistrement/réouverture, copies chiffrées, exports restreints et contrôles qpdf indépendants. Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850233) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718862137) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850516). 702 tests réussis, 10 ignorés par défaut. 1250 clés EN/FR. 36 scénarios portables. 30 références MSI. 150 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 21 appels CLI vérifient conversion, précision, recalibration, géométrie, refus périmé, identité, échelle de page, réouverture et angle sans calibration. Valeur finale : 40 m ; autres mesures et originaux conservés. [Preuves](qa/RELEASE_0.44.0.json).
 
 Déplacement des sommets à la souris, recalcul par lot, accrochage vectoriel, vues multi-échelles, volumes et qualification dimensionnelle sur plans réels restent ouverts. L'édition concerne les mesures compatibles de documents jusqu'à 128 Mio ; les structures inconnues ou modifiées ailleurs sont préservées par refus. Le redimensionnement des pages mesurées n'est pas réparé silencieusement. Le local reste gratuit et open source. Signature des paquets, ARM64 natif, accessibilité native, impression physique et critères 1.0 restent ouverts.
 
