@@ -3,15 +3,22 @@
 use crate::{Engine, EngineError};
 use std::{
     fs,
-    io::Read,
     path::{Component, Path, PathBuf},
+    sync::atomic::AtomicBool,
+};
+#[cfg(windows)]
+use std::{
+    io::Read,
     process::{Child, Command, Stdio},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::Ordering,
     time::{Duration, Instant},
 };
 
+#[cfg(windows)]
 const MAX_INPUT: u64 = 64 * 1024 * 1024;
+#[cfg(windows)]
 const MAX_PDF: u64 = 256 * 1024 * 1024;
+#[cfg(windows)]
 const INPUT_GUARD: &str = include_str!("office_input_guard.ps1");
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -34,6 +41,7 @@ impl Profile {
             _ => None,
         }
     }
+    #[cfg(any(windows, test))]
     fn filter_options(self) -> &'static str {
         match self {
             Self::Standard => {
@@ -81,6 +89,7 @@ impl ConversionReport {
 fn error(message: &str) -> EngineError {
     EngineError::Other(message.into())
 }
+#[cfg(windows)]
 fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
     if cancel.load(Ordering::Relaxed) {
         Err(EngineError::Cancelled)
@@ -151,6 +160,7 @@ pub(crate) fn validate_local_output(path: &Path) -> Result<(), EngineError> {
     }
     Ok(())
 }
+#[cfg(windows)]
 fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EngineError> {
     validate_local_path(path)?;
     let mut options = fs::OpenOptions::new();
@@ -179,6 +189,7 @@ fn read_bounded(path: &Path, limit: u64) -> Result<Vec<u8>, EngineError> {
     }
     Ok(bytes)
 }
+#[cfg(windows)]
 fn hidden(command: &mut Command) -> &mut Command {
     #[cfg(windows)]
     {
@@ -187,7 +198,9 @@ fn hidden(command: &mut Command) -> &mut Command {
     }
     command
 }
+#[cfg(windows)]
 struct Running(Child);
+#[cfg(windows)]
 impl Drop for Running {
     fn drop(&mut self) {
         if self.0.try_wait().ok().flatten().is_none() {
@@ -204,6 +217,7 @@ impl Drop for Running {
         }
     }
 }
+#[cfg(windows)]
 fn system_tool(name: &str) -> Result<PathBuf, EngineError> {
     #[cfg(windows)]
     {
@@ -219,6 +233,7 @@ fn system_tool(name: &str) -> Result<PathBuf, EngineError> {
     let _ = name;
     Err(error("Trusted Windows system directory is unavailable"))
 }
+#[cfg(windows)]
 fn run(
     mut command: Command,
     cancel: &AtomicBool,
@@ -258,6 +273,7 @@ fn run(
         std::thread::sleep(Duration::from_millis(50));
     }
 }
+#[cfg(any(windows, test))]
 fn supported_version(text: &str) -> bool {
     text.trim()
         .strip_prefix("LibreOffice ")
@@ -265,6 +281,7 @@ fn supported_version(text: &str) -> bool {
         .is_some_and(|v| v.starts_with("26.2.") || v.starts_with("26.8."))
 }
 
+#[cfg(windows)]
 const HEADLESS_ARGS: [&str; 6] = [
     "--headless",
     "--nologo",
@@ -273,6 +290,7 @@ const HEADLESS_ARGS: [&str; 6] = [
     "--norestore",
     "--quickstart=no",
 ];
+#[cfg(any(windows, test))]
 fn file_url(path: &Path) -> Result<String, EngineError> {
     let path = path
         .to_str()
@@ -288,6 +306,7 @@ fn file_url(path: &Path) -> Result<String, EngineError> {
     }
     Ok(url)
 }
+#[cfg(any(windows, test))]
 fn profile_config() -> String {
     let mut xml = String::from(
         r#"<?xml version="1.0" encoding="UTF-8"?><oor:items xmlns:oor="http://openoffice.org/2001/registry">"#,
@@ -314,6 +333,7 @@ fn profile_config() -> String {
     xml
 }
 
+#[cfg(windows)]
 pub(crate) fn validate_package(
     input: &Path,
     kind: &str,
@@ -361,7 +381,7 @@ pub fn convert(
     #[cfg(not(windows))]
     {
         let _ = (engine, converter, input, output, profile, cancel);
-        return Err(error("Local Office conversion currently requires Windows"));
+        Err(error("Local Office conversion currently requires Windows"))
     }
     #[cfg(windows)]
     {

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=SuniPDF
+Comment=Read, edit and annotate PDF documents locally
+Comment[fr]=Lire, modifier et annoter les documents PDF localement
+Exec=sunipdf %F
+TryExec=sunipdf
+Icon=sunipdf
+Terminal=false
+Categories=Office;Viewer;
+MimeType=application/pdf;
+StartupNotify=true
+StartupWMClass=sunipdf

@@ -457,6 +457,110 @@ mod tests {
     }
 
     #[test]
+    fn recovery_lock_excludes_another_process_until_the_owner_releases_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let session = Session::create(dir.path().join("recovery")).unwrap();
+        session
+            .slot(next_id(), dir.path().join("original.pdf"), 1)
+            .save(b"snapshot")
+            .unwrap();
+        let lock_path = session.dir.join("session.lock");
+
+        fn probe(lock_path: &Path, directory: &Path, expected: &str) {
+            struct ChildGuard(std::process::Child);
+            impl Drop for ChildGuard {
+                fn drop(&mut self) {
+                    let _ = self.0.kill();
+                    let _ = self.0.wait();
+                }
+            }
+
+            let report = directory.join(format!("probe-{expected}.txt"));
+            let log_path = directory.join(format!("probe-{expected}.log"));
+            let log = File::create(&log_path).unwrap();
+            let mut child = ChildGuard(
+                std::process::Command::new(std::env::current_exe().unwrap())
+                    .args([
+                        "--exact",
+                        "recovery::tests::recovery_lock_subprocess_probe",
+                        "--ignored",
+                        "--nocapture",
+                    ])
+                    .env("SUNIPDF_TEST_RECOVERY_LOCK_PATH", lock_path)
+                    .env("SUNIPDF_TEST_RECOVERY_LOCK_REPORT", &report)
+                    .env("SUNIPDF_TEST_RECOVERY_LOCK_EXPECTED", expected)
+                    .stdin(std::process::Stdio::null())
+                    .stdout(log.try_clone().unwrap())
+                    .stderr(log)
+                    .spawn()
+                    .unwrap(),
+            );
+            let deadline = Instant::now() + Duration::from_secs(20);
+            let status = loop {
+                if let Some(status) = child.0.try_wait().unwrap() {
+                    break status;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "recovery lock subprocess timed out"
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            };
+            assert!(
+                status.success(),
+                "recovery lock subprocess failed: {}",
+                fs::read_to_string(log_path).unwrap_or_default()
+            );
+            assert_eq!(
+                fs::read_to_string(report).unwrap(),
+                expected,
+                "the exact child test must run and report its observation"
+            );
+        }
+
+        probe(&lock_path, dir.path(), "locked");
+        drop(session);
+        probe(&lock_path, dir.path(), "available");
+    }
+
+    #[test]
+    #[ignore = "Invoked by the recovery lock parent test with an isolated temporary directory."]
+    fn recovery_lock_subprocess_probe() {
+        let Some(path) = std::env::var_os("SUNIPDF_TEST_RECOVERY_LOCK_PATH") else {
+            return;
+        };
+        let path = PathBuf::from(path);
+        let report = PathBuf::from(std::env::var_os("SUNIPDF_TEST_RECOVERY_LOCK_REPORT").unwrap());
+        let expected = std::env::var("SUNIPDF_TEST_RECOVERY_LOCK_EXPECTED").unwrap();
+        assert!(path.is_absolute() && path.parent().unwrap().is_dir());
+        match expected.as_str() {
+            "locked" => {
+                let error = lock(&path).expect_err("another process still owns this session");
+                #[cfg(windows)]
+                assert_eq!(
+                    error.raw_os_error(),
+                    Some(32),
+                    "expected a Windows sharing violation"
+                );
+                #[cfg(not(windows))]
+                assert_eq!(error.kind(), io::ErrorKind::WouldBlock);
+            }
+            "available" => {
+                assert!(path.is_file());
+                drop(lock(&path).expect("the released session must be recoverable"))
+            }
+            _ => panic!("invalid recovery lock probe expectation"),
+        }
+        let root = path.parent().unwrap().parent().unwrap();
+        let observer = Session::create(root.to_owned()).unwrap();
+        assert_eq!(
+            observer.scan().unwrap().len(),
+            usize::from(expected == "available")
+        );
+        fs::write(report, expected).unwrap();
+    }
+
+    #[test]
     fn relative_recovery_root_is_rejected() {
         assert!(Session::create(PathBuf::from("relative-recovery")).is_err());
         assert!(recovered_document_path().is_absolute());

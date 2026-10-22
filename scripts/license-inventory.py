@@ -74,7 +74,7 @@ def windows_ids(metadata):
     return selected
 
 
-def rust_inventory(root, metadata, target_metadata):
+def rust_inventory(root, metadata, target_metadata, distribution='Windows'):
     locked = tomllib.loads((root / 'Cargo.lock').read_text(encoding='utf-8'))['package']
     by_key = {(p['name'], p['version'], p.get('source') or ''): p for p in metadata['packages']}
     overrides = {(p['name'], p['version']): p for p in read_json(root / 'assets/licenses/upstream-sources.json')['packages']}
@@ -163,18 +163,112 @@ def rust_inventory(root, metadata, target_metadata):
         selected_targets = sorted(arch for arch, ids in active.items() if package['id'] in ids)
         unavailable = override.get('unavailable') if override else None
         if (not evidence or unavailable) and selected_targets:
-            raise ValueError(f'Full license text unavailable for Windows distribution: {key[0]} {key[1]}')
+            raise ValueError(f'Full license text unavailable for {distribution} distribution: {key[0]} {key[1]}')
         packages.append({
             'name': key[0], 'version': key[1], 'source': lock.get('source', 'workspace'),
             'archiveSha256': lock.get('checksum'), 'repository': package.get('repository'),
             'declaredLicense': license_expression, 'licenseFile': Path(package['license_file']).name if package.get('license_file') else None,
-            'windowsNormalOrBuildTargets': selected_targets,
+            ('windowsNormalOrBuildTargets' if distribution == 'Windows' else 'linuxNormalOrBuildTargets'): selected_targets,
             'texts': sorted(evidence, key=lambda item: (item['source'], item['textSha256'])),
             'unavailable': unavailable if unavailable else (None if evidence else 'No full license text in the resolved source'),
             'distributionChoice': override.get('distribution_choice') if override else None,
             'sourceRevisionNotice': override.get('upstream_revision_unavailable') if override else None,
         })
     return packages, texts
+
+
+LINUX_DOC = 'usr/share/doc/sunipdf'
+LINUX_INVENTORY = LINUX_DOC + '/licenses/dependency-inventory.json'
+
+
+def linux_payload(stage):
+    files = {}
+    for path in sorted(stage.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Linked Linux package resource is not allowed')
+        if path.is_file():
+            relative = path.relative_to(stage).as_posix()
+            if relative != LINUX_INVENTORY and not relative.startswith('DEBIAN/'):
+                files[relative] = {'sha256': digest(path.read_bytes()), 'bytes': path.stat().st_size}
+    return files
+
+
+def verify_linux(stage):
+    inventory = read_json(stage / LINUX_INVENTORY)
+    if inventory.get('platform') != 'linux' or inventory.get('architecture') != 'amd64':
+        raise ValueError('Unexpected Linux inventory platform or architecture')
+    if linux_payload(stage) != inventory['payloadFiles']:
+        raise ValueError('Linux package payload or notice checksum differs')
+    return inventory
+
+
+def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version, cargo_version):
+    packages, texts = rust_inventory(root, metadata, {'x86_64-unknown-linux-gnu': target_metadata}, 'Linux')
+    notices = stage / LINUX_DOC / 'licenses'
+    notices.mkdir(parents=True, exist_ok=True)
+    components = []
+
+    def include(source, filename, component):
+        destination = notices / filename
+        destination.write_bytes(source.read_bytes())
+        content = legal_text(destination)
+        text_id = digest(content.encode('utf-8'))
+        relative = destination.relative_to(stage).as_posix()
+        texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(relative)
+        component.setdefault('texts', []).append({'path': relative, 'textSha256': text_id})
+
+    pdfium_root = root / 'third_party/pdfium/linux-x64'
+    library = stage / 'usr/lib/sunipdf/libpdfium.so'
+    if digest(library.read_bytes()) != 'f728930966f503652b92acc89b9374a2eeca00ce42e26dccd3e4b5c5161b2d64':
+        raise ValueError('Linux PDFium binary differs from the pinned distribution')
+    if (pdfium_root / 'VERSION').read_text().splitlines() != ['MAJOR=151', 'MINOR=0', 'BUILD=7881', 'PATCH=0']:
+        raise ValueError('Unexpected Linux PDFium version')
+    native = read_json(root / 'assets/licenses/native-components.json')['pdfium']
+    originals = {path.name: path for path in (pdfium_root / 'licenses').iterdir() if path.is_file()}
+    originals['pdfium-binaries-MIT.txt'] = pdfium_root / 'LICENSE'
+    if set(originals) != {name for component in native['components'] for name in component['files']}:
+        raise ValueError('Linux PDFium legal notice set differs from the reviewed inventory')
+    for component in native['components']:
+        entry = dict(component, scope='usr/lib/sunipdf/libpdfium.so')
+        for filename in component['files']:
+            include(originals[filename], filename, entry)
+        components.append(entry)
+    for name in ('LICENSE-MIT', 'LICENSE-APACHE'):
+        entry = {'name': 'SuniPDF ' + name, 'scope': 'Application'}
+        include(root / name, name, entry)
+        components.append(entry)
+    for kind, version_file, legal_files in (
+        ('Rust', rust_version, [('share/doc/rust/COPYRIGHT-library.html', 'rust-standard-library.html'), ('share/doc/rust/COPYRIGHT.html', 'rust-build-toolchain.html')]),
+        ('Cargo', cargo_version, [('share/doc/cargo/' + name, 'cargo-' + name + '.txt') for name in ('LICENSE-MIT', 'LICENSE-APACHE', 'LICENSE-THIRD-PARTY')]),
+    ):
+        version = read_plain_text(version_file).strip()
+        revision = re.search(r'^commit-hash: ([0-9a-f]{40})$', version, re.M)
+        if not revision:
+            raise ValueError('Actual Linux toolchain revision is unavailable: ' + kind)
+        entry = {'name': kind, 'revision': revision[1], 'scope': 'Rust standard library and build-tool notices; compiler tools are not shipped'}
+        for relative, filename in legal_files:
+            include(sysroot / relative, filename, entry)
+        (notices / (kind.lower() + '-toolchain.txt')).write_text(version + '\n', encoding='utf-8')
+        components.append(entry)
+    body = ('SuniPDF Linux locked-source license and notice texts\n\n'
+            'OR denotes alternatives; AND denotes cumulative terms. Original expressions and full terms are retained.\n'
+            'Other-platform and build/development sources are included for completeness; target membership is recorded separately.\n\n')
+    body += '\n'.join(f"{package['name']} {package['version']} | {package['declaredLicense']} | {package['source']}" for package in packages) + '\n'
+    for text_id, entry in sorted(texts.items()):
+        body += '\n' + '=' * 78 + '\nSHA256 (LF-normalized text): ' + text_id + '\n' + '\n'.join(sorted(entry['sources'])) + '\n\n' + entry['text'].rstrip('\n') + '\n'
+    (notices / 'dependency-licenses.txt').write_text(body, encoding='utf-8', newline='\n')
+    inventory = {
+        'schema': 1, 'platform': 'linux', 'architecture': 'amd64',
+        'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()),
+        'coverage': 'All locked source license terms, Linux normal/build membership, bundled PDFium and fonts; system dependencies are installed by apt, not bundled',
+        'rustPackages': packages, 'nativeAndPackagingComponents': components,
+        'embeddedFontSources': font_inventory(metadata),
+        'systemDependencies': [{'name': name, 'bundled': False, 'noticePath': '/usr/share/doc/' + name + '/copyright'} for name in ('tesseract-ocr', 'tesseract-ocr-eng', 'tesseract-ocr-fra')],
+        'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())],
+        'payloadFiles': linux_payload(stage),
+    }
+    (stage / LINUX_INVENTORY).write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + '\n', encoding='utf-8', newline='\n')
+    return verify_linux(stage)
 
 
 def machine(path):
@@ -460,6 +554,25 @@ def record_wix(stage, provenance):
 
 
 class InventoryTests(unittest.TestCase):
+    def test_linux_inventory_detects_changed_or_added_installed_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / LINUX_DOC / 'licenses').mkdir(parents=True)
+            (stage / LINUX_DOC / 'copyright').write_text('Full terms')
+            inventory = {'platform': 'linux', 'architecture': 'amd64', 'payloadFiles': linux_payload(stage)}
+            (stage / LINUX_INVENTORY).write_text(json.dumps(inventory))
+            self.assertEqual(verify_linux(stage), inventory)
+            (stage / 'DEBIAN').mkdir()
+            (stage / 'DEBIAN/control').write_text('Package control is not installed')
+            self.assertEqual(verify_linux(stage), inventory)
+            (stage / LINUX_DOC / 'copyright').write_text('Changed terms')
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                verify_linux(stage)
+            (stage / LINUX_DOC / 'copyright').write_text('Full terms')
+            (stage / LINUX_DOC / 'unexpected.txt').write_text('extra')
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                verify_linux(stage)
+
     def test_reviewed_legacy_notice_preserves_bytes_and_unknown_encoding_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'legacy-license.txt'
@@ -559,6 +672,11 @@ class InventoryTests(unittest.TestCase):
                 package['license'] = expression
                 packages, texts = rust_inventory(root, {'packages': [package]}, {'x64': targets, 'arm64': targets})
                 self.assertEqual(packages[0]['declaredLicense'], expression)
+                self.assertEqual(packages[0]['windowsNormalOrBuildTargets'], ['arm64', 'x64'])
+                self.assertNotIn('linuxNormalOrBuildTargets', packages[0])
+                linux, _ = rust_inventory(root, {'packages': [package]}, {'x86_64-unknown-linux-gnu': targets}, 'Linux')
+                self.assertEqual(linux[0]['linuxNormalOrBuildTargets'], ['x86_64-unknown-linux-gnu'])
+                self.assertNotIn('windowsNormalOrBuildTargets', linux[0])
                 self.assertEqual(len(packages[0]['texts']), 2)
                 self.assertTrue(any('Permission is hereby granted' in value['text'] for value in texts.values()))
                 self.assertTrue(any('TERMS AND CONDITIONS' in value['text'] for value in texts.values()))
@@ -603,6 +721,8 @@ def main():
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--stage', type=Path)
     parser.add_argument('--arch', choices=['x64', 'arm64'])
+    parser.add_argument('--linux', action='store_true', help='Generate or verify the Ubuntu amd64 installed payload')
+    parser.add_argument('--linux-metadata', type=Path, help='Locked Cargo metadata filtered to x86_64-unknown-linux-gnu')
     parser.add_argument('--metadata', type=Path)
     parser.add_argument('--x64-metadata', type=Path)
     parser.add_argument('--arm64-metadata', type=Path)
@@ -618,7 +738,18 @@ def main():
     if args.self_test:
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(InventoryTests))
         return 0 if result.wasSuccessful() else 1
-    if args.record_wix:
+    if args.linux:
+        if args.archive or args.msi or args.record_wix or args.arch:
+            parser.error('--linux cannot be combined with Windows packaging options')
+        if not args.stage:
+            parser.error('--linux requires --stage')
+        if args.verify:
+            result = verify_linux(args.stage)
+        else:
+            if not all((args.metadata, args.linux_metadata, args.rust_sysroot, args.rust_version_file, args.cargo_version_file)):
+                parser.error('Linux generation requires metadata, Linux metadata and toolchain provenance')
+            result = generate_linux(args.root.resolve(), args.stage.resolve(), read_json(args.metadata), read_json(args.linux_metadata), args.rust_sysroot, args.rust_version_file, args.cargo_version_file)
+    elif args.record_wix:
         if not args.stage:
             parser.error('--record-wix requires --stage')
         result = record_wix(args.stage, read_json(args.record_wix))
