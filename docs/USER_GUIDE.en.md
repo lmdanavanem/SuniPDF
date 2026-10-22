@@ -3,7 +3,18 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.45.0](RELEASE_0.45.0.md). The preceding [0.44.0](RELEASE_0.44.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+This guide covers this build of SuniPDF 0.46.0. The preceding verified release [0.45.0](RELEASE_0.45.0.md) retains its own evidence. The [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) tracks qualification and publication. English remains the default language; French is available in Settings.
+
+## Quantity tables and typed fields
+
+This feature is included in this build. The [0.46.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) tracks qualification and publication.
+
+1. Open a PDF, then choose **Quantity table** from **All tools**, the measurement controls or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
+2. Choose **Edit row** to enter **Unit price**, **Currency code**, **Price per unit** and **Cost decimal places**. A blank price is missing; `0` is an explicit zero. Counts and saved measurements supply the quantities; ordinary annotations do not acquire an inferred quantity, and angles are not priced.
+3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; close the table before using Undo/Redo, and save the PDF to retain the fields.
+4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
+
+[Full instructions, limits and CLI](QUANTITY_TABLE.md).
 
 ## Reuse local annotation templates
 

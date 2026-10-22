@@ -3,7 +3,18 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.45.0](RELEASE_0.45.0.fr.md). La version précédente [0.44.0](RELEASE_0.44.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide couvre cette compilation de SuniPDF 0.46.0. La précédente version vérifiée [0.45.0](RELEASE_0.45.0.fr.md) conserve ses propres preuves. La [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) suit la qualification et la publication. L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+
+## Tables de quantités et champs typés
+
+Cette fonction est incluse dans cette compilation. La [page de version 0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) suit sa qualification et sa publication.
+
+1. Ouvrez un PDF, puis choisissez **Table des quantités** depuis **Tous les outils**, les contrôles de mesure ou le registre d’annotations. Filtrez les lignes et choisissez les **Groupes de sous-totaux** ; les totaux couvrent toutes les lignes correspondantes, y compris les autres pages de la table.
+2. Cliquez sur **Modifier la ligne** pour renseigner **Prix unitaire**, **Code devise**, **Prix par unité** et **Décimales du coût**. Un prix vide est absent ; `0` est un zéro explicite. Comptages et mesures enregistrées fournissent les quantités ; aucune quantité n’est déduite d’une annotation ordinaire et les angles ne sont pas tarifés.
+3. Utilisez **Ajouter une colonne personnalisée** pour les valeurs texte, nombre, date ou choix. Choisissez **Appliquer les champs** ou **Annuler la modification**. Chaque ligne appliquée constitue une étape Annuler ; fermez la table avant Annuler/Rétablir et enregistrez le PDF pour conserver les champs.
+4. Choisissez **Exporter CSV** ou **Exporter JSON**, puis un nouveau nom. Les exports contiennent toutes les lignes correspondantes et la provenance de la source ; le droit de copie est requis. Les totaux de quantités séparent les unités, les coûts séparent devises/précisions et les couvertures partielles restent visibles.
+
+[Instructions complètes, limites et CLI](QUANTITY_TABLE.fr.md).
 
 ## Réutiliser des modèles locaux d’annotations
 

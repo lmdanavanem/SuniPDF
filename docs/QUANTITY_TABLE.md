@@ -2,7 +2,7 @@
 
 [Français](QUANTITY_TABLE.fr.md) · [0.46 scope and qualification](RELEASE_0.46.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
 
-The 0.46 implementation is in development and undergoing validation. This guide describes the implemented controls and supported data; it does not establish publication or completed qualification.
+This feature is included in this build. The [0.46.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) tracks qualification and publication.
 
 ## Open and filter the table
 
