@@ -2,7 +2,7 @@
 
 [English](MEASUREMENT_GEOMETRY.md) · [Mesures](MEASUREMENTS.fr.md)
 
-Cette version ajoute l’insertion et la suppression de sommets dans les mesures enregistrées. Distribution et qualification figurent sur la [page de version 0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0). Le [périmètre 0.48.0](RELEASE_0.48.0.fr.md) conserve ses propres [preuves](qa/RELEASE_0.48.0.json).
+Disponible dans [0.49.0](RELEASE_0.49.0.fr.md). [Preuves](qa/RELEASE_0.49.0.json).
 
 ## Utilisation
 

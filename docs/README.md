@@ -11,7 +11,7 @@ Older `.en.md` addresses remain compatibility links.
 | [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Opening, editing and saving PDFs |
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
 | [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and individual measurement editing |
-| [Measurement geometry](MEASUREMENT_GEOMETRY.md) | [FR](MEASUREMENT_GEOMETRY.fr.md) | Move, add and remove saved vertices with explicit selection, Preview, Apply and Undo; [0.49.0 scope](RELEASE_0.49.0.md) |
+| [Measurement geometry](MEASUREMENT_GEOMETRY.md) | [FR](MEASUREMENT_GEOMETRY.fr.md) | Move, add and remove saved vertices with explicit selection, Preview, Apply and Undo; [qualified 0.49.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) |
 | [Counts and annotation register](MARKUP_REGISTER.md) | [FR](MARKUP_REGISTER.fr.md) | Markers, quantities and business fields |
 | [Annotation library](ANNOTATION_LIBRARY.md) | [FR](ANNOTATION_LIBRARY.fr.md) | Local templates, groups, placement, import/export and CLI; qualified 0.45 scope |
 | [Quantity tables](QUANTITY_TABLE.md) | [FR](QUANTITY_TABLE.fr.md) | Typed fields, prices, compatible-unit totals and guarded CSV/JSON exports; [qualified 0.46.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) |
@@ -45,6 +45,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
+- [0.49 release](RELEASE_0.49.0.md) · [FR](RELEASE_0.49.0.fr.md): adding/removing saved vertices with explicit selection within documented bounds and [publication evidence](qa/RELEASE_0.49.0.json).
 - [0.48 release](RELEASE_0.48.0.md) · [FR](RELEASE_0.48.0.fr.md): editing saved measurement vertices within documented bounds and [publication evidence](qa/RELEASE_0.48.0.json).
 - [0.47 release](RELEASE_0.47.0.md) · [FR](RELEASE_0.47.0.fr.md): aligned revision overlays within documented bounds and [publication evidence](qa/RELEASE_0.47.0.json).
 - [0.46 release](RELEASE_0.46.0.md) · [FR](RELEASE_0.46.0.fr.md): quantity tables within documented bounds and [publication evidence](qa/RELEASE_0.46.0.json).
@@ -52,7 +53,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 - [0.44 release and audit](RELEASE_0.44.0.md) · [FR](RELEASE_0.44.0.fr.md): individual editing, corrective work and [verified publication evidence](qa/RELEASE_0.44.0.json).
 - [Feature matrix](FEATURE_MATRIX.md) · [FR](FEATURE_MATRIX.fr.md): implemented features and boundaries.
 - [Roadmap](ROADMAP.md) · [FR](ROADMAP.fr.md): phases and acceptance criteria.
-- Delivered: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 aligned revision overlays and 0.48 editing saved measurement vertices. Automatic change outlines and remaining acceptance criteria stay open; future stages still require implementation and qualification.
+- Delivered: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 aligned revision overlays, 0.48 editing saved measurement vertices and 0.49 adding/removing saved vertices with explicit selection. Automatic change outlines and remaining acceptance criteria stay open; future stages still require implementation and qualification.
 - [Next tasks](NEXT_TASKS.md) · [FR](NEXT_TASKS.fr.md): current priorities.
 - [Local plan workflows backlog](AEC_BACKLOG.md) · [FR](AEC_BACKLOG.fr.md) · [CSV](AEC_BACKLOG.csv): measurements, quantities and revision workflows.
 - [1.0 release criteria](RELEASE_1.0_CRITERIA.md) · [FR](RELEASE_1.0_CRITERIA.fr.md): remaining qualification gates.

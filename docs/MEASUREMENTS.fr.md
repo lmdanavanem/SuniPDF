@@ -2,7 +2,7 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
-**Version 0.49.0 :** ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés dans leurs limites de nombre ; sélectionnez un sommet par son numéro même lorsque les poignées se superposent. Aperçu, Appliquer et Annuler conservent la calibration propre à la mesure et les champs de quantité saisis. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md).
+**Disponible en [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) :** ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés dans leurs limites de nombre ; sélectionnez un sommet par son numéro même lorsque les poignées se superposent. Aperçu, Appliquer et Annuler conservent la calibration propre à la mesure et les champs de quantité saisis. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md). [Preuves](qa/RELEASE_0.49.0.json).
 
 **Disponible en [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) :** déplacez les sommets existants via **Modifier la géométrie**, puis Aperçu et Appliquer. Calibration et champs de quantité saisis sont conservés. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md). [Preuves](qa/RELEASE_0.48.0.json).
 

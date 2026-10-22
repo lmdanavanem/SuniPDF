@@ -2,7 +2,15 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.48.0: editing saved measurement vertices (stable Latest)
+## 0.49.0: adding and removing saved measurement vertices (stable Latest)
+
+[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
+
+AEC-002 and AEC-003 remain partial. Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Length and angle measurements retain fixed point counts; measurement types do not change. Vector snapping, batch recalculation, multiple-scale viewports and real-plan qualification remain open. Packages remain unsigned; native ARM64, accessibility, hardware and full 1.0 qualification remain open.
+
+[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.49.0.md) · [Evidence](qa/RELEASE_0.49.0.json).
+
+## 0.48.0: editing saved measurement vertices (published; Latest at the time)
 
 [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
 

@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENT_GEOMETRY.fr.md) · [Measurements](MEASUREMENTS.md)
 
-This build adds vertex insertion and removal to saved measurement editing. Distribution and qualification are tracked on the [0.49.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0). The earlier [0.48.0 scope](RELEASE_0.48.0.md) retains its own [evidence](qa/RELEASE_0.48.0.json).
+Available in [0.49.0](RELEASE_0.49.0.md). [Evidence](qa/RELEASE_0.49.0.json).
 
 ## Workflow
 

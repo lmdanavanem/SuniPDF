@@ -2,7 +2,15 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (Latest stable)
+
+[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
+
+AEC-002 et AEC-003 restent partiels. Les polylignes gardent 2 à 128 sommets ; les périmètres et surfaces polygonales, 3 à 128. Longueurs et angles gardent leur nombre fixe de points ; le type de mesure ne change pas. Accrochage vectoriel, recalcul par lots, vues multi-échelles et qualification sur plans réels restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité, matériel et critères généraux 1.0 restent ouverts.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.49.0.fr.md) · [Preuves](qa/RELEASE_0.49.0.json).
+
+## 0.48.0 : modification des sommets des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
 
