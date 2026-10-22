@@ -2317,7 +2317,7 @@ impl SuniApp {
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
-    fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub(crate) fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         ui.add_space(4.0);
         ui.label(crate::icons::semibold(tr(lang, "panel.thumbnails"), 14.0));

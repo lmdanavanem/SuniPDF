@@ -60,7 +60,7 @@ impl Canvas {
                             .show(ui, |ui| app.measurement_bar(&self.ctx, ui));
                         self.panel_rect = scroll.inner_rect;
                         self.panel_content_size = scroll.content_size;
-                        self.panel_scroll = scroll.state.offset.y;
+                        self.panel_scroll = scroll.state.offset().y;
                     });
                 app.document_view(&self.ctx, ui);
                 app.saved_measurements_dialog(&self.ctx);
@@ -118,6 +118,8 @@ impl Canvas {
                 Event::MouseWheel {
                     unit: egui::MouseWheelUnit::Point,
                     delta: vec2(0.0, delta),
+                    phase: egui::TouchPhase::Move,
+                    source: egui::MouseWheelSource::Wheel,
                     modifiers: Modifiers::NONE,
                 },
             ],

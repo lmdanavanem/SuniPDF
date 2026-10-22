@@ -53,7 +53,7 @@ const FAMILIES: &[ToolFamily] = &[
 ];
 
 fn query_id() -> egui::Id {
-    egui::Id::new("tools-search-query")
+    egui::Id::unique("tools-search-query")
 }
 
 fn matches_query(lang: Language, family: &ToolFamily, ws: Workspace, query: &str) -> bool {
@@ -381,7 +381,8 @@ mod tests {
                 let input = raw_input(width);
                 let mut output = ctx.run_ui(input.clone(), |ui| app.tools_panel(&ctx, ui));
                 output.textures_delta.clear();
-                let output = ctx.run_ui(input.clone(), |ui| app.tools_panel(&ctx, ui));
+                let mut output = ctx.run_ui(input.clone(), |ui| app.tools_panel(&ctx, ui));
+                output.textures_delta.clear();
                 let label = tr(lang, Workspace::Measure.info().name_key);
                 let pos = button_center(&output, label);
                 assert!(pos.y < 240.0 && pos.x > 0.0 && pos.x < width);
@@ -405,7 +406,7 @@ mod tests {
                     });
                     let mut output = ctx.run_ui(tab, |ui| app.tools_panel(&ctx, ui));
                     output.textures_delta.clear();
-                    let focus_color = theme::palette(ctx.style().visuals.dark_mode).focus;
+                    let focus_color = theme::palette(ctx.global_style().visuals.dark_mode).focus;
                     focused = output.shapes.iter().any(|shape| {
                         matches!(&shape.shape, egui::Shape::Rect(rect)
                             if rect.rect.contains(pos)

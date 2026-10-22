@@ -1587,7 +1587,7 @@ mod tests {
     }
 
     #[test]
-    fn reader_groups_keep_zoom_on_one_line_and_controls_inside_scaled_windows() {
+    fn reader_groups_keep_zoom_on_one_line_and_controls_inside_narrow_layouts() {
         for lang in Language::ALL {
             for dark in [false, true] {
                 for scale in [1.0, 1.5, 2.0] {
