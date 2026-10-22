@@ -1,5 +1,6 @@
 use super::*;
 
+#[cfg(windows)]
 #[test]
 fn valid_saved_bytes_do_not_trust_a_self_signed_identity_or_declared_time() {
     let pdf = include_bytes!("../tests/fixtures/two-pages.pdf");

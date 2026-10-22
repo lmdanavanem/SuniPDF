@@ -9,7 +9,9 @@
 
 [English](README.md)
 
-**Lecteur et éditeur PDF natif pour Windows 10/11, libre, traitement local, bilingue anglais / français.**
+**Lecteur et éditeur PDF natif pour Windows 10/11 et Ubuntu Linux, libre, traitement local, bilingue anglais / français.**
+
+[Installation Ubuntu amd64 et limites de la plateforme](docs/UBUNTU.fr.md). Les paquets disponibles et leurs validations sont indiqués sur chaque page de version.
 
 Créé par **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Navanem](https://navanem.com/projets/sunipdf/) ·
 Licence MIT ou Apache-2.0, au choix.

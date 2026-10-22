@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
 #[path = "../../../crates/sunipdf-core/tests/support/certificate_identity.rs"]
 mod test_identity;
 
@@ -1059,25 +1060,51 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     assert!(report["words"].as_u64().unwrap() >= 3);
     check(&qpdf, &ocr, None);
 
-    let pfx = temp.path().join("identity.pfx");
-    std::fs::write(&pfx, test_identity::identity()).unwrap();
-    let signed = temp.path().join("signed.pdf");
-    let mut command = cli(&["sign"], &[&original]);
-    command
-        .arg("--certificate")
-        .arg(&pfx)
-        .arg("--certificate-password-stdin")
-        .arg("--out")
-        .arg(&signed);
-    let output = bounded(command, Some(b"test-only\n"));
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    check(&qpdf, &signed, None);
-    let report = success(cli(&["signatures"], &[&signed]));
-    assert_eq!(report["signatures"][0]["status"], "valid");
+    #[cfg(windows)]
+    {
+        let pfx = temp.path().join("identity.pfx");
+        std::fs::write(&pfx, test_identity::identity()).unwrap();
+        let signed = temp.path().join("signed.pdf");
+        let mut command = cli(&["sign"], &[&original]);
+        command
+            .arg("--certificate")
+            .arg(&pfx)
+            .arg("--certificate-password-stdin")
+            .arg("--out")
+            .arg(&signed);
+        let output = bounded(command, Some(b"test-only\n"));
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        check(&qpdf, &signed, None);
+        let report = success(cli(&["signatures"], &[&signed]));
+        assert_eq!(report["signatures"][0]["status"], "valid");
+    }
+
+    #[cfg(not(windows))]
+    {
+        let pfx = temp.path().join("unavailable-identity.pfx");
+        std::fs::write(&pfx, b"unsupported certificate backend test input").unwrap();
+        let signed = temp.path().join("must-not-be-signed.pdf");
+        let mut command = cli(&["sign"], &[&original]);
+        command
+            .arg("--certificate")
+            .arg(pfx)
+            .arg("--certificate-password-stdin")
+            .arg("--out")
+            .arg(&signed);
+        let output = bounded(command, Some(b"private test input\n"));
+        assert!(!output.status.success());
+        let error: serde_json::Value = serde_json::from_slice(&output.stderr).unwrap();
+        assert!(error["message"]
+            .as_str()
+            .unwrap()
+            .contains("unavailable on this platform"));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("private test input"));
+        assert!(!signed.exists());
+    }
 
     for (name, bytes) in [
         ("empty.pdf", b"".as_slice()),

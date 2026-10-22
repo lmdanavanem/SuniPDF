@@ -5,9 +5,13 @@ use crate::EngineError;
 use lopdf::{dictionary, Dictionary, Object, ObjectId, StringFormat};
 use std::collections::HashSet;
 
+#[cfg(windows)]
 #[path = "certificate_native.rs"]
 mod native;
-#[cfg(test)]
+#[cfg(not(windows))]
+#[path = "certificate_unavailable.rs"]
+mod native;
+#[cfg(all(test, windows))]
 #[path = "../tests/support/certificate_identity.rs"]
 mod test_identity;
 
@@ -726,6 +730,7 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
     #[test]
     fn native_ephemeral_pfx_signs_and_verifies() {
         let bytes = test_identity::identity();

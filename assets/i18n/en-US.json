@@ -1411,5 +1411,9 @@
   "measure.panel.scale": "Page scale",
   "measure.panel.drawing": "Drawing",
   "measure.panel.saved": "Saved data",
-  "measure.finish_draft_first": "Finish or cancel the measurement before switching panels."
+  "measure.finish_draft_first": "Finish or cancel the measurement before switching panels.",
+  "updates.download_linux": "Download update",
+  "updates.linux_install": "Download the Ubuntu .deb from the release page, then install it with your package manager.",
+  "platform.windows_only": "This feature is currently available on Windows only.",
+  "platform.signature_session_only": "Signatures can be drawn or imported for this session. The encrypted signature library is available on Windows only."
 }

@@ -698,6 +698,15 @@ fn document_dialogs_reject_file_drops_instead_of_retargeting_pending_actions() {
             app.dirty = true;
         }
         app.execute(&ctx, command);
+        if crate::workspace::platform_unavailable(command).is_some() {
+            assert!(!app.dialog_open());
+            assert!(requests.try_recv().is_err());
+            assert_eq!(
+                app.status_msg.as_deref(),
+                Some(app.t("platform.windows_only"))
+            );
+            continue;
+        }
         assert!(app.dialog_open());
         let mut output = ctx.run_ui(
             egui::RawInput {

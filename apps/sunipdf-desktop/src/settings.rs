@@ -1,4 +1,4 @@
-//! Préférences utilisateur persistées dans `%APPDATA%\SuniPDF\settings.json` (écriture atomique).
+//! User preferences are stored atomically in the platform's per-user configuration directory.
 
 use serde::{Deserialize, Serialize};
 use std::io::Read;
@@ -6,6 +6,24 @@ use std::path::PathBuf;
 use sunipdf_i18n::Language;
 
 const MAX_SETTINGS_BYTES: usize = 1024 * 1024;
+
+pub(crate) fn absolute_path(value: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    value.map(PathBuf::from).filter(|path| path.is_absolute())
+}
+
+pub(crate) fn storage_path(root: PathBuf, name: &str) -> PathBuf {
+    root.join(if cfg!(windows) { "SuniPDF" } else { "sunipdf" })
+        .join(name)
+}
+
+#[cfg(not(windows))]
+pub(crate) fn xdg_directory(
+    configured: Option<std::ffi::OsString>,
+    home: Option<std::ffi::OsString>,
+    fallback: &str,
+) -> Option<PathBuf> {
+    absolute_path(configured).or_else(|| absolute_path(home).map(|path| path.join(fallback)))
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
@@ -58,16 +76,30 @@ impl Settings {
     }
 
     pub fn push_recent(&mut self, path: &std::path::Path) {
-        // Chemins Windows : séparateurs et casse non significatifs.
+        #[cfg(windows)]
         let entry = path.to_string_lossy().replace('/', "\\");
+        #[cfg(not(windows))]
+        let entry = path.to_string_lossy().into_owned();
+        #[cfg(windows)]
         let key = entry.to_lowercase();
+        #[cfg(windows)]
         self.recent.retain(|r| r.to_lowercase() != key);
+        #[cfg(not(windows))]
+        self.recent.retain(|r| r != &entry);
         self.recent.insert(0, entry);
         self.recent.truncate(8);
     }
 
     pub fn path() -> Option<PathBuf> {
-        std::env::var_os("APPDATA").map(|d| PathBuf::from(d).join("SuniPDF").join("settings.json"))
+        #[cfg(windows)]
+        let root = absolute_path(std::env::var_os("APPDATA"));
+        #[cfg(not(windows))]
+        let root = xdg_directory(
+            std::env::var_os("XDG_CONFIG_HOME"),
+            std::env::var_os("HOME"),
+            ".config",
+        );
+        root.map(|root| storage_path(root, "settings.json"))
     }
 
     pub fn load() -> Self {
@@ -155,6 +187,12 @@ mod tests {
         let parsed: Settings =
             serde_json::from_str(with_bom.trim_start_matches('\u{feff}')).unwrap();
         assert!(parsed.dark_theme);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn recent_windows_paths_ignore_case_and_separator_style() {
         let mut r = Settings::default();
         for i in 0..10 {
             r.push_recent(std::path::Path::new(&format!("c:/f{i}.pdf")));
@@ -169,6 +207,61 @@ mod tests {
                 .count(),
             1
         );
-        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn recent_unix_paths_preserve_case_and_separators() {
+        let mut settings = Settings::default();
+        for i in 0..10 {
+            settings.push_recent(std::path::Path::new(&format!("/home/user/{i}.pdf")));
+        }
+        settings.push_recent(std::path::Path::new("/home/user/Plan.pdf"));
+        settings.push_recent(std::path::Path::new("/home/user/plan.pdf"));
+        settings.push_recent(std::path::Path::new("/home/user/Plan.pdf"));
+        assert_eq!(settings.recent.len(), 8);
+        assert_eq!(
+            &settings.recent[..2],
+            &["/home/user/Plan.pdf", "/home/user/plan.pdf"]
+        );
+        assert!(settings.recent.iter().all(|path| path.starts_with('/')));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn xdg_paths_require_absolute_roots_and_fall_back_to_home() {
+        assert_eq!(
+            xdg_directory(
+                Some("/custom/config".into()),
+                Some("/home/user".into()),
+                ".config"
+            ),
+            Some(PathBuf::from("/custom/config"))
+        );
+        for invalid in [None, Some("".into()), Some("relative".into())] {
+            assert_eq!(
+                xdg_directory(invalid, Some("/home/user".into()), ".config"),
+                Some(PathBuf::from("/home/user/.config"))
+            );
+        }
+        assert!(xdg_directory(None, None, ".config").is_none());
+        assert!(
+            xdg_directory(Some("relative".into()), Some("relative".into()), ".config").is_none()
+        );
+        let home = Some(std::ffi::OsString::from("/home/user"));
+        assert_eq!(
+            storage_path(
+                xdg_directory(None, home.clone(), ".config").unwrap(),
+                "settings.json"
+            ),
+            PathBuf::from("/home/user/.config/sunipdf/settings.json")
+        );
+        assert_eq!(
+            storage_path(
+                xdg_directory(None, home, ".local/state").unwrap(),
+                "recovery"
+            ),
+            PathBuf::from("/home/user/.local/state/sunipdf/recovery")
+        );
     }
 }

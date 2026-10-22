@@ -29,7 +29,15 @@ fn lock(path: &Path) -> io::Result<File> {
         use std::os::windows::fs::OpenOptionsExt;
         options.share_mode(0);
     }
-    options.open(path)
+    let file = options.open(path)?;
+    #[cfg(not(windows))]
+    file.try_lock().map_err(|error| match error {
+        std::fs::TryLockError::WouldBlock => {
+            io::Error::new(io::ErrorKind::WouldBlock, "recovery session is active")
+        }
+        std::fs::TryLockError::Error(error) => error,
+    })?;
+    Ok(file)
 }
 
 #[derive(Clone, Debug)]
@@ -96,6 +104,12 @@ pub struct Session {
 
 impl Session {
     pub(crate) fn create(root: PathBuf) -> io::Result<Self> {
+        if !root.is_absolute() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "recovery directory must be absolute",
+            ));
+        }
         fs::create_dir_all(&root)?;
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -134,7 +148,7 @@ impl Session {
             if !canonical.starts_with(&root) {
                 continue;
             }
-            // An exclusive Windows handle distinguishes a running instance from a crashed session.
+            // An exclusive handle or file lock prevents recovery from another running instance.
             let Ok(_guard) = lock(&path.join("session.lock")) else {
                 continue;
             };
@@ -198,11 +212,8 @@ impl Default for RecoveryState {
 
 impl RecoveryState {
     pub fn load() -> Self {
-        let root = std::env::var_os("SUNIPDF_RECOVERY_DIR")
-            .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var_os("LOCALAPPDATA").map(|p| PathBuf::from(p).join("SuniPDF/recovery"))
-            });
+        let root = crate::settings::absolute_path(std::env::var_os("SUNIPDF_RECOVERY_DIR"))
+            .or_else(default_recovery_directory);
         let mut state = Self::default();
         if let Some(root) = root {
             match Session::create(root) {
@@ -241,6 +252,28 @@ impl RecoveryState {
         self.restored.remove(&id);
         Ok(())
     }
+}
+
+fn default_recovery_directory() -> Option<PathBuf> {
+    #[cfg(windows)]
+    let root = crate::settings::absolute_path(std::env::var_os("LOCALAPPDATA"));
+    #[cfg(not(windows))]
+    let root = crate::settings::xdg_directory(
+        std::env::var_os("XDG_STATE_HOME"),
+        std::env::var_os("HOME"),
+        ".local/state",
+    );
+    root.map(|root| crate::settings::storage_path(root, "recovery"))
+}
+
+pub(crate) fn recovered_document_path() -> PathBuf {
+    #[cfg(windows)]
+    let root = crate::settings::absolute_path(std::env::var_os("USERPROFILE"))
+        .map(|path| path.join("Documents"));
+    #[cfg(not(windows))]
+    let root = crate::settings::absolute_path(std::env::var_os("HOME"));
+    root.unwrap_or_else(std::env::temp_dir)
+        .join("Recovered.pdf")
 }
 
 impl crate::app::SuniApp {
@@ -410,7 +443,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(windows)]
     fn live_sessions_are_skipped_and_slots_do_not_depend_on_tab_indices() {
         let dir = tempfile::tempdir().unwrap();
         let first = Session::create(dir.path().into()).unwrap();
@@ -422,5 +454,11 @@ mod tests {
         assert_eq!(second.scan().unwrap().len(), 1);
         slot.remove().unwrap();
         assert!(second.scan().unwrap().is_empty());
+    }
+
+    #[test]
+    fn relative_recovery_root_is_rejected() {
+        assert!(Session::create(PathBuf::from("relative-recovery")).is_err());
+        assert!(recovered_document_path().is_absolute());
     }
 }

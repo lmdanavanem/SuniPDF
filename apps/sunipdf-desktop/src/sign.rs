@@ -208,7 +208,7 @@ impl Default for SignState {
             pen_width: 3.0,
             import: None,
             import_pending: None,
-            save: true,
+            save: cfg!(windows),
             error: None,
             confirm_delete: None,
             placing: None,
@@ -382,9 +382,12 @@ enum Act {
 
 /// User-profile signatures, protected with DPAPI. Debug builds may override the test directory.
 pub fn signatures_dir() -> Option<PathBuf> {
+    if !cfg!(windows) {
+        return None;
+    }
     #[cfg(debug_assertions)]
     if let Some(dir) = std::env::var_os("SUNIPDF_SIGNATURES_DIR") {
-        return Some(PathBuf::from(dir));
+        return crate::settings::absolute_path(Some(dir));
     }
     Some(
         crate::settings::Settings::path()?
@@ -806,15 +809,27 @@ impl SuniApp {
                 }
 
                 ui.add_space(2.0);
-                ui.checkbox(&mut st.save, tr(lang, "signature.save"));
-                ui.add(
-                    egui::Label::new(
-                        RichText::new(tr_args(lang, "signature.save_note", &[("path", &dir_text)]))
+                ui.add_enabled(
+                    cfg!(windows),
+                    egui::Checkbox::new(&mut st.save, tr(lang, "signature.save")),
+                )
+                .on_disabled_hover_text(tr(lang, "platform.signature_session_only"));
+                if cfg!(windows) {
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(tr_args(
+                                lang,
+                                "signature.save_note",
+                                &[("path", &dir_text)],
+                            ))
                             .size(12.0)
                             .color(p.text_muted),
-                    )
-                    .wrap(),
-                );
+                        )
+                        .wrap(),
+                    );
+                } else {
+                    ui.small(tr(lang, "platform.signature_session_only"));
+                }
                 if let Some(key) = st.error {
                     ui.colored_label(p.error, tr(lang, key));
                 }
@@ -963,7 +978,7 @@ impl SuniApp {
         let aspect = img.height() as f32 / img.width() as f32;
         let mut save_failed = false;
         let mut saved_path = None;
-        if st.save {
+        if st.save && cfg!(windows) {
             match signatures_dir() {
                 Some(dir) => {
                     let name = new_file_name(kind);
@@ -1787,12 +1802,24 @@ mod tests {
     #[test]
     fn default_state_saves_and_draws() {
         let st = SignState::default();
-        assert!(st.save && st.mode == Mode::Draw && st.placing.is_none());
+        assert_eq!(st.save, cfg!(windows));
+        assert!(st.mode == Mode::Draw && st.placing.is_none());
         assert!(st.pen_width >= 1.5 && st.pen_width <= 6.0);
     }
 
     fn visible_mark() -> image::RgbaImage {
         image::RgbaImage::from_pixel(60, 20, image::Rgba([10, 10, 10, 255]))
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn visual_signatures_remain_session_only_without_loading_a_persistent_library() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        assert!(signatures_dir().is_none());
+        app.open_sign_dialog(SignKind::Signature);
+        assert_eq!(app.sign.open, Some(SignKind::Signature));
+        assert!(!app.sign.save);
+        assert!(requests.try_recv().is_err());
     }
 
     #[test]
