@@ -1180,7 +1180,14 @@ mod tests {
         fn text_colors(shape: &egui::Shape, label: &str, colors: &mut Vec<egui::Color32>) {
             match shape {
                 egui::Shape::Text(text) if text.galley.text() == label => {
-                    colors.push(text.galley.job.sections[0].format.color);
+                    let color = text.galley.job.sections[0].format.color;
+                    colors.push(text.override_text_color.unwrap_or_else(|| {
+                        if color == egui::Color32::PLACEHOLDER {
+                            text.fallback_color
+                        } else {
+                            color
+                        }
+                    }));
                 }
                 egui::Shape::Vec(shapes) => {
                     for shape in shapes {
