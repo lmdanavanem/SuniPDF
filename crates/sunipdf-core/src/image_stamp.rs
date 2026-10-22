@@ -29,13 +29,29 @@ fn decode(path: &Path, opacity: f32) -> Result<RgbaImage, EngineError> {
     if bytes.len() as u64 > MAX_BYTES {
         return Err(invalid());
     }
+    decode_bytes(&bytes, opacity, false)
+}
+
+pub(crate) fn decode_png(bytes: &[u8], opacity: f32) -> Result<RgbaImage, EngineError> {
+    decode_bytes(bytes, opacity, true)
+}
+
+fn decode_bytes(bytes: &[u8], opacity: f32, png_only: bool) -> Result<RgbaImage, EngineError> {
+    if !opacity.is_finite() || !(0.01..=1.0).contains(&opacity) || bytes.len() > 64 * 1024 * 1024 {
+        return Err(invalid());
+    }
+    if png_only && image::guess_format(bytes).ok() != Some(image::ImageFormat::Png) {
+        return Err(EngineError::Other(
+            "embedded annotation images must be PNG".into(),
+        ));
+    }
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(4096);
     limits.max_image_height = Some(4096);
     limits.max_alloc = Some(32 * 1024 * 1024);
     let mut reader = ImageReader::new(Cursor::new(bytes)).with_guessed_format()?;
     reader.limits(limits.clone());
-    let err = |error| crate::convert::image_err(path, error);
+    let err = |error| EngineError::Other(format!("invalid annotation image: {error}"));
     let mut decoder = reader.into_decoder().map_err(err)?;
     let (width, height) = decoder.dimensions();
     if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 4_000_000 {
@@ -76,10 +92,36 @@ impl Document<'_> {
         if !self.properties().can_annotate {
             return Err(EngineError::SecurityRestricted);
         }
+        let rgba = decode(image, opacity)?;
+        self.add_image_stamp_rgba(page_index, rect, rgba, author)
+    }
+
+    /// Embeds bounded PNG bytes immediately, without retaining any external file path.
+    pub fn add_image_stamp_annotation_bytes(
+        &mut self,
+        page_index: usize,
+        rect: PointRect,
+        png: &[u8],
+        opacity: f32,
+        author: Option<&str>,
+    ) -> Result<usize, EngineError> {
+        if !self.properties().can_annotate {
+            return Err(EngineError::SecurityRestricted);
+        }
+        let rgba = decode_png(png, opacity)?;
+        self.add_image_stamp_rgba(page_index, rect, rgba, author)
+    }
+
+    fn add_image_stamp_rgba(
+        &mut self,
+        page_index: usize,
+        rect: PointRect,
+        rgba: RgbaImage,
+        author: Option<&str>,
+    ) -> Result<usize, EngineError> {
         let geo = self.page_geometry(page_index)?;
         let (w, h) = checked_rect(&geo, rect)?;
         let mut annotation = rich_base("Stamp", rect, &geo, author)?;
-        let rgba = decode(image, opacity)?;
         let mut rgb = Vec::with_capacity(rgba.len() / 4 * 3);
         let mut alpha = Vec::with_capacity(rgba.len() / 4);
         for pixel in rgba.pixels() {

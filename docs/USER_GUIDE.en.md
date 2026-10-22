@@ -5,6 +5,27 @@ no document ever leaves your computer.
 
 This guide covers [0.44.0](RELEASE_0.44.0.md). The preceding [0.43.0](RELEASE_0.43.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
 
+## Reuse local annotation templates
+
+The 0.45 annotation library is **in development and undergoing validation**; see its
+[scope and qualification status](RELEASE_0.45.0.md). Click **Library** in the main toolbar, or choose
+**Annotation library** in **All tools** or **Add comments**. Its local file is separate from PDF files and settings.
+
+Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
+Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
+blank means unknown. Saving a template does not insert it in the PDF. Capture supports text with standard
+fonts, polygons/polylines, revision clouds, predefined stamps and PNG image stamps.
+
+Choose **Place on page**, set the scale and click the PDF. Inspect the rendered preview; adjust **Origin X (pt)**,
+**Origin Y (pt)** or **Scale** if needed, then request **Preview** again. Choose **Apply to object** to create the
+annotations, or **Cancel** to discard the placement. A group is applied as one Undo step; save the PDF to retain it.
+To make a group, check at least two entries, choose **Create group**, enter a new name and member offsets, then save.
+
+Import/export, selected-entry deletion, reload and filtering are available in the library. Invalid imports and
+conflicting writes preserve its active contents. Library-file changes have no PDF Undo history; export a copy before
+deleting templates you want to keep. Measurements, page scales, existing PDF identities and review threads are excluded.
+[Full instructions, supported format, bounds and CLI examples](ANNOTATION_LIBRARY.md).
+
 ## Measure directly on a PDF
 
 Open a PDF and click **Measurements** beside **All tools** in the main toolbar. You can also choose
@@ -169,12 +190,12 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 ## All tools
 
 The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
-task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Measurements, Add
+task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Measurements, Annotation library, Add
 comments, Protect a PDF, Redact a PDF, Compress a PDF, Add a stamp, Scan & OCR, Prepare a form and
 Use a certificate. The **Tools** menu and the Ctrl+K palette give the same access.
 Without an open document, a tool that needs one first asks for a file, then starts.
 
-- **Export, Create, Combine, Compress** open their dialog directly.
+- **Export, Create, Combine, Compress, Annotation library** open their dialog directly. The library can be managed without an open PDF.
 - **Fill & Sign, Edit, Organize, Measurements, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
   the toolbar: the tool's buttons, grouped, with their labels when the width allows (otherwise the icon only,
   the label staying in the tooltip). Actions that need a selection (object, text, grid pages) stay greyed
@@ -186,9 +207,9 @@ Without an open document, a tool that needs one first asks for a file, then star
 - Single-letter shortcuts open the matching tool: H, U, X, N, A, D, F open **Add comments**; E, T, I, R, O, L open
   **Edit a PDF**; S opens the **Sign** dialog; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
 - Each tab keeps its own active tool.
-- The main toolbar keeps quick access to Open, Save, Undo, Redo and Measurements.
+- The main toolbar keeps quick access to Open, Save, Undo, Redo, Measurements and Library.
 
-The 15 tool workspaces in 0.43.0 include **Measurements**, **Scan & OCR**, **Prepare a form** and **Use a certificate**.
+The 0.45 interface adds **Annotation library** alongside **Measurements**, **Scan & OCR**, **Prepare a form** and **Use a certificate**.
 Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
 
 ## Tabs

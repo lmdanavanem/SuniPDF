@@ -1102,7 +1102,11 @@ impl SuniApp {
             // Maj lue au moment du clic (`self.edit.shift` n'est pas mis à jour si `handle_input`
             // est sorti plus tôt).
             let shift = ctx.input(|i| i.modifiers.shift);
-            if self.annotate.tool == crate::annotate::Tool::Measure {
+            if self.library.placing.is_some() {
+                if let DragEvent::Click(point) = ev {
+                    self.library_click(page, point);
+                }
+            } else if self.annotate.tool == crate::annotate::Tool::Measure {
                 match ev {
                     DragEvent::Click(point) => {
                         self.measurement_click(ctx, page, point, shift, false);
@@ -1117,7 +1121,10 @@ impl SuniApp {
             }
         }
         self.form_builder_pointer(ctx, &layout, out.inner_rect);
-        if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
+        if !self.form_builder.drawing
+            && self.annotate.adv.free_text.is_none()
+            && self.library.placing.is_none()
+        {
             self.reading_pointer(ctx, &layout, out.inner_rect);
             self.object_bar(ctx, doc_rect);
             self.annot_bar(ctx, doc_rect);
@@ -1163,6 +1170,7 @@ impl SuniApp {
         self.paint_object_selection(&overlay_painter, source_rect, s.page, h);
         self.paint_annot_adv(&overlay_painter, source_rect, s.page, h);
         self.paint_measurement(&overlay_painter, source_rect, s.page, h);
+        self.paint_library_placement(&overlay_painter, source_rect, s.page, h);
         self.paint_redact_marks(&overlay_painter, source_rect, s.page, h);
         self.form_builder.paint(
             &overlay_painter,
@@ -1263,6 +1271,7 @@ impl SuniApp {
             self.view.hover_page = Some(s.page);
         }
         let hover = interact.hover_pos().map(to_pdf);
+        self.library_hover(s.page, hover);
         if self.annotate.tool == crate::annotate::Tool::Measure {
             self.measurement_hover(s.page, hover, ui.input(|i| i.modifiers.shift));
         }
@@ -1270,12 +1279,17 @@ impl SuniApp {
             // Fantôme de la signature ou de la date à placer, sous le pointeur.
             self.paint_placing(&painter, s.rect, s.page, h, pt);
         }
-        interact.on_hover_cursor(self.page_cursor(s.page, hover));
+        interact.on_hover_cursor(if self.library.placing.is_some() {
+            egui::CursorIcon::Crosshair
+        } else {
+            self.page_cursor(s.page, hover)
+        });
         // Champs de formulaire : créés après le widget de la page pour avoir la priorité du clic ;
         // éditeur et liste de choix de cette page par-dessus.
         if !self.form_builder.drawing
             && self.annotate.adv.free_text.is_none()
             && self.annotate.tool != crate::annotate::Tool::Measure
+            && self.library.placing.is_none()
         {
             if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
                 self.forms_activate(s.page, field, widget);

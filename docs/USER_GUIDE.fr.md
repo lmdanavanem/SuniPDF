@@ -5,6 +5,29 @@ compte, aucune télémétrie, aucun document envoyé sur Internet.
 
 Ce guide couvre [0.44.0](RELEASE_0.44.0.fr.md). La version précédente [0.43.0](RELEASE_0.43.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
 
+## Réutiliser des modèles locaux d’annotations
+
+La bibliothèque d’annotations 0.45 est **en développement et en cours de validation** ; consulter son
+[périmètre et son état de qualification](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
+principale, ou sur **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local
+est distinct des PDF et des réglages.
+
+Choisissez **Créer un modèle**, préparez un nouveau brouillon compatible puis développez **Enregistrer dans la bibliothèque**.
+Saisissez un nom unique et cliquez sur **Enregistrer le modèle**. Crédit, source et licence sont des déclarations
+facultatives ; une valeur vide reste inconnue. Enregistrer le modèle ne l’insère pas dans le PDF. La capture prend
+en charge texte avec police standard, polygones/polylignes, nuages de révision, tampons prédéfinis et tampons image PNG.
+
+Choisissez **Placer sur la page**, réglez l’échelle puis cliquez sur le PDF. Vérifiez l’aperçu rendu ; ajustez
+**Origine X (pt)**, **Origine Y (pt)** ou **Échelle** si nécessaire, puis redemandez **Aperçu**. Cliquez sur
+**Appliquer à l’objet** pour créer les annotations ou sur **Annuler** pour abandonner le placement. Un groupe
+constitue une seule étape Annuler ; enregistrez le PDF pour le conserver. Pour composer un groupe, cochez au moins
+deux entrées, choisissez **Créer un groupe**, renseignez un nouveau nom et les décalages des éléments, puis enregistrez.
+
+Import/export, suppression de la sélection, rechargement et filtre sont disponibles dans la bibliothèque. Imports
+invalides et écritures en conflit conservent son contenu actif. Le fichier de bibliothèque ne bénéficie pas de l’historique
+Annuler du PDF ; exportez une copie avant de supprimer des modèles à conserver. Mesures, échelles de page, identités PDF
+existantes et fils de revue sont exclus. [Notice complète, format, limites et exemples CLI](ANNOTATION_LIBRARY.fr.md).
+
 ## Mesurer directement sur un PDF
 
 Ouvrez un PDF et cliquez sur **Mesures**, à côté de **Tous les outils** dans la barre principale.
@@ -181,12 +204,12 @@ sur **+ Ouvrir** dans la barre d'onglets.
 
 Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
 outils par tâche : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
-des fichiers, Organiser les pages, Mesures, Commenter, Protéger un PDF, Caviarder un PDF, Compresser un PDF, Ajouter un tampon,
+des fichiers, Organiser les pages, Mesures, Bibliothèque d’annotations, Commenter, Protéger un PDF, Caviarder un PDF, Compresser un PDF, Ajouter un tampon,
 Numériser et OCR, Préparer un formulaire, Utiliser un certificat. Le menu **Outils** et
 la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
 fichier puis démarre.
 
-- **Exporter, Créer, Combiner, Compresser** ouvrent directement leur boîte de dialogue.
+- **Exporter, Créer, Combiner, Compresser, Bibliothèque d’annotations** ouvrent directement leur boîte de dialogue. La bibliothèque peut être gérée sans PDF ouvert.
 - **Remplir et signer, Modifier, Organiser, Mesures, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
   **barre d'outil** sous la barre d'outils : boutons de l'outil, groupés, avec leur libellé si la largeur le
   permet (sinon l'icône seule, le libellé restant en info-bulle). Les actions qui demandent une sélection
@@ -199,9 +222,9 @@ fichier puis démarre.
 - Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N, A, D, F ouvrent **Commenter** ; E, T, I, R, O, L
   ouvrent **Modifier** ; S ouvre la boîte **Signer** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
 - Chaque onglet garde son outil actif.
-- La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir, Mesures.
+- La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir, Mesures, Bibliothèque.
 
-Les 15 espaces d’outils de la 0.43.0 comprennent **Mesures**, **Numériser et OCR**, **Préparer un formulaire** et
+L’interface 0.45 ajoute **Bibliothèque d’annotations** aux côtés de **Mesures**, **Numériser et OCR**, **Préparer un formulaire** et
 **Utiliser un certificat**. Remplir et signer conserve le remplissage et la signature visuelle ;
 la signature numérique dispose de son propre outil.
 

@@ -12,6 +12,7 @@ Older `.en.md` addresses remain compatibility links.
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
 | [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and individual measurement editing |
 | [Counts and annotation register](MARKUP_REGISTER.md) | [FR](MARKUP_REGISTER.fr.md) | Markers, quantities and business fields |
+| [Annotation library](ANNOTATION_LIBRARY.md) | [FR](ANNOTATION_LIBRARY.fr.md) | Local templates, groups, placement, import/export and CLI; 0.45 in development |
 | [Rich annotations](RICH_ANNOTATIONS.md) | [FR](RICH_ANNOTATIONS.fr.md) | Text, shapes, image stamps and attachments |
 | [Page decorations](PAGE_DECORATIONS.md) | [FR](PAGE_DECORATIONS.fr.md) | Headers, footers, watermarks and numbering |
 | [Object order](OBJECT_ORDER.md) | [FR](OBJECT_ORDER.fr.md) | Content stacking and eligibility |
@@ -41,6 +42,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
+- [0.45 development scope](RELEASE_0.45.0.md) · [FR](RELEASE_0.45.0.fr.md): local annotation library and pending qualification; not a publication claim.
 - [0.44 release and audit](RELEASE_0.44.0.md) · [FR](RELEASE_0.44.0.fr.md): individual editing, corrective work and [verified publication evidence](qa/RELEASE_0.44.0.json).
 - [Feature matrix](FEATURE_MATRIX.md) · [FR](FEATURE_MATRIX.fr.md): implemented features and boundaries.
 - [Roadmap](ROADMAP.md) · [FR](ROADMAP.fr.md): phases and acceptance criteria.

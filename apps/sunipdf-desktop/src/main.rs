@@ -2,6 +2,7 @@
 
 mod annot_adv;
 mod annotate;
+mod annotation_library;
 mod annotation_register;
 mod annotation_rich;
 mod app;
@@ -15,6 +16,7 @@ mod form_builder;
 mod forms;
 mod icons;
 mod inline_text;
+mod library_store;
 mod local_review;
 #[cfg(test)]
 mod measure_integration_tests;

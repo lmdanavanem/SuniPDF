@@ -136,6 +136,7 @@ pub enum Command {
     ToolAnnotLine,
     ToolLink,
     RichAnnotations,
+    AnnotationLibrary,
     ToolMeasure,
     ToolCount,
     AnnotationRegister,
@@ -190,6 +191,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        AnnotationLibrary,
+        "annotations.library",
+        "library.title",
+        None,
+        false,
+        Edit
+    ),
     cmd!(
         CompareFiles,
         "file.compare",
@@ -1328,6 +1337,17 @@ mod tests {
         for info in Command::in_menu(Menu::Tools) {
             assert!(info.id.starts_with("hub."), "{}", info.id);
         }
+    }
+
+    #[test]
+    fn annotation_library_is_a_document_independent_edit_command() {
+        let info = Command::AnnotationLibrary.info();
+        assert_eq!(
+            Command::from_id("annotations.library"),
+            Some(Command::AnnotationLibrary)
+        );
+        assert_eq!(info.menu, Menu::Edit);
+        assert!(!info.needs_document);
     }
 
     #[test]
