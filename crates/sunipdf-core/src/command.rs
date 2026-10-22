@@ -197,7 +197,7 @@ pub const REGISTRY: &[CommandInfo] = &[
         "library.title",
         None,
         false,
-        Tools
+        Edit
     ),
     cmd!(
         CompareFiles,
@@ -1337,6 +1337,17 @@ mod tests {
         for info in Command::in_menu(Menu::Tools) {
             assert!(info.id.starts_with("hub."), "{}", info.id);
         }
+    }
+
+    #[test]
+    fn annotation_library_is_a_document_independent_edit_command() {
+        let info = Command::AnnotationLibrary.info();
+        assert_eq!(
+            Command::from_id("annotations.library"),
+            Some(Command::AnnotationLibrary)
+        );
+        assert_eq!(info.menu, Menu::Edit);
+        assert!(!info.needs_document);
     }
 
     #[test]

@@ -957,7 +957,7 @@ mod tests {
 
     #[test]
     fn available_tools_are_wired() {
-        assert_eq!(Workspace::available().count(), 15);
+        assert_eq!(Workspace::available().count(), 16);
         for ws in Workspace::available() {
             let info = ws.info();
             match info.entry.unwrap() {

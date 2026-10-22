@@ -3207,7 +3207,10 @@ fn cli_main() -> ExitCode {
 mod tests {
     use super::*;
 
-    fn parse_cli<const N: usize>(args: [&'static str; N]) -> Result<Cli, clap::Error> {
+    pub(crate) fn parse_cli(
+        args: impl IntoIterator<Item = &'static str>,
+    ) -> Result<Cli, clap::Error> {
+        let args: Vec<_> = args.into_iter().collect();
         // Debug clap parsing needs the same stack allocation as the production CLI thread.
         std::thread::Builder::new()
             .stack_size(16 * 1024 * 1024)
