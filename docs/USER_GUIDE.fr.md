@@ -3,11 +3,30 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide intègre les changements SuniPDF 0.44.0 **en préparation et en cours de validation**. La précédente
-version publiée reste [0.43.0](RELEASE_0.43.0.fr.md). État de publication et contrôles exécutés dans
-[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de préparation 0.44](RELEASE_0.44.0.fr.md) décrit
-les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
-dans les réglages.
+Ce guide couvre [0.44.0](RELEASE_0.44.0.fr.md). La version précédente [0.43.0](RELEASE_0.43.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+
+## Réutiliser des modèles locaux d’annotations
+
+La bibliothèque d’annotations 0.45 est **en développement et en cours de validation** ; consulter son
+[périmètre et son état de qualification](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
+principale, ou sur **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local
+est distinct des PDF et des réglages.
+
+Choisissez **Créer un modèle**, préparez un nouveau brouillon compatible puis développez **Enregistrer dans la bibliothèque**.
+Saisissez un nom unique et cliquez sur **Enregistrer le modèle**. Crédit, source et licence sont des déclarations
+facultatives ; une valeur vide reste inconnue. Enregistrer le modèle ne l’insère pas dans le PDF. La capture prend
+en charge texte avec police standard, polygones/polylignes, nuages de révision, tampons prédéfinis et tampons image PNG.
+
+Choisissez **Placer sur la page**, réglez l’échelle puis cliquez sur le PDF. Vérifiez l’aperçu rendu ; ajustez
+**Origine X (pt)**, **Origine Y (pt)** ou **Échelle** si nécessaire, puis redemandez **Aperçu**. Cliquez sur
+**Appliquer à l’objet** pour créer les annotations ou sur **Annuler** pour abandonner le placement. Un groupe
+constitue une seule étape Annuler ; enregistrez le PDF pour le conserver. Pour composer un groupe, cochez au moins
+deux entrées, choisissez **Créer un groupe**, renseignez un nouveau nom et les décalages des éléments, puis enregistrez.
+
+Import/export, suppression de la sélection, rechargement et filtre sont disponibles dans la bibliothèque. Imports
+invalides et écritures en conflit conservent son contenu actif. Le fichier de bibliothèque ne bénéficie pas de l’historique
+Annuler du PDF ; exportez une copie avant de supprimer des modèles à conserver. Mesures, échelles de page, identités PDF
+existantes et fils de revue sont exclus. [Notice complète, format, limites et exemples CLI](ANNOTATION_LIBRARY.fr.md).
 
 ## Réutiliser des modèles locaux d’annotations
 

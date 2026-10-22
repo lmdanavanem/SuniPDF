@@ -3,10 +3,28 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide includes SuniPDF 0.44.0 changes **in preparation and undergoing validation**. The preceding
-published release is [0.43.0](RELEASE_0.43.0.md). Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [0.44 preparation scope](RELEASE_0.44.0.md) lists supported inputs
-and documented refusals; English remains the default language and French is available in Settings.
+This guide covers [0.44.0](RELEASE_0.44.0.md). The preceding [0.43.0](RELEASE_0.43.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+
+## Reuse local annotation templates
+
+The 0.45 annotation library is **in development and undergoing validation**; see its
+[scope and qualification status](RELEASE_0.45.0.md). Click **Library** in the main toolbar, or choose
+**Annotation library** in **All tools** or **Add comments**. Its local file is separate from PDF files and settings.
+
+Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
+Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
+blank means unknown. Saving a template does not insert it in the PDF. Capture supports text with standard
+fonts, polygons/polylines, revision clouds, predefined stamps and PNG image stamps.
+
+Choose **Place on page**, set the scale and click the PDF. Inspect the rendered preview; adjust **Origin X (pt)**,
+**Origin Y (pt)** or **Scale** if needed, then request **Preview** again. Choose **Apply to object** to create the
+annotations, or **Cancel** to discard the placement. A group is applied as one Undo step; save the PDF to retain it.
+To make a group, check at least two entries, choose **Create group**, enter a new name and member offsets, then save.
+
+Import/export, selected-entry deletion, reload and filtering are available in the library. Invalid imports and
+conflicting writes preserve its active contents. Library-file changes have no PDF Undo history; export a copy before
+deleting templates you want to keep. Measurements, page scales, existing PDF identities and review threads are excluded.
+[Full instructions, supported format, bounds and CLI examples](ANNOTATION_LIBRARY.md).
 
 ## Reuse local annotation templates
 

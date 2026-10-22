@@ -7,7 +7,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-### Prévu pour 0.44.0
+## [0.44.0] - 2026-10-22
 
 Modifiez l’échelle, l’unité et la précision d’une mesure enregistrée avec Aperçu puis Appliquer, en conservant son identité, ses réponses et les données du registre. La CLI modifie aussi la géométrie dans une nouvelle copie, protégée par un enregistrement attendu. Les exports respectent le droit de copie ; le redimensionnement incompatible de pages mesurées est refusé sans modification partielle. L’inspecteur partage ses données en cache et les échelles temporaires peuvent être retirées explicitement. Aucune calibration manuelle implicite n’est fournie.
 
