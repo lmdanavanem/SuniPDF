@@ -2,7 +2,13 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.47.0 : superpositions de révisions alignées (Latest stable)
+## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.48.0.fr.md) · [Preuves](qa/RELEASE_0.48.0.json).
+
+## 0.47.0 : superpositions de révisions alignées (publiée ; Latest à cette date)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
 
@@ -448,8 +454,9 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Bibliothèques locales d’annotations | Livré en 0.45.0 | Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions. |
 | Tables de quantités et champs typés | Livré en 0.46.0 | Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés. |
 | Superpositions de révisions alignées | Livré en 0.47.0 | Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux. |
-| Windows x64 | Distribué en 0.47.0 | Paquets publics et copies dist vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.47.0.json). |
-| Windows ARM64 | Distribué en 0.47.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.47.0.json). |
+| Modification des sommets des mesures enregistrées | Livré en 0.48.0 | Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées. |
+| Windows x64 | Distribué en 0.48.0 | Paquets publics et copies dist vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.48.0.json). |
+| Windows ARM64 | Distribué en 0.48.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.48.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

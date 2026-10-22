@@ -2,7 +2,15 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.47.0 : superpositions de révisions alignées (Latest stable)
+## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
+
+AEC-002 et AEC-003 restent partiels. Type de mesure et nombre de sommets restent fixes dans ce parcours. Ajout/suppression de sommets, accrochage vectoriel, recalcul par lots, vues multi-échelles et qualification sur plans réels restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité, matériel et critères généraux 1.0 restent ouverts.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.48.0.fr.md) · [Preuves](qa/RELEASE_0.48.0.json).
+
+## 0.47.0 : superpositions de révisions alignées (publiée ; Latest à cette date)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
 

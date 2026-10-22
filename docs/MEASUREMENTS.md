@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-**0.48.0 build:** drag existing saved measurement vertices through **Edit geometry**, then Preview and Apply. Calibration and entered quantity fields are preserved. [Workflow and limits](MEASUREMENT_GEOMETRY.md).
+**Available in [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0):** drag existing saved measurement vertices through **Edit geometry**, then Preview and Apply. Calibration and entered quantity fields are preserved. [Workflow and limits](MEASUREMENT_GEOMETRY.md). [Evidence](qa/RELEASE_0.48.0.json).
 
 **Available in [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0):** Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused. [Evidence](qa/RELEASE_0.44.0.json).
 

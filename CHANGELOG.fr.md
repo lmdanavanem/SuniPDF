@@ -7,6 +7,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.48.0] - 2026-10-22
+
+Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
+
+Le chemin CI documentaire contrôle les guides réellement empaquetés, liens, backlog et preuves sans relancer les tests applicatifs pour un diff exclusivement documentaire admissible ; toute modification du code, des scripts ou workflows conserve les contrôles complets. La version publiée 0.47.0 rejoint les régressions de mise à jour.
+
+[Notes et limites](docs/RELEASE_0.48.0.fr.md) · [Preuves](docs/qa/RELEASE_0.48.0.json).
+
 ## [0.47.0] - 2026-10-22
 
 Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.

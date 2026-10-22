@@ -4,7 +4,15 @@
 
 The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
 
-## 0.47.0: aligned revision overlays (stable Latest)
+## 0.48.0: editing saved measurement vertices (stable Latest)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
+
+AEC-002 and AEC-003 remain partial. Measurement type and vertex count stay fixed in this workflow. Adding/removing vertices, vector snapping, batch recalculation, multiple-scale viewports and real-plan qualification remain open. Packages remain unsigned; native ARM64, accessibility, hardware and full 1.0 qualification remain open.
+
+[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.48.0.md) · [Evidence](qa/RELEASE_0.48.0.json).
+
+## 0.47.0: aligned revision overlays (published; Latest at the time)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals.
 
@@ -42,6 +50,7 @@ Published within its documented bounds; the next planned implementation is the l
 | 0.45 | Local annotation libraries | Slice delivered within its bounds; full acceptance criteria remain open. [0.45.0](RELEASE_0.45.0.md). |
 | 0.46 | Quantity tables and typed fields | Slice delivered within its bounds; full acceptance criteria remain open. [0.46.0](RELEASE_0.46.0.md). |
 | 0.47 | Aligned revision overlays | Slice delivered within its bounds; full acceptance criteria remain open. [0.47.0](RELEASE_0.47.0.md). |
+| 0.48 | Editing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.48.0](RELEASE_0.48.0.md). |
 
 Future stages require implementation and qualification before their release. AEC-001/002/003/004/026 remain partial, and native interaction, real-plan dimensional checks and the wider 1.0 gates remain open. [Roadmap](ROADMAP.md).
 
@@ -53,7 +62,7 @@ Future stages require implementation and qualification before their release. AEC
 
 ### Next local feature work
 
-The 0.43 baseline feeds the 0.44–0.47 sequence above. Mouse editing of saved vertices, global recalculation, multi-scale viewports and real-plan qualification remain separate open work. Page defaults and inspection are delivered within their bounds; AEC-001/002/003/004/026 remain partial.
+The 0.43 baseline feeds the 0.44–0.48 sequence above. Editing existing saved vertices is delivered within the 0.48 bounds; adding/removing vertices, snapping, global recalculation, multiple-scale viewports and real-plan qualification remain open. AEC-001/002/003/004/026 remain partial.
 
 ## 0.42.0: on-page measurement tools (published; Latest at the time)
 

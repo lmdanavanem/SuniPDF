@@ -4,7 +4,15 @@
 
 Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEASE_1.0_CRITERIA.fr.md).
 
-## 0.47.0 : superpositions de révisions alignées (Latest stable)
+## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
+
+AEC-002 et AEC-003 restent partiels. Type de mesure et nombre de sommets restent fixes dans ce parcours. Ajout/suppression de sommets, accrochage vectoriel, recalcul par lots, vues multi-échelles et qualification sur plans réels restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité, matériel et critères généraux 1.0 restent ouverts.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.48.0.fr.md) · [Preuves](qa/RELEASE_0.48.0.json).
+
+## 0.47.0 : superpositions de révisions alignées (publiée ; Latest à cette date)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
 
@@ -42,6 +50,7 @@ Lot publié dans ses limites ; prochaine implémentation prévue : bibliothèque
 | 0.45 | Bibliothèques locales d’annotations | Lot livré dans ses limites ; critères complets encore ouverts. [0.45.0](RELEASE_0.45.0.fr.md). |
 | 0.46 | Tables de quantités et champs typés | Lot livré dans ses limites ; critères complets encore ouverts. [0.46.0](RELEASE_0.46.0.fr.md). |
 | 0.47 | Superpositions de révisions alignées | Lot livré dans ses limites ; critères complets encore ouverts. [0.47.0](RELEASE_0.47.0.fr.md). |
+| 0.48 | Modification des sommets des mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.48.0](RELEASE_0.48.0.fr.md). |
 
 Les étapes futures exigent implémentation et qualification avant leur publication. AEC-001/002/003/004/026 restent partiels ; interaction native, vérification dimensionnelle sur plans réels et critères généraux 1.0 restent ouverts. [Roadmap](ROADMAP.fr.md).
 
@@ -53,7 +62,7 @@ Les étapes futures exigent implémentation et qualification avant leur publicat
 
 ### Prochain lot local
 
-La base 0.43 alimente la séquence 0.44–0.47 ci-dessus. Sommets à la souris, recalcul global, vues multi-échelles et qualification sur plans réels restent des travaux distincts ouverts. Les échelles de page et l’inspecteur sont livrés dans leurs limites ; AEC-001/002/003/004/026 restent partiels.
+Le socle 0.43 alimente la séquence 0.44–0.48 ci-dessus. La modification des sommets existants est livrée dans les limites 0.48 ; ajout/suppression, accrochage, recalcul global, vues multi-échelles et qualification sur plans réels restent ouverts. AEC-001/002/003/004/026 restent partiels.
 
 ## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 

@@ -2,7 +2,7 @@
 
 [English](MEASUREMENT_GEOMETRY.md) · [Mesures](MEASUREMENTS.fr.md)
 
-Cette version ajoute la modification des sommets sur la page pour les mesures SuniPDF enregistrées. Distribution et qualification figurent sur la [page de version 0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0).
+Disponible dans [0.48.0](RELEASE_0.48.0.fr.md). [Preuves](qa/RELEASE_0.48.0.json).
 
 ## Utilisation
 
@@ -21,6 +21,8 @@ L'annotation conserve son identité, ses réponses, ses champs du registre et se
 Aperçu et Appliquer utilisent l'opération existante de modification contrôlée. Une source modifiée, un enregistrement non pris en charge, une annotation verrouillée ou l'absence de permission d'annotation empêchent la validation. Une géométrie invalide, notamment un polygone effondré ou auto-intersecté, doit être corrigée avant validation. Les changements de page, d'onglet ou de document invalident les brouillons et aperçus périmés.
 
 ## Périmètre
+
+Si des poignées proches ne peuvent pas être sélectionnées sans ambiguïté, zoomez avant de les déplacer. Les sommets confondus, y compris les points répétés d’une polyligne ouverte, ne peuvent pas être sélectionnés indépendamment dans ce parcours à la souris. La commande CLI existante `edit-measurement` reste disponible pour remplacer explicitement la géométrie dans une nouvelle copie PDF avec un enregistrement attendu.
 
 Cette fonction modifie les sommets existants des mesures enregistrées prises en charge. Ajout ou suppression de sommets, accrochage aux vecteurs, recalcul par lots et zones à échelles multiples restent des travaux distincts. Un plan raster n'acquiert pas d'accrochage vectoriel grâce à cette fonction. Les tests automatisés d'interaction ne constituent pas une qualification matérielle native ou d'accessibilité.
 

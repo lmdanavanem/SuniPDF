@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.47.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.48.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.47.0 : superpositions de révisions alignées (Latest stable)
+## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+
+[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
+
+Source `6f32c20259f6bae6e1b60090fe74acfb5dc69ba7`, PR [#25](https://github.com/lmdanavanem/SuniPDF/pull/25). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39760622965) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39760636143) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39760622897). 752 tests réussis, 10 ignorés par défaut. 1388 clés EN/FR. 40 scénarios portables. 34 références MSI. 170 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 26 appels CLI vérifient échelles enregistrées/réouvertes, remplacement géométrique explicite, conversion d’unité, précision, recalibration, identité stable, indépendance des autres mesures, conservation des champs de quantité et bases tarifaires, recalcul des totaux, refus invalides/périmés et fichiers originaux inchangés. Ils ne constituent pas une qualification du bureau natif ni d’ARM64.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.48.0.fr.md) · [Preuves](qa/RELEASE_0.48.0.json).
+
+## 0.47.0 : superpositions de révisions alignées (publiée ; Latest à cette date)
 
 [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
 
