@@ -58,6 +58,93 @@ def write(path, text, executable=False):
     path.chmod(0o755 if executable else 0o644)
 
 
+def package_documentation(stage, manifest):
+    doc = stage / "usr/share/doc/sunipdf"
+    mit_license = (ROOT / "LICENSE-MIT").read_text(encoding="utf-8")
+    write(doc / "copyright", "SuniPDF\nSource: " + manifest["repository"] + "\n\n"
+          "The application is available under MIT OR Apache-2.0, at your option.\n\n"
+          + mit_license + "\n"
+          "Alternatively, the application may be used under the Apache License, Version 2.0.\n"
+          "On Debian and Ubuntu, its complete text is available in\n"
+          "/usr/share/common-licenses/Apache-2.0.\n\n"
+          "Full dependency, native-library and embedded-font license and copyright notices\n"
+          "are in licenses/dependency-licenses.txt. The installed payload inventory is in\n"
+          "licenses/dependency-inventory.json. Tesseract and its English/French models\n"
+          "are supplied by Ubuntu packages; their copyright files are in /usr/share/doc.\n")
+    write(stage / "usr/share/lintian/overrides/sunipdf", """# The private PDFium library is the checksum-pinned upstream distribution.
+# Its bundled FreeType, Little CMS and OpenJPEG are upstream build components;
+# replacing them individually would change the qualified PDFium build. Their
+# versions and license notices are retained in the installed license inventory.
+# These exceptions apply only to the private PDFium file, not other binaries.
+sunipdf: embedded-library freetype usr/lib/sunipdf/libpdfium.so
+sunipdf: embedded-library lcms2 usr/lib/sunipdf/libpdfium.so
+sunipdf: embedded-library openjpeg usr/lib/sunipdf/libpdfium.so
+# Preserve the exact upstream bytes (including symbols) so the downloaded,
+# packaged and installed SHA-256 checks can all verify the same PDFium binary.
+sunipdf: unstripped-binary-or-object usr/lib/sunipdf/libpdfium.so
+""")
+    manuals = {
+        "sunipdf": r""".SH NAME
+sunipdf \- local PDF reader, editor and measurement workspace
+.SH SYNOPSIS
+.B sunipdf
+.RI [ PDF-files ...]
+.SH DESCRIPTION
+Open PDF documents in the desktop workspace to read, annotate, edit and measure
+them locally. English and French OCR use the installed Tesseract packages.
+.SH FILES
+.I ${XDG_CONFIG_HOME:-$HOME/.config}/sunipdf
+stores application preferences.
+.PP
+.I ${XDG_STATE_HOME:-$HOME/.local/state}/sunipdf/recovery
+stores recovery data.
+.SH SEE ALSO
+.BR sunipdf-cli (1)
+.PP
+User guides and Ubuntu platform limitations are installed in
+.IR /usr/share/doc/sunipdf/ .
+""",
+        "sunipdf-cli": r""".SH NAME
+sunipdf-cli \- process PDF documents locally from the command line
+.SH SYNOPSIS
+.B sunipdf-cli
+.RI [ options ] " command " [ arguments ]
+.SH DESCRIPTION
+Use the same local PDF engine as the desktop application for document inspection,
+rendering, extraction, OCR, editing, annotations and measurements.
+.PP
+Run
+.B sunipdf-cli \-\-help
+to list commands, or
+.B sunipdf-cli command \-\-help
+for a command's arguments. Existing output files are protected unless the
+.B \-\-overwrite
+option is explicitly supplied.
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+Show usage and available commands.
+.TP
+.B \-V, \-\-version
+Show the installed version.
+.TP
+.B \-\-overwrite
+Allow replacing existing output files.
+.SH SEE ALSO
+.BR sunipdf (1)
+.PP
+User guides and Ubuntu platform limitations are installed in
+.IR /usr/share/doc/sunipdf/ .
+""",
+    }
+    for name, content in manuals.items():
+        path = stage / "usr/share/man/man1" / (name + ".1.gz")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        header = f'.TH {name.upper()} 1 "" "SuniPDF {manifest["version"]}" "User Commands"\n'
+        path.write_bytes(gzip.compress((header + content).encode("utf-8"), mtime=0))
+        path.chmod(0o644)
+
+
 def shared_dependencies(stage, temporary):
     working = temporary / "shlibs"
     write(working / "debian/control", "Source: sunipdf\nSection: graphics\nPriority: optional\nMaintainer: " + MAINTAINER + "\n\nPackage: sunipdf\nArchitecture: amd64\nDescription: Local PDF reader and editor\n")
@@ -102,6 +189,10 @@ def package(binary_dir, output):
         for name in ("USER_GUIDE.en.md", "USER_GUIDE.fr.md"):
             copy(ROOT / "docs" / name, doc / name)
         run([sys.executable, ROOT / "scripts/package-guides.py", "--source-root", ROOT, "--stage", doc, "--tag", "v" + version])
+        # Atomic guide replacement creates private temporary files; the installed
+        # documentation must remain readable by every desktop user.
+        for name in ("USER_GUIDE.en.md", "USER_GUIDE.fr.md"):
+            (doc / name).chmod(0o644)
         guides = module("package-guides")
         for name in ("UBUNTU.md", "UBUNTU.fr.md"):
             source = ROOT / "docs" / name
@@ -111,7 +202,7 @@ def package(binary_dir, output):
         changelog_date = run(["git", "show", "-s", "--format=%aD", "HEAD"], cwd=ROOT)
         debian_changelog = f"sunipdf ({version}) stable; urgency=medium\n\n  * Package the local PDF desktop and CLI for Ubuntu amd64.\n\n -- {MAINTAINER}  {changelog_date}\n"
         (doc / "changelog.Debian.gz").write_bytes(gzip.compress(debian_changelog.encode("utf-8"), mtime=0))
-        write(doc / "copyright", "SuniPDF\nCopyright Emanuel DE ALMEIDA and contributors\nSource: " + manifest["repository"] + "\n\nThe application is available under MIT OR Apache-2.0.\nFull source, native-library and embedded-font license texts are in licenses/dependency-licenses.txt.\nThe complete installed payload inventory is in licenses/dependency-inventory.json.\nTesseract and its English/French models are supplied by Ubuntu packages; their copyright files are in /usr/share/doc.\n")
+        package_documentation(stage, manifest)
         write(doc / "README", "SuniPDF " + version + " for Ubuntu amd64\n\nLaunch sunipdf [PDF files...] or sunipdf-cli --help.\nInstall using: sudo apt install ./" + filename + "\nOCR uses locally installed Tesseract with English and French models.\nPreferences: ${XDG_CONFIG_HOME:-$HOME/.config}/sunipdf\nUpdating or removing this package does not remove user documents or preferences.\n")
         metadata = temporary / "metadata"
         metadata.mkdir()

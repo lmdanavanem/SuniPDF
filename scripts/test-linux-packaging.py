@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression checks for Linux archive and executable package boundaries."""
 import importlib.util
+import gzip
 import io
 from pathlib import Path
 import struct
@@ -22,6 +23,27 @@ package = load("package-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_documentation_preserves_license_and_limits_pdfium_exceptions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            package.package_documentation(stage, {"version": "0.51.0", "repository": "https://github.com/lmdanavanem/SuniPDF"})
+            notice = (stage / "usr/share/doc/sunipdf/copyright").read_text(encoding="utf-8")
+            self.assertIn((package.ROOT / "LICENSE-MIT").read_text(encoding="utf-8"), notice)
+            self.assertIn("/usr/share/common-licenses/Apache-2.0", notice)
+            overrides = (stage / "usr/share/lintian/overrides/sunipdf").read_text(encoding="utf-8")
+            active = [line for line in overrides.splitlines() if line and not line.startswith("#")]
+            self.assertEqual(active, [
+                "sunipdf: embedded-library freetype usr/lib/sunipdf/libpdfium.so",
+                "sunipdf: embedded-library lcms2 usr/lib/sunipdf/libpdfium.so",
+                "sunipdf: embedded-library openjpeg usr/lib/sunipdf/libpdfium.so",
+                "sunipdf: unstripped-binary-or-object usr/lib/sunipdf/libpdfium.so",
+            ])
+            for command in ("sunipdf", "sunipdf-cli"):
+                manual = gzip.decompress((stage / "usr/share/man/man1" / (command + ".1.gz")).read_bytes()).decode("utf-8")
+                self.assertIn(f'.TH {command.upper()} 1 "" "SuniPDF 0.51.0"', manual)
+                self.assertIn(".SH SYNOPSIS", manual)
+                self.assertIn(".SH SEE ALSO", manual)
+
     def test_archive_rejects_traversal_links_duplicates_and_oversize(self):
         for kind in ("traversal", "symlink", "hardlink", "duplicate", "oversize"):
             with self.subTest(kind=kind), tempfile.TemporaryDirectory() as directory:

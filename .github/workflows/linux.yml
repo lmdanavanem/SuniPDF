@@ -38,6 +38,20 @@ jobs:
           key: ubuntu22-amd64-native
           cache-on-failure: true
           cache-workspace-crates: true
+      - name: Fingerprint Linux compiler
+        id: compiler
+        run: echo "hash=$(rustc -vV | sha256sum | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Restore Linux release artifacts
+        id: release_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            target/release
+            target/x86_64-unknown-linux-gnu/release
+          key: linux-release-v1-ubuntu22-amd64-${{ steps.compiler.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', '.cargo/config.toml') }}-${{ github.sha }}
+          restore-keys: |
+            linux-release-v1-ubuntu22-amd64-${{ steps.compiler.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', '.cargo/config.toml') }}-
+            linux-release-v1-ubuntu22-amd64-${{ steps.compiler.outputs.hash }}-
       - name: Fetch verified Linux PDFium
         run: python scripts/fetch-pdfium-linux.py
       - name: Format
@@ -53,6 +67,14 @@ jobs:
         run: cargo test --workspace --locked -j 2 --no-fail-fast
       - name: Build Linux desktop and CLI
         run: cargo build --release --workspace --locked --target x86_64-unknown-linux-gnu -j 2
+      - name: Save Linux release artifacts
+        if: steps.release_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            target/release
+            target/x86_64-unknown-linux-gnu/release
+          key: ${{ steps.release_cache.outputs.cache-primary-key }}
       - name: Build and verify Debian package
         run: |
           python scripts/package-deb.py
