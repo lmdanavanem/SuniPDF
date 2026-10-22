@@ -20,7 +20,9 @@ const MAX_PACKAGE_BYTES: u64 = 256 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UpdateKind {
+    #[cfg(any(windows, test))]
     Msi,
+    #[cfg(any(windows, test))]
     Portable,
     Deb,
 }
@@ -268,12 +270,14 @@ fn parse_release(
     if body.len() as u64 > MAX_RELEASE_BYTES {
         return Err("The release response is too large.".into());
     }
-    if !matches!(
-        (kind, arch),
-        (UpdateKind::Msi, "x64")
-            | (UpdateKind::Portable, "x64" | "arm64")
-            | (UpdateKind::Deb, "amd64")
-    ) {
+    let supported_architecture = match kind {
+        #[cfg(any(windows, test))]
+        UpdateKind::Msi => arch == "x64",
+        #[cfg(any(windows, test))]
+        UpdateKind::Portable => matches!(arch, "x64" | "arm64"),
+        UpdateKind::Deb => arch == "amd64",
+    };
+    if !supported_architecture {
         return Err("No installer is available for this architecture.".into());
     }
     let response: ReleaseResponse =
@@ -293,7 +297,9 @@ fn parse_release(
     }
     let version = version.to_string();
     let asset_name = match kind {
+        #[cfg(any(windows, test))]
         UpdateKind::Msi => format!("SuniPDF-{version}-win-{arch}.msi"),
+        #[cfg(any(windows, test))]
         UpdateKind::Portable => format!("SuniPDF-{version}-win-{arch}-portable.zip"),
         UpdateKind::Deb => format!("SuniPDF-{version}-linux-{arch}.deb"),
     };
