@@ -293,6 +293,17 @@ impl MeasurementState {
     pub(crate) fn saved_scale_applied(&mut self, page: usize) {
         self.scales.remove(&page);
     }
+
+    pub(crate) fn clear_temporary_scale(&mut self, page: usize) -> bool {
+        if self.scales.remove(&page).is_none() {
+            return false;
+        }
+        if let Some(calibration) = self.saved.calibration(page) {
+            self.unit = calibration.unit;
+        }
+        self.error = None;
+        true
+    }
 }
 
 fn distance(a: Point, b: Point) -> f64 {

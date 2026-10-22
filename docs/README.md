@@ -10,7 +10,7 @@ Older `.en.md` addresses remain compatibility links.
 |---|---|---|
 | [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Opening, editing and saving PDFs |
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
-| [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and CLI |
+| [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and 0.44 editing in preparation |
 | [Counts and annotation register](MARKUP_REGISTER.md) | [FR](MARKUP_REGISTER.fr.md) | Markers, quantities and business fields |
 | [Rich annotations](RICH_ANNOTATIONS.md) | [FR](RICH_ANNOTATIONS.fr.md) | Text, shapes, image stamps and attachments |
 | [Page decorations](PAGE_DECORATIONS.md) | [FR](PAGE_DECORATIONS.fr.md) | Headers, footers, watermarks and numbering |
@@ -41,8 +41,10 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
+- [0.44 preparation and audit](RELEASE_0.44.0.md) · [FR](RELEASE_0.44.0.fr.md): editing, corrective work and pending validation; not a publication claim.
 - [Feature matrix](FEATURE_MATRIX.md) · [FR](FEATURE_MATRIX.fr.md): implemented features and boundaries.
 - [Roadmap](ROADMAP.md) · [FR](ROADMAP.fr.md): phases and acceptance criteria.
+- Planned local sequence: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 overlays/revision review. Future stages remain to be implemented and qualified.
 - [Next tasks](NEXT_TASKS.md) · [FR](NEXT_TASKS.fr.md): current priorities.
 - [Local plan workflows backlog](AEC_BACKLOG.md) · [FR](AEC_BACKLOG.fr.md) · [CSV](AEC_BACKLOG.csv): measurements, quantities and revision workflows.
 - [1.0 release criteria](RELEASE_1.0_CRITERIA.md) · [FR](RELEASE_1.0_CRITERIA.fr.md): remaining qualification gates.

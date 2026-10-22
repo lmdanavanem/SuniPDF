@@ -288,12 +288,16 @@ fn calibration_copies_keep_aes_permissions_and_support_env_and_stdin_passwords()
             .args(["--password-env", "SUNIPDF_TEST_SCALE_PASSWORD"])
             .env("SUNIPDF_TEST_SCALE_PASSWORD", &opening);
         assert_eq!(success(allowed.output().unwrap())["encrypted"], true);
-        let mut read = cli("page-calibration", &saved);
-        read.args(["--page", "1", "--password-stdin"]);
-        assert_eq!(
-            success(piped(read, &opening))["pages"][0]["calibration"]["known_distance"],
-            10.0
-        );
+        for credential in [&opening, &owner] {
+            for command in ["page-calibration", "measurements"] {
+                let mut read = cli(command, &saved);
+                read.args(["--page", "1", "--password-stdin"]);
+                assert_eq!(
+                    failure(piped(read, credential))["error"],
+                    "security_restricted"
+                );
+            }
+        }
         let mut remove = cli("remove-page-calibration", &saved);
         remove
             .args(["--page", "1", "--password-stdin", "--out"])

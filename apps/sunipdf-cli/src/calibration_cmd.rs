@@ -80,6 +80,9 @@ fn record(calibration: &PageCalibration) -> serde_json::Value {
 
 pub fn read(engine: &Engine, args: ReadArgs) -> Result<serde_json::Value, EngineError> {
     let doc = engine.open(&args.file, args.password.as_deref())?;
+    if !doc.properties().can_copy {
+        return Err(EngineError::SecurityRestricted);
+    }
     let pages = if let Some(page) = args.page {
         vec![crate::page_index(page, doc.page_count())?]
     } else {

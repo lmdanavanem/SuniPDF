@@ -744,6 +744,13 @@ pub enum Request {
         epoch: u64,
         generation: u64,
     },
+    PreviewMeasurementEdit {
+        page: usize,
+        record: sunipdf_core::measurement::MeasurementRecord,
+        measurement: sunipdf_core::measurement::Measurement,
+        epoch: u64,
+        generation: u64,
+    },
     DiscardRichAnnotationPreview {
         epoch: u64,
         generation: u64,
@@ -2624,6 +2631,42 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
                 continue;
             }
+            Request::PreviewMeasurementEdit {
+                page,
+                record,
+                measurement,
+                epoch,
+                generation,
+            } => {
+                state.rich_preview = None;
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| {
+                        let target = doc.measurement_target(page, &record)?;
+                        doc.preview_rich_annotation(
+                            page,
+                            &sunipdf_core::annot_rich::RichAnnotation::UpdateMeasurement {
+                                target,
+                                measurement,
+                            },
+                            None,
+                        )
+                    })
+                    .and_then(|mut preview| {
+                        let prepared = preview.prepared.take().ok_or_else(|| {
+                            EngineError::Other("missing prepared measurement preview".into())
+                        })?;
+                        state.rich_preview = Some((epoch, generation, prepared));
+                        Ok(preview)
+                    });
+                Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::LoadImage { path, max_side } => {
                 let (path, result) = if let Some(dir) =
                     crate::sign::signatures_dir().filter(|dir| {
@@ -2689,10 +2732,12 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     .document
                     .as_ref()
                     .ok_or(EngineError::PageOutOfRange(page))
-                    .map(|doc| crate::measurement_saved::MeasurementPageData {
-                        calibration: doc.page_calibration(page).map_err(|e| e.to_string()),
-                        records: doc.measurement_records(page).map_err(|e| e.to_string()),
-                        can_modify: doc.properties().can_modify,
+                    .map(|doc| {
+                        crate::measurement_saved::MeasurementPageData::new(
+                            doc.page_calibration(page).map_err(|e| e.to_string()),
+                            doc.measurement_records(page).map_err(|e| e.to_string()),
+                            doc.properties().can_modify,
+                        )
                     }),
             },
             Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
@@ -2862,6 +2907,180 @@ mod tests {
         inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
         page_calibration_edits_have_history_and_survive_reopening(&worker);
+        saved_measurement_edits_replace_in_place_and_keep_history(&worker);
+    }
+
+    fn saved_measurement_edits_replace_in_place_and_keep_history(worker: &Worker) {
+        use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let bytes = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let measurement = Measurement {
+            kind: MeasurementKind::Length,
+            points: vec![(50.0, 100.0), (150.0, 100.0)],
+            calibration: [(50.0, 60.0), (150.0, 60.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+            precision: 2,
+        };
+        worker.send(Request::PreviewRichAnnotation {
+            page: 0,
+            annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(measurement),
+            author: Some("lmdanavanem".into()),
+            epoch: 81,
+            generation: 1,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::RichAnnotationPreview { result: Ok(_), .. }
+        ));
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 81,
+            generation: 1,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let read = || {
+            worker.send(Request::MeasurementPage {
+                page: 0,
+                epoch: 81,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::MeasurementPage {
+                    result: Ok(data), ..
+                } => data.records.unwrap(),
+                _ => panic!("saved measurement records"),
+            }
+        };
+        let original = read();
+        assert_eq!(original.len(), 1);
+        let mut replacement = original[0].measurement.clone();
+        replacement.known_distance = 2500.0;
+        replacement.unit = MeasurementUnit::Centimetres;
+        replacement.precision = 1;
+        let edit_preview = |generation| {
+            worker.send(Request::PreviewMeasurementEdit {
+                page: 0,
+                record: original[0].clone(),
+                measurement: replacement.clone(),
+                epoch: 81,
+                generation,
+            });
+            match next_response(worker) {
+                Response::RichAnnotationPreview {
+                    result: Ok(preview),
+                    ..
+                } => {
+                    assert_eq!(preview.index, original[0].index);
+                }
+                _ => panic!("measurement replacement preview"),
+            }
+        };
+        edit_preview(2);
+        assert_eq!(read(), original, "preview does not replace the measurement");
+        worker.send(Request::DiscardRichAnnotationPreview {
+            epoch: 81,
+            generation: 2,
+        });
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 81,
+            generation: 2,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(read(), original, "cancellation keeps the saved measurement");
+        edit_preview(3);
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 81,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: true,
+                measurement_scales_unchanged: true,
+                ..
+            })
+        ));
+        let edited = read();
+        assert_eq!(
+            edited.len(),
+            1,
+            "editing must never append a second measurement"
+        );
+        assert_eq!(edited[0].index, original[0].index);
+        assert_eq!(edited[0].annotation_id, original[0].annotation_id);
+        assert_eq!(edited[0].measurement, replacement);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(), original, "one Undo restores the exact measurement");
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(), edited);
+        worker.send(Request::PreviewMeasurementEdit {
+            page: 0,
+            record: original[0].clone(),
+            measurement: replacement.clone(),
+            epoch: 81,
+            generation: 4,
+        });
+        assert!(
+            matches!(
+                next_response(worker),
+                Response::RichAnnotationPreview { result: Err(_), .. }
+            ),
+            "an outdated inspector record is refused"
+        );
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_redo: true, .. })
+        ));
+        assert_eq!(read(), original, "failed previews must not create history");
+        edit_preview(5);
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 81,
+            generation: 5,
+        }));
+        assert!(
+            matches!(next_response(worker), Response::OperationFailed(_)),
+            "history changes invalidate prepared edits"
+        );
+        assert_eq!(read(), edited);
+        let temp = tempfile::tempdir().unwrap();
+        let output = temp.path().join("edited-measurement.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(read(), edited);
+        assert_eq!(std::fs::read(source).unwrap(), bytes);
     }
 
     fn page_calibration_edits_have_history_and_survive_reopening(worker: &Worker) {

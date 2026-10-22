@@ -2,6 +2,8 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
+**0.44.0 in preparation:** saved-measurement editing, temporary-scale reset and corrective work are implemented and undergoing validation. The new procedures below describe that development version, not a published package. [Scope and preliminary audit](RELEASE_0.44.0.md).
+
 **Available in [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** persistent page scales, inspection and explicit scale reuse extend on-page drawing. Existing measurements retain their values. [Evidence](qa/RELEASE_0.43.0.json).
 
 ## Measure directly on the page
@@ -25,13 +27,24 @@ The saved default records PDF user-space points, page bounds and a digest of dec
 
 Each applied annotation embeds its own two-point calibration, geometry, unit and precision. Saving, removing or replacing the page default never recalculates existing annotations. Global recalculation and named multi-scale viewports remain open.
 
+In 0.44, **Use saved page scale** discards the current page's temporary override when its saved default is valid. If no valid saved default is available, **Clear temporary scale** discards only the temporary override. These controls do not edit the PDF or other pages. An unavailable saved default remains unavailable; calibrate the page explicitly before drawing a scaled measurement.
+
 ## Inspect saved measurements
 
-In **Measurements**, select **Saved measurements** to inspect the current page. The read-only list shows the calculated label and unit, measurement type, annotation index, optional identity, vertex count, precision and known reference distance for non-angle measurements. Lists use batches of 50; **Refresh** rereads the current document state. Unsupported or changed annotation metadata is reported explicitly.
+In **Measurements**, select **Saved measurements** to inspect the current page. Reading the list leaves the PDF unchanged. It shows the calculated label and unit, measurement type, annotation index, optional identity, vertex count, precision and known reference distance for non-angle measurements. Lists use batches of 50; **Refresh** rereads the current document state. Unsupported or changed annotation metadata is reported explicitly. In 0.44, records and labels are shared in memory instead of copying the complete list and generating result JSON every frame.
 
 **View on page** selects the actual annotation and opens its comments. **Use this scale** copies a non-angle annotation's calibration into the current page's session, without editing the annotation or saving a page default. References outside the displayed page are refused. Use **Save scale in PDF** separately if this is the scale you want to retain for future sessions. Close the inspector before starting a drawing or changing documents.
 
-Recreate an applied measurement to change its scale or vertices. Generic move, resize, restyle and value-text edits are refused to prevent stale labels. Delete and comment replies remain available within existing PDF permissions. Manual coordinate entry remains available in **Rich annotations → Calibrated measurements**; its `x,y` values use displayed-page points with the origin at the bottom left after rotation and cropping.
+Generic move, resize, restyle and value-text edits are refused to prevent stale labels. Delete and comment replies remain available within existing PDF permissions. Manual coordinate entry remains available in **Rich annotations → Calibrated measurements**; its `x,y` values use displayed-page points with the origin at the bottom left after rotation and cropping. In 0.44, this manual path no longer supplies an arbitrary positive reference distance: enter a valid calibration explicitly.
+
+## Edit one saved measurement — 0.44 in preparation
+
+1. Open **Saved measurements** on the relevant page and select **Edit measurement** beside the value.
+2. Change the known reference distance, unit or precision. Changing `m` to `cm` converts a 10 m reference into 1000 cm without changing physical size. Changing the reference distance recalculates this measurement only. For angles, only precision is editable.
+3. Select **Preview** and inspect the rendered candidate, then **Apply**. The original vertices and reference points stay fixed in this desktop editor. The annotation keeps its identity, author, replies and register fields; page defaults and other measurements stay unchanged.
+4. **Cancel** leaves the PDF unchanged. A successful edit uses one Undo/Redo step. Save the PDF to retain it on disk.
+
+Changing a parameter invalidates the previous preview. Changed document state, stale records, locked or ambiguous identities, unsupported metadata/appearances, and externally altered value text or geometry cause a refusal. Refresh or reopen the inspector before retrying; preserve unsupported annotations rather than replacing them by guesswork. Editing requires annotation permission and is limited to supported measurements in documents up to 128 MiB. Mouse editing of saved vertices remains future work; the CLI can replace explicit vertices.
 
 ## CLI and quantities
 
@@ -46,6 +59,19 @@ sunipdf-cli measure calibrated.pdf --kind length --points "40,70 140,70" --use-p
 sunipdf-cli remove-page-calibration measured-cm.pdf --page 1 --out without-page-scale.pdf
 ```
 
+For 0.44, export a fresh expected record before editing. The annotation index comes from the record, not its position in the list:
+
+```powershell
+$inventory = sunipdf-cli measurements measured.pdf --page 1 | ConvertFrom-Json
+$record = $inventory.pages[0].measurements[0]
+$record | ConvertTo-Json -Depth 16 | Set-Content -Encoding utf8 expected-measurement.json
+sunipdf-cli edit-measurement measured.pdf --page 1 --index $record.index --expected-record expected-measurement.json --unit cm --precision 1 --out edited.pdf
+```
+
+This example converts the original 10 m length into 1000 cm without changing its physical size. `--expected-record` accepts one complete version-1 record, including its stable annotation identity, up to 64 KiB. The current page/index/identity/geometry/calibration/precision must match it. Re-export after an edit; stale records are refused. `--points` can replace up to 128 displayed-page vertices, and `--kind` can change the type when the geometry is valid. To replace a reference, provide `--calibration` together with `--known-distance` in the resulting unit, or explicitly select `--use-page-calibration`. A change from an angle to a scaled measurement needs a physical reference. `measure --kind angle` needs three points and no calibration.
+
+In 0.44, `measurements` and `page-calibration` require copying permission. A creation/edit permitted by annotation rights can still succeed without copying permission, but its JSON response contains `measurement: null` and `export_unavailable: true`; it does not export stored calibration or quantities. `edit-measurement` also requires a new destination even with `--overwrite`.
+
 The manual examples measure 10 m and 50 m²; the saved-scale example produces 1000 cm. `--use-page-calibration` is mutually exclusive with `--calibration` and `--known-distance`; it fails if no valid saved default exists. `--unit` physically converts the saved reference distance. `page-calibration` returns JSON with a `calibration` object or `null` for each page; omit `--page` to read at most 1000 pages. Saving/removing requires an explicit page and never changes existing measurement values.
 
 The create command returns its annotation index and result; `measurements` exports per-page records as JSON, including annotation identity, geometry, calibration, unrounded numeric value, display label and precision. Areas use squared units (`m2`), angles use degrees (`deg`), and other values use the selected linear unit. JSON contains no spreadsheet formulas, macros or external references. Pages are 1-based and annotation indices are 0-based. Prefer `--password-env NAME` or `--password-stdin` for protected documents.
@@ -56,7 +82,7 @@ The create command returns its annotation index and result; `measurements` expor
 
 A real Stamp annotation carries a rendered appearance and a `SuniPDFMeasurement` JSON string. Version 1 stores `coordinate_system: "pdf-user-space"`, kind, user-space vertices, two calibration points, known distance, unit, precision and its user-space rectangle. This keeps the physical calculation invariant under page rotation/cropping. Export recalculates from those inputs rather than trusting editable comment text. Unsupported versions, malformed metadata, externally moved/resized rectangles and recognized imported `/Measure` metadata are refused explicitly. Original files are retained so that other software can be used when an imported format is unsupported.
 
-A separate `SuniPDFPageCalibration` page string stores the versioned default for new measurements. It is bounded to 4096 bytes, uses PDF user-space points and includes its geometry/content guard. Content verification accepts at most 1024 page streams, 8 MiB decoded per stream and 32 MiB total. This metadata does not replace any annotation's immutable calibration.
+A separate `SuniPDFPageCalibration` page string stores the versioned default for new measurements. It is bounded to 4096 bytes, uses PDF user-space points and includes its geometry/content guard. Content verification accepts at most 1024 page streams, 8 MiB decoded per stream and 32 MiB total. This metadata does not replace any annotation's own calibration.
 
 This is a SuniPDF exchange contract, not third-party proprietary-format compatibility. An annotation modified by another editor may need to be recreated. The metadata and ordinary PDF appearance are not a digital signature or proof of dimensional accuracy: the operator must verify the known distance and drawing revision.
 
@@ -66,4 +92,4 @@ JSON export is bounded to 1000 pages and 4096 records, with 4 MiB of measurement
 
 Known-geometry fixtures cover arithmetic, metric/imperial equivalence, rotation/crop, reopen, preview/commit, snapshot Undo, allowed encryption, invalid geometry and stale-record refusals. The 0.43 additions cover page-default persistence, permissions, physical unit conversion and independent qpdf checks within the existing corpus; executed results belong in Project status. Generated fixtures do not qualify survey accuracy, real customer plans, physical printing, native pointing/Narrator interaction, PDF/A or PDF/UA.
 
-Editing saved vertices, explicit recalculation of existing annotations, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open in AEC-001–026. The 0.43 page default and inspector do not close these cards. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source.
+The 0.44 changes are in validation. Resizing content with annotations refuses measured pages atomically rather than leaving inconsistent rectangles and quantities. Mouse editing of saved vertices, batch recalculation, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open. AEC-001/002/003/004/026 remain partial; neither page defaults, the inspector nor individual editing close their wider criteria. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source. The [roadmap](ROADMAP.md) separates the planned 0.45 annotation library, 0.46 quantity columns/totals/export and 0.47 overlays/revision review.

@@ -1239,5 +1239,14 @@
   "measure.polyline": "Longueur de polyligne",
   "measure.perimeter": "Périmètre polygonal",
   "measure.area": "Surface polygonale",
-  "measure.angle": "Angle (trois points ; sommet au milieu)"
+  "measure.angle": "Angle (trois points ; sommet au milieu)",
+  "measure.saved.restore": "Utiliser l’échelle enregistrée",
+  "measure.saved.clear_session": "Effacer l’échelle temporaire",
+  "measure.saved.reset_hint": "Efface uniquement l’échelle temporaire de cette page. Le PDF et les mesures enregistrées restent inchangés.",
+  "measure.edit.open": "Modifier la mesure",
+  "measure.edit.title": "Modifier une mesure enregistrée",
+  "measure.edit.help": "Modifiez uniquement cette mesure. Vérifiez l’aperçu avant d’appliquer ; les échelles de page et les autres mesures restent inchangées.",
+  "measure.edit.reference": "Points de référence sur cette page (points PDF, origine en bas à gauche) :",
+  "measure.edit.geometry": "Les points de la mesure restent inchangés. Un changement d’unité convertit la distance de référence ; un changement de distance recalcule cette mesure.",
+  "rich.preview": "Aperçu"
 }

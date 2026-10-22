@@ -170,13 +170,24 @@ jobs:
       - name: Update helper checks
         run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: "Portable x64 package (including licenses and notices)"
+        if: github.event_name != 'pull_request'
         run: .\scripts\package-portable.ps1 -Arch x64
-      - name: Packaged PDF inspection regression
+      - name: Select executable for CLI regressions
         run: |
-          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
-          python .\scripts\test-pdf-inspection.py --cli $cli --report target\pdf-inspection-report.json
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged PDF inspection regression failed.' }
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+            cargo build -p sunipdf-cli --locked -j 2
+            if ($LASTEXITCODE -ne 0) { throw 'Pull request CLI build failed.' }
+            $cli = Join-Path (Get-Location) 'target/debug/sunipdf-cli.exe'
+          } else {
+            $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+            $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          }
+          if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'Regression CLI is missing.' }
+          "SUNIPDF_QA_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: PDF inspection regression
+        run: |
+          python .\scripts\test-pdf-inspection.py --cli "$env:SUNIPDF_QA_CLI" --report target\pdf-inspection-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'PDF inspection regression failed.' }
       - name: PDF inspection evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -184,14 +195,12 @@ jobs:
           name: pdf-inspection-evidence
           path: target/pdf-inspection-report.json
           if-no-files-found: ignore
-      - name: Packaged visual signature preparation regression
+      - name: Visual signature preparation regression
         run: |
           python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r scripts/qa-image-requirements.txt
           if ($LASTEXITCODE -ne 0) { throw 'Pinned test-only image reader installation failed.' }
-          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
-          python .\scripts\test-signature-preparation.py --cli $cli --report target\visual-signature-report.json
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged visual signature preparation failed.' }
+          python .\scripts\test-signature-preparation.py --cli "$env:SUNIPDF_QA_CLI" --report target\visual-signature-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Visual signature preparation failed.' }
       - name: Visual signature preparation evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -199,12 +208,10 @@ jobs:
           name: visual-signature-evidence
           path: target/visual-signature-report.json
           if-no-files-found: ignore
-      - name: Packaged page decorations regression
+      - name: Page decorations regression
         run: |
-          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
-          python .\scripts\test-page-decorations.py --cli $cli --report target\page-decorations-report.json
-          if ($LASTEXITCODE -ne 0) { throw 'Packaged page decorations failed.' }
+          python .\scripts\test-page-decorations.py --cli "$env:SUNIPDF_QA_CLI" --report target\page-decorations-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Page decorations failed.' }
       - name: Page decorations evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -213,23 +220,28 @@ jobs:
           path: target/page-decorations-report.json
           if-no-files-found: ignore
       - name: Release native-library loading boundary
+        if: github.event_name != 'pull_request'
         run: .\scripts\test-release-native-loading.ps1
       - name: Test-only software OpenGL checksum self-test
         run: .\scripts\fetch-test-opengl.ps1 -SelfTest
       - name: Test-only software OpenGL for the isolated application
+        if: github.event_name != 'pull_request'
         run: .\scripts\fetch-test-opengl.ps1
       - name: Real isolated portable upgrades, rollback and close cancellation
+        if: github.event_name != 'pull_request'
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: portable-update-evidence
           path: target/portable-update-*.json
           if-no-files-found: ignore
       - name: MSI x64 package
+        if: github.event_name != 'pull_request'
         run: .\scripts\package-msi.ps1 -Arch x64
       - name: Real MSI installation and upgrade on disposable runner
+        if: github.event_name != 'pull_request'
         run: |
           $msi = Get-ChildItem dist\*.msi | Select-Object -First 1 -ExpandProperty FullName
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.8.0
@@ -261,14 +273,17 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.40.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.41.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.42.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.43.0
       - name: MSI upgrade regression evidence
-        if: always()
+        if: always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: msi-upgrade-evidence
           path: target/msi-upgrade-*/*.log
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      - name: Qualified Windows packages
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sunipdf-win-x64-portable
           path: |

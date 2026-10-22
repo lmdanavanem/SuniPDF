@@ -4,6 +4,23 @@
 
 Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEASE_1.0_CRITERIA.fr.md).
 
+## 0.44.0 : modification des mesures enregistrées (en préparation)
+
+Valider l'éditeur implémenté pour distance de référence, unité convertie et précision, avec Aperçu/Appliquer, une étape Annuler/Rétablir et identité d'annotation stable. Les sommets restent fixes dans l'application ; la géométrie en CLI exige un enregistrement attendu récent et une nouvelle copie. Inclure le retour direct à l'échelle enregistrée, données/libellés partagés dans l'inspecteur, suppression de la calibration manuelle implicite, contrôle du droit de copie dans le JSON, refus atomique du redimensionnement des annotations sur pages mesurées et gardes sur cibles externes/périmées.
+
+Avant publication, vérifier la source finale avec régressions GUI/moteur/CLI, qpdf, sécurité, paquets et téléchargements publics. Cette liste n'annonce aucun nombre de tests réussis ni publication 0.44. [Périmètre et audit préalable](RELEASE_0.44.0.fr.md) · [Utilisation](MEASUREMENTS.fr.md).
+
+### Séquence locale prévue
+
+| Version | Résultat borné suivant | Preuves nécessaires |
+|---|---|---|
+| 0.44 | Modification individuelle et corrections ci-dessus ; validation en cours. | Conserver originaux, géométrie fixe, identité, réponses et permissions ; vérifier annulation/historique et nouvelle copie. |
+| 0.45 | Bibliothèque locale d'annotations réutilisables ; prévue. | Enregistrement/chargement/suppression explicites, format versionné borné, placement utilisable et annotations sources conservées. |
+| 0.46 | Colonnes de métrés, totaux compatibles et exports ; prévus. | Totaux issus des données réelles, traitement explicite des unités/dimensions, filtres et exports protégés avec cas de régression. |
+| 0.47 | Superpositions locales et revue des révisions ; prévues. | Alignement explicite, révisions sources identifiables, originaux conservés et contrôles des géométries prises en charge. |
+
+Les étapes futures exigent implémentation et qualification avant leur publication. AEC-001/002/003/004/026 restent partiels ; interaction native, vérification dimensionnelle sur plans réels et critères généraux 1.0 restent ouverts. [Roadmap](ROADMAP.fr.md).
+
 ## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
@@ -12,7 +29,7 @@ Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEA
 
 ### Prochain lot local
 
-Compléter les sommets modifiables, le recalcul explicite et les vues multi-échelles, puis les bibliothèques et la qualification sur plans réels. Les échelles de page et l’inspecteur sont livrés dans leurs limites ; AEC-001/002/003/004/026 restent partiels.
+La base 0.43 alimente la séquence 0.44–0.47 ci-dessus. Sommets à la souris, recalcul global, vues multi-échelles et qualification sur plans réels restent des travaux distincts ouverts. Les échelles de page et l’inspecteur sont livrés dans leurs limites ; AEC-001/002/003/004/026 restent partiels.
 
 ## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 

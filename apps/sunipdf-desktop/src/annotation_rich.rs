@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use sunipdf_core::annot_rich::{
     RichAnnotation, RichAnnotationPreview, RichFreeTextStyle, StampKind, VertexAnnotKind,
 };
-use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
+use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
 use sunipdf_i18n::tr;
 
@@ -78,6 +78,7 @@ pub struct RichDraft {
     pub applying: bool,
     pub error: Option<String>,
     interactive_measurement: bool,
+    measurement_edit: Option<MeasurementRecord>,
     author: Option<String>,
 }
 
@@ -184,7 +185,12 @@ impl RichDraft {
                 image: self.image_path.clone()?,
                 opacity: self.opacity / 100.0,
             },
-            RichMode::Measurement => RichAnnotation::Measurement(self.measurement()?),
+            RichMode::Measurement => {
+                if self.measurement_edit.is_some() {
+                    return None;
+                }
+                RichAnnotation::Measurement(self.measurement()?)
+            }
             RichMode::Attachment => {
                 if self.filename.is_empty() {
                     return None;
@@ -220,7 +226,45 @@ impl RichDraft {
             precision: self.precision,
         };
         measurement.value().ok()?;
+        if self.measurement_edit.as_ref().is_some_and(|record| {
+            measurement.kind != record.measurement.kind
+                || measurement.points != record.measurement.points
+                || measurement.calibration != record.measurement.calibration
+        }) {
+            return None;
+        }
         Some(measurement)
+    }
+
+    fn load_measurement(&mut self, measurement: &Measurement) {
+        self.mode = RichMode::Measurement;
+        self.interactive_measurement = true;
+        self.measure_kind = measurement.kind;
+        self.measure_unit = measurement.unit;
+        self.known_distance = measurement.known_distance;
+        self.precision = measurement.precision;
+        self.points = measurement
+            .points
+            .iter()
+            .map(|(x, y)| format!("{x},{y}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.calibration = measurement
+            .calibration
+            .iter()
+            .map(|(x, y)| format!("{x},{y}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.target = None;
+        self.replace = false;
+    }
+
+    fn set_measure_unit(&mut self, unit: MeasurementUnit) {
+        if unit != self.measure_unit {
+            self.known_distance *= self.measure_unit.metres() / unit.metres();
+            self.measure_unit = unit;
+            self.clear_preview();
+        }
     }
 }
 
@@ -244,27 +288,31 @@ impl SuniApp {
             return false;
         };
         draft.page = page;
-        draft.mode = RichMode::Measurement;
-        draft.interactive_measurement = true;
-        draft.measure_kind = measurement.kind;
-        draft.measure_unit = measurement.unit;
-        draft.known_distance = measurement.known_distance;
-        draft.precision = measurement.precision;
-        draft.points = measurement
-            .points
-            .iter()
-            .map(|(x, y)| format!("{x},{y}"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        draft.calibration = measurement
-            .calibration
-            .iter()
-            .map(|(x, y)| format!("{x},{y}"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        draft.target = None;
-        draft.replace = false;
+        draft.load_measurement(&measurement);
         self.request_rich_preview();
+        true
+    }
+
+    pub(crate) fn open_saved_measurement_editor(
+        &mut self,
+        page: usize,
+        record: MeasurementRecord,
+    ) -> bool {
+        self.validate_measurement_context();
+        if !self.measurement_ready()
+            || self.annotate.measure.is_active_draft()
+            || !self.annotate.measure.saved.contains(page, &record)
+            || record.measurement.value().is_err()
+        {
+            return false;
+        }
+        self.open_rich_draft(false);
+        let Some(draft) = self.annotate.adv.rich.as_mut() else {
+            return false;
+        };
+        draft.page = page;
+        draft.load_measurement(&record.measurement);
+        draft.measurement_edit = Some(record);
         true
     }
 
@@ -365,8 +413,8 @@ impl SuniApp {
             image_path: None,
             measure_kind: MeasurementKind::Length,
             measure_unit: MeasurementUnit::Metres,
-            calibration: "40,40\n140,40".into(),
-            known_distance: 10.0,
+            calibration: String::new(),
+            known_distance: 0.0,
             precision: 2,
             filename: String::new(),
             bytes: Vec::new(),
@@ -380,6 +428,7 @@ impl SuniApp {
             applying: false,
             error: None,
             interactive_measurement: false,
+            measurement_edit: None,
             author: self.annot_author(),
         });
         if eraser {
@@ -443,20 +492,34 @@ impl SuniApp {
         else {
             return;
         };
-        let Some(annotation) = draft.operation() else {
-            return;
+        let request = if let Some(record) = &draft.measurement_edit {
+            let Some(measurement) = draft.measurement() else {
+                return;
+            };
+            Request::PreviewMeasurementEdit {
+                page: draft.page,
+                record: record.clone(),
+                measurement,
+                epoch: draft.epoch,
+                generation: self.annotate.adv.rich_generation.wrapping_add(1),
+            }
+        } else {
+            let Some(annotation) = draft.operation() else {
+                return;
+            };
+            Request::PreviewRichAnnotation {
+                page: draft.page,
+                annotation,
+                author: draft.author.clone(),
+                epoch: draft.epoch,
+                generation: self.annotate.adv.rich_generation.wrapping_add(1),
+            }
         };
         self.annotate.adv.rich_generation = self.annotate.adv.rich_generation.wrapping_add(1);
         draft.generation = self.annotate.adv.rich_generation;
         draft.clear_preview();
         draft.busy = true;
-        self.worker.send(Request::PreviewRichAnnotation {
-            page: draft.page,
-            annotation,
-            author: draft.author.clone(),
-            epoch: draft.epoch,
-            generation: draft.generation,
-        });
+        self.worker.send(request);
     }
 
     pub(crate) fn on_rich_preview(
@@ -554,7 +617,9 @@ impl SuniApp {
                 "rich-annotations",
                 tr(
                     lang,
-                    if draft.interactive_measurement {
+                    if draft.measurement_edit.is_some() {
+                        "measure.edit.title"
+                    } else if draft.interactive_measurement {
                         "measure.preview_title"
                     } else {
                         "rich.title"
@@ -565,7 +630,9 @@ impl SuniApp {
             )
             .subtitle(tr(
                 lang,
-                if draft.interactive_measurement {
+                if draft.measurement_edit.is_some() {
+                    "measure.edit.help"
+                } else if draft.interactive_measurement {
                     "measure.page_scope"
                 } else {
                     "rich.note"
@@ -640,6 +707,48 @@ impl SuniApp {
                                 } else {
                                     ui.label(tr(lang, "measure.invalid"));
                                 }
+                                if draft.measurement_edit.is_some() {
+                                    if draft.measure_kind != MeasurementKind::Angle {
+                                        ui.horizontal_wrapped(|ui| {
+                                            ui.label(tr(lang, "measure.known_distance"));
+                                            changed |= ui
+                                                .add(
+                                                    egui::DragValue::new(&mut draft.known_distance)
+                                                        .range(0.0..=1e9)
+                                                        .speed(0.1),
+                                                )
+                                                .changed();
+                                            let mut unit = draft.measure_unit;
+                                            egui::ComboBox::from_id_salt("saved-measurement-unit")
+                                                .selected_text(unit.id())
+                                                .show_ui(ui, |ui| {
+                                                    for candidate in MeasurementUnit::ALL {
+                                                        ui.selectable_value(
+                                                            &mut unit,
+                                                            candidate,
+                                                            candidate.id(),
+                                                        );
+                                                    }
+                                                });
+                                            if unit != draft.measure_unit {
+                                                draft.set_measure_unit(unit);
+                                                changed = true;
+                                            }
+                                        });
+                                        ui.small(tr(lang, "measure.edit.reference"));
+                                        ui.monospace(&draft.calibration);
+                                    }
+                                    ui.horizontal(|ui| {
+                                        ui.label(tr(lang, "measure.precision"));
+                                        changed |= ui
+                                            .add(
+                                                egui::DragValue::new(&mut draft.precision)
+                                                    .range(0..=4),
+                                            )
+                                            .changed();
+                                    });
+                                    ui.small(tr(lang, "measure.edit.geometry"));
+                                }
                             } else {
                                 ui.label(tr(lang, "measure.note"));
                                 let old = draft.measure_kind;
@@ -678,23 +787,26 @@ impl SuniApp {
                                     changed |= ui
                                         .add(
                                             egui::DragValue::new(&mut draft.known_distance)
-                                                .range(0.000001..=1e9)
+                                                .range(0.0..=1e9)
                                                 .speed(0.1),
                                         )
                                         .changed();
-                                    let old = draft.measure_unit;
+                                    let mut unit = draft.measure_unit;
                                     egui::ComboBox::from_id_salt("measure-unit")
                                         .selected_text(draft.measure_unit.id())
                                         .show_ui(ui, |ui| {
-                                            for unit in MeasurementUnit::ALL {
+                                            for candidate in MeasurementUnit::ALL {
                                                 ui.selectable_value(
-                                                    &mut draft.measure_unit,
-                                                    unit,
-                                                    unit.id(),
+                                                    &mut unit,
+                                                    candidate,
+                                                    candidate.id(),
                                                 );
                                             }
                                         });
-                                    changed |= old != draft.measure_unit;
+                                    if unit != draft.measure_unit {
+                                        draft.set_measure_unit(unit);
+                                        changed = true;
+                                    }
                                     ui.label(tr(lang, "measure.precision"));
                                     changed |= ui
                                         .add(
@@ -906,7 +1018,7 @@ impl SuniApp {
                     apply = crate::dialog::primary(ui, tr(lang, "bar.apply"));
                 });
                 ui.add_enabled_ui(can_preview, |ui| {
-                    preview = crate::dialog::secondary(ui, tr(lang, "paragraph.preview"));
+                    preview = crate::dialog::secondary(ui, tr(lang, "rich.preview"));
                 });
                 ui.add_enabled_ui(can_cancel, |ui| {
                     cancel = crate::dialog::secondary(ui, tr(lang, "dialog.password.cancel"))
@@ -1076,10 +1188,15 @@ mod tests {
         let draft = app.annotate.adv.rich.as_mut().unwrap();
         draft.mode = RichMode::Measurement;
         draft.points = "40,70\n160,70".into();
-        assert!((draft.measurement().unwrap().value().unwrap() - 12.0).abs() < 1e-8);
+        assert!(
+            draft.measurement().is_none(),
+            "manual entry has no implicit physical scale"
+        );
+        draft.known_distance = 10.0;
         draft.calibration = "40,40\n40,40".into();
         assert!(!draft.valid_inputs() && draft.operation().is_none());
         draft.calibration = "40,40\n140,40".into();
+        assert!((draft.measurement().unwrap().value().unwrap() - 12.0).abs() < 1e-8);
         app.apply_rich_draft();
         assert!(requests.try_recv().is_err());
         app.request_rich_preview();
@@ -1090,6 +1207,87 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn manual_measurement_controls_do_not_invent_a_positive_reference_distance() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.open_rich_annotations(&ctx);
+        let draft = app.annotate.adv.rich.as_mut().unwrap();
+        draft.mode = RichMode::Measurement;
+        draft.points = "40,70\n160,70".into();
+        draft.calibration = "40,40\n140,40".into();
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1200.0, 1000.0),
+                    )),
+                    ..Default::default()
+                },
+                |_| app.rich_annotation_dialog(&ctx),
+            );
+            output.textures_delta.clear();
+        }
+        let draft = app.annotate.adv.rich.as_ref().unwrap();
+        assert_eq!(draft.known_distance, 0.0);
+        assert!(!draft.valid_inputs());
+        app.request_rich_preview();
+        app.apply_rich_draft();
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn saved_measurement_unit_changes_preserve_physical_size_and_references_recalculate() {
+        for kind in [MeasurementKind::Length, MeasurementKind::Area] {
+            let (mut app, _, _) = crate::app::tests::test_app();
+            app.open_rich_annotations(&egui::Context::default());
+            let measurement = Measurement {
+                kind,
+                points: if kind == MeasurementKind::Length {
+                    vec![(40.0, 70.0), (140.0, 70.0)]
+                } else {
+                    vec![(40.0, 70.0), (140.0, 70.0), (140.0, 170.0)]
+                },
+                calibration: [(40.0, 40.0), (140.0, 40.0)],
+                known_distance: 10.0,
+                unit: MeasurementUnit::Metres,
+                precision: 2,
+            };
+            let record = MeasurementRecord {
+                index: 3,
+                annotation_id: Some("measurement-3".into()),
+                measurement: measurement.clone(),
+            };
+            let draft = app.annotate.adv.rich.as_mut().unwrap();
+            draft.load_measurement(&measurement);
+            draft.measurement_edit = Some(record);
+            let exponent = if kind == MeasurementKind::Area { 2 } else { 1 };
+            for unit in MeasurementUnit::ALL {
+                draft.prepared = true;
+                draft.set_measure_unit(unit);
+                let edited = draft.measurement().unwrap();
+                let physical = edited.value().unwrap() * unit.metres().powi(exponent);
+                assert!((physical - measurement.value().unwrap()).abs() < 1e-8);
+                assert_eq!(edited.points, measurement.points);
+                assert_eq!(edited.calibration, measurement.calibration);
+                assert!(
+                    draft.operation().is_none(),
+                    "an edit can never fall through to insertion"
+                );
+            }
+            draft.known_distance *= 2.0;
+            let edited = draft.measurement().unwrap();
+            let physical = edited.value().unwrap() * edited.unit.metres().powi(exponent);
+            assert!((physical - measurement.value().unwrap() * 2.0f64.powi(exponent)).abs() < 1e-8);
+            draft.points = "50,70\n140,70".into();
+            assert!(
+                draft.measurement().is_none(),
+                "this editor must preserve original vertices"
+            );
+        }
     }
 
     fn preview() -> RichAnnotationPreview {
@@ -1277,7 +1475,7 @@ mod tests {
                     found |= tree
                         .nodes
                         .iter()
-                        .any(|(_, node)| node.label() == Some(tr(app.lang(), "paragraph.preview")));
+                        .any(|(_, node)| node.label() == Some(tr(app.lang(), "rich.preview")));
                 }
                 output.textures_delta.clear();
             }

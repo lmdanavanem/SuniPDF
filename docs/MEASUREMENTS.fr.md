@@ -2,6 +2,8 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
+**0.44.0 en préparation :** modification des mesures, retour à l'échelle enregistrée et corrections sont implémentés et en cours de validation. Les nouvelles procédures ci-dessous décrivent cette version de développement, pas un paquet publié. [Périmètre et audit préalable](RELEASE_0.44.0.fr.md).
+
 **Disponible en [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** échelles de page persistantes, inspection et réutilisation explicite, en complément du tracé direct. Les mesures existantes conservent leurs valeurs. [Preuves](qa/RELEASE_0.43.0.json).
 
 ## Mesurer directement sur la page
@@ -25,13 +27,24 @@ L'échelle enregistrée contient des points utilisateur PDF, les limites de page
 
 Chaque annotation appliquée conserve ses propres calibration, géométrie, unité et précision. Enregistrer, retirer ou remplacer l'échelle de page ne recalcule jamais les annotations existantes. Le recalcul global et les vues multi-échelles nommées restent ouverts.
 
+En 0.44, **Utiliser l'échelle enregistrée** abandonne la calibration temporaire de la page lorsqu'un défaut valide existe. Sinon, **Effacer l'échelle temporaire** retire uniquement cette calibration. Ces contrôles ne modifient ni le PDF ni les autres pages. Une échelle enregistrée indisponible le reste ; calibrez explicitement la page avant de tracer une mesure étalonnée.
+
 ## Inspecter les mesures enregistrées
 
-Dans **Mesures**, ouvrez **Mesures enregistrées** pour la page courante. La liste en lecture seule présente valeur et unité, type, indice d'annotation, identifiant éventuel, nombre de sommets, précision et distance connue des mesures non angulaires. Les listes sont paginées par 50 ; **Actualiser** relit l'état courant. Les métadonnées incompatibles ou modifiées sont signalées explicitement.
+Dans **Mesures**, ouvrez **Mesures enregistrées** pour la page courante. Consulter la liste ne modifie pas le PDF. Elle présente valeur et unité, type, indice d'annotation, identifiant éventuel, nombre de sommets, précision et distance connue des mesures non angulaires. Les listes sont paginées par 50 ; **Actualiser** relit l'état courant. Les métadonnées incompatibles ou modifiées sont signalées explicitement. En 0.44, données et libellés sont partagés en mémoire au lieu de recopier toute la liste et de régénérer le JSON à chaque image.
 
 **Voir sur la page** sélectionne l'annotation réelle et ouvre ses commentaires. **Utiliser cette échelle** copie la calibration d'une mesure non angulaire dans la session de la page, sans modifier l'annotation ni enregistrer d'échelle commune. Les références hors de la page affichée sont refusées. Cliquez séparément sur **Enregistrer l’échelle dans le PDF** pour la retrouver aux prochaines sessions. Fermez l'inspecteur avant de tracer ou de changer de document.
 
-Recréez une mesure appliquée pour changer son échelle ou ses sommets. Déplacement, redimensionnement, style et modification générique du texte sont refusés afin d'éviter des valeurs périmées. Suppression et réponses aux commentaires restent disponibles selon les droits du PDF. La saisie manuelle reste disponible dans **Annotations enrichies → Mesures calibrées** : les coordonnées `x,y` sont des points de page affichée, origine en bas à gauche après rotation et rognage.
+Déplacement, redimensionnement, style et modification générique du texte sont refusés afin d'éviter des valeurs périmées. Suppression et réponses aux commentaires restent disponibles selon les droits du PDF. La saisie manuelle reste disponible dans **Annotations enrichies → Mesures calibrées** : les coordonnées `x,y` sont des points de page affichée, origine en bas à gauche après rotation et rognage. En 0.44, ce chemin ne fournit plus de distance positive arbitraire : renseignez explicitement une calibration valide.
+
+## Modifier une mesure enregistrée — 0.44 en préparation
+
+1. Ouvrez **Mesures enregistrées** sur la page concernée et cliquez sur **Modifier la mesure** près de la valeur.
+2. Modifiez distance de référence connue, unité ou précision. Passer de `m` à `cm` convertit une référence de 10 m en 1000 cm sans changer sa taille physique. Changer la distance recalcule uniquement cette mesure. Pour les angles, seule la précision est modifiable.
+3. Demandez un **Aperçu**, vérifiez le candidat rendu, puis cliquez sur **Appliquer**. Sommets et points de référence restent fixes dans cet éditeur. Identité, auteur, réponses et champs du tableau des annotations sont conservés ; échelles de page et autres mesures restent inchangées.
+4. **Annuler** conserve le PDF intact. Une modification réussie correspond à une étape Annuler/Rétablir. Enregistrez le PDF pour la conserver sur disque.
+
+Un changement de paramètre invalide l'aperçu précédent. Document modifié, enregistrement périmé, identité verrouillée ou ambiguë, métadonnées/apparences incompatibles et texte de valeur ou géométrie modifiés ailleurs provoquent un refus. Actualisez ou rouvrez l'inspecteur avant de réessayer ; conservez les annotations incompatibles plutôt que de les remplacer par supposition. L'édition exige le droit d'annotation et concerne les mesures compatibles de documents jusqu'à 128 Mio. Les sommets à la souris restent à développer ; la CLI permet leur remplacement explicite.
 
 ## CLI et données
 
@@ -45,6 +58,19 @@ sunipdf-cli page-calibration calibrated.pdf --page 1
 sunipdf-cli measure calibrated.pdf --kind length --points "40,70 140,70" --use-page-calibration --unit cm --out measured-cm.pdf
 sunipdf-cli remove-page-calibration measured-cm.pdf --page 1 --out without-page-scale.pdf
 ```
+
+Pour la 0.44, exportez un enregistrement attendu récent avant de modifier. L'indice d'annotation vient de cet enregistrement, pas de sa position dans la liste :
+
+```powershell
+$inventory = sunipdf-cli measurements measured.pdf --page 1 | ConvertFrom-Json
+$record = $inventory.pages[0].measurements[0]
+$record | ConvertTo-Json -Depth 16 | Set-Content -Encoding utf8 expected-measurement.json
+sunipdf-cli edit-measurement measured.pdf --page 1 --index $record.index --expected-record expected-measurement.json --unit cm --precision 1 --out edited.pdf
+```
+
+Cet exemple convertit les 10 m d'origine en 1000 cm sans changer la taille physique. `--expected-record` accepte un enregistrement complet de version 1 avec identité stable, limité à 64 Kio. Page, indice, identité, géométrie, calibration et précision courants doivent correspondre. Réexportez après modification ; les enregistrements périmés sont refusés. `--points` remplace jusqu'à 128 sommets de page affichée ; `--kind` change le type si la géométrie convient. Pour remplacer la référence, fournissez `--calibration` avec `--known-distance` dans l'unité finale, ou choisissez explicitement `--use-page-calibration`. Passer d'un angle à une mesure étalonnée exige une référence physique. `measure --kind angle` demande trois points et aucune calibration.
+
+En 0.44, `measurements` et `page-calibration` exigent le droit de copie. Une création/modification permise par le droit d'annotation peut réussir sans ce droit, mais sa réponse JSON contient `measurement: null` et `export_unavailable: true` ; elle n'exporte ni calibration enregistrée ni quantité. `edit-measurement` exige aussi une nouvelle destination, même avec `--overwrite`.
 
 Les exemples manuels donnent 10 m et 50 m² ; celui avec échelle enregistrée donne 1000 cm. `--use-page-calibration` exclut `--calibration` et `--known-distance` ; l'absence d'échelle valide provoque un refus. `--unit` convertit physiquement la distance de référence. `page-calibration` renvoie un objet `calibration` ou `null` par page ; sans `--page`, la lecture est limitée à 1000 pages. Enregistrement et retrait exigent une page explicite et ne modifient jamais les valeurs existantes.
 
@@ -64,4 +90,4 @@ Export JSON limité à 1000 pages et 4096 mesures, avec 4 Mio de métadonnées p
 
 Les cas synthétiques de dimensions connues vérifient calculs, conversions métriques/impériales, rotations/rognage, réouverture, aperçu/application, Annuler, protection, refus et métadonnées périmées. Les ajouts 0.43 couvrent persistance, permissions, conversion physique et contrôles qpdf dans le corpus existant ; les résultats exécutés figurent dans l'état du projet. Cela ne qualifie ni précision topographique, ni plans clients, impression physique, interaction native/Narrateur, PDF/A ou PDF/UA.
 
-Modification des sommets enregistrés, recalcul explicite des annotations existantes, accrochage aux vecteurs PDF, vues multi-échelles, volumes et reconnaissance avancée restent ouverts dans AEC-001–026. L'échelle de page et l'inspecteur de la 0.43 ne clôturent pas ces cartes. Les [comptages manuels et le tableau des annotations](MARKUP_REGISTER.fr.md) existent déjà dans leurs limites documentées en 0.41.0. Le local reste gratuit et open source.
+Les changements 0.44 sont en validation. Le redimensionnement du contenu avec annotations refuse atomiquement les pages mesurées au lieu de laisser rectangles et quantités incohérents. Sommets à la souris, recalcul par lot, accrochage aux vecteurs PDF, vues multi-échelles, volumes et reconnaissance avancée restent ouverts. AEC-001/002/003/004/026 restent partiels ; échelles de page, inspecteur et modification individuelle ne terminent pas leurs critères généraux. Les [comptages manuels et le tableau des annotations](MARKUP_REGISTER.fr.md) existent déjà dans leurs limites documentées en 0.41.0. Le local reste gratuit et open source. La [roadmap](ROADMAP.fr.md) distingue bibliothèque d'annotations prévue en 0.45, colonnes/totaux/export de métrés en 0.46 et superpositions/révisions en 0.47.

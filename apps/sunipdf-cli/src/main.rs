@@ -4,6 +4,7 @@
 mod annot_cmd;
 mod calibration_cmd;
 mod feature_cmd;
+mod measurement_cmd;
 mod password_input;
 mod register_cmd;
 mod safe_output;
@@ -50,6 +51,8 @@ enum Command {
     SetPageCalibration(calibration_cmd::SetArgs),
     /// Remove a persisted page scale in a new PDF copy; existing measurements remain unchanged.
     RemovePageCalibration(calibration_cmd::RemoveArgs),
+    /// Edit one expected measurement in a new PDF copy, preserving its annotation identity.
+    EditMeasurement(measurement_cmd::EditArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -58,16 +61,16 @@ enum Command {
         /// Displayed-page vertices: "x,y x,y ...", in points; angle vertex is the middle point.
         #[arg(long)]
         points: String,
-        /// Two displayed-page points delimiting the known distance: "x,y x,y".
+        /// Two reference points: "x,y x,y". Required for lengths/areas unless using a saved scale; angles need none.
         #[arg(
             long,
-            required_unless_present = "use_page_calibration",
+            requires = "known_distance",
             conflicts_with = "use_page_calibration"
         )]
         calibration: Option<String>,
         #[arg(
             long,
-            required_unless_present = "use_page_calibration",
+            requires = "calibration",
             conflicts_with = "use_page_calibration"
         )]
         known_distance: Option<f64>,
@@ -1576,6 +1579,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::PageCalibration(args) => calibration_cmd::read(&engine, args),
         Command::SetPageCalibration(args) => calibration_cmd::set(&engine, args),
         Command::RemovePageCalibration(args) => calibration_cmd::remove(&engine, args),
+        Command::EditMeasurement(args) => measurement_cmd::edit(&engine, args),
         Command::Measure {
             file,
             kind,
@@ -1595,14 +1599,13 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let page_number = page_index(page, doc.page_count())?;
             let unit = MeasurementUnit::from_id(&unit)
                 .ok_or_else(|| EngineError::Other("invalid measurement unit".into()))?;
+            let kind = MeasurementKind::from_id(&kind)
+                .ok_or_else(|| EngineError::Other("invalid measurement kind".into()))?;
+            let points = measurement_cmd::points(&points, 128)?;
             let (calibration, known_distance) = if use_page_calibration {
-                let saved = doc.page_calibration(page_number)?.ok_or_else(|| {
-                    EngineError::Other("page has no persisted calibration; set-page-calibration first or provide an explicit calibration".into())
-                })?;
-                (
-                    saved.points,
-                    saved.known_distance * saved.unit.metres() / unit.metres(),
-                )
+                measurement_cmd::saved_scale(&doc, page_number, unit)?
+            } else if kind == MeasurementKind::Angle && calibration.is_none() {
+                measurement_cmd::angle_scale(&points)?
             } else {
                 let points = calibration
                     .as_deref()
@@ -1611,16 +1614,17 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     EngineError::Other("calibration requires a known distance".into())
                 })?;
                 (
-                    annot_cmd::parse_stroke(points)?.try_into().map_err(|_| {
-                        EngineError::Other("calibration requires two points".into())
-                    })?,
+                    measurement_cmd::points(points, 2)?
+                        .try_into()
+                        .map_err(|_| {
+                            EngineError::Other("calibration requires two points".into())
+                        })?,
                     distance,
                 )
             };
             let measurement = Measurement {
-                kind: MeasurementKind::from_id(&kind)
-                    .ok_or_else(|| EngineError::Other("invalid measurement kind".into()))?,
-                points: annot_cmd::parse_stroke(&points)?,
+                kind,
+                points,
                 calibration,
                 known_distance,
                 unit,
@@ -1629,8 +1633,14 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let index =
                 doc.add_measurement_annotation(page_number, &measurement, author.as_deref())?;
             sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            let export_unavailable = !doc.properties().can_copy;
+            let exported = if export_unavailable {
+                serde_json::Value::Null
+            } else {
+                measurement.result()?
+            };
             Ok(
-                serde_json::json!({"out":out,"page":page,"index":index,"measurement":measurement.result()?,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
+                serde_json::json!({"out":out,"page":page,"index":index,"measurement":exported,"export_unavailable":export_unavailable,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
             )
         }
         Command::Measurements {
@@ -1639,15 +1649,10 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let doc = engine.open(&file, password.as_deref())?;
-            let pages: Vec<_> = match page {
-                Some(page) => vec![page_index(page, doc.page_count())?],
-                None => (0..doc.page_count()).collect(),
-            };
-            if pages.len() > 1000 {
-                return Err(EngineError::Other(
-                    "measurement export is limited to 1000 pages; select --page".into(),
-                ));
+            if !doc.properties().can_copy {
+                return Err(EngineError::SecurityRestricted);
             }
+            let pages = measurement_cmd::page_selection(page, doc.page_count())?;
             let mut records = Vec::new();
             let mut count = 0usize;
             for page in pages {
@@ -2923,6 +2928,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::AnnotationRegister(args) => args.out.as_deref(),
         Command::SetPageCalibration(args) => Some(&args.out),
         Command::RemovePageCalibration(args) => Some(&args.out),
+        Command::EditMeasurement(args) => Some(&args.out),
         Command::Merge { out, .. }
         | Command::BookmarkAdd { out, .. }
         | Command::BookmarkRename { out, .. }
@@ -3540,6 +3546,81 @@ mod tests {
         ])
         .is_ok());
         assert!(parse_cli(["sunipdf-cli", "measure", "source.pdf", "--out", "new.pdf"]).is_err());
+    }
+
+    #[test]
+    fn measurement_edit_requires_an_expected_record_and_explicit_change() {
+        let edit = parse_cli([
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--expected-record",
+            "record.json",
+            "--unit",
+            "ft",
+            "--precision",
+            "3",
+            "--out",
+            "new.pdf",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&edit.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(matches!(
+            edit.command,
+            Command::EditMeasurement(measurement_cmd::EditArgs {
+                index: 0,
+                precision: Some(3),
+                ..
+            })
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--expected-record",
+            "record.json",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--unit",
+            "ft",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "angle",
+            "--points",
+            "40,80 40,40 80,40",
+            "--out",
+            "new.pdf",
+        ])
+        .is_ok());
     }
 
     #[test]

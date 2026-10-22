@@ -3,8 +3,9 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.43.0. Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.43.0.md) lists supported inputs
+This guide includes SuniPDF 0.44.0 changes **in preparation and undergoing validation**. The preceding
+published release is [0.43.0](RELEASE_0.43.0.md). Publication status and executed checks are recorded in
+[Project status](PROJECT_STATUS.md). The [0.44 preparation scope](RELEASE_0.44.0.md) lists supported inputs
 and documented refusals; English remains the default language and French is available in Settings.
 
 ## Measure directly on a PDF
@@ -43,7 +44,7 @@ Rotation and page reordering preserve eligible defaults. Changed crop bounds or 
 unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
 default. Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
 
-Click **Saved measurements** in the measurement toolbar to inspect the current page. The read-only list
+Click **Saved measurements** in the measurement toolbar to inspect the current page. Reading the list leaves the PDF unchanged. It
 shows value/unit, type, annotation index, optional identity, vertex count, precision and known reference
 distance for non-angle measurements, in batches of 50. **View on page** selects the actual annotation and opens
 its comments. **Use this scale** copies a non-angle annotation's calibration to the page's session for
@@ -56,8 +57,24 @@ The CLI exposes `page-calibration`, `set-page-calibration` and `remove-page-cali
 manual `--calibration`/`--known-distance`. Writes always require a new output file, even with `--overwrite`.
 Use password environment/stdin options for protected files. [Examples and bounds](MEASUREMENTS.md#cli-and-quantities).
 
-Recreate an applied measurement to change its vertices or scale. Global recalculation, vector snapping
-and multiple-scale viewports remain unavailable. Check the known distance and drawing revision; a
+In 0.44, choose **Edit measurement** in the inspector to change that annotation's known reference
+distance, unit or precision. Unit changes preserve physical size; reference-distance changes recalculate
+only this measurement. Angles expose precision only. Request a **Preview**, inspect the rendered
+candidate, then **Apply**; **Cancel** changes nothing. One Undo/Redo step restores the previous/replacement
+measurement, including its identity and linked comments. Save the PDF to retain the edit. Measured
+vertices and reference points remain fixed in this desktop editor; changed or unsupported targets are refused.
+
+**Use saved page scale** discards the temporary override when a valid saved default exists. Otherwise
+**Clear temporary scale** discards only the page's temporary scale. Neither control modifies the PDF.
+The manual rich-annotation path now requires an explicit calibration instead of supplying a positive default.
+
+The 0.44 CLI adds `edit-measurement`: supply a fresh `--expected-record` from `measurements`, the physical
+`--page`, the record's annotation `--index` and a new `--out`. The CLI can replace explicit vertices;
+see the measurement guide for calibration and identity requirements. Export requires copying permission.
+Permitted creation/editing without it returns `measurement: null` and `export_unavailable: true`.
+Resizing content and annotations on measured pages is refused before changes are committed.
+
+Global recalculation, saved-vertex dragging, vector snapping and multiple-scale viewports remain unavailable. Check the known distance and drawing revision; a
 calculated value does not establish physical accuracy. See the [measurement guide](MEASUREMENTS.md)
 for the open metadata format, permissions and geometry limits.
 

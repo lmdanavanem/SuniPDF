@@ -1,4 +1,4 @@
-//! Saved page scales and read-only inspection of validated measurement records.
+//! Saved page scales and inspection of validated measurement records.
 
 use crate::{
     annotate::Tool,
@@ -7,6 +7,7 @@ use crate::{
     worker::{EditOp, Request},
 };
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use sunipdf_core::{
     measurement::{MeasurementKind, MeasurementRecord, PageCalibration},
     Command, EngineError,
@@ -19,8 +20,45 @@ const MAX_PENDING_PAGES: usize = 4;
 #[derive(Clone)]
 pub(crate) struct MeasurementPageData {
     pub calibration: Result<Option<PageCalibration>, String>,
-    pub records: Result<Vec<MeasurementRecord>, String>,
+    pub records: Result<Arc<[MeasurementRecord]>, String>,
     pub can_modify: bool,
+    labels: Arc<[String]>,
+}
+
+impl MeasurementPageData {
+    pub(crate) fn new(
+        calibration: Result<Option<PageCalibration>, String>,
+        records: Result<Vec<MeasurementRecord>, String>,
+        can_modify: bool,
+    ) -> Self {
+        let labels = records.as_ref().map_or_else(
+            |_| Vec::new(),
+            |records| {
+                records
+                    .iter()
+                    .map(|record| {
+                        let m = &record.measurement;
+                        m.value()
+                            .map(|value| {
+                                let unit = match m.kind {
+                                    MeasurementKind::Angle => "deg".into(),
+                                    MeasurementKind::Area => format!("{}2", m.unit.id()),
+                                    _ => m.unit.id().into(),
+                                };
+                                format!("{:.*} {}", m.precision, value, unit)
+                            })
+                            .unwrap_or_default()
+                    })
+                    .collect()
+            },
+        );
+        Self {
+            calibration,
+            records: records.map(Arc::from),
+            can_modify,
+            labels: labels.into(),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -35,6 +73,13 @@ pub(crate) struct SavedMeasurements {
 }
 
 impl SavedMeasurements {
+    pub(crate) fn contains(&self, page: usize, record: &MeasurementRecord) -> bool {
+        self.pages
+            .get(&page)
+            .and_then(|data| data.records.as_ref().ok())
+            .is_some_and(|records| records.contains(record))
+    }
+
     pub(crate) fn invalidate(&mut self) {
         self.pages.clear();
         self.pending.clear();
@@ -121,11 +166,9 @@ impl SuniApp {
         saved.pending.remove(&page);
         let data = match result {
             Ok(data) => data,
-            Err(error) => MeasurementPageData {
-                calibration: Err(error.to_string()),
-                records: Err(error.to_string()),
-                can_modify: false,
-            },
+            Err(error) => {
+                MeasurementPageData::new(Err(error.to_string()), Err(error.to_string()), false)
+            }
         };
         // A late read populates only the PDF cache; a newer local calibration remains authoritative.
         saved.pages.insert(page, data);
@@ -217,7 +260,22 @@ impl SuniApp {
         let mut remove = false;
         let mut inspect = false;
         let mut refresh = false;
+        let mut reset = false;
         ui.horizontal_wrapped(|ui| {
+            reset = ui
+                .add_enabled(
+                    ready && local,
+                    egui::Button::new(tr(
+                        lang,
+                        if data.is_some_and(|d| matches!(d.calibration, Ok(Some(_)))) {
+                            "measure.saved.restore"
+                        } else {
+                            "measure.saved.clear_session"
+                        },
+                    )),
+                )
+                .on_hover_text(tr(lang, "measure.saved.reset_hint"))
+                .clicked();
             save = ui
                 .add_enabled(
                     ready && local && can_modify,
@@ -270,6 +328,9 @@ impl SuniApp {
         if save {
             self.save_measurement_scale(page, false);
         }
+        if reset {
+            self.reset_temporary_measurement_scale(page);
+        }
         if remove {
             self.save_measurement_scale(page, true);
         }
@@ -303,6 +364,7 @@ impl SuniApp {
         let mut refresh = false;
         let mut view = None;
         let mut use_scale = None;
+        let mut edit = None;
         let mut offset = self.annotate.measure.saved.offset;
         dialog::show(
             ctx,
@@ -359,13 +421,13 @@ impl SuniApp {
                                 offset += 50;
                             }
                         });
-                        for record in records.iter().skip(offset).take(50) {
+                        for (row, record) in records.iter().enumerate().skip(offset).take(50) {
                             let measurement = &record.measurement;
-                            let label = measurement
-                                .result()
-                                .ok()
-                                .and_then(|v| v["label"].as_str().map(str::to_owned))
-                                .unwrap_or_else(|| tr(lang, "measure.invalid").into());
+                            let label = data
+                                .as_ref()
+                                .and_then(|d| d.labels.get(row))
+                                .filter(|label| !label.is_empty())
+                                .map_or_else(|| tr(lang, "measure.invalid"), String::as_str);
                             ui.group(|ui| {
                                 ui.horizontal_wrapped(|ui| {
                                     ui.strong(label);
@@ -374,6 +436,15 @@ impl SuniApp {
                                         &format!("measure.{}", measurement.kind.id()),
                                     ));
                                     ui.label(format!("#{}", record.index));
+                                    if ui
+                                        .add_enabled(
+                                            enabled,
+                                            egui::Button::new(tr(lang, "measure.edit.open")),
+                                        )
+                                        .clicked()
+                                    {
+                                        edit = Some(record.clone());
+                                    }
                                     if ui
                                         .add_enabled(
                                             enabled,
@@ -457,9 +528,25 @@ impl SuniApp {
                 self.go_to_page_point(page, x, (height - y).max(0.0));
             }
         }
+        if let Some(record) = edit {
+            self.annotate.measure.saved.inspector = None;
+            if self.open_saved_measurement_editor(page, record) {
+                close = true;
+            } else {
+                self.annotate.measure.saved.inspector = Some(page);
+            }
+        }
         if close {
             self.annotate.measure.saved.inspector = None;
         }
+    }
+
+    pub(crate) fn reset_temporary_measurement_scale(&mut self, page: usize) -> bool {
+        self.validate_measurement_context();
+        if !self.measurement_ready() || self.annotate.measure.is_active_draft() {
+            return false;
+        }
+        self.annotate.measure.clear_temporary_scale(page)
     }
 
     pub(crate) fn use_saved_measurement_scale(
@@ -546,11 +633,7 @@ mod tests {
         saved: Option<PageCalibration>,
         records: Vec<MeasurementRecord>,
     ) -> MeasurementPageData {
-        MeasurementPageData {
-            calibration: Ok(saved),
-            records: Ok(records),
-            can_modify: true,
-        }
+        MeasurementPageData::new(Ok(saved), Ok(records), true)
     }
 
     fn ready(app: &mut SuniApp) {
@@ -774,6 +857,7 @@ mod tests {
                 |ui| {
                     app.measurement_bar(&self.ctx, ui);
                     app.saved_measurements_dialog(&self.ctx);
+                    app.rich_annotation_dialog(&self.ctx);
                 },
             );
             output.textures_delta.clear();
@@ -781,6 +865,11 @@ mod tests {
         }
 
         fn click(&mut self, app: &mut SuniApp, key: &str) {
+            let label = tr(app.lang(), key).to_string();
+            self.click_text(app, &label);
+        }
+
+        fn click_text(&mut self, app: &mut SuniApp, label: &str) {
             fn find(shape: &egui::Shape, label: &str) -> Option<Pos2> {
                 match shape {
                     egui::Shape::Text(text) if text.galley.text() == label => {
@@ -792,12 +881,12 @@ mod tests {
             }
             self.frame(app, vec![]);
             let output = self.frame(app, vec![]);
-            let label = tr(app.lang(), key);
             let pos = output
                 .shapes
                 .iter()
+                .rev()
                 .find_map(|s| find(&s.shape, label))
-                .unwrap_or_else(|| panic!("visible control {key}: {label}"));
+                .unwrap_or_else(|| panic!("visible control: {label}"));
             self.time += 0.6;
             for pressed in [true, false] {
                 self.frame(
@@ -814,6 +903,178 @@ mod tests {
                 );
             }
             self.frame(app, vec![]);
+        }
+    }
+
+    #[test]
+    fn cached_measurement_rows_share_records_and_labels_without_serializing_per_frame() {
+        let records = (0..4096)
+            .map(|index| {
+                let mut record = record(MeasurementKind::Length);
+                record.index = index;
+                record
+            })
+            .collect();
+        let original = data(None, records);
+        let cloned = original.clone();
+        assert!(Arc::ptr_eq(
+            original.records.as_ref().unwrap(),
+            cloned.records.as_ref().unwrap()
+        ));
+        assert!(Arc::ptr_eq(&original.labels, &cloned.labels));
+        assert_eq!(cloned.labels.len(), 4096);
+        assert_eq!(cloned.labels[4095], "10.00 m");
+    }
+
+    #[test]
+    fn temporary_scale_controls_restore_pdf_scale_or_clear_only_the_current_page() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            ready(&mut app);
+            app.settings.language = language.into();
+            app.annotate
+                .measure
+                .saved
+                .pages
+                .insert(0, data(Some(calibration(5.0)), vec![]));
+            app.annotate.measure.use_calibration(0, &calibration(20.0));
+            app.annotate.measure.use_calibration(1, &calibration(30.0));
+            let mut controls = Controls::new();
+            controls.click(&mut app, "measure.saved.restore");
+            assert!(app.annotate.measure.local_calibration(0).is_none());
+            assert_eq!(
+                app.annotate.measure.saved.calibration(0),
+                Some(&calibration(5.0))
+            );
+            assert_eq!(
+                app.annotate.measure.local_calibration(1),
+                Some(calibration(30.0))
+            );
+            app.annotate
+                .measure
+                .saved
+                .pages
+                .insert(0, data(None, vec![]));
+            app.annotate.measure.use_calibration(0, &calibration(20.0));
+            controls.click(&mut app, "measure.saved.clear_session");
+            assert!(app.annotate.measure.local_calibration(0).is_none());
+            assert!(app.annotate.measure.saved.calibration(0).is_none());
+            app.annotate.measure.use_calibration(0, &calibration(20.0));
+            app.annotate.measure.start_calibration();
+            assert!(
+                !app.reset_temporary_measurement_scale(0),
+                "active gestures keep their scale"
+            );
+            assert_eq!(
+                app.annotate.measure.local_calibration(0),
+                Some(calibration(20.0))
+            );
+            assert!(
+                requests.try_recv().is_err(),
+                "session controls must never edit the PDF"
+            );
+        }
+    }
+
+    #[test]
+    fn inspector_edit_converts_units_and_requires_preview_before_apply_or_cancel() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, responses) = crate::app::tests::test_app();
+            ready(&mut app);
+            app.settings.language = language.into();
+            let original = record(MeasurementKind::Length);
+            app.annotate
+                .measure
+                .saved
+                .pages
+                .insert(0, data(Some(calibration(5.0)), vec![original.clone()]));
+            let mut controls = Controls::new();
+            controls.click(&mut app, "measure.saved.inspect");
+            controls.click(&mut app, "measure.edit.open");
+            assert!(!app.annotate.measure.saved.dialog_open());
+            assert!(app.navigation_blocked());
+            assert!(
+                requests.try_recv().is_err(),
+                "opening an editor has no side effects"
+            );
+            controls.click_text(&mut app, "m");
+            controls.click_text(&mut app, "cm");
+            let draft = app.annotate.adv.rich.as_ref().unwrap();
+            assert_eq!(draft.measure_unit, MeasurementUnit::Centimetres);
+            assert_eq!(draft.known_distance, 1000.0);
+            controls.click(&mut app, "bar.apply");
+            assert!(
+                requests.try_recv().is_err(),
+                "Apply requires a completed preview"
+            );
+            controls.click(&mut app, "rich.preview");
+            let (epoch, generation) = match requests.recv().unwrap() {
+                Request::PreviewMeasurementEdit {
+                    page: 0,
+                    record,
+                    measurement,
+                    epoch,
+                    generation,
+                } => {
+                    assert_eq!(record, original);
+                    assert_eq!(measurement.points, original.measurement.points);
+                    assert_eq!(measurement.calibration, original.measurement.calibration);
+                    assert_eq!(measurement.value().unwrap(), 1000.0);
+                    (epoch, generation)
+                }
+                _ => panic!("guarded measurement edit preview"),
+            };
+            let preview = || sunipdf_core::annot_rich::RichAnnotationPreview {
+                image: sunipdf_core::RenderedPage {
+                    page_index: 0,
+                    width: 4,
+                    height: 2,
+                    rgba: vec![255; 32],
+                },
+                scale: 1.0,
+                region: sunipdf_core::PixelRect::new(0, 0, 4, 2),
+                index: original.index,
+                prepared: None,
+            };
+            app.on_rich_preview(
+                &controls.ctx,
+                epoch,
+                generation.wrapping_sub(1),
+                Ok(preview()),
+            );
+            assert!(
+                !app.annotate.adv.rich.as_ref().unwrap().prepared,
+                "late response ignored"
+            );
+            app.on_rich_preview(&controls.ctx, epoch, generation, Ok(preview()));
+            controls.click(&mut app, "bar.apply");
+            assert!(
+                matches!(requests.recv().unwrap(), Request::Edit(EditOp::CommitRichAnnotationPreview { epoch:e,generation:g }) if e==epoch && g==generation)
+            );
+            assert!(app.annotate.adv.rich.as_ref().unwrap().applying);
+            assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+            assert!(app.worker.has_pending_mutations());
+            responses
+                .send(Response::OperationFailed(EngineError::Other(
+                    "test refusal".into(),
+                )))
+                .unwrap();
+            responses.send(Response::MutationFinished).unwrap();
+            app.handle_responses(&controls.ctx);
+            assert!(!app.worker.has_pending_mutations());
+            assert!(!app.annotate.adv.rich.as_ref().unwrap().applying);
+            controls.click(&mut app, "dialog.password.cancel");
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(matches!(
+                requests.recv().unwrap(),
+                Request::DiscardRichAnnotationPreview { epoch: e, generation: g } if e == epoch && g == generation
+            ));
+            assert!(app.annotate.measure.saved.contains(0, &original));
+            assert_eq!(
+                app.annotate.measure.saved.calibration(0),
+                Some(&calibration(5.0))
+            );
+            assert!(requests.try_recv().is_err());
         }
     }
 
@@ -936,7 +1197,8 @@ mod tests {
                 app.annotate.measure.saved.pages[&0]
                     .records
                     .as_ref()
-                    .unwrap(),
+                    .unwrap()
+                    .as_ref(),
                 &[record]
             );
             controls.click(&mut app, "measure.saved.save");
