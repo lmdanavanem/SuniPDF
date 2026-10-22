@@ -533,7 +533,7 @@ pub struct QuantityTable {
 #[derive(Clone)]
 pub struct QuantityTarget {
     source: Arc<Vec<u8>>,
-    row: QuantityRow,
+    row: Arc<QuantityRow>,
 }
 
 impl std::fmt::Debug for QuantityTarget {
@@ -566,7 +566,7 @@ impl QuantityTable {
         }
         Ok(QuantityTarget {
             source: self.register.source_snapshot.clone(),
-            row: row.clone(),
+            row: Arc::new(row.clone()),
         })
     }
     pub fn select(&self, options: &QuantityOptions) -> Vec<&QuantityRow> {
@@ -984,7 +984,7 @@ impl Document<'_> {
                     && row.register.index == target.row.register.index
             })
             .ok_or_else(|| bad("annotation not found"))?;
-        if row != &target.row || !row.editable {
+        if row != target.row.as_ref() || !row.editable {
             return Err(bad("expected annotation changed or is not editable"));
         }
         if let Some(fields) = fields {
