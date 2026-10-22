@@ -885,6 +885,14 @@ pub(crate) mod tests {
         fn source_point(&mut self, app: &mut SuniApp, index: usize, fraction: [f32; 2]) {
             fn find(shape: &egui::Shape, texture: egui::TextureId) -> Option<Rect> {
                 match shape {
+                    egui::Shape::Rect(rect)
+                        if rect
+                            .brush
+                            .as_ref()
+                            .is_some_and(|brush| brush.fill_texture_id == texture) =>
+                    {
+                        Some(rect.rect)
+                    }
                     egui::Shape::Mesh(mesh) if mesh.texture_id == texture => {
                         let first = mesh.vertices.first()?.pos;
                         let (mut min, mut max) = (first, first);

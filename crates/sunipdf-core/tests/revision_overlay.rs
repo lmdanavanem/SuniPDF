@@ -224,6 +224,11 @@ fn revision_overlay_geometry_copy_permissions_immutable_sources_and_stale_export
     let protected_revision = temp.path().join("protected-revision.pdf");
     for aes256 in [false, true] {
         for allow_copy in [false, true] {
+            let passwords: [String; 4] = std::array::from_fn(|_| {
+                let mut random = [0u8; 16];
+                getrandom::fill(&mut random).unwrap();
+                random.iter().map(|byte| format!("{byte:02x}")).collect()
+            });
             let protect = |user: &str, owner: &str| {
                 security::protect(
                     &original,
@@ -240,13 +245,13 @@ fn revision_overlay_geometry_copy_permissions_immutable_sources_and_stale_export
                 )
                 .unwrap()
             };
-            let a = protect("overlay-base-user", "overlay-base-owner");
-            let b = protect("overlay-revision-user", "overlay-revision-owner");
+            let a = protect(&passwords[0], &passwords[1]);
+            let b = protect(&passwords[2], &passwords[3]);
             std::fs::write(&protected_base, &a).unwrap();
             std::fs::write(&protected_revision, &b).unwrap();
             for (base_password, revision_password) in [
-                ("overlay-base-user", "overlay-revision-user"),
-                ("overlay-base-owner", "overlay-revision-owner"),
+                (passwords[0].as_str(), passwords[2].as_str()),
+                (passwords[1].as_str(), passwords[3].as_str()),
             ] {
                 let result = prepare_overlay(
                     &engine,

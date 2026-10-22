@@ -1345,7 +1345,7 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 10);
+        assert_eq!(Command::in_menu(Menu::File).count(), 11);
         assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
