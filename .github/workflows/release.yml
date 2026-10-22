@@ -134,7 +134,15 @@ jobs:
             target/interop-corpus-report.json
             target/adversarial-corpus-report.json
           if-no-files-found: error
+      - name: Restore pinned Office MSI only (x64)
+        id: office_installer_cache
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: target/test-office-installer/installer.msi
+          key: windows-x64-office-msi-v1-${{ hashFiles('scripts/test-libreoffice.json', 'scripts/fetch-test-libreoffice.ps1') }}
       - name: Pinned local Office converter on disposable runner (x64)
+        id: office_converter
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: |
           pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1 -SelfTest
@@ -143,6 +151,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Office converter installation failed.' }
           $proof = Get-Content -Raw target/office-converter-provenance.json | ConvertFrom-Json
           if ($proof.source_revision -ne $env:GITHUB_SHA -or -not (Test-Path -LiteralPath $proof.installed_path)) { throw 'Installed Office converter provenance is missing or invalid.' }
+      - name: Save verified pinned Office MSI only (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.office_converter.outcome == 'success' && steps.office_installer_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: target/test-office-installer/installer.msi
+          key: ${{ steps.office_installer_cache.outputs.cache-primary-key }}
       - name: Measured licensed Office exports and local converter profiles (x64)
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         env:

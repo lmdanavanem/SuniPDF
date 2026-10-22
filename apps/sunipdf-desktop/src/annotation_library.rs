@@ -684,7 +684,7 @@ pub(crate) mod tests {
     impl Controls {
         pub(crate) fn new() -> Self {
             let ctx = egui::Context::default();
-            ctx.style_mut(|style| style.animation_time = 0.0);
+            ctx.all_styles_mut(|style| style.animation_time = 0.0);
             Self {
                 ctx,
                 time: 1.0,
