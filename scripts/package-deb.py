@@ -130,7 +130,7 @@ def package(binary_dir, output):
         for directory_path in stage.rglob("*"):
             if directory_path.is_dir():
                 directory_path.chmod(0o755)
-        run(["dpkg-deb", "--root-owner-group", "--build", stage, artifact])
+        run(["dpkg-deb", "-Zxz", "--root-owner-group", "--build", stage, artifact])
         extracted = temporary / "extracted"
         run(["dpkg-deb", "--extract", artifact, extracted])
         run([sys.executable, license_tool, "--linux", "--verify", "--stage", extracted])
