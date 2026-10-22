@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.43.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.44.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+## 0.44.0 : modification des mesures enregistrées (Latest stable)
+
+[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
+
+Source `7e95078127beb81b90a9eac32e6fde0fd8e9bf50`, PR [#19](https://github.com/lmdanavanem/SuniPDF/pull/19). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850233) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718862137) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850516). 702 tests réussis, 10 ignorés par défaut. 1250 clés EN/FR. 36 scénarios portables. 30 références MSI. 150 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 21 appels CLI vérifient conversion, précision, recalibration, géométrie, refus périmé, identité, échelle de page, réouverture et angle sans calibration. Valeur finale : 40 m ; autres mesures et originaux conservés.
+
+[Guide et limites](MEASUREMENTS.fr.md) · [Notes de version](RELEASE_0.44.0.fr.md) · [Preuves](qa/RELEASE_0.44.0.json).
+
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (publiée ; Latest à cette date)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
 

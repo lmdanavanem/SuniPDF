@@ -2,7 +2,7 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
-**0.44.0 en préparation :** modification des mesures, retour à l'échelle enregistrée et corrections sont implémentés et en cours de validation. Les nouvelles procédures ci-dessous décrivent cette version de développement, pas un paquet publié. [Périmètre et audit préalable](RELEASE_0.44.0.fr.md).
+**Disponible en [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0):** Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés. [Preuves](qa/RELEASE_0.44.0.json).
 
 **Disponible en [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** échelles de page persistantes, inspection et réutilisation explicite, en complément du tracé direct. Les mesures existantes conservent leurs valeurs. [Preuves](qa/RELEASE_0.43.0.json).
 
@@ -37,7 +37,7 @@ Dans **Mesures**, ouvrez **Mesures enregistrées** pour la page courante. Consul
 
 Déplacement, redimensionnement, style et modification générique du texte sont refusés afin d'éviter des valeurs périmées. Suppression et réponses aux commentaires restent disponibles selon les droits du PDF. La saisie manuelle reste disponible dans **Annotations enrichies → Mesures calibrées** : les coordonnées `x,y` sont des points de page affichée, origine en bas à gauche après rotation et rognage. En 0.44, ce chemin ne fournit plus de distance positive arbitraire : renseignez explicitement une calibration valide.
 
-## Modifier une mesure enregistrée — 0.44 en préparation
+## Modifier une mesure enregistrée
 
 1. Ouvrez **Mesures enregistrées** sur la page concernée et cliquez sur **Modifier la mesure** près de la valeur.
 2. Modifiez distance de référence connue, unité ou précision. Passer de `m` à `cm` convertit une référence de 10 m en 1000 cm sans changer sa taille physique. Changer la distance recalcule uniquement cette mesure. Pour les angles, seule la précision est modifiable.
@@ -90,4 +90,4 @@ Export JSON limité à 1000 pages et 4096 mesures, avec 4 Mio de métadonnées p
 
 Les cas synthétiques de dimensions connues vérifient calculs, conversions métriques/impériales, rotations/rognage, réouverture, aperçu/application, Annuler, protection, refus et métadonnées périmées. Les ajouts 0.43 couvrent persistance, permissions, conversion physique et contrôles qpdf dans le corpus existant ; les résultats exécutés figurent dans l'état du projet. Cela ne qualifie ni précision topographique, ni plans clients, impression physique, interaction native/Narrateur, PDF/A ou PDF/UA.
 
-Les changements 0.44 sont en validation. Le redimensionnement du contenu avec annotations refuse atomiquement les pages mesurées au lieu de laisser rectangles et quantités incohérents. Sommets à la souris, recalcul par lot, accrochage aux vecteurs PDF, vues multi-échelles, volumes et reconnaissance avancée restent ouverts. AEC-001/002/003/004/026 restent partiels ; échelles de page, inspecteur et modification individuelle ne terminent pas leurs critères généraux. Les [comptages manuels et le tableau des annotations](MARKUP_REGISTER.fr.md) existent déjà dans leurs limites documentées en 0.41.0. Le local reste gratuit et open source. La [roadmap](ROADMAP.fr.md) distingue bibliothèque d'annotations prévue en 0.45, colonnes/totaux/export de métrés en 0.46 et superpositions/révisions en 0.47.
+Le redimensionnement du contenu avec annotations refuse atomiquement les pages mesurées au lieu de laisser rectangles et quantités incohérents. Sommets à la souris, recalcul par lot, accrochage aux vecteurs PDF, vues multi-échelles, volumes et reconnaissance avancée restent ouverts. AEC-001/002/003/004/026 restent partiels ; échelles de page, inspecteur et modification individuelle ne terminent pas leurs critères généraux. Les [comptages manuels et le tableau des annotations](MARKUP_REGISTER.fr.md) existent déjà dans leurs limites documentées en 0.41.0. Le local reste gratuit et open source. La [roadmap](ROADMAP.fr.md) distingue bibliothèque d'annotations prévue en 0.45, colonnes/totaux/export de métrés en 0.46 et superpositions/révisions en 0.47.

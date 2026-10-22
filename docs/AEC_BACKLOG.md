@@ -12,9 +12,9 @@ SuniPDF is a free, open-source local application for PDF plans, measurements and
 
 The 0.40.0 local source slice introduced self-contained two-point calibration and five measurement kinds with JSON records through coordinate entry. [Usage and current limits](MEASUREMENTS.md). It provided a foundation for AEC-001/002/003/026; those cards remain open.
 
-## Saved measurement editing planned for 0.44.0
+## Saved measurement editing delivered in 0.44.0
 
-The implemented slice is under qualification: edit reference distance, unit and precision in the desktop preview workflow, or geometry through the guarded CLI. Replacement preserves identity, replies and register data; existing page defaults and other measurements remain independent. Export permissions, ambiguous target refusals and measured-page resize refusals address audit findings. AEC-001/002/003/026 remain **In progress**; vertex dragging, batch recalculation, multiple scales and real-plan/native qualification remain open. [Scope and audit](RELEASE_0.44.0.md).
+The published slice, within its documented limits, adds: edit reference distance, unit and precision in the desktop preview workflow, or geometry through the guarded CLI. Replacement preserves identity, replies and register data; existing page defaults and other measurements remain independent. Export permissions, ambiguous target refusals and measured-page resize refusals address audit findings. AEC-001/002/003/026 remain **In progress**; vertex dragging, batch recalculation, multiple scales and real-plan/native qualification remain open. [Scope and audit](RELEASE_0.44.0.md). [Evidence](qa/RELEASE_0.44.0.json).
 
 ## Page scale persistence and inspection delivered in 0.43.0
 

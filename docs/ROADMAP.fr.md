@@ -13,16 +13,22 @@ d’authenticité ou de conformité.
 
 | Version | Périmètre | État actuel |
 |---|---|---|
-| 0.44 | Modifier une mesure enregistrée ; corriger calibration implicite, retour au défaut, allocations de l'inspecteur, droits de copie, redimensionnement et cibles externes/périmées. | Changements implémentés en validation ; version non publiée. |
+| 0.44 | Modifier une mesure enregistrée ; corriger calibration implicite, retour au défaut, allocations de l'inspecteur, droits de copie, redimensionnement et cibles externes/périmées. | Publiée ; [Preuves](qa/RELEASE_0.44.0.json). |
 | 0.45 | Bibliothèque locale d'annotations avec enregistrement, réutilisation, placement et suppression explicites. | Prévue ; implémentation et preuves de publication à venir. |
 | 0.46 | Colonnes de métrés, totaux respectant les unités et exports bornés liés aux données réelles. | Prévus ; champs compatibles et règles de calcul à qualifier. |
 | 0.47 | Superpositions locales et revue des révisions avec alignement explicite et originaux conservés. | Prévues ; géométries et contrôles des révisions à qualifier. |
 
-L'éditeur 0.44 modifie distance de référence, unité et précision en conservant sommets et points de référence. La CLI peut remplacer explicitement la géométrie avec un enregistrement attendu ; les deux parcours conservent l'identité et refusent les cibles périmées ou incompatibles. Aperçu/annulation/historique, permissions, chiffrement, nouvelles copies et contrôles PDF indépendants doivent être vérifiés sur la source finale. [Périmètre et audit préalable 0.44](RELEASE_0.44.0.fr.md) · [Guide des mesures](MEASUREMENTS.fr.md).
+L'éditeur 0.44 modifie distance de référence, unité et précision en conservant sommets et points de référence. La CLI peut remplacer explicitement la géométrie avec un enregistrement attendu ; les deux parcours conservent l'identité et refusent les cibles périmées ou incompatibles. Qualification de la source finale et limites : [Preuves](qa/RELEASE_0.44.0.json). [Périmètre et audit préalable 0.44](RELEASE_0.44.0.fr.md) · [Guide des mesures](MEASUREMENTS.fr.md).
 
 Cette séquence apporte des incréments bornés. AEC-001/002/003/004/026 restent partiels ; sommets à la souris, recalcul par lot, vues multi-échelles, justesse dimensionnelle sur plans réels et critères généraux 1.0 ne sont pas clôturés par les versions proposées. Les preuves historiques ci-dessous restent attachées à leur version d'origine.
 
-## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+## 0.44.0 : modification des mesures enregistrées (Latest stable)
+
+[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
+
+[Guide et limites](MEASUREMENTS.fr.md) · [Notes de version](RELEASE_0.44.0.fr.md) · [Preuves](qa/RELEASE_0.44.0.json).
+
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (publiée ; Latest à cette date)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
 

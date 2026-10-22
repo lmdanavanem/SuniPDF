@@ -2,7 +2,15 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.43.0: saved page scales and measurement inspection (stable Latest)
+## 0.44.0: editing saved measurements (stable Latest)
+
+[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
+
+Mouse vertex editing, batch recalculation, vector snapping, multi-scale viewports and real-plan dimensional qualification remain open. Partial AEC cards remain In progress. Packages are unsigned; native ARM64, accessibility and hardware qualification remain open.
+
+[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.44.0.md) · [Evidence](qa/RELEASE_0.44.0.json).
+
+## 0.43.0: saved page scales and measurement inspection (published; Latest at the time)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
 

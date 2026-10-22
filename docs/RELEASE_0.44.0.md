@@ -2,11 +2,11 @@
 
 [Français](RELEASE_0.44.0.fr.md) · [Measurement guide](MEASUREMENTS.md)
 
-Status: **in preparation**. The changes below are implemented and undergoing validation. No 0.44.0 publication, package verification or passing test count is claimed here. The previous published release and its evidence remain [0.43.0](RELEASE_0.43.0.md) · [publication record](qa/RELEASE_0.43.0.json).
+Status: published as stable Latest [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0), source `7e95078127beb81b90a9eac32e6fde0fd8e9bf50`. The preceding release and its evidence remain [0.43.0](RELEASE_0.43.0.md) · [0.43.0 evidence](qa/RELEASE_0.43.0.json).
 
 ## Audit before this release
 
-| Finding | Change under validation |
+| Finding | Delivered correction |
 |---|---|
 | The manual measurement dialog supplied an arbitrary 10 m reference over 100 PDF points. | No implicit positive reference distance; a valid explicit calibration is required before preview/application. |
 | Saved measurements could be inspected or reused, but not edited. | An explicit editor changes the selected measurement's reference distance, unit and precision through Preview then Apply. |
@@ -32,7 +32,7 @@ Writes require a new `--out` copy, including with `--overwrite`. Existing destin
 
 ## Validation and remaining limits
 
-The validation scope includes real egui control interactions, unit conversion, preview/cancel, stale targets, replacement without duplication, Undo/Redo, save/reopen, encrypted copies, restricted exports and independent qpdf checks. Executed results will be recorded in [Project status](PROJECT_STATUS.md); this preparation note does not certify that those checks have passed.
+The validation scope includes real egui control interactions, unit conversion, preview/cancel, stale targets, replacement without duplication, Undo/Redo, save/reopen, encrypted copies, restricted exports and independent qpdf checks. Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850233) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718862137) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850516). 702 tests passed, 10 default ignored. 1250 EN/FR keys. 36 portable scenarios. 30 MSI baselines. 150 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 21 packaged CLI calls verify conversion, precision, recalibration, geometry, stale refusal, identity, page defaults, reopening and an angle without calibration. Final value: 40 m; other measurements and originals preserved. [Evidence](qa/RELEASE_0.44.0.json).
 
 Desktop vertex dragging, batch recalculation, vector snapping, multiple-scale viewports, volumes and real-plan dimensional qualification remain open. Editing is limited to supported measurements in documents up to 128 MiB; unknown or externally modified structures are preserved by refusal. Resizing measured pages is not silently repaired. Local tools remain free and open source. Signing, native ARM64, native accessibility, physical printing and 1.0 acceptance gates remain open.
 
