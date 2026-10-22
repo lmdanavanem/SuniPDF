@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.49.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.50.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.49.0: adding and removing saved measurement vertices (stable Latest)
+## 0.50.0: reader controls and organized tools (stable Latest)
+
+[0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
+
+Source `fb5f66b30ae30506dcd53f31ed03a5377260eb20`, PR [#29](https://github.com/lmdanavanem/SuniPDF/pull/29). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366778) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854380539) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366334). 776 tests passed, 11 default ignored. 1413 EN/FR keys. 42 portable scenarios. 36 MSI baselines. 180 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 63 retained packaged CLI calls verify insertion and removal across polyline, perimeter and area measurements, reopened vertex counts, calibration and quantity preservation, recalculated totals, minimum/maximum and fixed-kind bounds, invalid/stale refusals and the retained measurement lifecycle. They do not establish native desktop or ARM64 qualification. 3 application/PDFium scenes rendered offscreen with DX12 WARP, including the French 720 × 480 layout at 149% zoom. Reports, PNGs and decoded pixels rechecked by SHA256; native windows and physical devices remain unqualified.
+
+[Guide and limits](READER_WORKSPACE.md) · [Release notes](RELEASE_0.50.0.md) · [Evidence](qa/RELEASE_0.50.0.json).
+
+## 0.49.0: adding and removing saved measurement vertices (published; Latest at the time)
 
 [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
 

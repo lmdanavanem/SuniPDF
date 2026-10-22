@@ -4,7 +4,15 @@
 
 Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEASE_1.0_CRITERIA.fr.md).
 
-## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (Latest stable)
+## 0.50.0 : commandes de lecture et outils organisés (Latest stable)
+
+[0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Retrouvez 18 outils dans cinq familles filtrables depuis Outils, avec Mesures et la bibliothèque sous Réviser et mesurer. Basculez le volet gauche entre Outils, Pages et Signets ; utilisez quatre sections de mesure à droite. Les commandes de page et de zoom sont sous le PDF, les pourcentages comme 149% restent sur une ligne et les options de lecture restent accessibles dans les dispositions compactes. La rotation de lecture change uniquement l’affichage ; le rail droit ouvre les panneaux. Un seul panneau contextuel occupe le côté droit. Un brouillon de mesure actif bloque l’ouverture des autres panneaux ; quitter explicitement l’outil ou en changer annule ce brouillon local et conserve les échelles confirmées.
+
+Cette version réorganise les parcours existants de lecture et d’outils sans ajouter de types de mesure. AEC-002 et AEC-003 restent partiels ; accrochage vectoriel, recalcul par lots, vues multi-échelles et qualification sur plans réels restent ouverts. Les contrôles UI hors écran couvrent uniquement les dispositions et interactions consignées. Fenêtres natives, périphériques physiques, lecteurs d’écran et ARM64 natif restent non qualifiés. Les paquets restent non signés ; les critères complets 1.0 restent ouverts.
+
+[Guide et limites](READER_WORKSPACE.fr.md) · [Notes de version](RELEASE_0.50.0.fr.md) · [Preuves](qa/RELEASE_0.50.0.json).
+
+## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (publiée ; Latest à cette date)
 
 [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
 
@@ -60,6 +68,7 @@ Lot publié dans ses limites ; prochaine implémentation prévue : bibliothèque
 | 0.47 | Superpositions de révisions alignées | Lot livré dans ses limites ; critères complets encore ouverts. [0.47.0](RELEASE_0.47.0.fr.md). |
 | 0.48 | Modification des sommets des mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.48.0](RELEASE_0.48.0.fr.md). |
 | 0.49 | Ajout et suppression de sommets de mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.49.0](RELEASE_0.49.0.fr.md). |
+| 0.50 | Commandes de lecture et outils organisés | Lot livré dans ses limites ; critères complets encore ouverts. [0.50.0](RELEASE_0.50.0.fr.md). |
 
 Les étapes futures exigent implémentation et qualification avant leur publication. AEC-001/002/003/004/026 restent partiels ; interaction native, vérification dimensionnelle sur plans réels et critères généraux 1.0 restent ouverts. [Roadmap](ROADMAP.fr.md).
 
@@ -71,7 +80,7 @@ Les étapes futures exigent implémentation et qualification avant leur publicat
 
 ### Prochain lot local
 
-Le socle 0.43 alimente la séquence 0.44–0.49 ci-dessus. La modification des sommets existants est livrée dans les limites 0.48, l’ajout/suppression et la sélection explicite dans les limites 0.49 ; accrochage, recalcul global, vues multi-échelles et qualification sur plans réels restent ouverts. AEC-001/002/003/004/026 restent partiels.
+Le socle 0.43 alimente la séquence 0.44–0.50 ci-dessus. La modification des sommets existants est livrée dans les limites 0.48, l’ajout/suppression et la sélection explicite dans les limites 0.49 ; accrochage, recalcul global, vues multi-échelles et qualification sur plans réels restent ouverts. AEC-001/002/003/004/026 restent partiels.
 
 ## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 

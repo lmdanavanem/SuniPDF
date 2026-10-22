@@ -2,7 +2,7 @@
 
 [Français](RELEASE_0.50.0.fr.md) · [Reader and tools guide](READER_WORKSPACE.md)
 
-This build includes the scope below. Published assets and qualification are tracked on the [0.50.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0).
+Status: published as stable Latest [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0), source `fb5f66b30ae30506dcd53f31ed03a5377260eb20`, on 2026-10-22. [Previous release](RELEASE_0.49.0.md).
 
 ## Changes
 
@@ -16,7 +16,7 @@ This build includes the scope below. Published assets and qualification are trac
 
 ## Qualification
 
-Qualification records and distribution assets are tracked on the [0.50.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0). Results apply to the exact source identified there.
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366778) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854380539) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366334). 776 tests passed, 11 default ignored. 1413 EN/FR keys. 42 portable scenarios. 36 MSI baselines. 180 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 63 retained packaged CLI calls verify insertion and removal across polyline, perimeter and area measurements, reopened vertex counts, calibration and quantity preservation, recalculated totals, minimum/maximum and fixed-kind bounds, invalid/stale refusals and the retained measurement lifecycle. They do not establish native desktop or ARM64 qualification. 3 application/PDFium scenes rendered offscreen with DX12 WARP, including the French 720 × 480 layout at 149% zoom. Reports, PNGs and decoded pixels rechecked by SHA256; native windows and physical devices remain unqualified. [Evidence](qa/RELEASE_0.50.0.json).
 
 ## Scope
 

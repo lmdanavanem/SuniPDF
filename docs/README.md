@@ -9,7 +9,7 @@ Older `.en.md` addresses remain compatibility links.
 | Guide | Français | Contents |
 |---|---|---|
 | [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Opening, editing and saving PDFs |
-| [Reader controls and tools](READER_WORKSPACE.md) | [FR](READER_WORKSPACE.fr.md) | Bottom page/zoom controls, searchable tool families and the measurement side panel; [0.50.0 scope](RELEASE_0.50.0.md) |
+| [Reader controls and tools](READER_WORKSPACE.md) | [FR](READER_WORKSPACE.fr.md) | Bottom page/zoom controls, searchable tool families and the measurement side panel; [qualified 0.50.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) |
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
 | [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and individual measurement editing |
 | [Measurement geometry](MEASUREMENT_GEOMETRY.md) | [FR](MEASUREMENT_GEOMETRY.fr.md) | Move, add and remove saved vertices with explicit selection, Preview, Apply and Undo; [qualified 0.49.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) |
@@ -46,6 +46,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
+- [0.50 release](RELEASE_0.50.0.md) · [FR](RELEASE_0.50.0.fr.md): reader controls and organized tools within documented bounds and [publication evidence](qa/RELEASE_0.50.0.json).
 - [0.49 release](RELEASE_0.49.0.md) · [FR](RELEASE_0.49.0.fr.md): adding/removing saved vertices with explicit selection within documented bounds and [publication evidence](qa/RELEASE_0.49.0.json).
 - [0.48 release](RELEASE_0.48.0.md) · [FR](RELEASE_0.48.0.fr.md): editing saved measurement vertices within documented bounds and [publication evidence](qa/RELEASE_0.48.0.json).
 - [0.47 release](RELEASE_0.47.0.md) · [FR](RELEASE_0.47.0.fr.md): aligned revision overlays within documented bounds and [publication evidence](qa/RELEASE_0.47.0.json).
@@ -54,7 +55,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 - [0.44 release and audit](RELEASE_0.44.0.md) · [FR](RELEASE_0.44.0.fr.md): individual editing, corrective work and [verified publication evidence](qa/RELEASE_0.44.0.json).
 - [Feature matrix](FEATURE_MATRIX.md) · [FR](FEATURE_MATRIX.fr.md): implemented features and boundaries.
 - [Roadmap](ROADMAP.md) · [FR](ROADMAP.fr.md): phases and acceptance criteria.
-- Delivered: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 aligned revision overlays, 0.48 editing saved measurement vertices and 0.49 adding/removing saved vertices with explicit selection. Automatic change outlines and remaining acceptance criteria stay open; future stages still require implementation and qualification.
+- Delivered: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 aligned revision overlays, 0.48 editing saved measurement vertices, 0.49 adding/removing saved vertices with explicit selection and 0.50 reader controls and organized tools. Automatic change outlines and remaining acceptance criteria stay open; future stages still require implementation and qualification.
 - [Next tasks](NEXT_TASKS.md) · [FR](NEXT_TASKS.fr.md): current priorities.
 - [Local plan workflows backlog](AEC_BACKLOG.md) · [FR](AEC_BACKLOG.fr.md) · [CSV](AEC_BACKLOG.csv): measurements, quantities and revision workflows.
 - [1.0 release criteria](RELEASE_1.0_CRITERIA.md) · [FR](RELEASE_1.0_CRITERIA.fr.md): remaining qualification gates.
