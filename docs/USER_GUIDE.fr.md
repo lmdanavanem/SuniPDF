@@ -3,13 +3,15 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.48.0](RELEASE_0.48.0.fr.md). La version précédente [0.47.0](RELEASE_0.47.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide décrit la version 0.49.0. Fichiers publiés et qualification figurent sur la [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) ; les versions antérieures conservent leurs propres preuves. L’anglais est la langue par défaut, le français reste disponible dans les paramètres.
 
 ## Modifier les sommets des mesures enregistrées
 
-Dans **Mesures → Mesures enregistrées**, choisissez **Modifier la géométrie**. Déplacez un sommet existant sur sa page d’origine, puis choisissez **Aperçu** et **Appliquer**. **Ajuster les sommets** revient de l’aperçu au brouillon modifié. Annuler ou Échap l’abandonne ; une modification validée s’annule en une étape dans l’historique.
+Dans **Mesures → Mesures enregistrées**, choisissez **Modifier la géométrie**. Choisissez le numéro du point dans **Sommet**, puis déplacez sa poignée sur la page d’origine. Le sélecteur distingue les points confondus. Pour une polyligne, un périmètre ou une surface polygonale, choisissez **Ajouter un sommet**, puis cliquez sur un segment, y compris celui qui ferme le polygone. Une insertion réussie termine ce mode ; **Arrêter l’ajout** le désactive. Sélectionnez un sommet et choisissez **Supprimer la sélection** pour le retirer.
 
-Type, nombre de sommets, calibration, unité et précision d’origine restent fixes. Identité, réponses, champs de quantité et prix saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés à partir de la géométrie acceptée. Les modifications invalides ou périmées ne sont pas applicables. Ajout/suppression de sommets, accrochage et recalcul par lots restent ouverts.
+Choisissez **Aperçu**, puis **Appliquer à l’objet** pour accepter le brouillon. **Ajuster les sommets** revient de l’aperçu au brouillon modifié. Annuler ou Échap l’abandonne ; une modification validée s’annule en une étape dans l’historique. Enregistrez le PDF pour conserver le changement.
+
+Les polylignes gardent 2 à 128 sommets ; les périmètres et surfaces polygonales en gardent 3 à 128. Longueurs et angles conservent leurs deux ou trois points d’origine. Type, calibration, unité et précision restent fixes. Identité, réponses, champs de quantité et prix saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés à partir de la géométrie acceptée. Les modifications invalides ou périmées ne sont pas applicables. Accrochage vectoriel et recalcul par lots restent ouverts.
 
 [Parcours complet et limites](MEASUREMENT_GEOMETRY.fr.md).
 

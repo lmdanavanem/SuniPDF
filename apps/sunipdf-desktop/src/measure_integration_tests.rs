@@ -3,7 +3,7 @@ use crate::worker::{EditOp, Request};
 use egui::{vec2, Event, FullOutput, Key, Modifiers, Pos2, Rect};
 use std::sync::mpsc::Receiver;
 use sunipdf_core::annot_rich::{RichAnnotation, RichAnnotationPreview};
-use sunipdf_core::measurement::{Measurement, MeasurementKind};
+use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
 use sunipdf_core::Command;
 use sunipdf_i18n::tr;
 
@@ -63,11 +63,15 @@ impl Canvas {
     }
 
     fn control(&mut self, app: &mut SuniApp, key: &str) {
+        let label = tr(app.lang(), key).to_owned();
+        self.control_text(app, &label);
+    }
+
+    fn control_text(&mut self, app: &mut SuniApp, label: &str) {
         self.frame(app, Vec::new());
         let output = self.frame(app, Vec::new());
-        let label = tr(app.lang(), key);
         let position = text_position(&output.shapes, label)
-            .unwrap_or_else(|| panic!("visible measurement control: {key} ({label})"));
+            .unwrap_or_else(|| panic!("visible measurement control: {label}"));
         self.click(app, position, false);
         self.frame(app, Vec::new());
     }
@@ -434,4 +438,206 @@ fn geometry_drag_survives_scroll_in_continuous_spread_and_book_views() {
             .try_iter()
             .any(|r| matches!(r, Request::PreviewMeasurementEdit { page: 0, .. })));
     }
+}
+
+fn begin_saved_geometry(
+    app: &mut SuniApp,
+    requests: &Receiver<Request>,
+    record: MeasurementRecord,
+) {
+    let queued: Vec<_> = requests.try_iter().collect();
+    let (epoch, generation) = queued
+        .into_iter()
+        .find_map(|r| match r {
+            Request::MeasurementPage {
+                page: 0,
+                epoch,
+                generation,
+            } => Some((epoch, generation)),
+            _ => None,
+        })
+        .expect("measurement page query");
+    app.on_measurement_page(
+        0,
+        epoch,
+        generation,
+        Ok(crate::measurement_saved::MeasurementPageData::new(
+            Ok(None),
+            Ok(vec![record.clone()]),
+            true,
+        )),
+    );
+    assert!(app.start_measurement_geometry(0, record));
+}
+
+fn vertex_record(points: Vec<(f32, f32)>) -> MeasurementRecord {
+    MeasurementRecord {
+        index: 3,
+        annotation_id: Some("vertex-edit".into()),
+        measurement: Measurement {
+            kind: MeasurementKind::Polyline,
+            points,
+            calibration: [(30.0, 40.0), (130.0, 40.0)],
+            known_distance: 17.0,
+            unit: MeasurementUnit::Feet,
+            precision: 4,
+        },
+    }
+}
+
+#[test]
+fn canvas_vertex_buttons_insert_remove_adjust_preview_and_apply_one_guarded_edit() {
+    for language in ["en-US", "fr-FR"] {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.settings.language = language.into();
+        let mut canvas = Canvas::new(&mut app);
+        let original = vertex_record(vec![(80.0, 450.0), (280.0, 450.0), (280.0, 650.0)]);
+        begin_saved_geometry(&mut app, &requests, original.clone());
+        canvas.control(&mut app, "measure.geometry.add_vertex");
+        canvas.point(&mut app, (180.0, 450.0), false);
+        assert_eq!(
+            app.annotate
+                .measure
+                .geometry
+                .as_ref()
+                .unwrap()
+                .replacement
+                .points
+                .len(),
+            4
+        );
+        // The successful insertion is one-shot; a rapid second click cannot add a duplicate.
+        canvas.point(&mut app, (180.0, 450.0), true);
+        assert_eq!(
+            app.annotate
+                .measure
+                .geometry
+                .as_ref()
+                .unwrap()
+                .replacement
+                .points
+                .len(),
+            4
+        );
+        canvas.control(&mut app, "measure.geometry.remove_vertex");
+        assert_eq!(
+            app.annotate.measure.geometry.as_ref().unwrap().replacement,
+            original.measurement
+        );
+        canvas.control(&mut app, "measure.geometry.add_vertex");
+        canvas.point(&mut app, (180.0, 450.0), false);
+        canvas.control(&mut app, "measure.geometry.preview");
+        let (replacement, epoch, generation) = requests
+            .try_iter()
+            .find_map(|r| match r {
+                Request::PreviewMeasurementEdit {
+                    record,
+                    measurement,
+                    epoch,
+                    generation,
+                    ..
+                } => {
+                    assert_eq!(record, original);
+                    Some((measurement, epoch, generation))
+                }
+                _ => None,
+            })
+            .expect("geometry preview");
+        assert_eq!(replacement.points.len(), 4);
+        assert_eq!(replacement.calibration, original.measurement.calibration);
+        assert_eq!(
+            replacement.known_distance,
+            original.measurement.known_distance
+        );
+        assert_eq!(replacement.unit, original.measurement.unit);
+        assert_eq!(replacement.precision, original.measurement.precision);
+        app.on_rich_preview(
+            &canvas.ctx,
+            epoch,
+            generation,
+            Err(sunipdf_core::EngineError::Other("test refusal".into())),
+        );
+        canvas.control(&mut app, "measure.geometry.adjust");
+        assert_eq!(
+            app.annotate.measure.geometry.as_ref().unwrap().replacement,
+            replacement
+        );
+        canvas.control(&mut app, "measure.geometry.select_vertex");
+        canvas.control_text(&mut app, "2");
+        canvas.control(&mut app, "measure.geometry.remove_vertex");
+        assert_eq!(
+            app.annotate.measure.geometry.as_ref().unwrap().replacement,
+            original.measurement
+        );
+        canvas.control(&mut app, "measure.geometry.add_vertex");
+        canvas.point(&mut app, (180.0, 450.0), false);
+        canvas.key(&mut app, Key::Enter);
+        let (epoch, generation) = requests
+            .try_iter()
+            .find_map(|r| match r {
+                Request::PreviewMeasurementEdit {
+                    epoch, generation, ..
+                } => Some((epoch, generation)),
+                _ => None,
+            })
+            .expect("Enter previews valid changed geometry");
+        app.on_rich_preview(&canvas.ctx, epoch, generation, Ok(preview_image(0)));
+        canvas.control(&mut app, "bar.apply");
+        let edits: Vec<_> = requests
+            .try_iter()
+            .filter_map(|r| match r {
+                Request::Edit(edit) => Some(edit),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(edits.len(), 1);
+        assert!(
+            matches!(edits[0], EditOp::CommitRichAnnotationPreview { epoch: e, generation: g } if e == epoch && g == generation)
+        );
+    }
+}
+
+#[test]
+fn canvas_numbered_selector_drags_the_chosen_coincident_vertex_and_escape_discards_changes() {
+    let (mut app, requests, _) = crate::app::tests::test_app();
+    let mut canvas = Canvas::new(&mut app);
+    let original = vertex_record(vec![
+        (80.0, 450.0),
+        (280.0, 450.0),
+        (80.0, 450.0),
+        (80.0, 650.0),
+    ]);
+    begin_saved_geometry(&mut app, &requests, original.clone());
+    canvas.control(&mut app, "measure.geometry.select_vertex");
+    canvas.control_text(&mut app, "3");
+    let (_, rect, height) = app.edit.page_view.unwrap();
+    let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+    let start = rect.min + vec2(80.0 * k, (height - 450.0) * k);
+    let final_point = rect.min + vec2(120.0 * k, (height - 500.0) * k);
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+    canvas.frame(
+        &mut app,
+        vec![Event::PointerMoved(start), button(start, true)],
+    );
+    canvas.frame(
+        &mut app,
+        vec![Event::PointerMoved(start + vec2(12.0, -12.0))],
+    );
+    canvas.frame(
+        &mut app,
+        vec![Event::PointerMoved(final_point), button(final_point, false)],
+    );
+    let replacement = &app.annotate.measure.geometry.as_ref().unwrap().replacement;
+    assert_eq!(replacement.points[0], original.measurement.points[0]);
+    assert!((replacement.points[2].0 - 120.0).abs() < 0.01);
+    assert!((replacement.points[2].1 - 500.0).abs() < 0.01);
+    canvas.key(&mut app, Key::Escape);
+    assert!(!app.annotate.measure.is_active_draft());
+    assert!(app.annotate.measure.saved.contains(0, &original));
+    assert_no_edit_or_preview(&requests);
 }

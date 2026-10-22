@@ -378,6 +378,397 @@ fn invalid_polygon_geometry_refuses_preview_and_apply_without_losing_quantity_me
 }
 
 #[test]
+fn inserting_and_removing_vertices_preserves_review_data_and_reprices_reopened_copies() {
+    let engine = engine();
+    let directory = tempfile::tempdir().unwrap();
+    for (case, kind) in [
+        MeasurementKind::Polyline,
+        MeasurementKind::Area,
+        MeasurementKind::Perimeter,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let closed = kind != MeasurementKind::Polyline;
+        let mut points = vec![(40.0, 80.0), (140.0, 80.0)];
+        if closed {
+            points.extend([(140.0, 180.0), (40.0, 180.0)]);
+        }
+        let initial = Measurement {
+            kind,
+            points,
+            ..measurement()
+        };
+        let mut inserted = initial.clone();
+        inserted.points.insert(1, (90.0, 42.5));
+        let (initial_value, inserted_value, initial_cost, inserted_cost, price_unit) = match kind {
+            MeasurementKind::Polyline => (10.0, 12.5, "25.00", "31.25", QuantityUnit::Metres),
+            MeasurementKind::Area => (
+                100.0,
+                118.75,
+                "250.00",
+                "296.88",
+                QuantityUnit::SquareMetres,
+            ),
+            _ => (40.0, 42.5, "100.00", "106.25", QuantityUnit::Metres),
+        };
+        for (orientation, rotation) in [Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270]
+            .into_iter()
+            .enumerate()
+        {
+            let source_path = directory
+                .path()
+                .join(format!("vertices-{case}-{orientation}.pdf"));
+            let mut doc = engine
+                .open_bytes(SOURCE.to_vec(), None, &source_path)
+                .unwrap();
+            doc.set_page_rotation(0, rotation).unwrap();
+            doc.crop_page(
+                0,
+                PageMargins {
+                    left: 10.0,
+                    right: 13.0,
+                    top: 12.0,
+                    bottom: 14.0,
+                },
+            )
+            .unwrap();
+            let page_default = PageCalibration {
+                points: initial.calibration,
+                known_distance: 7.0,
+                unit: MeasurementUnit::Metres,
+            };
+            doc.set_page_calibration(0, Some(&page_default)).unwrap();
+            let index = doc
+                .add_measurement_annotation(0, &initial, Some("Plan reviewer"))
+                .unwrap();
+            doc.add_measurement_annotation(1, &measurement(), Some("Independent page"))
+                .unwrap();
+            doc.add_reply(0, index, "Retain this review thread", Some("Inspector"))
+                .unwrap();
+            let register = doc.annotation_register().unwrap();
+            let row = register
+                .rows
+                .iter()
+                .find(|r| r.page == 1 && r.index == index)
+                .unwrap();
+            let register_fields = RegisterFields {
+                discipline: Some("Architecture".into()),
+                business_status: Some("Checked".into()),
+                custom: BTreeMap::from([("Floor".into(), "Level 1".into())]),
+            };
+            doc.set_annotation_register_fields(&register.target(row), &register_fields, None)
+                .unwrap();
+            let table = doc.quantity_table().unwrap();
+            let row = table
+                .rows()
+                .iter()
+                .find(|r| r.register.page == 1 && r.register.index == index)
+                .unwrap();
+            let fields = quantity_fields(price_unit);
+            doc.set_quantity_fields(&table.target(row).unwrap(), &fields)
+                .unwrap();
+            doc.save_as(&source_path).unwrap();
+            let source_bytes = std::fs::read(&source_path).unwrap();
+            let original = doc.measurement_records(0).unwrap().remove(0);
+            let initial_snapshot = doc.snapshot().unwrap();
+            assert_eq!(original.measurement.value().unwrap(), initial_value);
+
+            for (step, replacement, value, cost) in [
+                ("inserted", &inserted, inserted_value, inserted_cost),
+                ("removed", &initial, initial_value, initial_cost),
+            ] {
+                let current = doc.measurement_records(0).unwrap().remove(0);
+                let before = doc.snapshot().unwrap();
+                let before_pdf = parse(&before, None);
+                let previous_annotations = annotations(&before_pdf, 1);
+                let previous_table = doc.quantity_table().unwrap();
+                let target = doc.measurement_target(0, &current).unwrap();
+                let preview = doc
+                    .preview_rich_annotation(
+                        0,
+                        &RichAnnotation::UpdateMeasurement {
+                            target,
+                            measurement: replacement.clone(),
+                        },
+                        None,
+                    )
+                    .unwrap();
+                assert_unchanged(&before, &doc.snapshot().unwrap(), None);
+                assert_eq!(doc.quantity_table().unwrap().rows(), previous_table.rows());
+                assert_eq!(
+                    doc.commit_rich_annotation_preview(preview.prepared.unwrap())
+                        .unwrap(),
+                    index
+                );
+                let after = doc.snapshot().unwrap();
+                let after_pdf = parse(&after, None);
+                let changed_annotations = annotations(&after_pdf, 1);
+                assert_eq!(previous_annotations.len(), changed_annotations.len());
+                assert_eq!(previous_annotations[index].0, changed_annotations[index].0);
+                for key in [
+                    b"NM".as_slice(),
+                    b"T",
+                    b"CreationDate",
+                    b"SuniPDFRegister",
+                    b"SuniPDFQuantity",
+                    b"P",
+                ] {
+                    assert_eq!(
+                        previous_annotations[index].1.get(key).unwrap(),
+                        changed_annotations[index].1.get(key).unwrap()
+                    );
+                }
+                for (i, annotation) in previous_annotations
+                    .iter()
+                    .enumerate()
+                    .filter(|(i, _)| *i != index)
+                {
+                    assert_eq!(
+                        annotation, &changed_annotations[i],
+                        "review replies survive count changes"
+                    );
+                }
+                assert_eq!(annotations(&before_pdf, 2), annotations(&after_pdf, 2));
+                assert_eq!(doc.page_calibration(0).unwrap(), Some(page_default.clone()));
+                let record = doc.measurement_records(0).unwrap().remove(0);
+                assert_eq!(record.annotation_id, original.annotation_id);
+                assert_eq!(&record.measurement, replacement);
+                assert_eq!(record.measurement.value().unwrap(), value);
+                let after_table = doc.quantity_table().unwrap();
+                let row = after_table
+                    .rows()
+                    .iter()
+                    .find(|r| r.register.page == 1 && r.register.index == index)
+                    .unwrap();
+                assert_eq!(row.fields, fields);
+                assert_eq!(row.register.fields, register_fields);
+                assert_eq!(row.quantity.as_ref().unwrap().value, value);
+                assert_eq!(row.quantity.as_ref().unwrap().unit, price_unit);
+                assert_eq!(row.line_total.as_ref().unwrap().amount, cost);
+                let output = directory
+                    .path()
+                    .join(format!("{step}-{case}-{orientation}.pdf"));
+                doc.save_as(&output).unwrap();
+                let reopened = engine.open(&output, None).unwrap();
+                assert_eq!(reopened.measurement_records(0).unwrap(), vec![record]);
+                assert_eq!(
+                    reopened.quantity_table().unwrap().rows(),
+                    after_table.rows()
+                );
+                assert_eq!(std::fs::read(&source_path).unwrap(), source_bytes);
+                doc.restore(before).unwrap();
+                assert_eq!(
+                    doc.measurement_records(0).unwrap(),
+                    vec![current],
+                    "Undo restores the previous count"
+                );
+                doc.restore(after).unwrap();
+                assert_eq!(
+                    doc.measurement_records(0).unwrap()[0].measurement,
+                    *replacement,
+                    "Redo restores the accepted count"
+                );
+            }
+            doc.restore(initial_snapshot).unwrap();
+            assert_eq!(doc.measurement_records(0).unwrap(), vec![original]);
+        }
+    }
+}
+
+#[test]
+fn invalid_vertex_counts_and_deletions_leave_measurements_and_quantities_unchanged() {
+    let engine = engine();
+    for kind in [
+        MeasurementKind::Polyline,
+        MeasurementKind::Area,
+        MeasurementKind::Perimeter,
+        MeasurementKind::Length,
+        MeasurementKind::Angle,
+    ] {
+        let initial = Measurement {
+            kind,
+            points: match kind {
+                MeasurementKind::Area | MeasurementKind::Perimeter => {
+                    vec![(40.0, 80.0), (90.0, 80.0), (140.0, 80.0), (140.0, 180.0)]
+                }
+                MeasurementKind::Angle => vec![(40.0, 80.0), (140.0, 80.0), (140.0, 180.0)],
+                _ => vec![(40.0, 80.0), (140.0, 80.0)],
+            },
+            ..measurement()
+        };
+        let mut doc = engine
+            .open_bytes(SOURCE.to_vec(), None, Path::new("vertex-refusals.pdf"))
+            .unwrap();
+        let index = doc.add_measurement_annotation(0, &initial, None).unwrap();
+        let table = doc.quantity_table().unwrap();
+        let row = table
+            .rows()
+            .iter()
+            .find(|r| r.register.index == index)
+            .unwrap();
+        let mut fields = quantity_fields(if kind == MeasurementKind::Area {
+            QuantityUnit::SquareMetres
+        } else {
+            QuantityUnit::Metres
+        });
+        if kind == MeasurementKind::Angle {
+            fields.unit_price = None;
+        }
+        doc.set_quantity_fields(&table.target(row).unwrap(), &fields)
+            .unwrap();
+        let record = doc.measurement_records(0).unwrap().remove(0);
+        let target = doc.measurement_target(0, &record).unwrap();
+        let before = doc.snapshot().unwrap();
+        let before_table = doc.quantity_table().unwrap();
+        let minimum = if matches!(
+            kind,
+            MeasurementKind::Area | MeasurementKind::Perimeter | MeasurementKind::Angle
+        ) {
+            3
+        } else {
+            2
+        };
+        let mut invalid = vec![
+            initial.points[..minimum - 1].to_vec(),
+            (0..129).map(|i| (40.0 + i as f32, 80.0)).collect(),
+            vec![(40.0, 80.0); initial.points.len()],
+        ];
+        if matches!(kind, MeasurementKind::Area | MeasurementKind::Perimeter) {
+            let mut deletion = initial.points.clone();
+            deletion.remove(3);
+            invalid.push(deletion); // Three vertices remain, but removing the corner collapses the polygon.
+        }
+        if matches!(kind, MeasurementKind::Length | MeasurementKind::Angle) {
+            let mut excessive = initial.points.clone();
+            excessive.push((40.0, 180.0));
+            invalid.push(excessive);
+        }
+        for points in invalid {
+            let replacement = Measurement {
+                points,
+                ..initial.clone()
+            };
+            assert!(doc
+                .update_measurement_annotation(&target, &replacement)
+                .is_err());
+            assert_unchanged(&before, &doc.snapshot().unwrap(), None);
+            assert!(doc
+                .preview_rich_annotation(
+                    0,
+                    &RichAnnotation::UpdateMeasurement {
+                        target: target.clone(),
+                        measurement: replacement
+                    },
+                    None
+                )
+                .is_err());
+            assert_unchanged(&before, &doc.snapshot().unwrap(), None);
+            assert_eq!(doc.measurement_records(0).unwrap(), vec![record.clone()]);
+            assert_eq!(doc.quantity_table().unwrap().rows(), before_table.rows());
+        }
+    }
+}
+
+#[test]
+fn variable_vertex_counts_roundtrip_in_aes_copies_without_bypassing_annotation_permissions() {
+    let engine = engine();
+    let initial = Measurement {
+        kind: MeasurementKind::Polyline,
+        ..measurement()
+    };
+    let mut source = engine
+        .open_bytes(SOURCE.to_vec(), None, Path::new("encrypted-vertices.pdf"))
+        .unwrap();
+    source
+        .add_measurement_annotation(0, &initial, None)
+        .unwrap();
+    let table = source.quantity_table().unwrap();
+    let fields = quantity_fields(QuantityUnit::Metres);
+    source
+        .set_quantity_fields(&table.target(&table.rows()[0]).unwrap(), &fields)
+        .unwrap();
+    let source_bytes = source.snapshot().unwrap();
+    for aes256 in [false, true] {
+        for allow_annotate in [false, true] {
+            let user = credential();
+            let owner = credential();
+            let protected = security::protect(
+                &source_bytes,
+                None,
+                &Protection {
+                    user_password: user.clone(),
+                    owner_password: owner.clone(),
+                    aes256,
+                    allow_copy: false,
+                    allow_modify: false,
+                    allow_annotate,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let mut doc = engine
+                .open_bytes(protected, Some(&user), Path::new("protected-vertices.pdf"))
+                .unwrap();
+            let original = doc.measurement_records(0).unwrap().remove(0);
+            let before = doc.snapshot().unwrap();
+            if !allow_annotate {
+                assert!(matches!(
+                    doc.measurement_target(0, &original),
+                    Err(EngineError::SecurityRestricted)
+                ));
+                assert_unchanged(&before, &doc.snapshot().unwrap(), Some(&user));
+                continue;
+            }
+            let mut inserted = initial.clone();
+            inserted.points.insert(1, (90.0, 42.5));
+            for replacement in [&inserted, &initial] {
+                let record = doc.measurement_records(0).unwrap().remove(0);
+                let target = doc.measurement_target(0, &record).unwrap();
+                let before = doc.snapshot().unwrap();
+                let preview = doc
+                    .preview_rich_annotation(
+                        0,
+                        &RichAnnotation::UpdateMeasurement {
+                            target,
+                            measurement: replacement.clone(),
+                        },
+                        None,
+                    )
+                    .unwrap();
+                assert_unchanged(&before, &doc.snapshot().unwrap(), Some(&user));
+                doc.commit_rich_annotation_preview(preview.prepared.unwrap())
+                    .unwrap();
+                let after = doc.snapshot().unwrap();
+                assert!(engine
+                    .open_bytes(after.clone(), None, Path::new("copy.pdf"))
+                    .is_err());
+                let before_annots = annotations(&parse(&before, Some(&user)), 1);
+                let after_annots = annotations(&parse(&after, Some(&user)), 1);
+                assert_eq!(
+                    before_annots[0].1.get(b"SuniPDFQuantity").unwrap(),
+                    after_annots[0].1.get(b"SuniPDFQuantity").unwrap()
+                );
+                for password in [&user, &owner] {
+                    let reopened = engine
+                        .open_bytes(after.clone(), Some(password), Path::new("copy.pdf"))
+                        .unwrap();
+                    assert!(reopened.properties().encrypted);
+                    let saved = reopened.measurement_records(0).unwrap().remove(0);
+                    assert_eq!(saved.annotation_id, original.annotation_id);
+                    assert_eq!(&saved.measurement, replacement);
+                }
+                assert!(
+                    !doc.properties().can_copy
+                        && !doc.properties().can_modify
+                        && doc.properties().can_annotate
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn editing_preserves_identity_threads_register_defaults_and_preview_undo_across_page_rotations() {
     let engine = engine();
     for rotation in [Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270] {

@@ -1382,9 +1382,18 @@
   "quantity.source": "Annotation",
   "quantity.blank_custom": "Retirez une colonne pour laisser sa valeur absente. Un texte vide reste une valeur renseignée.",
   "measure.geometry.open": "Modifier la géométrie",
-  "measure.geometry.hint": "Faites glisser un sommet existant, puis prévisualisez la modification. Échap annule sans modifier le PDF.",
+  "measure.geometry.hint": "Sélectionnez ou déplacez un sommet, puis prévisualisez la modification. Utilisez le sélecteur numéroté pour les sommets superposés. Échap annule sans modifier le PDF.",
   "measure.geometry.details": "{points} sommets · {unit} · précision {precision}",
   "measure.geometry.preview": "Aperçu",
   "measure.geometry.preserved": "L’étalonnage, la distance de référence, l’unité, la précision et le type de mesure d’origine sont conservés.",
-  "measure.geometry.adjust": "Ajuster les sommets"
+  "measure.geometry.adjust": "Ajuster les sommets",
+  "measure.geometry.vertex": "Sommet",
+  "measure.geometry.select_vertex": "Sélectionner un sommet",
+  "measure.geometry.add_vertex": "Ajouter un sommet",
+  "measure.geometry.stop_adding": "Arrêter l’ajout",
+  "measure.geometry.remove_vertex": "Supprimer la sélection",
+  "measure.geometry.add_hint": "Cliquez à l’intérieur d’un segment pour ajouter un sommet, puis déplacez sa poignée si nécessaire. Zoomez si des segments ou des sommets se superposent.",
+  "measure.geometry.insert_refused": "Choisissez un segment distinct, loin de ses extrémités et des autres segments. Aucun sommet n’a été ajouté.",
+  "measure.geometry.remove_refused": "Supprimer ce sommet rendrait la géométrie invalide. Déplacez-le ou choisissez un autre sommet. Rien n’a été supprimé.",
+  "measure.geometry.fixed_count": "Une longueur conserve deux sommets et un angle en conserve trois. Ces sommets peuvent être déplacés, mais pas ajoutés ni supprimés."
 }
