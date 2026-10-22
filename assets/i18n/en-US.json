@@ -1382,9 +1382,18 @@
   "quantity.source": "Annotation",
   "quantity.blank_custom": "Remove a custom column to leave it absent. An empty text value remains supplied.",
   "measure.geometry.open": "Edit geometry",
-  "measure.geometry.hint": "Drag an existing vertex, then preview the change. Escape cancels without changing the PDF.",
+  "measure.geometry.hint": "Select or drag a vertex, then preview the change. Use the numbered selector for overlapping vertices. Escape cancels without changing the PDF.",
   "measure.geometry.details": "{points} vertices · {unit} · precision {precision}",
   "measure.geometry.preview": "Preview",
   "measure.geometry.preserved": "The original calibration, reference distance, unit, precision and measurement type are preserved.",
-  "measure.geometry.adjust": "Adjust vertices"
+  "measure.geometry.adjust": "Adjust vertices",
+  "measure.geometry.vertex": "Vertex",
+  "measure.geometry.select_vertex": "Select a vertex",
+  "measure.geometry.add_vertex": "Add vertex",
+  "measure.geometry.stop_adding": "Stop adding",
+  "measure.geometry.remove_vertex": "Remove selected",
+  "measure.geometry.add_hint": "Click the interior of a segment to add one vertex, then drag the new handle if needed. Zoom in when edges or vertices overlap.",
+  "measure.geometry.insert_refused": "Choose a clear segment, away from its endpoints and other edges. No vertex was added.",
+  "measure.geometry.remove_refused": "Removing this vertex would create invalid geometry. Move it or choose another vertex. Nothing was removed.",
+  "measure.geometry.fixed_count": "Length keeps two vertices; angle keeps three. Their vertices can be moved but not added or removed."
 }

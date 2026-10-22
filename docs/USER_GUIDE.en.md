@@ -3,13 +3,15 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.48.0](RELEASE_0.48.0.md). The preceding [0.47.0](RELEASE_0.47.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+This guide describes the 0.49.0 build. Published files and qualification are tracked on the [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0); earlier releases retain their own evidence. English is the default language, with French available in Settings.
 
 ## Edit saved measurement vertices
 
-In **Measurements → Saved measurements**, choose **Edit geometry**. Drag an existing vertex on its original page, then choose **Preview** and **Apply**. **Adjust vertices** returns from the preview to the edited draft. Cancel or Escape discards it; an applied change has one Undo step.
+In **Measurements → Saved measurements**, choose **Edit geometry**. Choose a point by its number in **Vertex**, then drag its handle on the original page. The selector distinguishes coincident points. For a polyline, perimeter or polygon area, choose **Add vertex** and click a segment, including a polygon’s closing segment. One successful insertion ends that mode; **Stop adding** cancels the insertion mode. Select a vertex and choose **Remove selected** to remove it.
 
-The original measurement type, vertex count, calibration, unit and precision stay fixed. Identity, replies and entered quantity fields and prices are retained; measured values and compatible price totals recalculate from the accepted geometry. Invalid or stale edits cannot be applied. Adding/removing vertices, snapping and batch recalculation remain open.
+Choose **Preview** and **Apply to object** to accept the draft. **Adjust vertices** returns from the preview to the edited draft. Cancel or Escape discards it; an applied change has one Undo step. Save the PDF to retain the change.
+
+Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Length and angle measurements keep their original two or three points. The measurement type, calibration, unit and precision stay fixed. Identity, replies and entered quantity fields and prices are retained; measured values and compatible price totals recalculate from the accepted geometry. Invalid or stale edits cannot be applied. Vector snapping and batch recalculation remain open.
 
 [Full workflow and limits](MEASUREMENT_GEOMETRY.md).
 

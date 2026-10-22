@@ -9,6 +9,16 @@ use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord}
 use sunipdf_i18n::{tr, tr_args};
 
 const HANDLE_HIT_RADIUS: f32 = 10.0;
+const MAX_VERTICES: usize = 128;
+
+pub(crate) fn geometry_count_valid(kind: MeasurementKind, count: usize) -> bool {
+    match kind {
+        MeasurementKind::Length => count == 2,
+        MeasurementKind::Angle => count == 3,
+        MeasurementKind::Polyline => (2..=MAX_VERTICES).contains(&count),
+        MeasurementKind::Perimeter | MeasurementKind::Area => (3..=MAX_VERTICES).contains(&count),
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct GeometryDraft {
@@ -17,6 +27,9 @@ pub(crate) struct GeometryDraft {
     pub original: MeasurementRecord,
     pub replacement: Measurement,
     dragging: Option<usize>,
+    selected: Option<usize>,
+    adding: bool,
+    error: Option<&'static str>,
 }
 
 impl GeometryDraft {
@@ -35,9 +48,128 @@ impl GeometryDraft {
         hits.sort_by(|a, b| a.1.total_cmp(&b.1));
         let &(index, distance) = hits.first()?;
         if hits.get(1).is_some_and(|(_, next)| next - distance <= 0.5) {
-            return None;
+            return self.selected.filter(|selected| {
+                hits.iter()
+                    .any(|(index, d)| index == selected && d - distance <= 0.5)
+            });
         }
         Some(index)
+    }
+
+    fn vertex_changes_allowed(&self) -> bool {
+        matches!(
+            self.replacement.kind,
+            MeasurementKind::Polyline | MeasurementKind::Perimeter | MeasurementKind::Area
+        )
+    }
+
+    fn can_add(&self) -> bool {
+        self.vertex_changes_allowed() && self.replacement.points.len() < MAX_VERTICES
+    }
+
+    fn can_remove(&self) -> bool {
+        self.vertex_changes_allowed()
+            && self
+                .selected
+                .is_some_and(|index| index < self.replacement.points.len())
+            && geometry_count_valid(
+                self.replacement.kind,
+                self.replacement.points.len().saturating_sub(1),
+            )
+    }
+
+    fn remove_selected(&mut self) -> bool {
+        if !self.can_remove() || self.dragging.is_some() {
+            return false;
+        }
+        let index = self.selected.unwrap();
+        let mut candidate = self.replacement.clone();
+        candidate.points.remove(index);
+        if candidate.value().is_err() {
+            self.error = Some("measure.geometry.remove_refused");
+            return false;
+        }
+        self.replacement = candidate;
+        self.selected = Some(index.min(self.replacement.points.len() - 1));
+        self.adding = false;
+        self.error = None;
+        true
+    }
+
+    fn insert_on_segment(&mut self, point: (f32, f32), scale: f32) -> bool {
+        if !self.can_add()
+            || self.dragging.is_some()
+            || !scale.is_finite()
+            || scale <= 0.0
+            || !point.0.is_finite()
+            || !point.1.is_finite()
+        {
+            return false;
+        }
+        let points = &self.replacement.points;
+        if points
+            .iter()
+            .any(|&(x, y)| (point.0 - x).hypot(point.1 - y) * scale <= HANDLE_HIT_RADIUS)
+        {
+            return false;
+        }
+        let closed = matches!(
+            self.replacement.kind,
+            MeasurementKind::Area | MeasurementKind::Perimeter
+        );
+        let segments = points.len() - usize::from(!closed);
+        let mut hits = Vec::new();
+        for index in 0..segments {
+            let a = points[index];
+            let b = points[(index + 1) % points.len()];
+            let dx = f64::from(b.0) - f64::from(a.0);
+            let dy = f64::from(b.1) - f64::from(a.1);
+            let length_squared = dx * dx + dy * dy;
+            if length_squared < 0.0001 {
+                continue;
+            }
+            let t = ((f64::from(point.0) - f64::from(a.0)) * dx
+                + (f64::from(point.1) - f64::from(a.1)) * dy)
+                / length_squared;
+            if !(0.0..1.0).contains(&t) || t == 0.0 {
+                continue;
+            }
+            let projected = (
+                (f64::from(a.0) + t * dx) as f32,
+                (f64::from(a.1) + t * dy) as f32,
+            );
+            let distance = (point.0 - projected.0).hypot(point.1 - projected.1) * scale;
+            if distance > HANDLE_HIT_RADIUS {
+                continue;
+            }
+            let interior = (projected.0 - a.0)
+                .hypot(projected.1 - a.1)
+                .min((projected.0 - b.0).hypot(projected.1 - b.1));
+            if interior < 0.01 || interior * scale <= HANDLE_HIT_RADIUS {
+                continue;
+            }
+            hits.push((index, projected, distance));
+        }
+        hits.sort_by(|a, b| a.2.total_cmp(&b.2));
+        let Some(&(index, projected, distance)) = hits.first() else {
+            return false;
+        };
+        if hits
+            .get(1)
+            .is_some_and(|(_, _, next)| next - distance <= 0.5)
+        {
+            return false;
+        }
+        let mut candidate = self.replacement.clone();
+        candidate.points.insert(index + 1, projected);
+        if candidate.value().is_err() {
+            return false;
+        }
+        self.replacement = candidate;
+        self.selected = Some(index + 1);
+        self.adding = false;
+        self.error = None;
+        true
     }
 
     fn changed(&self) -> bool {
@@ -87,6 +219,9 @@ impl SuniApp {
             replacement: record.measurement.clone(),
             original: record,
             dragging: None,
+            selected: None,
+            adding: false,
+            error: None,
         });
         true
     }
@@ -110,7 +245,13 @@ impl SuniApp {
                     .as_mut()
                     .filter(|d| d.page == page)
                 {
-                    draft.dragging = draft.hit_vertex(point, scale);
+                    if !draft.adding {
+                        draft.dragging = draft.hit_vertex(point, scale);
+                        if draft.dragging.is_some() {
+                            draft.selected = draft.dragging;
+                            draft.error = None;
+                        }
+                    }
                 }
             }
             DragEvent::Move(point) => self.measurement_geometry_move(page, point),
@@ -125,7 +266,26 @@ impl SuniApp {
                     draft.dragging = None;
                 }
             }
-            DragEvent::Click(_) | DragEvent::DoubleClick(_) => {}
+            DragEvent::Click(point) => {
+                let scale = self.effective_zoom * SCREEN_PER_PDF_POINT;
+                if let Some(draft) = self
+                    .annotate
+                    .measure
+                    .geometry
+                    .as_mut()
+                    .filter(|d| d.page == page)
+                {
+                    if draft.adding {
+                        if !draft.insert_on_segment(point, scale) {
+                            draft.error = Some("measure.geometry.insert_refused");
+                        }
+                    } else {
+                        draft.selected = draft.hit_vertex(point, scale);
+                        draft.error = None;
+                    }
+                }
+            }
+            DragEvent::DoubleClick(_) => {}
         }
     }
 
@@ -166,7 +326,11 @@ impl SuniApp {
         let Some(draft) = self.annotate.measure.geometry.as_ref() else {
             return false;
         };
-        if !draft.changed() || draft.dragging.is_some() || draft.replacement.value().is_err() {
+        if !draft.changed()
+            || draft.dragging.is_some()
+            || draft.adding
+            || draft.replacement.value().is_err()
+        {
             return false;
         }
         let draft = self.annotate.measure.geometry.take().unwrap();
@@ -185,9 +349,10 @@ impl SuniApp {
     pub(crate) fn measurement_geometry_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         let ready = self.measurement_ready();
-        let draft = self.annotate.measure.geometry.as_ref().unwrap();
+        let draft = self.annotate.measure.geometry.as_mut().unwrap();
         let valid = draft.replacement.value().is_ok();
-        let can_finish = ready && draft.changed() && valid && draft.dragging.is_none();
+        let can_finish =
+            ready && draft.changed() && valid && draft.dragging.is_none() && !draft.adding;
         ui.strong(tr(lang, "measure.geometry.open"));
         ui.label(tr(lang, "measure.geometry.hint"));
         ui.small(tr_args(
@@ -199,6 +364,69 @@ impl SuniApp {
                 ("precision", &draft.replacement.precision.to_string()),
             ],
         ));
+        ui.add_enabled_ui(ready && draft.dragging.is_none(), |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(tr(lang, "measure.geometry.vertex"));
+                egui::ComboBox::from_id_salt("measurement-geometry-vertex")
+                    .selected_text(draft.selected.map_or_else(
+                        || tr(lang, "measure.geometry.select_vertex").to_owned(),
+                        |index| (index + 1).to_string(),
+                    ))
+                    .show_ui(ui, |ui| {
+                        for index in 0..draft.replacement.points.len() {
+                            if ui
+                                .selectable_value(
+                                    &mut draft.selected,
+                                    Some(index),
+                                    (index + 1).to_string(),
+                                )
+                                .changed()
+                            {
+                                draft.adding = false;
+                                draft.error = None;
+                            }
+                        }
+                    });
+                if ui
+                    .add_enabled(
+                        draft.can_add() || draft.adding,
+                        egui::Button::new(tr(
+                            lang,
+                            if draft.adding {
+                                "measure.geometry.stop_adding"
+                            } else {
+                                "measure.geometry.add_vertex"
+                            },
+                        )),
+                    )
+                    .clicked()
+                {
+                    draft.adding = !draft.adding;
+                    draft.error = None;
+                }
+                if ui
+                    .add_enabled(
+                        draft.can_remove(),
+                        egui::Button::new(tr(lang, "measure.geometry.remove_vertex")),
+                    )
+                    .clicked()
+                {
+                    draft.remove_selected();
+                }
+            });
+        });
+        if draft.adding {
+            ui.label(tr(lang, "measure.geometry.add_hint"));
+        }
+        if !draft.vertex_changes_allowed() {
+            ui.small(tr(lang, "measure.geometry.fixed_count"));
+        }
+        if let Some(error) = draft.error {
+            ui.colored_label(
+                crate::theme::palette(self.settings.dark_theme).error,
+                tr(lang, error),
+            );
+        }
         if !valid {
             ui.colored_label(
                 crate::theme::palette(self.settings.dark_theme).error,
@@ -264,14 +492,24 @@ impl SuniApp {
                 Stroke::new(2.0, color),
             );
         }
-        for (index, point) in points.iter().enumerate() {
-            let selected = draft.dragging == Some(index);
-            painter.circle_filled(
-                screen(*point),
-                6.0,
-                if selected { color } else { Color32::WHITE },
-            );
+        for point in points {
+            painter.circle_filled(screen(*point), 6.0, Color32::WHITE);
             painter.circle_stroke(screen(*point), 6.0, Stroke::new(2.0, color));
+        }
+        if let Some((index, point)) = draft
+            .selected
+            .and_then(|index| points.get(index).map(|point| (index, point)))
+        {
+            // Paint last so another vertex at the same position cannot hide the selected handle.
+            painter.circle_filled(screen(*point), 6.0, color);
+            painter.circle_stroke(screen(*point), 6.0, Stroke::new(2.0, color));
+            painter.text(
+                screen(*point) + egui::vec2(10.0, -10.0),
+                egui::Align2::LEFT_BOTTOM,
+                (index + 1).to_string(),
+                egui::FontId::proportional(13.0),
+                color,
+            );
         }
     }
 }
@@ -301,6 +539,9 @@ mod tests {
             },
             replacement: measurement,
             dragging: None,
+            selected: None,
+            adding: false,
+            error: None,
         };
         for scale in [0.1, 1.0, 3.0, 10.0] {
             assert_eq!(
@@ -328,5 +569,173 @@ mod tests {
             "coincident nonadjacent vertices must not pick the wrong vertex"
         );
         assert_eq!(coincident.hit_vertex((150.0, 100.0), 1.0), Some(1));
+        coincident.selected = Some(2);
+        assert_eq!(
+            coincident.hit_vertex((50.0, 100.0), 1.0),
+            Some(2),
+            "explicit selector resolves a coincident vertex"
+        );
+        coincident.selected = Some(0);
+        assert_eq!(coincident.hit_vertex((50.0, 100.0), 1.0), Some(0));
+    }
+
+    fn editable(kind: MeasurementKind, points: Vec<(f32, f32)>) -> GeometryDraft {
+        let measurement = Measurement {
+            kind,
+            points,
+            calibration: [(10.0, 10.0), (110.0, 10.0)],
+            known_distance: 12.0,
+            unit: MeasurementUnit::Feet,
+            precision: 3,
+        };
+        GeometryDraft {
+            page: 0,
+            epoch: 7,
+            original: MeasurementRecord {
+                index: 3,
+                annotation_id: Some("editable-vertices".into()),
+                measurement: measurement.clone(),
+            },
+            replacement: measurement,
+            dragging: None,
+            selected: None,
+            adding: false,
+            error: None,
+        }
+    }
+
+    #[test]
+    fn insert_projects_on_open_and_closing_segments_preserving_scale_and_remove_restores_geometry()
+    {
+        for kind in [
+            MeasurementKind::Polyline,
+            MeasurementKind::Perimeter,
+            MeasurementKind::Area,
+        ] {
+            let mut draft = editable(
+                kind,
+                vec![(20.0, 20.0), (220.0, 20.0), (220.0, 220.0), (20.0, 220.0)],
+            );
+            let original = draft.replacement.clone();
+            draft.adding = true;
+            assert!(draft.insert_on_segment((120.0, 23.0), 1.0));
+            assert_eq!(draft.selected, Some(1));
+            assert_eq!(draft.replacement.points[1], (120.0, 20.0));
+            assert!(!draft.adding, "successful insertion is one shot");
+            assert!(draft.remove_selected());
+            assert_eq!(draft.replacement, original);
+            draft.adding = true;
+            if kind == MeasurementKind::Polyline {
+                assert!(
+                    !draft.insert_on_segment((22.0, 120.0), 1.0),
+                    "open polyline has no closing edge"
+                );
+            } else {
+                assert!(draft.insert_on_segment((22.0, 120.0), 1.0));
+                assert_eq!(draft.selected, Some(4));
+                assert_eq!(draft.replacement.points[4], (20.0, 120.0));
+                assert_eq!(
+                    draft.replacement.value().unwrap(),
+                    original.value().unwrap()
+                );
+                assert!(draft.remove_selected());
+                assert_eq!(draft.replacement, original);
+            }
+        }
+    }
+
+    #[test]
+    fn vertex_insertion_refuses_endpoints_crossings_and_screen_ambiguity_at_any_zoom() {
+        for scale in [0.25, 1.0, 4.0] {
+            let mut draft = editable(
+                MeasurementKind::Polyline,
+                vec![(0.0, 0.0), (200.0, 200.0), (0.0, 200.0), (200.0, 0.0)],
+            );
+            let original = draft.replacement.clone();
+            assert!(!draft.insert_on_segment((100.0, 100.0), scale));
+            assert!(!draft.insert_on_segment((1.0, 1.0), scale));
+            assert!(!draft.insert_on_segment((500.0, 500.0), scale));
+            assert!(!draft.insert_on_segment((f32::NAN, 100.0), scale));
+            assert_eq!(draft.replacement, original);
+            assert!(
+                draft.insert_on_segment((100.0, 200.0), scale),
+                "clear closest segment remains usable"
+            );
+        }
+    }
+
+    #[test]
+    fn vertex_cardinality_limits_and_fixed_measurement_kinds_cannot_be_bypassed() {
+        for kind in MeasurementKind::ALL {
+            let minimum = if matches!(
+                kind,
+                MeasurementKind::Area | MeasurementKind::Perimeter | MeasurementKind::Angle
+            ) {
+                3
+            } else {
+                2
+            };
+            assert!(geometry_count_valid(kind, minimum));
+            assert!(!geometry_count_valid(kind, minimum - 1));
+            assert!(!geometry_count_valid(kind, 129));
+            let points = if minimum == 3 {
+                vec![(20.0, 20.0), (220.0, 20.0), (220.0, 220.0)]
+            } else {
+                vec![(20.0, 20.0), (220.0, 20.0)]
+            };
+            let mut draft = editable(kind, points);
+            draft.selected = Some(0);
+            assert!(!draft.remove_selected());
+            if matches!(kind, MeasurementKind::Length | MeasurementKind::Angle) {
+                assert!(!draft.can_add());
+                assert!(!draft.insert_on_segment((120.0, 20.0), 1.0));
+            } else {
+                assert!(draft.insert_on_segment((120.0, 20.0), 1.0));
+                assert!(draft.remove_selected());
+                assert!(!draft.remove_selected());
+            }
+        }
+        let mut maximum = editable(
+            MeasurementKind::Polyline,
+            (0..128).map(|i| (i as f32 * 20.0, 20.0)).collect(),
+        );
+        assert!(!maximum.can_add());
+        assert!(!maximum.insert_on_segment((50.0, 20.0), 1.0));
+        maximum.selected = Some(127);
+        assert!(maximum.remove_selected());
+        assert_eq!(maximum.selected, Some(126));
+        assert!(maximum.can_add());
+    }
+
+    #[test]
+    fn removing_a_vertex_refuses_self_intersections_and_zero_length_segments_atomically() {
+        for (kind, points, selected) in [
+            (
+                MeasurementKind::Area,
+                vec![
+                    (0.0, 0.0),
+                    (100.0, 0.0),
+                    (100.0, 100.0),
+                    (50.0, 20.0),
+                    (0.0, 100.0),
+                ],
+                0,
+            ),
+            (
+                MeasurementKind::Polyline,
+                vec![(0.0, 0.0), (100.0, 0.0), (0.0, 0.0)],
+                1,
+            ),
+        ] {
+            let mut draft = editable(kind, points);
+            assert!(draft.replacement.value().is_ok());
+            let original = draft.replacement.clone();
+            draft.selected = Some(selected);
+            assert!(draft.can_remove());
+            assert!(!draft.remove_selected());
+            assert_eq!(draft.replacement, original);
+            assert_eq!(draft.selected, Some(selected));
+            assert_eq!(draft.error, Some("measure.geometry.remove_refused"));
+        }
     }
 }

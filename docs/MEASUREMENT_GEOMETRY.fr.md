@@ -2,17 +2,20 @@
 
 [English](MEASUREMENT_GEOMETRY.md) · [Mesures](MEASUREMENTS.fr.md)
 
-Disponible dans [0.48.0](RELEASE_0.48.0.fr.md). [Preuves](qa/RELEASE_0.48.0.json).
+Cette version ajoute l’insertion et la suppression de sommets dans les mesures enregistrées. Distribution et qualification figurent sur la [page de version 0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0). Le [périmètre 0.48.0](RELEASE_0.48.0.fr.md) conserve ses propres [preuves](qa/RELEASE_0.48.0.json).
 
 ## Utilisation
 
 1. Ouvrez un PDF contenant une mesure enregistrée compatible et sélectionnez **Mesures**.
 2. Dans **Mesures enregistrées**, choisissez la mesure puis **Modifier la géométrie**.
-3. Déplacez un sommet existant sur sa page d'origine. Les poignées gardent une taille constante à l'écran lorsque vous zoomez. Les points restent dans les limites de la page.
-4. Sélectionnez **Aperçu** pour examiner la mesure recalculée, puis **Appliquer** pour la valider. **Ajuster les sommets** revient au brouillon si des corrections sont nécessaires.
-5. Enregistrez le PDF normalement. **Annuler** dans l'historique revient sur la modification validée en une étape ; le bouton d'annulation du brouillon ou Échap abandonne les changements non validés.
+3. Choisissez le numéro du point dans **Sommet**, puis déplacez sa poignée sur la page d’origine. La liste distingue aussi les sommets placés au même endroit. Les poignées gardent une taille constante à l’écran lorsque vous zoomez ; les points restent dans la page.
+4. Pour une polyligne, un périmètre ou une surface polygonale, choisissez **Ajouter un sommet**, puis cliquez sur le segment qui doit recevoir le point. Une insertion réussie ajoute un point au brouillon et termine ce mode ; choisissez à nouveau **Ajouter un sommet** pour en placer un autre. **Arrêter l’ajout** désactive ce mode. Le segment de fermeture des périmètres et surfaces est inclus. Pour retirer un point, sélectionnez son numéro puis **Supprimer la sélection**.
+5. Sélectionnez **Aperçu** pour examiner la mesure recalculée, puis **Appliquer à l’objet** pour la valider. **Ajuster les sommets** revient au brouillon si des corrections sont nécessaires.
+6. Enregistrez le PDF normalement. **Annuler** dans l’historique revient sur la modification validée en une étape ; le bouton d’annulation du brouillon ou Échap abandonne les changements non validés.
 
-Longueurs, polylignes, périmètres, surfaces polygonales et angles conservent leur type et leur nombre de sommets. La modification géométrique conserve la calibration propre à la mesure, sa distance de référence, son unité et sa précision. Elle ne les remplace pas par les paramètres de page ou l'échelle courante de dessin. Utilisez l'éditeur distinct des paramètres de mesure pour modifier ces propriétés explicitement.
+Le type de mesure reste fixe. Une polyligne conserve au moins deux sommets ; un périmètre ou une surface polygonale, au moins trois. Ces formes acceptent au maximum 128 sommets. Les longueurs gardent deux points et les angles trois : leurs points peuvent être déplacés, mais l’insertion et la suppression sont indisponibles.
+
+La modification géométrique conserve la calibration propre à la mesure, sa distance de référence, son unité et sa précision. Elle ne les remplace pas par les paramètres de page ou l’échelle courante de dessin. Utilisez l’éditeur distinct des paramètres de mesure pour modifier ces propriétés explicitement.
 
 ## Données et permissions
 
@@ -22,8 +25,8 @@ Aperçu et Appliquer utilisent l'opération existante de modification contrôlé
 
 ## Périmètre
 
-Si des poignées proches ne peuvent pas être sélectionnées sans ambiguïté, zoomez avant de les déplacer. Les sommets confondus, y compris les points répétés d’une polyligne ouverte, ne peuvent pas être sélectionnés indépendamment dans ce parcours à la souris. La commande CLI existante `edit-measurement` reste disponible pour remplacer explicitement la géométrie dans une nouvelle copie PDF avec un enregistrement attendu.
+Utilisez **Sommet** pour désigner explicitement un point lorsque les poignées se superposent. Zoomez si des segments proches rendent l’insertion ambiguë. Le point est inséré sur un segment de la mesure sélectionnée ; il ne s’accroche pas aux traits PDF sous-jacents. Une géométrie invalide doit toujours être corrigée avant Appliquer.
 
-Cette fonction modifie les sommets existants des mesures enregistrées prises en charge. Ajout ou suppression de sommets, accrochage aux vecteurs, recalcul par lots et zones à échelles multiples restent des travaux distincts. Un plan raster n'acquiert pas d'accrochage vectoriel grâce à cette fonction. Les tests automatisés d'interaction ne constituent pas une qualification matérielle native ou d'accessibilité.
+Cette fonction modifie les mesures enregistrées compatibles une par une. Accrochage vectoriel, recalcul par lots et zones à échelles multiples restent des travaux distincts. Un plan raster n’acquiert pas d’accrochage vectoriel grâce à cette fonction. Les tests automatisés d’interaction ne constituent pas une qualification matérielle native ou d’accessibilité. AEC-002 et AEC-003 restent partiels.
 
 La commande CLI existante `edit-measurement` reste disponible pour remplacer explicitement la géométrie dans une nouvelle copie PDF avec un enregistrement attendu ; voir le [guide des mesures](MEASUREMENTS.fr.md). Le parcours sur la page n'ajoute aucune commande CLI.

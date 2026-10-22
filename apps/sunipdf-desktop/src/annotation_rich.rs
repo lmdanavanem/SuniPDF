@@ -263,7 +263,10 @@ impl RichDraft {
             measurement.kind != record.measurement.kind
                 || (!self.measurement_geometry_edit
                     && measurement.points != record.measurement.points)
-                || measurement.points.len() != record.measurement.points.len()
+                || !crate::measurement_geometry::geometry_count_valid(
+                    measurement.kind,
+                    measurement.points.len(),
+                )
                 || measurement.calibration != record.measurement.calibration
                 || (self.measurement_geometry_edit
                     && (measurement.known_distance != record.measurement.known_distance
@@ -439,7 +442,10 @@ impl SuniApp {
     ) -> bool {
         if !self.annotate.measure.saved.can_edit(page, &original)
             || replacement.kind != original.measurement.kind
-            || replacement.points.len() != original.measurement.points.len()
+            || !crate::measurement_geometry::geometry_count_valid(
+                replacement.kind,
+                replacement.points.len(),
+            )
             || replacement.calibration != original.measurement.calibration
             || replacement.unit != original.measurement.unit
             || replacement.known_distance != original.measurement.known_distance
@@ -906,12 +912,10 @@ impl SuniApp {
                                             (
                                                 "points",
                                                 &draft
-                                                    .measurement_edit
-                                                    .as_ref()
-                                                    .unwrap()
-                                                    .measurement
-                                                    .points
-                                                    .len()
+                                                    .measurement()
+                                                    .map_or(0, |measurement| {
+                                                        measurement.points.len()
+                                                    })
                                                     .to_string(),
                                             ),
                                             ("unit", draft.measure_unit.id()),
@@ -1636,7 +1640,7 @@ mod tests {
     }
 
     #[test]
-    fn geometry_preview_changes_only_existing_vertices_in_explicit_geometry_mode() {
+    fn geometry_preview_changes_vertex_count_only_in_explicit_geometry_mode() {
         let (mut app, requests, _) = crate::app::tests::test_app();
         app.open_rich_annotations(&egui::Context::default());
         let measurement = Measurement {
@@ -1659,6 +1663,10 @@ mod tests {
         assert!(draft.measurement().is_none());
         draft.measurement_geometry_edit = true;
         assert!(draft.measurement().is_some());
+        draft.points.push_str("\n200,200");
+        assert_eq!(draft.measurement().unwrap().points.len(), 4);
+        draft.points = "40,70\n140,170".into();
+        assert_eq!(draft.measurement().unwrap().points.len(), 2);
         assert!(
             draft.operation().is_none(),
             "geometry editing cannot insert a new annotation"
@@ -1666,7 +1674,7 @@ mod tests {
         for invalid in 0..5 {
             draft.load_measurement(&measurement);
             match invalid {
-                0 => draft.points.push_str("\n200,200"),
+                0 => draft.points = "40,70".into(),
                 1 => draft.known_distance = 20.0,
                 2 => draft.precision = 2,
                 3 => draft.measure_unit = MeasurementUnit::Metres,
@@ -1674,7 +1682,7 @@ mod tests {
             }
             assert!(
                 draft.measurement().is_none(),
-                "geometry mode must preserve calibration and cardinality"
+                "geometry mode must preserve calibration and valid cardinality"
             );
         }
         assert!(requests.try_recv().is_err());
