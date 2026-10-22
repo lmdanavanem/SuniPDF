@@ -2,7 +2,7 @@
 
 [Français](RELEASE_0.47.0.fr.md) · [Revision overlay guide](REVISION_OVERLAY.md)
 
-Status: **in development**. This scope is being implemented and has not been qualified or published.
+This build includes the scope below. Published assets and qualification are tracked on the [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0).
 
 ## Scope
 
@@ -16,7 +16,7 @@ Desktop and CLI export a new PNG or JSON report. The report records both source 
 
 ## Qualification
 
-Core, UI, CLI, independent PDF readers, packaging and public-download results will be recorded after execution against the release source. No passing counts or published assets are asserted here.
+Qualification records and distribution assets are tracked on the [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). Results apply to the exact source identified there.
 
 ## Remaining limits
 

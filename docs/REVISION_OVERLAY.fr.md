@@ -2,7 +2,7 @@
 
 [English](REVISION_OVERLAY.md) · [Périmètre et qualification 0.47](RELEASE_0.47.0.fr.md)
 
-Une superposition affiche une page de base enregistrée en magenta et une page révisée enregistrée en cyan. Elle aide à examiner leur alignement et leurs différences visibles. Les PDF restent inchangés. Consultez les notes de version pour l’état de qualification et de publication.
+Une superposition affiche une page de base enregistrée en magenta et une page révisée enregistrée en cyan. Elle aide à examiner leur alignement et leurs différences visibles. Les PDF restent inchangés. Cette fonction est incluse dans cette compilation. La [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit sa qualification et sa publication.
 
 ## Interface
 

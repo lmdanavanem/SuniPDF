@@ -3,7 +3,18 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.46.0](RELEASE_0.46.0.md). The preceding [0.45.0](RELEASE_0.45.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+This guide covers this build of SuniPDF 0.47.0. The preceding verified release [0.46.0](RELEASE_0.46.0.md) retains its own evidence. The [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) tracks qualification and publication. English remains the default language; French is available in Settings.
+
+## Aligned revision overlays
+
+This feature is included in this build. The [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) tracks qualification and publication.
+
+1. Open **Revision overlay** from **All tools** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.
+2. Choose **Manual alignment**, set the offsets, clockwise rotation and scale, then choose **Preview**. The base is magenta and the revision cyan; coordinates start at the displayed page’s top-left corner after crop and page rotation.
+3. For **Two-point alignment**, choose **Preview** to load the sources, click two distinct points on the base image and the matching two points on the revision, then preview again. **Reset alignment** clears the points and transform. Preview again after changing opacity, resolution or alignment.
+4. Choose **Export PNG** or **Export report JSON** and a new filename. Both source PDFs must permit copying and still match their recorded hashes. The PDFs remain unchanged; the output is clipped to the base page. Automatic registration and automatic change outlines remain open.
+
+[Full instructions, limits and CLI](REVISION_OVERLAY.md).
 
 ## Quantity tables and typed fields
 

@@ -2,7 +2,7 @@
 
 [English](RELEASE_0.47.0.md) · [Guide de superposition](REVISION_OVERLAY.fr.md)
 
-Statut : **en développement**. Ce périmètre est en cours d’implémentation ; il n’est pas encore qualifié ni publié.
+Cette compilation inclut le périmètre ci-dessous. Les fichiers publiés et la qualification sont suivis sur la [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0).
 
 ## Périmètre
 
@@ -16,7 +16,7 @@ L’interface et la CLI exportent un nouveau PNG ou rapport JSON. Le rapport con
 
 ## Qualification
 
-Les résultats moteur, interface, CLI, lecteurs PDF indépendants, paquets et téléchargements publics seront consignés après exécution sur la source de publication. Aucun nombre de tests réussis ni fichier publié n’est annoncé ici.
+Les résultats de qualification et fichiers de distribution sont suivis sur la [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). Les résultats s’appliquent à la source exacte qui y est identifiée.
 
 ## Limites restantes
 

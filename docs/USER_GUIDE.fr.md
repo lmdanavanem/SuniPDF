@@ -3,7 +3,18 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.46.0](RELEASE_0.46.0.fr.md). La version précédente [0.45.0](RELEASE_0.45.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide couvre cette compilation de SuniPDF 0.47.0. La précédente version vérifiée [0.46.0](RELEASE_0.46.0.fr.md) conserve ses propres preuves. La [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit la qualification et la publication. L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+
+## Superpositions de révisions alignées
+
+Cette fonction est incluse dans cette compilation. La [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit sa qualification et sa publication.
+
+1. Ouvrez **Superposition de révisions** depuis **Tous les outils** ou **Comparer des fichiers**. Choisissez les PDF de base et révisé enregistrés, leurs numéros de page physique et leurs éventuels mots de passe séparés. Les modifications non enregistrées des onglets ne sont pas incluses.
+2. Choisissez **Alignement manuel**, réglez décalages, rotation horaire et échelle, puis cliquez sur **Aperçu**. La base est magenta et la révision cyan ; les coordonnées partent du coin supérieur gauche affiché après recadrage et rotation de page.
+3. Pour **Alignement par deux points**, lancez **Aperçu** pour charger les sources, cliquez deux points distincts sur la base puis les deux points correspondants sur la révision, et relancez l’aperçu. **Réinitialiser l’alignement** efface points et transformation. Relancez l’aperçu après modification de l’opacité, de la résolution ou de l’alignement.
+4. Choisissez **Exporter PNG** ou **Exporter le rapport JSON**, puis un nouveau nom. Les deux PDF doivent autoriser la copie et correspondre encore à leurs empreintes enregistrées. Ils restent inchangés ; la sortie est limitée au cadre de la base. Recalage automatique et contours automatiques des changements restent ouverts.
+
+[Instructions complètes, limites et CLI](REVISION_OVERLAY.fr.md).
 
 ## Tables de quantités et champs typés
 

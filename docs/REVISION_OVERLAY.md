@@ -2,7 +2,7 @@
 
 [Français](REVISION_OVERLAY.fr.md) · [0.47 scope and qualification status](RELEASE_0.47.0.md)
 
-An overlay displays one saved base page in magenta and one saved revision page in cyan. It helps you inspect their alignment and visible differences. The PDFs remain unchanged. See the release notes for qualification and publication status.
+An overlay displays one saved base page in magenta and one saved revision page in cyan. It helps you inspect their alignment and visible differences. The PDFs remain unchanged. This feature is included in this build. The [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) tracks qualification and publication.
 
 ## Desktop
 
