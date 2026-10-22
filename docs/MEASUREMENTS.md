@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-**0.44.0 in preparation:** saved-measurement editing, temporary-scale reset and corrective work are implemented and undergoing validation. The new procedures below describe that development version, not a published package. [Scope and preliminary audit](RELEASE_0.44.0.md).
+**Available in [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0):** Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused. [Evidence](qa/RELEASE_0.44.0.json).
 
 **Available in [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** persistent page scales, inspection and explicit scale reuse extend on-page drawing. Existing measurements retain their values. [Evidence](qa/RELEASE_0.43.0.json).
 
@@ -37,7 +37,7 @@ In **Measurements**, select **Saved measurements** to inspect the current page. 
 
 Generic move, resize, restyle and value-text edits are refused to prevent stale labels. Delete and comment replies remain available within existing PDF permissions. Manual coordinate entry remains available in **Rich annotations → Calibrated measurements**; its `x,y` values use displayed-page points with the origin at the bottom left after rotation and cropping. In 0.44, this manual path no longer supplies an arbitrary positive reference distance: enter a valid calibration explicitly.
 
-## Edit one saved measurement — 0.44 in preparation
+## Edit one saved measurement
 
 1. Open **Saved measurements** on the relevant page and select **Edit measurement** beside the value.
 2. Change the known reference distance, unit or precision. Changing `m` to `cm` converts a 10 m reference into 1000 cm without changing physical size. Changing the reference distance recalculates this measurement only. For angles, only precision is editable.
@@ -92,4 +92,4 @@ JSON export is bounded to 1000 pages and 4096 records, with 4 MiB of measurement
 
 Known-geometry fixtures cover arithmetic, metric/imperial equivalence, rotation/crop, reopen, preview/commit, snapshot Undo, allowed encryption, invalid geometry and stale-record refusals. The 0.43 additions cover page-default persistence, permissions, physical unit conversion and independent qpdf checks within the existing corpus; executed results belong in Project status. Generated fixtures do not qualify survey accuracy, real customer plans, physical printing, native pointing/Narrator interaction, PDF/A or PDF/UA.
 
-The 0.44 changes are in validation. Resizing content with annotations refuses measured pages atomically rather than leaving inconsistent rectangles and quantities. Mouse editing of saved vertices, batch recalculation, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open. AEC-001/002/003/004/026 remain partial; neither page defaults, the inspector nor individual editing close their wider criteria. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source. The [roadmap](ROADMAP.md) separates the planned 0.45 annotation library, 0.46 quantity columns/totals/export and 0.47 overlays/revision review.
+Resizing content with annotations refuses measured pages atomically rather than leaving inconsistent rectangles and quantities. Mouse editing of saved vertices, batch recalculation, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open. AEC-001/002/003/004/026 remain partial; neither page defaults, the inspector nor individual editing close their wider criteria. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source. The [roadmap](ROADMAP.md) separates the planned 0.45 annotation library, 0.46 quantity columns/totals/export and 0.47 overlays/revision review.

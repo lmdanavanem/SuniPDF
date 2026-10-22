@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.43.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.44.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.43.0: saved page scales and measurement inspection (stable Latest)
+## 0.44.0: editing saved measurements (stable Latest)
+
+[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
+
+Source `7e95078127beb81b90a9eac32e6fde0fd8e9bf50`, PR [#19](https://github.com/lmdanavanem/SuniPDF/pull/19). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850233) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718862137) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39718850516). 702 tests passed, 10 default ignored. 1250 EN/FR keys. 36 portable scenarios. 30 MSI baselines. 150 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 21 packaged CLI calls verify conversion, precision, recalibration, geometry, stale refusal, identity, page defaults, reopening and an angle without calibration. Final value: 40 m; other measurements and originals preserved.
+
+[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.44.0.md) · [Evidence](qa/RELEASE_0.44.0.json).
+
+## 0.43.0: saved page scales and measurement inspection (published; Latest at the time)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
 
