@@ -3,7 +3,20 @@ mod fixture;
 
 use lopdf::{dictionary, Object};
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
 use sunipdf_core::{form_data, security, Engine, FieldValue, FillMode, Protection};
+
+static SERIAL: Mutex<()> = Mutex::new(());
+static ENGINE: OnceLock<EnginePtr> = OnceLock::new();
+struct EnginePtr(*const Engine);
+// Every access is serialized; PDFium stays initialized for this test process.
+unsafe impl Send for EnginePtr {}
+unsafe impl Sync for EnginePtr {}
+
+fn engine() -> &'static Engine {
+    let ptr = ENGINE.get_or_init(|| EnginePtr(Box::leak(Box::new(Engine::new().unwrap()))));
+    unsafe { &*ptr.0 }
+}
 
 fn choice(value: &str) -> FieldValue {
     FieldValue::Choice(vec![value.into()])
@@ -71,7 +84,8 @@ fn button_appearance_names(pdf: &lopdf::Document) -> Vec<Option<Vec<Vec<u8>>>> {
 
 #[test]
 fn radio_exports_keep_appearances_encryption_and_interchange_values() {
-    let engine = Engine::new().unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
     for rotation in [0, 90, 180, 270] {
         for encrypted in [false, true] {
             let mut pdf = lopdf::Document::load_mem(&fixture::source(true)).unwrap();
@@ -205,7 +219,8 @@ fn radio_exports_keep_appearances_encryption_and_interchange_values() {
 
 #[test]
 fn malformed_or_ambiguous_radio_exports_do_not_block_other_fields_or_mutate() {
-    let engine = Engine::new().unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
     for case in 0..11 {
         let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
         let field = fixture::field_id(&pdf);
@@ -375,7 +390,8 @@ fn malformed_or_ambiguous_radio_exports_do_not_block_other_fields_or_mutate() {
 
 #[test]
 fn selected_reserved_radio_exports_round_trip_unchanged_and_refuse_changes() {
-    let engine = Engine::new().unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
     for reserved in ["Off", ""] {
         let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
         pdf.get_dictionary_mut(fixture::field_id(&pdf))
@@ -425,7 +441,8 @@ fn selected_reserved_radio_exports_round_trip_unchanged_and_refuse_changes() {
 
 #[test]
 fn radio_exports_can_read_index_or_unique_appearance_without_widget_state() {
-    let engine = Engine::new().unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
     for value in [b"1".as_slice(), b"virement".as_slice()] {
         let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
         let field = fixture::field_id(&pdf);
