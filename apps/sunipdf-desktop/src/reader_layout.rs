@@ -332,6 +332,11 @@ mod tests {
                     }
                     assert!(app.annotate.measure.is_active_draft());
                     assert!(app.command_enabled(leave));
+                    assert!(!app.command_enabled(Command::ToolSelect));
+                    app.execute(&ctx, Command::ToolSelect);
+                    assert!(app.annotate.measure.is_active_draft());
+                    assert_eq!(app.annotate.tool, Tool::Measure);
+                    assert_eq!(app.context_panel(), Some(ContextPanel::Measurements));
                     for mutation in [Command::Save, Command::RotateClockwise] {
                         assert!(!app.command_enabled(mutation));
                         app.execute(&ctx, mutation);

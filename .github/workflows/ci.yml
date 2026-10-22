@@ -88,7 +88,7 @@ jobs:
           cargo test --workspace --locked -j 2 --no-fail-fast 2>&1 | Tee-Object -FilePath target/workspace-tests.log
           if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
       - name: Reader interface layout and DX12 software rendering
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome == 'success'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\run-reader-ui-evidence.ps1
       - name: Reader interface evidence
         if: steps.changes.outputs.docs_only != 'true' && always()

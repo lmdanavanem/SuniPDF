@@ -673,6 +673,10 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         app.library.path = Some(dir.path().join("annotations.json"));
         app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+        app.show_tools = false;
+        app.settings.show_tools = false;
+        app.settings.show_thumbnails = false;
+        app.docinfo.bookmarks_open = false;
         dir
     }
 

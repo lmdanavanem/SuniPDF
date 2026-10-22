@@ -562,7 +562,8 @@ impl SuniApp {
         self.annotate.workspace == Some(Workspace::Measure)
             && (command == Command::HubLeave
                 || Workspace::from_command(command).is_some_and(|ws| ws != Workspace::Measure)
-                || Tool::from_command(command).is_some_and(|tool| tool != Tool::Measure))
+                || Tool::from_command(command)
+                    .is_some_and(|tool| !matches!(tool, Tool::Measure | Tool::Select)))
     }
 
     pub fn enter_workspace(&mut self, ctx: &egui::Context, ws: Workspace) {
