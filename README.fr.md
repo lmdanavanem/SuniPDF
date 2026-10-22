@@ -25,7 +25,13 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## 0.46.0 : tables de quantités et champs typés (Latest stable)
+## 0.47.0 : superpositions de révisions alignées (Latest stable)
+
+[0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
+
+[Guide et limites](docs/REVISION_OVERLAY.fr.md) · [Notes de version](docs/RELEASE_0.47.0.fr.md) · [Preuves](docs/qa/RELEASE_0.47.0.json).
+
+## 0.46.0 : tables de quantités et champs typés (publiée ; Latest à cette date)
 
 [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
 

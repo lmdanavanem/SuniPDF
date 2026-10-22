@@ -3,11 +3,11 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre cette compilation de SuniPDF 0.47.0. La précédente version vérifiée [0.46.0](RELEASE_0.46.0.fr.md) conserve ses propres preuves. La [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit la qualification et la publication. L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide couvre [0.47.0](RELEASE_0.47.0.fr.md). La version précédente [0.46.0](RELEASE_0.46.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
 
 ## Superpositions de révisions alignées
 
-Cette fonction est incluse dans cette compilation. La [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit sa qualification et sa publication.
+Disponible dans [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). [Preuves](qa/RELEASE_0.47.0.json).
 
 1. Ouvrez **Superposition de révisions** depuis **Tous les outils** ou **Comparer des fichiers**. Choisissez les PDF de base et révisé enregistrés, leurs numéros de page physique et leurs éventuels mots de passe séparés. Les modifications non enregistrées des onglets ne sont pas incluses.
 2. Choisissez **Alignement manuel**, réglez décalages, rotation horaire et échelle, puis cliquez sur **Aperçu**. La base est magenta et la révision cyan ; les coordonnées partent du coin supérieur gauche affiché après recadrage et rotation de page.

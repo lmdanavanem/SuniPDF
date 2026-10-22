@@ -2,7 +2,15 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.46.0 : tables de quantités et champs typés (Latest stable)
+## 0.47.0 : superpositions de révisions alignées (Latest stable)
+
+[0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
+
+AEC-013 reste partiel. Recalage automatique, comparaison vectorielle, fusion PDF et contours automatiques des changements restent ouverts ; AEC-014 n’est pas livré. Cette superposition raster de deux pages sélectionnées est limitée au cadre de la base. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts.
+
+[Guide et limites](REVISION_OVERLAY.fr.md) · [Notes de version](RELEASE_0.47.0.fr.md) · [Preuves](qa/RELEASE_0.47.0.json).
+
+## 0.46.0 : tables de quantités et champs typés (publiée ; Latest à cette date)
 
 [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
 

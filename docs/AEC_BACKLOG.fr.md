@@ -4,6 +4,10 @@
 
 SuniPDF est une application locale gratuite et open source pour les plans, les métrés et les revues PDF, sous licence MIT OR Apache-2.0. Ce backlog décrit les fonctions à développer et leurs critères de réalisation ; les statuts distinguent les progrès partiels des fonctions qualifiées.
 
+## Superpositions de révisions alignées — 0.47.0
+
+Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux. AEC-013 reste **En cours**. AEC-013 reste partiel. Recalage automatique, comparaison vectorielle, fusion PDF et contours automatiques des changements restent ouverts ; AEC-014 n’est pas livré. Cette superposition raster de deux pages sélectionnées est limitée au cadre de la base. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts. [Preuves](qa/RELEASE_0.47.0.json).
+
 ## Tables de quantités et champs typés — 0.46.0
 
 Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés. AEC-007 reste **En cours**. Formules libres, taxes, conversion monétaire, reconnaissance automatique de symboles, agrégation entre documents et autres critères complets d’estimation restent ouverts. Les angles sont visibles, mais exclus des quantités additives et des prix. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts. [Preuves](qa/RELEASE_0.46.0.json).

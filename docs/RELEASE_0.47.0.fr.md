@@ -2,7 +2,7 @@
 
 [English](RELEASE_0.47.0.md) · [Guide de superposition](REVISION_OVERLAY.fr.md)
 
-Cette compilation inclut le périmètre ci-dessous. Les fichiers publiés et la qualification sont suivis sur la [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0).
+Statut : publiée en Latest stable [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0), source `db79bc393cd6039a53b03319c503ab57483783d8`, le 2026-10-22. [Version précédente](RELEASE_0.46.0.fr.md).
 
 ## Périmètre
 
@@ -16,7 +16,7 @@ L’interface et la CLI exportent un nouveau PNG ou rapport JSON. Le rapport con
 
 ## Qualification
 
-Les résultats de qualification et fichiers de distribution sont suivis sur la [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). Les résultats s’appliquent à la source exacte qui y est identifiée.
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753731) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810). 744 tests réussis, 10 ignorés par défaut. 1382 clés EN/FR. 39 scénarios portables. 33 références MSI. 165 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 28 appels CLI vérifient pages recadrées aux quatre rotations, relecture PNG/JSON, alignement explicite et à deux paires, empreintes, refus périmés/d’écrasement, mots de passe AES séparés, droits de copie et conservation des sources. [Preuves](qa/RELEASE_0.47.0.json).
 
 ## Limites restantes
 

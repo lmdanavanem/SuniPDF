@@ -3,11 +3,11 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers this build of SuniPDF 0.47.0. The preceding verified release [0.46.0](RELEASE_0.46.0.md) retains its own evidence. The [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) tracks qualification and publication. English remains the default language; French is available in Settings.
+This guide covers [0.47.0](RELEASE_0.47.0.md). The preceding [0.46.0](RELEASE_0.46.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
 
 ## Aligned revision overlays
 
-This feature is included in this build. The [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) tracks qualification and publication.
+Available in [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). [Evidence](qa/RELEASE_0.47.0.json).
 
 1. Open **Revision overlay** from **All tools** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.
 2. Choose **Manual alignment**, set the offsets, clockwise rotation and scale, then choose **Preview**. The base is magenta and the revision cyan; coordinates start at the displayed page’s top-left corner after crop and page rotation.
