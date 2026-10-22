@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.45.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.46.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+## 0.46.0 : tables de quantités et champs typés (Latest stable)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
+
+Source `3e6763964d6b06f004a09fd7473ddf5bb4a6417f`, PR [#21](https://github.com/lmdanavanem/SuniPDF/pull/21). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061382) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664). 732 tests réussis, 10 ignorés par défaut. 1348 clés EN/FR. 38 scénarios portables. 32 références MSI. 160 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 32 appels CLI vérifient quantités réelles, champs typés, coûts exacts, filtres/groupes, protection CSV, conversion d’unités, retrait, refus périmés/d’écrasement, permissions AES et conservation des sources.
+
+[Guide et limites](QUANTITY_TABLE.fr.md) · [Notes de version](RELEASE_0.46.0.fr.md) · [Preuves](qa/RELEASE_0.46.0.json).
+
+## 0.45.0 : bibliothèques locales d’annotations (publiée ; Latest à cette date)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
 

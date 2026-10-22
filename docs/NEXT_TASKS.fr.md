@@ -4,7 +4,15 @@
 
 Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEASE_1.0_CRITERIA.fr.md).
 
-## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+## 0.46.0 : tables de quantités et champs typés (Latest stable)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
+
+Formules libres, taxes, conversion monétaire, reconnaissance automatique de symboles, agrégation entre documents et autres critères complets d’estimation restent ouverts. Les angles sont visibles, mais exclus des quantités additives et des prix. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts.
+
+[Guide et limites](QUANTITY_TABLE.fr.md) · [Notes de version](RELEASE_0.46.0.fr.md) · [Preuves](qa/RELEASE_0.46.0.json).
+
+## 0.45.0 : bibliothèques locales d’annotations (publiée ; Latest à cette date)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
 
@@ -24,7 +32,7 @@ Lot publié dans ses limites ; prochaine implémentation prévue : bibliothèque
 |---|---|---|
 | 0.44 | Modification individuelle et corrections livrées dans leurs limites. | Conserver originaux, géométrie fixe, identité, réponses et permissions ; vérifier annulation/historique et nouvelle copie. |
 | 0.45 | Bibliothèques locales d’annotations | Lot livré dans ses limites ; critères complets encore ouverts. [0.45.0](RELEASE_0.45.0.fr.md). |
-| 0.46 | Colonnes de métrés, totaux compatibles et exports ; prévus. | Totaux issus des données réelles, traitement explicite des unités/dimensions, filtres et exports protégés avec cas de régression. |
+| 0.46 | Tables de quantités et champs typés | Lot livré dans ses limites ; critères complets encore ouverts. [0.46.0](RELEASE_0.46.0.fr.md). |
 | 0.47 | Superpositions locales et revue des révisions ; prévues. | Alignement explicite, révisions sources identifiables, originaux conservés et contrôles des géométries prises en charge. |
 
 Les étapes futures exigent implémentation et qualification avant leur publication. AEC-001/002/003/004/026 restent partiels ; interaction native, vérification dimensionnelle sur plans réels et critères généraux 1.0 restent ouverts. [Roadmap](ROADMAP.fr.md).

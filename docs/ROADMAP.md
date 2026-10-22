@@ -14,14 +14,20 @@ Partial corpus/mutation work does not close native, interoperability, authentici
 |---|---|---|
 | 0.44 | Edit one saved measurement; correct calibration defaults, scale reset, inspector allocations, copying permissions, resize handling and stale/external targets. | Published; [Evidence](qa/RELEASE_0.44.0.json). |
 | 0.45 | Local annotation libraries | Slice delivered within its bounds; full acceptance criteria remain open. [0.45.0](RELEASE_0.45.0.md). |
-| 0.46 | Quantity columns, unit-aware totals and bounded exports tied to actual records. | Planned; supported fields and calculation rules still need qualification. |
+| 0.46 | Quantity tables and typed fields | Slice delivered within its bounds; full acceptance criteria remain open. [0.46.0](RELEASE_0.46.0.md). |
 | 0.47 | Local overlays and revision review with explicit alignment and retained originals. | Planned; geometry support and revision checks still need qualification. |
 
 The 0.44 desktop editor changes reference distance, unit and precision while keeping vertices/reference points fixed. The CLI can replace explicit geometry using an expected record; both paths preserve annotation identity and reject stale or unsupported targets. Final-source qualification and limits: [Evidence](qa/RELEASE_0.44.0.json). [0.44 scope and preliminary audit](RELEASE_0.44.0.md) · [Measurement guide](MEASUREMENTS.md).
 
 This sequence delivers bounded increments. AEC-001/002/003/004/026 remain partial; mouse vertex editing, batch recalculation, multi-scale viewports, real-plan dimensional accuracy and broader 1.0 criteria are not closed by the proposed releases. Published historical evidence below remains attached to its original version.
 
-## 0.45.0: local annotation libraries (stable Latest)
+## 0.46.0: quantity tables and typed fields (stable Latest)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
+
+[Guide and limits](QUANTITY_TABLE.md) · [Release notes](RELEASE_0.46.0.md) · [Evidence](qa/RELEASE_0.46.0.json).
+
+## 0.45.0: local annotation libraries (published; Latest at the time)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
 

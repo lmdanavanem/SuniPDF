@@ -2,7 +2,13 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+## 0.46.0 : tables de quantités et champs typés (Latest stable)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
+
+[Guide et limites](QUANTITY_TABLE.fr.md) · [Notes de version](RELEASE_0.46.0.fr.md) · [Preuves](qa/RELEASE_0.46.0.json).
+
+## 0.45.0 : bibliothèques locales d’annotations (publiée ; Latest à cette date)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
 
@@ -434,8 +440,9 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
 | Bibliothèques locales d’annotations | Livré en 0.45.0 | Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions. |
-| Windows x64 | Distribué en 0.45.0 | Paquets publics et copies dist vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.45.0.json). |
-| Windows ARM64 | Distribué en 0.45.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.45.0.json). |
+| Tables de quantités et champs typés | Livré en 0.46.0 | Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés. |
+| Windows x64 | Distribué en 0.46.0 | Paquets publics et copies dist vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.46.0.json). |
+| Windows ARM64 | Distribué en 0.46.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.46.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

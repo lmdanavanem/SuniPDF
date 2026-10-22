@@ -4,7 +4,15 @@
 
 The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
 
-## 0.45.0: local annotation libraries (stable Latest)
+## 0.46.0: quantity tables and typed fields (stable Latest)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
+
+Arbitrary formulas, tax calculation, currency exchange, automatic symbol recognition, cross-document aggregation and the remaining full estimating acceptance criteria stay open. Angles are visible but excluded from additive quantities and pricing. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open.
+
+[Guide and limits](QUANTITY_TABLE.md) · [Release notes](RELEASE_0.46.0.md) · [Evidence](qa/RELEASE_0.46.0.json).
+
+## 0.45.0: local annotation libraries (published; Latest at the time)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
 
@@ -24,7 +32,7 @@ Published within its documented bounds; the next planned implementation is the l
 |---|---|---|
 | 0.44 | Individual measurement editing and corrective work delivered within their bounds. | Preserve original files, geometry where fixed, identity, replies and permissions; verify cancellation/history and new-copy output. |
 | 0.45 | Local annotation libraries | Slice delivered within its bounds; full acceptance criteria remain open. [0.45.0](RELEASE_0.45.0.md). |
-| 0.46 | Quantity columns, compatible totals and exports; planned. | Totals derived from actual records, explicit unit/dimension handling, filters and protected exports with regression fixtures. |
+| 0.46 | Quantity tables and typed fields | Slice delivered within its bounds; full acceptance criteria remain open. [0.46.0](RELEASE_0.46.0.md). |
 | 0.47 | Local overlays and revision review; planned. | Explicit alignment, identifiable input revisions, retained originals and checks for supported page geometries. |
 
 Future stages require implementation and qualification before their release. AEC-001/002/003/004/026 remain partial, and native interaction, real-plan dimensional checks and the wider 1.0 gates remain open. [Roadmap](ROADMAP.md).
