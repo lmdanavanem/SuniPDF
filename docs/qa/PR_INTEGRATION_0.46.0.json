@@ -1,0 +1,61 @@
+{
+  "source": "3e6763964d6b06f004a09fd7473ddf5bb4a6417f",
+  "repository_id": 1418108842,
+  "merged_pull_requests": [
+    {
+      "number": 21,
+      "url": "https://github.com/lmdanavanem/SuniPDF/pull/21",
+      "head": "91274cfb1fb32fc7885dee0c96137662961b4f86",
+      "head_tree": "7971a83327c91334eab9d9fb93d430fc1fae189e",
+      "source_tree": "7971a83327c91334eab9d9fb93d430fc1fae189e",
+      "merged": true,
+      "merged_at": "2026-10-22T07:04:56Z",
+      "merge_commit": "3e6763964d6b06f004a09fd7473ddf5bb4a6417f",
+      "merged_by": "lmdanavanem",
+      "merged_by_id": 287339505,
+      "verified_at": "2026-10-22T07:04:58.4089924Z",
+      "checks": [
+        {
+          "id": 119684100157,
+          "name": "CodeQL",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "91274cfb1fb32fc7885dee0c96137662961b4f86",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/runs/119684100157"
+        },
+        {
+          "id": 119683935118,
+          "name": "windows",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "91274cfb1fb32fc7885dee0c96137662961b4f86",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39736692155/job/119683935118"
+        },
+        {
+          "id": 119683927135,
+          "name": "Analyze (rust)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "91274cfb1fb32fc7885dee0c96137662961b4f86",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39736687926/job/119683927135"
+        },
+        {
+          "id": 119683926499,
+          "name": "Analyze (actions)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "91274cfb1fb32fc7885dee0c96137662961b4f86",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39736687926/job/119683926499"
+        },
+        {
+          "id": 119683926047,
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "91274cfb1fb32fc7885dee0c96137662961b4f86",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39736687926/job/119683926047"
+        }
+      ]
+    }
+  ]
+}

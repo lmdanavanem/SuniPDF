@@ -2,7 +2,15 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+## 0.46.0 : tables de quantités et champs typés (Latest stable)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
+
+Formules libres, taxes, conversion monétaire, reconnaissance automatique de symboles, agrégation entre documents et autres critères complets d’estimation restent ouverts. Les angles sont visibles, mais exclus des quantités additives et des prix. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts.
+
+[Guide et limites](QUANTITY_TABLE.fr.md) · [Notes de version](RELEASE_0.46.0.fr.md) · [Preuves](qa/RELEASE_0.46.0.json).
+
+## 0.45.0 : bibliothèques locales d’annotations (publiée ; Latest à cette date)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
 

@@ -90,6 +90,7 @@ use crate::shortcut_defaults::DEFAULTS as SHORTCUTS;
 
 pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
+    pub overlay: crate::revision_overlay::OverlayState,
     pub processing: crate::processing::ProcessingState,
     pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
@@ -178,6 +179,7 @@ impl SuniApp {
             processing: Default::default(),
             office: Default::default(),
             review: Default::default(),
+            overlay: Default::default(),
             reading_full_screen: false,
             recovery,
             printing: Default::default(),
@@ -508,6 +510,9 @@ impl SuniApp {
                     self.review.progress = (done, total, page, pages);
                 }
                 Response::LocalReviewDone(result) => self.on_local_review(ctx, result),
+                Response::RevisionOverlayDone { generation, result } => {
+                    self.on_revision_overlay(ctx, generation, result);
+                }
                 Response::EngineFailed(e) => {
                     self.error = Some(error_key(&e));
                     log::error!("moteur indisponible : {e}");
@@ -1293,8 +1298,10 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.library.blocks_document()
+        self.overlay.open
+            || self.library.blocks_document()
             || self.review.busy
+            || self.overlay.busy
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
             || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
@@ -1314,6 +1321,7 @@ impl SuniApp {
     fn close_must_wait(&self) -> bool {
         self.library.blocks_document()
             || self.review.busy
+            || self.overlay.busy
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
             || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
@@ -1636,9 +1644,11 @@ impl SuniApp {
     pub fn dialog_open(&self) -> bool {
         self.library.open
             || self.review.open
+            || self.overlay.open
             || self.annotate.measure.saved.dialog_open()
             || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
             || self.review.busy
+            || self.overlay.busy
             || self.processing.open
             || self.office.open
             || self.office.busy
@@ -1694,6 +1704,8 @@ impl SuniApp {
             return;
         }
         if (self.review.busy
+            || self.overlay.open
+            || self.overlay.busy
             || self.processing.busy
             || self.printing.busy
             || self.ocr.busy
@@ -1707,6 +1719,9 @@ impl SuniApp {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            self.overlay
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             self.review
                 .cancel
                 .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1728,6 +1743,9 @@ impl SuniApp {
                 PendingAction::Quit
             });
             return;
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.overlay.open {
+            self.overlay.close();
         }
         if command.info().needs_document && self.document.is_none() {
             // L'outil reste utilisable, il commence par ouvrir un fichier.
@@ -1757,6 +1775,7 @@ impl SuniApp {
         }
         match command {
             Command::CompareFiles => self.open_local_review(true),
+            Command::RevisionOverlay => self.open_revision_overlay(),
             Command::SearchFiles => self.open_local_review(false),
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
@@ -3225,6 +3244,7 @@ impl eframe::App for SuniApp {
         self.unsaved_dialog(&ctx);
         self.signed_save_dialog(&ctx);
         self.feature_dialogs(&ctx);
+        self.revision_overlay_dialog(&ctx);
         self.autosave_tick();
         self.split_dialog(&ctx);
         self.flatten_dialog(&ctx);
@@ -3332,6 +3352,7 @@ pub(crate) mod tests {
             processing: Default::default(),
             office: Default::default(),
             review: Default::default(),
+            overlay: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),

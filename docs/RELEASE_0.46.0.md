@@ -2,7 +2,7 @@
 
 [Français](RELEASE_0.46.0.fr.md) · [Quantity-table guide](QUANTITY_TABLE.md)
 
-This build includes the scope below. Published assets and qualification are tracked on the [0.46.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0).
+Status: published as stable Latest [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0), source `3e6763964d6b06f004a09fd7473ddf5bb4a6417f`, on 2026-10-22. [Previous release](RELEASE_0.45.0.md).
 
 ## Scope
 
@@ -16,7 +16,7 @@ CSV and JSON exports include source-snapshot provenance, filters and subtotal co
 
 ## Qualification
 
-Qualification records and distribution assets are tracked on the [0.46.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). Results apply to the exact source identified there.
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061382) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664). 732 tests passed, 10 default ignored. 1348 EN/FR keys. 38 portable scenarios. 32 MSI baselines. 160 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 32 packaged CLI calls verify count/measurement quantities, typed fields, exact costs, filters/groups, CSV guarding, unit conversion, clearing, stale and overwrite refusals, AES permissions and source preservation. [Evidence](qa/RELEASE_0.46.0.json).
 
 ## Remaining limits
 

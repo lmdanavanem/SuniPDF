@@ -2,7 +2,7 @@
 
 [English](QUANTITY_TABLE.md) · [Périmètre et qualification 0.46](RELEASE_0.46.0.fr.md) · [Mesures](MEASUREMENTS.fr.md) · [Registre d’annotations](MARKUP_REGISTER.fr.md)
 
-Cette fonction est incluse dans cette compilation. La [page de version 0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) suit sa qualification et sa publication.
+Disponible dans [0.46.0](RELEASE_0.46.0.fr.md). [Preuves](qa/RELEASE_0.46.0.json).
 
 ## Ouvrir et filtrer la table
 

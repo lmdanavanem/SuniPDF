@@ -33,6 +33,7 @@ mod quantity_table;
 mod reading;
 mod recovery;
 mod redact;
+mod revision_overlay;
 mod settings;
 mod shell;
 mod shortcut_defaults;

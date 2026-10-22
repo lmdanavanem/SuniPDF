@@ -6,6 +6,7 @@ mod calibration_cmd;
 mod feature_cmd;
 mod library_cmd;
 mod measurement_cmd;
+mod overlay_cmd;
 mod password_input;
 mod quantity_cmd;
 mod register_cmd;
@@ -41,6 +42,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Overlay two explicitly aligned PDF pages as a new PNG or source-bound JSON report.
+    RevisionOverlay(overlay_cmd::OverlayArgs),
     /// Export a filtered quantity and cost table, preserving units, missing values and source identity.
     QuantityTable(quantity_cmd::TableArgs),
     /// Replace typed quantity fields and unit price on one expected annotation in a new PDF copy.
@@ -1563,6 +1566,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             )
         }
         Command::Count(args) => register_cmd::count(&engine, args),
+        Command::RevisionOverlay(args) => overlay_cmd::run(&engine, args),
         Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
         Command::SetQuantityFields(args) => quantity_cmd::set(&engine, args),
         Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
@@ -2938,6 +2942,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 /// Chemin de sortie d'une commande qui écrit un seul fichier.
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
+        Command::RevisionOverlay(args) => Some(&args.out),
         Command::QuantityTable(args) => args.report.out.as_deref(),
         Command::SetQuantityFields(args) => Some(&args.target.out),
         Command::ClearQuantityFields(args) => Some(&args.out),

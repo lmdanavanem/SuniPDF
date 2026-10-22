@@ -580,6 +580,10 @@ pub enum PickMode {
 
 pub enum Request {
     LocalReview(crate::local_review::Job),
+    RevisionOverlay {
+        generation: u64,
+        job: crate::revision_overlay::Job,
+    },
     Office(crate::office::Job),
     ProcessFiles(crate::processing::ProcessingJob),
     Print {
@@ -831,6 +835,10 @@ pub enum Response {
         pages: usize,
     },
     LocalReviewDone(Result<crate::local_review::Outcome, EngineError>),
+    RevisionOverlayDone {
+        generation: u64,
+        result: Result<crate::revision_overlay::Outcome, EngineError>,
+    },
     ProtectionAuthorization {
         epoch: u64,
         encrypted: bool,
@@ -1981,6 +1989,10 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         };
         // 2. Traitement.
         let response = match request {
+            Request::RevisionOverlay { generation, job } => Response::RevisionOverlayDone {
+                generation,
+                result: crate::revision_overlay::run_job(&engine, job),
+            },
             Request::LocalReview(job) => {
                 let result =
                     crate::local_review::run_job(&engine, job, |done, total, page, pages| {
@@ -2971,7 +2983,160 @@ mod tests {
         page_calibration_edits_have_history_and_survive_reopening(&worker);
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
         library_groups_use_one_preview_and_one_history_step(&worker);
+        revision_overlay_jobs_preserve_sources_and_guard_exports(&worker);
         quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
+    }
+
+    fn revision_overlay_jobs_preserve_sources_and_guard_exports(worker: &Worker) {
+        use crate::revision_overlay::{Job, Outcome};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::revision_overlay::OverlayOptions;
+        let dir = tempfile::tempdir().unwrap();
+        let bytes = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        let base = dir.path().join("base.pdf");
+        let revision = dir.path().join("revision.pdf");
+        std::fs::write(&base, &bytes).unwrap();
+        std::fs::write(&revision, &bytes).unwrap();
+        let prepare = |generation,
+                       base: PathBuf,
+                       passwords: [zeroize::Zeroizing<String>; 2],
+                       cancel: bool| {
+            worker.send(Request::RevisionOverlay {
+                generation,
+                job: Job::Preview {
+                    base,
+                    revision: revision.clone(),
+                    options: OverlayOptions {
+                        long_side: 512,
+                        ..Default::default()
+                    },
+                    passwords,
+                    cancel: Arc::new(AtomicBool::new(cancel)),
+                },
+            });
+            match next_response(worker) {
+                Response::RevisionOverlayDone {
+                    generation: returned,
+                    result,
+                } => {
+                    assert_eq!(returned, generation);
+                    result
+                }
+                _ => panic!("overlay preview response"),
+            }
+        };
+        let preview = match prepare(501, base.clone(), Default::default(), false).unwrap() {
+            Outcome::Preview(preview) => preview,
+            _ => panic!("prepared overlay"),
+        };
+        assert!(!worker.has_pending_mutations());
+        crate::revision_overlay::tests::verify_prepared_controls(&preview);
+        let export = |generation, path: PathBuf, json, cancel: bool| {
+            worker.send(Request::RevisionOverlay {
+                generation,
+                job: Job::Export {
+                    preview: preview.clone(),
+                    path,
+                    json,
+                    cancel: Arc::new(AtomicBool::new(cancel)),
+                },
+            });
+            match next_response(worker) {
+                Response::RevisionOverlayDone {
+                    generation: returned,
+                    result,
+                } => {
+                    assert_eq!(returned, generation);
+                    result
+                }
+                _ => panic!("overlay export response"),
+            }
+        };
+        let png = dir.path().join("overlay.png");
+        assert!(matches!(
+            export(502, png.clone(), false, false),
+            Ok(Outcome::Exported(_))
+        ));
+        let png_bytes = std::fs::read(&png).unwrap();
+        assert_eq!(
+            image::load_from_memory(&png_bytes).unwrap().width(),
+            preview.image().width
+        );
+        assert!(export(503, png.clone(), false, false).is_err());
+        assert_eq!(std::fs::read(&png).unwrap(), png_bytes);
+        let json = dir.path().join("overlay.json");
+        assert!(matches!(
+            export(504, json.clone(), true, false),
+            Ok(Outcome::Exported(_))
+        ));
+        let report: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(json).unwrap()).unwrap();
+        assert_eq!(report["schema"], "sunipdf-revision-overlay");
+        assert_eq!(
+            report["base"]["source_sha256"],
+            preview.report()["base"]["source_sha256"]
+        );
+        assert_eq!(std::fs::read(&base).unwrap(), bytes);
+        assert_eq!(std::fs::read(&revision).unwrap(), bytes);
+        let cancelled = dir.path().join("cancelled.png");
+        assert!(matches!(
+            export(505, cancelled.clone(), false, true),
+            Err(EngineError::Cancelled)
+        ));
+        assert!(!cancelled.exists());
+        assert!(matches!(
+            prepare(506, base.clone(), Default::default(), true),
+            Err(EngineError::Cancelled)
+        ));
+        let mut replacement = bytes.clone();
+        replacement.extend_from_slice(b"\n% changed revision\n");
+        std::fs::write(&revision, replacement).unwrap();
+        let stale = dir.path().join("stale.json");
+        assert!(export(507, stale.clone(), true, false).is_err());
+        assert!(!stale.exists());
+        std::fs::write(&revision, &bytes).unwrap();
+        for aes256 in [false, true] {
+            let protected = dir.path().join(format!("restricted-{aes256}.pdf"));
+            let user = format!(
+                "viewer-{}",
+                dir.path().file_name().unwrap().to_string_lossy()
+            );
+            let restricted = security::protect(
+                &bytes,
+                None,
+                &security::Protection {
+                    user_password: user.clone(),
+                    owner_password: format!("owner-{user}"),
+                    allow_print: true,
+                    allow_copy: false,
+                    allow_modify: true,
+                    allow_annotate: true,
+                    aes256,
+                },
+            )
+            .unwrap();
+            std::fs::write(&protected, restricted).unwrap();
+            assert!(matches!(
+                prepare(508, protected.clone(), Default::default(), false),
+                Err(EngineError::PasswordRequired)
+            ));
+            assert!(matches!(
+                prepare(
+                    509,
+                    protected,
+                    [zeroize::Zeroizing::new(user), Default::default()],
+                    false
+                ),
+                Err(EngineError::SecurityRestricted)
+            ));
+        }
+        assert_eq!(std::fs::read(base).unwrap(), bytes);
+        assert_eq!(std::fs::read(revision).unwrap(), bytes);
+        assert!(!worker.has_pending_mutations());
     }
 
     fn quantity_fields_have_history_exports_and_guarded_desktop_controls(worker: &Worker) {

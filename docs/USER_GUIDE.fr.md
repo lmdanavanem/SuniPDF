@@ -3,11 +3,22 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre cette compilation de SuniPDF 0.46.0. La précédente version vérifiée [0.45.0](RELEASE_0.45.0.fr.md) conserve ses propres preuves. La [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) suit la qualification et la publication. L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide couvre cette compilation de SuniPDF 0.47.0. La précédente version vérifiée [0.46.0](RELEASE_0.46.0.fr.md) conserve ses propres preuves. La [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit la qualification et la publication. L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+
+## Superpositions de révisions alignées
+
+Cette fonction est incluse dans cette compilation. La [page de version 0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) suit sa qualification et sa publication.
+
+1. Ouvrez **Superposition de révisions** depuis **Tous les outils** ou **Comparer des fichiers**. Choisissez les PDF de base et révisé enregistrés, leurs numéros de page physique et leurs éventuels mots de passe séparés. Les modifications non enregistrées des onglets ne sont pas incluses.
+2. Choisissez **Alignement manuel**, réglez décalages, rotation horaire et échelle, puis cliquez sur **Aperçu**. La base est magenta et la révision cyan ; les coordonnées partent du coin supérieur gauche affiché après recadrage et rotation de page.
+3. Pour **Alignement par deux points**, lancez **Aperçu** pour charger les sources, cliquez deux points distincts sur la base puis les deux points correspondants sur la révision, et relancez l’aperçu. **Réinitialiser l’alignement** efface points et transformation. Relancez l’aperçu après modification de l’opacité, de la résolution ou de l’alignement.
+4. Choisissez **Exporter PNG** ou **Exporter le rapport JSON**, puis un nouveau nom. Les deux PDF doivent autoriser la copie et correspondre encore à leurs empreintes enregistrées. Ils restent inchangés ; la sortie est limitée au cadre de la base. Recalage automatique et contours automatiques des changements restent ouverts.
+
+[Instructions complètes, limites et CLI](REVISION_OVERLAY.fr.md).
 
 ## Tables de quantités et champs typés
 
-Cette fonction est incluse dans cette compilation. La [page de version 0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) suit sa qualification et sa publication.
+Disponible dans [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). [Preuves](qa/RELEASE_0.46.0.json).
 
 1. Ouvrez un PDF, puis choisissez **Table des quantités** depuis **Tous les outils**, les contrôles de mesure ou le registre d’annotations. Filtrez les lignes et choisissez les **Groupes de sous-totaux** ; les totaux couvrent toutes les lignes correspondantes, y compris les autres pages de la table.
 2. Cliquez sur **Modifier la ligne** pour renseigner **Prix unitaire**, **Code devise**, **Prix par unité** et **Décimales du coût**. Un prix vide est absent ; `0` est un zéro explicite. Comptages et mesures enregistrées fournissent les quantités ; aucune quantité n’est déduite d’une annotation ordinaire et les angles ne sont pas tarifés.
@@ -19,29 +30,6 @@ Cette fonction est incluse dans cette compilation. La [page de version 0.46.0](h
 ## Réutiliser des modèles locaux d’annotations
 
 La bibliothèque d’annotations 0.45 est disponible dans son [périmètre qualifié](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
-principale, ou sur **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local
-est distinct des PDF et des réglages.
-
-Choisissez **Créer un modèle**, préparez un nouveau brouillon compatible puis développez **Enregistrer dans la bibliothèque**.
-Saisissez un nom unique et cliquez sur **Enregistrer le modèle**. Crédit, source et licence sont des déclarations
-facultatives ; une valeur vide reste inconnue. Enregistrer le modèle ne l’insère pas dans le PDF. La capture prend
-en charge texte avec police standard, polygones/polylignes, nuages de révision, tampons prédéfinis et tampons image PNG.
-
-Choisissez **Placer sur la page**, réglez l’échelle puis cliquez sur le PDF. Vérifiez l’aperçu rendu ; ajustez
-**Origine X (pt)**, **Origine Y (pt)** ou **Échelle** si nécessaire, puis redemandez **Aperçu**. Cliquez sur
-**Appliquer à l’objet** pour créer les annotations ou sur **Annuler** pour abandonner le placement. Un groupe
-constitue une seule étape Annuler ; enregistrez le PDF pour le conserver. Pour composer un groupe, cochez au moins
-deux entrées, choisissez **Créer un groupe**, renseignez un nouveau nom et les décalages des éléments, puis enregistrez.
-
-Import/export, suppression de la sélection, rechargement et filtre sont disponibles dans la bibliothèque. Imports
-invalides et écritures en conflit conservent son contenu actif. Le fichier de bibliothèque ne bénéficie pas de l’historique
-Annuler du PDF ; exportez une copie avant de supprimer des modèles à conserver. Mesures, échelles de page, identités PDF
-existantes et fils de revue sont exclus. [Notice complète, format, limites et exemples CLI](ANNOTATION_LIBRARY.fr.md).
-
-## Réutiliser des modèles locaux d’annotations
-
-La bibliothèque d’annotations 0.45 est **en développement et en cours de validation** ; consulter son
-[périmètre et son état de qualification](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
 principale, ou sur **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local
 est distinct des PDF et des réglages.
 

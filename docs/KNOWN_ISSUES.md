@@ -2,7 +2,15 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.45.0: local annotation libraries (stable Latest)
+## 0.46.0: quantity tables and typed fields (stable Latest)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
+
+Arbitrary formulas, tax calculation, currency exchange, automatic symbol recognition, cross-document aggregation and the remaining full estimating acceptance criteria stay open. Angles are visible but excluded from additive quantities and pricing. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open.
+
+[Guide and limits](QUANTITY_TABLE.md) · [Release notes](RELEASE_0.46.0.md) · [Evidence](qa/RELEASE_0.46.0.json).
+
+## 0.45.0: local annotation libraries (published; Latest at the time)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
 

@@ -4,6 +4,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
     CompareFiles,
+    RevisionOverlay,
     SearchFiles,
     HubCompress,
     CompressImages,
@@ -192,6 +193,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        RevisionOverlay,
+        "file.revision_overlay",
+        "overlay.title",
+        None,
+        false,
+        File
+    ),
     cmd!(
         AnnotationLibrary,
         "annotations.library",
@@ -1336,7 +1345,7 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 10);
+        assert_eq!(Command::in_menu(Menu::File).count(), 11);
         assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
