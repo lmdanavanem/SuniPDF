@@ -13,7 +13,7 @@ Partial corpus/mutation work does not close native, interoperability, authentici
 | Version | Scope | Current state |
 |---|---|---|
 | 0.44 | Edit one saved measurement; correct calibration defaults, scale reset, inspector allocations, copying permissions, resize handling and stale/external targets. | Published; [Evidence](qa/RELEASE_0.44.0.json). |
-| 0.45 | A local annotation library with explicit save, reuse, placement and removal. | Planned; implementation and release evidence pending. |
+| 0.45 | Local annotation libraries | Slice delivered within its bounds; full acceptance criteria remain open. [0.45.0](RELEASE_0.45.0.md). |
 | 0.46 | Quantity columns, unit-aware totals and bounded exports tied to actual records. | Planned; supported fields and calculation rules still need qualification. |
 | 0.47 | Local overlays and revision review with explicit alignment and retained originals. | Planned; geometry support and revision checks still need qualification. |
 
@@ -21,7 +21,13 @@ The 0.44 desktop editor changes reference distance, unit and precision while kee
 
 This sequence delivers bounded increments. AEC-001/002/003/004/026 remain partial; mouse vertex editing, batch recalculation, multi-scale viewports, real-plan dimensional accuracy and broader 1.0 criteria are not closed by the proposed releases. Published historical evidence below remains attached to its original version.
 
-## 0.44.0: editing saved measurements (stable Latest)
+## 0.45.0: local annotation libraries (stable Latest)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
+
+[Guide and limits](ANNOTATION_LIBRARY.md) · [Release notes](RELEASE_0.45.0.md) · [Evidence](qa/RELEASE_0.45.0.json).
+
+## 0.44.0: editing saved measurements (published; Latest at the time)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
 

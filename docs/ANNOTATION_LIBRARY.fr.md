@@ -6,7 +6,7 @@
 
 Cliquez sur **Bibliothèque** dans la barre principale, ou choisissez **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local est distinct des préférences de l’application. Sa gestion est possible sans PDF ouvert ; créer un brouillon ou placer un modèle exige un document ouvert.
 
-L’implémentation 0.45 est en cours de validation. Les notes de version liées indiquent l’état de publication.
+Disponible dans [0.45.0](RELEASE_0.45.0.fr.md). [Preuves](qa/RELEASE_0.45.0.json).
 
 1. Choisissez **Créer un modèle** pour préparer une nouvelle annotation. La capture prend en charge texte avec une police standard, polygones/polylignes, nuages de révision, tampons prédéfinis et tampons image PNG. Choisissez le type puis préparez texte, géométrie et style dans la boîte d’annotations enrichies.
 2. Développez **Enregistrer dans la bibliothèque**, saisissez un **Nom** unique puis cliquez sur **Enregistrer le modèle**. **Crédit**, **Source ou provenance** et **Licence ou droit de réutilisation** sont des déclarations facultatives ; une valeur vide reste inconnue. L’enregistrement conserve le PDF intact et garde le brouillon ouvert. Fermez-le avec **Annuler** si vous souhaitez seulement garder le modèle.

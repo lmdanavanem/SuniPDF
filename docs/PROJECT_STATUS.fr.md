@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.44.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.45.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.44.0 : modification des mesures enregistrées (Latest stable)
+## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
+
+Source `51f07a6b27733e4bbfd46bcbc45bc2a82d4886c8`, PR [#20](https://github.com/lmdanavanem/SuniPDF/pull/20). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620304) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732631044) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620287). 724 tests réussis, 10 ignorés par défaut. 1302 clés EN/FR. 37 scénarios portables. 31 références MSI. 155 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 24 appels CLI vérifient imports stricts, modèles et groupes nommés, export sélectionné, suppression, placement, identités neuves, conservation des sources et refus explicites.
+
+[Guide et limites](ANNOTATION_LIBRARY.fr.md) · [Notes de version](RELEASE_0.45.0.fr.md) · [Preuves](qa/RELEASE_0.45.0.json).
+
+## 0.44.0 : modification des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
 

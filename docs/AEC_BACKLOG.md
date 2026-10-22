@@ -4,11 +4,15 @@
 
 SuniPDF is a free, open-source local application for PDF plans, measurements and review, licensed under MIT OR Apache-2.0. This backlog defines planned capabilities and acceptance criteria; statuses distinguish partial implementation from qualified functionality.
 
+## Local annotation libraries — 0.45.0
+
+Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions. AEC-006 remains **In progress**. Arbitrary capture from existing PDF annotations, nested groups, measurement/calibration transfer and the remaining complete library acceptance criteria stay open. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open. [Evidence](qa/RELEASE_0.45.0.json).
+
 ## Foundations already present
 
 - Local editing, annotations, threaded comments, review states, OCR, forms, protection, recovery and PDF operations are covered within the [feature matrix](FEATURE_MATRIX.md).
 - Local comparison and multi-file text search exist. Geometric plan alignment, automatic revision outlines and symbol search remain separate work.
-- Decoration presets exist in 0.39.0. Image Stamp annotations and atomic text-decoration refusals are part of the 0.40.0 source slice; these do not constitute a shared annotation library.
+- Decoration presets exist in 0.39.0. Image Stamp annotations and atomic text-decoration refusals are part of the 0.40.0 source slice; those earlier features did not by themselves provide a local annotation library.
 
 The 0.40.0 local source slice introduced self-contained two-point calibration and five measurement kinds with JSON records through coordinate entry. [Usage and current limits](MEASUREMENTS.md). It provided a foundation for AEC-001/002/003/026; those cards remain open.
 

@@ -3,12 +3,11 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.44.0](RELEASE_0.44.0.fr.md). La version précédente [0.43.0](RELEASE_0.43.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide couvre [0.45.0](RELEASE_0.45.0.fr.md). La version précédente [0.44.0](RELEASE_0.44.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
 
 ## Réutiliser des modèles locaux d’annotations
 
-La bibliothèque d’annotations 0.45 est **en développement et en cours de validation** ; consulter son
-[périmètre et son état de qualification](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
+La bibliothèque d’annotations 0.45 est disponible dans son [périmètre qualifié](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
 principale, ou sur **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local
 est distinct des PDF et des réglages.
 

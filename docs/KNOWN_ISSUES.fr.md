@@ -2,7 +2,15 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.44.0 : modification des mesures enregistrées (Latest stable)
+## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
+
+La capture arbitraire d’annotations PDF existantes, les groupes imbriqués, le transfert de mesures/calibration et les autres critères complets de bibliothèque restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts.
+
+[Guide et limites](ANNOTATION_LIBRARY.fr.md) · [Notes de version](RELEASE_0.45.0.fr.md) · [Preuves](qa/RELEASE_0.45.0.json).
+
+## 0.44.0 : modification des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
 
