@@ -4,24 +4,24 @@
 
 The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
 
-## 0.44.0: saved-measurement editing (in preparation)
+## 0.44.0: editing saved measurements (stable Latest)
 
-Validate the implemented editor for reference distance, converted unit and precision with Preview/Apply, one Undo/Redo step and stable annotation identity. Desktop vertices remain fixed; CLI geometry replacement requires a fresh expected record and a new output copy. Include the direct return to saved page scales, shared inspector records/labels, removal of implicit manual calibration, copying-permission checks on JSON output, atomic refusal of measured-page annotation resizing and guarded external/stale targets.
+Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
 
-Before publication, verify the final source with GUI/worker/core/CLI regressions, qpdf, security checks, packages and public downloads. No passing test count or 0.44 publication is asserted by this checklist. [Scope and preliminary audit](RELEASE_0.44.0.md) · [Usage](MEASUREMENTS.md).
+Published within its documented bounds; the next planned implementation is the local 0.45 library. [Evidence](qa/RELEASE_0.44.0.json).
 
 ### Planned local sequence
 
 | Version | Next bounded outcome | Completion evidence needed |
 |---|---|---|
-| 0.44 | Individual measurement editing and the corrective lot above; validation in progress. | Preserve original files, geometry where fixed, identity, replies and permissions; verify cancellation/history and new-copy output. |
+| 0.44 | Individual measurement editing and corrective work delivered within their bounds. | Preserve original files, geometry where fixed, identity, replies and permissions; verify cancellation/history and new-copy output. |
 | 0.45 | Local reusable annotation library; planned. | Explicit save/load/delete, bounded versioned records, usable placement and retained source annotations. |
 | 0.46 | Quantity columns, compatible totals and exports; planned. | Totals derived from actual records, explicit unit/dimension handling, filters and protected exports with regression fixtures. |
 | 0.47 | Local overlays and revision review; planned. | Explicit alignment, identifiable input revisions, retained originals and checks for supported page geometries. |
 
 Future stages require implementation and qualification before their release. AEC-001/002/003/004/026 remain partial, and native interaction, real-plan dimensional checks and the wider 1.0 gates remain open. [Roadmap](ROADMAP.md).
 
-## 0.43.0: saved page scales and measurement inspection (stable Latest)
+## 0.43.0: saved page scales and measurement inspection (published; Latest at the time)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
 

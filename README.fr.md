@@ -25,7 +25,13 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+## 0.44.0 : modification des mesures enregistrées (Latest stable)
+
+[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
+
+[Guide et limites](docs/MEASUREMENTS.fr.md) · [Notes de version](docs/RELEASE_0.44.0.fr.md) · [Preuves](docs/qa/RELEASE_0.44.0.json).
+
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (publiée ; Latest à cette date)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
 
