@@ -4,11 +4,15 @@
 
 SuniPDF est une application locale gratuite et open source pour les plans, les métrés et les revues PDF, sous licence MIT OR Apache-2.0. Ce backlog décrit les fonctions à développer et leurs critères de réalisation ; les statuts distinguent les progrès partiels des fonctions qualifiées.
 
+## Bibliothèques locales d’annotations — 0.45.0
+
+Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions. AEC-006 reste **En cours**. La capture arbitraire d’annotations PDF existantes, les groupes imbriqués, le transfert de mesures/calibration et les autres critères complets de bibliothèque restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité et qualification matérielle restent ouverts. [Preuves](qa/RELEASE_0.45.0.json).
+
 ## Base existante et statuts
 
 Le lot 0.41.0 ajoute [comptages manuels et tableau des annotations](MARKUP_REGISTER.fr.md) : repères persistants par clic, groupes et totaux reliés aux identités, changement de groupe, déplacement/suppression/Annuler, recherche/filtres/navigation sur toutes les pages, champs métier distincts et exports CSV/JSON. AEC-005 est terminé dans les limites documentées et qualifié en 0.41.0. AEC-004 reste partiel : tri par clé personnalisée, colonnes typées et normalisation des dates restent ouverts.
 
-L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, les formulaires, la protection, la récupération et les opérations locales existent dans les limites de la [matrice](FEATURE_MATRIX.fr.md). La comparaison et la recherche multi-PDF existent ; le recalage de plans, les contours de révision automatiques et la reconnaissance de symboles restent distincts. Les modèles de décoration de la 0.39 et les tampons image du lot 0.40 ne constituent pas encore une bibliothèque partagée d'annotations.
+L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, les formulaires, la protection, la récupération et les opérations locales existent dans les limites de la [matrice](FEATURE_MATRIX.fr.md). La comparaison et la recherche multi-PDF existent ; le recalage de plans, les contours de révision automatiques et la reconnaissance de symboles restent distincts. Les modèles de décoration de la 0.39 et les tampons image du lot 0.40 ne constituaient pas, à eux seuls, une bibliothèque locale d'annotations.
 
 Le lot local 0.40.0 a introduit calibration sur deux points, cinq types de mesures et données JSON par saisie de coordonnées. [Guide et limites](MEASUREMENTS.fr.md). Il constitue une base pour AEC-001/002/003/026 ; ces cartes restent ouvertes.
 

@@ -43,6 +43,7 @@ mod page_calibration;
 pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
+pub mod quantity_table;
 pub mod redact;
 pub mod sanitize;
 pub mod security;

@@ -2,7 +2,7 @@
 
 [English](RELEASE_0.45.0.md) · [Guide de la bibliothèque](ANNOTATION_LIBRARY.fr.md)
 
-Statut : **en développement**. Ce périmètre est en cours d’implémentation ; il n’est pas encore qualifié ni publié.
+Statut : publiée en Latest stable [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0), source `51f07a6b27733e4bbfd46bcbc45bc2a82d4886c8`, le 2026-10-22. [Version précédente](RELEASE_0.44.0.fr.md).
 
 ## Périmètre
 
@@ -16,7 +16,7 @@ La gestion CLI utilise des fichiers de bibliothèque explicites. Le placement da
 
 ## Qualification
 
-Les résultats moteur, interface, CLI, lecteurs PDF indépendants, paquets et téléchargements publics seront consignés après exécution sur la source de publication. Aucun nombre de tests réussis ni fichier publié n’est annoncé ici.
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620304) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732631044) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620287). 724 tests réussis, 10 ignorés par défaut. 1302 clés EN/FR. 37 scénarios portables. 31 références MSI. 155 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 24 appels CLI vérifient imports stricts, modèles et groupes nommés, export sélectionné, suppression, placement, identités neuves, conservation des sources et refus explicites. [Preuves](qa/RELEASE_0.45.0.json).
 
 ## Limites restantes
 

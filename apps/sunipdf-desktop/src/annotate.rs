@@ -125,6 +125,7 @@ impl Drag {
 #[derive(Default)]
 pub struct AnnotateState {
     pub register: crate::annotation_register::RegisterState,
+    pub quantities: crate::quantity_table::QuantityState,
     pub measure: crate::measure_tools::MeasurementState,
     pub tool: Tool,
     pub drag: Option<Drag>,

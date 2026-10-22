@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-10-22
+
+Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
+
+[Notes and limits](docs/RELEASE_0.45.0.md) · [Evidence](docs/qa/RELEASE_0.45.0.json).
+
 ## [0.44.0] - 2026-10-22
 
 Edit a saved measurement's scale, unit and precision through Preview and Apply while retaining its identity, replies and register data. The CLI also edits geometry in a new copy guarded by an expected record. Measurement exports enforce copying permission; unsafe measured-page resizing is refused atomically. The inspector shares cached records and labels, and temporary scales can be cleared explicitly. No implicit manual calibration is supplied.

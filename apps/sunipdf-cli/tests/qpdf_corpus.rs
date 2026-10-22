@@ -172,6 +172,79 @@ fn check_annotation_library(
     assert_eq!(std::fs::read(source).unwrap(), original);
 }
 
+fn check_quantity_fields(
+    qpdf: &Path,
+    source: &Path,
+    directory: &Path,
+    prefix: &str,
+    password: Option<&str>,
+) {
+    let original = std::fs::read(source).unwrap();
+    let counted = directory.join(format!("{prefix}-quantity-count.pdf"));
+    let priced = directory.join(format!("{prefix}-quantity-price.pdf"));
+    let cleared = directory.join(format!("{prefix}-quantity-cleared.pdf"));
+    let expected = directory.join(format!("{prefix}-quantity-row.json"));
+    let fields = directory.join(format!("{prefix}-quantity-fields.json"));
+    let authenticated = |mut command: Command| {
+        if let Some(password) = password {
+            command
+                .args(["--password-env", "SUNIPDF_QA_QUANTITY_PASSWORD"])
+                .env("SUNIPDF_QA_QUANTITY_PASSWORD", password);
+        }
+        command
+    };
+    let mut command = cli(&["count"], &[source]);
+    command
+        .args(["--group", "Quantity corpus", "--point", "80,80", "--out"])
+        .arg(&counted);
+    success(authenticated(command));
+    check(qpdf, &counted, password);
+    let read = |path: &Path| {
+        let mut command = cli(&["quantity-table"], &[path]);
+        command.args(["--count-group", "Quantity corpus"]);
+        success(authenticated(command))
+    };
+    let report = read(&counted);
+    assert_eq!(report["rows"].as_array().unwrap().len(), 1);
+    std::fs::write(&expected, serde_json::to_vec(&report["rows"][0]).unwrap()).unwrap();
+    std::fs::write(&fields, serde_json::to_vec(&serde_json::json!({
+        "unit_price":{"amount":"12.50","currency":"CHF","per_unit":"each","rounding_decimals":2},
+        "custom":{"Revision":{"type":"number","value":"2"}}
+    })).unwrap()).unwrap();
+    let mut command = cli(&["set-quantity-fields"], &[&counted]);
+    command
+        .args(["--page", "1", "--expected-record"])
+        .arg(&expected)
+        .arg("--fields")
+        .arg(&fields)
+        .arg("--out")
+        .arg(&priced);
+    assert_eq!(
+        success(authenticated(command))["source_content_exported"],
+        false
+    );
+    check(qpdf, &priced, password);
+    let report = read(&priced);
+    assert_eq!(report["rows"][0]["line_total"]["amount"], "12.50");
+    std::fs::write(&expected, serde_json::to_vec(&report["rows"][0]).unwrap()).unwrap();
+    let mut command = cli(&["clear-quantity-fields"], &[&priced]);
+    command
+        .args(["--page", "1", "--expected-record"])
+        .arg(&expected)
+        .arg("--out")
+        .arg(&cleared);
+    assert_eq!(success(authenticated(command))["cleared"], true);
+    check(qpdf, &cleared, password);
+    let cleared_report = read(&cleared);
+    assert_eq!(cleared_report["rows"][0]["quantity"]["value"], 1.0);
+    assert!(cleared_report["rows"][0]["line_total"].is_null());
+    assert_eq!(
+        cleared_report["rows"][0]["register"]["annotation_id"],
+        report["rows"][0]["register"]["annotation_id"]
+    );
+    assert_eq!(std::fs::read(source).unwrap(), original);
+}
+
 fn check_page_calibration(
     qpdf: &Path,
     source: &Path,
@@ -342,6 +415,7 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     let original_bytes = std::fs::read(&original).unwrap();
     check_page_calibration(&qpdf, &original, temp.path(), "plain", None);
     check_annotation_library(&qpdf, &original, temp.path(), "plain", None);
+    check_quantity_fields(&qpdf, &original, temp.path(), "plain", None);
     let signature_image = temp.path().join("signature.png");
     image::RgbaImage::from_pixel(80, 40, image::Rgba([20, 20, 20, 255]))
         .save(&signature_image)
@@ -515,6 +589,13 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
             Some("package-owner"),
         );
         check_annotation_library(
+            &qpdf,
+            &measurement_source,
+            temp.path(),
+            name,
+            Some("package-owner"),
+        );
+        check_quantity_fields(
             &qpdf,
             &measurement_source,
             temp.path(),

@@ -785,6 +785,7 @@ impl SuniApp {
                 }) => {
                     self.measurement_scale_changed();
                     self.annotate.register.invalidate();
+                    self.annotate.quantities.invalidate();
                     self.docinfo.inspection_epoch = None;
                     self.docinfo.inspection = None;
                     if self.edit.paragraph.as_ref().is_some_and(|d| d.applying) {
@@ -928,6 +929,16 @@ impl SuniApp {
                         None => {}
                     }
                 }
+                Response::QuantityTable {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_quantity_table(epoch, generation, result),
+                Response::QuantityExported {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_quantity_exported(epoch, generation, result),
                 Response::AnnotationRegister {
                     epoch,
                     generation,
@@ -1018,6 +1029,7 @@ impl SuniApp {
                 Response::OperationFailed(e) => {
                     self.measurement_scale_failed(&e);
                     self.register_edit_failed(&e);
+                    self.quantity_edit_failed(&e);
                     self.rich_annotation_failed(&e);
                     if let Some(draft) = self.edit.paragraph.as_mut().filter(|d| d.applying) {
                         draft.applying = false;
@@ -1285,7 +1297,7 @@ impl SuniApp {
             || self.review.busy
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
-            || self.annotate.register.dialog_open()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.processing.busy
@@ -1304,7 +1316,7 @@ impl SuniApp {
             || self.review.busy
             || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
-            || self.annotate.register.dialog_open()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.ink_draft_active()
@@ -1341,6 +1353,7 @@ impl SuniApp {
 
     pub(crate) fn handle_input(&mut self, ctx: &egui::Context) {
         self.validate_measurement_context();
+        self.validate_quantity_context();
         self.validate_library_context(ctx);
         if self.annotate.measure.is_active_draft()
             && !self.dialog_open()
@@ -1624,7 +1637,7 @@ impl SuniApp {
         self.library.open
             || self.review.open
             || self.annotate.measure.saved.dialog_open()
-            || self.annotate.register.dialog_open()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
             || self.review.busy
             || self.processing.open
             || self.office.open
@@ -1751,6 +1764,7 @@ impl SuniApp {
             Command::ToolMeasure => self.open_measurements(ctx),
             Command::AnnotationLibrary => self.open_annotation_library(),
             Command::AnnotationRegister => self.open_annotation_register(),
+            Command::QuantityTable => self.open_quantity_table(),
             Command::EraseInkStrokes => self.open_ink_eraser(ctx),
             Command::OfficeToPdf => self.open_office(false),
             Command::ExportOffice => self.open_office(true),
@@ -3226,6 +3240,7 @@ impl eframe::App for SuniApp {
         self.annotation_library_dialog(&ctx);
         self.saved_measurements_dialog(&ctx);
         self.annotation_register_dialog(&ctx);
+        self.quantity_table_dialog(&ctx);
         self.count_marker_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);

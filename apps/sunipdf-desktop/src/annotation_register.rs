@@ -231,6 +231,7 @@ impl SuniApp {
         let mut navigate = None;
         let mut apply = false;
         let mut cancel_edit = false;
+        let mut quantities = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
         let row_actions_enabled = enabled && state.edit.is_none();
@@ -476,6 +477,9 @@ impl SuniApp {
                 }
             },
             |ui| {
+                quantities = ui
+                    .add_enabled(can_refresh, egui::Button::new(tr(lang, "quantity.title")))
+                    .clicked();
                 refresh = ui
                     .add_enabled(can_refresh, egui::Button::new(tr(lang, "register.refresh")))
                     .clicked();
@@ -577,6 +581,10 @@ impl SuniApp {
             state.edit = None;
         }
         self.annotate.register = state;
+        if quantities {
+            self.annotate.register.open = false;
+            self.open_quantity_table();
+        }
     }
 }
 

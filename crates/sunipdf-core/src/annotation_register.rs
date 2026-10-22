@@ -78,7 +78,8 @@ struct StoredCount {
     group: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct RegisterRow {
     /// Physical page number (one-based); annotation index is zero-based in /Annots.
     pub page: usize,
@@ -158,7 +159,7 @@ pub struct AnnotationRegister {
     pub source_sha256: String,
     pub page_count: usize,
     pub rows: Vec<RegisterRow>,
-    source_snapshot: Arc<Vec<u8>>,
+    pub(crate) source_snapshot: Arc<Vec<u8>>,
 }
 
 #[derive(Debug, Clone)]
@@ -309,7 +310,7 @@ impl AnnotationRegister {
     }
 }
 
-fn csv_cell(text: &str) -> String {
+pub(crate) fn csv_cell(text: &str) -> String {
     let first = text
         .trim_start_matches(|c: char| c.is_whitespace() || c.is_control() || c == '\u{feff}')
         .chars()
@@ -365,7 +366,7 @@ fn stored<T: serde::de::DeserializeOwned>(
     serde_json::from_slice(bytes).map(Some).map_err(|_| bad())
 }
 
-fn editable(dict: &Dictionary) -> Result<(), EngineError> {
+pub(crate) fn editable(dict: &Dictionary) -> Result<(), EngineError> {
     let flags = dict
         .get(b"F")
         .map_or(Ok(0), Object::as_i64)
@@ -426,8 +427,22 @@ impl Document<'_> {
         if bytes.len() > 128 * 1024 * 1024 {
             return Err(bad());
         }
-        let source_sha256 = digest(&bytes);
         let pdf = security::load(&bytes, self.password())?;
+        self.annotation_register_from_pdf(bytes, &pdf)
+    }
+
+    pub(crate) fn annotation_register_from_pdf(
+        &self,
+        bytes: Vec<u8>,
+        pdf: &lopdf::Document,
+    ) -> Result<AnnotationRegister, EngineError> {
+        if self.page_count() > 1000 {
+            return Err(bad());
+        }
+        if bytes.len() > 128 * 1024 * 1024 {
+            return Err(bad());
+        }
+        let source_sha256 = digest(&bytes);
         let mut rows = Vec::new();
         let mut budget = 0;
         let mut names = HashMap::<String, usize>::new();
@@ -464,8 +479,8 @@ impl Document<'_> {
                 pdf.dereference(dict.get(b"Subtype").map_err(lopdf_err)?)
                     .and_then(|(_, v)| v.as_name())
                     .map_err(lopdf_err)?;
-                let kind = text(&pdf, dict, b"Subtype", &mut budget)?.ok_or_else(bad)?;
-                let annotation_id = text(&pdf, dict, b"NM", &mut budget)?;
+                let kind = text(pdf, dict, b"Subtype", &mut budget)?.ok_or_else(bad)?;
+                let annotation_id = text(pdf, dict, b"NM", &mut budget)?;
                 if let Some(id) = &annotation_id {
                     *names.entry(id.clone()).or_default() += 1;
                 }
@@ -539,8 +554,8 @@ impl Document<'_> {
                         Some(v.group)
                     }
                 };
-                let model = text(&pdf, dict, b"StateModel", &mut budget)?;
-                let state = text(&pdf, dict, b"State", &mut budget)?;
+                let model = text(pdf, dict, b"StateModel", &mut budget)?;
+                let state = text(pdf, dict, b"State", &mut budget)?;
                 if model.as_deref() == Some("Review") {
                     states.push((index, state.clone()));
                 }
@@ -556,10 +571,10 @@ impl Document<'_> {
                     index,
                     annotation_id,
                     kind,
-                    author: text(&pdf, dict, b"T", &mut budget)?,
-                    modified: text(&pdf, dict, b"M", &mut budget)?,
-                    contents: text(&pdf, dict, b"Contents", &mut budget)?,
-                    subject: text(&pdf, dict, b"Subj", &mut budget)?,
+                    author: text(pdf, dict, b"T", &mut budget)?,
+                    modified: text(pdf, dict, b"M", &mut budget)?,
+                    contents: text(pdf, dict, b"Contents", &mut budget)?,
+                    subject: text(pdf, dict, b"Subj", &mut budget)?,
                     rect,
                     parent,
                     is_reply,

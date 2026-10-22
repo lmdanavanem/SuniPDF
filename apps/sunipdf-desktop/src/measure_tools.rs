@@ -660,6 +660,15 @@ impl SuniApp {
             self.finish_measurement(ctx);
         }
         self.measurement_saved_bar(ui);
+        if ui
+            .add_enabled(
+                ready && !self.annotate.measure.is_active_draft(),
+                egui::Button::new(tr(lang, "quantity.title")),
+            )
+            .clicked()
+        {
+            self.open_quantity_table();
+        }
     }
 
     pub(crate) fn paint_measurement(

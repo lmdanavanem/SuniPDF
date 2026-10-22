@@ -14,7 +14,7 @@ d’authenticité ou de conformité.
 | Version | Périmètre | État actuel |
 |---|---|---|
 | 0.44 | Modifier une mesure enregistrée ; corriger calibration implicite, retour au défaut, allocations de l'inspecteur, droits de copie, redimensionnement et cibles externes/périmées. | Publiée ; [Preuves](qa/RELEASE_0.44.0.json). |
-| 0.45 | Bibliothèque locale d'annotations avec enregistrement, réutilisation, placement et suppression explicites. | Prévue ; implémentation et preuves de publication à venir. |
+| 0.45 | Bibliothèques locales d’annotations | Lot livré dans ses limites ; critères complets encore ouverts. [0.45.0](RELEASE_0.45.0.fr.md). |
 | 0.46 | Colonnes de métrés, totaux respectant les unités et exports bornés liés aux données réelles. | Prévus ; champs compatibles et règles de calcul à qualifier. |
 | 0.47 | Superpositions locales et revue des révisions avec alignement explicite et originaux conservés. | Prévues ; géométries et contrôles des révisions à qualifier. |
 
@@ -22,7 +22,13 @@ L'éditeur 0.44 modifie distance de référence, unité et précision en conserv
 
 Cette séquence apporte des incréments bornés. AEC-001/002/003/004/026 restent partiels ; sommets à la souris, recalcul par lot, vues multi-échelles, justesse dimensionnelle sur plans réels et critères généraux 1.0 ne sont pas clôturés par les versions proposées. Les preuves historiques ci-dessous restent attachées à leur version d'origine.
 
-## 0.44.0 : modification des mesures enregistrées (Latest stable)
+## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
+
+[Guide et limites](ANNOTATION_LIBRARY.fr.md) · [Notes de version](RELEASE_0.45.0.fr.md) · [Preuves](qa/RELEASE_0.45.0.json).
+
+## 0.44.0 : modification des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
 

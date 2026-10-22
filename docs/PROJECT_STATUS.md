@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.44.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.45.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.44.0: editing saved measurements (stable Latest)
+## 0.45.0: local annotation libraries (stable Latest)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
+
+Source `51f07a6b27733e4bbfd46bcbc45bc2a82d4886c8`, PR [#20](https://github.com/lmdanavanem/SuniPDF/pull/20). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620304) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732631044) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620287). 724 tests passed, 10 default ignored. 1302 EN/FR keys. 37 portable scenarios. 31 MSI baselines. 155 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 24 packaged CLI calls verify strict library imports, named templates and groups, selected export, removal, placement, fresh identities, source preservation and explicit refusals.
+
+[Guide and limits](ANNOTATION_LIBRARY.md) · [Release notes](RELEASE_0.45.0.md) · [Evidence](qa/RELEASE_0.45.0.json).
+
+## 0.44.0: editing saved measurements (published; Latest at the time)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
 
