@@ -558,8 +558,16 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
 }
 
 impl SuniApp {
+    pub(crate) fn leaves_measurement_workspace(&self, command: Command) -> bool {
+        self.annotate.workspace == Some(Workspace::Measure)
+            && (command == Command::HubLeave
+                || Workspace::from_command(command).is_some_and(|ws| ws != Workspace::Measure)
+                || Tool::from_command(command).is_some_and(|tool| tool != Tool::Measure))
+    }
+
     pub fn enter_workspace(&mut self, ctx: &egui::Context, ws: Workspace) {
-        if self.ink_blocks_action() {
+        if self.ink_blocks_command(ws.activate().unwrap_or(Command::HubLeave)) {
+            self.ink_blocks_action();
             return;
         }
         self.form_builder.cancel();
@@ -586,7 +594,8 @@ impl SuniApp {
     }
 
     pub fn leave_workspace(&mut self) {
-        if self.ink_blocks_action() {
+        if self.ink_blocks_command(Command::HubLeave) {
+            self.ink_blocks_action();
             return;
         }
         self.form_builder.cancel();

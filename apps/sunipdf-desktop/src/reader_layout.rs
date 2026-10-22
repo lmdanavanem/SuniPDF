@@ -274,7 +274,7 @@ mod tests {
                 Command::ToggleObjects,
                 Command::ToggleForms,
             ] {
-                for leave in [Command::HubLeave, Command::ToolNote] {
+                for leave in [Command::HubLeave, Command::ToolNote, Command::HubEdit] {
                     let (mut app, requests, _) = crate::app::tests::test_app();
                     let ctx = egui::Context::default();
                     let doc = app.document.as_mut().unwrap();
@@ -331,6 +331,12 @@ mod tests {
                         app.annotate.measure.start_calibration();
                     }
                     assert!(app.annotate.measure.is_active_draft());
+                    assert!(app.command_enabled(leave));
+                    for mutation in [Command::Save, Command::RotateClockwise] {
+                        assert!(!app.command_enabled(mutation));
+                        app.execute(&ctx, mutation);
+                        assert!(app.annotate.measure.is_active_draft());
+                    }
                     assert!(!app.command_enabled(blocked));
                     app.execute(&ctx, blocked);
                     assert_eq!(app.context_panel(), Some(ContextPanel::Measurements));

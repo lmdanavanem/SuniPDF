@@ -4145,7 +4145,8 @@ pub(crate) mod tests {
     fn clicking_active_tab_cross_closes_the_document() {
         let (mut app, requests, _responses) = test_app();
         let ctx = egui::Context::default();
-        click_tab_control(&mut app, &ctx, "✕", 0);
+        let close_label = app.t("tabs.close").to_owned();
+        click_tab_control(&mut app, &ctx, &close_label, 0);
         assert!(
             requests.try_iter().any(|r| matches!(r, Request::Close)),
             "the tab cross must deliver the close action"
@@ -4208,7 +4209,8 @@ pub(crate) mod tests {
             let (mut app, requests, responses) = test_app();
             add_background_tab(&mut app, dirty);
             let ctx = egui::Context::default();
-            click_tab_control(&mut app, &ctx, "✕", 1);
+            let close_label = app.t("tabs.close").to_owned();
+            click_tab_control(&mut app, &ctx, &close_label, 1);
             responses
                 .send(Response::Suspended(crate::worker::SuspendedDoc {
                     signature_source: None,
@@ -4298,7 +4300,8 @@ pub(crate) mod tests {
         assert!(requests
             .try_iter()
             .any(|r| matches!(r, Request::Save { .. })));
-        click_tab_control(&mut app, &ctx, "✕", 1);
+        let close_label = app.t("tabs.close").to_owned();
+        click_tab_control(&mut app, &ctx, &close_label, 1);
         responses
             .send(Response::Saved {
                 path: PathBuf::from("test/first.pdf"),

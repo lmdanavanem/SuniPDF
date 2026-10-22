@@ -1005,13 +1005,19 @@ impl SuniApp {
                         Command::FullScreenReading => self.reading_full_screen,
                         _ => false,
                     };
-                    if crate::app::menu_item(
-                        ui,
-                        tr(self.lang(), command.info().label_key),
-                        &self.shortcut_text(command),
-                        self.document.is_some() && self.command_enabled(command),
-                        selected,
-                    ) {
+                    let label = tr(self.lang(), command.info().label_key);
+                    let enabled = self.document.is_some() && self.command_enabled(command);
+                    let item = ui.add_enabled(
+                        enabled,
+                        Button::new(label)
+                            .shortcut_text(self.shortcut_text(command))
+                            .selected(selected),
+                    );
+                    item.widget_info(|| {
+                        egui::WidgetInfo::selected(egui::Role::Button, enabled, selected, label)
+                    });
+                    if item.clicked() {
+                        ui.close();
                         run = Some(command);
                     }
                 }

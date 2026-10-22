@@ -612,7 +612,7 @@ impl SuniApp {
         if self.annotate.measure.saved.dialog_open() {
             return true;
         }
-        if self.annotate.measure.is_active_draft() {
+        if self.annotate.measure.is_active_draft() && !self.leaves_measurement_workspace(command) {
             return !matches!(
                 command,
                 Command::ZoomIn
