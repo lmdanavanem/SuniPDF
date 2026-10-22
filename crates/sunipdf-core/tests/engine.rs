@@ -509,8 +509,8 @@ fn rotate_delete_and_save_atomically() {
     again.save_as(&out).unwrap();
     assert_eq!(engine.open(&out, None).unwrap().page_count(), 1);
     // Un enregistrement vers un dossier impossible échoue proprement, sans fichier temporaire.
-    let bad = Path::new("Z:\\sunipdf-no-such-drive\\x.pdf");
-    assert!(matches!(again.save_as(bad), Err(EngineError::Io(_))));
+    let bad = out.join("x.pdf");
+    assert!(matches!(again.save_as(&bad), Err(EngineError::Io(_))));
     let _ = std::fs::remove_dir_all(dir);
 }
 
