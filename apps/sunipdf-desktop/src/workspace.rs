@@ -22,6 +22,7 @@ pub enum Workspace {
     Combine,
     Organize,
     Measure,
+    RevisionOverlay,
     Library,
     Comment,
     ScanOcr,
@@ -69,7 +70,7 @@ use Command as C;
 /// Segoe Fluent Ruler with a readable fallback when the icon font is absent.
 pub const MEASURE_ICON: (&str, &str) = ("\u{ED5E}", "↔");
 
-pub static TABLE: [WsInfo; 16] = [
+pub static TABLE: [WsInfo; 17] = [
     WsInfo {
         ws: Workspace::Export,
         name_key: "hub.export.name",
@@ -176,6 +177,15 @@ pub static TABLE: [WsInfo; 16] = [
         color: theme::CAT_ANNOTATE,
         entry: Some(Entry::Mode(C::HubMeasure)),
         groups: &[&[C::ToolMeasure]],
+    },
+    WsInfo {
+        ws: Workspace::RevisionOverlay,
+        name_key: "overlay.title",
+        desc_key: "overlay.description",
+        icon: (glyph::PAGES, "◫"),
+        color: theme::CAT_PAGES,
+        entry: Some(Entry::Direct(C::RevisionOverlay)),
+        groups: &[&[C::RevisionOverlay]],
     },
     WsInfo {
         ws: Workspace::Library,
@@ -957,7 +967,7 @@ mod tests {
 
     #[test]
     fn available_tools_are_wired() {
-        assert_eq!(Workspace::available().count(), 15);
+        assert_eq!(Workspace::available().count(), 17);
         for ws in Workspace::available() {
             let info = ws.info();
             match info.entry.unwrap() {

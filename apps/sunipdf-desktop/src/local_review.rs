@@ -184,6 +184,7 @@ impl SuniApp {
         let busy = self.review.busy;
         let (mut run, mut close, mut pick) = (false, false, None);
         let mut preview = None;
+        let mut overlay = false;
         let mut options_changed = false;
         let mut open_page = None;
         let ready = matches!(self.engine, crate::app::EngineState::Ready)
@@ -234,6 +235,9 @@ impl SuniApp {
                     return;
                 }
                 if compare {
+                    if ui.button(tr(lang, "overlay.title")).clicked() {
+                        overlay = true;
+                    }
                     for (index, path, key) in [
                         (0, &self.review.left, "review.left"),
                         (1, &self.review.right, "review.right"),
@@ -541,6 +545,16 @@ impl SuniApp {
                 index,
                 cancel: self.review.cancel.clone(),
             }));
+        }
+        if overlay {
+            self.overlay_from_comparison(
+                self.review.left.clone(),
+                self.review.right.clone(),
+                [
+                    self.review.options.left_start,
+                    self.review.options.right_start,
+                ],
+            );
         }
         if close {
             self.review.open = false;

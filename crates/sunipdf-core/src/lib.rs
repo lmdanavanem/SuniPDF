@@ -44,6 +44,7 @@ pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
 pub mod redact;
+pub mod revision_overlay;
 pub mod sanitize;
 pub mod security;
 pub mod signature_image;

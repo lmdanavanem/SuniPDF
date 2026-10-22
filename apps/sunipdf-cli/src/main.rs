@@ -6,6 +6,7 @@ mod calibration_cmd;
 mod feature_cmd;
 mod library_cmd;
 mod measurement_cmd;
+mod overlay_cmd;
 mod password_input;
 mod register_cmd;
 mod safe_output;
@@ -40,6 +41,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Overlay two explicitly aligned PDF pages as a new PNG or source-bound JSON report.
+    RevisionOverlay(overlay_cmd::OverlayArgs),
     /// Manage local annotation templates and groups, or place them in a new PDF copy.
     AnnotationLibrary(library_cmd::LibraryArgs),
     /// Place one persistent manual count marker in a new PDF copy.
@@ -1556,6 +1559,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             )
         }
         Command::Count(args) => register_cmd::count(&engine, args),
+        Command::RevisionOverlay(args) => overlay_cmd::run(&engine, args),
         Command::AnnotationRegister(args) => register_cmd::register(&engine, args),
         Command::AnnotationFields(args) => register_cmd::fields(&engine, args),
         Command::ImageStamp {
@@ -2928,6 +2932,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 /// Chemin de sortie d'une commande qui écrit un seul fichier.
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
+        Command::RevisionOverlay(args) => Some(&args.out),
         Command::AnnotationLibrary(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),

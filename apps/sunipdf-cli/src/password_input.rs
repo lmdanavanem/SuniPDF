@@ -73,6 +73,7 @@ fn read_secret(variable: Option<&str>, stdin: bool) -> Result<String, EngineErro
 
 fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
     match command {
+        Command::RevisionOverlay(args) => Some(&mut args.password),
         Command::AnnotationLibrary(args) => args.password(),
         Command::Count(args) => Some(&mut args.password),
         Command::AnnotationRegister(args) => Some(&mut args.password),
@@ -153,6 +154,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
 impl PasswordSources {
     pub fn apply(&self, command: &mut Command) -> Result<(), EngineError> {
         if [
+            matches!(command, Command::RevisionOverlay(args) if args.revision_password_stdin),
             self.password_stdin,
             self.user_password_stdin,
             self.owner_password_stdin,
@@ -185,6 +187,17 @@ impl PasswordSources {
                 self.password_env.as_deref(),
                 self.password_stdin,
             )?);
+        }
+        if let Command::RevisionOverlay(args) = command {
+            if args.revision_password_env.is_some() || args.revision_password_stdin {
+                if args.revision_password.is_some() {
+                    return Err(invalid("choose one source for the revision PDF password"));
+                }
+                args.revision_password = Some(read_secret(
+                    args.revision_password_env.as_deref(),
+                    args.revision_password_stdin,
+                )?);
+            }
         }
         if let Command::Protect {
             user_password,

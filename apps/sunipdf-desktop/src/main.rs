@@ -31,6 +31,7 @@ mod printing;
 mod processing;
 mod reading;
 mod recovery;
+mod revision_overlay;
 mod redact;
 mod settings;
 mod shell;

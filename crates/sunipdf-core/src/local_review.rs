@@ -15,7 +15,7 @@ pub const MAX_SEARCH_PAGES: usize = 10_000;
 pub const MAX_HIT_PAGES: usize = 2_000;
 pub const PREVIEW_SIDE: u32 = 768;
 
-fn read_pdf(path: &Path) -> Result<Vec<u8>, EngineError> {
+pub(crate) fn read_pdf(path: &Path) -> Result<Vec<u8>, EngineError> {
     let file = std::fs::File::open(path)?;
     let metadata = file.metadata()?;
     if !metadata.is_file() {
@@ -36,14 +36,14 @@ fn read_pdf(path: &Path) -> Result<Vec<u8>, EngineError> {
     Ok(bytes)
 }
 
-fn digest(bytes: &[u8]) -> String {
+pub(crate) fn digest(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
         .map(|byte| format!("{byte:02x}"))
         .collect()
 }
 
-fn check_permission(doc: &Document<'_>) -> Result<(), EngineError> {
+pub(crate) fn check_permission(doc: &Document<'_>) -> Result<(), EngineError> {
     if !doc.properties().can_copy {
         return Err(EngineError::SecurityRestricted);
     }

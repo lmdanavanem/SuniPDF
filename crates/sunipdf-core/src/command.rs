@@ -4,6 +4,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
     CompareFiles,
+    RevisionOverlay,
     SearchFiles,
     HubCompress,
     CompressImages,
@@ -191,6 +192,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        RevisionOverlay,
+        "file.revision_overlay",
+        "overlay.title",
+        None,
+        false,
+        File
+    ),
     cmd!(
         AnnotationLibrary,
         "annotations.library",
