@@ -202,6 +202,32 @@ fn check_page_calibration(
         success(authenticated(cli(&["measurements"], &[&removed]))),
         records
     );
+    let expected = directory.join(format!("{prefix}-expected-measurement.json"));
+    let record = &records["pages"][0]["measurements"][0];
+    std::fs::write(&expected, serde_json::to_vec(record).unwrap()).unwrap();
+    let edited = directory.join(format!("{prefix}-edited-measurement.pdf"));
+    let mut command = cli(&["edit-measurement"], &[&removed]);
+    command
+        .args(["--page", "1", "--index"])
+        .arg(record["index"].as_u64().unwrap().to_string())
+        .arg("--expected-record")
+        .arg(&expected)
+        .args(["--unit", "ft", "--precision", "3", "--out"])
+        .arg(&edited);
+    let result = success(authenticated(command));
+    assert_eq!(result["original_unchanged"], true);
+    assert_eq!(
+        result["measurement"]["annotation_id"],
+        record["annotation_id"]
+    );
+    assert!((result["measurement"]["value"].as_f64().unwrap() - 10.0 / 0.3048).abs() < 1e-7);
+    check(qpdf, &edited, password);
+    let reread = success(authenticated(cli(&["measurements"], &[&edited])));
+    assert_eq!(reread["pages"][0]["measurements"][0], result["measurement"]);
+    assert_eq!(
+        success(authenticated(cli(&["measurements"], &[&removed]))),
+        records
+    );
     assert_eq!(std::fs::read(source).unwrap(), original);
 }
 
@@ -409,7 +435,42 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
-        check_page_calibration(&qpdf, &encrypted, temp.path(), name, Some("package-owner"));
+        for export in ["measurements", "page-calibration"] {
+            let output = bounded(
+                cli(&[export, "--password", "package-owner"], &[&encrypted]),
+                None,
+            );
+            assert!(!output.status.success());
+            assert!(output.stdout.is_empty());
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&output.stderr).unwrap()["error"],
+                "security_restricted"
+            );
+        }
+        let measurement_source = temp.path().join(format!("{name}-measurement-source.pdf"));
+        let mut command = cli(&["protect"], &[&original]);
+        command
+            .args([
+                "--user-password",
+                "package-user",
+                "--owner-password",
+                "package-owner",
+                "--no-print",
+                "--out",
+            ])
+            .arg(&measurement_source);
+        if aes128 {
+            command.arg("--aes128");
+        }
+        success(command);
+        check(&qpdf, &measurement_source, Some("package-user"));
+        check_page_calibration(
+            &qpdf,
+            &measurement_source,
+            temp.path(),
+            name,
+            Some("package-owner"),
+        );
         let preservation_protected = temp.path().join(format!("{name}-preservation-source.pdf"));
         let mut command = cli(&["protect"], &[&preservation_source]);
         command

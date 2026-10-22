@@ -1239,5 +1239,14 @@
   "measure.polyline": "Polyline length",
   "measure.perimeter": "Polygon perimeter",
   "measure.area": "Polygon area",
-  "measure.angle": "Angle (three points; vertex in the middle)"
+  "measure.angle": "Angle (three points; vertex in the middle)",
+  "measure.saved.restore": "Use saved page scale",
+  "measure.saved.clear_session": "Clear temporary scale",
+  "measure.saved.reset_hint": "Discard only the temporary scale for this page. The PDF and saved measurements stay unchanged.",
+  "measure.edit.open": "Edit measurement",
+  "measure.edit.title": "Edit saved measurement",
+  "measure.edit.help": "Change this measurement only. Preview the result before applying; page scales and other measurements stay unchanged.",
+  "measure.edit.reference": "Reference points on this page (PDF points, bottom-left origin):",
+  "measure.edit.geometry": "The measurement points stay unchanged. Changing the unit converts the reference distance; changing the reference distance recalculates this measurement.",
+  "rich.preview": "Preview"
 }

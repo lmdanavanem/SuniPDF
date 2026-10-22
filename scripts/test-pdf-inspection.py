@@ -140,7 +140,7 @@ def main():
                   completed_cases=len(cases), subprocess_calls=commands, elapsed_seconds=round(time.monotonic()-started, 3),
                   source_revision=os.environ.get("GITHUB_SHA"), os=os.name, production_credentials_used=False,
                   secret_argv_used=False, application_installed=False, native_gui_qualified=False,
-                  input_sources="independently written PDF/xref bytes; encrypted copies made by packaged CLI")
+                  input_sources="independently written PDF/xref bytes; encrypted copies made by selected CLI")
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report))

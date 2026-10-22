@@ -3,8 +3,9 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.43.0. État de publication et contrôles exécutés dans
-[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.43.0.fr.md) décrit
+Ce guide intègre les changements SuniPDF 0.44.0 **en préparation et en cours de validation**. La précédente
+version publiée reste [0.43.0](RELEASE_0.43.0.fr.md). État de publication et contrôles exécutés dans
+[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de préparation 0.44](RELEASE_0.44.0.fr.md) décrit
 les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
 dans les réglages.
 
@@ -48,8 +49,8 @@ du document ; créer une mesure exige le droit d'annotation. Rotation et réorga
 non standard provoquent un refus ; recalibrez ou retirez une échelle périmée reconnue. Les échelles de
 session non enregistrées disparaissent à la fermeture. Ces gardes n'authentifient pas toutes les révisions.
 
-Ouvrez **Mesures enregistrées** dans la barre de mesure pour inspecter la page courante. La liste en
-lecture seule présente valeur/unité, type, indice, identifiant éventuel, nombre de sommets, précision et
+Ouvrez **Mesures enregistrées** dans la barre de mesure pour inspecter la page courante. La consultation
+ne modifie pas le PDF. La liste présente valeur/unité, type, indice, identifiant éventuel, nombre de sommets, précision et
 distance connue des mesures non angulaires, par groupes de 50. **Voir sur la page** sélectionne l'annotation réelle
 et ouvre ses commentaires. **Utiliser cette échelle** copie la calibration d'une mesure non angulaire
 dans la session de la page pour les prochaines mesures, sans changer les données existantes. Les points
@@ -62,8 +63,27 @@ les options manuelles `--calibration`/`--known-distance` sont alors exclues. Les
 nouvelle destination, même avec `--overwrite`. Pour les mots de passe, utilisez les options environnement
 ou stdin. [Exemples et bornes](MEASUREMENTS.fr.md#cli-et-données).
 
-Recréez une mesure appliquée pour changer ses sommets ou son échelle. Recalcul global, accrochage aux
-vecteurs et vues multi-échelles restent indisponibles. Vérifiez la distance connue et la révision du
+En 0.44, cliquez sur **Modifier la mesure** dans l'inspecteur pour changer sa distance de référence,
+son unité ou sa précision. Un changement d'unité conserve la taille physique ; une nouvelle distance
+recalcule uniquement cette mesure. Pour les angles, seule la précision est proposée. Demandez un
+**Aperçu**, vérifiez le candidat rendu, puis cliquez sur **Appliquer** ; **Annuler**
+ne modifie rien. Une étape Annuler/Rétablir restaure l'ancienne/nouvelle mesure avec son identité et
+ses commentaires liés. Enregistrez le PDF pour conserver la modification. Sommets et points de référence
+restent fixes dans cet éditeur ; les cibles périmées ou incompatibles sont refusées.
+
+**Utiliser l'échelle enregistrée** abandonne la calibration temporaire lorsqu'un défaut valide existe.
+Sinon, **Effacer l'échelle temporaire** retire uniquement la calibration de session de la page. Ces
+contrôles ne modifient pas le PDF. La saisie manuelle des annotations enrichies exige désormais une
+calibration explicite au lieu de fournir une distance positive par défaut.
+
+La CLI 0.44 ajoute `edit-measurement` : fournissez un `--expected-record` récent issu de `measurements`,
+la page physique `--page`, l'indice d'annotation `--index` du record et une nouvelle copie `--out`.
+Elle permet de remplacer explicitement les sommets ; le guide des mesures détaille références et
+identité attendue. L'export exige le droit de copie. Une création/modification autorisée sans ce droit
+renvoie `measurement: null` et `export_unavailable: true`. Le redimensionnement du contenu et des
+annotations des pages mesurées est refusé avant toute application.
+
+Recalcul global, déplacement des sommets à la souris, accrochage aux vecteurs et vues multi-échelles restent indisponibles. Vérifiez la distance connue et la révision du
 plan : une valeur calculée ne garantit pas la justesse physique. Le [guide des mesures](MEASUREMENTS.fr.md)
 détaille format ouvert, permissions et limites géométriques.
 

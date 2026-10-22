@@ -6,7 +6,7 @@ use crate::security::lopdf_err;
 use crate::{Document, EngineError, PixelRect, PointRect, RenderedPage, TextStyle};
 use lopdf::{dictionary, Dictionary, Object, Stream};
 use pdfium_render::prelude::*;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RichFreeTextStyle {
@@ -74,6 +74,10 @@ pub enum RichAnnotation {
         opacity: f32,
     },
     Measurement(crate::measurement::Measurement),
+    UpdateMeasurement {
+        target: crate::measurement::MeasurementTarget,
+        measurement: crate::measurement::Measurement,
+    },
     Attachment {
         rect: PointRect,
         filename: String,
@@ -240,6 +244,86 @@ fn bad() -> EngineError {
     EngineError::Other("invalid or excessive rich annotation geometry, style or resource".into())
 }
 
+fn prepared_document_graph(mut pdf: lopdf::Document) -> Result<lopdf::Document, EngineError> {
+    // These are serialization details, not document roots. Reject references or unexpected
+    // types before discarding them so they cannot hide a reachable object from this check.
+    for key in [b"Size".as_slice(), b"Prev", b"XRefStm"] {
+        if let Ok(value) = pdf.trailer.get(key) {
+            if !matches!(value, Object::Integer(n) if *n >= 0) {
+                return Err(bad());
+            }
+        }
+        pdf.trailer.remove(key);
+    }
+    if let Ok(value) = pdf.trailer.get(b"ID") {
+        let ids = value.as_array().map_err(lopdf_err)?;
+        if ids.len() != 2
+            || ids
+                .iter()
+                .any(|id| !matches!(id, Object::String(bytes, _) if bytes.len() <= 1024))
+        {
+            return Err(bad());
+        }
+    }
+    // PDFium generates a new file ID on save. Encrypted key identity is checked separately.
+    pdf.trailer.remove(b"ID");
+
+    // Start at every remaining trailer entry, including Info and custom extension roots.
+    // PDFium may create unused appearances while rendering and discard them when reopened.
+    // Only unreachable objects may differ; page content, resources and annotations remain exact.
+    let mut reachable = BTreeSet::new();
+    let mut pending: Vec<_> = pdf
+        .trailer
+        .iter()
+        .map(|(_, value)| (value, 0usize))
+        .collect();
+    let mut nodes = 0usize;
+    while let Some((object, depth)) = pending.pop() {
+        nodes += 1;
+        if nodes > 1_000_000 || pending.len() > 1_000_000 - nodes || depth > 64 {
+            return Err(bad());
+        }
+        match object {
+            Object::Reference(id) => {
+                if reachable.insert(*id) {
+                    if reachable.len() > 100_000 {
+                        return Err(bad());
+                    }
+                    let referenced = pdf.objects.get(id).ok_or_else(bad)?;
+                    pending.push((referenced, 0));
+                }
+            }
+            Object::Array(values) => {
+                if values.len() > 1_000_000 - nodes - pending.len() {
+                    return Err(bad());
+                }
+                pending.extend(values.iter().map(|value| (value, depth + 1)));
+            }
+            Object::Dictionary(dictionary) => {
+                if dictionary.len() > 1_000_000 - nodes - pending.len() {
+                    return Err(bad());
+                }
+                pending.extend(dictionary.iter().map(|(_, value)| (value, depth + 1)));
+            }
+            Object::Stream(stream) => {
+                if stream.dict.len() > 1_000_000 - nodes - pending.len() {
+                    return Err(bad());
+                }
+                pending.extend(stream.dict.iter().map(|(_, value)| (value, depth + 1)));
+            }
+            _ => {}
+        }
+    }
+    pdf.objects.retain(|id, _| reachable.contains(id));
+    for object in pdf.objects.values_mut() {
+        if let Object::Stream(stream) = object {
+            stream.start_position = None;
+            stream.allows_compression = true;
+        }
+    }
+    Ok(pdf)
+}
+
 pub(crate) fn same_document(
     original: &[u8],
     current: &[u8],
@@ -248,7 +332,7 @@ pub(crate) fn same_document(
     if original == current {
         return Ok(true);
     }
-    if current.len() > 128 * 1024 * 1024 {
+    if original.len() > 128 * 1024 * 1024 || current.len() > 128 * 1024 * 1024 {
         return Ok(false);
     }
     let envelope = |bytes: &[u8]| -> Result<Option<(Dictionary, Option<Object>)>, EngineError> {
@@ -296,21 +380,13 @@ pub(crate) fn same_document(
         return Ok(false);
     }
     let normalize = |bytes: &[u8]| -> Result<lopdf::Document, EngineError> {
-        let mut pdf = crate::security::load(bytes, password)?;
-        for object in pdf.objects.values_mut() {
-            if let Object::Stream(stream) = object {
-                stream.start_position = None;
-                stream.allows_compression = true;
-            }
-        }
-        Ok(pdf)
+        prepared_document_graph(crate::security::load(bytes, password)?)
     };
     let original = normalize(original)?;
     let current = normalize(current)?;
-    Ok(original.objects == current.objects
-        && [b"Root".as_slice(), b"Info"]
-            .iter()
-            .all(|key| original.trailer.get(key).ok() == current.trailer.get(key).ok()))
+    Ok(original.version == current.version
+        && original.objects == current.objects
+        && original.trailer == current.trailer)
 }
 
 pub(crate) fn checked_rect(geo: &PageGeometry, rect: PointRect) -> Result<(f32, f32), EngineError> {
@@ -798,6 +874,17 @@ impl<'a> Document<'a> {
             RichAnnotation::Measurement(measurement) => {
                 self.add_measurement_annotation(page, measurement, author)
             }
+            RichAnnotation::UpdateMeasurement {
+                target,
+                measurement,
+            } => {
+                if target.page() != page {
+                    return Err(EngineError::Other(
+                        "measurement belongs to another page".into(),
+                    ));
+                }
+                self.update_measurement_annotation(target, measurement)
+            }
             RichAnnotation::Attachment {
                 rect,
                 filename,
@@ -888,6 +975,107 @@ impl<'a> Document<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prepared_binding_ignores_orphans_but_checks_content_annotations_and_all_trailer_roots() {
+        fn save(mut pdf: lopdf::Document) -> Vec<u8> {
+            let mut bytes = Vec::new();
+            pdf.save_to(&mut bytes).unwrap();
+            bytes
+        }
+        let mut pdf =
+            lopdf::Document::load_mem(include_bytes!("../tests/fixtures/two-pages.pdf")).unwrap();
+        let page = pdf.get_pages()[&1];
+        let info = pdf.add_object(dictionary! { "Title" => Object::string_literal("Original") });
+        let extension = pdf.add_object(dictionary! { "Value" => 7 });
+        let annotation = pdf.add_object(dictionary! {
+            "Type" => "Annot", "Subtype" => "Text", "Contents" => Object::string_literal("Keep"),
+        });
+        pdf.get_dictionary_mut(page)
+            .unwrap()
+            .set("Annots", vec![Object::Reference(annotation)]);
+        pdf.trailer.set("Info", info);
+        pdf.trailer.set("PrivateRoot", extension);
+        let original = save(pdf.clone());
+
+        let mut unused = pdf.clone();
+        let orphan = unused.add_object(Stream::new(
+            Dictionary::new(),
+            b"unused appearance".to_vec(),
+        ));
+        unused.trailer.set(
+            "ID",
+            vec![
+                Object::string_literal("new-first"),
+                Object::string_literal("new-second"),
+            ],
+        );
+        assert!(same_document(&original, &save(unused.clone()), None).unwrap());
+        unused.trailer.set("AnotherRoot", orphan);
+        assert!(!same_document(&original, &save(unused), None).unwrap());
+
+        for root in [info, extension, annotation] {
+            let mut changed = pdf.clone();
+            changed
+                .get_dictionary_mut(root)
+                .unwrap()
+                .set("Changed", true);
+            assert!(!same_document(&original, &save(changed), None).unwrap());
+        }
+        let mut changed = pdf.clone();
+        let contents = changed.add_object(Stream::new(
+            Dictionary::new(),
+            b"q 2 0 0 2 0 0 cm Q".to_vec(),
+        ));
+        changed
+            .get_dictionary_mut(page)
+            .unwrap()
+            .set("Contents", contents);
+        assert!(!same_document(&original, &save(changed), None).unwrap());
+        let mut changed = pdf;
+        changed.trailer.set("CustomValue", 42);
+        assert!(!same_document(&original, &save(changed), None).unwrap());
+    }
+
+    #[test]
+    fn prepared_binding_graph_bounds_cycles_and_refuses_missing_or_hidden_references() {
+        let mut pdf = lopdf::Document::new();
+        let first = pdf.add_object(dictionary! {});
+        let second = pdf.add_object(dictionary! { "Back" => first });
+        pdf.get_dictionary_mut(first).unwrap().set("Next", second);
+        pdf.trailer.set("Root", first);
+        assert_eq!(
+            prepared_document_graph(pdf.clone()).unwrap().objects.len(),
+            2
+        );
+
+        let mut missing = pdf.clone();
+        missing
+            .trailer
+            .set("PrivateRoot", Object::Reference((999, 0)));
+        assert!(prepared_document_graph(missing).is_err());
+        let mut missing = pdf.clone();
+        missing
+            .get_dictionary_mut(second)
+            .unwrap()
+            .set("Missing", Object::Reference((999, 0)));
+        assert!(prepared_document_graph(missing).is_err());
+        let mut hidden = pdf.clone();
+        hidden.trailer.set("Size", second);
+        assert!(prepared_document_graph(hidden).is_err());
+        let mut hidden = pdf.clone();
+        hidden
+            .trailer
+            .set("ID", vec![Object::Reference(second), Object::Null]);
+        assert!(prepared_document_graph(hidden).is_err());
+
+        let mut deep = Object::Null;
+        for _ in 0..66 {
+            deep = Object::Array(vec![deep]);
+        }
+        pdf.trailer.set("Nested", deep);
+        assert!(prepared_document_graph(pdf).is_err());
+    }
 
     #[test]
     fn prepared_binding_refuses_identical_content_with_different_protection() {

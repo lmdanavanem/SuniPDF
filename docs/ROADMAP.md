@@ -8,6 +8,19 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
+## 0.44–0.47: planned local plan workflows
+
+| Version | Scope | Current state |
+|---|---|---|
+| 0.44 | Edit one saved measurement; correct calibration defaults, scale reset, inspector allocations, copying permissions, resize handling and stale/external targets. | Implemented changes undergoing validation; not published. |
+| 0.45 | A local annotation library with explicit save, reuse, placement and removal. | Planned; implementation and release evidence pending. |
+| 0.46 | Quantity columns, unit-aware totals and bounded exports tied to actual records. | Planned; supported fields and calculation rules still need qualification. |
+| 0.47 | Local overlays and revision review with explicit alignment and retained originals. | Planned; geometry support and revision checks still need qualification. |
+
+The 0.44 desktop editor changes reference distance, unit and precision while keeping vertices/reference points fixed. The CLI can replace explicit geometry using an expected record; both paths preserve annotation identity and reject stale or unsupported targets. Preview/cancel/history, permissions, encryption, copy-only output and independent PDF checks must be verified on the final release source. [0.44 scope and preliminary audit](RELEASE_0.44.0.md) · [Measurement guide](MEASUREMENTS.md).
+
+This sequence delivers bounded increments. AEC-001/002/003/004/026 remain partial; mouse vertex editing, batch recalculation, multi-scale viewports, real-plan dimensional accuracy and broader 1.0 criteria are not closed by the proposed releases. Published historical evidence below remains attached to its original version.
+
 ## 0.43.0: saved page scales and measurement inspection (stable Latest)
 
 [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.

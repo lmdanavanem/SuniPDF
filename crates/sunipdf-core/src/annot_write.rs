@@ -1207,6 +1207,11 @@ impl Document<'_> {
                 if flags < 0 || flags & (64 | 128 | 512) != 0 {
                     return Err(EngineError::SecurityRestricted);
                 }
+                if dict.has(b"SuniPDFMeasurement") || dict.has(b"Measure") {
+                    return Err(EngineError::Other(
+                        "resizing annotations on a page with measurements is unsupported; keep the original page size or recreate the measurements after resizing".into(),
+                    ));
+                }
                 let rect = dict.get(b"Rect").map_err(lopdf_err)?;
                 dict.set(
                     "Rect",

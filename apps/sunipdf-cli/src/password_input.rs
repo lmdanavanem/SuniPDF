@@ -79,6 +79,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         Command::PageCalibration(args) => Some(&mut args.password),
         Command::SetPageCalibration(args) => Some(&mut args.password),
         Command::RemovePageCalibration(args) => Some(&mut args.password),
+        Command::EditMeasurement(args) => Some(&mut args.password),
         Command::AddFormField { password, .. }
         | Command::Inspect { password, .. }
         | Command::Ocr { password, .. }
