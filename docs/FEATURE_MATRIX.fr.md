@@ -2,7 +2,17 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.41.0 : comptage sur plans et tableau des annotations (Latest stable)
+## 0.42.0 : mesures directement sur la page (Latest stable)
+
+[0.42.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) sous `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
+
+Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Calibrez avec deux clics et une distance confirmée, puis tracez longueurs, polylignes, périmètres, surfaces et angles sur le PDF. Aperçu et Appliquer contrôlent chaque insertion ; retrait de points, annulation et alignement horizontal/vertical accompagnent le tracé. Chaque page conserve son échelle de session entre modifications d’annotations et changements habituels d’onglet. [Guide et limites](MEASUREMENTS.fr.md).
+
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests réussis, 10 ignorés par défaut. 1224 clés EN/FR. 34 scénarios portables. 28 références MSI / 140 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256 ; quatre appels CLI du paquet vérifient version, aide, création d’une longueur de 10 m et réouverture sans modifier l’original.
+
+Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Cloud et mises à jour Projects restent différés. [Preuves](qa/RELEASE_0.42.0.json).
+
+## 0.41.0 : comptage sur plans et tableau des annotations (publiée ; Latest à cette date)
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
@@ -393,18 +403,19 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 | modèles de décoration réutilisables | Livré en 0.39.0 | Modèles locaux nommés pour filigranes texte/image, numéros et six zones d’en-tête/pied. Charger un brouillon, enregistrer sous un nom unique ou supprimer explicitement. Écriture atomique, préférences préservées en cas d’échec et modèles invalides isolés. Portée des pages explicite et images référencées par chemin. Paquets 0.38.0 ajoutés aux migrations. Vérification de version Office sans interface avec une limite annulable de 30 secondes au démarrage à froid ; limites de conversion et gardes de sécurité conservées. [Guide](PAGE_DECORATIONS.fr.md). |
 | mesures calibrées et tampons image | Livré en 0.40.0 | Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local ; cloud et collaboration reportés à la demande du propriétaire, tarifs ultérieurs. [Guide](PAGE_DECORATIONS.fr.md). |
 | comptage sur plans et tableau des annotations | Livré en 0.41.0 | Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations ; cloud et collaboration restent reportés. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées. [Guide](MARKUP_REGISTER.fr.md). |
+| Mesures interactives sur la page | Livré en 0.42.0 | Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Calibrez avec deux clics et une distance confirmée, puis tracez longueurs, polylignes, périmètres, surfaces et angles sur le PDF. Aperçu et Appliquer contrôlent chaque insertion ; retrait de points, annulation et alignement horizontal/vertical accompagnent le tracé. Chaque page conserve son échelle de session entre modifications d’annotations et changements habituels d’onglet. [Guide](MEASUREMENTS.fr.md). |
 | Raccourcis configurables | Livré en 0.36.0 | Commandes existantes, conflits refusés, brouillon annulable et préférences atomiques ; [bornes](KEYBOARD_SHORTCUTS.fr.md). Claviers natifs/Narrateur et Explorer restent ouverts. |
 | Intégration Explorateur Windows (association, menu contextuel) | Non documenté | Planifié (P5) |
 | Palette de commandes | Déclaré | **Fait** (Ctrl+K, filtrage, clavier, couleur de l'outil propriétaire) |
-| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour les 14 outils ; Numériser et OCR, Préparer un formulaire et Utiliser un certificat ont leurs commandes ; tests registre et activation sans fenêtre |
+| Hub « Tous les outils » par tâches, barre contextuelle par outil | Déclaré (liste « All tools ») | **Fait** pour les 15 outils, dont Mesures ; Numériser et OCR, Préparer un formulaire et Utiliser un certificat ont leurs commandes ; tests registre et activation sans fenêtre |
 | Workflows locaux, profils de conversion | Absent | **Livré en 0.30.0** : Profils Office Standard/Impression mémorisés. Concepteur général de workflows toujours planifié. [Périmètre](OFFICE_CONVERSION.fr.md). |
 
 ## H. Distribution
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.41.0** : 33 scénarios portables et 27 références MSI/135 journaux réussis ; six fichiers publics/SHA256 et contrôles des paquets vérifiés ; le metteur à jour a téléchargé et vérifié le paquet sans installation sur le poste. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.41.0.json). |
-| Windows ARM64 | Déclaré | **Compilé et distribué en 0.41.0** : ZIP de source exacte, SHA256 public, architecture PE, modèles, notices et icônes vérifiés ; exécution expérimentale jusqu’à qualification sur un vrai appareil. [Preuves](qa/RELEASE_0.41.0.json). |
+| Windows x64 | Déclaré (MSI, zip) | **Distribué en 0.42.0**: CI et paquets de source exacte validés ; six téléchargements publics/SHA256, copies dist et quatre contrôles CLI vérifiés. Qualification interactive native encore ouverte. [Preuves](qa/RELEASE_0.42.0.json). |
+| Windows ARM64 | Déclaré | **Compilé et distribué en 0.42.0**: ZIP de source exacte, SHA256 public, architecture PE et version vérifiés ; exécution matérielle toujours expérimentale. [Preuves](qa/RELEASE_0.42.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |

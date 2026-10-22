@@ -7,6 +7,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.42.0] - 2026-10-22
+
+Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Calibrez avec deux clics et une distance confirmée, puis tracez longueurs, polylignes, périmètres, surfaces et angles sur le PDF. Aperçu et Appliquer contrôlent chaque insertion ; retrait de points, annulation et alignement horizontal/vertical accompagnent le tracé. Chaque page conserve son échelle de session entre modifications d’annotations et changements habituels d’onglet.
+
+[Notes, validation et limites](docs/RELEASE_0.42.0.fr.md).
+
 ## [0.41.0] - 2026-10-21
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.

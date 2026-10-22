@@ -2,11 +2,11 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
-**Intégration non publiée :** l'accès direct et le tracé sur la page décrits ci-dessous sont préparés après la 0.41.0. Ils ne figurent pas dans les paquets 0.41.0 publiés. Les données de mesures PDF et la CLI existantes restent prises en charge.
+**Disponible en [0.42.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0):** bouton direct et tracé sur la page. La saisie manuelle et la CLI restent disponibles.
 
 ## Mesurer directement sur la page
 
-1. Ouvrez un PDF et cliquez sur **Mesures**, à côté de **Tous les outils** dans la barre principale. L'outil est aussi disponible dans **Tous les outils → Mesures** et le premier groupe de l'espace **Commentaire**. Son libellé reste visible dans les fenêtres étroites.
+1. Ouvrez un PDF et cliquez sur **Mesures**, à côté de **Tous les outils** dans la barre principale. L'outil est aussi disponible dans **Tous les outils → Mesures** et le premier groupe de l'espace **Commenter**. Son libellé reste visible dans les fenêtres étroites.
 2. Choisissez `mm`, `cm`, `m`, `in` ou `ft` et 0 à 4 décimales. Cliquez sur **Calibrer cette page**, puis sur deux points distincts délimitant une distance connue du plan. Saisissez cette **Distance connue**, strictement positive, puis cliquez sur **Confirmer l’échelle**. Pieds et pouces sont décimaux : 10 pieds 6 pouces correspondent à `10.5 ft` ou `126 in`.
 3. Choisissez le type de mesure et cliquez directement sur la page. **Longueur** ouvre l'aperçu après deux points. **Angle** l'ouvre après trois points : premier côté, sommet, second côté ; un angle ne nécessite pas d'échelle physique. Pour **Polyligne**, **Périmètre** et **Surface polygonale**, placez les sommets puis cliquez sur **Prévisualiser la mesure**, appuyez sur **Entrée** ou double-cliquez sur le dernier point. Les polygones se ferment automatiquement : ne répétez pas le premier sommet.
 4. Vérifiez le rendu réel et la valeur, puis cliquez sur **Appliquer**. Rien n'est ajouté avant la réussite de cette application. **Annuler** ou **Échap** abandonne l'aperçu. Enregistrez le PDF pour conserver la mesure ; un Annuler retire l'annotation et ses données ensemble. L'outil reste actif après l'application : vous pouvez tracer la mesure suivante sur la page calibrée.

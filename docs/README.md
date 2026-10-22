@@ -18,6 +18,10 @@ Existing `.en.md` links point to the English documents.
 | [KNOWN_ISSUES](KNOWN_ISSUES.md) | [FR](KNOWN_ISSUES.fr.md) | Known limits |
 | [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) | [FR](THIRD_PARTY_NOTICES.fr.md) | Dependency licenses and notices |
 | [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Using SuniPDF |
+| [0.42.0 release scope](RELEASE_0.42.0.md) | [FR](RELEASE_0.42.0.fr.md) | Direct measurement tools, validation and limits |
+| [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Page calibration, mouse drawing, saved records and CLI |
+| [Manual counts and annotation register](MARKUP_REGISTER.md) | [FR](MARKUP_REGISTER.fr.md) | Count markers, grouped quantities and markup fields |
+| [AEC backlog](AEC_BACKLOG.md) | [FR](AEC_BACKLOG.fr.md) | Delivered scope and remaining local construction workflows |
 | [0.30.0 release scope](RELEASE_0.30.0.md) | [FR](RELEASE_0.30.0.fr.md) | Requested P2 batch, validation status and limits |
 | [Font embedding](FONT_EMBEDDING.md) | [FR](FONT_EMBEDDING.fr.md) | Subsetting, eligible faces and embedding restrictions |
 | [Rich annotations](RICH_ANNOTATIONS.md) | [FR](RICH_ANNOTATIONS.fr.md) | Embedded FreeText, shapes, attachments and ink erasing |

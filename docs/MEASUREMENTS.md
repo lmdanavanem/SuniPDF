@@ -2,11 +2,11 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-**Unreleased desktop integration:** the direct toolbar entry and on-page drawing described below are being prepared after 0.41.0. They are not included in the published 0.41.0 packages. The existing PDF measurement records and CLI remain supported.
+**Available in [0.42.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0):** direct toolbar access and on-page drawing. Manual coordinate entry and the CLI remain available.
 
 ## Measure directly on the page
 
-1. Open a PDF and select **Measurements** beside **All tools** in the main toolbar. The same tool is available from **All tools → Measurements** and the first group of the **Comment** workspace. Its toolbar label remains visible in narrow windows.
+1. Open a PDF and select **Measurements** beside **All tools** in the main toolbar. The same tool is available from **All tools → Measurements** and the first group of the **Add comments** workspace. Its toolbar label remains visible in narrow windows.
 2. Choose `mm`, `cm`, `m`, `in` or `ft` and 0–4 decimal places. Select **Calibrate this page**, then click two different points spanning a distance you know from the drawing. Enter the positive **Known distance**, then select **Confirm scale**. Feet and inches use decimal values: 10 feet 6 inches is `10.5 ft` or `126 in`.
 3. Choose a measurement type and click directly on the page. **Length** opens the preview after two points. **Angle** opens it after three points: first arm, vertex, second arm; angles do not require a physical scale. For **Polyline length**, **Polygon perimeter** and **Polygon area**, add the vertices, then select **Preview measurement**, press **Enter**, or double-click the last point. Polygons close automatically; do not repeat the first vertex.
 4. Inspect the rendered candidate and its value, then select **Apply**. Nothing is added until Apply succeeds. **Cancel** or **Escape** discards the preview. Save the PDF to retain the measurement; one Undo removes the annotation and its metadata together. The tool stays active after applying, so another measurement on the calibrated page can be drawn immediately.

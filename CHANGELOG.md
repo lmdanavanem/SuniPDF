@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-10-22
+
+Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches.
+
+[Release notes, validation and limits](docs/RELEASE_0.42.0.md).
+
 ## [0.41.0] - 2026-10-21
 
 [0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.

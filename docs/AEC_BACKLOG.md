@@ -15,9 +15,9 @@ This is a product backlog, not a claim of feature parity, Bluebeam format compat
 
 The 0.40.0 local source slice introduced self-contained two-point calibration and five measurement kinds with JSON records through coordinate entry. [Usage and current limits](MEASUREMENTS.md). It provided a foundation for AEC-001/002/003/026; those cards remain open.
 
-## Unreleased measurement integration
+## Measurement integration delivered in 0.42.0
 
-The next local source slice makes **Measurements** visible in the main toolbar, **All tools**, and **Comment**. It adds two-click page calibration with explicit distance confirmation, direct drawing of all five measurement kinds, temporary outlines, rendered preview and Apply, point removal, cancellation and horizontal/vertical constraints. A confirmed scale can be reused on that page during the document session and survives annotation edits and normal tab switches; page geometry/structural changes invalidate it, and closing/reopening a document requires recalibration. Applied annotations retain their own saved calibration. This is partial progress on AEC-001/002/003/026, not a published release or completion of those cards. Editing saved vertices, persistent shared scales and recalculation, snapping to PDF vectors, multi-scale viewports and the remaining qualification work are still open. Manual counts and the register retain their documented 0.41.0 status below.
+The published 0.42.0 slice makes **Measurements** visible in the main toolbar, **All tools**, and **Add comments**. It adds two-click page calibration with explicit distance confirmation, direct drawing of all five measurement kinds, temporary outlines, rendered preview and Apply, point removal, cancellation and horizontal/vertical constraints. A confirmed scale can be reused on that page during the document session and survives annotation edits and normal tab switches; page geometry/structural changes invalidate it, and closing/reopening a document requires recalibration. Applied annotations retain their own saved calibration. This progress ships in 0.42.0 but does not complete AEC-001/002/003/026. Editing saved vertices, persistent shared scales and recalculation, snapping to PDF vectors, multi-scale viewports and the remaining qualification work are still open. Manual counts and the register retain their documented 0.41.0 status below.
 
 ## Priorities and acceptance
 
@@ -56,7 +56,7 @@ P1 is the next useful foundation; P2 builds on that foundation; P3 requires a se
 
 ## Delivery sequence
 
-1. Qualify the unreleased direct measurement workflow and its visible entry points. Cloud, collaboration, hosting and billing are deferred at the owner's request.
+1. Extend direct measurement qualification on real plans and native interfaces. Cloud, collaboration, hosting and billing are deferred at the owner's request.
 2. Extend AEC-001/002 with AEC-026: saved geometry editing, shared scale persistence/recalculation and remaining real-plan/accessibility checks. Build on the existing quantity records, register and counts rather than treating them as absent.
 3. Deliver reusable libraries and takeoff reports; extend overlays, plan sets and revision workflows in independently testable lots.
 4. Revisit enterprise cloud and live review only after the local feature priorities. Identity, versioning, conflicts, tenant isolation and operations will need a separate implementation and qualification.
@@ -68,4 +68,4 @@ No prices, delivery dates or complete replacement claim are implied. This CSV is
 
 The user brief and Bluebeam's official documentation informed the capability list: [scales and viewports](https://support.bluebeam.com/user-manual/menus/window/create-manage-viewports.html), [custom columns](https://support.bluebeam.com/kr/se/user-manual/menus/window/custom-columns.html), [region filling](https://support.bluebeam.com/revu/features/dynamic-fill-overview.html), [overlays](https://support.bluebeam.com/online-help/revu20/Content/RevuHelp/Menus/Document/Overlay/Overlay-Pages--MT.htm), [sheet replacement](https://support.bluebeam.com/revu/how-to/transfer-markups-with-batch-slip-sheet.html), [batch links](https://support.bluebeam.com/revu/how-to/tips-and-tricks/manage-pdfs-efficiently-with-batch-link.html), and [shared sessions versus versioned projects](https://support.bluebeam.com/revu/subscription/studio-and-bluebeam-cloud-comparison-guide.html). These describe reference workflows; they do not grant compatibility or qualification to SuniPDF.
 
-[Release evidence](qa/RELEASE_0.41.0.json).
+[Release evidence](qa/RELEASE_0.42.0.json).

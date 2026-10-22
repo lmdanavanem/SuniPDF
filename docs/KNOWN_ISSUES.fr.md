@@ -2,7 +2,17 @@
 
 [English](KNOWN_ISSUES.md)
 
-## 0.41.0 : comptage sur plans et tableau des annotations (Latest stable)
+## 0.42.0 : mesures directement sur la page (Latest stable)
+
+[0.42.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) sous `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
+
+Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Calibrez avec deux clics et une distance confirmée, puis tracez longueurs, polylignes, périmètres, surfaces et angles sur le PDF. Aperçu et Appliquer contrôlent chaque insertion ; retrait de points, annulation et alignement horizontal/vertical accompagnent le tracé. Chaque page conserve son échelle de session entre modifications d’annotations et changements habituels d’onglet. [Guide et limites](MEASUREMENTS.fr.md).
+
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests réussis, 10 ignorés par défaut. 1224 clés EN/FR. 34 scénarios portables. 28 références MSI / 140 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256 ; quatre appels CLI du paquet vérifient version, aide, création d’une longueur de 10 m et réouverture sans modifier l’original.
+
+Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Cloud et mises à jour Projects restent différés. [Preuves](qa/RELEASE_0.42.0.json).
+
+## 0.41.0 : comptage sur plans et tableau des annotations (publiée ; Latest à cette date)
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
@@ -272,6 +282,7 @@ A10. **Validation de distribution** : l'état courant des tests, CI, paquets et 
      avec conservation des données. Parcours interactifs, matériel ARM64 et imprimantes physiques restent distincts.
 A11. **Hub « Tous les outils » : 14 outils implémentés en 0.9.0.** OCR, création de champs et certificat
      ont désormais de vraies commandes. Couverture automatisée et matérielle dans `PROJECT_STATUS.fr.md`.
+     La 0.42.0 ajoute Mesures comme quinzième espace, avec un bouton libellé dans la barre principale.
 A12. **Interface du hub vérifiée sans rendu au pixel automatisé** : pas de rendu logiciel ni d'`egui_kittest`
      dans les dépendances. Les tests couvrent les données (table, registre, contraste des glyphes), la bascule
      d'outil, la géométrie des lignes, l'arbre AccessKit et l'anneau de focus (passe egui sans fenêtre) ; le
@@ -284,6 +295,7 @@ A13. **Barre d'outil en fenêtre étroite** : la largeur des libellés est estim
      de la fenêtre (720 px), la barre la plus longue (Modifier) tient en mode compact ; le défilement n'est
      atteint qu'avec une échelle d'affichage Windows plus grande et n'a été vérifié ni par un test ni par une
      capture.
+     Le libellé Mesures reste visible ; les tests egui couvrent les fenêtres étroites, sans qualifier toutes les interactions Windows/DPI natives.
 A14. **Clavier** : après une activation au clavier (Entrée) d'une ligne ou d'un bouton du hub ou de l'accès
      rapide (Ouvrir, Enregistrer, Annuler, Rétablir), le focus est relâché pour que les raccourcis à une
      lettre restent actifs ; Tab repart donc du début. Les boutons egui standard (barre d'onglets, menu)

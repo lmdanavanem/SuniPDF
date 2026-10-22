@@ -2,7 +2,17 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.41.0: manual plan counts and annotation registers (stable Latest)
+## 0.42.0: on-page measurement tools (stable Latest)
+
+[0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
+
+Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches. [Guide and limits](MEASUREMENTS.md).
+
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
+
+Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; cloud and Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
+
+## 0.41.0: manual plan counts and annotation registers (published; Latest at the time)
 
 [0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
@@ -391,18 +401,19 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | reusable decoration presets | Delivered in 0.39.0 | Named local presets for text/image watermarks, page numbers and six-zone headers/footers. Choose to load a draft, save under a unique name or delete explicitly. Atomic writes preserve active preferences on failure; malformed preset entries do not reset other valid settings. Page scope stays explicit and image files remain path references. Published 0.38.0 packages join migration regression. Office version probes run headlessly with a cancellable 30-second cold-start bound; conversion and security guards remain enforced. [Guide](PAGE_DECORATIONS.md). |
 | calibrated measurements and image stamps | Delivered in 0.40.0 | Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. A 26-card AEC backlog prioritises local workflows; cloud and collaboration are deferred at the owner's request, with prices undecided. [Guide](PAGE_DECORATIONS.md). |
 | manual plan counts and annotation registers | Delivered in 0.41.0 | Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions; cloud and collaboration remain deferred. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Guide](MARKUP_REGISTER.md). |
+| Interactive on-page measurements | Delivered in 0.42.0 | Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches. [Guide](MEASUREMENTS.md). |
 | Configurable shortcuts | Delivered in 0.36.0 | Existing commands, conflict refusal, cancellable drafts and atomic preferences; [bounds](KEYBOARD_SHORTCUTS.md). Native keyboard/Narrator and Explorer remain open. |
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
-| "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for all 14 tools; Scan & OCR, Prepare a form and Use a certificate have real commands; registry and headless activation tests |
+| "All tools" hub by task, contextual bar per tool | Declared ("All tools" list) | **Done** for all 15 tools, including Measurements; Scan & OCR, Prepare a form and Use a certificate have real commands; registry and headless activation tests |
 | Local workflows, conversion profiles | Absent | **Delivered in 0.30.0**: Remembered Standard/Print Office profiles. General workflow designer remains planned. [Scope](OFFICE_CONVERSION.md). |
 
 ## H. Distribution
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Distributed in 0.41.0**: 33 portable cases and 27 MSI baselines/135 logs passed; six public files/SHA256 and packaged checks verified; live updater downloaded and verified the package without installation on the workstation. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.41.0.json). |
-| Windows ARM64 | Declared | **Cross-built and distributed in 0.41.0**: exact-source ZIP, public SHA256, PE architecture, models, notices and icons verified; runtime remains experimental until real-device qualification. [Evidence](qa/RELEASE_0.41.0.json). |
+| Windows x64 | Declared (MSI, zip) | **Distributed in 0.42.0**: Exact-source CI and packages passed; six public downloads/SHA256, dist copies and four packaged CLI checks verified. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.42.0.json). |
+| Windows ARM64 | Declared | **Cross-built and distributed in 0.42.0**: Exact-source ZIP, public SHA256, PE architecture and version verified; hardware runtime remains experimental. [Evidence](qa/RELEASE_0.42.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

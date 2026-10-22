@@ -1,0 +1,193 @@
+{
+  "version": "0.42.0",
+  "source": "96ad768b24813e19c01de2881d3cb53c5b2fdc6c",
+  "tag": "v0.42.0",
+  "release_id": 420164576,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0",
+  "published_at": "2026-10-22T00:21:58Z",
+  "verified_at": "2026-10-22T00:23:52.8303111Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "workflows": [
+    {
+      "name": "ci",
+      "id": 39696093211,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119553705652,
+          "name": "windows",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211/job/119553705652"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "id": 39696104747,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119553743479,
+          "name": "build (x64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747/job/119553743479"
+        },
+        {
+          "id": 119553743539,
+          "name": "build (arm64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747/job/119553743539"
+        },
+        {
+          "id": 119561269830,
+          "name": "publish",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747/job/119561269830"
+        }
+      ]
+    },
+    {
+      "name": "codeql",
+      "id": 39696092839,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119553717258,
+          "name": "Analyze (rust)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839/job/119553717258"
+        },
+        {
+          "id": 119553717552,
+          "name": "Analyze (python)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839/job/119553717552"
+        },
+        {
+          "id": 119553717578,
+          "name": "Analyze (actions)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839/job/119553717578"
+        }
+      ]
+    }
+  ],
+  "qualification": {
+    "tests": {
+      "passed": 662,
+      "failed": 0,
+      "ignored": 10
+    },
+    "portable": {
+      "scenarios": 34,
+      "upgrades": 30,
+      "guards": 4
+    },
+    "msi": {
+      "baselines": 28,
+      "logs": 140
+    },
+    "i18n": 1224,
+    "open_code_scanning_alerts": 0
+  },
+  "assets": [
+    {
+      "id": 664170043,
+      "name": "SuniPDF-0.42.0-win-arm64-portable.zip",
+      "size": 25654371,
+      "sha256": "543a1ff687ba0597f4705bf51efee7a5b6a136b34d6988f964af6b18d4700ef1",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 664170039,
+      "name": "SuniPDF-0.42.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "98b32348c66448aa157a386be9e0811eae75efe7ce5b272032b9083fcdc9d3fe",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 664170037,
+      "name": "SuniPDF-0.42.0-win-x64-portable.zip",
+      "size": 27345585,
+      "sha256": "642fa3c8b663c9e5a649988e72cda1de6bd5f1219d33f6cb32f9adc5e720e65c",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 664170045,
+      "name": "SuniPDF-0.42.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "1996cccba0b57c4d8e836514d9df60c3f2d05602cad97cfed5a7b7a367780820",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 664170042,
+      "name": "SuniPDF-0.42.0-win-x64.msi",
+      "size": 25288704,
+      "sha256": "ce685bb4807b438928834a7f5e37d12ed2daa9273d74aa0645e9b6c50c734313",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 664170040,
+      "name": "SuniPDF-0.42.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "0f9dd88b4a3fe70dc641d102a2ab42843f26abe4e7c13ed30d2e58291e789aa6",
+      "public_unauthenticated": true
+    }
+  ],
+  "zip_metadata": [
+    {
+      "architecture": "x64",
+      "product_version": "0.42.0",
+      "entries": 60,
+      "expanded_bytes": 92354542
+    },
+    {
+      "architecture": "arm64",
+      "product_version": "0.42.0",
+      "entries": 60,
+      "expanded_bytes": 84833275
+    }
+  ],
+  "msi_metadata": {
+    "ProductLanguage": "1033",
+    "ProductVersion": "0.42.0",
+    "ProductName": "SuniPDF"
+  },
+  "public_verification": {
+    "public_unauthenticated": true,
+    "gui_version": "0.42.0",
+    "cli_version": "sunipdf-cli 0.42.0",
+    "cli_sha256": "91b77b967b00dcc14d976b51bd179747c89e2c58b7513aaecd5a4b1e769b3ea5",
+    "cli_calls": 4,
+    "measurement_kind": "length",
+    "measurement_value": 10,
+    "measurement_unit": "m",
+    "saved_reopened": true,
+    "original_unchanged": true,
+    "scope": "Public asset bytes and packaged CLI smoke check; no installation or native GUI interaction."
+  },
+  "dist_copies_verified": true,
+  "pr_integration": "PR_INTEGRATION_0.42.0.json",
+  "projects": "PROJECT_UPDATE_0.42.0.json",
+  "aec_status": {
+    "AEC-001": "In progress",
+    "AEC-002": "In progress",
+    "AEC-003": "In progress",
+    "AEC-004": "In progress",
+    "AEC-005": "Done",
+    "AEC-020": "Deferred",
+    "AEC-021": "Deferred",
+    "AEC-026": "In progress"
+  },
+  "limits": [
+    "No installation or native GUI interaction in the public CLI smoke check.",
+    "Windows packages remain unsigned; no independent publication key is configured.",
+    "ARM64 is cross-built; native hardware remains unqualified.",
+    "Session scales do not persist as shared page metadata; saved vertices, vector snapping, viewports and global recalculation remain open.",
+    "Cloud collaboration and GitHub Projects updates remain deferred."
+  ]
+}

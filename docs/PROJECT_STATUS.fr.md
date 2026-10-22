@@ -1,11 +1,21 @@
-# État du projet - 2026-10-21 (0.41.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.42.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.41.0 : comptage sur plans et tableau des annotations (Latest stable)
+## 0.42.0 : mesures directement sur la page (Latest stable)
+
+[0.42.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) sous `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
+
+Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Calibrez avec deux clics et une distance confirmée, puis tracez longueurs, polylignes, périmètres, surfaces et angles sur le PDF. Aperçu et Appliquer contrôlent chaque insertion ; retrait de points, annulation et alignement horizontal/vertical accompagnent le tracé. Chaque page conserve son échelle de session entre modifications d’annotations et changements habituels d’onglet. [Guide et limites](MEASUREMENTS.fr.md).
+
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests réussis, 10 ignorés par défaut. 1224 clés EN/FR. 34 scénarios portables. 28 références MSI / 140 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256 ; quatre appels CLI du paquet vérifient version, aide, création d’une longueur de 10 m et réouverture sans modifier l’original.
+
+Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Cloud et mises à jour Projects restent différés. [Preuves](qa/RELEASE_0.42.0.json).
+
+## 0.41.0 : comptage sur plans et tableau des annotations (publiée ; Latest à cette date)
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 

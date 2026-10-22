@@ -16,9 +16,9 @@ L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, l
 
 Le lot local 0.40.0 a introduit calibration sur deux points, cinq types de mesures et données JSON par saisie de coordonnées. [Guide et limites](MEASUREMENTS.fr.md). Il constitue une base pour AEC-001/002/003/026 ; ces cartes restent ouvertes.
 
-## Intégration des mesures non publiée
+## Intégration des mesures livrée en 0.42.0
 
-Le prochain lot local rend **Mesures** visible dans la barre principale, **Tous les outils** et **Commentaire**. Il ajoute calibration de page par deux clics et confirmation explicite de la distance, tracé direct des cinq types de mesures, contours temporaires, aperçu rendu puis application, retrait de points, annulation et alignement horizontal/vertical. Une échelle confirmée peut être réutilisée sur sa page pendant la session du document et résiste aux modifications d'annotations ainsi qu'aux changements habituels d'onglet ; les changements de géométrie/structure des pages l'invalident, et fermer puis rouvrir le document impose une nouvelle calibration. Chaque annotation appliquée conserve sa propre calibration enregistrée. Ce progrès partiel sur AEC-001/002/003/026 ne constitue ni une release publiée ni la clôture de ces cartes. Modification des sommets enregistrés, échelles communes persistantes et recalcul, accrochage aux vecteurs PDF, vues multi-échelles et qualification restante sont toujours ouverts. Les comptages et le tableau conservent leur statut 0.41.0 documenté plus haut.
+Le lot 0.42.0 publié rend **Mesures** visible dans la barre principale, **Tous les outils** et **Commenter**. Il ajoute calibration de page par deux clics et confirmation explicite de la distance, tracé direct des cinq types de mesures, contours temporaires, aperçu rendu puis application, retrait de points, annulation et alignement horizontal/vertical. Une échelle confirmée peut être réutilisée sur sa page pendant la session du document et résiste aux modifications d'annotations ainsi qu'aux changements habituels d'onglet ; les changements de géométrie/structure des pages l'invalident, et fermer puis rouvrir le document impose une nouvelle calibration. Chaque annotation appliquée conserve sa propre calibration enregistrée. Ce progrès est livré en 0.42.0, mais ne clôture pas les cartes AEC-001/002/003/026. Modification des sommets enregistrés, échelles communes persistantes et recalcul, accrochage aux vecteurs PDF, vues multi-échelles et qualification restante sont toujours ouverts. Les comptages et le tableau conservent leur statut 0.41.0 documenté plus haut.
 
 ## Priorités et critères
 
@@ -55,7 +55,7 @@ P1 : fondations prioritaires. P2 : extensions métier. P3 : intégrations ou inf
 
 ## Ordre proposé
 
-1. Qualifier le parcours de mesure directe non publié et ses accès visibles. Le cloud et la collaboration sont reportés à la demande du propriétaire.
+1. Étendre la qualification du parcours de mesure directe sur plans réels et interfaces natives. Le cloud et la collaboration sont reportés à la demande du propriétaire.
 2. Compléter AEC-001/002 avec AEC-026 : édition des géométries enregistrées, persistance/recalcul des échelles communes, vérifications restantes sur plans réels et accessibilité. S'appuyer sur les données de métrés, le tableau et les comptages existants.
 3. Bibliothèques, rapports, superpositions, ensembles et gestion des révisions par lots vérifiables.
 4. Reprendre le cloud et la collaboration après les priorités locales, dans un lot distinct avec isolation, identité, conflits, sauvegardes et exploitation qualifiés.
@@ -65,4 +65,4 @@ Aucune date ni grille tarifaire n'est annoncée. Le CSV permet une future import
 
 Les [références officielles](AEC_BACKLOG.md#reference-workflows) servent à décrire les usages demandés, sans annoncer de compatibilité SuniPDF avec les formats ou services Bluebeam.
 
-[Preuves de release](qa/RELEASE_0.41.0.json).
+[Preuves de release](qa/RELEASE_0.42.0.json).

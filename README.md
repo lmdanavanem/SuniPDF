@@ -22,7 +22,17 @@
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
-## 0.41.0: manual plan counts and annotation registers (stable Latest)
+## 0.42.0: on-page measurement tools (stable Latest)
+
+[0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
+
+Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches. [Guide and limits](docs/MEASUREMENTS.md).
+
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
+
+Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; cloud and Projects updates stay deferred. [Evidence](docs/qa/RELEASE_0.42.0.json).
+
+## 0.41.0: manual plan counts and annotation registers (published; Latest at the time)
 
 [0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 

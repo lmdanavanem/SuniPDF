@@ -2,7 +2,17 @@
 
 [Français](KNOWN_ISSUES.fr.md)
 
-## 0.41.0: manual plan counts and annotation registers (stable Latest)
+## 0.42.0: on-page measurement tools (stable Latest)
+
+[0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
+
+Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches. [Guide and limits](MEASUREMENTS.md).
+
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
+
+Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; cloud and Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
+
+## 0.41.0: manual plan counts and annotation registers (published; Latest at the time)
 
 [0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
@@ -272,6 +282,7 @@ A10. **Distribution validation**: current tests, CI, package and release evidenc
      Interactive flows, ARM64 hardware and physical printers remain separate checks.
 A11. **All tools: 14 tools implemented for 0.9.0.** OCR, field creation and certificate signatures now have
      real commands. Automated and hardware coverage is recorded in `PROJECT_STATUS.md`.
+     Version 0.42.0 adds Measurements as the fifteenth workspace, with a labelled main-toolbar button.
 A12. **Hub interface verified without automated pixel rendering**: no software renderer nor `egui_kittest`
      in the dependencies. The tests cover the data (table, registry, glyph contrast), tool
      switching, row geometry, the AccessKit tree and the focus ring (egui pass without a window); the
@@ -284,6 +295,7 @@ A13. **Tool bar in a narrow window**: the label widths are estimated before draw
      width (720 px), the longest bar (Edit) fits in compact mode; scrolling is only
      reached with a larger Windows display scale and has been verified neither by a test nor by a
      screenshot.
+     Measurements keeps its label visible; egui tests cover narrow widths without qualifying all native Windows/DPI interactions.
 A14. **Keyboard**: after a keyboard activation (Enter) of a hub row or button or of the quick
      access (Open, Save, Undo, Redo), focus is released so that the single-letter shortcuts stay
      active; Tab therefore starts again from the beginning. Standard egui buttons (tab bar, menu)
