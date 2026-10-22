@@ -979,7 +979,7 @@ mod tests {
     #[test]
     fn inspector_edit_converts_units_and_requires_preview_before_apply_or_cancel() {
         for language in ["en-US", "fr-FR"] {
-            let (mut app, requests, _) = crate::app::tests::test_app();
+            let (mut app, requests, responses) = crate::app::tests::test_app();
             ready(&mut app);
             app.settings.language = language.into();
             let original = record(MeasurementKind::Length);
@@ -1052,12 +1052,22 @@ mod tests {
                 matches!(requests.recv().unwrap(), Request::Edit(EditOp::CommitRichAnnotationPreview { epoch:e,generation:g }) if e==epoch && g==generation)
             );
             assert!(app.annotate.adv.rich.as_ref().unwrap().applying);
-            app.rich_annotation_failed(&EngineError::Other("test refusal".into()));
+            assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+            assert!(app.worker.has_pending_mutations());
+            responses
+                .send(Response::OperationFailed(EngineError::Other(
+                    "test refusal".into(),
+                )))
+                .unwrap();
+            responses.send(Response::MutationFinished).unwrap();
+            app.handle_responses(&controls.ctx);
+            assert!(!app.worker.has_pending_mutations());
+            assert!(!app.annotate.adv.rich.as_ref().unwrap().applying);
             controls.click(&mut app, "dialog.password.cancel");
             assert!(app.annotate.adv.rich.is_none());
             assert!(matches!(
                 requests.recv().unwrap(),
-                Request::DiscardRichAnnotationPreview { .. }
+                Request::DiscardRichAnnotationPreview { epoch: e, generation: g } if e == epoch && g == generation
             ));
             assert!(app.annotate.measure.saved.contains(0, &original));
             assert_eq!(
