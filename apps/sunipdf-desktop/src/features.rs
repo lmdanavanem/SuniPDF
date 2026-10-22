@@ -87,7 +87,7 @@ impl SuniApp {
                 multi_select: field.multi_select,
                 editable: field.editable,
             }));
-            self.forms.panel_open = true;
+            self.set_context_panel(sunipdf_core::Command::ToggleForms, true);
         }
         if !was_drawing && self.form_builder.drawing {
             self.annotate.drag = None;

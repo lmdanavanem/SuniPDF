@@ -673,6 +673,10 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         app.library.path = Some(dir.path().join("annotations.json"));
         app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+        app.show_tools = false;
+        app.settings.show_tools = false;
+        app.settings.show_thumbnails = false;
+        app.docinfo.bookmarks_open = false;
         dir
     }
 
@@ -704,8 +708,13 @@ pub(crate) mod tests {
                     if self.canvas {
                         app.handle_input(&self.ctx);
                     }
-                    app.toolbar(&self.ctx, ui);
-                    app.library_placement_bar(ui);
+                    egui::Panel::top("library-test-toolbar")
+                        .show(ui, |ui| app.toolbar(&self.ctx, ui));
+                    if app.library.placing.is_some() {
+                        egui::Panel::top("library-test-placement")
+                            .show(ui, |ui| app.library_placement_bar(ui));
+                    }
+                    app.navigation_dock(&self.ctx, ui);
                     if self.canvas {
                         app.document_view(&self.ctx, ui);
                     }
@@ -717,9 +726,30 @@ pub(crate) mod tests {
             result
         }
         pub(crate) fn click(&mut self, app: &mut SuniApp, key: &str) {
-            self.click_text(app, tr(app.lang(), key));
+            if key == "library.short" {
+                if app.navigation_panel() != Some(crate::reader_layout::NavigationPanel::Tools) {
+                    self.click_text(app, tr(app.lang(), "reading.tools"));
+                }
+                assert_eq!(
+                    app.navigation_panel(),
+                    Some(crate::reader_layout::NavigationPanel::Tools),
+                    "the toolbar opens the tools dock"
+                );
+                let output = self.frame(app, vec![]);
+                assert!(
+                    Self::control_position(&output, tr(app.lang(), "tools.group.review")).is_some(),
+                    "the library is discoverable in the visible review family"
+                );
+                self.click_text(app, tr(app.lang(), "library.title"));
+                assert!(
+                    app.library.open,
+                    "the real library tool row opens the dialog"
+                );
+            } else {
+                self.click_text(app, tr(app.lang(), key));
+            }
         }
-        pub(crate) fn click_text(&mut self, app: &mut SuniApp, label: &str) {
+        fn control_position(output: &FullOutput, label: &str) -> Option<Pos2> {
             fn find(shape: &egui::Shape, label: &str) -> Option<Pos2> {
                 match shape {
                     egui::Shape::Text(text) if text.galley.text() == label => {
@@ -729,13 +759,14 @@ pub(crate) mod tests {
                     _ => None,
                 }
             }
+            output.shapes.iter().rev().find_map(|shape| {
+                find(&shape.shape, label).filter(|position| shape.clip_rect.contains(*position))
+            })
+        }
+        pub(crate) fn click_text(&mut self, app: &mut SuniApp, label: &str) {
             self.frame(app, vec![]);
             let output = self.frame(app, vec![]);
-            let pos = output
-                .shapes
-                .iter()
-                .rev()
-                .find_map(|s| find(&s.shape, label))
+            let pos = Self::control_position(&output, label)
                 .unwrap_or_else(|| panic!("visible library control: {label}"));
             self.time += 0.6;
             for pressed in [true, false] {

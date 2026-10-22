@@ -3,11 +3,21 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.49.0](RELEASE_0.49.0.fr.md). La version précédente [0.48.0](RELEASE_0.48.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide décrit la version 0.50.0. Fichiers publiés et qualification figurent sur la [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) ; les versions antérieures conservent leurs propres preuves. L’anglais est la langue par défaut, le français reste disponible dans les paramètres.
+
+## Commandes de lecture et outils
+
+Choisissez **Outils** dans la barre principale. Le volet gauche affiche **Outils**, **Pages** ou **Signets**, un panneau à la fois. Le panneau d’outils propose cinq familles et une recherche ; mesures, bibliothèque, tables de quantités et superpositions se trouvent dans **Réviser et mesurer**.
+
+Navigation de page, zoom et ajustements page/largeur sont sous le PDF. Le pourcentage reste sur une ligne, y compris **149%**. **Options de lecture** regroupe modes d’affichage, rotations de lecture et plein écran ; dans une fenêtre étroite, les groupes de commandes passent sur une autre ligne. Le rail droit ouvre les panneaux. La rotation de lecture change uniquement l’affichage ; **Organiser les pages** permet d’enregistrer une rotation dans le PDF.
+
+Le côté droit affiche un seul panneau contextuel à la fois. Un brouillon de mesure bloque l’ouverture d’un autre panneau jusqu’à sa fin ou son annulation. Quitter explicitement l’outil de mesure ou changer d’outil annule son brouillon local et conserve les échelles de page confirmées.
+
+[Disposition du lecteur et accès aux outils](READER_WORKSPACE.fr.md).
 
 ## Modifier les sommets des mesures enregistrées
 
-Dans **Mesures → Mesures enregistrées**, choisissez **Modifier la géométrie**. Choisissez le numéro du point dans **Sommet**, puis déplacez sa poignée sur la page d’origine. Le sélecteur distingue les points confondus. Pour une polyligne, un périmètre ou une surface polygonale, choisissez **Ajouter un sommet**, puis cliquez sur un segment, y compris celui qui ferme le polygone. Une insertion réussie termine ce mode ; **Arrêter l’ajout** le désactive. Sélectionnez un sommet et choisissez **Supprimer la sélection** pour le retirer.
+Dans **Outils → Réviser et mesurer → Mesures**, ouvrez **Mesures enregistrées** sous **Données enregistrées** à droite, puis choisissez **Modifier la géométrie**. Choisissez le numéro du point dans **Sommet**, puis déplacez sa poignée sur la page d’origine. Le sélecteur distingue les points confondus. Pour une polyligne, un périmètre ou une surface polygonale, choisissez **Ajouter un sommet**, puis cliquez sur un segment, y compris celui qui ferme le polygone. Une insertion réussie termine ce mode ; **Arrêter l’ajout** le désactive. Sélectionnez un sommet et choisissez **Supprimer la sélection** pour le retirer.
 
 Choisissez **Aperçu**, puis **Appliquer à l’objet** pour accepter le brouillon. **Ajuster les sommets** revient de l’aperçu au brouillon modifié. Annuler ou Échap l’abandonne ; une modification validée s’annule en une étape dans l’historique. Enregistrez le PDF pour conserver le changement.
 
@@ -19,7 +29,7 @@ Les polylignes gardent 2 à 128 sommets ; les périmètres et surfaces polygonal
 
 Disponible dans [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). [Preuves](qa/RELEASE_0.47.0.json).
 
-1. Ouvrez **Superposition de révisions** depuis **Tous les outils** ou **Comparer des fichiers**. Choisissez les PDF de base et révisé enregistrés, leurs numéros de page physique et leurs éventuels mots de passe séparés. Les modifications non enregistrées des onglets ne sont pas incluses.
+1. Ouvrez **Superposition de révisions** depuis **Outils → Réviser et mesurer** ou **Comparer des fichiers**. Choisissez les PDF de base et révisé enregistrés, leurs numéros de page physique et leurs éventuels mots de passe séparés. Les modifications non enregistrées des onglets ne sont pas incluses.
 2. Choisissez **Alignement manuel**, réglez décalages, rotation horaire et échelle, puis cliquez sur **Aperçu**. La base est magenta et la révision cyan ; les coordonnées partent du coin supérieur gauche affiché après recadrage et rotation de page.
 3. Pour **Alignement par deux points**, lancez **Aperçu** pour charger les sources, cliquez deux points distincts sur la base puis les deux points correspondants sur la révision, et relancez l’aperçu. **Réinitialiser l’alignement** efface points et transformation. Relancez l’aperçu après modification de l’opacité, de la résolution ou de l’alignement.
 4. Choisissez **Exporter PNG** ou **Exporter le rapport JSON**, puis un nouveau nom. Les deux PDF doivent autoriser la copie et correspondre encore à leurs empreintes enregistrées. Ils restent inchangés ; la sortie est limitée au cadre de la base. Recalage automatique et contours automatiques des changements restent ouverts.
@@ -30,7 +40,7 @@ Disponible dans [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.
 
 Disponible dans [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). [Preuves](qa/RELEASE_0.46.0.json).
 
-1. Ouvrez un PDF, puis choisissez **Table des quantités** depuis **Tous les outils**, les contrôles de mesure ou le registre d’annotations. Filtrez les lignes et choisissez les **Groupes de sous-totaux** ; les totaux couvrent toutes les lignes correspondantes, y compris les autres pages de la table.
+1. Ouvrez un PDF, puis choisissez **Table des quantités** depuis **Outils → Réviser et mesurer**, la section **Données enregistrées** des mesures ou le registre d’annotations. Filtrez les lignes et choisissez les **Groupes de sous-totaux** ; les totaux couvrent toutes les lignes correspondantes, y compris les autres pages de la table.
 2. Cliquez sur **Modifier la ligne** pour renseigner **Prix unitaire**, **Code devise**, **Prix par unité** et **Décimales du coût**. Un prix vide est absent ; `0` est un zéro explicite. Comptages et mesures enregistrées fournissent les quantités ; aucune quantité n’est déduite d’une annotation ordinaire et les angles ne sont pas tarifés.
 3. Utilisez **Ajouter une colonne personnalisée** pour les valeurs texte, nombre, date ou choix. Choisissez **Appliquer les champs** ou **Annuler la modification**. Chaque ligne appliquée constitue une étape Annuler ; fermez la table avant Annuler/Rétablir et enregistrez le PDF pour conserver les champs.
 4. Choisissez **Exporter CSV** ou **Exporter JSON**, puis un nouveau nom. Les exports contiennent toutes les lignes correspondantes et la provenance de la source ; le droit de copie est requis. Les totaux de quantités séparent les unités, les coûts séparent devises/précisions et les couvertures partielles restent visibles.
@@ -39,9 +49,7 @@ Disponible dans [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.
 
 ## Réutiliser des modèles locaux d’annotations
 
-La bibliothèque d’annotations 0.45 est disponible dans son [périmètre qualifié](RELEASE_0.45.0.fr.md). Cliquez sur **Bibliothèque** dans la barre
-principale, ou sur **Bibliothèque d’annotations** dans **Tous les outils** ou **Commenter**. Son fichier local
-est distinct des PDF et des réglages.
+La bibliothèque d’annotations 0.45 conserve son [périmètre qualifié](RELEASE_0.45.0.fr.md). Ouvrez **Outils → Réviser et mesurer → Bibliothèque d’annotations**. Son fichier local est distinct des PDF et des réglages.
 
 Choisissez **Créer un modèle**, préparez un nouveau brouillon compatible puis développez **Enregistrer dans la bibliothèque**.
 Saisissez un nom unique et cliquez sur **Enregistrer le modèle**. Crédit, source et licence sont des déclarations
@@ -61,9 +69,7 @@ existantes et fils de revue sont exclus. [Notice complète, format, limites et e
 
 ## Mesurer directement sur un PDF
 
-Ouvrez un PDF et cliquez sur **Mesures**, à côté de **Tous les outils** dans la barre principale.
-Vous pouvez aussi choisir **Tous les outils → Mesures**, ou le raccourci Mesures dans **Commenter**.
-Le bouton conserve son libellé dans les fenêtres étroites.
+Ouvrez un PDF et choisissez **Outils → Réviser et mesurer → Mesures**. Les commandes se trouvent dans le panneau droit : **Créer une mesure**, **Échelle de la page**, **Tracé** et **Données enregistrées**. Faites défiler ce panneau si nécessaire.
 
 1. Choisissez l’unité (`mm`, `cm`, `m`, `in` ou `ft`) et 0 à 4 décimales. Cliquez sur **Calibrer cette page**,
    puis sur deux points distincts délimitant une distance connue. Saisissez la **Distance connue** réelle,
@@ -99,7 +105,7 @@ du document ; créer une mesure exige le droit d'annotation. Rotation et réorga
 non standard provoquent un refus ; recalibrez ou retirez une échelle périmée reconnue. Les échelles de
 session non enregistrées disparaissent à la fermeture. Ces gardes n'authentifient pas toutes les révisions.
 
-Ouvrez **Mesures enregistrées** dans la barre de mesure pour inspecter la page courante. La consultation
+Ouvrez **Mesures enregistrées** dans **Données enregistrées**, à droite, pour inspecter la page courante. La consultation
 ne modifie pas le PDF. La liste présente valeur/unité, type, indice, identifiant éventuel, nombre de sommets, précision et
 distance connue des mesures non angulaires, par groupes de 50. **Voir sur la page** sélectionne l'annotation réelle
 et ouvre ses commentaires. **Utiliser cette échelle** copie la calibration d'une mesure non angulaire
@@ -233,31 +239,15 @@ sur **+ Ouvrir** dans la barre d'onglets.
 
 ## Tous les outils
 
-Le panneau de gauche **Tous les outils** (F9, ou le bouton du même nom dans la barre d'outils) liste les
-outils par tâche : Exporter un PDF, Remplir et signer, Modifier un PDF, Créer un PDF, Combiner
-des fichiers, Organiser les pages, Mesures, Bibliothèque d’annotations, Commenter, Protéger un PDF, Caviarder un PDF, Compresser un PDF, Ajouter un tampon,
-Numériser et OCR, Préparer un formulaire, Utiliser un certificat. Le menu **Outils** et
-la palette Ctrl+K donnent les mêmes accès. Sans document ouvert, un outil qui en a besoin demande d'abord un
-fichier puis démarre.
+Ouvrez **Outils** depuis la barre principale ou appuyez sur **F9**. Le volet gauche regroupe 18 outils dans **Réviser et mesurer**, **Modifier et organiser**, **Formulaires et signatures**, **Créer et convertir** et **Sécurité**. **Rechercher un outil** filtre noms, descriptions et familles dans la langue active ; **Effacer la recherche** rétablit la liste. Le menu Outils et la palette **Ctrl+K** restent accessibles. Un outil nécessitant un document propose d’ouvrir un fichier si besoin.
 
-- **Exporter, Créer, Combiner, Compresser, Bibliothèque d’annotations** ouvrent directement leur boîte de dialogue. La bibliothèque peut être gérée sans PDF ouvert.
-- **Remplir et signer, Modifier, Organiser, Mesures, Commenter, Protéger, Ajouter un tampon** (marqués d'un chevron ›) affichent une
-  **barre d'outil** sous la barre d'outils : boutons de l'outil, groupés, avec leur libellé si la largeur le
-  permet (sinon l'icône seule, le libellé restant en info-bulle). Les actions qui demandent une sélection
-  (objet, texte, pages de la grille) restent grisées sans elle. Mesures conserve son libellé et présente
-  ses contrôles de calibration et de tracé.
-- **Quitter l'outil** : bouton à droite de la barre, **Échap**, nouveau clic sur l'outil actif dans le panneau,
-  ou la flèche de retour (qui rouvre aussi le panneau). Échap ferme d'abord ce qui est plus proche : un menu
-  ou une liste déroulante ouverts, puis la recherche, puis l'objet sélectionné, puis l'outil (un Échap, un
-  seul effet). Un brouillon de mesure actif est annulé avant de quitter son outil.
-- Les raccourcis à une lettre ouvrent l'outil correspondant : H, U, X, N, A, D, F ouvrent **Commenter** ; E, T, I, R, O, L
-  ouvrent **Modifier** ; S ouvre la boîte **Signer** ; F8 ouvre **Organiser** avec la grille ; V revient au curseur de lecture.
-- Chaque onglet garde son outil actif.
-- La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir, Mesures, Bibliothèque.
+**Outils → Réviser et mesurer** contient Commenter, Mesures, Table des quantités, Bibliothèque d’annotations, Superposition de révisions et Ajouter un tampon. La bibliothèque peut être gérée sans PDF ouvert. Remplir et signer conserve le remplissage et la signature visuelle ; la signature numérique utilise son propre outil.
 
-L’interface 0.45 ajoute **Bibliothèque d’annotations** aux côtés de **Mesures**, **Numériser et OCR**, **Préparer un formulaire** et
-**Utiliser un certificat**. Remplir et signer conserve le remplissage et la signature visuelle ;
-la signature numérique dispose de son propre outil.
+**Mesures** utilise un panneau droit défilant avec **Créer une mesure**, **Échelle de la page**, **Tracé** et **Données enregistrées**. Il n’ajoute pas de barre d’espace de travail horizontale. Les autres outils peuvent afficher leurs barres contextuelles ou boîtes de dialogue existantes. Les actions nécessitant une sélection restent désactivées sans elle.
+
+Utilisez **Quitter l’outil**, Échap ou l’entrée de l’outil actif pour quitter un espace. Échap ferme d’abord un menu ouvert ou le brouillon courant selon le cas ; terminez ou annulez les modifications de mesure avant de changer d’outil. Raccourcis d’édition à une lettre et outil actif par onglet restent disponibles. La barre principale conserve les commandes générales Ouvrir, Enregistrer, Annuler, Rétablir et Outils.
+
+[Familles d’outils et commandes de lecture](READER_WORKSPACE.fr.md).
 
 ## Onglets
 
@@ -281,24 +271,16 @@ La case dans À propos désactive les instantanés automatiques. **Fichier → R
 
 ## Lire un document
 
-Par défaut les pages sont **empilées** : la molette, la barre de défilement ou le clavier font défiler tout le
-document, et la page qui occupe l'écran devient la page courante (numéro du rail, barre d'état, miniature,
-panneau des commentaires ; Pivoter, Supprimer et Extraire la visent ; un clic sur une page la rend courante).
-**F5**, le bouton à flèches du rail droit ou le menu Affichage basculent entre **Défilement continu** et **Page
-unique** ; le choix est mémorisé. Seules les pages visibles sont rendues : un document de plusieurs centaines de
-pages s'ouvre et défile sans rendre toutes les pages. Le menu Affichage propose aussi **Deux pages** (paires à partir
-de la première page) et **Vue livre** (couverture seule, puis paires). Une dernière page non appariée est centrée.
-Les tailles mixtes partagent un zoom ; l'ajustement utilise la plus large double page et la page la plus haute.
-Ces modes conservent les mêmes plafonds de tuiles et de textures.
+Par défaut les pages sont **empilées** : molette, barre de défilement ou clavier font défiler le document. La page affichée devient courante dans le champ du bas, les miniatures et les commentaires ; les opérations de page la visent. **F5**, **Options de lecture** sous le PDF ou le menu Affichage basculent entre **Défilement continu** et **Page unique**. **Deux pages** forme des paires dès la première page ; **Vue livre** présente la couverture seule, puis des paires. Une dernière page non appariée est centrée. Seules les pages visibles sont rendues ; les tailles mixtes partagent un zoom et l’ajustement utilise la plus large double page et la page la plus haute. Ces modes gardent les plafonds existants de tuiles et de textures.
 
 | Action | Comment |
 |---|---|
 | Défiler | Molette ; flèches ↑ ↓ (une ligne) ; Espace / Maj+Espace et Page suiv. / Page préc. (un écran ; en page unique, Page suiv. / préc. changent de page) |
-| Page suivante / précédente | Flèches → ←, boutons du rail droit |
+| Page suivante / précédente | Flèches → ←, boutons sous le PDF |
 | Première / dernière page | Origine / Fin |
-| Aller à une page | Saisir le numéro dans la case du rail droit puis Entrée, ou cliquer une miniature : la page vient en haut de l'écran |
+| Aller à une page | Saisir le numéro ou un libellé pris en charge dans le champ sous le PDF puis Entrée, ou cliquer une miniature : la page vient en haut de l'écran |
 | Zoom | Ctrl + molette (zoom **autour du pointeur** ; le pincement du pavé tactile passe par le même chemin, non testé), Ctrl + / Ctrl − (autour du centre), Ctrl 0 (taille réelle), liste de zoom (25 à 1600 %), « Largeur », « Page » ; jusqu'à 3200 % à la molette, la netteté est conservée (rendu en tuiles) |
-| Défilement continu / page unique | F5, bouton du rail droit, menu Affichage |
+| Défilement continu / page unique | F5, Options de lecture sous le PDF, menu Affichage |
 | Miniatures | Panneau **Pages** à gauche (bouton grille du rail droit) ; glisser une miniature pour réordonner |
 | Signets | F6 ou bouton liste du rail droit |
 | Rechercher | Ctrl+F : saisie, respecter la casse, ▲ ▼, surbrillance des occurrences |

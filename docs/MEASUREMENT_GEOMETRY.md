@@ -4,10 +4,12 @@
 
 Available in [0.49.0](RELEASE_0.49.0.md). [Evidence](qa/RELEASE_0.49.0.json).
 
+The 0.50.0 build uses the [reader and tools layout](READER_WORKSPACE.md) described below; the saved-geometry limits remain unchanged.
+
 ## Workflow
 
-1. Open a PDF containing a supported saved measurement and select **Measurements**.
-2. In **Saved measurements**, choose the measurement and **Edit geometry**.
+1. Open a PDF containing a supported saved measurement and choose **Tools → Review & measure → Measurements**.
+2. In the right panel’s **Saved data** section, open **Saved measurements**, choose the measurement and **Edit geometry**.
 3. Select the vertex by its number in **Vertex**, then drag its handle on the original page. The list also distinguishes vertices at the same position. Handles keep a constant screen size as you zoom; points stay within the page.
 4. For a polyline, perimeter or polygon area, choose **Add vertex**, then click the segment where the new point belongs. A successful insertion adds one point to the draft and leaves insertion mode; choose **Add vertex** again for another. **Stop adding** cancels insertion mode. The closing segment of a perimeter or area is included. To remove a point, select its number and choose **Remove selected**.
 5. Select **Preview** to review the recalculated measurement, then **Apply to object** to accept it. **Adjust vertices** returns to the draft when further changes are needed.

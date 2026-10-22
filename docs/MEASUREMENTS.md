@@ -2,6 +2,8 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
+**0.50.0 build:** open **Tools → Review & measure → Measurements**. Its right-hand settings panel groups Create measurement, Page scale, Drawing and Saved data; **Saved measurements** is in Saved data. [Reader and tools guide](READER_WORKSPACE.md).
+
 **Available in [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0):** add or remove saved polyline, perimeter and polygon-area vertices within their minimum and maximum counts; select a vertex by number even when handles overlap. Preview, Apply and Undo preserve the measurement’s own calibration and entered quantity fields. [Workflow and limits](MEASUREMENT_GEOMETRY.md). [Evidence](qa/RELEASE_0.49.0.json).
 
 **Available in [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0):** drag existing saved measurement vertices through **Edit geometry**, then Preview and Apply. Calibration and entered quantity fields are preserved. [Workflow and limits](MEASUREMENT_GEOMETRY.md). [Evidence](qa/RELEASE_0.48.0.json).
@@ -12,7 +14,7 @@
 
 ## Measure directly on the page
 
-1. Open a PDF and select **Measurements** beside **All tools** in the main toolbar. The same tool is available from **All tools → Measurements** and the first group of the **Add comments** workspace. Its toolbar label remains visible in narrow windows.
+1. Open a PDF and choose **Tools → Review & measure → Measurements**. Use the settings panel on the right; its sections remain available by scrolling when the window is smaller.
 2. Choose `mm`, `cm`, `m`, `in` or `ft` and 0–4 decimal places. Select **Calibrate this page**, then click two different points spanning a distance you know from the drawing. Enter the positive **Known distance**, then select **Confirm scale**. Feet and inches use decimal values: 10 feet 6 inches is `10.5 ft` or `126 in`.
 3. Choose a measurement type and click directly on the page. **Length** opens the preview after two points. **Angle** opens it after three points: first arm, vertex, second arm; angles do not require a physical scale. For **Polyline length**, **Polygon perimeter** and **Polygon area**, add the vertices, then select **Preview measurement**, press **Enter**, or double-click the last point. Polygons close automatically; do not repeat the first vertex.
 4. Inspect the rendered candidate and its value, then select **Apply**. Nothing is added until Apply succeeds. **Cancel** or **Escape** discards the preview. Save the PDF to retain the measurement; one Undo removes the annotation and its metadata together. The tool stays active after applying, so another measurement on the calibrated page can be drawn immediately.
