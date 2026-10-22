@@ -3,7 +3,15 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.47.0](RELEASE_0.47.0.fr.md). La version précédente [0.46.0](RELEASE_0.46.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide décrit la version 0.48.0. Fichiers publiés et qualification figurent sur la [page de version](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) ; les versions antérieures conservent leurs propres preuves. L’anglais est la langue par défaut, le français reste disponible dans les paramètres.
+
+## Modifier les sommets des mesures enregistrées
+
+Dans **Mesures → Mesures enregistrées**, choisissez **Modifier la géométrie**. Déplacez un sommet existant sur sa page d’origine, puis choisissez **Aperçu** et **Appliquer**. **Ajuster les sommets** revient de l’aperçu au brouillon modifié. Annuler ou Échap l’abandonne ; une modification validée s’annule en une étape dans l’historique.
+
+Type, nombre de sommets, calibration, unité et précision d’origine restent fixes. Identité, réponses, champs de quantité et prix saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés à partir de la géométrie acceptée. Les modifications invalides ou périmées ne sont pas applicables. Ajout/suppression de sommets, accrochage et recalcul par lots restent ouverts.
+
+[Parcours complet et limites](MEASUREMENT_GEOMETRY.fr.md).
 
 ## Superpositions de révisions alignées
 
@@ -123,7 +131,7 @@ identité attendue. L'export exige le droit de copie. Une création/modification
 renvoie `measurement: null` et `export_unavailable: true`. Le redimensionnement du contenu et des
 annotations des pages mesurées est refusé avant toute application.
 
-Recalcul global, déplacement des sommets à la souris, accrochage aux vecteurs et vues multi-échelles restent indisponibles. Vérifiez la distance connue et la révision du
+Recalcul global, ajout/suppression de sommets, accrochage aux vecteurs et vues multi-échelles restent indisponibles. Vérifiez la distance connue et la révision du
 plan : une valeur calculée ne garantit pas la justesse physique. Le [guide des mesures](MEASUREMENTS.fr.md)
 détaille format ouvert, permissions et limites géométriques.
 

@@ -3,7 +3,15 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.47.0](RELEASE_0.47.0.md). The preceding [0.46.0](RELEASE_0.46.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+This guide describes the 0.48.0 build. Published files and qualification are tracked on the [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0); earlier releases retain their own evidence. English is the default language, with French available in Settings.
+
+## Edit saved measurement vertices
+
+In **Measurements → Saved measurements**, choose **Edit geometry**. Drag an existing vertex on its original page, then choose **Preview** and **Apply**. **Adjust vertices** returns from the preview to the edited draft. Cancel or Escape discards it; an applied change has one Undo step.
+
+The original measurement type, vertex count, calibration, unit and precision stay fixed. Identity, replies and entered quantity fields and prices are retained; measured values and compatible price totals recalculate from the accepted geometry. Invalid or stale edits cannot be applied. Adding/removing vertices, snapping and batch recalculation remain open.
+
+[Full workflow and limits](MEASUREMENT_GEOMETRY.md).
 
 ## Aligned revision overlays
 

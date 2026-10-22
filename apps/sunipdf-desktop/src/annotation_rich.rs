@@ -11,7 +11,7 @@ use sunipdf_core::annot_rich::{
 use sunipdf_core::annotation_library::{LibraryEntry, LibraryPlacement, LibraryProvenance};
 use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
-use sunipdf_i18n::tr;
+use sunipdf_i18n::{tr, tr_args};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RichMode {
@@ -82,6 +82,7 @@ pub struct RichDraft {
     pub error: Option<String>,
     interactive_measurement: bool,
     measurement_edit: Option<MeasurementRecord>,
+    measurement_geometry_edit: bool,
     author: Option<String>,
     library_entry: Option<LibraryEntry>,
     library_placement: LibraryPlacement,
@@ -260,8 +261,14 @@ impl RichDraft {
         measurement.value().ok()?;
         if self.measurement_edit.as_ref().is_some_and(|record| {
             measurement.kind != record.measurement.kind
-                || measurement.points != record.measurement.points
+                || (!self.measurement_geometry_edit
+                    && measurement.points != record.measurement.points)
+                || measurement.points.len() != record.measurement.points.len()
                 || measurement.calibration != record.measurement.calibration
+                || (self.measurement_geometry_edit
+                    && (measurement.known_distance != record.measurement.known_distance
+                        || measurement.unit != record.measurement.unit
+                        || measurement.precision != record.measurement.precision))
         }) {
             return None;
         }
@@ -424,6 +431,31 @@ impl SuniApp {
         true
     }
 
+    pub(crate) fn open_measurement_geometry_preview(
+        &mut self,
+        page: usize,
+        original: MeasurementRecord,
+        replacement: Measurement,
+    ) -> bool {
+        if !self.annotate.measure.saved.can_edit(page, &original)
+            || replacement.kind != original.measurement.kind
+            || replacement.points.len() != original.measurement.points.len()
+            || replacement.calibration != original.measurement.calibration
+            || replacement.unit != original.measurement.unit
+            || replacement.known_distance != original.measurement.known_distance
+            || replacement.precision != original.measurement.precision
+            || replacement.value().is_err()
+            || !self.open_saved_measurement_editor(page, original)
+        {
+            return false;
+        }
+        let draft = self.annotate.adv.rich.as_mut().unwrap();
+        draft.load_measurement(&replacement);
+        draft.measurement_geometry_edit = true;
+        self.request_rich_preview();
+        true
+    }
+
     pub(crate) fn open_rich_from_free_text_prompt(&mut self, ctx: &egui::Context) {
         let Some(prompt) = self.annotate.adv.free_text.take() else {
             return;
@@ -537,6 +569,7 @@ impl SuniApp {
             error: None,
             interactive_measurement: false,
             measurement_edit: None,
+            measurement_geometry_edit: false,
             author: self.annot_author(),
             library_entry: None,
             library_placement: LibraryPlacement {
@@ -723,6 +756,7 @@ impl SuniApp {
             return;
         };
         let mut save_library = false;
+        let mut adjust_geometry = false;
         let (mut preview, mut apply, mut cancel, mut choose_file, mut want_fonts) =
             (false, false, false, false, false);
         let can_preview =
@@ -862,7 +896,35 @@ impl SuniApp {
                                 } else {
                                     ui.label(tr(lang, "measure.invalid"));
                                 }
-                                if draft.measurement_edit.is_some() {
+                                if draft.measurement_geometry_edit {
+                                    ui.small(tr(lang, "measure.geometry.preserved"));
+                                    ui.monospace(&draft.calibration);
+                                    ui.small(tr_args(
+                                        lang,
+                                        "measure.geometry.details",
+                                        &[
+                                            (
+                                                "points",
+                                                &draft
+                                                    .measurement_edit
+                                                    .as_ref()
+                                                    .unwrap()
+                                                    .measurement
+                                                    .points
+                                                    .len()
+                                                    .to_string(),
+                                            ),
+                                            ("unit", draft.measure_unit.id()),
+                                            ("precision", &draft.precision.to_string()),
+                                        ],
+                                    ));
+                                    adjust_geometry = ui
+                                        .add_enabled(
+                                            current && ready && !draft.applying,
+                                            egui::Button::new(tr(lang, "measure.geometry.adjust")),
+                                        )
+                                        .clicked();
+                                } else if draft.measurement_edit.is_some() {
                                     if draft.measure_kind != MeasurementKind::Angle {
                                         ui.horizontal_wrapped(|ui| {
                                             ui.label(tr(lang, "measure.known_distance"));
@@ -1216,13 +1278,20 @@ impl SuniApp {
             self.edit.fonts_requested = true;
             self.worker.send(Request::SystemFonts);
         }
-        if cancel {
+        if cancel || adjust_geometry {
             let draft = self.annotate.adv.rich.take().unwrap();
             self.worker.send(Request::DiscardRichAnnotationPreview {
                 epoch: draft.epoch,
                 generation: draft.generation,
             });
             self.annotate.adv.rich_generation = self.annotate.adv.rich_generation.wrapping_add(1);
+            if adjust_geometry {
+                if let (Some(original), Some(replacement)) =
+                    (draft.measurement_edit.clone(), draft.measurement())
+                {
+                    self.restore_measurement_geometry(draft.page, original, replacement);
+                }
+            }
         } else if choose_file {
             if self
                 .annotate
@@ -1564,6 +1633,51 @@ mod tests {
                 "this editor must preserve original vertices"
             );
         }
+    }
+
+    #[test]
+    fn geometry_preview_changes_only_existing_vertices_in_explicit_geometry_mode() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.open_rich_annotations(&egui::Context::default());
+        let measurement = Measurement {
+            kind: MeasurementKind::Polyline,
+            points: vec![(40.0, 70.0), (140.0, 70.0), (140.0, 170.0)],
+            calibration: [(40.0, 40.0), (140.0, 40.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Feet,
+            precision: 3,
+        };
+        let record = MeasurementRecord {
+            index: 7,
+            annotation_id: Some("saved-geometry".into()),
+            measurement: measurement.clone(),
+        };
+        let draft = app.annotate.adv.rich.as_mut().unwrap();
+        draft.load_measurement(&measurement);
+        draft.measurement_edit = Some(record);
+        draft.points = "40,70\n150,90\n140,170".into();
+        assert!(draft.measurement().is_none());
+        draft.measurement_geometry_edit = true;
+        assert!(draft.measurement().is_some());
+        assert!(
+            draft.operation().is_none(),
+            "geometry editing cannot insert a new annotation"
+        );
+        for invalid in 0..5 {
+            draft.load_measurement(&measurement);
+            match invalid {
+                0 => draft.points.push_str("\n200,200"),
+                1 => draft.known_distance = 20.0,
+                2 => draft.precision = 2,
+                3 => draft.measure_unit = MeasurementUnit::Metres,
+                _ => draft.calibration = "40,40\n160,40".into(),
+            }
+            assert!(
+                draft.measurement().is_none(),
+                "geometry mode must preserve calibration and cardinality"
+            );
+        }
+        assert!(requests.try_recv().is_err());
     }
 
     fn preview() -> RichAnnotationPreview {

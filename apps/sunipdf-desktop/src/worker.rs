@@ -2773,11 +2773,13 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     .as_ref()
                     .ok_or(EngineError::PageOutOfRange(page))
                     .map(|doc| {
-                        crate::measurement_saved::MeasurementPageData::new(
+                        let mut data = crate::measurement_saved::MeasurementPageData::new(
                             doc.page_calibration(page).map_err(|e| e.to_string()),
                             doc.measurement_records(page).map_err(|e| e.to_string()),
                             doc.properties().can_modify,
-                        )
+                        );
+                        data.can_annotate = doc.properties().can_annotate;
+                        data
                     }),
             },
             Request::QuantityTable { epoch, generation } => Response::QuantityTable {

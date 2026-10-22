@@ -325,3 +325,113 @@ fn canvas_uses_each_pages_confirmed_scale_and_discards_stale_calibration() {
     assert!(!app.annotate.measure.is_active_draft());
     assert_no_edit_or_preview(&requests);
 }
+
+#[test]
+fn geometry_drag_survives_scroll_in_continuous_spread_and_book_views() {
+    use crate::measurement_saved::MeasurementPageData;
+    use sunipdf_core::measurement::{MeasurementRecord, MeasurementUnit};
+    for mode in [
+        crate::view::ViewMode::Continuous,
+        crate::view::ViewMode::TwoPage,
+        crate::view::ViewMode::Book,
+    ] {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes = vec![size; 6];
+        let mut canvas = Canvas::new(&mut app);
+        app.view.mode = mode;
+        let record = MeasurementRecord {
+            index: 0,
+            annotation_id: Some("scroll-measurement".into()),
+            measurement: Measurement {
+                kind: MeasurementKind::Length,
+                points: vec![(80.0, 550.0), (180.0, 550.0)],
+                calibration: [(30.0, 40.0), (130.0, 40.0)],
+                known_distance: 10.0,
+                unit: MeasurementUnit::Metres,
+                precision: 2,
+            },
+        };
+        let (epoch, generation) = requests
+            .try_iter()
+            .find_map(|r| match r {
+                Request::MeasurementPage {
+                    page: 0,
+                    epoch,
+                    generation,
+                } => Some((epoch, generation)),
+                _ => None,
+            })
+            .expect("measurement page read");
+        app.on_measurement_page(
+            0,
+            epoch,
+            generation,
+            Ok(MeasurementPageData::new(
+                Ok(None),
+                Ok(vec![record.clone()]),
+                true,
+            )),
+        );
+        assert!(app.start_measurement_geometry(0, record));
+        for _ in 0..3 {
+            canvas.frame(&mut app, vec![]);
+        }
+        let (_, rect, height) = app.edit.page_view.expect("active geometry page");
+        let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+        let start = rect.min + vec2(180.0 * k, (height - 550.0) * k);
+        let moved = start + vec2(30.0, -15.0);
+        let button = |pos, pressed| Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: Modifiers::NONE,
+        };
+        canvas.frame(
+            &mut app,
+            vec![Event::PointerMoved(start), button(start, true)],
+        );
+        canvas.frame(&mut app, vec![Event::PointerMoved(moved)]);
+        canvas.frame(&mut app, vec![Event::PointerMoved(moved + vec2(5.0, 0.0))]);
+        let edited = app
+            .annotate
+            .measure
+            .geometry
+            .as_ref()
+            .unwrap()
+            .replacement
+            .clone();
+        assert_ne!(edited.points[1], (180.0, 550.0));
+        app.view.scroll_by(2000.0);
+        for _ in 0..3 {
+            canvas.frame(&mut app, vec![]);
+        }
+        assert!(app.view.offset.y > 500.0, "the document really scrolled");
+        assert_eq!(
+            app.document.as_ref().unwrap().page,
+            0,
+            "scroll cannot change the draft's current page"
+        );
+        assert_eq!(
+            app.edit.page_view.unwrap().0,
+            0,
+            "the captured page remains pinned offscreen"
+        );
+        assert!(app.annotate.measure.geometry.is_some());
+        canvas.frame(
+            &mut app,
+            vec![Event::PointerMoved(moved), button(moved, false)],
+        );
+        assert!(
+            app.annotate.measure.geometry.is_some(),
+            "release outside the page retains the draft"
+        );
+        assert!(
+            app.finish_measurement_geometry(),
+            "release clears the handle even after scroll"
+        );
+        assert!(requests
+            .try_iter()
+            .any(|r| matches!(r, Request::PreviewMeasurementEdit { page: 0, .. })));
+    }
+}

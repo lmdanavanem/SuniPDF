@@ -2,6 +2,8 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
+**0.48.0 build:** drag existing saved measurement vertices through **Edit geometry**, then Preview and Apply. Calibration and entered quantity fields are preserved. [Workflow and limits](MEASUREMENT_GEOMETRY.md).
+
 **Available in [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0):** Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused. [Evidence](qa/RELEASE_0.44.0.json).
 
 **Available in [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** persistent page scales, inspection and explicit scale reuse extend on-page drawing. Existing measurements retain their values. [Evidence](qa/RELEASE_0.43.0.json).
@@ -44,7 +46,7 @@ Generic move, resize, restyle and value-text edits are refused to prevent stale 
 3. Select **Preview** and inspect the rendered candidate, then **Apply**. The original vertices and reference points stay fixed in this desktop editor. The annotation keeps its identity, author, replies and register fields; page defaults and other measurements stay unchanged.
 4. **Cancel** leaves the PDF unchanged. A successful edit uses one Undo/Redo step. Save the PDF to retain it on disk.
 
-Changing a parameter invalidates the previous preview. Changed document state, stale records, locked or ambiguous identities, unsupported metadata/appearances, and externally altered value text or geometry cause a refusal. Refresh or reopen the inspector before retrying; preserve unsupported annotations rather than replacing them by guesswork. Editing requires annotation permission and is limited to supported measurements in documents up to 128 MiB. Mouse editing of saved vertices remains future work; the CLI can replace explicit vertices.
+Changing a parameter invalidates the previous preview. Changed document state, stale records, locked or ambiguous identities, unsupported metadata/appearances, and externally altered value text or geometry cause a refusal. Refresh or reopen the inspector before retrying; preserve unsupported annotations rather than replacing them by guesswork. Editing requires annotation permission and is limited to supported measurements in documents up to 128 MiB. The separate [geometry editor](MEASUREMENT_GEOMETRY.md) moves existing vertices on the page; the CLI also supports explicit replacements.
 
 ## CLI and quantities
 
@@ -92,4 +94,4 @@ JSON export is bounded to 1000 pages and 4096 records, with 4 MiB of measurement
 
 Known-geometry fixtures cover arithmetic, metric/imperial equivalence, rotation/crop, reopen, preview/commit, snapshot Undo, allowed encryption, invalid geometry and stale-record refusals. The 0.43 additions cover page-default persistence, permissions, physical unit conversion and independent qpdf checks within the existing corpus; executed results belong in Project status. Generated fixtures do not qualify survey accuracy, real customer plans, physical printing, native pointing/Narrator interaction, PDF/A or PDF/UA.
 
-Resizing content with annotations refuses measured pages atomically rather than leaving inconsistent rectangles and quantities. Mouse editing of saved vertices, batch recalculation, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open. AEC-001/002/003/004/026 remain partial; neither page defaults, the inspector nor individual editing close their wider criteria. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source. The [roadmap](ROADMAP.md) separates the planned 0.45 annotation library, 0.46 quantity columns/totals/export and 0.47 overlays/revision review.
+Resizing content with annotations refuses measured pages atomically rather than leaving inconsistent rectangles and quantities. Adding/removing saved vertices, batch recalculation, snapping to PDF vectors, multi-scale viewports, volumes and advanced recognition remain open. AEC-001/002/003/004/026 remain partial; neither page defaults, the inspector nor individual editing close their wider criteria. [Manual counts and the annotation register](MARKUP_REGISTER.md) already exist within their documented 0.41.0 bounds. Local tools remain free and open source. The [roadmap](ROADMAP.md) records the qualified scopes of the 0.45 annotation library, 0.46 quantity tables and 0.47 revision overlays.

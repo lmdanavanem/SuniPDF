@@ -6,6 +6,7 @@ use sunipdf_core::{
     annot_rich::RichAnnotation,
     annotation_register::RegisterFields,
     measurement::{Measurement, MeasurementKind, MeasurementUnit},
+    quantity_table::{DecimalValue, QuantityFields, QuantityUnit, TypedValue, UnitPrice},
     security, Engine, EngineError, PageCalibration, PageMargins, Protection, ResizeMode, Rotation,
 };
 
@@ -93,6 +94,287 @@ fn utf16(text: &str) -> Object {
     let mut bytes = vec![0xfe, 0xff];
     bytes.extend(text.encode_utf16().flat_map(u16::to_be_bytes));
     Object::String(bytes, lopdf::StringFormat::Hexadecimal)
+}
+
+fn quantity_fields(per_unit: QuantityUnit) -> QuantityFields {
+    QuantityFields {
+        unit_price: Some(UnitPrice {
+            amount: DecimalValue::parse("2.50").unwrap(),
+            currency: "CHF".into(),
+            per_unit,
+            rounding_decimals: 2,
+        }),
+        custom: BTreeMap::from([
+            (
+                "Room".into(),
+                TypedValue::Text {
+                    value: "A-101".into(),
+                },
+            ),
+            (
+                "Checked".into(),
+                TypedValue::Date {
+                    value: "2026-10-22".into(),
+                },
+            ),
+            (
+                "Allowance".into(),
+                TypedValue::Number {
+                    value: DecimalValue::parse("0.125").unwrap(),
+                },
+            ),
+            (
+                "Material".into(),
+                TypedValue::Choice {
+                    value: "Copper".into(),
+                    options: vec!["Copper".into(), "Steel".into()],
+                },
+            ),
+        ]),
+    }
+}
+
+#[test]
+fn saved_geometry_edits_reprice_quantities_and_preserve_typed_fields_on_cropped_rotated_pages() {
+    let engine = engine();
+    let directory = tempfile::tempdir().unwrap();
+    for (case, rotation) in [Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270]
+        .into_iter()
+        .enumerate()
+    {
+        let source_path = directory.path().join(format!("source-{case}.pdf"));
+        let output_path = directory.path().join(format!("edited-{case}.pdf"));
+        let mut source = engine
+            .open_bytes(SOURCE.to_vec(), None, Path::new("plan.pdf"))
+            .unwrap();
+        source.set_page_rotation(0, rotation).unwrap();
+        source
+            .crop_page(
+                0,
+                PageMargins {
+                    left: 10.0,
+                    right: 13.0,
+                    top: 12.0,
+                    bottom: 14.0,
+                },
+            )
+            .unwrap();
+        let initial = Measurement {
+            unit: MeasurementUnit::Centimetres,
+            known_distance: 1000.0,
+            ..measurement()
+        };
+        let page_default = PageCalibration {
+            points: initial.calibration,
+            known_distance: 900.0,
+            unit: initial.unit,
+        };
+        source.set_page_calibration(0, Some(&page_default)).unwrap();
+        let index = source
+            .add_measurement_annotation(0, &initial, Some("Plan reviewer"))
+            .unwrap();
+        source
+            .add_reply(0, index, "Preserve the review thread", Some("Inspector"))
+            .unwrap();
+        let register = source.annotation_register().unwrap();
+        let row = register
+            .rows
+            .iter()
+            .find(|row| row.page == 1 && row.index == index)
+            .unwrap();
+        let register_fields = RegisterFields {
+            discipline: Some("Electrical".into()),
+            business_status: Some("Checked".into()),
+            custom: BTreeMap::from([("Circuit".into(), "L-01".into())]),
+        };
+        source
+            .set_annotation_register_fields(&register.target(row), &register_fields, None)
+            .unwrap();
+        let table = source.quantity_table().unwrap();
+        let row = table
+            .rows()
+            .iter()
+            .find(|row| row.register.page == 1 && row.register.index == index)
+            .unwrap();
+        let fields = quantity_fields(QuantityUnit::Metres);
+        source
+            .set_quantity_fields(&table.target(row).unwrap(), &fields)
+            .unwrap();
+        source.save_as(&source_path).unwrap();
+        drop(source);
+
+        let source_bytes = std::fs::read(&source_path).unwrap();
+        let mut doc = engine.open(&source_path, None).unwrap();
+        let before = doc.snapshot().unwrap();
+        let before_annotations = annotations(&parse(&before, None), 1);
+        let before_table = doc.quantity_table().unwrap();
+        let before_row = before_table
+            .rows()
+            .iter()
+            .find(|row| row.register.page == 1 && row.register.index == index)
+            .unwrap();
+        assert_eq!(before_row.quantity.as_ref().unwrap().value, 1000.0);
+        assert_eq!(before_row.line_total.as_ref().unwrap().amount, "25.00");
+        let stale_quantity_target = before_table.target(before_row).unwrap();
+        let original = doc.measurement_records(0).unwrap().remove(0);
+        let target = doc.measurement_target(0, &original).unwrap();
+        let mut replacement = original.measurement.clone();
+        replacement.points[1].0 = 200.0;
+        let edit = RichAnnotation::UpdateMeasurement {
+            target: target.clone(),
+            measurement: replacement.clone(),
+        };
+        let preview = doc.preview_rich_annotation(0, &edit, None).unwrap();
+        assert_unchanged(&before, &doc.snapshot().unwrap(), None);
+        assert_eq!(doc.quantity_table().unwrap().rows(), before_table.rows());
+        drop(preview);
+        let preview = doc.preview_rich_annotation(0, &edit, None).unwrap();
+        assert_eq!(
+            doc.commit_rich_annotation_preview(preview.prepared.unwrap())
+                .unwrap(),
+            index
+        );
+
+        let after = doc.snapshot().unwrap();
+        let after_annotations = annotations(&parse(&after, None), 1);
+        assert_eq!(before_annotations.len(), after_annotations.len());
+        assert_eq!(before_annotations[index].0, after_annotations[index].0);
+        for key in [
+            b"NM".as_slice(),
+            b"T",
+            b"CreationDate",
+            b"SuniPDFRegister",
+            b"SuniPDFQuantity",
+            b"P",
+        ] {
+            assert_eq!(
+                before_annotations[index].1.get(key).unwrap(),
+                after_annotations[index].1.get(key).unwrap(),
+                "geometry edits preserve {}",
+                String::from_utf8_lossy(key)
+            );
+        }
+        for (i, previous) in before_annotations
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i != index)
+        {
+            assert_eq!(previous, &after_annotations[i], "review replies survive");
+        }
+        assert_eq!(doc.page_calibration(0).unwrap(), Some(page_default));
+        let record = doc.measurement_records(0).unwrap().remove(0);
+        assert_eq!(record.annotation_id, original.annotation_id);
+        assert_eq!(record.measurement, replacement);
+        let after_table = doc.quantity_table().unwrap();
+        let row = after_table
+            .rows()
+            .iter()
+            .find(|row| row.register.page == 1 && row.register.index == index)
+            .unwrap();
+        assert_eq!(row.register.fields, register_fields);
+        assert_eq!(row.fields, fields);
+        let quantity = row.quantity.as_ref().unwrap();
+        assert_eq!(quantity.unit, QuantityUnit::Centimetres);
+        assert_eq!(quantity.value, 1600.0);
+        let total = row.line_total.as_ref().unwrap();
+        assert_eq!(total.amount, "40.00");
+        assert_eq!(total.currency, "CHF");
+        assert_eq!(total.rounding_decimals, 2);
+        assert!(doc
+            .set_quantity_fields(&stale_quantity_target, &fields)
+            .is_err());
+        assert!(doc
+            .update_measurement_annotation(&target, &initial)
+            .is_err());
+        assert_unchanged(&after, &doc.snapshot().unwrap(), None);
+        doc.save_as(&output_path).unwrap();
+        let reopened = engine.open(&output_path, None).unwrap();
+        assert_eq!(reopened.measurement_records(0).unwrap(), vec![record]);
+        assert_eq!(
+            reopened.quantity_table().unwrap().rows(),
+            after_table.rows()
+        );
+        assert_eq!(std::fs::read(&source_path).unwrap(), source_bytes);
+    }
+}
+
+#[test]
+fn invalid_polygon_geometry_refuses_preview_and_apply_without_losing_quantity_metadata() {
+    let engine = engine();
+    for (kind, price_unit) in [
+        (MeasurementKind::Area, QuantityUnit::SquareMetres),
+        (MeasurementKind::Perimeter, QuantityUnit::Metres),
+    ] {
+        let mut doc = engine
+            .open_bytes(SOURCE.to_vec(), None, Path::new("plan.pdf"))
+            .unwrap();
+        let initial = Measurement {
+            kind,
+            points: vec![(40.0, 80.0), (140.0, 80.0), (140.0, 180.0), (40.0, 180.0)],
+            ..measurement()
+        };
+        let index = doc.add_measurement_annotation(0, &initial, None).unwrap();
+        let table = doc.quantity_table().unwrap();
+        let row = table
+            .rows()
+            .iter()
+            .find(|row| row.register.index == index)
+            .unwrap();
+        doc.set_quantity_fields(&table.target(row).unwrap(), &quantity_fields(price_unit))
+            .unwrap();
+        let before = doc.snapshot().unwrap();
+        let before_table = doc.quantity_table().unwrap();
+        let record = doc.measurement_records(0).unwrap().remove(0);
+        let target = doc.measurement_target(0, &record).unwrap();
+        for (reason, points) in [
+            (
+                "collapsed edge",
+                vec![(40.0, 80.0), (140.0, 80.0), (140.0, 80.0), (40.0, 180.0)],
+            ),
+            (
+                "zero area",
+                vec![(40.0, 80.0), (140.0, 80.0), (200.0, 80.0)],
+            ),
+            (
+                "self-intersection with nonzero signed area",
+                vec![(40.0, 80.0), (140.0, 180.0), (40.0, 180.0), (100.0, 80.0)],
+            ),
+        ] {
+            let invalid = Measurement {
+                points,
+                ..initial.clone()
+            };
+            assert!(
+                doc.update_measurement_annotation(&target, &invalid)
+                    .is_err(),
+                "{reason}"
+            );
+            assert_unchanged(&before, &doc.snapshot().unwrap(), None);
+            assert!(
+                doc.preview_rich_annotation(
+                    0,
+                    &RichAnnotation::UpdateMeasurement {
+                        target: target.clone(),
+                        measurement: invalid,
+                    },
+                    None
+                )
+                .is_err(),
+                "{reason}"
+            );
+            assert_unchanged(&before, &doc.snapshot().unwrap(), None);
+            assert_eq!(doc.quantity_table().unwrap().rows(), before_table.rows());
+        }
+        let mut valid = initial;
+        valid.points[1].0 = 160.0;
+        doc.update_measurement_annotation(&target, &valid).unwrap();
+        assert_eq!(doc.measurement_records(0).unwrap()[0].measurement, valid);
+        assert_eq!(
+            doc.quantity_table().unwrap().rows()[0].fields,
+            quantity_fields(price_unit),
+            "refused edits do not poison a still-current target"
+        );
+    }
 }
 
 #[test]
