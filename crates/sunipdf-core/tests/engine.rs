@@ -1288,20 +1288,25 @@ fn edit_resize_style_text_size_and_fonts() {
         .into_iter()
         .find(|o| o.text.as_deref() == Some("Times italique"))
         .unwrap();
-    assert!(
-        t.font_name
-            .as_deref()
-            .unwrap_or("")
-            .to_lowercase()
-            .contains("times"),
-        "{:?}",
-        t.font_name
-    );
+    // PDFium can report a platform substitute's family (for example Chrom Serif).
+    // Verify the requested PDF font, independently of its installed display name.
+    let snapshot = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    let page_id = snapshot.get_pages()[&1];
+    assert!(snapshot
+        .get_page_fonts(page_id)
+        .unwrap()
+        .values()
+        .any(|font| font
+            .get(b"BaseFont")
+            .and_then(lopdf::Object::as_name)
+            .is_ok_and(|name| name == b"Times-Italic")));
+    assert!(t.font_name.as_deref().is_some_and(|name| !name.is_empty()));
     assert_eq!(t.fill_rgb, Some((200, 0, 0)));
     let h1 = t.bounds.top - t.bounds.bottom;
     doc.set_text_size(0, t.index, 20.0).unwrap();
     let t2 = doc.object_info(0, t.index).unwrap();
     assert!((t2.font_size - 20.0).abs() < 0.5, "{t2:?}");
+    assert_eq!(t2.font_name, t.font_name);
     let h2 = t2.bounds.top - t2.bounds.bottom;
     assert!((h2 / h1 - 2.0).abs() < 0.2, "{h1} → {h2}");
     assert!(doc.set_text_size(0, index, 20.0).is_err(), "pas un texte");
@@ -2472,17 +2477,19 @@ fn existing_text_rejects_missing_glyphs_without_mutation() {
     assert_eq!(std::fs::read(fixture("two-pages.pdf")).unwrap(), original);
 }
 
+fn unicode_system_font() -> sunipdf_core::fonts::SystemFont {
+    let fonts = sunipdf_core::fonts::system_fonts();
+    ["Arial", "Segoe UI", "DejaVuSans", "LiberationSans-Regular"]
+        .iter()
+        .find_map(|name| fonts.iter().find(|font| font.name == *name))
+        .cloned()
+        .expect("Unicode font tests require Arial, Segoe UI, DejaVu Sans or Liberation Sans")
+}
+
 #[test]
 fn existing_text_keeps_embedded_unicode_font_when_updated() {
     use sunipdf_core::TextStyle;
-    let fonts = sunipdf_core::fonts::system_fonts();
-    let Some(font) = ["Arial", "Segoe UI"]
-        .iter()
-        .find_map(|name| fonts.iter().find(|font| font.name == *name))
-    else {
-        eprintln!("Arial/Segoe UI unavailable: embedded font check skipped");
-        return;
-    };
+    let font = unicode_system_font();
     let engine = engine();
     let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
     doc.add_text(
@@ -2492,6 +2499,7 @@ fn existing_text_keeps_embedded_unicode_font_when_updated() {
         "Привет",
         &TextStyle {
             font_file: Some(font.path.clone()),
+            font_face_index: font.face_index,
             ..Default::default()
         },
     )
@@ -2548,15 +2556,7 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
             1
         );
     }
-    let fonts = sunipdf_core::fonts::system_fonts();
-    let Some(font) = ["Arial", "Segoe UI"]
-        .iter()
-        .find_map(|n| fonts.iter().find(|f| f.name == *n))
-        .or(fonts.first())
-    else {
-        eprintln!("aucune police TrueType système : test ignoré");
-        return;
-    };
+    let font = unicode_system_font();
     let engine = engine();
     let dir = temp_dir("fonts");
     let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
@@ -2564,6 +2564,7 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
     let style = TextStyle {
         size_pt: 18.0,
         font_file: Some(font.path.clone()),
+        font_face_index: font.face_index,
         ..Default::default()
     };
     assert_eq!(
