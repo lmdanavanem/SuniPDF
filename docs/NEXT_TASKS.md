@@ -4,7 +4,15 @@
 
 The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
 
-## 0.44.0: editing saved measurements (stable Latest)
+## 0.45.0: local annotation libraries (stable Latest)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
+
+Arbitrary capture from existing PDF annotations, nested groups, measurement/calibration transfer and the remaining complete library acceptance criteria stay open. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open.
+
+[Guide and limits](ANNOTATION_LIBRARY.md) · [Release notes](RELEASE_0.45.0.md) · [Evidence](qa/RELEASE_0.45.0.json).
+
+## 0.44.0: editing saved measurements (published; Latest at the time)
 
 Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
 
@@ -15,7 +23,7 @@ Published within its documented bounds; the next planned implementation is the l
 | Version | Next bounded outcome | Completion evidence needed |
 |---|---|---|
 | 0.44 | Individual measurement editing and corrective work delivered within their bounds. | Preserve original files, geometry where fixed, identity, replies and permissions; verify cancellation/history and new-copy output. |
-| 0.45 | Local reusable annotation library; planned. | Explicit save/load/delete, bounded versioned records, usable placement and retained source annotations. |
+| 0.45 | Local annotation libraries | Slice delivered within its bounds; full acceptance criteria remain open. [0.45.0](RELEASE_0.45.0.md). |
 | 0.46 | Quantity columns, compatible totals and exports; planned. | Totals derived from actual records, explicit unit/dimension handling, filters and protected exports with regression fixtures. |
 | 0.47 | Local overlays and revision review; planned. | Explicit alignment, identifiable input revisions, retained originals and checks for supported page geometries. |
 

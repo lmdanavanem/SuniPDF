@@ -7,6 +7,12 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.45.0] - 2026-10-22
+
+Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
+
+[Notes et limites](docs/RELEASE_0.45.0.fr.md) · [Preuves](docs/qa/RELEASE_0.45.0.json).
+
 ## [0.44.0] - 2026-10-22
 
 Modifiez l’échelle, l’unité et la précision d’une mesure enregistrée avec Aperçu puis Appliquer, en conservant son identité, ses réponses et les données du registre. La CLI modifie aussi la géométrie dans une nouvelle copie, protégée par un enregistrement attendu. Les exports respectent le droit de copie ; le redimensionnement incompatible de pages mesurées est refusé sans modification partielle. L’inspecteur partage ses données en cache et les échelles temporaires peuvent être retirées explicitement. Aucune calibration manuelle implicite n’est fournie.
