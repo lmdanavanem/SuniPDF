@@ -14,4 +14,6 @@ Page scales use a bounded, versioned open metadata record in PDF user coordinate
 
 Published 0.42.0 ZIP and MSI packages join the upgrade regression baselines. Validation results will be recorded after the checks complete.
 
+Release verification resumes interrupted downloads of its pinned test converter instead of discarding partial transfers. Download limits, final size/SHA256 checks, publisher signature verification and installation restricted to disposable test runners remain enforced.
+
 Editing saved vertices, global recalculation, vector snapping, multiple-scale viewports and real-plan qualification remain open. Local features remain free and open source. Windows packages remain unsigned. ARM64 is cross-compiled; native ARM64 hardware and physical dimensional accuracy are not qualified by automated tests.

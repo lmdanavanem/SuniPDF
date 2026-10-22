@@ -14,4 +14,6 @@ Les échelles utilisent un format de métadonnées ouvert, versionné et borné,
 
 Les paquets ZIP et MSI publiés en 0.42.0 rejoignent les tests de mise à jour. Les résultats seront enregistrés après les contrôles.
 
+La vérification des releases reprend les téléchargements interrompus de son convertisseur de test épinglé. Les limites de téléchargement, les contrôles finaux de taille et SHA256, la signature de l’éditeur et la restriction d’installation aux environnements de test temporaires restent appliqués.
+
 Modification des sommets enregistrés, recalcul global, accrochage vectoriel, vues multi-échelles et qualification sur des plans réels restent ouverts. Le local demeure gratuit et open source. Les paquets Windows restent non signés. ARM64 est compilé en cible croisée ; le matériel ARM64 natif et la précision physique ne sont pas qualifiés par les tests automatisés.
