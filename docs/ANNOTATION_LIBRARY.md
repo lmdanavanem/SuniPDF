@@ -6,7 +6,7 @@
 
 Click **Library** in the main toolbar, or choose **Annotation library** in **All tools** or **Add comments**. The library is stored locally, separately from application preferences. You can manage it without an open PDF; creating a draft or placing a template requires an open document.
 
-The 0.45 implementation is undergoing validation. See the linked release notes for publication status.
+Available in [0.45.0](RELEASE_0.45.0.md). [Evidence](qa/RELEASE_0.45.0.json).
 
 1. Choose **Create a template** to start a new annotation draft. Supported capture includes text using a standard font, polygons/polylines, revision clouds, predefined stamps and PNG image stamps. Choose the type and prepare its text, geometry and style in the rich-annotation dialog.
 2. Expand **Save to library**, enter a unique **Name**, then choose **Save template**. **Credit**, **Source or provenance** and **License or permission to reuse** are optional declarations; blank values remain unknown. Saving a template leaves the PDF unchanged and keeps the draft open. Close it with **Cancel** when you only want the template.

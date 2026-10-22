@@ -2,7 +2,7 @@
 
 [Français](RELEASE_0.45.0.fr.md) · [Library guide](ANNOTATION_LIBRARY.md)
 
-Status: **in development**. This scope is being implemented and has not been qualified or published.
+Status: published as stable Latest [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0), source `51f07a6b27733e4bbfd46bcbc45bc2a82d4886c8`, on 2026-10-22. [Previous release](RELEASE_0.44.0.md).
 
 ## Scope
 
@@ -16,7 +16,7 @@ CLI management operates on explicit library files. Placing an entry in a PDF req
 
 ## Qualification
 
-Core, UI, CLI, independent PDF readers, packaging and public-download results will be recorded after execution against the release source. No passing counts or published assets are asserted here.
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620304) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732631044) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39732620287). 724 tests passed, 10 default ignored. 1302 EN/FR keys. 37 portable scenarios. 31 MSI baselines. 155 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 24 packaged CLI calls verify strict library imports, named templates and groups, selected export, removal, placement, fresh identities, source preservation and explicit refusals. [Evidence](qa/RELEASE_0.45.0.json).
 
 ## Remaining limits
 

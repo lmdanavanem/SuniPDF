@@ -22,7 +22,13 @@
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
-## 0.44.0: editing saved measurements (stable Latest)
+## 0.45.0: local annotation libraries (stable Latest)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
+
+[Guide and limits](docs/ANNOTATION_LIBRARY.md) · [Release notes](docs/RELEASE_0.45.0.md) · [Evidence](docs/qa/RELEASE_0.45.0.json).
+
+## 0.44.0: editing saved measurements (published; Latest at the time)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
 

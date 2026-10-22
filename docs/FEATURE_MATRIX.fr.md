@@ -2,7 +2,13 @@
 
 [English](FEATURE_MATRIX.md)
 
-## 0.44.0 : modification des mesures enregistrées (Latest stable)
+## 0.45.0 : bibliothèques locales d’annotations (Latest stable)
+
+[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions.
+
+[Guide et limites](ANNOTATION_LIBRARY.fr.md) · [Notes de version](RELEASE_0.45.0.fr.md) · [Preuves](qa/RELEASE_0.45.0.json).
+
+## 0.44.0 : modification des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Modifiez distance de référence, unité et précision d’une mesure enregistrée avec Aperçu puis Appliquer ; la CLI remplace aussi explicitement la géométrie avec un enregistrement attendu. Identité, réponses, échelles de page et autres mesures sont conservées. Les échelles temporaires peuvent être retirées, l’inspecteur partage ses données, les exports contrôlent le droit de copie et les redimensionnements incompatibles sont refusés.
 
@@ -427,8 +433,9 @@ sans installation sur l'hôte. Preuves exécutées et limites dans `PROJECT_STAT
 
 | Fonction | Attendu | SuniPDF |
 |---|---|---|
-| Windows x64 | Distribué en 0.44.0 | Paquets publics, copies dist et contrôles CLI vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.44.0.json). |
-| Windows ARM64 | Distribué en 0.44.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.44.0.json). |
+| Bibliothèques locales d’annotations | Livré en 0.45.0 | Enregistrez des brouillons d’annotations pris en charge comme modèles nommés, regroupez jusqu’à 16 primitives puis placez un aperçu à une origine et une échelle explicites, avec une seule étape Annuler et de nouvelles identités. Le JSON autonome strict permet import, export et suppression ; la CLI écrit une nouvelle copie PDF en conservant chiffrement et permissions. |
+| Windows x64 | Distribué en 0.45.0 | Paquets publics et copies dist vérifiés ; qualification native ouverte. [Preuves](qa/RELEASE_0.45.0.json). |
+| Windows ARM64 | Distribué en 0.45.0 | Compilation et distribution vérifiées ; exécution ARM64 native non qualifiée. [Preuves](qa/RELEASE_0.45.0.json). |
 | Signature de code | Non documenté | Planifié (P6) si certificat fourni |
 | Moteur GPU facultatif | Non documenté | **Livré en 0.30.0** : compatibilité wgpu facultative et contrôle DX12 logiciel ; OpenGL reste le défaut. Qualification GPU/fenêtres et matériel ARM64 réels distincte |
 | Inventaire licences des dépendances/composants | Non documenté | **Livré en 0.30.0** : inventaire hors ligne des versions exactes et contrôles du contenu des paquets ; [périmètre](RELEASE_0.30.0.fr.md). Maintenance des licences toujours nécessaire |
