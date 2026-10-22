@@ -1,20 +1,22 @@
-# Backlog PDF pour le bâtiment et collaboration en entreprise
+# Backlog des fonctions locales pour les plans PDF
 
-[English](AEC_BACKLOG.md) · [CSV importable](AEC_BACKLOG.csv) · [Plan cloud](CLOUD_STRATEGY.fr.md)
+[English](AEC_BACKLOG.md) · [CSV importable](AEC_BACKLOG.csv)
 
-Orientation du propriétaire, 21 octobre 2026 : une application locale gratuite et open source pour les plans, métrés et revues PDF, avec un cloud géré payant pour les entreprises travaillant sur des documents communs. Les tarifs seront définis plus tard. La licence actuelle MIT OR Apache-2.0 reste inchangée ; le cloud est un service facultatif et aucun compte n'est nécessaire pour les fonctions locales.
-
-Le cloud et la collaboration sont **reportés** à la demande du propriétaire. Aucun service cloud ne fait partie de la 0.40.0 ; les fonctionnalités locales passent en premier.
-
-Ce backlog reprend les besoins métier du texte fourni, sans annoncer de parité complète avec Bluebeam Revu ni de compatibilité avec ses formats propriétaires. Les interfaces, implémentations et formats d'échange SuniPDF seront indépendants.
+SuniPDF est une application locale gratuite et open source pour les plans, les métrés et les revues PDF, sous licence MIT OR Apache-2.0. Ce backlog décrit les fonctions à développer et leurs critères de réalisation ; les statuts distinguent les progrès partiels des fonctions qualifiées.
 
 ## Base existante et statuts
 
-Le lot 0.41.0 ajoute [comptages manuels et tableau des annotations](MARKUP_REGISTER.fr.md) : repères persistants par clic, groupes et totaux reliés aux identités, changement de groupe, déplacement/suppression/Annuler, recherche/filtres/navigation sur toutes les pages, champs métier distincts et exports CSV/JSON. AEC-005 est terminé dans les limites documentées et qualifié en 0.41.0. AEC-004 reste partiel : tri par clé personnalisée, colonnes typées et normalisation des dates restent ouverts. Cloud et collaboration restent reportés.
+Le lot 0.41.0 ajoute [comptages manuels et tableau des annotations](MARKUP_REGISTER.fr.md) : repères persistants par clic, groupes et totaux reliés aux identités, changement de groupe, déplacement/suppression/Annuler, recherche/filtres/navigation sur toutes les pages, champs métier distincts et exports CSV/JSON. AEC-005 est terminé dans les limites documentées et qualifié en 0.41.0. AEC-004 reste partiel : tri par clé personnalisée, colonnes typées et normalisation des dates restent ouverts.
 
-L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, les formulaires, la protection, la récupération et les opérations locales existent dans les limites de la [matrice](FEATURE_MATRIX.fr.md). La comparaison et la recherche multi-PDF existent ; le recalage de plans, les nuages automatiques et la reconnaissance de symboles restent distincts. Les modèles de décoration de la 0.39 et les tampons image du lot 0.40 ne constituent pas encore une bibliothèque partagée d'annotations.
+L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, les formulaires, la protection, la récupération et les opérations locales existent dans les limites de la [matrice](FEATURE_MATRIX.fr.md). La comparaison et la recherche multi-PDF existent ; le recalage de plans, les contours de révision automatiques et la reconnaissance de symboles restent distincts. Les modèles de décoration de la 0.39 et les tampons image du lot 0.40 ne constituent pas encore une bibliothèque partagée d'annotations.
 
 Le lot local 0.40.0 a introduit calibration sur deux points, cinq types de mesures et données JSON par saisie de coordonnées. [Guide et limites](MEASUREMENTS.fr.md). Il constitue une base pour AEC-001/002/003/026 ; ces cartes restent ouvertes.
+
+## Échelles persistantes et inspection : 0.43.0 en préparation
+
+Le prochain lot local ajoute une échelle par défaut enregistrée explicitement sur chaque page, distincte de celle conservée dans chaque mesure. Son ajout ou retrait participe à Annuler et nécessite l'enregistrement du PDF ; seules les nouvelles mesures l'utilisent. Un inspecteur en lecture seule expose valeurs, unités, précision et identité des mesures, avec navigation et réutilisation explicite de l'échelle d'une mesure non angulaire pour la session. La CLI lit, enregistre et retire les échelles dans de nouvelles copies, puis peut les utiliser avec conversion physique des unités.
+
+Les échelles persistantes exigent le droit de modification du document. Les métadonnées versionnées et bornées vérifient les limites de page et le contenu décodé avant réutilisation ; rognage, redimensionnement ou modification du contenu peuvent imposer une nouvelle calibration. Les annotations restent indépendantes. AEC-001/002/003/026 restent **En cours** : modification des sommets enregistrés, recalcul explicite, échelles multiples, accrochage aux vecteurs et qualification native/sur plans réels restent ouverts. Les nouveaux tests sont en qualification ; cette section n'annonce ni publication ni validation complète des critères.
 
 ## Intégration des mesures livrée en 0.42.0
 
@@ -39,30 +41,25 @@ P1 : fondations prioritaires. P2 : extensions métier. P3 : intégrations ou inf
 | AEC-011 | P2 | Recherche visuelle de symboles | Recherche locale à partir d'un symbole, sensibilité/rotations et prévisualisation des candidats. Seules les occurrences validées alimentent les comptages ; résultats partiels et faux positifs explicites. | AEC-005, AEC-026 |
 | AEC-012 | P2 | Remplissage de régions | Prévisualiser une région délimitée par les traits, fermer manuellement les ouvertures et conserver les trous. Convertir le résultat validé en mesure ; documenter tolérance/résolution et refuser les fuites. | AEC-002, AEC-009, AEC-026 |
 | AEC-013 | P2 | Superposition colorée recalée | Recaler plusieurs plans par points de référence, afficher/exporter les couches colorées. Conserver les originaux ; faire vérifier les alignements et correspondances ambigus. | Comparaison existante, AEC-026 |
-| AEC-014 | P2 | Nuages de révision | Transformer les différences vérifiées en nuages et lignes du registre. Relier chaque résultat aux deux révisions ; distinguer changement réel et bruit de rendu. | Comparaison, AEC-004, AEC-013 |
+| AEC-014 | P2 | Contours de révision | Transformer les différences vérifiées en contours modifiables et lignes du registre. Relier chaque résultat aux deux révisions ; distinguer changement réel et bruit de rendu. | Comparaison, AEC-004, AEC-013 |
 | AEC-015 | P2 | Ensembles de plans | Parcourir des PDF séparés comme un dossier indexé par discipline/feuille/révision. Manifeste portable et signalement des fichiers déplacés, manquants ou dupliqués. | Labels/signets existants |
 | AEC-016 | P2 | Remplacement de feuilles par lot | Vérifier les correspondances, transférer les annotations compatibles sous une transformation explicite, conserver les versions précédentes et produire un bilan par feuille. Aucun écrasement partiel. | AEC-013, AEC-015 |
 | AEC-017 | P2 | Liens automatiques par lot | Détecter les références dans le texte/OCR, prévisualiser les destinations et créer les liens vérifiés dans de nouvelles copies. Références ambiguës, fichiers absents et chemins dangereux restent non résolus. | AEC-015, OCR/liens |
 | AEC-018 | P2 | Légendes et rapports | Légendes, synthèses de réserves/métrés et rapports PDF/CSV/JSON liés aux filtres, annotations et révisions réelles. Aucun total inventé ou périmé. | AEC-004, AEC-007, AEC-010 |
-| AEC-019 | P2 | Liaison tableur | Instantanés CSV/XLSX et rafraîchissement explicite des quantités avec unités/révision source. Formats ouverts sans Excel obligatoire ; aucune macro ni écrasement silencieux. | AEC-003, AEC-007 |
-| AEC-020 | P3 | Revues partagées en temps réel | Plusieurs collègues annotent une base PDF commune, avec identités, historique, reconnexion, conflits et permissions testées entre clients. La réservation d'un fichier ne constitue pas une annotation simultanée. | AEC-003, AEC-004, AEC-021 |
-| AEC-021 | P3 | Projets cloud d'entreprise | Entreprises isolées, lecteurs/éditeurs/administrateurs, PDF partagés, versions immuables, réservations et publication protégée. Téléchargement des anciennes versions et accès facultatif depuis l'app. Cloud géré payant ; tarifs ultérieurs. SSO, sauvegardes et exploitation à qualifier séparément. | [Plan cloud](CLOUD_STRATEGY.fr.md) |
-| AEC-022 | P3 | CAO/BIM et import de pièces | Commencer par des échanges ouverts documentés, notamment IFC, et des échantillons licenciés. Import vérifié des zones/métadonnées. Adaptateurs Revit/AutoCAD facultatifs soumis à leurs propres SDK et licences. | AEC-010, AEC-015 |
+| AEC-019 | P2 | Liaison tableur | Instantanés CSV/XLSX et rafraîchissement explicite des quantités avec unités/révision source. Formats de tableur ouverts documentés ; aucune macro ni écrasement silencieux. | AEC-003, AEC-007 |
+| AEC-022 | P3 | CAO/BIM et import de pièces | Commencer par des échanges ouverts documentés, notamment IFC, et des échantillons licenciés. Import vérifié des zones/métadonnées. Adaptateurs facultatifs pour formats propriétaires, soumis à une vérification distincte des SDK et licences. | AEC-010, AEC-015 |
 | AEC-023 | P3 | PDF 3D | Étudier lecture/rendu U3D/PRC, annotations, isolation des ressources et licences sur des échantillons autorisés. Contenus non pris en charge explicites ; aucun script automatique. | AEC-026, étude distincte |
 | AEC-024 | P3 | Appariement assisté des plans | Suggérer correspondances et recalages avec confiance, cas non résolus et validation humaine. Mesurer la qualité sur des exemples vérifiés avant d'automatiser les remplacements. | AEC-013, AEC-015, AEC-016 |
-| AEC-025 | P3 | Automatisation/MCP facultative | Accès local/projet limité et volontaire, outils autorisés et typés, limites de ressources, écritures explicites et journal. Aucun fournisseur IA payant ou compte cloud obligatoire pour l'usage local. | CLI et permissions |
+| AEC-025 | P3 | Automatisation locale | Accès volontaire et limité aux fichiers locaux, commandes autorisées et typées, limites de ressources, écritures explicites et journal. | CLI et permissions |
 | AEC-026 | P1 | Corpus et qualification bâtiment | Plans synthétiques/licenciés avec dimensions, révisions, zones et comptages connus. Unités, quatre rotations/rognages, chiffrement, Annuler/échecs atomiques, lecteurs indépendants, accessibilité et mesures matérielles. | Toutes les cartes |
 
 ## Ordre proposé
 
-1. Étendre la qualification du parcours de mesure directe sur plans réels et interfaces natives. Le cloud et la collaboration sont reportés à la demande du propriétaire.
-2. Compléter AEC-001/002 avec AEC-026 : édition des géométries enregistrées, persistance/recalcul des échelles communes, vérifications restantes sur plans réels et accessibilité. S'appuyer sur les données de métrés, le tableau et les comptages existants.
-3. Bibliothèques, rapports, superpositions, ensembles et gestion des révisions par lots vérifiables.
-4. Reprendre le cloud et la collaboration après les priorités locales, dans un lot distinct avec isolation, identité, conflits, sauvegardes et exploitation qualifiés.
-5. Évaluer reconnaissance avancée, BIM/3D et automatisation selon la demande et les licences compatibles.
+1. Étendre la qualification du parcours de mesure directe sur plans réels et interfaces natives.
+2. Qualifier les échelles de page et l'inspecteur de la 0.43, puis compléter AEC-001/002 avec AEC-026 : édition des géométries enregistrées, recalcul explicite, vérifications restantes sur plans réels et accessibilité. S'appuyer sur les données de métrés, le tableau et les comptages existants.
+3. Développer bibliothèques, rapports, superpositions, ensembles de plans et gestion des révisions par lots vérifiables.
+4. Évaluer reconnaissance avancée, BIM/3D et automatisation selon les besoins et les licences compatibles.
 
-Aucune date ni grille tarifaire n'est annoncée. Le CSV permet une future importation dans Projects ; les modifications du tableau GitHub restent reportées à la demande du propriétaire.
-
-Les [références officielles](AEC_BACKLOG.md#reference-workflows) servent à décrire les usages demandés, sans annoncer de compatibilité SuniPDF avec les formats ou services Bluebeam.
+Le CSV conserve les identifiants des fonctions et permet une future importation dans Projects. Les modifications du tableau GitHub restent reportées à la demande du propriétaire.
 
 [Preuves de release](qa/RELEASE_0.42.0.json).

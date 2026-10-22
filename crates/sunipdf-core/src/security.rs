@@ -415,7 +415,7 @@ fn xml_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// Paquet XMP minimal cohérent avec /Info : les lecteurs qui préfèrent XMP (Acrobat, indexeurs)
+/// Paquet XMP minimal cohérent avec /Info : les lecteurs qui préfèrent XMP (lecteurs PDF, indexeurs)
 /// ne montrent plus l'ancien titre ou auteur.
 fn xmp_packet(m: &Metadata) -> String {
     let field = |v: &Option<String>| {
@@ -641,6 +641,7 @@ pub(crate) fn strip_metadata_in(doc: &mut lopdf::Document) {
         };
         dict.remove(b"Metadata");
         dict.remove(b"PieceInfo");
+        dict.remove(b"SuniPDFPageCalibration");
     }
 }
 

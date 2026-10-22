@@ -188,6 +188,6 @@
     "Windows packages remain unsigned; no independent publication key is configured.",
     "ARM64 is cross-built; native hardware remains unqualified.",
     "Session scales do not persist as shared page metadata; saved vertices, vector snapping, viewports and global recalculation remain open.",
-    "Cloud collaboration and GitHub Projects updates remain deferred."
+    "GitHub Projects updates remain deferred."
   ]
 }

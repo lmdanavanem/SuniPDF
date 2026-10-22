@@ -5823,7 +5823,7 @@ fn existing_annotations_move_restyle_and_delete_without_touching_the_others() {
     let img0 = doc.render_page(0, 1.0).unwrap();
     let red0 = pixel_box(&img0, is_red).unwrap();
 
-    // (a) Déplacement du carré d'Acrobat (+30, −20) : /Rect et rendu suivent, le reste est intact.
+    // (a) Déplacement du carré du lecteur externe (+30, −20) : /Rect et rendu suivent, le reste est intact.
     doc.move_annotation(0, 0, 30.0, -20.0).unwrap();
     let after = doc.annotation_details(0).unwrap();
     assert!(near(after[0].rect, rect(130.0, 480.0, 230.0, 540.0), 0.01));

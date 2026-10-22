@@ -8,6 +8,8 @@ use crate::{Document, EngineError, PointRect};
 use lopdf::Object;
 use serde_json::{json, Value};
 
+pub use crate::page_calibration::PageCalibration;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MeasurementKind {
     Length,
@@ -79,7 +81,7 @@ impl MeasurementUnit {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Measurement {
     pub kind: MeasurementKind,
     /// Displayed-page points, bottom-left origin. Angle uses the middle point as its vertex.
@@ -88,6 +90,27 @@ pub struct Measurement {
     pub known_distance: f64,
     pub unit: MeasurementUnit,
     pub precision: usize,
+}
+
+/// A validated saved annotation and its immutable calibration, in displayed-page coordinates.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MeasurementRecord {
+    pub index: usize,
+    pub annotation_id: Option<String>,
+    pub measurement: Measurement,
+}
+
+impl MeasurementRecord {
+    pub fn result(&self) -> Result<Value, EngineError> {
+        let mut result = self.measurement.result()?;
+        result["index"] = self.index.into();
+        result["annotation_id"] = self
+            .annotation_id
+            .as_ref()
+            .map_or(Value::Null, |name| name.as_str().into());
+        result["version"] = 1.into();
+        Ok(result)
+    }
 }
 
 fn bad() -> EngineError {
@@ -361,6 +384,17 @@ impl Document<'_> {
 
     /// Exports only supported self-contained records; malformed or moved metadata is an error.
     pub fn measurements(&self, page_index: usize) -> Result<Vec<Value>, EngineError> {
+        self.measurement_records(page_index)?
+            .iter()
+            .map(MeasurementRecord::result)
+            .collect()
+    }
+
+    /// Reads supported annotations without discarding their calibration or page coordinates.
+    pub fn measurement_records(
+        &self,
+        page_index: usize,
+    ) -> Result<Vec<MeasurementRecord>, EngineError> {
         let geo = self.page_geometry(page_index)?;
         let pdf = crate::security::load(&self.snapshot()?, self.password())?;
         let page = *pdf
@@ -455,17 +489,19 @@ impl Document<'_> {
                     .filter(|&n| n <= 4)
                     .ok_or_else(bad)? as usize,
             };
-            let mut result = measurement.result()?;
-            result["index"] = index.into();
-            result["annotation_id"] = dict
+            measurement.value()?;
+            let annotation_id = dict
                 .get(b"NM")
                 .and_then(Object::as_str)
                 .ok()
                 .filter(|bytes| bytes.len() <= 256)
                 .and_then(|bytes| std::str::from_utf8(bytes).ok())
-                .map_or(Value::Null, |name| name.into());
-            result["version"] = 1.into();
-            records.push(result);
+                .map(str::to_owned);
+            records.push(MeasurementRecord {
+                index,
+                annotation_id,
+                measurement,
+            });
         }
         Ok(records)
     }

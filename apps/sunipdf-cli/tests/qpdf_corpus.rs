@@ -130,6 +130,81 @@ fn check(qpdf: &Path, file: &Path, password: Option<&str>) {
     println!("qpdf OK: {}", file.file_name().unwrap().to_string_lossy());
 }
 
+fn check_page_calibration(
+    qpdf: &Path,
+    source: &Path,
+    directory: &Path,
+    prefix: &str,
+    password: Option<&str>,
+) {
+    let original = std::fs::read(source).unwrap();
+    let saved = directory.join(format!("{prefix}-page-calibration.pdf"));
+    let measured = directory.join(format!("{prefix}-saved-scale-measurement.pdf"));
+    let removed = directory.join(format!("{prefix}-page-calibration-removed.pdf"));
+    let authenticated = |mut command: Command| {
+        if let Some(password) = password {
+            command
+                .args(["--password-env", "SUNIPDF_QA_CALIBRATION_PASSWORD"])
+                .env("SUNIPDF_QA_CALIBRATION_PASSWORD", password);
+        }
+        command
+    };
+    let mut command = cli(&["set-page-calibration"], &[source]);
+    command
+        .args([
+            "--page",
+            "1",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "10",
+            "--unit",
+            "m",
+            "--out",
+        ])
+        .arg(&saved);
+    assert_eq!(success(authenticated(command))["original_unchanged"], true);
+    check(qpdf, &saved, password);
+    let mut command = cli(&["measure"], &[&saved]);
+    command
+        .args([
+            "--page",
+            "1",
+            "--kind",
+            "length",
+            "--points",
+            "40,80 140,80",
+            "--use-page-calibration",
+            "--unit",
+            "cm",
+            "--out",
+        ])
+        .arg(&measured);
+    assert_eq!(
+        success(authenticated(command))["measurement"]["value"].as_f64(),
+        Some(1000.0)
+    );
+    check(qpdf, &measured, password);
+    let records = success(authenticated(cli(&["measurements"], &[&measured])));
+    let mut command = cli(&["remove-page-calibration"], &[&measured]);
+    command.args(["--page", "1", "--out"]).arg(&removed);
+    assert_eq!(
+        success(authenticated(command))["existing_measurements_changed"],
+        false
+    );
+    check(qpdf, &removed, password);
+    let read = success(authenticated(cli(
+        &["page-calibration", "--page", "1"],
+        &[&removed],
+    )));
+    assert!(read["pages"][0]["calibration"].is_null());
+    assert_eq!(
+        success(authenticated(cli(&["measurements"], &[&removed]))),
+        records
+    );
+    assert_eq!(std::fs::read(source).unwrap(), original);
+}
+
 #[test]
 #[ignore = "requires the pinned official QPDF QA runtime; executed separately in Windows CI"]
 fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
@@ -197,6 +272,7 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         .all(|page| page["label"].is_null()));
     let original = fixture("two-pages.pdf");
     let original_bytes = std::fs::read(&original).unwrap();
+    check_page_calibration(&qpdf, &original, temp.path(), "plain", None);
     let signature_image = temp.path().join("signature.png");
     image::RgbaImage::from_pixel(80, 40, image::Rgba([20, 20, 20, 255]))
         .save(&signature_image)
@@ -333,6 +409,7 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
+        check_page_calibration(&qpdf, &encrypted, temp.path(), name, Some("package-owner"));
         let preservation_protected = temp.path().join(format!("{name}-preservation-source.pdf"));
         let mut command = cli(&["protect"], &[&preservation_source]);
         command

@@ -28,7 +28,7 @@ use std::sync::{
 
 /// Marge ajoutée autour d'une occurrence de texte (points).
 const TEXT_PAD_PT: f32 = 1.0;
-/// ponytail: plafond fixe (~120 Mo RVB) du rendu d'une page caviardée ; à rendre réglable si des plans
+/// plafond fixe (~120 Mo RVB) du rendu d'une page caviardée ; à rendre réglable si des plans
 /// A0 à haute résolution l'exigent.
 const RASTER_MAX_PIXELS: f32 = 40_000_000.0;
 const JPEG_QUALITY: u8 = 90;
@@ -1474,7 +1474,7 @@ pub(crate) fn sanitize(
     }
 
     // B4. Ressources retirées que plus aucune page ne dessine : détachées de tout l'arbre des pages
-    //     (un dictionnaire partagé les garderait sinon atteignables). ponytail: O(candidats × pages),
+    //     (un dictionnaire partagé les garderait sinon atteignables). O(candidats × pages),
     //     ressources effectives clonées à chaque fois ; à mettre en cache si un gros document le montre.
     let page_ids: Vec<ObjectId> = pages.values().copied().collect();
     let mut nodes: BTreeSet<ObjectId> = BTreeSet::new();

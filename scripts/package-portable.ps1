@@ -45,6 +45,8 @@ foreach ($license in (Get-ChildItem -LiteralPath (Join-Path $ocr 'licenses') -Fi
 Copy-Item -LiteralPath (Join-Path $ocr 'NOTICE.txt') -Destination "$stage\licenses\ocr-NOTICE.txt"
 Copy-Item -LiteralPath (Join-Path $ocr 'VERSION') -Destination "$stage\licenses\ocr-VERSION.txt"
 Copy-Item "docs\USER_GUIDE.fr.md", "docs\USER_GUIDE.en.md", "CHANGELOG.md", "CHANGELOG.fr.md" $stage
+& python (Join-Path $PSScriptRoot 'package-guides.py') --source-root $root --stage $stage --tag "v$version"
+if ($LASTEXITCODE -ne 0) { throw 'Packaged user guide link preparation failed.' }
 Set-Content -Path "$stage\LISEZMOI.txt" -Encoding utf8 -Value @"
 SuniPDF $version (portable, Windows $Arch)
 Lancer sunipdf.exe. Aucune installation requise. Les préférences sont dans %APPDATA%\SuniPDF.

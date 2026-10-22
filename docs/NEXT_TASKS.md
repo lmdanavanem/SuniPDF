@@ -12,7 +12,7 @@ Measurements now has a labelled toolbar button and its own All tools workspace. 
 
 Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
 
-Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; cloud and Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
+Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
 
 ### Next local feature work
 
@@ -22,7 +22,7 @@ Extend saved-vertex editing and persistent/recalculable shared scales, then reus
 
 [0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
-Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions; cloud and collaboration remain deferred. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Usage and limits](MARKUP_REGISTER.md).
+Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Usage and limits](MARKUP_REGISTER.md).
 
 [Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681919685) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681938796) passed: **643 tests, zero failures**, 10 default ignored, **1198 EN/FR keys**, **33 portable scenarios**, **27 MSI baselines/135 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **100 cases, 339 CLI calls and 14 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included. 6 fixture-password findings were reviewed and dismissed as 'used in tests' under `lmdanavanem`; code scanning remains enabled.
 
@@ -34,7 +34,7 @@ Native Windows interaction, keyboard layouts and Narrator remain unqualified. Pa
 
 [0.40.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) under `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
 
-Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. A 26-card AEC backlog prioritises local workflows; cloud and collaboration are deferred at the owner's request, with prices undecided. [Usage and limits](MEASUREMENTS.md).
+Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. The local feature backlog prioritises plan workflows. [Usage and limits](MEASUREMENTS.md).
 
 [Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) passed: **637 tests, zero failures**, 10 default ignored, **1163 EN/FR keys**, **32 portable scenarios**, **26 MSI baselines/130 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **80 cases, 256 CLI calls and 10 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included.
 
@@ -453,9 +453,9 @@ See [Code Scanning review](CODE_SCANNING_REVIEW.md)
 and [Project status](PROJECT_STATUS.md). The 53-command count describes the 0.21.x baseline;
 0.30.0 adds commands with validation recorded in the published release evidence.
 
-## AEC backlog and optional enterprise cloud
+## Local plan workflows
 
-Track [AEC-001–026](AEC_BACKLOG.md) and the [cloud product contract](CLOUD_STRATEGY.md). Prioritise local calibration/measurements, quantities, registers, annotation libraries and plan revision workflows with an AEC corpus. Cloud and collaboration are deferred at the owner's request. All unfinished acceptance criteria stay open. Pricing is deferred and local PDF tools remain free and account-independent.
+Follow the [local feature backlog](AEC_BACKLOG.md) for calibrated measurements, quantities, registers, reusable annotation libraries and drawing revisions.
 
 ## Deferred work after 0.30.0
 
@@ -469,7 +469,7 @@ The five Bugs and fourteen Roadmap P2 items ship within the published 0.30.0 lim
 ## To be done by the user (outside the automated scope)
 1. Validate the interface on real PDFs (home, tools, right rail, Ctrl+K palette, dark theme, FR/EN) and report differences.
 2. Run the ARM64 ZIP on real ARM64 hardware (not done yet) and check OpenGL; qualify optional wgpu separately if selected.
-3. Check annotation and redaction interoperability in Acrobat, Foxit and Chrome.
+3. Check annotation and redaction interoperability in external PDF editor, external PDF editor and Chrome.
 4. Validate interactive installed-MSI and portable update dialogs, including cancellation and unsaved documents;
    scripted installation/upgrade/rollback scenarios passed in CI.
 5. Check Windows Narrator and keyboard navigation in the real interface.
@@ -563,7 +563,7 @@ Acceptance: each operation covered by an engine test with verified rendering.
 Delivered (D067–D076): ink, free text box, rectangle, ellipse, line, arrow, clickable links, select / move / resize /
 recolour / delete, reply threads and statuses, remembered author, CLI `annotations` / `annotate` / `reply` /
 `review-state` / `annotation-delete`. What remains:
-- **verify interoperability** of replies and statuses, ink, free text and shape appearances in Acrobat, Foxit and
+- **verify interoperability** of replies and statuses, ink, free text and shape appearances in external PDF editor, external PDF editor and
   Chrome (not available on the development machine); structural checking alone does not prove visual interoperability;
 - grouped ink shipped in 0.18.0 (D109). 0.30.0 adds whole-stroke erasure, polygons, polylines,
   clouds, standard stamps, attachments and uniform-style embedded-font FreeText with actual preview;

@@ -56,6 +56,8 @@ jobs:
         run: |
           .\scripts\fetch-pdfium.ps1 -Arch x64
           .\scripts\check-i18n.ps1
+          python .\scripts\package-guides.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged documentation link checks failed.' }
           cargo test --workspace --locked -j 2 --no-fail-fast 2>&1 | Tee-Object -FilePath target/workspace-tests.log
           if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
           .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
@@ -265,6 +267,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.39.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.40.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.41.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.42.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

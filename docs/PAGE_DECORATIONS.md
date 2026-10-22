@@ -8,7 +8,7 @@ To keep a configuration, enter a new name and click **Save preset**. Select an e
 
 Up to 16 presets with names of 64 characters are stored locally in the existing settings file. Text watermarks, image watermarks, page numbers and six-zone headers/footers are supported. Page selection is deliberately not saved: check all/current page each time. Text is limited to one line and 256 characters per zone/template. Image presets retain the original file path; keep that file available. Choosing a preset does not decode the image; Apply reports a missing/invalid image and preserves the document. Neither image bytes nor signing identities are stored by this feature.
 
-Older settings retain defaults; malformed preset entries are skipped without resetting other valid preferences. Settings files above 1 MiB are refused on load and defaults are used. Writes above that limit are refused before replacing the existing preferences. Presets are desktop preferences; no CLI preset import/export, cloud synchronization, macro or credential store is added. The packaged CLI gate retains the image/header operations; headless preference/dialog tests cover persistence and cancellation. Native Windows interaction remains separate qualification.
+Older settings retain defaults; malformed preset entries are skipped without resetting other valid preferences. Settings files above 1 MiB are refused on load and defaults are used. Writes above that limit are refused before replacing the existing preferences. Presets are desktop preferences; no CLI preset import/export, macro or credential store is added. The packaged CLI gate retains the image/header operations; headless preference/dialog tests cover persistence and cancellation. Native Windows interaction remains separate qualification.
 
 ## Headers and footers (0.38.0)
 
@@ -40,7 +40,7 @@ The generated-fixture gate checks CLI geometry, independent rendered pixels, pro
 
 ## Image Stamp annotations and atomic text edits (0.40.0)
 
-Open **Comment → Rich annotations**, choose **Image stamp**, select a local image and set the displayed-page rectangle and opacity. Preview the actual candidate before Apply; changing any input requires a fresh preview. Cancel/Escape preserves the document. One Undo removes the annotation. The image keeps its proportions and alpha and is embedded into a real Stamp annotation, so the original image file is no longer needed after Apply. Common annotation tools support moving, replies and thread deletion; generic resize/restyle is unavailable. Recreate it to choose a different rectangle or image.
+Open **Add comments → Rich annotations**, choose **Image stamp**, select a local image and set the displayed-page rectangle and opacity. Preview the actual candidate before Apply; changing any input requires a fresh preview. Cancel/Escape preserves the document. One Undo removes the annotation. The image keeps its proportions and alpha and is embedded into a real Stamp annotation, so the original image file is no longer needed after Apply. Common annotation tools support moving, replies and thread deletion; generic resize/restyle is unavailable. Recreate it to choose a different rectangle or image.
 
 ```powershell
 sunipdf-cli image-stamp input.pdf --image logo.png --rect 40,40,240,240 --opacity 0.5 --page 1 --author "Reviewer" --out stamped.pdf
@@ -50,4 +50,4 @@ Creation requires annotation permission. The command writes a new copy, refusing
 
 Text watermarks and page numbering now preflight all selected pages and margins and commit only when every result fits. Non-finite/negative margins, out-of-range pages or text that exceeds the displayed page margins are refused atomically, without silent shrinking or truncation. Duplicate page selections are applied once.
 
-New [calibrated local measurements](MEASUREMENTS.md) use the same guarded rich-annotation preview flow. Cloud/collaboration are deferred; local tools remain free and open source.
+New [calibrated local measurements](MEASUREMENTS.md) use the same guarded rich-annotation preview flow. local tools remain free and open source.

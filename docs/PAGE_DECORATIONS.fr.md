@@ -8,7 +8,7 @@ Pour conserver une configuration, saisir un nouveau nom puis cliquer sur **Enreg
 
 Jusqu’à 16 modèles, avec un nom de 64 caractères, sont conservés dans le fichier local de préférences. Filigranes texte/image, numéros et six zones d’en-tête/pied sont pris en charge. La sélection des pages n’est pas enregistrée : vérifier toutes/page courante à chaque usage. Texte sur une ligne, 256 caractères par zone/modèle. Les modèles image gardent le chemin du fichier original : le conserver disponible. Le choix ne décode pas l’image ; l’application signale un fichier absent/invalide et préserve le document. Aucun contenu d’image ou identité de signature n’est stocké par cette fonction.
 
-Les anciennes préférences gardent leurs valeurs par défaut ; les modèles mal formés sont ignorés sans réinitialiser les autres préférences valides. Un fichier de préférences dépassant 1 Mio est refusé au chargement et les valeurs par défaut sont utilisées. Une écriture dépassant cette limite est refusée avant de remplacer les préférences existantes. Pas d’import/export CLI de modèles, synchronisation cloud, macro ou coffre de mots de passe. Les contrôles CLI conservent les opérations image/en-tête ; les tests de préférences et dialogues sans fenêtre couvrent persistance et annulation. L’interaction Windows native reste à qualifier.
+Les anciennes préférences gardent leurs valeurs par défaut ; les modèles mal formés sont ignorés sans réinitialiser les autres préférences valides. Un fichier de préférences dépassant 1 Mio est refusé au chargement et les valeurs par défaut sont utilisées. Une écriture dépassant cette limite est refusée avant de remplacer les préférences existantes. Pas d’import/export CLI de modèles, macro ou coffre de mots de passe. Les contrôles CLI conservent les opérations image/en-tête ; les tests de préférences et dialogues sans fenêtre couvrent persistance et annulation. L’interaction Windows native reste à qualifier.
 
 ## En-têtes et pieds de page (0.38.0)
 
@@ -40,7 +40,7 @@ Les contrôles sur fichiers générés couvrent géométrie, pixels indépendant
 
 ## Tampons image et textes atomiques (0.40.0)
 
-Ouvrez **Commentaire → Annotations enrichies**, choisissez **Tampon image**, sélectionnez une image locale, le rectangle de page affichée et l'opacité. Vérifiez l'aperçu réel avant Appliquer ; une modification impose un nouvel aperçu. Annuler/Échap conserve le document. Un Annuler retire l'annotation. Proportions et transparence sont préservées dans une vraie annotation Stamp intégrant l'image : le fichier source n'est plus nécessaire après application. Déplacement, réponses et suppression du fil restent disponibles ; redimensionnement/style génériques indisponibles. Recréez le tampon pour changer rectangle ou image.
+Ouvrez **Commenter → Annotations enrichies**, choisissez **Tampon image**, sélectionnez une image locale, le rectangle de page affichée et l'opacité. Vérifiez l'aperçu réel avant Appliquer ; une modification impose un nouvel aperçu. Annuler/Échap conserve le document. Un Annuler retire l'annotation. Proportions et transparence sont préservées dans une vraie annotation Stamp intégrant l'image : le fichier source n'est plus nécessaire après application. Déplacement, réponses et suppression du fil restent disponibles ; redimensionnement/style génériques indisponibles. Recréez le tampon pour changer rectangle ou image.
 
 ```powershell
 sunipdf-cli image-stamp input.pdf --image logo.png --rect 40,40,240,240 --opacity 0.5 --page 1 --author "Reviewer" --out stamped.pdf
@@ -50,4 +50,4 @@ Le droit d'annotation est requis. La CLI crée une copie et refuse originaux et 
 
 Filigranes texte et numérotation vérifient toutes les pages et marges avant validation globale. Marges non finies/négatives, pages invalides et débordements sont refusés sans modification partielle, réduction ou troncature silencieuse. Une sélection dupliquée ne s'applique qu'une fois.
 
-Les nouvelles [mesures locales calibrées](MEASUREMENTS.fr.md) utilisent le même aperçu protégé. Cloud et collaboration sont reportés ; le local reste gratuit et open source.
+Les nouvelles [mesures locales calibrées](MEASUREMENTS.fr.md) utilisent le même aperçu protégé. le local reste gratuit et open source.

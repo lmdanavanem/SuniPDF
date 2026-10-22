@@ -32,7 +32,7 @@
 Paquets Windows non signés et aucune clé indépendante de publication configurée. Les mises à jour reposent
 encore sur HTTPS GitHub et le SHA256 du même canal. ARM64 est compilé sans exécution matérielle. Impression
 physique, fenêtres/GPU réels, Narrator, dialogues natifs d’installation/mise à jour/sauvegarde, interopérabilité
-Acrobat/Foxit, élargissement du corpus réel/hostile et fuzzing guidé restent à qualifier. Aucune certification
+lecteurs PDF tiers, élargissement du corpus réel/hostile et fuzzing guidé restent à qualifier. Aucune certification
 PDF/A/PDF/UA ou LTV d’archivage. Les PDF téléchargés et dérivés sont exclus de Git et des paquets.
 
 ## Validation et distribution

@@ -2,7 +2,10 @@
 
 [Français](ARCHITECTURE.fr.md)
 
-## 0.21.0: Code Scanning remediation (published stable Latest)
+The module boundaries and principles below describe the current implementation. Versioned sections
+record earlier deliveries; current release qualification belongs in [Project status](PROJECT_STATUS.md).
+
+## 0.21.0: Code Scanning remediation (published; Latest at the time)
 
 Explicit native signer-certificate null checks and malformed-CMS regression; release root
 `contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
@@ -32,9 +35,11 @@ and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
 4. **Typed errors, text translated at the boundary.** `EngineError` carries a stable code (`code()`);
    only the UI maps it to an i18n key (`app.rs::error_key`), the CLI emits the code as JSON.
 5. **Atomic writes.** Neighbouring temporary file then replacement (`sunipdf_core::write_atomic`) for PDF,
-   recovery and settings output. Independent qpdf validation remains a separate QA task.
-6. **Local PDF processing, no telemetry.** OCR and signatures run locally. The opt-out update check and
-   explicit release download contact GitHub without sending PDF content; this is the only application network feature.
+   recovery and settings output. Independent qpdf validation runs in CI, separately from the save path.
+6. **Local PDF processing, no telemetry.** OCR and signing run locally. The opt-out update check and
+   explicit release download contact GitHub without sending PDF content. Certificate verification is cache-only
+   by default; consent for an individual verification permits issuer, AIA, CRL and OCSP retrieval, which can
+   disclose certificate identifiers but does not upload the PDF. See [Signature security](SIGNATURE_SECURITY.md).
 7. **No PDF JavaScript.** PDFium binaries compiled without V8 or XFA (`args.gn`: `pdf_enable_v8=false`).
 
 ## Current workspace
@@ -101,21 +106,24 @@ Request::Close ─────────────────────�
   (page, fraction) under the pointer or at the centre.
 `render_page` (image export, CLI without `--region`) stays capped at `MAX_RENDER_SIDE_PX` (16,384 px).
 
-## Planned crates (created only when a real feature justifies them)
+## Current module boundaries
 
-| Crate | Role | Phase |
-|---|---|---|
-| `sunipdf-render` | not created (D038): tiles and cache live in `sunipdf-core::{tiles, cache}`; to be extracted if a second consumer appears | — |
-| `sunipdf-pages` | merge, split, extract, rotate, reorder (PDFium `FPDF_ImportPages`, `FPDFPage_*`) | P2 |
-| `sunipdf-editor` | annotations, text, images, watermarks | P2–P3 |
-| `sunipdf-forms` | not created (D061): AcroForm lives in `sunipdf-core::{forms, form_data}` (lopdf model and writing, PDFium appearances, JSON/XFDF and value-only FDF import) | — |
-| `sunipdf-convert` | PDF↔images, text, Office via a detected external converter | P4 |
-| `sunipdf-ocr` | not created: offline OCR lives in `sunipdf-core::ocr`; bundled runtime and models | — |
-| `sunipdf-security` | encryption (outside PDFium), permissions, redaction, metadata | P5 |
-| `sunipdf-signatures` | not created: CMS/PKCS#12 verification and signing live in `sunipdf-core::certificate`; trusted timestamps remain planned | — |
-| `sunipdf-automation` | JSON-Schema command registry, batches, opt-in MCP | P5 |
-| `sunipdf-platform` | not created: native printing lives in desktop `printing.rs`; further platform integration remains planned | — |
-| `sunipdf-ui` | reusable egui components (if the app grows) | P3 |
+The workspace contains the desktop and CLI applications, `sunipdf-core` and `sunipdf-i18n`.
+Implemented features share these crates rather than requiring a separate crate per tool.
+
+| Responsibility | Modules |
+|---|---|
+| Rendering and caching | Core `tiles`, `cache` and `Document` rendering APIs |
+| Page operations | Core `pages`, `boxes`, `page_labels` and `structure` |
+| Objects and annotations | Core `edit`, `annot_write`, `annot_rich`, `appearance` and `links` |
+| Measurements | Core `measurement` and `page_calibration`; desktop `measure_tools` and `measurement_saved` |
+| Forms | Core `forms` and `form_data`: model, appearances, JSON/XFDF and value-only FDF import |
+| Conversion | Core `convert`, `export_office` and `office`; external conversion requires an explicitly available local converter |
+| OCR | Core `ocr`, using the bundled local runtime and models |
+| Document protection | Core `security`, `redact` and `sanitize` |
+| Certificate signatures | Core `certificate`, `certificate_native` and `certificate_trust_native` |
+| Desktop integration | Desktop `printing`, `settings` and `updater` |
+| Commands and language | Core `command`, CLI command handlers and `sunipdf-i18n` |
 
 ## Tabs (SUNI-012a)
 
@@ -151,9 +159,11 @@ Implementation validation is tracked in `PROJECT_STATUS.md`; this section descri
   Existing text is skipped. Invisible word objects use the common rotation/CropBox geometry.
 - **Certificate signatures**: `certificate.rs` parses saved bytes and creates a CMS detached signature in an
   incremental revision; `certificate_native.rs` delegates private-key operations to Windows Cryptography.
-  PFX/P12 credentials use cleared temporary buffers and no persistent key import. Verification reports integrity
-  and certificate metadata without establishing trust, revocation or a trusted timestamp. UI `certificate.rs`
-  and CLI `feature_cmd.rs` both require a new copy for signing; encrypted input is refused.
+  PFX/P12 credentials use cleared temporary buffers and no persistent key import. Current verification reports
+  document integrity, Windows certificate-chain trust, revocation status and existing RFC 3161 timestamp
+  validation separately. It does not create a timestamp or certify long-term validation. Online retrieval
+  requires explicit consent; see [Signature security](SIGNATURE_SECURITY.md). UI `certificate.rs` and CLI
+  `feature_cmd.rs` both require a new copy for signing; encrypted input is refused.
 
 ## 0.13.0 visual signature paths (published)
 
@@ -319,16 +329,16 @@ a journal of named commands will come if memory becomes a constraint.
 i18n key of the label, i18n key of the shortcut, `needs_document`, menu). Pure data, no UI dependency.
 - The application builds its File / View / Help menus from the registry and routes menus **and**
   keyboard shortcuts to a single entry point `SuniApp::execute(ctx, Command)`.
-- The CLI exposes `sunipdf-cli commands` (JSON). The command palette, configurable shortcuts,
-  undo/redo and automation will rely on these same identifiers.
+- The CLI exposes `sunipdf-cli commands` (JSON). The command palette, configurable shortcuts
+  and Undo/Redo dispatch use the same identifiers.
 - Tests: uniqueness of identifiers, `from_id` round trip, existence of the i18n keys in both catalogues.
 
 ## Infrastructure choices
 
 | Need | Choice | Reason |
 |---|---|---|
-| Rendering / parsing | PDFium 7881 via `pdfium-render` 0.9.4, DLL loaded at runtime | Chrome fidelity, ARM64 available, no C++ compilation |
-| UI | `eframe`/`egui` 0.36 | Native Rust, immediate mode, DPI handled, AccessKit accessibility built in |
+| Rendering / parsing | PDFium 7881 via `pdfium-render` 0.9.4, DLL loaded at runtime | Shared rendering API; pinned x64 and ARM64 binaries |
+| UI | `eframe`/`egui` 0.37 | Native Rust, immediate mode, DPI handled, AccessKit accessibility built in |
 | Preferences | JSON in `%APPDATA%\SuniPDF` | Zero dependencies; SQLite only if large metadata appears |
 | Errors | `thiserror` | Explicit types, stable codes |
 | Logging | `log` + `env_logger` | Sufficient; `tracing` if spans become necessary |
@@ -338,4 +348,5 @@ i18n key of the label, i18n key of the shortcut, `needs_document`, menu). Pure d
 
 - Path validation by the OS; no execution of PDF content; render size limits.
 - Documents never leave the machine.
-- Hostile files: PDFium is continuously fuzzed by Chromium; SuniPDF will add its own corpus (P6).
+- CI exercises synthetic, licensed, interoperability and adversarial PDF corpora, with independent qpdf
+  and rendering checks. These bounded regressions qualify the tested cases, not every possible PDF.

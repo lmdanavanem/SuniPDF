@@ -537,7 +537,7 @@ pub fn clamp_zoom(z: f32, pages: &[PageSize], ppp: f32, mode: ViewMode) -> (f32,
         let total: f32 = pages.iter().map(|s| s.height_pt).sum::<f32>().max(1.0);
         hi = hi.min(MAX_CONTENT_PX / (total * SCREEN_PER_PDF_POINT));
     }
-    // ponytail: marges et intervalles ignorés dans la borne de hauteur (quelques px par page).
+    // marges et intervalles ignorés dans la borne de hauteur (quelques px par page).
     let clamped = z.clamp(0.05f32.min(hi), hi);
     (clamped, clamped < z - 1e-4)
 }

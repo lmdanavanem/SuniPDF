@@ -3,8 +3,8 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.42.0. Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.42.0.md) lists supported inputs
+This guide covers SuniPDF 0.43.0. Publication status and executed checks are recorded in
+[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.43.0.md) lists supported inputs
 and documented refusals; English remains the default language and French is available in Settings.
 
 ## Measure directly on a PDF
@@ -30,14 +30,36 @@ horizontally or vertically in the displayed page axes; it does not snap to exist
 **Escape** or **Cancel drawing** discards the draft. Finish or cancel before changing page, document or tool.
 
 Each page has its own session scale. Ordinary annotation edits and normal tab switches retain confirmed
-scales; changes to page geometry or structure clear them. Closing and reopening a document requires a
-new calibration for new measurements. Changing units converts the confirmed distance. Saved measurements
-keep their own geometry and scale, and recalibrating new measurements does not change existing ones.
+scales; changes to page geometry, structure or content clear them. A session scale takes priority over the page's
+saved default. Changing units converts the confirmed distance. Saved measurements keep their own
+geometry and scale; recalibrating new measurements does not change existing ones.
 
-Recreate an applied measurement to change its vertices or scale. Shared persistent page scales, global
-recalculation, vector snapping and multiple-scale viewports remain unavailable. Check the known distance
-and the drawing revision; a calculated value does not establish physical accuracy. See the
-[measurement guide](MEASUREMENTS.md) for the open metadata format, CLI and geometry limits.
+To keep a scale across closing/reopening, click **Save scale in PDF** after calibration, then save the
+PDF file. The saved default is reused when valid. **Remove saved scale** removes that page's saved
+default, while retaining any explicitly chosen session scale; save the file to retain the removal.
+**Undo**/**Redo** restores the document state and reloads its saved default; it does not restore a cleared session scale. Saving/removing a default
+requires document-modification permission; measurement creation requires annotation permission.
+Rotation and page reordering preserve eligible defaults. Changed crop bounds or decoded page content,
+unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
+default. Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
+
+Click **Saved measurements** in the measurement toolbar to inspect the current page. The read-only list
+shows value/unit, type, annotation index, optional identity, vertex count, precision and known reference
+distance for non-angle measurements, in batches of 50. **View on page** selects the actual annotation and opens
+its comments. **Use this scale** copies a non-angle annotation's calibration to the page's session for
+new measurements, without changing existing records. Reference points outside the page are refused.
+Use **Save scale in PDF** separately to keep this default. **Refresh** rereads the current state; close
+the inspector before drawing or changing documents.
+
+The CLI exposes `page-calibration`, `set-page-calibration` and `remove-page-calibration`.
+`measure --use-page-calibration` uses a valid saved default and converts it to `--unit`; it excludes
+manual `--calibration`/`--known-distance`. Writes always require a new output file, even with `--overwrite`.
+Use password environment/stdin options for protected files. [Examples and bounds](MEASUREMENTS.md#cli-and-quantities).
+
+Recreate an applied measurement to change its vertices or scale. Global recalculation, vector snapping
+and multiple-scale viewports remain unavailable. Check the known distance and drawing revision; a
+calculated value does not establish physical accuracy. See the [measurement guide](MEASUREMENTS.md)
+for the open metadata format, permissions and geometry limits.
 
 ## Prepare a visual signature
 
@@ -152,7 +174,7 @@ Without an open document, a tool that needs one first asks for a file, then star
 - Each tab keeps its own active tool.
 - The main toolbar keeps quick access to Open, Save, Undo, Redo and Measurements.
 
-The 15 tool workspaces in 0.42.0 include **Measurements**, **Scan & OCR**, **Prepare a form** and **Use a certificate**.
+The 15 tool workspaces in 0.43.0 include **Measurements**, **Scan & OCR**, **Prepare a form** and **Use a certificate**.
 Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
 
 ## Tabs
@@ -286,7 +308,7 @@ Accepted, Rejected, Cancelled, Completed), indented replies. **Reply** adds a re
 status menu changes the thread's state, the bin deletes the annotation and its replies, a click on a card's title
 selects it on the page. The **Author** field (remembered in your preferences, empty by default) is written into the
 annotations, replies and statuses created afterwards. Threads and statuses follow the PDF standard but their display
-in Acrobat or Foxit has not been verified. Every annotation can be undone (Ctrl+Z); a password-protected document
+in other PDF readers has not been verified. Every annotation can be undone (Ctrl+Z); a password-protected document
 stays protected after annotating, and rotated or cropped pages are respected.
 
 ## Editing content
@@ -714,7 +736,7 @@ sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --
 **Available in 0.16.0:** add `--dashed` to `annotate --kind square|circle|line|arrow` for the fixed `[6,3]`
 point pattern. `annotations` returns the actual `dash_pattern` array. Without the flag, existing solid behaviour
 stays unchanged. The flag is refused for unsupported annotation kinds; invalid requests leave no output or
-preserve an existing output, including with `--overwrite`. There are still 53 CLI commands.
+preserve an existing output, including with `--overwrite`. Use `sunipdf-cli --help` for the current command list.
 
 ```powershell
 sunipdf-cli annotate input.pdf --kind square --rect 40,40,240,140 --dashed --out dashed.pdf

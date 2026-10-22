@@ -6,10 +6,3 @@
 *.pdb
 *.msi
 __pycache__/
-
-# Outils de développement locaux de l'auteur (non publiés)
-/CLAUDE.md
-/.claude/
-/docs/plans/
-/docs/AGENT_STRATEGY.md
-/docs/PDFCRAFT_AUDIT.md

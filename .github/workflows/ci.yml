@@ -42,6 +42,8 @@ jobs:
           key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Translation catalog parity
         run: .\scripts\check-i18n.ps1
+      - name: Packaged documentation links
+        run: python .\scripts\package-guides.py --self-test
       - name: WiX download checksum guard self-test
         run: .\scripts\package-msi.ps1 -SelfTest
       - name: Format
@@ -258,6 +260,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.39.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.40.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.41.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.42.0
       - name: MSI upgrade regression evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

@@ -571,6 +571,10 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if self.annotate.measure.saved.dialog_open() {
+            self.status_msg = Some(self.t("measure.saved.finish_first").into());
+            return true;
+        }
         if self.annotate.measure.is_active_draft() {
             self.status_msg = Some(self.t("measure.finish_first").into());
             return true;
@@ -591,6 +595,9 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        if self.annotate.measure.saved.dialog_open() {
+            return true;
+        }
         if self.annotate.measure.is_active_draft() {
             return !matches!(
                 command,
@@ -2882,6 +2889,7 @@ mod tests {
                     can_undo: true,
                     can_redo: false,
                     pages_unchanged: true,
+                    measurement_scales_unchanged: false,
                     modified: true,
                     has_signatures: false,
                 }))
@@ -3374,6 +3382,7 @@ mod tests {
                 can_redo: false,
                 modified: true,
                 pages_unchanged: true,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();
@@ -3545,6 +3554,7 @@ mod tests {
                     can_undo: true,
                     can_redo: false,
                     pages_unchanged,
+                    measurement_scales_unchanged: false,
                     modified: true,
                     has_signatures: false,
                 }))

@@ -17,13 +17,13 @@ Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Ca
 
 Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests réussis, 10 ignorés par défaut. 1224 clés EN/FR. 34 scénarios portables. 28 références MSI / 140 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256 ; quatre appels CLI du paquet vérifient version, aide, création d’une longueur de 10 m et réouverture sans modifier l’original.
 
-Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Cloud et mises à jour Projects restent différés. [Preuves](qa/RELEASE_0.42.0.json).
+Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Les mises à jour Projects restent différées. [Preuves](qa/RELEASE_0.42.0.json).
 
 ## 0.41.0 : comptage sur plans et tableau des annotations (publiée ; Latest à cette date)
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
-Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations ; cloud et collaboration restent reportés. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées. [Utilisation et limites](MARKUP_REGISTER.fr.md).
+Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées. [Utilisation et limites](MARKUP_REGISTER.fr.md).
 
 [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681919685) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681938796) réussies : **643 tests, zéro échec**, 10 ignorés par défaut, **1198 clés EN/FR**, **33 scénarios portables**, **27 références MSI/135 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **100 scénarios, 339 appels CLI et 14 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés. 6 alertes de mots de passe fictifs ont été examinées et classées « used in tests » sous `lmdanavanem` ; analyse de sécurité maintenue.
 
@@ -35,7 +35,7 @@ Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets 
 
 [0.40.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) sous `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
 
-Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local ; cloud et collaboration reportés à la demande du propriétaire, tarifs ultérieurs. [Utilisation et limites](MEASUREMENTS.fr.md).
+Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local. [Utilisation et limites](MEASUREMENTS.fr.md).
 
 [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) réussies : **637 tests, zéro échec**, 10 ignorés par défaut, **1163 clés EN/FR**, **32 scénarios portables**, **26 références MSI/130 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **80 scénarios, 256 appels CLI et 10 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés.
 
@@ -470,13 +470,13 @@ Livrés : AES-128/256 et permissions, retrait de protection autorisé par le pro
 caviardage irréversible, vérification CMS et copies signées PFX/P12 incrémentales, CLI JSON et automatisation.
 
 La 0.31.0 implémente la comparaison locale bornée et la recherche dans des fichiers enregistrés sélectionnés ; [périmètre](LOCAL_REVIEW.fr.md).
-La 0.36.0 ajoute les [raccourcis personnalisables](KEYBOARD_SHORTCUTS.fr.md). Restent : MCP confiné facultatif, Explorateur et qualification native clavier/Narrateur.
+La 0.36.0 ajoute les [raccourcis personnalisables](KEYBOARD_SHORTCUTS.fr.md). Restent : intégration à l’Explorateur et qualification native clavier/Narrateur.
 La version 0.30.0 ajoute la [vérification Windows des chaînes/révocations et jetons RFC3161, ainsi que le stockage
 DPAPI par utilisateur](SIGNATURE_SECURITY.fr.md), et l'[aperçu de caviardage, les marques persistantes, la découpe
 bornée du texte et l'assainissement](REDACTION.fr.md). contrôles de la source publiée réussis. Chaque vérification réseau demande un
 consentement explicite ; un résultat hors ligne/inconnu ne devient jamais fiable. Le DSS incorporé reste non vérifié,
 sans validation LTV d'archivage. AATL/EUTL, PKCS#11, qualification des signatures et création d'horodatages restent
-non pris en charge. L'heure PDF reste déclarative ; interopérabilité Acrobat/Foxit distincte, non vérifiée.
+non pris en charge. L'heure PDF reste déclarative ; interopérabilité lecteurs PDF tiers distincte, non vérifiée.
 La signature du code/MSI demande une identité appropriée fournie.
 
 ## Phase 6 : qualité et distribution — en cours
@@ -505,8 +505,8 @@ Priorités AEC locales : sommets enregistrés modifiables, persistance/recalcul 
    matérielles élargis et intégrations demandent leur périmètre accepté. Étendre édition, fidélité Office et
    confiance d'archivage seulement au-delà des limites explicites de cette version.
 
-Aucune date/version suivante n’est engagée. L’IA facultative reste désactivée par défaut.
+Aucune date/version suivante n’est engagée.
 
-## Plans bâtiment et cloud d’entreprise
+## Fonctions locales pour les plans
 
-Le [backlog de 26 cartes](AEC_BACKLOG.fr.md) ajoute calibration, métrés, registre, bibliothèques, révisions et collaboration facultative. SuniPDF local reste gratuit et open source ; le cloud géré d’entreprise sera payant, sans tarifs définis. Le [cloud](CLOUD_STRATEGY.fr.md) et la collaboration sont reportés à la demande du propriétaire. Les fonctions locales de calibration, métrés, registre, bibliothèques et révisions passent en premier.
+Suivre le [backlog des fonctions locales](AEC_BACKLOG.fr.md) : mesures calibrées, quantités, tableaux, bibliothèques d’annotations et révisions des plans.

@@ -395,7 +395,7 @@ pub fn signatures_dir() -> Option<PathBuf> {
 
 /// Legacy PNG/current DPAPI signatures, newest first, at most twelve per kind.
 fn list_saved(dir: &Path) -> Vec<(PathBuf, SignKind)> {
-    // ponytail: plafond fixe de 12 par type, images gardées décodées en mémoire.
+    // plafond fixe de 12 par type, images gardées décodées en mémoire.
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -498,7 +498,7 @@ fn ink(blue: bool) -> [u8; 3] {
 
 /// Point d'ancrage (bas-gauche) d'un texte posé, maintenu dans la page.
 fn text_anchor(pt: (f32, f32), text: &str, size_pt: f32, page: (f32, f32)) -> (f32, f32) {
-    // ponytail: largeur estimée à 0,556 em par caractère (chiffres Helvetica), sans mesure de
+    // largeur estimée à 0,556 em par caractère (chiffres Helvetica), sans mesure de
     // police ; une vraie mesure demanderait un aller-retour par le thread moteur.
     let w = text.chars().count() as f32 * 0.556 * size_pt;
     (

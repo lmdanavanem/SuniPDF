@@ -19,6 +19,7 @@ const REMOVE: &[&[u8]] = &[
     b"Collection",
     b"Metadata",
     b"PieceInfo",
+    b"SuniPDFPageCalibration",
     b"XFA",
 ];
 const MAX_NODES: usize = 1_000_000;
