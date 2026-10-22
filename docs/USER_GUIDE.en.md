@@ -3,11 +3,11 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers this build of SuniPDF 0.46.0. The preceding verified release [0.45.0](RELEASE_0.45.0.md) retains its own evidence. The [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) tracks qualification and publication. English remains the default language; French is available in Settings.
+This guide covers [0.46.0](RELEASE_0.46.0.md). The preceding [0.45.0](RELEASE_0.45.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
 
 ## Quantity tables and typed fields
 
-This feature is included in this build. The [0.46.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) tracks qualification and publication.
+Available in [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). [Evidence](qa/RELEASE_0.46.0.json).
 
 1. Open a PDF, then choose **Quantity table** from **All tools**, the measurement controls or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
 2. Choose **Edit row** to enter **Unit price**, **Currency code**, **Price per unit** and **Cost decimal places**. A blank price is missing; `0` is an explicit zero. Counts and saved measurements supply the quantities; ordinary annotations do not acquire an inferred quantity, and angles are not priced.
@@ -19,27 +19,6 @@ This feature is included in this build. The [0.46.0 release page](https://github
 ## Reuse local annotation templates
 
 The 0.45 annotation library is available within its [qualified scope](RELEASE_0.45.0.md). Click **Library** in the main toolbar, or choose
-**Annotation library** in **All tools** or **Add comments**. Its local file is separate from PDF files and settings.
-
-Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
-Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
-blank means unknown. Saving a template does not insert it in the PDF. Capture supports text with standard
-fonts, polygons/polylines, revision clouds, predefined stamps and PNG image stamps.
-
-Choose **Place on page**, set the scale and click the PDF. Inspect the rendered preview; adjust **Origin X (pt)**,
-**Origin Y (pt)** or **Scale** if needed, then request **Preview** again. Choose **Apply to object** to create the
-annotations, or **Cancel** to discard the placement. A group is applied as one Undo step; save the PDF to retain it.
-To make a group, check at least two entries, choose **Create group**, enter a new name and member offsets, then save.
-
-Import/export, selected-entry deletion, reload and filtering are available in the library. Invalid imports and
-conflicting writes preserve its active contents. Library-file changes have no PDF Undo history; export a copy before
-deleting templates you want to keep. Measurements, page scales, existing PDF identities and review threads are excluded.
-[Full instructions, supported format, bounds and CLI examples](ANNOTATION_LIBRARY.md).
-
-## Reuse local annotation templates
-
-The 0.45 annotation library is **in development and undergoing validation**; see its
-[scope and qualification status](RELEASE_0.45.0.md). Click **Library** in the main toolbar, or choose
 **Annotation library** in **All tools** or **Add comments**. Its local file is separate from PDF files and settings.
 
 Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.

@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.45.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.46.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.45.0: local annotation libraries (stable Latest)
+## 0.46.0: quantity tables and typed fields (stable Latest)
+
+[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
+
+Source `3e6763964d6b06f004a09fd7473ddf5bb4a6417f`, PR [#21](https://github.com/lmdanavanem/SuniPDF/pull/21). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061382) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664). 732 tests passed, 10 default ignored. 1348 EN/FR keys. 38 portable scenarios. 32 MSI baselines. 160 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 32 packaged CLI calls verify count/measurement quantities, typed fields, exact costs, filters/groups, CSV guarding, unit conversion, clearing, stale and overwrite refusals, AES permissions and source preservation.
+
+[Guide and limits](QUANTITY_TABLE.md) · [Release notes](RELEASE_0.46.0.md) · [Evidence](qa/RELEASE_0.46.0.json).
+
+## 0.45.0: local annotation libraries (published; Latest at the time)
 
 [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
 

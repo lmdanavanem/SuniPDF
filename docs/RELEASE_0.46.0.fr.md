@@ -2,7 +2,7 @@
 
 [English](RELEASE_0.46.0.md) · [Guide des quantités](QUANTITY_TABLE.fr.md)
 
-Cette compilation inclut le périmètre ci-dessous. Les fichiers publiés et la qualification sont suivis sur la [page de version 0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0).
+Statut : publiée en Latest stable [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0), source `3e6763964d6b06f004a09fd7473ddf5bb4a6417f`, le 2026-10-22. [Version précédente](RELEASE_0.45.0.fr.md).
 
 ## Périmètre
 
@@ -16,7 +16,7 @@ Les exports CSV et JSON comprennent la provenance de l’instantané source, les
 
 ## Qualification
 
-Les résultats de qualification et fichiers de distribution sont suivis sur la [page de version 0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). Les résultats s’appliquent à la source exacte qui y est identifiée.
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061382) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664). 732 tests réussis, 10 ignorés par défaut. 1348 clés EN/FR. 38 scénarios portables. 32 références MSI. 160 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 32 appels CLI vérifient quantités réelles, champs typés, coûts exacts, filtres/groupes, protection CSV, conversion d’unités, retrait, refus périmés/d’écrasement, permissions AES et conservation des sources. [Preuves](qa/RELEASE_0.46.0.json).
 
 ## Limites restantes
 
