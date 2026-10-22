@@ -2,7 +2,7 @@
 
 [English](RELEASE_0.50.0.md) · [Guide de lecture et des outils](READER_WORKSPACE.fr.md)
 
-Cette version comprend le périmètre ci-dessous. Les fichiers publiés et la qualification sont suivis sur la [page de version 0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0).
+Statut : publiée en Latest stable [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0), source `fb5f66b30ae30506dcd53f31ed03a5377260eb20`, le 2026-10-22. [Version précédente](RELEASE_0.49.0.fr.md).
 
 ## Changements
 
@@ -16,7 +16,7 @@ Cette version comprend le périmètre ci-dessous. Les fichiers publiés et la qu
 
 ## Qualification
 
-Les preuves et fichiers de distribution sont suivis sur la [page de version 0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0). Les résultats concernent la source exacte qui y figure.
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366778) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854380539) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366334). 776 tests réussis, 11 ignorés par défaut. 1413 clés EN/FR. 42 scénarios portables. 36 références MSI. 180 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 63 appels CLI de régression conservés vérifient insertion et suppression sur polylignes, périmètres et surfaces, nombres de sommets après réouverture, conservation des calibrations et quantités, recalcul des totaux, limites minimum/maximum et des types fixes, refus invalides/périmés et cycle de vie des mesures conservé. Ils ne constituent pas une qualification du bureau natif ni d’ARM64. 3 scènes de l’application et de ses pages PDFium rendues hors écran avec DX12 WARP, dont la disposition française à 720 × 480 et zoom 149%. Rapports, PNG et pixels décodés revérifiés par SHA256 ; fenêtres natives et périphériques physiques non qualifiés. [Preuves](qa/RELEASE_0.50.0.json).
 
 ## Périmètre
 

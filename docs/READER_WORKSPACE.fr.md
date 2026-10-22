@@ -2,7 +2,7 @@
 
 [English](READER_WORKSPACE.md) · [Guide utilisateur](USER_GUIDE.fr.md)
 
-Ce guide décrit la version 0.50.0. Fichiers publiés et qualification figurent sur la [page de version 0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0).
+Disponible dans [0.50.0](RELEASE_0.50.0.fr.md). [Preuves](qa/RELEASE_0.50.0.json).
 
 ## Trouver un outil
 

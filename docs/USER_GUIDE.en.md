@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide describes the 0.50.0 build. Published files and qualification are tracked on the [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0); earlier releases retain their own evidence. English is the default language, with French available in Settings.
+This guide covers [0.50.0](RELEASE_0.50.0.md). The preceding [0.49.0](RELEASE_0.49.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
 
 ## Reader controls and tools
 

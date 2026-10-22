@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.49.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.50.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (Latest stable)
+## 0.50.0 : commandes de lecture et outils organisés (Latest stable)
+
+[0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Retrouvez 18 outils dans cinq familles filtrables depuis Outils, avec Mesures et la bibliothèque sous Réviser et mesurer. Basculez le volet gauche entre Outils, Pages et Signets ; utilisez quatre sections de mesure à droite. Les commandes de page et de zoom sont sous le PDF, les pourcentages comme 149% restent sur une ligne et les options de lecture restent accessibles dans les dispositions compactes. La rotation de lecture change uniquement l’affichage ; le rail droit ouvre les panneaux. Un seul panneau contextuel occupe le côté droit. Un brouillon de mesure actif bloque l’ouverture des autres panneaux ; quitter explicitement l’outil ou en changer annule ce brouillon local et conserve les échelles confirmées.
+
+Source `fb5f66b30ae30506dcd53f31ed03a5377260eb20`, PR [#29](https://github.com/lmdanavanem/SuniPDF/pull/29). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366778) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854380539) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39854366334). 776 tests réussis, 11 ignorés par défaut. 1413 clés EN/FR. 42 scénarios portables. 36 références MSI. 180 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 63 appels CLI de régression conservés vérifient insertion et suppression sur polylignes, périmètres et surfaces, nombres de sommets après réouverture, conservation des calibrations et quantités, recalcul des totaux, limites minimum/maximum et des types fixes, refus invalides/périmés et cycle de vie des mesures conservé. Ils ne constituent pas une qualification du bureau natif ni d’ARM64. 3 scènes de l’application et de ses pages PDFium rendues hors écran avec DX12 WARP, dont la disposition française à 720 × 480 et zoom 149%. Rapports, PNG et pixels décodés revérifiés par SHA256 ; fenêtres natives et périphériques physiques non qualifiés.
+
+[Guide et limites](READER_WORKSPACE.fr.md) · [Notes de version](RELEASE_0.50.0.fr.md) · [Preuves](qa/RELEASE_0.50.0.json).
+
+## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (publiée ; Latest à cette date)
 
 [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
 

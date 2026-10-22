@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-**0.50.0 build:** open **Tools → Review & measure → Measurements**. Its right-hand settings panel groups Create measurement, Page scale, Drawing and Saved data; **Saved measurements** is in Saved data. [Reader and tools guide](READER_WORKSPACE.md).
+**Available in [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0):** open **Tools → Review & measure → Measurements**. Its right-hand settings panel groups Create measurement, Page scale, Drawing and Saved data; **Saved measurements** is in Saved data. [Reader and tools guide](READER_WORKSPACE.md). [Evidence](qa/RELEASE_0.50.0.json).
 
 **Available in [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0):** add or remove saved polyline, perimeter and polygon-area vertices within their minimum and maximum counts; select a vertex by number even when handles overlap. Preview, Apply and Undo preserve the measurement’s own calibration and entered quantity fields. [Workflow and limits](MEASUREMENT_GEOMETRY.md). [Evidence](qa/RELEASE_0.49.0.json).
 

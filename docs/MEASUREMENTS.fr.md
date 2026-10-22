@@ -2,7 +2,7 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
-**Version 0.50.0 :** ouvrez **Outils → Réviser et mesurer → Mesures**. Le panneau droit regroupe Créer une mesure, Échelle de la page, Tracé et Données enregistrées ; **Mesures enregistrées** se trouve dans Données enregistrées. [Guide de lecture et des outils](READER_WORKSPACE.fr.md).
+**Disponible en [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) :** ouvrez **Outils → Réviser et mesurer → Mesures**. Le panneau droit regroupe Créer une mesure, Échelle de la page, Tracé et Données enregistrées ; **Mesures enregistrées** se trouve dans Données enregistrées. [Guide de lecture et des outils](READER_WORKSPACE.fr.md). [Preuves](qa/RELEASE_0.50.0.json).
 
 **Disponible en [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) :** ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés dans leurs limites de nombre ; sélectionnez un sommet par son numéro même lorsque les poignées se superposent. Aperçu, Appliquer et Annuler conservent la calibration propre à la mesure et les champs de quantité saisis. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md). [Preuves](qa/RELEASE_0.49.0.json).
 

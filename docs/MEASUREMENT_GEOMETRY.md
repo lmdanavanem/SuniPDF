@@ -4,7 +4,7 @@
 
 Available in [0.49.0](RELEASE_0.49.0.md). [Evidence](qa/RELEASE_0.49.0.json).
 
-The 0.50.0 build uses the [reader and tools layout](READER_WORKSPACE.md) described below; the saved-geometry limits remain unchanged.
+The workflow below uses the [reader and tools layout](READER_WORKSPACE.md) published in [0.50.0](RELEASE_0.50.0.md); the saved-geometry limits remain unchanged.
 
 ## Workflow
 

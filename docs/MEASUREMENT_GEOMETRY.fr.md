@@ -4,7 +4,7 @@
 
 Disponible dans [0.49.0](RELEASE_0.49.0.fr.md). [Preuves](qa/RELEASE_0.49.0.json).
 
-La version 0.50.0 utilise la [disposition de lecture et des outils](READER_WORKSPACE.fr.md) décrite ci-dessous ; les limites des géométries enregistrées restent inchangées.
+Le parcours ci-dessous utilise la [disposition de lecture et des outils](READER_WORKSPACE.fr.md) publiée en [0.50.0](RELEASE_0.50.0.fr.md) ; les limites des géométries enregistrées restent inchangées.
 
 ## Utilisation
 

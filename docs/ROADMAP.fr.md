@@ -9,7 +9,7 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.44–0.49 : fonctions locales pour les plans, séquence prévue
+## 0.44–0.50 : fonctions locales pour les plans, séquence prévue
 
 | Version | Périmètre | État actuel |
 |---|---|---|
@@ -19,12 +19,19 @@ d’authenticité ou de conformité.
 | 0.47 | Superpositions de révisions alignées | Lot livré dans ses limites ; critères complets encore ouverts. [0.47.0](RELEASE_0.47.0.fr.md). |
 | 0.48 | Modification des sommets des mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.48.0](RELEASE_0.48.0.fr.md). |
 | 0.49 | Ajout et suppression de sommets de mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.49.0](RELEASE_0.49.0.fr.md). |
+| 0.50 | Commandes de lecture et outils organisés | Lot livré dans ses limites ; critères complets encore ouverts. [0.50.0](RELEASE_0.50.0.fr.md). |
 
 L'éditeur 0.44 modifie distance de référence, unité et précision en conservant sommets et points de référence. La CLI peut remplacer explicitement la géométrie avec un enregistrement attendu ; les deux parcours conservent l'identité et refusent les cibles périmées ou incompatibles. Qualification de la source finale et limites : [Preuves](qa/RELEASE_0.44.0.json). [Périmètre et audit préalable 0.44](RELEASE_0.44.0.fr.md) · [Guide des mesures](MEASUREMENTS.fr.md).
 
 Cette séquence apporte des incréments bornés. La modification des sommets existants est incluse en 0.48, l’ajout/suppression avec sélection explicite en 0.49 ; accrochage vectoriel, recalcul par lots, vues multi-échelles, justesse sur plans réels et critères généraux 1.0 restent ouverts. AEC-001/002/003/004/026 restent partiels. Les preuves historiques ci-dessous restent attachées à leur version d’origine.
 
-## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (Latest stable)
+## 0.50.0 : commandes de lecture et outils organisés (Latest stable)
+
+[0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Retrouvez 18 outils dans cinq familles filtrables depuis Outils, avec Mesures et la bibliothèque sous Réviser et mesurer. Basculez le volet gauche entre Outils, Pages et Signets ; utilisez quatre sections de mesure à droite. Les commandes de page et de zoom sont sous le PDF, les pourcentages comme 149% restent sur une ligne et les options de lecture restent accessibles dans les dispositions compactes. La rotation de lecture change uniquement l’affichage ; le rail droit ouvre les panneaux. Un seul panneau contextuel occupe le côté droit. Un brouillon de mesure actif bloque l’ouverture des autres panneaux ; quitter explicitement l’outil ou en changer annule ce brouillon local et conserve les échelles confirmées.
+
+[Guide et limites](READER_WORKSPACE.fr.md) · [Notes de version](RELEASE_0.50.0.fr.md) · [Preuves](qa/RELEASE_0.50.0.json).
+
+## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (publiée ; Latest à cette date)
 
 [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
 

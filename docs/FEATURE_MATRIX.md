@@ -2,7 +2,13 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.49.0: adding and removing saved measurement vertices (stable Latest)
+## 0.50.0: reader controls and organized tools (stable Latest)
+
+[0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
+
+[Guide and limits](READER_WORKSPACE.md) · [Release notes](RELEASE_0.50.0.md) · [Evidence](qa/RELEASE_0.50.0.json).
+
+## 0.49.0: adding and removing saved measurement vertices (published; Latest at the time)
 
 [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
 
@@ -460,8 +466,9 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | Aligned revision overlays | Delivered in 0.47.0 | Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals. |
 | Editing saved measurement vertices | Delivered in 0.48.0 | Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded. |
 | Adding and removing saved measurement vertices | Delivered in 0.49.0 | Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded. |
-| Windows x64 | Distributed in 0.49.0 | Public packages and dist copies verified; native qualification remains open. [Evidence](qa/RELEASE_0.49.0.json). |
-| Windows ARM64 | Distributed in 0.49.0 | Cross-build and distribution verified; native ARM64 runtime remains unqualified. [Evidence](qa/RELEASE_0.49.0.json). |
+| Reader controls and organized tools | Delivered in 0.50.0 | Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales. |
+| Windows x64 | Distributed in 0.50.0 | Public packages and dist copies verified; native qualification remains open. [Evidence](qa/RELEASE_0.50.0.json). |
+| Windows ARM64 | Distributed in 0.50.0 | Cross-build and distribution verified; native ARM64 runtime remains unqualified. [Evidence](qa/RELEASE_0.50.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

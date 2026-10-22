@@ -2,7 +2,7 @@
 
 [Français](READER_WORKSPACE.fr.md) · [User guide](USER_GUIDE.en.md)
 
-This guide describes the 0.50.0 build. Published files and qualification are tracked on the [0.50.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0).
+Available in [0.50.0](RELEASE_0.50.0.md). [Evidence](qa/RELEASE_0.50.0.json).
 
 ## Find a tool
 
