@@ -24,4 +24,4 @@ Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets 
 
 ## Limites
 
-Les images référencent leur chemin d’origine : garder le fichier disponible. Vérifier la portée des pages. Enregistrer/supprimer un modèle persiste indépendamment de l’annulation du document. Pas de macro, cloud, import/export CLI ou stockage d’identité de signature. Paquets non signés et ARM64 uniquement compilé en croisé. Les autres [critères 1.0](RELEASE_1.0_CRITERIA.fr.md) restent ouverts. Projects reste différé à la demande du propriétaire.
+Les images référencent leur chemin d’origine : garder le fichier disponible. Vérifier la portée des pages. Enregistrer/supprimer un modèle persiste indépendamment de l’annulation du document. Pas de macro, import/export CLI ou stockage d’identité de signature. Paquets non signés et ARM64 uniquement compilé en croisé. Les autres [critères 1.0](RELEASE_1.0_CRITERIA.fr.md) restent ouverts. Projects reste différé à la demande du propriétaire.

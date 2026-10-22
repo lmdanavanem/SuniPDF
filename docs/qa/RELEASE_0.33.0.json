@@ -5055,7 +5055,7 @@
     "Windows packages remain unsigned; no independent update publication key is configured. Updates rely on GitHub HTTPS and same-channel SHA256.",
     "Seven PDF Association teaching examples supplement four NIST research documents; broader customer, hostile, large and complex input coverage remains open.",
     "Deterministic PDF/CMS mutation smoke tests are not coverage-guided fuzzing. Sampled CI child working sets and timings are not physical-device performance guarantees.",
-    "ARM64 is cross-built only; native hardware, physical printing/GPU windows, Narrator, interactive installation/update/save flows and Acrobat/Foxit interoperability remain separate qualification.",
+    "ARM64 is cross-built only; native hardware, physical printing/GPU windows, Narrator, interactive installation/update/save flows and other PDF readers interoperability remain separate qualification.",
     "No PDF/A/PDF/UA or archival-LTV certification is claimed. The corresponding P1 acceptance criteria remain open."
   ],
   "delivery": "Reviewed PRs were squash-merged after exact-head Windows CI and CodeQL. The separate egui PR was incorporated by the combined migration and closed. Existing owner tag-rule bypass was used without changing rules. Final main/tag CI qualify the immutable published source; the post-publication commit contains documentation only."

@@ -76,6 +76,9 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         Command::Count(args) => Some(&mut args.password),
         Command::AnnotationRegister(args) => Some(&mut args.password),
         Command::AnnotationFields(args) => Some(&mut args.password),
+        Command::PageCalibration(args) => Some(&mut args.password),
+        Command::SetPageCalibration(args) => Some(&mut args.password),
+        Command::RemovePageCalibration(args) => Some(&mut args.password),
         Command::AddFormField { password, .. }
         | Command::Inspect { password, .. }
         | Command::Ocr { password, .. }

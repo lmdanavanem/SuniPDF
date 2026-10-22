@@ -25,7 +25,7 @@ stream/page and 256 MiB cumulatively. Unsupported filters/structures are explici
 ## What remains
 
 The original, previous copies, backups, recovery snapshots and Undo history retain the original data.
-Sanitization does not securely erase disk sectors, cloud backups or files held by other applications.
+Sanitization does not securely erase disk sectors, external backups or files held by other applications.
 Visible text/images, form values, OCR text and custom application data outside the cleaned structures
 are not anonymized. Check the result before sharing. Existing digital signatures are invalidated by the
 rewrite; retain the signed original if its signature must remain verifiable.

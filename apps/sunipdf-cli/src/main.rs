@@ -2,6 +2,7 @@
 //! Même moteur que l'application de bureau : `sunipdf-core`.
 
 mod annot_cmd;
+mod calibration_cmd;
 mod feature_cmd;
 mod password_input;
 mod register_cmd;
@@ -43,6 +44,12 @@ enum Command {
     AnnotationRegister(register_cmd::RegisterArgs),
     /// Replace business/custom fields or regroup a count marker in a new PDF copy.
     AnnotationFields(register_cmd::FieldsArgs),
+    /// Read persisted page calibration as JSON. Existing measurements keep their own scale.
+    PageCalibration(calibration_cmd::ReadArgs),
+    /// Persist a page scale for new measurements in a new PDF copy; never recalculate annotations.
+    SetPageCalibration(calibration_cmd::SetArgs),
+    /// Remove a persisted page scale in a new PDF copy; existing measurements remain unchanged.
+    RemovePageCalibration(calibration_cmd::RemoveArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -52,10 +59,21 @@ enum Command {
         #[arg(long)]
         points: String,
         /// Two displayed-page points delimiting the known distance: "x,y x,y".
-        #[arg(long)]
-        calibration: String,
-        #[arg(long)]
-        known_distance: f64,
+        #[arg(
+            long,
+            required_unless_present = "use_page_calibration",
+            conflicts_with = "use_page_calibration"
+        )]
+        calibration: Option<String>,
+        #[arg(
+            long,
+            required_unless_present = "use_page_calibration",
+            conflicts_with = "use_page_calibration"
+        )]
+        known_distance: Option<f64>,
+        /// Use this page's persisted scale for this new annotation; convert it to --unit.
+        #[arg(long, conflicts_with_all = ["calibration", "known_distance"])]
+        use_page_calibration: bool,
         #[arg(long, value_parser=["mm","cm","m","in","ft"], default_value="m")]
         unit: String,
         #[arg(long, default_value_t=2, value_parser=clap::value_parser!(u8).range(0..=4))]
@@ -1555,12 +1573,16 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 serde_json::json!({"out":out,"page":page,"index":index,"subtype":"Stamp","original_unchanged":true,"encrypted":doc.properties().encrypted}),
             )
         }
+        Command::PageCalibration(args) => calibration_cmd::read(&engine, args),
+        Command::SetPageCalibration(args) => calibration_cmd::set(&engine, args),
+        Command::RemovePageCalibration(args) => calibration_cmd::remove(&engine, args),
         Command::Measure {
             file,
             kind,
             points,
             calibration,
             known_distance,
+            use_page_calibration,
             unit,
             precision,
             page,
@@ -1570,23 +1592,42 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
             let mut doc = engine.open(&file, password.as_deref())?;
+            let page_number = page_index(page, doc.page_count())?;
+            let unit = MeasurementUnit::from_id(&unit)
+                .ok_or_else(|| EngineError::Other("invalid measurement unit".into()))?;
+            let (calibration, known_distance) = if use_page_calibration {
+                let saved = doc.page_calibration(page_number)?.ok_or_else(|| {
+                    EngineError::Other("page has no persisted calibration; set-page-calibration first or provide an explicit calibration".into())
+                })?;
+                (
+                    saved.points,
+                    saved.known_distance * saved.unit.metres() / unit.metres(),
+                )
+            } else {
+                let points = calibration
+                    .as_deref()
+                    .ok_or_else(|| EngineError::Other("calibration requires two points".into()))?;
+                let distance = known_distance.ok_or_else(|| {
+                    EngineError::Other("calibration requires a known distance".into())
+                })?;
+                (
+                    annot_cmd::parse_stroke(points)?.try_into().map_err(|_| {
+                        EngineError::Other("calibration requires two points".into())
+                    })?,
+                    distance,
+                )
+            };
             let measurement = Measurement {
                 kind: MeasurementKind::from_id(&kind)
                     .ok_or_else(|| EngineError::Other("invalid measurement kind".into()))?,
                 points: annot_cmd::parse_stroke(&points)?,
-                calibration: annot_cmd::parse_stroke(&calibration)?
-                    .try_into()
-                    .map_err(|_| EngineError::Other("calibration requires two points".into()))?,
+                calibration,
                 known_distance,
-                unit: MeasurementUnit::from_id(&unit)
-                    .ok_or_else(|| EngineError::Other("invalid measurement unit".into()))?,
+                unit,
                 precision: usize::from(precision),
             };
-            let index = doc.add_measurement_annotation(
-                page_index(page, doc.page_count())?,
-                &measurement,
-                author.as_deref(),
-            )?;
+            let index =
+                doc.add_measurement_annotation(page_number, &measurement, author.as_deref())?;
             sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
             Ok(
                 serde_json::json!({"out":out,"page":page,"index":index,"measurement":measurement.result()?,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
@@ -2880,6 +2921,8 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),
         Command::AnnotationRegister(args) => args.out.as_deref(),
+        Command::SetPageCalibration(args) => Some(&args.out),
+        Command::RemovePageCalibration(args) => Some(&args.out),
         Command::Merge { out, .. }
         | Command::BookmarkAdd { out, .. }
         | Command::BookmarkRename { out, .. }
@@ -3497,6 +3540,171 @@ mod tests {
         ])
         .is_ok());
         assert!(parse_cli(["sunipdf-cli", "measure", "source.pdf", "--out", "new.pdf"]).is_err());
+    }
+
+    #[test]
+    fn page_calibration_commands_require_explicit_pages_and_new_copies() {
+        let read = parse_cli([
+            "sunipdf-cli",
+            "page-calibration",
+            "source.pdf",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert!(matches!(
+            read.command,
+            Command::PageCalibration(calibration_cmd::ReadArgs { page: None, .. })
+        ));
+        assert!(output_path(&read.command).is_none());
+        let set = parse_cli([
+            "sunipdf-cli",
+            "set-page-calibration",
+            "source.pdf",
+            "--page",
+            "2",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "10",
+            "--unit",
+            "ft",
+            "--out",
+            "new.pdf",
+            "--password-env",
+            "PDF_CREDENTIAL",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(set.overwrite);
+        assert_eq!(
+            output_path(&set.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(matches!(
+            set.command,
+            Command::SetPageCalibration(calibration_cmd::SetArgs {
+                page: 2,
+                known_distance: 10.0,
+                ..
+            })
+        ));
+        let remove = parse_cli([
+            "sunipdf-cli",
+            "remove-page-calibration",
+            "source.pdf",
+            "--page",
+            "1",
+            "--out",
+            "new.pdf",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&remove.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "page-calibration",
+            "source.pdf",
+            "--page",
+            "0"
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "remove-page-calibration",
+            "source.pdf",
+            "--page",
+            "1"
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-page-calibration",
+            "source.pdf",
+            "--page",
+            "1",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "NaN",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn measurement_saved_scale_is_explicit_and_conflicts_with_manual_calibration() {
+        let measured = parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--use-page-calibration",
+            "--unit",
+            "ft",
+            "--out",
+            "new.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(
+            measured.command,
+            Command::Measure {
+                calibration: None,
+                known_distance: None,
+                use_page_calibration: true,
+                ..
+            }
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--use-page-calibration",
+            "--known-distance",
+            "10",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--use-page-calibration",
+            "--calibration",
+            "40,40 140,40",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--calibration",
+            "40,40 140,40",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
     }
 
     #[test]

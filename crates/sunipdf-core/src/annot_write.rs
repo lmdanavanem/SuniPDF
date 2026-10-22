@@ -2177,7 +2177,7 @@ mod tests {
     fn rights_follow_subtype_producer_and_lock() {
         let c = caps("Square", 4, Some("SuniPDF-00"));
         assert!(c.ours && c.can_move && c.can_resize && c.can_restyle && c.can_edit_text);
-        let c = caps("Square", 4, Some("Acrobat-1"));
+        let c = caps("Square", 4, Some("External-1"));
         assert!(!c.ours && c.can_move && !c.can_resize && !c.can_restyle);
         let c = caps("Highlight", 4, None);
         assert!(!c.can_move && c.can_restyle && c.can_edit_text);

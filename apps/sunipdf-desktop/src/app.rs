@@ -777,9 +777,11 @@ impl SuniApp {
                     can_undo,
                     can_redo,
                     pages_unchanged,
+                    measurement_scales_unchanged,
                     modified,
                     has_signatures,
                 }) => {
+                    self.measurement_scale_changed();
                     self.annotate.register.invalidate();
                     self.docinfo.inspection_epoch = None;
                     self.docinfo.inspection = None;
@@ -826,7 +828,7 @@ impl SuniApp {
                         // Retouche : l'image reste affichée jusqu'aux nouvelles tuiles.
                         self.view
                             .on_document_changed(pages_unchanged, same_sizes, doc.page);
-                        if pages_unchanged && same_sizes {
+                        if measurement_scales_unchanged && same_sizes {
                             self.annotate.measure.advance_epoch(self.view.epoch);
                         } else {
                             self.annotate.measure.invalidate(self.view.epoch);
@@ -929,6 +931,14 @@ impl SuniApp {
                     generation,
                     result,
                 } => self.on_annotation_register(epoch, generation, result),
+                Response::MeasurementPage {
+                    page,
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_measurement_page(page, epoch, generation, result);
+                }
                 Response::Annotations {
                     page,
                     list,
@@ -1004,6 +1014,7 @@ impl SuniApp {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    self.measurement_scale_failed(&e);
                     self.register_edit_failed(&e);
                     self.rich_annotation_failed(&e);
                     if let Some(draft) = self.edit.paragraph.as_mut().filter(|d| d.applying) {
@@ -1269,6 +1280,7 @@ impl SuniApp {
 
     pub(crate) fn navigation_blocked(&self) -> bool {
         self.review.busy
+            || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
             || self.annotate.register.dialog_open()
             || self.edit.paragraph.is_some()
@@ -1286,6 +1298,7 @@ impl SuniApp {
 
     fn close_must_wait(&self) -> bool {
         self.review.busy
+            || self.annotate.measure.saved.dialog_open()
             || self.annotate.measure.is_active_draft()
             || self.annotate.register.dialog_open()
             || self.edit.paragraph.is_some()
@@ -1604,6 +1617,7 @@ impl SuniApp {
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
         self.review.open
+            || self.annotate.measure.saved.dialog_open()
             || self.annotate.register.dialog_open()
             || self.review.busy
             || self.processing.open
@@ -1934,7 +1948,7 @@ impl SuniApp {
                     return;
                 };
                 if pages.len() != 1 {
-                    return; // ponytail: un seul déplacement à la fois ; blocs contigus plus tard.
+                    return; // un seul déplacement à la fois ; blocs contigus plus tard.
                 }
                 let count = doc.info.page_count();
                 let to = if command == Command::MovePageLeft {
@@ -3197,6 +3211,7 @@ impl eframe::App for SuniApp {
         self.text_prompt_dialog(&ctx);
         self.paragraph_dialog(&ctx);
         self.rich_annotation_dialog(&ctx);
+        self.saved_measurements_dialog(&ctx);
         self.annotation_register_dialog(&ctx);
         self.count_marker_dialog(&ctx);
         self.page_setup_dialog(&ctx);
@@ -4190,6 +4205,7 @@ pub(crate) mod tests {
                     can_redo: false,
                     modified: dirty,
                     pages_unchanged: false,
+                    measurement_scales_unchanged: false,
                     has_signatures: false,
                 }))
                 .unwrap();
@@ -4479,6 +4495,7 @@ pub(crate) mod tests {
                     can_redo: false,
                     modified: false,
                     pages_unchanged: false,
+                    measurement_scales_unchanged: false,
                     has_signatures: false,
                 }))
                 .unwrap();
@@ -4500,6 +4517,7 @@ pub(crate) mod tests {
             can_redo: false,
             modified,
             pages_unchanged: false,
+            measurement_scales_unchanged: false,
             has_signatures: false,
         })
     }
@@ -4752,6 +4770,7 @@ pub(crate) mod tests {
                 can_redo: false,
                 modified: false,
                 pages_unchanged: false,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();
@@ -4895,6 +4914,7 @@ pub(crate) mod tests {
                 can_redo: false,
                 modified: true,
                 pages_unchanged: false,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();

@@ -3,8 +3,8 @@
 SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre SuniPDF 0.42.0. État de publication et contrôles exécutés dans
-[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.42.0.fr.md) décrit
+Ce guide couvre SuniPDF 0.43.0. État de publication et contrôles exécutés dans
+[l’état du projet](PROJECT_STATUS.fr.md). Le [périmètre de la version](RELEASE_0.43.0.fr.md) décrit
 les entrées compatibles et les refus. L’anglais reste la langue par défaut ; le français est disponible
 dans les réglages.
 
@@ -33,15 +33,39 @@ existants. **Échap** ou **Annuler le tracé** abandonne le brouillon. Terminez 
 de page, de document ou d’outil.
 
 Chaque page possède sa propre échelle de session. Les modifications ordinaires d’annotations et les
-changements habituels d’onglet conservent les échelles confirmées ; les changements de géométrie ou de
-structure des pages les effacent. Fermer puis rouvrir le document demande une nouvelle calibration pour
-les prochaines mesures. Un changement d’unité convertit la distance confirmée. Les mesures enregistrées
-gardent leur propre géométrie et échelle ; une nouvelle calibration ne modifie pas les mesures existantes.
+changements habituels d’onglet conservent les échelles confirmées ; les changements de géométrie, de
+structure ou de contenu des pages les effacent. L'échelle de session est prioritaire sur l'échelle de page enregistrée.
+Un changement d’unité convertit la distance confirmée. Les mesures enregistrées gardent leur propre
+géométrie et échelle ; une nouvelle calibration ne modifie pas les mesures existantes.
 
-Recréez une mesure appliquée pour changer ses sommets ou son échelle. Échelles de page communes
-persistantes, recalcul global, accrochage aux vecteurs et vues multi-échelles restent indisponibles.
-Vérifiez la distance connue et la révision du plan : une valeur calculée ne garantit pas la justesse
-physique. Le [guide des mesures](MEASUREMENTS.fr.md) détaille format ouvert, CLI et limites géométriques.
+Pour conserver l'échelle après fermeture/réouverture, cliquez sur **Enregistrer l’échelle dans le PDF**
+après calibration, puis enregistrez le fichier PDF. L'échelle est réutilisée lorsqu'elle reste valide.
+**Retirer l’échelle enregistrée** retire l'échelle par défaut de cette page, en conservant une calibration
+de session choisie explicitement ; enregistrez le fichier pour conserver le retrait. **Annuler**/**Rétablir**
+restaurent l'état du document et relisent son échelle ; ils ne restaurent pas une échelle de session effacée. Ajout et retrait exigent le droit de modification
+du document ; créer une mesure exige le droit d'annotation. Rotation et réorganisation conservent une
+échelle compatible. Limites de rognage ou contenu décodé modifiés, données incompatibles et `UserUnit`
+non standard provoquent un refus ; recalibrez ou retirez une échelle périmée reconnue. Les échelles de
+session non enregistrées disparaissent à la fermeture. Ces gardes n'authentifient pas toutes les révisions.
+
+Ouvrez **Mesures enregistrées** dans la barre de mesure pour inspecter la page courante. La liste en
+lecture seule présente valeur/unité, type, indice, identifiant éventuel, nombre de sommets, précision et
+distance connue des mesures non angulaires, par groupes de 50. **Voir sur la page** sélectionne l'annotation réelle
+et ouvre ses commentaires. **Utiliser cette échelle** copie la calibration d'une mesure non angulaire
+dans la session de la page pour les prochaines mesures, sans changer les données existantes. Les points
+de référence hors page sont refusés. **Enregistrer l’échelle dans le PDF** reste une action distincte.
+**Actualiser** relit l'état courant ; fermez l'inspecteur avant de tracer ou de changer de document.
+
+La CLI propose `page-calibration`, `set-page-calibration` et `remove-page-calibration`.
+`measure --use-page-calibration` utilise une échelle enregistrée valide et la convertit vers `--unit` ;
+les options manuelles `--calibration`/`--known-distance` sont alors exclues. Les écritures exigent une
+nouvelle destination, même avec `--overwrite`. Pour les mots de passe, utilisez les options environnement
+ou stdin. [Exemples et bornes](MEASUREMENTS.fr.md#cli-et-données).
+
+Recréez une mesure appliquée pour changer ses sommets ou son échelle. Recalcul global, accrochage aux
+vecteurs et vues multi-échelles restent indisponibles. Vérifiez la distance connue et la révision du
+plan : une valeur calculée ne garantit pas la justesse physique. Le [guide des mesures](MEASUREMENTS.fr.md)
+détaille format ouvert, permissions et limites géométriques.
 
 ## Préparer une signature visuelle
 
@@ -161,7 +185,7 @@ fichier puis démarre.
 - Chaque onglet garde son outil actif.
 - La barre d'outils principale garde un accès rapide : Ouvrir, Enregistrer, Annuler, Rétablir, Mesures.
 
-Les 15 espaces d’outils de la 0.42.0 comprennent **Mesures**, **Numériser et OCR**, **Préparer un formulaire** et
+Les 15 espaces d’outils de la 0.43.0 comprennent **Mesures**, **Numériser et OCR**, **Préparer un formulaire** et
 **Utiliser un certificat**. Remplir et signer conserve le remplissage et la signature visuelle ;
 la signature numérique dispose de son propre outil.
 
@@ -304,7 +328,7 @@ relecture (Aucun, Accepté, Refusé, Annulé, Terminé), réponses en retrait. *
 sur la page, le menu de statut change l'état du fil, la corbeille supprime l'annotation et ses réponses, un clic sur
 le titre d'une carte la sélectionne sur la page. Le champ **Auteur** (mémorisé dans vos préférences, vide par défaut)
 est écrit dans les annotations, réponses et statuts créés ensuite. Fils et statuts suivent la norme PDF mais leur
-affichage dans Acrobat ou Foxit n'a pas été vérifié. Toute annotation est annulable (Ctrl+Z) ; un document protégé
+affichage dans d'autres lecteurs PDF n'a pas été vérifié. Toute annotation est annulable (Ctrl+Z) ; un document protégé
 par mot de passe le reste après annotation, et les pages pivotées ou recadrées sont respectées.
 
 ## Éditer le contenu
@@ -754,7 +778,7 @@ sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --
 **Disponible en 0.16.0 :** ajoutez `--dashed` à `annotate --kind square|circle|line|arrow` pour le motif fixe
 `[6,3]` points. `annotations` renvoie le tableau réel `dash_pattern`. Sans ce drapeau, comportement continu
 existant inchangé. Drapeau refusé pour les types non pris en charge ; requête invalide : aucune sortie créée ou
-sortie existante préservée, même avec `--overwrite`. La CLI propose 62 commandes ; consulter `--help`.
+sortie existante préservée, même avec `--overwrite`. Consulter `sunipdf-cli --help` pour la liste actuelle des commandes.
 
 ```powershell
 sunipdf-cli annotate input.pdf --kind square --rect 40,40,240,140 --dashed --out dashed.pdf

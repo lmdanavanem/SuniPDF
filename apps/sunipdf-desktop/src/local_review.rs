@@ -619,6 +619,7 @@ mod tests {
                 can_redo: false,
                 modified: false,
                 pages_unchanged: true,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();

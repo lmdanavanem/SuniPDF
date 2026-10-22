@@ -2,7 +2,7 @@
 
 ## Nouveautés
 
-Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations ; cloud et collaboration restent reportés. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées.
+Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées.
 
 ## Validation
 
@@ -18,9 +18,9 @@ Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets 
 
 ## Limites
 
-- Comptages manuels explicites : un élément par repère SuniPDF. Reconnaissance de symboles, comptage automatique et import des métadonnées de comptage propriétaires Bluebeam non annoncés.
+- Comptages manuels explicites : un élément par repère SuniPDF. Reconnaissance de symboles, comptage automatique et import des métadonnées de comptage propriétaires externes non annoncés.
 - Tableau limité à 1000 pages, 10000 annotations au total, 4096 par page, 4 Mio de métadonnées et 64 niveaux de réponses. Métadonnées SuniPDF inconnues ou malformées : refus de l’export complet. La consultation et l’export du tableau nécessitent le droit de copie PDF.
 - Filtres nommés par texte exact ; recherche dans les champs personnalisés. Dates PDF conservées et triées lexicalement, sans normalisation des fuseaux. Champs personnalisés texte uniquement, maximum 16 ; colonnes typées, formules et tri par clé personnalisée restent à développer.
 - Les exports décrivent l’instantané PDF courant en mémoire. JSON conserve valeurs nulles et liens vers les repères ; CSV utilise des cellules vides pour les inconnus et protège les préfixes de formule. Aucun fichier de sortie existant ou original n’est remplacé.
-- Les fonctions locales restent gratuites et open source. Cloud, collaboration, déploiement, prix et modifications Projects restent reportés.
+- Les fonctions locales restent gratuites et open source. Les modifications Projects restent reportées.
 - Paquets non signés faute de clé de publication indépendante ; ARM64 compilé uniquement. Matériel, impression physique, Narrateur, interaction de mise à jour installée, corpus élargi et conformité PDF/A/PDF/UA restent des qualifications 1.0 distinctes.

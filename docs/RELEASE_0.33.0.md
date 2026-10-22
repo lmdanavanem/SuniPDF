@@ -30,7 +30,7 @@
 
 Windows packages remain unsigned and no independent update publication key is configured. Updates still
 depend on GitHub HTTPS and same-channel SHA256. ARM64 is cross-built only. Physical printers/GPU windows,
-Narrator, interactive installation/update/save flows, Acrobat/Foxit interoperability, broader real/hostile
+Narrator, interactive installation/update/save flows, other PDF readers interoperability, broader real/hostile
 corpus coverage and coverage-guided fuzzing remain separate qualification. No PDF/A/PDF/UA or archival-LTV
 certification is claimed. Downloaded examples and derived PDF copies are excluded from Git/packages.
 

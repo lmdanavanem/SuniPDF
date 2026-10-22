@@ -19,7 +19,7 @@ use sunipdf_core::{
     ShapeStyle, Stamp, SystemFont, TextMatch, TextSelection, TextStyle, TileJob, ZOrder,
 };
 
-/// Plafond du cache de rendu. ponytail: constante ; réglage utilisateur quand un besoin réel apparaîtra.
+/// Plafond du cache de rendu. constante ; réglage utilisateur quand un besoin réel apparaîtra.
 const CACHE_BYTES: usize = 256 * 1024 * 1024;
 /// Plafonds du journal d'annulation (instantanés complets du PDF).
 const UNDO_MAX_ENTRIES: usize = 50;
@@ -94,6 +94,7 @@ pub struct Snapshot {
     bytes: Vec<u8>,
     password: Option<String>,
     pages_unchanged: bool,
+    measurement_scales_unchanged: bool,
 }
 
 /// Tâche de fichiers (non annulable : produit de nouveaux fichiers, le document ouvert est intact).
@@ -251,6 +252,10 @@ pub enum EditOp {
     CommitRichAnnotationPreview {
         epoch: u64,
         generation: u64,
+    },
+    SetPageCalibration {
+        page: usize,
+        calibration: Option<sunipdf_core::measurement::PageCalibration>,
     },
     PreparedRichAnnotation(sunipdf_core::annot_rich::PreparedRichAnnotation),
     ResizeObjects {
@@ -462,6 +467,46 @@ pub enum EditOp {
 }
 
 impl EditOp {
+    /// Session calibration is valid only while both page geometry and plan content are unchanged.
+    fn keeps_measurement_scales(&self) -> bool {
+        matches!(
+            self,
+            Self::SetPageLabels(_)
+                | Self::ResetPageLabels
+                | Self::AddFormField { .. }
+                | Self::Markup { .. }
+                | Self::Note { .. }
+                | Self::DeleteAnnotation { .. }
+                | Self::Bytes(
+                    BytesOp::Bookmark(_)
+                        | BytesOp::Protect { .. }
+                        | BytesOp::Unprotect(_)
+                        | BytesOp::SetMetadata(_)
+                        | BytesOp::StripMetadata,
+                )
+                | Self::SetPageCalibration { .. }
+                | Self::PreparedRichAnnotation(_)
+                | Self::CommitRichAnnotationPreview { .. }
+                | Self::FillForm { .. }
+                | Self::ClearForm
+                | Self::AddInk { .. }
+                | Self::AddAnnotShape { .. }
+                | Self::AddFreeText { .. }
+                | Self::AddLink { .. }
+                | Self::SetLinkTarget { .. }
+                | Self::MoveAnnotation { .. }
+                | Self::ResizeAnnotation { .. }
+                | Self::StyleAnnotation { .. }
+                | Self::SetAnnotationText { .. }
+                | Self::AddCountMarker { .. }
+                | Self::SetAnnotationRegisterFields { .. }
+                | Self::UpdateFreeText { .. }
+                | Self::DeleteAnnotationThread { .. }
+                | Self::Reply { .. }
+                | Self::SetReviewStatus { .. }
+        )
+    }
+
     /// Vrai si l'opération ne change ni le nombre, ni l'ordre, ni la taille des pages (objets,
     /// annotations, tampon) : l'UI garde alors l'image affichée jusqu'à l'arrivée des tuiles neuves.
     pub fn keeps_pages(&self) -> bool {
@@ -643,6 +688,11 @@ pub enum Request {
         epoch: u64,
         generation: u64,
     },
+    MeasurementPage {
+        page: usize,
+        epoch: u64,
+        generation: u64,
+    },
     /// Zones de lien de la page (cliquables dans la vue).
     Links {
         page: usize,
@@ -737,6 +787,8 @@ pub struct DocState {
     /// Modification de contenu seulement (`EditOp::keeps_pages`) : pages identiques en nombre,
     /// ordre et taille.
     pub pages_unchanged: bool,
+    /// True only for changes that preserve page geometry and underlying plan content.
+    pub measurement_scales_unchanged: bool,
     pub has_signatures: bool,
 }
 
@@ -840,6 +892,12 @@ pub enum Response {
         epoch: u64,
         generation: u64,
         result: Result<sunipdf_core::annotation_register::AnnotationRegister, EngineError>,
+    },
+    MeasurementPage {
+        page: usize,
+        epoch: u64,
+        generation: u64,
+        result: Result<crate::measurement_saved::MeasurementPageData, EngineError>,
     },
     Links {
         page: usize,
@@ -1076,6 +1134,7 @@ impl State<'_> {
             can_redo: !self.redo.is_empty(),
             modified: self.modified(),
             pages_unchanged: false,
+            measurement_scales_unchanged: false,
             has_signatures: d.signature_count() != 0,
         })
     }
@@ -1124,6 +1183,7 @@ impl State<'_> {
         // Décalages clavier consécutifs du même objet : l'instantané pris avant le premier suffit.
         let coalesce = nudge.is_some() && nudge == self.last_nudge && !self.undo.is_empty();
         let keeps_pages = op.keeps_pages();
+        let keeps_measurement_scales = op.keeps_measurement_scales();
         let Some(doc) = &mut self.document else {
             return Response::OperationFailed(EngineError::Other("no document".into()));
         };
@@ -1135,6 +1195,7 @@ impl State<'_> {
                     bytes,
                     password: doc.password().map(str::to_owned),
                     pages_unchanged: keeps_pages,
+                    measurement_scales_unchanged: keeps_measurement_scales,
                 }),
                 Err(e) => return Response::OperationFailed(e),
             }
@@ -1149,6 +1210,7 @@ impl State<'_> {
                 self.invalidate();
                 Response::DocumentChanged(DocState {
                     pages_unchanged: keeps_pages,
+                    measurement_scales_unchanged: keeps_measurement_scales,
                     ..self.doc_state().expect("document ouvert")
                 })
             }
@@ -1178,6 +1240,7 @@ impl State<'_> {
             bytes: doc.snapshot()?,
             password: doc.password().map(str::to_owned),
             pages_unchanged: false,
+            measurement_scales_unchanged: false,
         };
         match apply(doc) {
             Ok(report) => {
@@ -1208,6 +1271,7 @@ impl State<'_> {
                 bytes,
                 password: doc.password().map(str::to_owned),
                 pages_unchanged: target.pages_unchanged,
+                measurement_scales_unchanged: target.measurement_scales_unchanged,
             },
             Err(e) => {
                 from.push(target);
@@ -1220,11 +1284,13 @@ impl State<'_> {
             return Some(Response::OperationFailed(e));
         }
         let pages_unchanged = target.pages_unchanged;
+        let measurement_scales_unchanged = target.measurement_scales_unchanged;
         to.push(current);
         self.last_nudge = None;
         self.invalidate();
         Some(Response::DocumentChanged(DocState {
             pages_unchanged,
+            measurement_scales_unchanged,
             ..self.doc_state()?
         }))
     }
@@ -1311,7 +1377,45 @@ mod save_point_tests {
             bytes: vec![n],
             password: None,
             pages_unchanged: false,
+            measurement_scales_unchanged: false,
         }
+    }
+
+    #[test]
+    fn page_render_reuse_does_not_imply_calibration_survives_object_transforms() {
+        for op in [
+            EditOp::ResizeObjects {
+                page: 0,
+                indices: vec![0],
+                bounds: PointRect {
+                    left: 0.0,
+                    bottom: 0.0,
+                    right: 200.0,
+                    top: 100.0,
+                },
+            },
+            EditOp::RotateObjects {
+                page: 0,
+                indices: vec![0],
+                degrees: 90.0,
+            },
+            EditOp::MoveObjects {
+                page: 0,
+                indices: vec![0],
+                dx: 5.0,
+                dy: 0.0,
+            },
+            EditOp::FlattenForm { pages: None },
+        ] {
+            assert!(op.keeps_pages());
+            assert!(!op.keeps_measurement_scales());
+        }
+        assert!(EditOp::SetPageCalibration {
+            page: 0,
+            calibration: None
+        }
+        .keeps_measurement_scales());
+        assert!(EditOp::DeleteAnnotation { page: 0, index: 0 }.keeps_measurement_scales());
     }
 
     #[test]
@@ -1482,6 +1586,9 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         } => doc
             .add_count_marker(page, point, size, &group, author.as_deref())
             .map(|_| ()),
+        EditOp::SetPageCalibration { page, calibration } => {
+            doc.set_page_calibration(page, calibration.as_ref())
+        }
         EditOp::SetAnnotationRegisterFields {
             target,
             fields,
@@ -1961,6 +2068,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         bytes: doc.snapshot()?,
                         password: doc.password().map(str::to_owned),
                         pages_unchanged: true,
+                        measurement_scales_unchanged: false,
                     };
                     let report = doc.ocr(&options, &cancel, |done, total| {
                         let _ = tx.send(Response::TaskProgress {
@@ -2018,6 +2126,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         bytes: doc.snapshot()?,
                         password: doc.password().map(str::to_owned),
                         pages_unchanged: true,
+                        measurement_scales_unchanged: false,
                     };
                     doc.place_signature_image(
                         &pages,
@@ -2568,6 +2677,24 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &state.document else { continue };
                 Response::Bookmarks(doc.bookmarks())
             }
+            Request::MeasurementPage {
+                page,
+                epoch,
+                generation,
+            } => Response::MeasurementPage {
+                page,
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .map(|doc| crate::measurement_saved::MeasurementPageData {
+                        calibration: doc.page_calibration(page).map_err(|e| e.to_string()),
+                        records: doc.measurement_records(page).map_err(|e| e.to_string()),
+                        can_modify: doc.properties().can_modify,
+                    }),
+            },
             Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
                 epoch,
                 generation,
@@ -2734,6 +2861,143 @@ mod tests {
         reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
         inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
+        page_calibration_edits_have_history_and_survive_reopening(&worker);
+    }
+
+    fn page_calibration_edits_have_history_and_survive_reopening(worker: &Worker) {
+        use sunipdf_core::measurement::{MeasurementUnit, PageCalibration};
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let read = |page| {
+            worker.send(Request::MeasurementPage {
+                page,
+                epoch: 73,
+                generation: 8,
+            });
+            match next_response(worker) {
+                Response::MeasurementPage {
+                    page: actual,
+                    epoch: 73,
+                    generation: 8,
+                    result: Ok(data),
+                } if page == actual => {
+                    assert!(data.can_modify);
+                    assert!(data.records.unwrap().is_empty());
+                    data.calibration.unwrap()
+                }
+                _ => panic!("page calibration response"),
+            }
+        };
+        let calibration = PageCalibration {
+            points: [(50.0, 60.0), (150.0, 60.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+        };
+        assert!(read(0).is_none());
+        worker.send(Request::Edit(EditOp::SetPageCalibration {
+            page: 0,
+            calibration: Some(calibration.clone()),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: true,
+                modified: true,
+                pages_unchanged: true,
+                measurement_scales_unchanged: true,
+                ..
+            })
+        ));
+        assert_eq!(read(0), Some(calibration.clone()));
+        assert!(read(1).is_none(), "the other page has no inherited scale");
+        let mut invalid = calibration.clone();
+        invalid.known_distance = 0.0;
+        worker.send(Request::Edit(EditOp::SetPageCalibration {
+            page: 0,
+            calibration: Some(invalid),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(read(0), Some(calibration.clone()));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert!(
+            read(0).is_none(),
+            "a failed setter must not add an undo step"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(0), Some(calibration.clone()));
+        worker.send(Request::Edit(EditOp::SetPageCalibration {
+            page: 0,
+            calibration: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(read(0).is_none());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(0), Some(calibration.clone()));
+        let temp = tempfile::tempdir().unwrap();
+        let output = temp.path().join("page-calibration.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(read(0), Some(calibration.clone()));
+        assert!(read(1).is_none());
+        worker.send(Request::Edit(EditOp::AddText {
+            page: 0,
+            x: 50.0,
+            y: 200.0,
+            text: "Changed plan".into(),
+            style: TextStyle::default(),
+        }));
+        for request in [None, Some(Request::Undo), Some(Request::Redo)] {
+            if let Some(request) = request {
+                worker.send(request);
+            }
+            assert!(
+                matches!(
+                    next_response(worker),
+                    Response::DocumentChanged(DocState {
+                        pages_unchanged: true,
+                        measurement_scales_unchanged: false,
+                        ..
+                    })
+                ),
+                "content history must revoke session scales without changing render reuse"
+            );
+        }
+        assert_eq!(std::fs::read(source).unwrap(), original);
     }
 
     fn count_register_edits_have_one_undo_and_stale_edits_add_no_history(worker: &Worker) {

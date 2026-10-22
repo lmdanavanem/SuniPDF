@@ -5311,7 +5311,7 @@
   "limits": [
     "Editable foreground images only; inspect before saving. No background/tile layer, animation, DRM or signature verification.",
     "Images: 64 MiB, 4096 pixels per side and four million pixels; 1000 selected pages and 64 million image pixels across pages.",
-    "Native Windows interaction, keyboard layouts and Narrator remain unqualified. Explorer and MCP integration remain open.",
+    "Native Windows interaction, keyboard layouts and Narrator remain unqualified. Explorer integration remains open.",
     "Windows packages remain unsigned without an independent publication key; ARM64 is cross-built only.",
     "Physical hardware, interactive installed updates/save, named third-party readers, broader hostile/customer corpus and PDF/A/PDF/UA conformance remain separate 1.0 qualification."
   ],

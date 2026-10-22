@@ -38,6 +38,7 @@ pub mod local_review;
 pub mod measurement;
 pub mod ocr;
 pub mod office;
+mod page_calibration;
 pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
@@ -73,6 +74,7 @@ pub use forms::{
 };
 pub use geometry::PageGeometry;
 pub use links::{is_safe_external_uri, Destination, DestinationView, LinkInfo};
+pub use measurement::{MeasurementRecord, PageCalibration};
 pub use page_labels::{PageLabelRange, PageLabelStyle};
 pub use pages::{write_atomic, write_new_copy, Rotation};
 pub use redact::{RedactMark, RedactOptions, RedactReport};

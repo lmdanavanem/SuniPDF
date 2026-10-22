@@ -24,4 +24,4 @@ Native Windows interaction, keyboard layouts and Narrator remain unqualified. Pa
 
 ## Limits
 
-Image presets reference the original path; keep the file available. Scope is checked each time. Explicit preset save/delete persists independently of cancelling the document operation. No macro, cloud sync, CLI preset import/export or signing-identity storage. Packages remain unsigned and ARM64 is cross-built only. Other [1.0 criteria](RELEASE_1.0_CRITERIA.md) stay open. Projects edits remain deferred at the owner's request.
+Image presets reference the original path; keep the file available. Scope is checked each time. Explicit preset save/delete persists independently of cancelling the document operation. No macro, CLI preset import/export or signing-identity storage. Packages remain unsigned and ARM64 is cross-built only. Other [1.0 criteria](RELEASE_1.0_CRITERIA.md) stay open. Projects edits remain deferred at the owner's request.

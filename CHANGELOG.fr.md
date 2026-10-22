@@ -17,7 +17,7 @@ Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Ca
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
-Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations ; cloud et collaboration restent reportés. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées.
+Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées.
 
 PR #16 fusionnée après CI/CodeQL sur la révision exacte.
 
@@ -27,7 +27,7 @@ PR #16 fusionnée après CI/CodeQL sur la révision exacte.
 
 [0.40.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) sous `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
 
-Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local ; cloud et collaboration reportés à la demande du propriétaire, tarifs ultérieurs.
+Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local.
 
 PR #14 fusionnée après CI/CodeQL sur la révision exacte.
 
@@ -613,7 +613,7 @@ Annotations avancées, nouvelle identité visuelle et préparation de la publica
   actions de lancement ou de script ne sont jamais exécutées.
 - **Fils de réponses et statuts de relecture** dans le panneau Commentaires (réponses en retrait, statut Accepté /
   Refusé / Annulé / Terminé, auteur mémorisé, date, suppression du fil), écrits selon la norme PDF (affichage dans
-  Acrobat / Foxit non vérifié).
+  d'autres lecteurs PDF non vérifié).
 - CLI : `annotations`, `annotate` (`ink`, `square`, `circle`, `line`, `arrow`, `freetext`, `link`), `reply`,
   `review-state`, `annotation-delete` (41 commandes).
 - Fixture `annotated.pdf` (12 annotations de plusieurs producteurs) ; 40 tests de plus (207 au total).
@@ -625,7 +625,7 @@ Annotations avancées, nouvelle identité visuelle et préparation de la publica
 
 ## [0.5.0] — 2026-10-15
 
-Vague 2 du backlog, chaque tranche implémentée, revue par un agent indépendant, corrigée puis re-revue :
+Vague 2 du backlog, chaque tranche implémentée, revue indépendamment, corrigée puis re-revue :
 correctifs des 39 constats de la revue adverse, signature visuelle (moitié « signer » de Remplir et signer),
 formulaires AcroForm (moitié « remplir »), chiffrement AES-256 et mots de passe normalisés, distribution.
 

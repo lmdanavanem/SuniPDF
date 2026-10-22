@@ -16,13 +16,13 @@ Measurements now has a labelled toolbar button and its own All tools workspace. 
 
 Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
 
-Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; cloud and Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
+Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
 
 ## 0.41.0: manual plan counts and annotation registers (published; Latest at the time)
 
 [0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
-Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions; cloud and collaboration remain deferred. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Usage and limits](MARKUP_REGISTER.md).
+Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Usage and limits](MARKUP_REGISTER.md).
 
 [Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681919685) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681938796) passed: **643 tests, zero failures**, 10 default ignored, **1198 EN/FR keys**, **33 portable scenarios**, **27 MSI baselines/135 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **100 cases, 339 CLI calls and 14 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included. 6 fixture-password findings were reviewed and dismissed as 'used in tests' under `lmdanavanem`; code scanning remains enabled.
 
@@ -34,7 +34,7 @@ Native Windows interaction, keyboard layouts and Narrator remain unqualified. Pa
 
 [0.40.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) under `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
 
-Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. A 26-card AEC backlog prioritises local workflows; cloud and collaboration are deferred at the owner's request, with prices undecided. [Usage and limits](MEASUREMENTS.md).
+Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. The local feature backlog prioritises plan workflows. [Usage and limits](MEASUREMENTS.md).
 
 [Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) passed: **637 tests, zero failures**, 10 default ignored, **1163 EN/FR keys**, **32 portable scenarios**, **26 MSI baselines/130 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **80 cases, 256 CLI calls and 10 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included.
 
@@ -464,13 +464,13 @@ Delivered: AES-128/256 and permissions, owner-authorised protection removal, met
 CMS integrity verification and incremental PFX/P12 signed copies, JSON CLI and automation commands.
 
 0.31.0 implements bounded local comparison and search across selected saved files; [scope](LOCAL_REVIEW.md).
-0.36.0 adds [configurable command shortcuts](KEYBOARD_SHORTCUTS.md). Remaining: confined opt-in MCP and Explorer integration; native keyboard/Narrator qualification stays open.
+0.36.0 adds [configurable command shortcuts](KEYBOARD_SHORTCUTS.md). Explorer integration and native keyboard/Narrator qualification stay open.
 0.30.0 adds [Windows chain/revocation and RFC3161 timestamp verification, plus per-user DPAPI
 signature storage](SIGNATURE_SECURITY.md), and [redaction preview, persistent marks, bounded text splitting
 and hidden-data sanitization](REDACTION.md). Release-source regression gates passed. Network retrieval needs explicit consent
 for each verification; offline/unknown is never trusted. Embedded DSS is unverified evidence, not archival LTV.
 AATL/EUTL, PKCS#11, qualified-signature assessment and timestamp creation remain unsupported. PDF signing time
-is still a signer declaration. Acrobat/Foxit interoperability is a separate, unverified property.
+is still a signer declaration. other PDF readers interoperability is a separate, unverified property.
 Executable/MSI code signing needs an appropriate supplied identity.
 
 ## Phase 6: quality and distribution — ongoing
@@ -489,9 +489,9 @@ findings, without confirming a production secret. Remediation/triage and explici
 included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
 This historical result does not establish the scan status of 0.30.0.
 
-## Construction workflows and enterprise cloud
+## Local plan workflows
 
-The [26-card AEC backlog](AEC_BACKLOG.md) adds calibrated measurements, quantities, annotation registers, libraries, plan revisions and optional collaboration. Local SuniPDF stays free and open source; managed company cloud is paid, with pricing undecided. Cloud and collaboration are deferred at the owner's request; the [cloud plan](CLOUD_STRATEGY.md) records future requirements only. Prioritise local calibration, measurements, registers, libraries and plan workflows.
+Follow the [local feature backlog](AEC_BACKLOG.md) for calibrated measurements, quantities, registers, reusable annotation libraries and drawing revisions.
 
 ## Work beyond 0.42.0
 
@@ -505,4 +505,4 @@ Local AEC priorities: editing saved vertices, shared scale persistence/recalcula
 
 
 
-No future release date or version is committed by this backlog. Optional AI remains disabled by default.
+No future release date or version is committed by this backlog.

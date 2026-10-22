@@ -5355,7 +5355,7 @@
   "limits": [
     "Single-line equal-width text columns, 256 characters per zone and 1000 selected pages. Overflow is refused, without silent shrink or truncation.",
     "Foreground text may overlap existing content. No automatic dates, odd/even rules, PDF tagging or new complex-script qualification.",
-    "Native Windows interaction, keyboard layouts and Narrator remain unqualified. Explorer and MCP integration remain open.",
+    "Native Windows interaction, keyboard layouts and Narrator remain unqualified. Explorer integration remains open.",
     "Windows packages remain unsigned without an independent publication key; ARM64 is cross-built only.",
     "Physical hardware, interactive installed updates/save, named third-party readers, broader hostile/customer corpus and PDF/A/PDF/UA conformance remain separate 1.0 qualification."
   ],

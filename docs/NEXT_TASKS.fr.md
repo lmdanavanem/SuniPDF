@@ -12,7 +12,7 @@ Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Ca
 
 Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests réussis, 10 ignorés par défaut. 1224 clés EN/FR. 34 scénarios portables. 28 références MSI / 140 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256 ; quatre appels CLI du paquet vérifient version, aide, création d’une longueur de 10 m et réouverture sans modifier l’original.
 
-Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Cloud et mises à jour Projects restent différés. [Preuves](qa/RELEASE_0.42.0.json).
+Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Les mises à jour Projects restent différées. [Preuves](qa/RELEASE_0.42.0.json).
 
 ### Prochain lot local
 
@@ -22,7 +22,7 @@ Compléter les sommets modifiables et les échelles communes persistantes/recalc
 
 [0.41.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) sous `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
 
-Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations ; cloud et collaboration restent reportés. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées. [Utilisation et limites](MARKUP_REGISTER.fr.md).
+Repères de comptage persistants placés par clic sur les plans PDF locaux, regroupement, déplacement/suppression avec Annuler, changement de groupe sans changer l’identité et export des totaux reliés aux repères. Le tableau de toutes les annotations ajoute recherche, filtres nommés, tri, navigation, statuts métier, disciplines et champs texte personnalisés, avec exports CSV/JSON protégés. Les changements refusent les cibles périmées et préservent originaux et permissions. Pillow 13.0.0 remplace la dépendance vulnérable réservée aux tests. Les paquets 0.40.0 rejoignent les migrations. Les écritures communes vérifient le droit PDF d’annotation pour déplacements, suppressions, réponses et autres modifications ; l’export refuse aussi les inventaires de pages incomplets et les identités de comptage malformées. [Utilisation et limites](MARKUP_REGISTER.fr.md).
 
 [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681919685) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681938796) réussies : **643 tests, zéro échec**, 10 ignorés par défaut, **1198 clés EN/FR**, **33 scénarios portables**, **27 références MSI/135 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **100 scénarios, 339 appels CLI et 14 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés. 6 alertes de mots de passe fictifs ont été examinées et classées « used in tests » sous `lmdanavanem` ; analyse de sécurité maintenue.
 
@@ -34,7 +34,7 @@ Interaction native Windows, claviers et Narrateur restent à qualifier. Paquets 
 
 [0.40.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) sous `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
 
-Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local ; cloud et collaboration reportés à la demande du propriétaire, tarifs ultérieurs. [Utilisation et limites](MEASUREMENTS.fr.md).
+Annotations locales de longueur, polyligne, périmètre, surface polygonale simple et angle : calibration explicite sur deux points, unités métriques/impériales décimales, précision et données JSON. Chaque mesure conserve son échelle et sa géométrie ; aperçu, Annuler et copies CLI préservent les originaux. Tampons Stamp avec image intégrée, proportions et transparence. Filigranes texte/numérotation : vérification de toutes les pages et refus atomique des marges invalides ou débordements. Paquets 0.39.0 ajoutés aux migrations. Backlog AEC de 26 cartes donnant priorité au local. [Utilisation et limites](MEASUREMENTS.fr.md).
 
 [CI principale](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) et [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) réussies : **637 tests, zéro échec**, 10 ignorés par défaut, **1163 clés EN/FR**, **32 scénarios portables**, **26 références MSI/130 journaux**. CodeQL Rust/Python/Actions réussit avec zéro alerte ouverte. Le contrôle des décorations passe sur **80 scénarios, 256 appels CLI et 10 contrôle(s) qpdf**. Lecteurs indépendants, corpus, rendu logiciel, Office, mutations et contrôles de sécurité conservés.
 
@@ -464,10 +464,10 @@ la version 0.30.0 ajoute des commandes validées dans les preuves de publication
 
 Les cinq Bugs et quatorze P2 Roadmap sont livrés dans la version publiée 0.30.0. P1 Roadmap et Suggestions restent différés ; aucune date ni version future n’est engagée.
 
-## À faire par l'utilisateur (hors de portée de l'agent)
+## Actions nécessitant l'utilisateur
 1. Valider l'interface sur de vrais PDF (accueil, outils, rail droit, palette Ctrl+K, thème sombre, FR/EN) et signaler les écarts.
 2. Exécuter le ZIP ARM64 sur une machine ARM64 réelle (jamais fait), vérifier OpenGL et qualifier wgpu séparément si choisi.
-3. Vérifier l'interopérabilité des annotations et du caviardage dans Acrobat, Foxit et Chrome.
+3. Vérifier l'interopérabilité des annotations et du caviardage dans lecteur PDF tiers, lecteur PDF tiers et Chrome.
 4. Valider les boîtes interactives de mise à jour MSI et portable, avec annulation et documents modifiés ;
    les scénarios scriptés d'installation/mise à niveau/restauration réussissent en CI.
 5. Vérifier le Narrateur Windows et la navigation clavier dans l'interface réelle.
@@ -563,7 +563,7 @@ Livré (D067–D076) : encre, zone de texte libre, rectangle, ellipse, ligne, fl
 déplacement / redimensionnement / recoloration / suppression, fils de réponses et statuts, auteur mémorisé, CLI
 `annotations` / `annotate` / `reply` / `review-state` / `annotation-delete`. Reste :
 - **vérifier l'interopérabilité** des réponses et statuts, des apparences d'encre, de texte libre et de formes dans
-  Acrobat, Foxit et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
+  lecteur PDF tiers, lecteur PDF tiers et Chrome (non disponibles sur le poste de développement) ; un contrôle structurel ne prouve pas l’interopérabilité visuelle ;
 - encre groupée livrée en 0.18.0 (D109). La version 0.30.0 ajoute gomme de traits entiers, polygones, polylignes,
   nuages, tampons standard, pièces jointes et FreeText à style uniforme/police incorporée avec aperçu réel ;
   [bornes et refus](RICH_ANNOTATIONS.fr.md), contrôles de la source publiée réussis. Styles par portion, `/RC` arbitraire et composition complexe restent exclus ;
@@ -592,6 +592,6 @@ chemins Unicode, disque plein simulé), premier benchmark (ouverture + rendu pag
 - `-j 2` imposé par la mémoire du poste ; documenter la machine de référence.
 - Option `--lang` de la CLI (D009) si des messages humains deviennent nécessaires.
 
-## Backlog bâtiment et cloud facultatif
+## Fonctions locales pour les plans
 
-Suivre [AEC-001–026](AEC_BACKLOG.fr.md) et le [contrat produit cloud](CLOUD_STRATEGY.fr.md). Priorité aux fonctions locales : calibration/métrés, quantités, registre, bibliothèques et révisions avec corpus AEC. Cloud et collaboration sont reportés à la demande du propriétaire. Les critères non démontrés restent ouverts. Tarifs ultérieurs ; outils locaux gratuits sans compte obligatoire.
+Suivre le [backlog des fonctions locales](AEC_BACKLOG.fr.md) : mesures calibrées, quantités, tableaux, bibliothèques d’annotations et révisions des plans.

@@ -2,7 +2,10 @@
 
 [English](ARCHITECTURE.md)
 
-## 0.21.0 : traitement des alertes Code Scanning (publiée en Latest stable)
+Les responsabilités des modules et les principes ci-dessous décrivent l'implémentation actuelle. Les sections
+versionnées conservent les livraisons antérieures ; la qualification actuelle figure dans l'[état du projet](PROJECT_STATUS.fr.md).
+
+## 0.21.0 : traitement des alertes Code Scanning (publiée ; Latest à cette date)
 
 Contrôle explicite du certificat signataire natif non nul et régression CMS malformé ; permissions
 `contents: read` à la racine de release, `contents: write` réservé à Publish (D112). Lecteurs XML 1.0
@@ -32,9 +35,12 @@ et l'[état du projet](PROJECT_STATUS.fr.md). 53 commandes CLI conservées.
 4. **Erreurs typées, textes traduits à la frontière.** `EngineError` porte un code stable (`code()`) ;
    seule l'UI mappe vers une clé i18n (`app.rs::error_key`), la CLI émet le code en JSON.
 5. **Écritures atomiques.** Fichier temporaire voisin puis remplacement (`sunipdf_core::write_atomic`) pour
-   les PDF, la récupération et les réglages. La validation indépendante qpdf reste une tâche QA distincte.
-6. **Traitement PDF local, sans télémétrie.** OCR et signatures restent locaux. Recherche de mise à jour
-   désactivable et téléchargement explicite contactent GitHub sans envoyer de PDF ; seul parcours réseau de l'application.
+   les PDF, la récupération et les réglages. La validation indépendante qpdf s'exécute en CI, séparément de l'enregistrement.
+6. **Traitement PDF local, sans télémétrie.** OCR et signature restent locaux. Recherche de mise à jour
+   désactivable et téléchargement explicite contactent GitHub sans envoyer de PDF. La vérification des certificats
+   utilise uniquement le cache par défaut ; un consentement pour chaque vérification permet les requêtes aux
+   émetteurs, AIA, CRL et OCSP, qui peuvent divulguer des identifiants de certificat sans transmettre le PDF.
+   Voir la [sécurité des signatures](SIGNATURE_SECURITY.fr.md).
 7. **Pas de JavaScript PDF.** Binaires PDFium compilés sans V8 ni XFA (`args.gn` : `pdf_enable_v8=false`).
 
 ## Workspace actuel
@@ -101,21 +107,24 @@ Request::Close ─────────────────────�
   ancré (page, fraction) sous le pointeur ou au centre.
 `render_page` (export d'images, CLI sans `--region`) reste plafonné à `MAX_RENDER_SIDE_PX` (16 384 px).
 
-## Crates planifiés (créés seulement quand une fonctionnalité réelle les justifie)
+## Responsabilités actuelles des modules
 
-| Crate | Rôle | Phase |
-|---|---|---|
-| `sunipdf-render` | non créé (D038) : tuiles et cache vivent dans `sunipdf-core::{tiles, cache}` ; à extraire si un second consommateur apparaît | — |
-| `sunipdf-pages` | fusion, division, extraction, rotation, réorganisation (PDFium `FPDF_ImportPages`, `FPDFPage_*`) | P2 |
-| `sunipdf-editor` | annotations, texte, images, filigranes | P2–P3 |
-| `sunipdf-forms` | non créé (D061) : AcroForm vit dans `sunipdf-core::{forms, form_data}` (modèle et écriture lopdf, apparences PDFium, JSON/XFDF et import FDF de valeurs) | — |
-| `sunipdf-convert` | PDF↔images, texte, Office via convertisseur externe détecté | P4 |
-| `sunipdf-ocr` | non créé : OCR hors ligne dans `sunipdf-core::ocr`, moteur et modèles embarqués | — |
-| `sunipdf-security` | chiffrement (hors PDFium), permissions, caviardage, métadonnées | P5 |
-| `sunipdf-signatures` | non créé : CMS/PKCS#12 dans `sunipdf-core::certificate` ; horodatage fiable encore prévu | — |
-| `sunipdf-automation` | registre de commandes JSON-Schema, lots, MCP opt-in | P5 |
-| `sunipdf-platform` | non créé : impression native dans `printing.rs` ; autres intégrations Windows encore prévues | — |
-| `sunipdf-ui` | composants egui réutilisables (si l'app grossit) | P3 |
+Le workspace contient les applications de bureau et CLI, `sunipdf-core` et `sunipdf-i18n`.
+Les fonctionnalités implémentées partagent ces crates sans nécessiter une crate distincte par outil.
+
+| Responsabilité | Modules |
+|---|---|
+| Rendu et cache | `tiles`, `cache` et API de rendu de `Document` dans le moteur |
+| Opérations sur les pages | `pages`, `boxes`, `page_labels` et `structure` dans le moteur |
+| Objets et annotations | `edit`, `annot_write`, `annot_rich`, `appearance` et `links` dans le moteur |
+| Mesures | `measurement` et `page_calibration` dans le moteur ; `measure_tools` et `measurement_saved` dans le bureau |
+| Formulaires | `forms` et `form_data` dans le moteur : modèle, apparences, JSON/XFDF et import FDF de valeurs |
+| Conversion | `convert`, `export_office` et `office` dans le moteur ; la conversion externe exige un convertisseur local explicitement disponible |
+| OCR | `ocr` dans le moteur, avec moteur de reconnaissance et modèles locaux embarqués |
+| Protection des documents | `security`, `redact` et `sanitize` dans le moteur |
+| Signatures par certificat | `certificate`, `certificate_native` et `certificate_trust_native` dans le moteur |
+| Intégration bureau | `printing`, `settings` et `updater` dans le bureau |
+| Commandes et langue | `command` dans le moteur, gestionnaires de commandes CLI et `sunipdf-i18n` |
 
 ## Onglets (SUNI-012a)
 
@@ -151,9 +160,11 @@ La validation est suivie dans `PROJECT_STATUS.fr.md` ; cette section décrit la 
   Les pages déjà textuelles sont ignorées. Le texte invisible utilise la géométrie commune rotation/CropBox.
 - **Certificats** : `certificate.rs` analyse les octets enregistrés et ajoute une révision CMS détachée
   incrémentale ; `certificate_native.rs` confie la clé privée à Windows Cryptography. Les buffers PFX/P12 et mots
-  de passe sont effacés, sans import persistant de clé. La vérification décrit intégrité et certificat sans établir
-  confiance, révocation ni horodatage fiable. UI `certificate.rs` et CLI `feature_cmd.rs` imposent une nouvelle copie
-  pour signer et refusent les PDF chiffrés.
+  de passe sont effacés, sans import persistant de clé. La vérification actuelle distingue l'intégrité du document,
+  la confiance de la chaîne Windows, l'état de révocation et la validation des horodatages RFC 3161 existants.
+  Elle ne crée pas d'horodatage et ne certifie pas la validation à long terme. Les requêtes en ligne exigent
+  un consentement explicite ; voir la [sécurité des signatures](SIGNATURE_SECURITY.fr.md). UI `certificate.rs`
+  et CLI `feature_cmd.rs` imposent une nouvelle copie pour signer et refusent les PDF chiffrés.
 
 ## Parcours des signatures visuelles 0.13.0 (publiée)
 
@@ -324,16 +335,16 @@ un journal de commandes nommées viendra si la mémoire devient contraignante.
 clé i18n du libellé, clé i18n du raccourci, `needs_document`, menu). Données pures, sans dépendance UI.
 - L'application construit ses menus Fichier / Affichage / Aide depuis le registre et route menus **et**
   raccourcis clavier vers un seul point d'entrée `SuniApp::execute(ctx, Command)`.
-- La CLI expose `sunipdf-cli commands` (JSON). La palette de commandes, les raccourcis configurables,
-  l'undo/redo et l'automatisation s'appuieront sur ces mêmes identifiants.
+- La CLI expose `sunipdf-cli commands` (JSON). La palette de commandes, les raccourcis configurables
+  et les commandes Annuler/Rétablir utilisent les mêmes identifiants.
 - Tests : unicité des identifiants, aller-retour `from_id`, existence des clés i18n dans les deux catalogues.
 
 ## Choix d'infrastructure
 
 | Besoin | Choix | Raison |
 |---|---|---|
-| Rendu / parsing | PDFium 7881 via `pdfium-render` 0.9.4, DLL chargée à l'exécution | Fidélité de Chrome, ARM64 disponible, pas de compilation C++ |
-| UI | `eframe`/`egui` 0.36 | Rust natif, immédiat, DPI géré, accessibilité AccessKit intégrée |
+| Rendu / parsing | PDFium 7881 via `pdfium-render` 0.9.4, DLL chargée à l'exécution | API de rendu partagée ; binaires x64 et ARM64 épinglés |
+| UI | `eframe`/`egui` 0.37 | Rust natif, immédiat, DPI géré, accessibilité AccessKit intégrée |
 | Préférences | JSON dans `%APPDATA%\SuniPDF` | Zéro dépendance ; SQLite seulement si des métadonnées volumineuses apparaissent |
 | Erreurs | `thiserror` | Types explicites, codes stables |
 | Journalisation | `log` + `env_logger` | Suffisant ; `tracing` si des spans deviennent nécessaires |
@@ -343,4 +354,5 @@ clé i18n du libellé, clé i18n du raccourci, `needs_document`, menu). Données
 
 - Validation des chemins par l'OS ; aucune exécution de contenu PDF ; limites de taille de rendu.
 - Les documents ne quittent jamais la machine.
-- Fichiers hostiles : PDFium est fuzzé en continu par Chromium ; SuniPDF ajoutera son propre corpus (P6).
+- La CI teste des corpus PDF synthétiques, licenciés, d'interopérabilité et adversariaux, avec contrôles
+  indépendants qpdf et de rendu. Ces régressions bornées qualifient les cas testés, pas tous les PDF possibles.

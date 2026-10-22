@@ -2,7 +2,7 @@
 
 [Français](MARKUP_REGISTER.fr.md) · [Measurements](MEASUREMENTS.md) · [AEC backlog](AEC_BACKLOG.md)
 
-The local 0.41.0 slice adds persistent manual counts and an all-page markup register. These tools run offline and remain free and open source. Cloud and collaboration are deferred.
+The local 0.41.0 slice adds persistent manual counts and an all-page markup register. These tools run offline and remain free and open source.
 
 ## Count items on a plan
 
@@ -13,7 +13,7 @@ The local 0.41.0 slice adds persistent manual counts and an all-page markup regi
 
 Each marker counts as one; a separate editable total cannot drift away from the markers. Markers survive save/reopen, rotation and CropBox offsets. Duplicated count `/NM` identities are refused on export. Standard replies and PDF review states remain available. Hidden markers remain in document totals and carry their hidden flag in exports.
 
-Only supported manual SuniPDF markers are counted. Generic imported stamps and proposed visual-search matches are unquantified. Symbol detection, automatic counting and Bluebeam proprietary count metadata import are not implemented.
+Only supported manual SuniPDF markers are counted. Generic imported stamps and proposed visual-search matches are unquantified. Symbol detection, automatic counting and third-party proprietary count metadata import are not implemented.
 
 ## Review all annotations
 

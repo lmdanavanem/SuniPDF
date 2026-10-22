@@ -5363,8 +5363,8 @@
   "limits": [
     "At most 16 desktop presets with 64-character unique names. Text is single-line and bounded. Page scope is not saved.",
     "Image presets reference the original path; missing/invalid images are refused on Apply. Explicit preset save/delete persists independently of cancelling document application.",
-    "No macro, cloud sync, CLI preset import/export or signing-identity storage. Native Windows interaction remains unqualified.",
-    "Windows packages remain unsigned without an independent publication key; ARM64 is cross-built only. Explorer and MCP remain open.",
+    "No macro, CLI preset import/export or signing-identity storage. Native Windows interaction remains unqualified.",
+    "Windows packages remain unsigned without an independent publication key; ARM64 is cross-built only. Explorer integration remains open.",
     "Physical hardware, interactive installed updates/save, named third-party readers, broader hostile/customer corpus and PDF/A/PDF/UA conformance remain separate 1.0 qualification."
   ],
   "delivery": "PR #13 squash-merged after exact-head Windows and CodeQL checks. Immutable main/tag source and downloaded packages qualified. Post-publication commit contains documentation only; code and PR checks remain enabled."

@@ -6,7 +6,7 @@ use crate::{
 };
 use egui::{Color32, Key, Modifiers, Painter, Pos2, Rect, Stroke};
 use std::collections::BTreeMap;
-use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
+use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit, PageCalibration};
 use sunipdf_i18n::{tr, tr_args};
 
 type Point = (f32, f32);
@@ -33,6 +33,7 @@ enum Gesture {
 }
 
 pub struct MeasurementState {
+    pub(crate) saved: crate::measurement_saved::SavedMeasurements,
     pub(crate) kind: MeasurementKind,
     pub(crate) unit: MeasurementUnit,
     pub(crate) precision: usize,
@@ -47,6 +48,7 @@ pub struct MeasurementState {
 impl Default for MeasurementState {
     fn default() -> Self {
         Self {
+            saved: Default::default(),
             kind: MeasurementKind::Length,
             unit: MeasurementUnit::Metres,
             precision: 2,
@@ -77,6 +79,7 @@ impl MeasurementState {
     /// Keep page scales only when the caller has proved page geometry is unchanged.
     pub(crate) fn advance_epoch(&mut self, epoch: u64) {
         self.cancel();
+        self.saved.invalidate();
         self.epoch = Some(epoch);
     }
 
@@ -180,7 +183,7 @@ impl MeasurementState {
                 unit: self.unit,
             }
         } else {
-            *self.scales.get(&page)?
+            self.scale(page)?
         };
         Some(measurement(
             self.kind,
@@ -206,7 +209,7 @@ impl MeasurementState {
             return false;
         }
         if matches!(self.gesture, Gesture::Idle) {
-            if self.kind != MeasurementKind::Angle && !self.scales.contains_key(&page) {
+            if self.kind != MeasurementKind::Angle && self.scale(page).is_none() {
                 self.error = Some("measure.no_scale");
                 return false;
             }
@@ -242,6 +245,53 @@ impl MeasurementState {
         }
         self.error = None;
         true
+    }
+
+    fn scale(&self, page: usize) -> Option<Scale> {
+        self.scales.get(&page).copied().or_else(|| {
+            let calibration = self.saved.calibration(page)?;
+            Some(Scale {
+                points: calibration.points,
+                distance: calibration.known_distance,
+                unit: calibration.unit,
+            })
+        })
+    }
+
+    pub(crate) fn local_calibration(&self, page: usize) -> Option<PageCalibration> {
+        self.scales.get(&page).map(|scale| PageCalibration {
+            points: scale.points,
+            known_distance: scale.distance,
+            unit: scale.unit,
+        })
+    }
+
+    pub(crate) fn use_calibration(&mut self, page: usize, calibration: &PageCalibration) -> bool {
+        let scale = Scale {
+            points: calibration.points,
+            distance: calibration.known_distance,
+            unit: calibration.unit,
+        };
+        if measurement(
+            MeasurementKind::Length,
+            scale.points.to_vec(),
+            scale,
+            scale.unit,
+            2,
+        )
+        .value()
+        .is_err()
+        {
+            return false;
+        }
+        self.scales.insert(page, scale);
+        self.unit = calibration.unit;
+        self.error = None;
+        true
+    }
+
+    pub(crate) fn saved_scale_applied(&mut self, page: usize) {
+        self.scales.remove(&page);
     }
 }
 
@@ -323,7 +373,7 @@ impl SuniApp {
         }
     }
 
-    fn measurement_ready(&self) -> bool {
+    pub(crate) fn measurement_ready(&self) -> bool {
         self.annotate.tool == Tool::Measure
             && self.document.is_some()
             && matches!(self.engine, EngineState::Ready)
@@ -411,6 +461,9 @@ impl SuniApp {
         if self.annotate.tool != Tool::Measure {
             return;
         }
+        if point.is_some() {
+            self.request_measurement_page(page);
+        }
         let state = &mut self.annotate.measure;
         if state.page().is_some_and(|p| p != page) {
             return;
@@ -446,6 +499,7 @@ impl SuniApp {
             return;
         }
         self.validate_measurement_context();
+        self.request_measurement_page_if_needed();
         let lang = self.lang();
         let ready = self.measurement_ready();
         let popup_was_open = egui::Popup::is_any_open(ctx);
@@ -537,7 +591,7 @@ impl SuniApp {
                 Gesture::Draw { .. } => "measure.draw_hint",
                 Gesture::Idle
                     if state.kind != MeasurementKind::Angle
-                        && !page.is_some_and(|p| state.scales.contains_key(&p)) =>
+                        && !page.is_some_and(|p| state.scale(p).is_some()) =>
                 {
                     "measure.no_scale"
                 }
@@ -545,7 +599,7 @@ impl SuniApp {
                 Gesture::Idle => "measure.ready_hint",
             };
             ui.label(tr(lang, hint));
-            if let Some((page, scale)) = page.and_then(|p| state.scales.get(&p).map(|s| (p, s))) {
+            if let Some((page, scale)) = page.and_then(|p| state.scale(p).map(|s| (p, s))) {
                 ui.small(tr_args(
                     lang,
                     "measure.scale_summary",
@@ -594,6 +648,7 @@ impl SuniApp {
         if finish {
             self.finish_measurement(ctx);
         }
+        self.measurement_saved_bar(ui);
     }
 
     pub(crate) fn paint_measurement(
@@ -955,7 +1010,9 @@ mod tests {
             output.textures_delta.clear();
             assert_eq!(app.annotate.measure.points().len(), 2);
             assert!(app.annotate.adv.rich.is_none());
-            assert!(requests.try_recv().is_err());
+            assert!(requests
+                .try_iter()
+                .all(|request| matches!(request, crate::worker::Request::MeasurementPage { .. })));
         }
     }
 
@@ -1068,6 +1125,7 @@ mod tests {
                 can_redo: false,
                 modified: false,
                 pages_unchanged: false,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             },
             &ctx,

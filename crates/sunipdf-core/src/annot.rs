@@ -276,7 +276,7 @@ impl Document<'_> {
         // Les boîtes de caractères de PDFium sont en espace utilisateur.
         let geo = geometry_of(&page)?;
         let text = page.text()?;
-        // ponytail: parcours de tous les caractères de la page (précis, O(n)) plutôt que
+        // parcours de tous les caractères de la page (précis, O(n)) plutôt que
         // `chars_inside_rect`, imprécis sur les bords.
         let (l, r) = (rect.left.min(rect.right), rect.left.max(rect.right));
         let (b, t) = (rect.bottom.min(rect.top), rect.bottom.max(rect.top));

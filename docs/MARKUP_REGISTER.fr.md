@@ -2,7 +2,7 @@
 
 [English](MARKUP_REGISTER.md) · [Mesures](MEASUREMENTS.fr.md) · [Backlog AEC](AEC_BACKLOG.fr.md)
 
-Le lot local 0.41.0 ajoute des comptages persistants et un tableau de toutes les annotations. Ces outils restent gratuits, open source et hors ligne. Cloud et collaboration sont reportés.
+Le lot local 0.41.0 ajoute des comptages persistants et un tableau de toutes les annotations. Ces outils restent gratuits, open source et hors ligne.
 
 ## Compter les éléments
 
@@ -13,7 +13,7 @@ Le lot local 0.41.0 ajoute des comptages persistants et un tableau de toutes les
 
 Chaque repère représente un élément ; aucun total saisi séparément ne peut diverger des annotations. Enregistrement/réouverture, rotations et décalages CropBox sont conservés. Des identités `/NM` dupliquées refusent l’export. Réponses et états de relecture PDF restent disponibles. Les repères masqués restent dans les totaux et portent leur indicateur de masquage dans les exports.
 
-Seuls les repères manuels SuniPDF reconnus sont comptés. Les tampons génériques importés et les propositions de recherche visuelle restent non quantifiés. Reconnaissance de symboles, comptage automatique et import propriétaire Bluebeam ne sont pas implémentés.
+Seuls les repères manuels SuniPDF reconnus sont comptés. Les tampons génériques importés et les propositions de recherche visuelle restent non quantifiés. Reconnaissance de symboles, comptage automatique et import propriétaire externes ne sont pas implémentés.
 
 ## Examiner les annotations
 
