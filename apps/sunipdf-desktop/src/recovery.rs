@@ -21,7 +21,22 @@ fn now() -> u64 {
         .as_secs()
 }
 
-fn lock(path: &Path) -> io::Result<File> {
+#[derive(Debug)]
+struct SessionLock {
+    _file: File,
+}
+
+#[cfg(not(windows))]
+impl Drop for SessionLock {
+    fn drop(&mut self) {
+        // Duplicated descriptors share the lock, so closing this handle alone is insufficient.
+        if let Err(error) = self._file.unlock() {
+            log::warn!("Recovery session unlock failed: {error}");
+        }
+    }
+}
+
+fn lock(path: &Path) -> io::Result<SessionLock> {
     let mut options = OpenOptions::new();
     options.read(true).write(true).create(true).truncate(false);
     #[cfg(windows)]
@@ -37,7 +52,7 @@ fn lock(path: &Path) -> io::Result<File> {
         }
         std::fs::TryLockError::Error(error) => error,
     })?;
-    Ok(file)
+    Ok(SessionLock { _file: file })
 }
 
 #[derive(Clone, Debug)]
@@ -99,7 +114,7 @@ impl Entry {
 pub struct Session {
     root: PathBuf,
     dir: PathBuf,
-    _lock: File,
+    _lock: SessionLock,
 }
 
 impl Session {
@@ -454,6 +469,26 @@ mod tests {
         assert_eq!(second.scan().unwrap().len(), 1);
         slot.remove().unwrap();
         assert!(second.scan().unwrap().is_empty());
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn released_session_is_recoverable_while_a_duplicate_descriptor_remains_open() {
+        let dir = tempfile::tempdir().unwrap();
+        let session = Session::create(dir.path().into()).unwrap();
+        let slot = session.slot(next_id(), dir.path().join("original.pdf"), 1);
+        slot.save(b"snapshot").unwrap();
+        let duplicate = session._lock._file.try_clone().unwrap();
+        let observer = Session::create(dir.path().into()).unwrap();
+        assert!(observer.scan().unwrap().is_empty());
+
+        drop(session);
+
+        let entries = observer.scan().unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].snapshot, slot.base.with_extension("pdf"));
+        assert_eq!(fs::read(&entries[0].snapshot).unwrap(), b"snapshot");
+        drop(duplicate);
     }
 
     #[test]
