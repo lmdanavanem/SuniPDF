@@ -11,7 +11,7 @@ use sunipdf_core::annot_rich::{
 use sunipdf_core::annotation_library::{LibraryEntry, LibraryPlacement, LibraryProvenance};
 use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
-use sunipdf_i18n::tr;
+use sunipdf_i18n::{tr, tr_args};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum RichMode {
