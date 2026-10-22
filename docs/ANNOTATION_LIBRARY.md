@@ -4,20 +4,26 @@
 
 ## Desktop
 
-Open **Annotation library** from the main toolbar, **All tools**, or **Add comments**. The library is stored locally, separately from application preferences.
+Click **Library** in the main toolbar, or choose **Annotation library** in **All tools** or **Add comments**. The library is stored locally, separately from application preferences. You can manage it without an open PDF; creating a draft or placing a template requires an open document.
 
-1. Choose **Create template** to start a new annotation draft. Supported draft capture includes text in a standard font, polygons/polylines, revision clouds, predefined stamps and PNG image stamps.
-2. In **Save to library**, enter a unique name and save the draft. Author, source and licence are optional declarations; missing information stays unknown. Saving a template does not apply it to the PDF.
-3. In the library, choose **Place**, set the scale and click the page to position the template. Review **Preview**, then **Apply**. Cancel discards the placement; Apply creates one Undo step.
-4. To make a group, select at least two entries, choose **Group**, set their offsets and save under a new name. A group is flat and contains at most 16 primitives. Placement gives every member a new PDF annotation identity.
+The 0.45 implementation is undergoing validation. See the linked release notes for publication status.
 
-Import merges a validated library into the active library. Duplicate IDs or names and invalid entries refuse the complete import; they do not partly replace valid data. Export writes all or selected entries to a new JSON file. Delete removes the selected library entries after the explicit delete action; it does not remove annotations already placed in PDFs. Reload reads the saved local file again.
+1. Choose **Create a template** to start a new annotation draft. Supported capture includes text using a standard font, polygons/polylines, revision clouds, predefined stamps and PNG image stamps. Choose the type and prepare its text, geometry and style in the rich-annotation dialog.
+2. Expand **Save to library**, enter a unique **Name**, then choose **Save template**. **Credit**, **Source or provenance** and **License or permission to reuse** are optional declarations; blank values remain unknown. Saving a template leaves the PDF unchanged and keeps the draft open. Close it with **Cancel** when you only want the template.
+3. Reopen the library and choose **Place on page**. Set **Scale** in the placement bar, then click the page to set the template's lower-left origin. A frame follows the pointer; the complete template must fit the page. The click requests a rendered preview. In **Place annotation template**, you can refine **Origin X (pt)**, **Origin Y (pt)** and **Scale**; after changing them, request **Preview** again. Inspect the result, then choose **Apply to object**. **Cancel** or **Escape** discards the pending placement. Applying creates one Undo step; save the PDF to keep it.
+4. To make a group, check at least two entries and choose **Create group**. Enter a new name, set each member's horizontal/vertical offset in points and choose **Save template**. **Cancel** abandons the group draft. A flat group contains at most 16 primitives; its source entries remain available. Placement gives each member a new PDF annotation identity.
 
-Ordinary shapes can also be imported through the versioned file format. Capturing an arbitrary selected PDF annotation, its review thread or its imported appearance is outside this first version. Measurement calibrations are never silently reused through a library.
+**Import library** merges a validated file into the active library. Duplicate IDs or names, invalid entries or exceeded limits refuse the complete import. **Export library** and **Export selection** write a new JSON file; choose a filename that does not already exist. **Delete selected** followed by **Confirm deletion** removes the selected templates; **Cancel** leaves them in place. Deleting a template does not remove annotations already placed in PDFs. **Filter templates** searches names. **Reload library** rereads the local file.
+
+Failed reads, imports and saves preserve the active library. If another instance has changed its file, reload before saving; a save already in progress must finish before another instance can write. PDF Undo/Redo applies to placed annotations, not library-file changes. Export a copy before deleting templates you want to keep.
+
+Scale is a uniform size multiplier: `1` keeps the template size. It is independent of measurement calibration. The desktop normalizes the template's local bounds to a lower-left origin of `(0, 0)` before placement. Finish or cancel a pending placement before switching documents or tools. If its document changes, choose the template again.
+
+Ordinary shapes can also be imported through the versioned file format. Capturing an arbitrary selected PDF annotation, its review thread or its imported appearance is outside this first version. Measurements and page scales are excluded.
 
 ## CLI example
 
-Save this single entry as `draft-entry.json`:
+Save this single entry as a UTF-8 JSON file named `draft-entry.json`:
 
 ```json
 {
@@ -33,17 +39,17 @@ Save this single entry as `draft-entry.json`:
 ```powershell
 sunipdf-cli annotation-library add --entry draft-entry.json --out review-library.json
 sunipdf-cli annotation-library inspect review-library.json
-sunipdf-cli annotation-library place review-library.json --id review-draft --file plan.pdf --page 1 --origin 40,40 --scale 1 --out plan-reviewed.pdf
+sunipdf-cli annotation-library place review-library.json --id review-draft --file plan.pdf --page 1 --origin "40,40" --scale 1 --out plan-reviewed.pdf
 sunipdf-cli annotation-library export review-library.json --id review-draft --out selected-library.json
 sunipdf-cli annotation-library remove review-library.json --id review-draft --out remaining-library.json
 ```
 
-Pages start at 1. The origin is the displayed page's lower-left coordinate in PDF points, including rotation/crop handling. Scale is explicit and uniform. Geometry and styles must still fit the page and supported annotation limits after scaling. Existing destinations are refused, including with `--overwrite`; choose a new output filename. Protected input uses the existing `--password-stdin` or `--password-env` options. Placement requires annotation permission and retains supported encryption.
+Pages start at 1. The origin uses displayed-page coordinates in PDF points, measured from the page's lower-left corner, including rotation/crop handling. CLI placement transforms each local coordinate as `origin + coordinate × scale`; a manually authored entry can therefore retain local padding. Scale is explicit and uniform. Geometry and styles must still fit the page and supported annotation limits after scaling. Existing destinations are refused, including with `--overwrite`; choose a new output filename. Protected input uses the existing `--password-stdin` or `--password-env` options. Placement requires annotation permission and retains supported encryption.
 
 ## Open file format and limits
 
 The library envelope is `{"format":"sunipdf-annotation-library","version":1,"entries":[...]}`. Each entry has an ASCII ID, a unique name, declared provenance and a flat list of primitives. Primitive kinds are `shape`, `free_text`, `vertices`, `stamp` and `image`. They contain explicit geometry and styles. Images contain PNG bytes in base64, dimensions and SHA256; they do not retain an external file path.
 
-Files are limited to 16 MiB, 64 entries and 16 primitives per entry. Individual PNG inputs are limited to 4 MiB and four million pixels; additional library-wide image budgets apply. Names and IDs must be unique; unsupported versions, fields, actions, malformed images and invalid geometry are refused. Local placement supports documents up to 128 MiB. A refused group does not leave partly inserted members behind.
+Files are limited to 16 MiB, 64 entries and 16 primitives per entry. Individual PNG inputs are limited to 4 MiB, 4096 pixels per side and four million pixels. Each entry and the complete library are also limited to 12 MiB of encoded image data and sixteen million image pixels. Names and IDs must be unique; unsupported versions, fields, actions, malformed images and invalid geometry are refused. Local placement supports documents up to 128 MiB. A refused group does not leave partly inserted members behind.
 
-Library data is local and self-contained. Provenance text is preserved as supplied; it is not proof of ownership or an independently verified licence. The library does not import scripts, attachments, measurement scales, PDF object identities, replies or executable actions. Members remain individually editable PDF annotations after placement; nested groups and general PDF annotation capture remain open work.
+Library data is local and self-contained. Provenance text is preserved as supplied; it is not proof of ownership or an independently verified licence. The library does not import scripts, attachments, measurement scales, PDF object identities, replies or executable actions. Members remain separate PDF annotations after placement; available editing controls depend on their type. They are not kept as a linked group. Nested groups and general PDF annotation capture remain open work.

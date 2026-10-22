@@ -8,9 +8,9 @@ Statut : **en développement**. Ce périmètre est en cours d’implémentation 
 
 Une bibliothèque locale visible permet d’enregistrer les brouillons pris en charge, de nommer les modèles, de les réutiliser, d’importer/exporter un fichier JSON documenté et de supprimer explicitement les entrées. Les modèles comprennent formes, textes en fontes standard, polylignes/polygones, nuages de révision, tampons prédéfinis et images PNG incorporées. Un groupe plat contient au plus 16 primitives.
 
-Le placement utilise une origine et une échelle explicites sur la page courante, puis Aperçu et Appliquer. L’application d’un groupe constitue une seule étape Annuler ; ses éléments restent des annotations PDF individuelles, avec de nouvelles identités. Les annotations sources et le modèle sont conservés.
+Le placement utilise une origine et une échelle explicites sur la page courante, puis Aperçu et Appliquer. L’application d’un groupe constitue une seule étape Annuler ; ses éléments restent des annotations PDF individuelles, avec de nouvelles identités. Le modèle reste disponible ; sa suppression ultérieure ne retire pas les annotations déjà placées.
 
-Le fichier versionné contient les images et la provenance déclarée. L’import valide les types et les limites de ressources avant de remplacer la bibliothèque locale active. Scripts, chemins externes, identités PDF, fils de revue et calibrations de mesure sont exclus. Les textes de provenance et de licence sont des déclarations utilisateur, sans vérification indépendante des droits.
+Le fichier versionné contient les images et la provenance déclarée. L’import valide les types et les limites de ressources avant d’enregistrer une bibliothèque fusionnée ; conflits ou échecs conservent son état précédent. Scripts, chemins externes, identités PDF, fils de revue et calibrations de mesure sont exclus. Les textes de provenance et de licence sont des déclarations utilisateur, sans vérification indépendante des droits.
 
 La gestion CLI utilise des fichiers de bibliothèque explicites. Le placement dans un PDF exige le droit d’annotation et une nouvelle copie de sortie ; originaux et destinations existantes restent protégés. Le chiffrement pris en charge est conservé.
 

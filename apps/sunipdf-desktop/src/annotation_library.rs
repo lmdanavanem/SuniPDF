@@ -684,7 +684,7 @@ pub(crate) mod tests {
     impl Controls {
         pub(crate) fn new() -> Self {
             let ctx = egui::Context::default();
-            ctx.style_mut(|style| style.animation_time = 0.0);
+            ctx.all_styles_mut(|style| style.animation_time = 0.0);
             Self {
                 ctx,
                 time: 1.0,
@@ -717,7 +717,7 @@ pub(crate) mod tests {
             result
         }
         pub(crate) fn click(&mut self, app: &mut SuniApp, key: &str) {
-            self.click_text(app, &tr(app.lang(), key).to_owned());
+            self.click_text(app, tr(app.lang(), key));
         }
         pub(crate) fn click_text(&mut self, app: &mut SuniApp, label: &str) {
             fn find(shape: &egui::Shape, label: &str) -> Option<Pos2> {

@@ -8,9 +8,9 @@ Status: **in development**. This scope is being implemented and has not been qua
 
 A visible local annotation library lets users save supported drafts, name entries, reuse them, import/export a documented JSON file and remove entries explicitly. Supported templates include shapes, text using standard fonts, polylines/polygons, revision clouds, predefined stamps and embedded PNG images. A flat group contains at most 16 primitives.
 
-Placement uses an explicit origin and scale on the current page, followed by Preview and Apply. Applying a group is one Undo step; its members remain individual PDF annotations with new identities. The source annotations and library entry are preserved.
+Placement uses an explicit origin and scale on the current page, followed by Preview and Apply. Applying a group is one Undo step; its members remain individual PDF annotations with new identities. The library entry remains available; deleting it later does not remove annotations already placed.
 
-The versioned file contains its image data and declared provenance. Import validates types and resource bounds before replacing the active local library. Scripts, external paths, PDF identities, review threads and measurement calibrations are excluded. Provenance and licence text are user declarations, not independently verified grants.
+The versioned file contains its image data and declared provenance. Import validates types and resource bounds before committing a merged library; conflicts or failures preserve its previous state. Scripts, external paths, PDF identities, review threads and measurement calibrations are excluded. Provenance and licence text are user declarations, not independently verified grants.
 
 CLI management operates on explicit library files. Placing an entry in a PDF requires annotation permission and a new output copy; original files and existing destinations remain protected. Supported encryption is retained.
 
