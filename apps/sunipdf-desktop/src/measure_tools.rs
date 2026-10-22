@@ -1181,13 +1181,14 @@ mod tests {
             match shape {
                 egui::Shape::Text(text) if text.galley.text() == label => {
                     let color = text.galley.job.sections[0].format.color;
-                    colors.push(text.override_text_color.unwrap_or_else(|| {
-                        if color == egui::Color32::PLACEHOLDER {
-                            text.fallback_color
-                        } else {
-                            color
-                        }
-                    }));
+                    let painted = if let Some(override_color) = text.override_text_color {
+                        override_color
+                    } else if color == egui::Color32::PLACEHOLDER {
+                        text.fallback_color
+                    } else {
+                        color
+                    };
+                    colors.push(painted);
                 }
                 egui::Shape::Vec(shapes) => {
                     for shape in shapes {
