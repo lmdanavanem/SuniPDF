@@ -173,7 +173,7 @@ pub static TABLE: [WsInfo; 17] = [
         ws: Workspace::Quantity,
         name_key: "quantity.title",
         desc_key: "quantity.help",
-        icon: (glyph::PAGES, "#"),
+        icon: (glyph::NUMBERS, "#"),
         color: theme::CAT_ANNOTATE,
         entry: Some(Entry::Direct(C::QuantityTable)),
         groups: &[&[C::QuantityTable]],

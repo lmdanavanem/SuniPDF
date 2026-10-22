@@ -3117,7 +3117,7 @@ mod tests {
             &saved_pdf,
             None,
             &Protection {
-                owner_password: "quantity-owner".into(),
+                owner_password: format!("quantity-{}", directory.path().display()),
                 allow_copy: false,
                 allow_annotate: false,
                 ..Default::default()
