@@ -4,7 +4,17 @@
 
 The next quality lot follows the [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).
 
-## 0.42.0: on-page measurement tools (stable Latest)
+## 0.43.0: saved page scales and measurement inspection (stable Latest)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
+
+[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.43.0.md) · [Evidence](qa/RELEASE_0.43.0.json).
+
+### Next local feature work
+
+Extend saved-vertex editing, explicit recalculation and multi-scale viewports, then reusable libraries and real-plan qualification. Page defaults and inspection are delivered within their bounds; AEC-001/002/003/004/026 remain partial.
+
+## 0.42.0: on-page measurement tools (published; Latest at the time)
 
 [0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 
@@ -13,10 +23,6 @@ Measurements now has a labelled toolbar button and its own All tools workspace. 
 Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
 
 Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
-
-### Next local feature work
-
-Extend saved-vertex editing and persistent/recalculable shared scales, then reusable libraries and real-plan qualification. Direct measurement, manual counts and existing register functions are delivered within their bounds; AEC-001/002/003/004/026 remain partial.
 
 ## 0.41.0: manual plan counts and annotation registers (published; Latest at the time)
 

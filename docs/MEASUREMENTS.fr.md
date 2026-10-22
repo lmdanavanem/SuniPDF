@@ -2,7 +2,7 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
-**0.43.0 en préparation :** les échelles de page enregistrées et l'inspecteur décrits ci-dessous complètent le bouton direct et le tracé publiés en [0.42.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0). Publication et qualification figurent dans [l'état du projet](PROJECT_STATUS.fr.md).
+**Disponible en [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** échelles de page persistantes, inspection et réutilisation explicite, en complément du tracé direct. Les mesures existantes conservent leurs valeurs. [Preuves](qa/RELEASE_0.43.0.json).
 
 ## Mesurer directement sur la page
 

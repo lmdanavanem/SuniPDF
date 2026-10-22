@@ -9,7 +9,13 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.42.0 : mesures directement sur la page (Latest stable)
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
+
+[Guide et limites](MEASUREMENTS.fr.md) · [Notes de version](RELEASE_0.43.0.fr.md) · [Preuves](qa/RELEASE_0.43.0.json).
+
+## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 
 [0.42.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) sous `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 
@@ -495,9 +501,9 @@ La [revue Code Scanning historique](CODE_SCANNING_REVIEW.fr.md) a examiné 117 a
 sans confirmer de secret de production. Corrections/triage et permissions explicites des workflows font partie
 du lot 0.21.x publié ; preuves de clôture dans l'[état du projet](PROJECT_STATUS.fr.md). La source exacte 0.30.0 réussit CodeQL Rust, Python et Actions, sans alerte ouverte ; preuves exécutées ci-dessus.
 
-## Suite au-delà de la version 0.42.0
+## Suite au-delà de la version 0.43.0
 
-Priorités AEC locales : sommets enregistrés modifiables, persistance/recalcul des échelles communes, bibliothèques et corpus réels. Les cartes partielles restent ouvertes.
+Priorités AEC locales : sommets enregistrés modifiables, recalcul explicite, vues multi-échelles, bibliothèques et plans réels. Les 24 cartes conservent leurs critères ; les cartes partielles restent ouvertes.
 
 1. Exécuter les dialogues natifs de mise à jour/enregistrement, Narrateur, imprimantes, ARM64 et lecteurs tiers.
 2. Élargir corpus réel et mesures de performance ; les échantillons NIST ne prouvent pas une compatibilité universelle.

@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.42.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.43.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.42.0 : mesures directement sur la page (Latest stable)
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
+
+Source `965fb6494be0d200d3ac4f4eac895aa28e3a7632`, PR [#18](https://github.com/lmdanavanem/SuniPDF/pull/18). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39711311619) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39711322078) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39711311359). 682 tests réussis, 10 ignorés par défaut. 1241 clés EN/FR. 35 scénarios portables. 29 références MSI / 145 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256. Neuf appels CLI du paquet vérifient version/aide, ajout et lecture d’une échelle, longueur de 1000 cm par conversion, réouverture, retrait du défaut et conservation de la mesure existante sans modifier l’original.
+
+[Guide et limites](MEASUREMENTS.fr.md) · [Notes de version](RELEASE_0.43.0.fr.md) · [Preuves](qa/RELEASE_0.43.0.json).
+
+## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 
 [0.42.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) sous `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 

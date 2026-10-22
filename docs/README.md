@@ -52,7 +52,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 - [Changelog](../CHANGELOG.md) · [FR](../CHANGELOG.fr.md): changes by version.
 - [Published releases](https://github.com/lmdanavanem/SuniPDF/releases): packages and release notes.
-- [0.43.0 scope, in preparation](RELEASE_0.43.0.md) · [FR](RELEASE_0.43.0.fr.md): saved page scales and measurement inspection.
+- [0.43.0 release scope](RELEASE_0.43.0.md) · [FR](RELEASE_0.43.0.fr.md): saved page scales and measurement inspection.
 - [0.42.0 scope](RELEASE_0.42.0.md) · [FR](RELEASE_0.42.0.fr.md): direct measurement tools.
 
 Earlier release documents retain their original paths and links from the changelog.

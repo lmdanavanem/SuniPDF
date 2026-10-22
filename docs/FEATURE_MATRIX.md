@@ -2,7 +2,13 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.42.0: on-page measurement tools (stable Latest)
+## 0.43.0: saved page scales and measurement inspection (stable Latest)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
+
+[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.43.0.md) · [Evidence](qa/RELEASE_0.43.0.json).
+
+## 0.42.0: on-page measurement tools (published; Latest at the time)
 
 [0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 
@@ -401,6 +407,7 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 | calibrated measurements and image stamps | Delivered in 0.40.0 | Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. The local feature backlog prioritises plan workflows. [Guide](PAGE_DECORATIONS.md). |
 | manual plan counts and annotation registers | Delivered in 0.41.0 | Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Guide](MARKUP_REGISTER.md). |
 | Interactive on-page measurements | Delivered in 0.42.0 | Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches. [Guide](MEASUREMENTS.md). |
+| Page scales and inspection | Delivered in 0.43.0 | Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale. [Guide](MEASUREMENTS.md). |
 | Configurable shortcuts | Delivered in 0.36.0 | Existing commands, conflict refusal, cancellable drafts and atomic preferences; [bounds](KEYBOARD_SHORTCUTS.md). Native keyboard/Narrator and Explorer remain open. |
 | Windows Explorer integration (association, context menu) | Not documented | Planned (P5) |
 | Command palette | Declared | **Done** (Ctrl+K, filtering, keyboard, colour of the owning tool) |
@@ -411,8 +418,8 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 
 | Feature | Expected | SuniPDF |
 |---|---|---|
-| Windows x64 | Declared (MSI, zip) | **Distributed in 0.42.0**: Exact-source CI and packages passed; six public downloads/SHA256, dist copies and four packaged CLI checks verified. Native interactive qualification remains open. [Evidence](qa/RELEASE_0.42.0.json). |
-| Windows ARM64 | Declared | **Cross-built and distributed in 0.42.0**: Exact-source ZIP, public SHA256, PE architecture and version verified; hardware runtime remains experimental. [Evidence](qa/RELEASE_0.42.0.json). |
+| Windows x64 | Distributed in 0.43.0 | Six public assets/SHA256, dist copies and nine packaged CLI calls verified; native qualification remains open. [Evidence](qa/RELEASE_0.43.0.json). |
+| Windows ARM64 | Distributed in 0.43.0 | Cross-build and distribution verified; ARM64 hardware runtime remains unqualified. [Evidence](qa/RELEASE_0.43.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

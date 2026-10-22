@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.42.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.43.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.42.0: on-page measurement tools (stable Latest)
+## 0.43.0: saved page scales and measurement inspection (stable Latest)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
+
+Source `965fb6494be0d200d3ac4f4eac895aa28e3a7632`, PR [#18](https://github.com/lmdanavanem/SuniPDF/pull/18). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39711311619) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39711322078) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39711311359). 682 tests passed, 10 default ignored. 1241 EN/FR keys. 35 portable scenarios. 29 MSI baselines / 145 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256. Nine packaged CLI calls check version/help, saving and reading a page scale, a converted 1000 cm length, reopening, removal of the default and unchanged existing measurements without modifying the original.
+
+[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.43.0.md) · [Evidence](qa/RELEASE_0.43.0.json).
+
+## 0.42.0: on-page measurement tools (published; Latest at the time)
 
 [0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 

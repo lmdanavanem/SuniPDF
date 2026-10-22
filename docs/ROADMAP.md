@@ -8,7 +8,13 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
-## 0.42.0: on-page measurement tools (stable Latest)
+## 0.43.0: saved page scales and measurement inspection (stable Latest)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
+
+[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.43.0.md) · [Evidence](qa/RELEASE_0.43.0.json).
+
+## 0.42.0: on-page measurement tools (published; Latest at the time)
 
 [0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 
@@ -493,9 +499,9 @@ This historical result does not establish the scan status of 0.30.0.
 
 Follow the [local feature backlog](AEC_BACKLOG.md) for calibrated measurements, quantities, registers, reusable annotation libraries and drawing revisions.
 
-## Work beyond 0.42.0
+## Work beyond 0.43.0
 
-Local AEC priorities: editing saved vertices, shared scale persistence/recalculation, libraries and real-plan coverage. Partial cards remain open.
+Local AEC priorities: editing saved vertices, explicit recalculation, multi-scale viewports, libraries and real-plan coverage. The 24 cards retain their acceptance criteria; partial cards remain open.
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

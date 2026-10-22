@@ -12,11 +12,11 @@ SuniPDF is a free, open-source local application for PDF plans, measurements and
 
 The 0.40.0 local source slice introduced self-contained two-point calibration and five measurement kinds with JSON records through coordinate entry. [Usage and current limits](MEASUREMENTS.md). It provided a foundation for AEC-001/002/003/026; those cards remain open.
 
-## Page scale persistence and inspection: 0.43.0 in preparation
+## Page scale persistence and inspection delivered in 0.43.0
 
-The next local slice adds an explicit saved default for each page, separate from the scale embedded in every measurement. Saving or removing that default participates in Undo and requires saving the PDF; it affects new measurements only. A read-only inspector exposes existing measurement values, units, precision and identity, with navigation and explicit reuse of a non-angle measurement's scale for the current session. CLI commands read, save and remove defaults in new copies and can use a saved scale with physical unit conversion.
+The published 0.43.0 slice adds an explicit saved default for each page, separate from the scale embedded in every measurement. Saving or removing that default participates in Undo and requires saving the PDF; it affects new measurements only. A read-only inspector exposes existing measurement values, units, precision and identity, with navigation and explicit reuse of a non-angle measurement's scale for the current session. CLI commands read, save and remove defaults in new copies and can use a saved scale with physical unit conversion.
 
-Saved defaults require document-modification permission. Bounded, versioned metadata checks page bounds and decoded page content before reuse; crop/resize/content changes can require recalibration. Annotation data remains independent. AEC-001/002/003/026 stay **In progress**: saved-vertex editing, explicit recalculation, multiple scales, vector snapping and real-plan/native qualification remain open. Automated test additions are being qualified; this section does not announce publication or completed acceptance.
+Saved defaults require document-modification permission. Bounded, versioned metadata checks page bounds and decoded page content before reuse; crop/resize/content changes can require recalibration. Annotation data remains independent. AEC-001/002/003/026 stay **In progress**: saved-vertex editing, explicit recalculation, multiple scales, vector snapping and real-plan/native qualification remain open. The published slice is verified within its documented limits; partial acceptance criteria remain open. [Evidence](qa/RELEASE_0.43.0.json).
 
 ## Measurement integration delivered in 0.42.0
 
@@ -58,7 +58,7 @@ P1 is the next useful foundation; P2 builds on that foundation; P3 requires a se
 ## Delivery sequence
 
 1. Extend direct measurement qualification on real plans and native interfaces.
-2. Qualify the 0.43 page defaults and inspector, then extend AEC-001/002 with AEC-026: saved geometry editing, explicit recalculation and remaining real-plan/accessibility checks. Build on the existing quantity records, register and counts.
+2. Extend page-default and inspector qualification, then extend AEC-001/002 with AEC-026: saved geometry editing, explicit recalculation and remaining real-plan/accessibility checks. Build on the existing quantity records, register and counts.
 3. Deliver reusable libraries and takeoff reports; extend overlays, plan sets and revision workflows in independently testable lots.
 4. Evaluate advanced recognition, BIM/3D and local automation against demonstrated needs and compatible licenses.
 

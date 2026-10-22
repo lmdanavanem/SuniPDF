@@ -1,6 +1,8 @@
 # SuniPDF 1.0 acceptance criteria
 
-Latest qualified slice: [0.42.0 — on-page measurement tools](RELEASE_0.42.0.md). Remaining acceptance criteria below stay open.
+Latest qualified slice: [0.43.0 — saved page scales and measurement inspection](RELEASE_0.43.0.md). Remaining acceptance criteria below stay open.
+
+Previously qualified slice: [0.42.0 — on-page measurement tools](RELEASE_0.42.0.md). Remaining acceptance criteria below stay open.
 
 Previously qualified slice: [0.41.0 — manual plan counts and annotation registers](RELEASE_0.41.0.md). Remaining acceptance criteria below stay open.
 
@@ -15,7 +17,7 @@ Previously qualified slice: [0.37.0 — image watermarks](RELEASE_0.37.0.md). Re
 [Français](RELEASE_1.0_CRITERIA.fr.md)
 
 This is the accepted preparation track after 0.32.0, not a claim that 1.0 is qualified. The current
-stable release is now [0.42.0](RELEASE_0.42.0.md). Existing supported operations and conservative refusals
+stable release is now [0.43.0](RELEASE_0.43.0.md). Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
 

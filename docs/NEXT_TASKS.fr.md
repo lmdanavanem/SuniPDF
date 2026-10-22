@@ -4,7 +4,17 @@
 
 Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEASE_1.0_CRITERIA.fr.md).
 
-## 0.42.0 : mesures directement sur la page (Latest stable)
+## 0.43.0 : échelles de page enregistrées et inspection des mesures (Latest stable)
+
+[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Enregistrez ou retirez explicitement une échelle de page dans le PDF avec Annuler/Rétablir, consultez les mesures de la page et réutilisez l’échelle physique d’une mesure non angulaire. Calibration de session et valeurs des annotations existantes restent distinctes. La CLI lit, écrit et retire les échelles dans de nouvelles copies et convertit les unités lors de leur utilisation.
+
+[Guide et limites](MEASUREMENTS.fr.md) · [Notes de version](RELEASE_0.43.0.fr.md) · [Preuves](qa/RELEASE_0.43.0.json).
+
+### Prochain lot local
+
+Compléter les sommets modifiables, le recalcul explicite et les vues multi-échelles, puis les bibliothèques et la qualification sur plans réels. Les échelles de page et l’inspecteur sont livrés dans leurs limites ; AEC-001/002/003/004/026 restent partiels.
+
+## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 
 [0.42.0 publiée en Latest stable](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) sous `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 
@@ -13,10 +23,6 @@ Mesures dispose d’un bouton libellé et d’un espace dans Tous les outils. Ca
 Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests réussis, 10 ignorés par défaut. 1224 clés EN/FR. 34 scénarios portables. 28 références MSI / 140 journaux. Aucune alerte Code Scanning ouverte. Six téléchargements publics sans authentification et copies dist vérifiés par SHA256 ; quatre appels CLI du paquet vérifient version, aide, création d’une longueur de 10 m et réouverture sans modifier l’original.
 
 Les annotations enregistrées gardent leur propre échelle. Échelles communes persistantes, édition des sommets enregistrés, accrochage aux vecteurs, vues multi-échelles et recalcul global restent ouverts. Paquets non signés, ARM64 compilé uniquement ; qualification native/matérielle et critères 1.0 restent ouverts. Les mises à jour Projects restent différées. [Preuves](qa/RELEASE_0.42.0.json).
-
-### Prochain lot local
-
-Compléter les sommets modifiables et les échelles communes persistantes/recalculables, puis les bibliothèques et la qualification sur plans réels. Les clics de mesure, comptages manuels et fonctions existantes du tableau sont livrés dans leurs limites ; AEC-001/002/003/004/026 restent partiels.
 
 ## 0.41.0 : comptage sur plans et tableau des annotations (publiée ; Latest à cette date)
 

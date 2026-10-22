@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-**0.43.0 in preparation:** saved page defaults and the saved-measurement inspector described below extend the direct toolbar access and on-page drawing published in [0.42.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0). Publication and qualification are recorded in [Project status](PROJECT_STATUS.md).
+**Available in [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0):** persistent page scales, inspection and explicit scale reuse extend on-page drawing. Existing measurements retain their values. [Evidence](qa/RELEASE_0.43.0.json).
 
 ## Measure directly on the page
 

@@ -12,11 +12,11 @@ L'édition, les annotations, les fils de commentaires, les statuts PDF, l'OCR, l
 
 Le lot local 0.40.0 a introduit calibration sur deux points, cinq types de mesures et données JSON par saisie de coordonnées. [Guide et limites](MEASUREMENTS.fr.md). Il constitue une base pour AEC-001/002/003/026 ; ces cartes restent ouvertes.
 
-## Échelles persistantes et inspection : 0.43.0 en préparation
+## Échelles persistantes et inspection livrées en 0.43.0
 
-Le prochain lot local ajoute une échelle par défaut enregistrée explicitement sur chaque page, distincte de celle conservée dans chaque mesure. Son ajout ou retrait participe à Annuler et nécessite l'enregistrement du PDF ; seules les nouvelles mesures l'utilisent. Un inspecteur en lecture seule expose valeurs, unités, précision et identité des mesures, avec navigation et réutilisation explicite de l'échelle d'une mesure non angulaire pour la session. La CLI lit, enregistre et retire les échelles dans de nouvelles copies, puis peut les utiliser avec conversion physique des unités.
+Le lot 0.43.0 publié ajoute une échelle par défaut enregistrée explicitement sur chaque page, distincte de celle conservée dans chaque mesure. Son ajout ou retrait participe à Annuler et nécessite l'enregistrement du PDF ; seules les nouvelles mesures l'utilisent. Un inspecteur en lecture seule expose valeurs, unités, précision et identité des mesures, avec navigation et réutilisation explicite de l'échelle d'une mesure non angulaire pour la session. La CLI lit, enregistre et retire les échelles dans de nouvelles copies, puis peut les utiliser avec conversion physique des unités.
 
-Les échelles persistantes exigent le droit de modification du document. Les métadonnées versionnées et bornées vérifient les limites de page et le contenu décodé avant réutilisation ; rognage, redimensionnement ou modification du contenu peuvent imposer une nouvelle calibration. Les annotations restent indépendantes. AEC-001/002/003/026 restent **En cours** : modification des sommets enregistrés, recalcul explicite, échelles multiples, accrochage aux vecteurs et qualification native/sur plans réels restent ouverts. Les nouveaux tests sont en qualification ; cette section n'annonce ni publication ni validation complète des critères.
+Les échelles persistantes exigent le droit de modification du document. Les métadonnées versionnées et bornées vérifient les limites de page et le contenu décodé avant réutilisation ; rognage, redimensionnement ou modification du contenu peuvent imposer une nouvelle calibration. Les annotations restent indépendantes. AEC-001/002/003/026 restent **En cours** : modification des sommets enregistrés, recalcul explicite, échelles multiples, accrochage aux vecteurs et qualification native/sur plans réels restent ouverts. Le lot publié est vérifié dans ses limites documentées ; les critères partiels restent ouverts. [Preuves](qa/RELEASE_0.43.0.json).
 
 ## Intégration des mesures livrée en 0.42.0
 
@@ -56,7 +56,7 @@ P1 : fondations prioritaires. P2 : extensions métier. P3 : intégrations ou inf
 ## Ordre proposé
 
 1. Étendre la qualification du parcours de mesure directe sur plans réels et interfaces natives.
-2. Qualifier les échelles de page et l'inspecteur de la 0.43, puis compléter AEC-001/002 avec AEC-026 : édition des géométries enregistrées, recalcul explicite, vérifications restantes sur plans réels et accessibilité. S'appuyer sur les données de métrés, le tableau et les comptages existants.
+2. Étendre la qualification des échelles de page et de l'inspecteur, puis compléter AEC-001/002 avec AEC-026 : édition des géométries enregistrées, recalcul explicite, vérifications restantes sur plans réels et accessibilité. S'appuyer sur les données de métrés, le tableau et les comptages existants.
 3. Développer bibliothèques, rapports, superpositions, ensembles de plans et gestion des révisions par lots vérifiables.
 4. Évaluer reconnaissance avancée, BIM/3D et automatisation selon les besoins et les licences compatibles.
 
