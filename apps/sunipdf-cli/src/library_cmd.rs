@@ -253,7 +253,7 @@ pub fn run(args: &LibraryArgs) -> Result<Value, EngineError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::Parser;
+    use crate::tests::parse_cli;
 
     #[test]
     fn placement_requires_explicit_finite_geometry_and_accepts_common_password_sources() {
@@ -269,7 +269,7 @@ mod tests {
             "--out",
             "placed.pdf",
         ];
-        assert!(crate::Cli::try_parse_from(base).is_err());
+        assert!(parse_cli(base).is_err());
         for (page, origin, scale) in [
             ("0", "10,20", "1"),
             ("1", "NaN,20", "1"),
@@ -278,13 +278,13 @@ mod tests {
             ("1", "10,20", "NaN"),
             ("1", "10,20", "0"),
         ] {
-            assert!(crate::Cli::try_parse_from(
+            assert!(parse_cli(
                 base.into_iter()
                     .chain(["--page", page, "--origin", origin, "--scale", scale])
             )
             .is_err());
         }
-        let parsed = crate::Cli::try_parse_from(base.into_iter().chain([
+        let parsed = parse_cli(base.into_iter().chain([
             "--page",
             "2",
             "--origin",
@@ -307,7 +307,7 @@ mod tests {
 
     #[test]
     fn management_commands_reject_pdf_password_input_before_reading_stdin() {
-        let mut parsed = crate::Cli::try_parse_from([
+        let mut parsed = parse_cli([
             "sunipdf-cli",
             "annotation-library",
             "inspect",

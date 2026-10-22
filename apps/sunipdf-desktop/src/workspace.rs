@@ -21,6 +21,7 @@ pub enum Workspace {
     Create,
     Combine,
     Organize,
+    Quantity,
     Measure,
     RevisionOverlay,
     Library,
@@ -70,7 +71,7 @@ use Command as C;
 /// Segoe Fluent Ruler with a readable fallback when the icon font is absent.
 pub const MEASURE_ICON: (&str, &str) = ("\u{ED5E}", "↔");
 
-pub static TABLE: [WsInfo; 17] = [
+pub static TABLE: [WsInfo; 18] = [
     WsInfo {
         ws: Workspace::Export,
         name_key: "hub.export.name",
@@ -170,13 +171,22 @@ pub static TABLE: [WsInfo; 17] = [
         ],
     },
     WsInfo {
+        ws: Workspace::Quantity,
+        name_key: "quantity.title",
+        desc_key: "quantity.help",
+        icon: (glyph::NUMBERS, "#"),
+        color: theme::CAT_ANNOTATE,
+        entry: Some(Entry::Direct(C::QuantityTable)),
+        groups: &[&[C::QuantityTable]],
+    },
+    WsInfo {
         ws: Workspace::Measure,
         name_key: "hub.measure.name",
         desc_key: "hub.measure.desc",
         icon: MEASURE_ICON,
         color: theme::CAT_ANNOTATE,
         entry: Some(Entry::Mode(C::HubMeasure)),
-        groups: &[&[C::ToolMeasure]],
+        groups: &[&[C::ToolMeasure], &[C::QuantityTable]],
     },
     WsInfo {
         ws: Workspace::RevisionOverlay,
@@ -226,6 +236,7 @@ pub static TABLE: [WsInfo; 17] = [
                 C::AnnotationLibrary,
                 C::ToolCount,
                 C::AnnotationRegister,
+                C::QuantityTable,
                 C::EraseInkStrokes,
             ],
             &[C::ToggleComments, C::CopyText],
@@ -843,7 +854,8 @@ impl SuniApp {
                 tint: Some(info.color),
                 label,
                 // L'outil de dessin actif garde son libellé même en icônes seules (sauf compact).
-                show_label: if matches!(c, C::ToolMeasure | C::AnnotationLibrary) {
+                show_label: if matches!(c, C::ToolMeasure | C::AnnotationLibrary | C::QuantityTable)
+                {
                     true
                 } else if is_tool {
                     layout.tool_labels || (selected && !layout.compact)
@@ -967,7 +979,7 @@ mod tests {
 
     #[test]
     fn available_tools_are_wired() {
-        assert_eq!(Workspace::available().count(), 17);
+        assert_eq!(Workspace::available().count(), 18);
         for ws in Workspace::available() {
             let info = ws.info();
             match info.entry.unwrap() {
@@ -1034,7 +1046,10 @@ mod tests {
                 let shared_measure_shortcut = matches!(c, C::ToolMeasure | C::AnnotationLibrary)
                     && info.ws == Workspace::Comment;
                 assert!(
-                    seen.insert(c) || shared_measure_shortcut,
+                    seen.insert(c)
+                        || shared_measure_shortcut
+                        || (c == C::QuantityTable
+                            && matches!(info.ws, Workspace::Measure | Workspace::Comment)),
                     "{c:?} appartient à deux outils"
                 );
             }

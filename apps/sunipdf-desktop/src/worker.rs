@@ -437,6 +437,10 @@ pub enum EditOp {
         group: String,
         author: Option<String>,
     },
+    SetQuantityFields {
+        target: sunipdf_core::quantity_table::QuantityTarget,
+        fields: sunipdf_core::quantity_table::QuantityFields,
+    },
     SetAnnotationRegisterFields {
         target: sunipdf_core::annotation_register::RegisterTarget,
         fields: sunipdf_core::annotation_register::RegisterFields,
@@ -500,6 +504,7 @@ impl EditOp {
                 | Self::SetAnnotationText { .. }
                 | Self::AddCountMarker { .. }
                 | Self::SetAnnotationRegisterFields { .. }
+                | Self::SetQuantityFields { .. }
                 | Self::UpdateFreeText { .. }
                 | Self::DeleteAnnotationThread { .. }
                 | Self::Reply { .. }
@@ -687,6 +692,18 @@ pub enum Request {
     Annotations {
         page: usize,
         detailed: bool,
+    },
+    QuantityTable {
+        epoch: u64,
+        generation: u64,
+    },
+    ExportQuantityTable {
+        table: Arc<sunipdf_core::quantity_table::QuantityTable>,
+        options: sunipdf_core::quantity_table::QuantityOptions,
+        path: PathBuf,
+        csv: bool,
+        epoch: u64,
+        generation: u64,
     },
     AnnotationRegister {
         epoch: u64,
@@ -902,6 +919,16 @@ pub enum Response {
         page: usize,
         list: Vec<AnnotationInfo>,
         details: Option<Vec<AnnotDetail>>,
+    },
+    QuantityTable {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::quantity_table::QuantityTable, EngineError>,
+    },
+    QuantityExported {
+        epoch: u64,
+        generation: u64,
+        result: Result<(), EngineError>,
     },
     AnnotationRegister {
         epoch: u64,
@@ -1604,6 +1631,7 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         EditOp::SetPageCalibration { page, calibration } => {
             doc.set_page_calibration(page, calibration.as_ref())
         }
+        EditOp::SetQuantityFields { target, fields } => doc.set_quantity_fields(&target, &fields),
         EditOp::SetAnnotationRegisterFields {
             target,
             fields,
@@ -2752,6 +2780,40 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         )
                     }),
             },
+            Request::QuantityTable { epoch, generation } => Response::QuantityTable {
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.quantity_table()),
+            },
+            Request::ExportQuantityTable {
+                table,
+                options,
+                path,
+                csv,
+                epoch,
+                generation,
+            } => Response::QuantityExported {
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.export_quantity_table(&table, &options))
+                    .and_then(|export| {
+                        let bytes = if csv {
+                            export.csv.into_bytes()
+                        } else {
+                            serde_json::to_vec_pretty(&export.json)
+                                .map_err(|error| EngineError::Other(error.to_string()))?
+                        };
+                        sunipdf_core::write_new_copy(&path, &bytes)
+                    }),
+            },
             Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
                 epoch,
                 generation,
@@ -2922,6 +2984,7 @@ mod tests {
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
         library_groups_use_one_preview_and_one_history_step(&worker);
         revision_overlay_jobs_preserve_sources_and_guard_exports(&worker);
+        quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
     }
 
     fn revision_overlay_jobs_preserve_sources_and_guard_exports(worker: &Worker) {
@@ -3074,6 +3137,178 @@ mod tests {
         assert_eq!(std::fs::read(base).unwrap(), bytes);
         assert_eq!(std::fs::read(revision).unwrap(), bytes);
         assert!(!worker.has_pending_mutations());
+    }
+
+    fn quantity_fields_have_history_exports_and_guarded_desktop_controls(worker: &Worker) {
+        use sunipdf_core::quantity_table::{
+            DecimalValue, QuantityFields, QuantityOptions, QuantityUnit, TypedValue, UnitPrice,
+        };
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        worker.send(Request::Open {
+            path: source,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for (point, group) in [((50.0, 100.0), "First"), ((90.0, 100.0), "Second")] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page: 0,
+                point,
+                size: 18.0,
+                group: group.into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let read = || {
+            worker.send(Request::QuantityTable {
+                epoch: 101,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::QuantityTable {
+                    result: Ok(table), ..
+                } => table,
+                _ => panic!("quantity report"),
+            }
+        };
+        let original = read();
+        assert_eq!(original.rows().len(), 2);
+        assert!(original
+            .rows()
+            .iter()
+            .all(|r| r.quantity.as_ref().unwrap().value == 1.0 && r.line_total.is_none()));
+        crate::quantity_table::tests::verify_controls(&original);
+        let fields = QuantityFields {
+            unit_price: Some(UnitPrice {
+                amount: DecimalValue::parse("3.5").unwrap(),
+                currency: "CHF".into(),
+                per_unit: QuantityUnit::Each,
+                rounding_decimals: 2,
+            }),
+            custom: std::collections::BTreeMap::from([(
+                "Package".into(),
+                TypedValue::Text { value: "A".into() },
+            )]),
+        };
+        let target = original.target(&original.rows()[0]).unwrap();
+        worker.send(Request::Edit(EditOp::SetQuantityFields {
+            target: target.clone(),
+            fields: fields.clone(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: true,
+                measurement_scales_unchanged: true,
+                ..
+            })
+        ));
+        let edited = read();
+        assert_eq!(edited.rows()[0].fields, fields);
+        assert_eq!(edited.rows()[0].line_total.as_ref().unwrap().amount, "3.50");
+        assert_eq!(
+            edited.rows()[0].register.annotation_id,
+            original.rows()[0].register.annotation_id
+        );
+        let summary = edited.summary(&QuantityOptions::default()).unwrap();
+        assert_eq!(summary.groups[0].missing_prices, 1);
+        assert!(!summary.groups[0].costs[0].complete);
+        worker.send(Request::Edit(EditOp::SetQuantityFields {
+            target,
+            fields: QuantityFields::default(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows(), original.rows());
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows(), edited.rows());
+        let directory = tempfile::tempdir().unwrap();
+        let csv = directory.path().join("quantities.csv");
+        let export = |table, path: PathBuf| {
+            worker.send(Request::ExportQuantityTable {
+                table: Arc::new(table),
+                options: QuantityOptions::default(),
+                path,
+                csv: true,
+                epoch: 101,
+                generation: 2,
+            });
+            next_response(worker)
+        };
+        assert!(matches!(
+            export(original, csv.clone()),
+            Response::QuantityExported { result: Err(_), .. }
+        ));
+        assert!(!csv.exists());
+        assert!(matches!(
+            export(read(), csv.clone()),
+            Response::QuantityExported { result: Ok(()), .. }
+        ));
+        let saved_csv = std::fs::read(&csv).unwrap();
+        assert!(String::from_utf8(saved_csv.clone())
+            .unwrap()
+            .contains("CHF"));
+        assert!(matches!(
+            export(read(), csv.clone()),
+            Response::QuantityExported { result: Err(_), .. }
+        ));
+        assert_eq!(std::fs::read(csv).unwrap(), saved_csv);
+        let pdf = directory.path().join("quantities.pdf");
+        worker.send(Request::Save { path: pdf.clone() });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: pdf,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(read().rows(), edited.rows());
+        let saved_pdf = std::fs::read(directory.path().join("quantities.pdf")).unwrap();
+        let protected = security::protect(
+            &saved_pdf,
+            None,
+            &Protection {
+                owner_password: format!("quantity-{}", directory.path().display()),
+                allow_copy: false,
+                allow_annotate: false,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let protected_path = directory.path().join("restricted-quantities.pdf");
+        std::fs::write(&protected_path, &protected).unwrap();
+        worker.send(Request::Open {
+            path: protected_path,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let restricted = read();
+        assert!(!restricted.can_export());
+        assert!(restricted.rows().iter().all(|row| !row.editable));
+        crate::quantity_table::tests::verify_restricted_controls(&restricted);
+        let forbidden = directory.path().join("forbidden.csv");
+        assert!(matches!(
+            export(restricted, forbidden.clone()),
+            Response::QuantityExported {
+                result: Err(EngineError::SecurityRestricted),
+                ..
+            }
+        ));
+        assert!(!forbidden.exists());
     }
 
     fn library_groups_use_one_preview_and_one_history_step(worker: &Worker) {
