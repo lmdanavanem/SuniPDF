@@ -4,7 +4,15 @@
 
 Le prochain lot de qualité suit les [critères d’acceptation de la 1.0](RELEASE_1.0_CRITERIA.fr.md).
 
-## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (Latest stable)
+
+[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
+
+AEC-002 et AEC-003 restent partiels. Les polylignes gardent 2 à 128 sommets ; les périmètres et surfaces polygonales, 3 à 128. Longueurs et angles gardent leur nombre fixe de points ; le type de mesure ne change pas. Accrochage vectoriel, recalcul par lots, vues multi-échelles et qualification sur plans réels restent ouverts. Les paquets restent non signés ; ARM64 natif, accessibilité, matériel et critères généraux 1.0 restent ouverts.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.49.0.fr.md) · [Preuves](qa/RELEASE_0.49.0.json).
+
+## 0.48.0 : modification des sommets des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
 
@@ -51,6 +59,7 @@ Lot publié dans ses limites ; prochaine implémentation prévue : bibliothèque
 | 0.46 | Tables de quantités et champs typés | Lot livré dans ses limites ; critères complets encore ouverts. [0.46.0](RELEASE_0.46.0.fr.md). |
 | 0.47 | Superpositions de révisions alignées | Lot livré dans ses limites ; critères complets encore ouverts. [0.47.0](RELEASE_0.47.0.fr.md). |
 | 0.48 | Modification des sommets des mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.48.0](RELEASE_0.48.0.fr.md). |
+| 0.49 | Ajout et suppression de sommets de mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.49.0](RELEASE_0.49.0.fr.md). |
 
 Les étapes futures exigent implémentation et qualification avant leur publication. AEC-001/002/003/004/026 restent partiels ; interaction native, vérification dimensionnelle sur plans réels et critères généraux 1.0 restent ouverts. [Roadmap](ROADMAP.fr.md).
 
@@ -62,7 +71,7 @@ Les étapes futures exigent implémentation et qualification avant leur publicat
 
 ### Prochain lot local
 
-Le socle 0.43 alimente la séquence 0.44–0.48 ci-dessus. La modification des sommets existants est livrée dans les limites 0.48 ; ajout/suppression, accrochage, recalcul global, vues multi-échelles et qualification sur plans réels restent ouverts. AEC-001/002/003/004/026 restent partiels.
+Le socle 0.43 alimente la séquence 0.44–0.49 ci-dessus. La modification des sommets existants est livrée dans les limites 0.48, l’ajout/suppression et la sélection explicite dans les limites 0.49 ; accrochage, recalcul global, vues multi-échelles et qualification sur plans réels restent ouverts. AEC-001/002/003/004/026 restent partiels.
 
 ## 0.42.0 : mesures directement sur la page (publiée ; Latest à cette date)
 

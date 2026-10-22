@@ -7,6 +7,14 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
+## [0.49.0] - 2026-10-22
+
+Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
+
+La version publiée 0.48.0 rejoint les régressions de mise à jour. Les séquences d’insertion et de suppression vérifient réouverture, conservation des données et recalcul des quantités ; les types à nombre fixe de points et les bornes restent contrôlés.
+
+[Notes et limites](docs/RELEASE_0.49.0.fr.md) · [Preuves](docs/qa/RELEASE_0.49.0.json).
+
 ## [0.48.0] - 2026-10-22
 
 Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.

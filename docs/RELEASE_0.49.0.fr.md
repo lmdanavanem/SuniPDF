@@ -2,7 +2,7 @@
 
 [English](RELEASE_0.49.0.md) · [Guide de modification géométrique](MEASUREMENT_GEOMETRY.fr.md)
 
-Cette version comprend le périmètre ci-dessous. Les fichiers publiés et la qualification sont suivis sur la [page de version 0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0).
+Statut : publiée en Latest stable [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0), source `a95774d56c3b9ce02a9743431a5d0c2b079b330e`, le 2026-10-22. [Version précédente](RELEASE_0.48.0.fr.md).
 
 ## Changements
 
@@ -14,7 +14,7 @@ Cette version comprend le périmètre ci-dessous. Les fichiers publiés et la qu
 
 ## Qualification
 
-Les preuves et fichiers de distribution sont suivis sur la [page de version 0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0). Les résultats concernent la source exacte qui y figure.
+Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660301) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552). 761 tests réussis, 10 ignorés par défaut. 1397 clés EN/FR. 41 scénarios portables. 35 références MSI. 175 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 63 appels CLI vérifient insertion et suppression sur polylignes, périmètres et surfaces, nombres de sommets après réouverture, conservation des calibrations et quantités, recalcul des totaux, limites minimum/maximum et des types fixes, refus invalides/périmés et cycle de vie des mesures conservé. Ils ne constituent pas une qualification du bureau natif ni d’ARM64. [Preuves](qa/RELEASE_0.49.0.json).
 
 ## Périmètre
 

@@ -2,7 +2,7 @@
 
 [Français](RELEASE_0.49.0.fr.md) · [Geometry editing guide](MEASUREMENT_GEOMETRY.md)
 
-This build includes the scope below. Published assets and qualification are tracked on the [0.49.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0).
+Status: published as stable Latest [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0), source `a95774d56c3b9ce02a9743431a5d0c2b079b330e`, on 2026-10-22. [Previous release](RELEASE_0.48.0.md).
 
 ## Changes
 
@@ -14,7 +14,7 @@ This build includes the scope below. Published assets and qualification are trac
 
 ## Qualification
 
-Qualification records and distribution assets are tracked on the [0.49.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0). Results apply to the exact source identified there.
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660301) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552). 761 tests passed, 10 default ignored. 1397 EN/FR keys. 41 portable scenarios. 35 MSI baselines. 175 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 63 packaged CLI calls verify insertion and removal across polyline, perimeter and area measurements, reopened vertex counts, calibration and quantity preservation, recalculated totals, minimum/maximum and fixed-kind bounds, invalid/stale refusals and the retained measurement lifecycle. They do not establish native desktop or ARM64 qualification. [Evidence](qa/RELEASE_0.49.0.json).
 
 ## Scope
 

@@ -2,7 +2,7 @@
 
 [Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
 
-**0.49.0 build:** add or remove saved polyline, perimeter and polygon-area vertices within their minimum and maximum counts; select a vertex by number even when handles overlap. Preview, Apply and Undo preserve the measurement’s own calibration and entered quantity fields. [Workflow and limits](MEASUREMENT_GEOMETRY.md).
+**Available in [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0):** add or remove saved polyline, perimeter and polygon-area vertices within their minimum and maximum counts; select a vertex by number even when handles overlap. Preview, Apply and Undo preserve the measurement’s own calibration and entered quantity fields. [Workflow and limits](MEASUREMENT_GEOMETRY.md). [Evidence](qa/RELEASE_0.49.0.json).
 
 **Available in [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0):** drag existing saved measurement vertices through **Edit geometry**, then Preview and Apply. Calibration and entered quantity fields are preserved. [Workflow and limits](MEASUREMENT_GEOMETRY.md). [Evidence](qa/RELEASE_0.48.0.json).
 

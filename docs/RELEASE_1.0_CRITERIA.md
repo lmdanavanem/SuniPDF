@@ -1,6 +1,8 @@
 # SuniPDF 1.0 acceptance criteria
 
-Latest qualified slice: [0.48.0 — editing saved measurement vertices](RELEASE_0.48.0.md). Remaining criteria stay open.
+Latest qualified slice: [0.49.0 — adding and removing saved measurement vertices](RELEASE_0.49.0.md). Remaining criteria stay open.
+
+Previously qualified slice: [0.48.0 — editing saved measurement vertices](RELEASE_0.48.0.md). Remaining criteria stay open.
 
 Previously qualified slice: [0.47.0 — aligned revision overlays](RELEASE_0.47.0.md). Remaining criteria stay open.
 
@@ -27,7 +29,7 @@ Previously qualified slice: [0.37.0 — image watermarks](RELEASE_0.37.0.md). Re
 [Français](RELEASE_1.0_CRITERIA.fr.md)
 
 This is the accepted preparation track after 0.32.0, not a claim that 1.0 is qualified. The current
-stable release is now [0.48.0](RELEASE_0.48.0.md). Existing supported operations and conservative refusals
+stable release is now [0.49.0](RELEASE_0.49.0.md). Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
 

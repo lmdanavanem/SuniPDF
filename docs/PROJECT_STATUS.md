@@ -1,11 +1,19 @@
-# Project status - updated 2026-10-22 (0.48.0 published stable Latest)
+# Project status - updated 2026-10-22 (0.49.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.48.0: editing saved measurement vertices (stable Latest)
+## 0.49.0: adding and removing saved measurement vertices (stable Latest)
+
+[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
+
+Source `a95774d56c3b9ce02a9743431a5d0c2b079b330e`, PR [#27](https://github.com/lmdanavanem/SuniPDF/pull/27). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660301) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552). 761 tests passed, 10 default ignored. 1397 EN/FR keys. 41 portable scenarios. 35 MSI baselines. 175 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 63 packaged CLI calls verify insertion and removal across polyline, perimeter and area measurements, reopened vertex counts, calibration and quantity preservation, recalculated totals, minimum/maximum and fixed-kind bounds, invalid/stale refusals and the retained measurement lifecycle. They do not establish native desktop or ARM64 qualification.
+
+[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.49.0.md) · [Evidence](qa/RELEASE_0.49.0.json).
+
+## 0.48.0: editing saved measurement vertices (published; Latest at the time)
 
 [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
 

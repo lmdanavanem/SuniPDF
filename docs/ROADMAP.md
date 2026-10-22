@@ -8,7 +8,7 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
-## 0.44–0.48: local plan workflow deliveries
+## 0.44–0.49: local plan workflow deliveries
 
 | Version | Scope | Current state |
 |---|---|---|
@@ -17,12 +17,19 @@ Partial corpus/mutation work does not close native, interoperability, authentici
 | 0.46 | Quantity tables and typed fields | Slice delivered within its bounds; full acceptance criteria remain open. [0.46.0](RELEASE_0.46.0.md). |
 | 0.47 | Aligned revision overlays | Slice delivered within its bounds; full acceptance criteria remain open. [0.47.0](RELEASE_0.47.0.md). |
 | 0.48 | Editing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.48.0](RELEASE_0.48.0.md). |
+| 0.49 | Adding and removing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.49.0](RELEASE_0.49.0.md). |
 
 The 0.44 desktop editor changes reference distance, unit and precision while keeping vertices/reference points fixed. The CLI can replace explicit geometry using an expected record; both paths preserve annotation identity and reject stale or unsupported targets. Final-source qualification and limits: [Evidence](qa/RELEASE_0.44.0.json). [0.44 scope and preliminary audit](RELEASE_0.44.0.md) · [Measurement guide](MEASUREMENTS.md).
 
-This sequence delivers bounded increments. Existing vertex editing is included in 0.48; adding/removing vertices, vector snapping, batch recalculation, multiple-scale viewports, real-plan accuracy and full 1.0 criteria remain open. AEC-001/002/003/004/026 remain partial. Historical evidence below stays attached to its original release.
+This sequence delivers bounded increments. Existing vertex editing is included in 0.48, and insertion/removal with explicit vertex selection in 0.49; vector snapping, batch recalculation, multiple-scale viewports, real-plan accuracy and full 1.0 criteria remain open. AEC-001/002/003/004/026 remain partial. Historical evidence below stays attached to its original release.
 
-## 0.48.0: editing saved measurement vertices (stable Latest)
+## 0.49.0: adding and removing saved measurement vertices (stable Latest)
+
+[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
+
+[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.49.0.md) · [Evidence](qa/RELEASE_0.49.0.json).
+
+## 0.48.0: editing saved measurement vertices (published; Latest at the time)
 
 [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
 
@@ -545,7 +552,7 @@ Follow the [local feature backlog](AEC_BACKLOG.md) for calibrated measurements, 
 
 ## Work beyond 0.43.0
 
-Local AEC priorities: vertex insertion/removal, vector snapping, explicit batch recalculation, multiple-scale viewports, remaining library scope and real-plan coverage. The 24 cards retain their acceptance criteria; partial cards remain open.
+Local AEC priorities: vector snapping, explicit batch recalculation, multiple-scale viewports, remaining library scope and real-plan coverage. The 24 cards retain their acceptance criteria; partial cards remain open.
 
 1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
 2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.

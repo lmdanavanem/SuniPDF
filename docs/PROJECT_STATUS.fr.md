@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.48.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.49.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.48.0 : modification des sommets des mesures enregistrées (Latest stable)
+## 0.49.0 : ajout et suppression de sommets de mesures enregistrées (Latest stable)
+
+[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés, y compris sur les segments de fermeture, et sélectionnez un point par son numéro lorsque les poignées se confondent. Prévisualisez, ajustez puis appliquez avec une étape d’annulation. Calibration, unité, précision, identité, réponses et champs de quantité saisis sont conservés ; valeurs mesurées et totaux tarifaires compatibles sont recalculés. Les modifications périmées, invalides ou interdites restent contrôlées.
+
+Source `a95774d56c3b9ce02a9743431a5d0c2b079b330e`, PR [#27](https://github.com/lmdanavanem/SuniPDF/pull/27). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660301) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552). 761 tests réussis, 10 ignorés par défaut. 1397 clés EN/FR. 41 scénarios portables. 35 références MSI. 175 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 63 appels CLI vérifient insertion et suppression sur polylignes, périmètres et surfaces, nombres de sommets après réouverture, conservation des calibrations et quantités, recalcul des totaux, limites minimum/maximum et des types fixes, refus invalides/périmés et cycle de vie des mesures conservé. Ils ne constituent pas une qualification du bureau natif ni d’ARM64.
+
+[Guide et limites](MEASUREMENT_GEOMETRY.fr.md) · [Notes de version](RELEASE_0.49.0.fr.md) · [Preuves](qa/RELEASE_0.49.0.json).
+
+## 0.48.0 : modification des sommets des mesures enregistrées (publiée ; Latest à cette date)
 
 [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Modifiez les sommets existants d’une mesure enregistrée sur sa page d’origine, examinez l’aperçu, ajustez le brouillon puis appliquez avec une seule étape d’annulation. La mesure conserve ses propres calibration, unité, précision, identité, réponses et champs de quantité saisis. Valeurs mesurées et totaux tarifaires compatibles suivent la géométrie validée ; les modifications périmées, invalides ou interdites restent contrôlées.
 
