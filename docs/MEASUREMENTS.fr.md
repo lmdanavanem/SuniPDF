@@ -2,6 +2,8 @@
 
 [English](MEASUREMENTS.md) · [Backlog bâtiment](AEC_BACKLOG.fr.md)
 
+**Version 0.50.0 :** ouvrez **Outils → Réviser et mesurer → Mesures**. Le panneau droit regroupe Créer une mesure, Échelle de la page, Tracé et Données enregistrées ; **Mesures enregistrées** se trouve dans Données enregistrées. [Guide de lecture et des outils](READER_WORKSPACE.fr.md).
+
 **Disponible en [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) :** ajoutez ou supprimez des sommets de polylignes, périmètres et surfaces polygonales enregistrés dans leurs limites de nombre ; sélectionnez un sommet par son numéro même lorsque les poignées se superposent. Aperçu, Appliquer et Annuler conservent la calibration propre à la mesure et les champs de quantité saisis. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md). [Preuves](qa/RELEASE_0.49.0.json).
 
 **Disponible en [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) :** déplacez les sommets existants via **Modifier la géométrie**, puis Aperçu et Appliquer. Calibration et champs de quantité saisis sont conservés. [Parcours et limites](MEASUREMENT_GEOMETRY.fr.md). [Preuves](qa/RELEASE_0.48.0.json).
@@ -12,7 +14,7 @@
 
 ## Mesurer directement sur la page
 
-1. Ouvrez un PDF et cliquez sur **Mesures**, à côté de **Tous les outils** dans la barre principale. L'outil est aussi disponible dans **Tous les outils → Mesures** et le premier groupe de l'espace **Commenter**. Son libellé reste visible dans les fenêtres étroites.
+1. Ouvrez un PDF et choisissez **Outils → Réviser et mesurer → Mesures**. Utilisez le panneau de réglages à droite ; ses sections restent accessibles par défilement lorsque la fenêtre est plus petite.
 2. Choisissez `mm`, `cm`, `m`, `in` ou `ft` et 0 à 4 décimales. Cliquez sur **Calibrer cette page**, puis sur deux points distincts délimitant une distance connue du plan. Saisissez cette **Distance connue**, strictement positive, puis cliquez sur **Confirmer l’échelle**. Pieds et pouces sont décimaux : 10 pieds 6 pouces correspondent à `10.5 ft` ou `126 in`.
 3. Choisissez le type de mesure et cliquez directement sur la page. **Longueur** ouvre l'aperçu après deux points. **Angle** l'ouvre après trois points : premier côté, sommet, second côté ; un angle ne nécessite pas d'échelle physique. Pour **Polyligne**, **Périmètre** et **Surface polygonale**, placez les sommets puis cliquez sur **Prévisualiser la mesure**, appuyez sur **Entrée** ou double-cliquez sur le dernier point. Les polygones se ferment automatiquement : ne répétez pas le premier sommet.
 4. Vérifiez le rendu réel et la valeur, puis cliquez sur **Appliquer**. Rien n'est ajouté avant la réussite de cette application. **Annuler** ou **Échap** abandonne l'aperçu. Enregistrez le PDF pour conserver la mesure ; un Annuler retire l'annotation et ses données ensemble. L'outil reste actif après l'application : vous pouvez tracer la mesure suivante sur la page calibrée.

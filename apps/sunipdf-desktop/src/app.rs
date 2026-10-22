@@ -1694,6 +1694,10 @@ impl SuniApp {
     }
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
+        if self.measurement_blocks_panel_command(command) {
+            self.status_msg = Some(self.t("measure.finish_draft_first").to_owned());
+            return;
+        }
         if self.edit.paragraph.is_some() {
             self.status_msg = Some(self.t("paragraph.finish_first").into());
             return;
@@ -1919,8 +1923,7 @@ impl SuniApp {
             Command::ViewTwoPage => self.set_view_mode(ViewMode::TwoPage),
             Command::ViewBook => self.set_view_mode(ViewMode::Book),
             Command::ToggleThumbnails => {
-                self.settings.show_thumbnails = !self.settings.show_thumbnails;
-                self.persist_settings();
+                self.toggle_navigation_panel(crate::reader_layout::NavigationPanel::Pages);
             }
             Command::Find => {
                 self.find.open = true;
@@ -2026,8 +2029,7 @@ impl SuniApp {
             Command::SelectAllObjects => self.select_all_objects(ctx),
             Command::ReplaceImage => self.replace_selected_image(),
             Command::ToggleObjects => {
-                self.edit.objects_open = !self.edit.objects_open;
-                self.edit.objects_page = None;
+                self.toggle_context_panel(command);
             }
             Command::CropPages
             | Command::ResizePages
@@ -2110,10 +2112,7 @@ impl SuniApp {
             Command::InsertDate => self.start_placing_date(),
             Command::ToolFillForm => self.enter_fill_tool(),
             Command::ToggleForms => {
-                self.forms.panel_open = !self.forms.panel_open;
-                if self.forms.panel_open {
-                    self.forms.stale = true;
-                }
+                self.toggle_context_panel(command);
             }
             Command::ClearForm => {
                 self.forms.editing = None;
@@ -2141,7 +2140,7 @@ impl SuniApp {
             Command::ExportImages => self.tool_export_images(),
             Command::Optimize => self.tool_optimize(),
             Command::ToggleBookmarks => {
-                self.docinfo.bookmarks_open = !self.docinfo.bookmarks_open;
+                self.toggle_navigation_panel(crate::reader_layout::NavigationPanel::Bookmarks);
             }
             Command::Properties => {
                 self.docinfo.properties = None;
@@ -2178,8 +2177,7 @@ impl SuniApp {
             }
             Command::Sanitize => self.tools.sanitize_open = true,
             Command::ToggleComments => {
-                self.annotate.comments_open = !self.annotate.comments_open;
-                self.annotate.annotations_page = None;
+                self.toggle_context_panel(command);
             }
             Command::OrganizePages => {
                 self.organize.active = !self.organize.active;
@@ -2202,9 +2200,7 @@ impl SuniApp {
             Command::NextTab => self.next_tab(1),
             Command::PrevTab => self.next_tab(-1),
             Command::ToggleTools => {
-                self.show_tools = !self.show_tools;
-                self.settings.show_tools = self.show_tools;
-                self.persist_settings();
+                self.toggle_navigation_panel(crate::reader_layout::NavigationPanel::Tools);
             }
             Command::CommandPalette => {
                 self.palette.open = !self.palette.open;
@@ -2991,6 +2987,12 @@ impl SuniApp {
 
 impl eframe::App for SuniApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.render_ui(ui);
+    }
+}
+
+impl SuniApp {
+    pub(crate) fn render_ui(&mut self, ui: &mut egui::Ui) {
         if self.settings.autosave && self.has_unsaved_changes() {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_secs(5));
@@ -3033,7 +3035,12 @@ impl eframe::App for SuniApp {
                     .frame(chrome(p.surface))
                     .show(ui, |ui| self.update_controls(&ctx, ui));
             }
-            if self.document.is_some() && self.annotate.workspace.is_some_and(|w| w.is_mode()) {
+            if self.document.is_some()
+                && self
+                    .annotate
+                    .workspace
+                    .is_some_and(|w| w.is_mode() && w != crate::workspace::Workspace::Measure)
+            {
                 // Hauteur fixe : pas de saut quand les libellés apparaissent ou disparaissent.
                 egui::Panel::top("workspace")
                     .exact_size(48.0)
@@ -3043,11 +3050,6 @@ impl eframe::App for SuniApp {
                             .stroke(egui::Stroke::new(1.0, p.border)),
                     )
                     .show(ui, |ui| self.workspace_bar(&ctx, ui));
-            }
-            if self.document.is_some() && self.annotate.tool == crate::annotate::Tool::Measure {
-                egui::Panel::top("measure-controls")
-                    .frame(chrome(p.surface))
-                    .show(ui, |ui| self.measurement_bar(&ctx, ui));
             }
             if self.library.placing.is_some() {
                 egui::Panel::top("library-placement")
@@ -3062,39 +3064,29 @@ impl eframe::App for SuniApp {
             egui::Panel::bottom("status")
                 .frame(chrome(p.chrome))
                 .show(ui, |ui| self.status_bar(ui));
-            if self.show_tools {
-                egui::Panel::left("tools")
-                    .resizable(true)
-                    .default_size(250.0)
-                    .frame(
-                        egui::Frame::new()
-                            .fill(p.surface)
-                            .inner_margin(egui::Margin::symmetric(8, 4)),
-                    )
-                    .show(ui, |ui| self.tools_panel(&ctx, ui));
+            if self.document.is_some() {
+                egui::Panel::bottom("reader-controls")
+                    .frame(chrome(p.surface))
+                    .show(ui, |ui| self.reader_bar(&ctx, ui));
+                egui::Panel::right("rail")
+                    .resizable(false)
+                    .exact_size(48.0)
+                    .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
+                    .show(ui, |ui| self.right_rail(&ctx, ui));
             }
-            if self.document.is_some() && self.docinfo.bookmarks_open && !self.organize.active {
-                egui::Panel::left("bookmarks")
-                    .resizable(true)
-                    .default_size(220.0)
-                    .frame(
-                        egui::Frame::new()
-                            .fill(p.chrome)
-                            .inner_margin(egui::Margin::symmetric(8, 4)),
-                    )
-                    .show(ui, |ui| {
-                        ui.add_enabled_ui(
-                            !self.ink_draft_active()
-                                && !self.annotate.measure.is_active_draft()
-                                && self.annotate.adv.free_text.is_none(),
-                            |ui| self.bookmarks_panel(&ctx, ui),
-                        );
-                    });
-            }
-            if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
+            let context_panel = self.context_panel();
+            let reserved_width = if self.navigation_panel().is_some() {
+                380.0
+            } else {
+                220.0
+            };
+            let context_max_width = (ui.available_width() - reserved_width).clamp(240.0, 380.0);
+            self.measurement_dock(&ctx, ui);
+            if context_panel == Some(crate::reader_layout::ContextPanel::Comments) {
                 egui::Panel::right("comments")
                     .resizable(true)
-                    .default_size(280.0)
+                    .default_size(280.0_f32.min(context_max_width))
+                    .size_range(240.0..=context_max_width)
                     .frame(
                         egui::Frame::new()
                             .fill(p.chrome)
@@ -3109,10 +3101,11 @@ impl eframe::App for SuniApp {
                         );
                     });
             }
-            if self.document.is_some() && self.edit.objects_open && !self.organize.active {
+            if context_panel == Some(crate::reader_layout::ContextPanel::Objects) {
                 egui::Panel::right("objects")
                     .resizable(true)
-                    .default_size(260.0)
+                    .default_size(260.0_f32.min(context_max_width))
+                    .size_range(240.0..=context_max_width)
                     .frame(
                         egui::Frame::new()
                             .fill(p.chrome)
@@ -3127,10 +3120,11 @@ impl eframe::App for SuniApp {
                         );
                     });
             }
-            if self.document.is_some() && self.forms.panel_open && !self.organize.active {
+            if context_panel == Some(crate::reader_layout::ContextPanel::Forms) {
                 egui::Panel::right("forms")
                     .resizable(true)
-                    .default_size(300.0)
+                    .default_size(300.0_f32.min(context_max_width))
+                    .size_range(240.0..=context_max_width)
                     .frame(
                         egui::Frame::new()
                             .fill(p.chrome)
@@ -3145,27 +3139,7 @@ impl eframe::App for SuniApp {
                         );
                     });
             }
-            if self.document.is_some() {
-                egui::Panel::right("rail")
-                    .resizable(false)
-                    .default_size(48.0)
-                    .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
-                    .show(ui, |ui| self.right_rail(&ctx, ui));
-                if self.settings.show_thumbnails && !self.organize.active {
-                    egui::Panel::left("thumbnails")
-                        .resizable(true)
-                        .default_size(170.0)
-                        .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
-                        .show(ui, |ui| {
-                            ui.add_enabled_ui(
-                                !self.ink_draft_active()
-                                    && !self.annotate.measure.is_active_draft()
-                                    && self.annotate.adv.free_text.is_none(),
-                                |ui| self.thumbnails_panel(&ctx, ui),
-                            );
-                        });
-                }
-            }
+            self.navigation_dock(&ctx, ui);
         }
         if self.reading_full_screen {
             egui::Area::new(egui::Id::unique("reading_exit"))

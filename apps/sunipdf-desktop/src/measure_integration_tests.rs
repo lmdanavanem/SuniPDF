@@ -10,17 +10,29 @@ use sunipdf_i18n::tr;
 struct Canvas {
     ctx: egui::Context,
     time: f64,
+    screen_size: egui::Vec2,
+    panel_rect: Rect,
+    panel_content_size: egui::Vec2,
+    panel_scroll: f32,
 }
 
 impl Canvas {
     fn new(app: &mut SuniApp) -> Self {
         let ctx = egui::Context::default();
         crate::icons::install(&ctx);
+        crate::theme::apply(&ctx, app.settings.dark_theme);
         app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
         app.zoom = Zoom::Fixed(0.8);
         app.view.mode = crate::view::ViewMode::Single;
         app.execute(&ctx, Command::ToolMeasure);
-        let mut canvas = Self { ctx, time: 1.0 };
+        let mut canvas = Self {
+            ctx,
+            time: 1.0,
+            screen_size: vec2(1600.0, 1100.0),
+            panel_rect: Rect::NOTHING,
+            panel_content_size: egui::Vec2::ZERO,
+            panel_scroll: 0.0,
+        };
         for _ in 0..3 {
             canvas.frame(app, Vec::new());
         }
@@ -31,16 +43,27 @@ impl Canvas {
         self.time += 0.025;
         let mut output = self.ctx.run_ui(
             egui::RawInput {
-                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1600.0, 1100.0))),
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, self.screen_size)),
                 time: Some(self.time),
                 events,
                 ..Default::default()
             },
             |ui| {
                 app.handle_input(&self.ctx);
-                egui::Panel::top("measure-integration-controls")
-                    .show(ui, |ui| app.measurement_bar(&self.ctx, ui));
+                egui::Panel::right("measure-integration-controls")
+                    .exact_size(280.0)
+                    .frame(egui::Frame::new().inner_margin(8))
+                    .show(ui, |ui| {
+                        let scroll = egui::ScrollArea::vertical()
+                            .id_salt("measure-integration-scroll")
+                            .auto_shrink([false, false])
+                            .show(ui, |ui| app.measurement_bar(&self.ctx, ui));
+                        self.panel_rect = scroll.inner_rect;
+                        self.panel_content_size = scroll.content_size;
+                        self.panel_scroll = scroll.state.offset.y;
+                    });
                 app.document_view(&self.ctx, ui);
+                app.saved_measurements_dialog(&self.ctx);
                 app.rich_annotation_dialog(&self.ctx);
             },
         );
@@ -70,10 +93,38 @@ impl Canvas {
     fn control_text(&mut self, app: &mut SuniApp, label: &str) {
         self.frame(app, Vec::new());
         let output = self.frame(app, Vec::new());
-        let position = text_position(&output.shapes, label)
-            .unwrap_or_else(|| panic!("visible measurement control: {label}"));
+        let mut position = text_position(&output.shapes, label);
+        if position.is_none() {
+            self.scroll_panel(app, 10_000.0);
+            for _ in 0..12 {
+                let output = self.frame(app, Vec::new());
+                position = text_position(&output.shapes, label);
+                if position.is_some() {
+                    break;
+                }
+                self.scroll_panel(app, -150.0);
+            }
+        }
+        let position = position.unwrap_or_else(|| panic!("visible measurement control: {label}"));
         self.click(app, position, false);
         self.frame(app, Vec::new());
+    }
+
+    fn scroll_panel(&mut self, app: &mut SuniApp, delta: f32) {
+        self.frame(
+            app,
+            vec![
+                Event::PointerMoved(self.panel_rect.center()),
+                Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    delta: vec2(0.0, delta),
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+        );
+        for _ in 0..12 {
+            self.frame(app, Vec::new());
+        }
     }
 
     fn point(&mut self, app: &mut SuniApp, point: (f32, f32), rapid: bool) {
@@ -131,7 +182,9 @@ fn text_position(shapes: &[egui::epaint::ClippedShape], label: &str) -> Option<P
             _ => None,
         }
     }
-    shapes.iter().find_map(|shape| find(&shape.shape, label))
+    shapes.iter().rev().find_map(|shape| {
+        find(&shape.shape, label).filter(|position| shape.clip_rect.contains(*position))
+    })
 }
 
 fn take_preview(requests: &Receiver<Request>) -> (usize, Measurement, u64, u64) {
@@ -640,4 +693,47 @@ fn canvas_numbered_selector_drags_the_chosen_coincident_vertex_and_escape_discar
     assert!(!app.annotate.measure.is_active_draft());
     assert!(app.annotate.measure.saved.contains(0, &original));
     assert_no_edit_or_preview(&requests);
+}
+
+#[test]
+fn narrow_measurement_panel_scrolls_without_overflow_and_keeps_busy_cancel_reachable() {
+    for language in ["en-US", "fr-FR"] {
+        for dark in [false, true] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            app.settings.dark_theme = dark;
+            let mut canvas = Canvas::new(&mut app);
+            canvas.screen_size = vec2(1000.0, 360.0);
+            app.annotate.measure.kind = MeasurementKind::Angle;
+            for _ in 0..3 {
+                canvas.frame(&mut app, Vec::new());
+            }
+            assert!(canvas.panel_rect.width() <= 280.0);
+            assert!(
+                canvas.panel_content_size.x <= canvas.panel_rect.width() + 1.0,
+                "long translated type labels must not widen the panel: {language}, dark={dark}"
+            );
+            assert!(canvas.panel_content_size.y > canvas.panel_rect.height());
+            canvas.control(&mut app, "measure.calibrate");
+            assert!(app.annotate.measure.is_active_draft());
+            app.saving = true;
+            canvas.control(&mut app, "measure.cancel_draft");
+            assert!(
+                canvas.panel_scroll > 0.0,
+                "the button was reached by scrolling"
+            );
+            assert!(!app.annotate.measure.is_active_draft());
+            assert!(!app.dirty);
+            assert_no_edit_or_preview(&requests);
+            app.saving = false;
+            canvas.control(&mut app, "measure.saved.inspect");
+            assert!(app.annotate.measure.saved.dialog_open());
+            canvas.key(&mut app, Key::Escape);
+            assert!(!app.annotate.measure.saved.dialog_open());
+            assert_eq!(app.annotate.measure.kind, MeasurementKind::Angle);
+            assert_eq!(app.annotate.measure.unit, MeasurementUnit::Metres);
+            assert_eq!(app.annotate.measure.precision, 2);
+            assert_no_edit_or_preview(&requests);
+        }
+    }
 }

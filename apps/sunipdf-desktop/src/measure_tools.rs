@@ -537,15 +537,24 @@ impl SuniApp {
             .measure
             .page()
             .or_else(|| self.document.as_ref().map(|d| d.page));
+        let palette = crate::theme::palette(self.settings.dark_theme);
         let mut finish = false;
-        let state = &mut self.annotate.measure;
-        ui.add_enabled_ui(ready, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.strong(tr(lang, "measure.tool"));
+        ui.scope(|ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+            ui.spacing_mut().item_spacing.y = 6.0;
+            let state = &mut self.annotate.measure;
+            ui.strong(tr(lang, "measure.panel.create"));
+            ui.add_enabled_ui(ready, |ui| {
+                let kind_label = ui.label(tr(lang, "measure.kind"));
                 ui.add_enabled_ui(!state.is_active_draft(), |ui| {
+                    let width = ui.available_width();
                     egui::ComboBox::from_id_salt("measure-on-page-kind")
+                        .width(width)
+                        .truncate()
                         .selected_text(tr(lang, kind_key(state.kind)))
                         .show_ui(ui, |ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                            ui.set_max_width(width);
                             for kind in MeasurementKind::ALL {
                                 ui.selectable_value(
                                     &mut state.kind,
@@ -553,64 +562,87 @@ impl SuniApp {
                                     tr(lang, kind_key(kind)),
                                 );
                             }
-                        });
+                        })
+                        .response
+                        .labelled_by(kind_label.id)
+                        .on_hover_text(tr(lang, kind_key(state.kind)));
                 });
-                ui.label(tr(lang, "measure.unit"));
-                egui::ComboBox::from_id_salt("measure-on-page-unit")
-                    .selected_text(state.unit.id())
-                    .show_ui(ui, |ui| {
-                        for unit in MeasurementUnit::ALL {
-                            ui.selectable_value(&mut state.unit, unit, unit.id());
-                        }
-                    });
-                ui.label(tr(lang, "measure.precision"));
-                ui.add(egui::DragValue::new(&mut state.precision).range(0..=4));
-                if ui
-                    .add_enabled(
-                        !state.is_active_draft(),
-                        egui::Button::new(tr(lang, "measure.calibrate")),
-                    )
-                    .clicked()
+                ui.columns(2, |columns| {
+                    let unit_label = columns[0].label(tr(lang, "measure.unit"));
+                    egui::ComboBox::from_id_salt("measure-on-page-unit")
+                        .width(columns[0].available_width())
+                        .selected_text(state.unit.id())
+                        .show_ui(&mut columns[0], |ui| {
+                            for unit in MeasurementUnit::ALL {
+                                ui.selectable_value(&mut state.unit, unit, unit.id());
+                            }
+                        })
+                        .response
+                        .labelled_by(unit_label.id);
+                    let precision_label = columns[1].label(tr(lang, "measure.precision"));
+                    columns[1]
+                        .add(egui::DragValue::new(&mut state.precision).range(0..=4))
+                        .labelled_by(precision_label.id);
+                });
+            });
+
+            ui.add_space(4.0);
+            ui.separator();
+            ui.strong(tr(lang, "measure.panel.scale"));
+            ui.add_enabled_ui(ready, |ui| {
+                if measurement_panel_button(
+                    ui,
+                    !state.is_active_draft(),
+                    tr(lang, "measure.calibrate"),
+                )
+                .clicked()
                 {
                     state.start_calibration();
                 }
-                if ui
-                    .add_enabled(
-                        !state.points().is_empty(),
-                        egui::Button::new(tr(lang, "measure.undo_point")),
-                    )
-                    .clicked()
-                {
-                    state.undo_point();
-                }
-                if ui
-                    .add_enabled(
-                        state.ready_result().is_some(),
-                        egui::Button::new(tr(lang, "measure.finish")),
-                    )
-                    .clicked()
-                {
-                    finish = true;
-                }
-            });
-            let confirm =
-                matches!(&state.gesture, Gesture::Calibrate { points, .. } if points.len() == 2);
-            if confirm {
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(tr(lang, "measure.known_distance"));
-                    let distance = ui.add(
-                        egui::TextEdit::singleline(&mut state.input_distance)
-                            .desired_width(120.0)
-                            .char_limit(32),
-                    );
-                    ui.label(state.unit.id());
-                    if ui.button(tr(lang, "measure.confirm_scale")).clicked()
+                let confirm =
+                    matches!(&state.gesture, Gesture::Calibrate { points, .. } if points.len() == 2);
+                if confirm {
+                    let distance_label = ui.label(tr(lang, "measure.known_distance"));
+                    let distance = ui.horizontal(|ui| {
+                        let input_width = (ui.available_width() - 42.0).max(40.0);
+                        let distance = ui.add(
+                            egui::TextEdit::singleline(&mut state.input_distance)
+                                .desired_width(input_width)
+                                .char_limit(32),
+                        );
+                        ui.label(state.unit.id());
+                        distance.labelled_by(distance_label.id)
+                    }).inner;
+                    if measurement_panel_button(ui, true, tr(lang, "measure.confirm_scale"))
+                        .clicked()
                         || (distance.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)))
                     {
                         state.confirm_calibration();
                     }
-                });
-            }
+                }
+                if let Some((page, scale)) = page.and_then(|p| state.scale(p).map(|s| (p, s))) {
+                    ui.small(tr_args(
+                        lang,
+                        "measure.scale_summary",
+                        &[
+                            ("page", &(page + 1).to_string()),
+                            (
+                                "span",
+                                &format!("{:.2}", distance(scale.points[0], scale.points[1])),
+                            ),
+                            ("distance", &scale.distance.to_string()),
+                            ("unit", scale.unit.id()),
+                        ],
+                    ))
+                    .on_hover_text(tr(lang, "measure.page_scope"));
+                }
+            });
+
+            self.measurement_saved_scale_controls(ui);
+            ui.add_space(4.0);
+            ui.separator();
+            ui.strong(tr(lang, "measure.panel.drawing"));
+            let state = &mut self.annotate.measure;
             let hint = match &state.gesture {
                 Gesture::Calibrate { points, .. } if points.len() == 2 => "measure.distance_hint",
                 Gesture::Calibrate { .. } => "measure.calibration_hint",
@@ -627,28 +659,41 @@ impl SuniApp {
                 Gesture::Idle if state.kind == MeasurementKind::Angle => "measure.angle_hint",
                 Gesture::Idle => "measure.ready_hint",
             };
-            ui.label(tr(lang, hint));
-            if let Some((page, scale)) = page.and_then(|p| state.scale(p).map(|s| (p, s))) {
-                ui.small(tr_args(
-                    lang,
-                    "measure.scale_summary",
-                    &[
-                        ("page", &(page + 1).to_string()),
-                        (
-                            "span",
-                            &format!("{:.2}", distance(scale.points[0], scale.points[1])),
-                        ),
-                        ("distance", &scale.distance.to_string()),
-                        ("unit", scale.unit.id()),
-                    ],
-                ))
-                .on_hover_text(tr(lang, "measure.page_scope"));
+            ui.add(egui::Label::new(egui::RichText::new(tr(lang, hint)).color(palette.text_muted)).wrap());
+            if let Some(error) = state
+                .error
+                .filter(|error| *error != hint && *error != "measure.no_scale")
+            {
+                ui.colored_label(palette.error, tr(lang, error));
             }
-            if let Some(error) = state.error {
-                ui.colored_label(
-                    crate::theme::palette(self.settings.dark_theme).error,
-                    tr(lang, error),
-                );
+            if measurement_panel_button(
+                ui,
+                ready && !state.points().is_empty(),
+                tr(lang, "measure.undo_point"),
+            )
+            .clicked()
+            {
+                state.undo_point();
+            }
+            if measurement_panel_button(
+                ui,
+                ready && state.ready_result().is_some(),
+                tr(lang, "measure.finish"),
+            )
+            .clicked()
+            {
+                finish = true;
+            }
+            // Cancellation only discards local points and remains available while work is busy.
+            if measurement_panel_button(
+                ui,
+                state.is_active_draft(),
+                tr(lang, "measure.cancel_draft"),
+            )
+            .clicked()
+            {
+                state.cancel();
+                finish = false;
             }
             if ready
                 && !popup_was_open
@@ -662,31 +707,23 @@ impl SuniApp {
                     finish = state.ready_result().is_some();
                 }
             }
-        });
-        // Cancellation only discards local points and must remain available while work is busy.
-        if ui
-            .add_enabled(
-                state.is_active_draft(),
-                egui::Button::new(tr(lang, "measure.cancel_draft")),
-            )
-            .clicked()
-        {
-            state.cancel();
-            finish = false;
-        }
-        if finish {
-            self.finish_measurement(ctx);
-        }
-        self.measurement_saved_bar(ui);
-        if ui
-            .add_enabled(
+            if finish {
+                self.finish_measurement(ctx);
+            }
+            ui.add_space(4.0);
+            ui.separator();
+            ui.strong(tr(lang, "measure.panel.saved"));
+            self.measurement_saved_bar(ui);
+            if measurement_panel_button(
+                ui,
                 ready && !self.annotate.measure.is_active_draft(),
-                egui::Button::new(tr(lang, "quantity.title")),
+                tr(lang, "quantity.title"),
             )
             .clicked()
-        {
-            self.open_quantity_table();
-        }
+            {
+                self.open_quantity_table();
+            }
+        });
     }
 
     pub(crate) fn paint_measurement(
@@ -790,6 +827,20 @@ impl SuniApp {
             painter.galley(position, galley, color);
         }
     }
+}
+
+pub(crate) fn measurement_panel_button(
+    ui: &mut egui::Ui,
+    enabled: bool,
+    label: &str,
+) -> egui::Response {
+    ui.add_enabled_ui(enabled, |ui| {
+        ui.add_sized(
+            [ui.available_width(), 30.0],
+            egui::Button::new(label).wrap(),
+        )
+    })
+    .inner
 }
 
 #[cfg(test)]
@@ -927,8 +978,13 @@ mod tests {
                     ..Default::default()
                 },
                 |ui| {
-                    egui::Panel::top("measurement-two-page-controls")
-                        .show(ui, |ui| app.measurement_bar(ctx, ui));
+                    egui::Panel::right("measurement-two-page-controls")
+                        .exact_size(280.0)
+                        .show(ui, |ui| {
+                            egui::ScrollArea::vertical()
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| app.measurement_bar(ctx, ui));
+                        });
                     app.document_view(ctx, ui);
                 },
             );
@@ -1067,7 +1123,7 @@ mod tests {
         app.annotate.measure.start_calibration();
         app.saving = true;
         let input = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1400.0, 400.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(280.0, 1000.0))),
             ..Default::default()
         };
         let mut target = None;
@@ -1105,6 +1161,83 @@ mod tests {
         }
         assert!(!app.annotate.measure.is_active_draft());
         assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn calibration_prerequisites_are_neutral_and_failed_input_keeps_its_error() {
+        fn text_colors(shape: &egui::Shape, label: &str, colors: &mut Vec<egui::Color32>) {
+            match shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    colors.push(text.galley.job.sections[0].format.color);
+                }
+                egui::Shape::Vec(shapes) => {
+                    for shape in shapes {
+                        text_colors(shape, label, colors);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for language in ["en-US", "fr-FR"] {
+            for dark in [false, true] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.settings.language = language.into();
+                app.settings.dark_theme = dark;
+                let ctx = egui::Context::default();
+                crate::theme::apply(&ctx, dark);
+                app.open_measurements(&ctx);
+                app.measurement_click(&ctx, 0, (60.0, 650.0), false, false);
+                assert_eq!(app.annotate.measure.error, Some("measure.no_scale"));
+                for invalid in [false, true] {
+                    if invalid {
+                        let state = &mut app.annotate.measure;
+                        state.start_calibration();
+                        assert!(state.push_point(0, (60.0, 650.0), false));
+                        assert!(state.push_point(0, (160.0, 650.0), false));
+                        state.input_distance = "invalid".into();
+                        assert!(!state.confirm_calibration());
+                    }
+                    let mut colors = Vec::new();
+                    for _ in 0..3 {
+                        let mut output = ctx.run_ui(
+                            egui::RawInput {
+                                screen_rect: Some(Rect::from_min_size(
+                                    Pos2::ZERO,
+                                    egui::vec2(280.0, 1100.0),
+                                )),
+                                ..Default::default()
+                            },
+                            |ui| app.measurement_bar(&ctx, ui),
+                        );
+                        colors.clear();
+                        for shape in &output.shapes {
+                            text_colors(
+                                &shape.shape,
+                                tr(
+                                    app.lang(),
+                                    if invalid {
+                                        "measure.scale_invalid"
+                                    } else {
+                                        "measure.no_scale"
+                                    },
+                                ),
+                                &mut colors,
+                            );
+                        }
+                        output.textures_delta.clear();
+                    }
+                    assert_eq!(
+                        colors,
+                        vec![if invalid {
+                            crate::theme::palette(dark).error
+                        } else {
+                            crate::theme::palette(dark).text_muted
+                        }],
+                        "show one neutral prerequisite or one actual failure: {language}, dark={dark}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

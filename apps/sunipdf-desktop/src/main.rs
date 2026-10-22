@@ -31,6 +31,9 @@ mod pagesetup;
 mod printing;
 mod processing;
 mod quantity_table;
+mod reader_layout;
+#[cfg(all(test, windows))]
+mod reader_ui_evidence;
 mod reading;
 mod recovery;
 mod redact;
@@ -43,6 +46,7 @@ mod sign;
 mod stamp_presets;
 mod tabs;
 mod theme;
+mod tool_hub;
 mod tools;
 mod updater;
 mod view;

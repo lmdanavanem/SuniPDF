@@ -1395,5 +1395,21 @@
   "measure.geometry.add_hint": "Click the interior of a segment to add one vertex, then drag the new handle if needed. Zoom in when edges or vertices overlap.",
   "measure.geometry.insert_refused": "Choose a clear segment, away from its endpoints and other edges. No vertex was added.",
   "measure.geometry.remove_refused": "Removing this vertex would create invalid geometry. Move it or choose another vertex. Nothing was removed.",
-  "measure.geometry.fixed_count": "Length keeps two vertices; angle keeps three. Their vertices can be moved but not added or removed."
+  "measure.geometry.fixed_count": "Length keeps two vertices; angle keeps three. Their vertices can be moved but not added or removed.",
+  "reading.tools": "Tools",
+  "reading.zoom": "Zoom",
+  "reading.view_options": "Reading options",
+  "tools.group.review": "Review & measure",
+  "tools.group.edit": "Edit & organize",
+  "tools.group.forms": "Forms & signatures",
+  "tools.group.convert": "Create & convert",
+  "tools.group.security": "Security",
+  "tools.search": "Search tools",
+  "tools.no_results": "No tools match your search.",
+  "tools.clear_search": "Clear search",
+  "measure.panel.create": "Create measurement",
+  "measure.panel.scale": "Page scale",
+  "measure.panel.drawing": "Drawing",
+  "measure.panel.saved": "Saved data",
+  "measure.finish_draft_first": "Finish or cancel the measurement before switching panels."
 }

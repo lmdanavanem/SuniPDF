@@ -252,7 +252,8 @@ impl SuniApp {
         }
     }
 
-    pub(crate) fn measurement_saved_bar(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn measurement_saved_scale_controls(&mut self, ui: &mut egui::Ui) {
+        use crate::measure_tools::measurement_panel_button;
         let Some(page) = self.document.as_ref().map(|d| d.page) else {
             return;
         };
@@ -262,74 +263,64 @@ impl SuniApp {
         let data = self.annotate.measure.saved.pages.get(&page);
         let can_modify = data.is_some_and(|d| d.can_modify);
         let stored = data.is_some_and(|d| !matches!(d.calibration, Ok(None)));
-        let mut save = false;
-        let mut remove = false;
-        let mut inspect = false;
-        let mut refresh = false;
-        let mut reset = false;
-        ui.horizontal_wrapped(|ui| {
-            reset = ui
-                .add_enabled(
-                    ready && local,
-                    egui::Button::new(tr(
-                        lang,
-                        if data.is_some_and(|d| matches!(d.calibration, Ok(Some(_)))) {
-                            "measure.saved.restore"
-                        } else {
-                            "measure.saved.clear_session"
-                        },
-                    )),
-                )
-                .on_hover_text(tr(lang, "measure.saved.reset_hint"))
-                .clicked();
-            save = ui
-                .add_enabled(
-                    ready && local && can_modify,
-                    egui::Button::new(tr(lang, "measure.saved.save")),
-                )
-                .clicked();
-            remove = ui
-                .add_enabled(
-                    ready && stored && can_modify,
-                    egui::Button::new(tr(lang, "measure.saved.remove")),
-                )
-                .clicked();
-            inspect = ui
-                .add_enabled(ready, egui::Button::new(tr(lang, "measure.saved.inspect")))
-                .clicked();
-            refresh = ui
-                .add_enabled(ready, egui::Button::new(tr(lang, "register.refresh")))
-                .clicked();
-            if self.annotate.measure.saved.applying.is_some()
-                || self.annotate.measure.saved.pending.contains_key(&page)
-            {
+        if self.annotate.measure.saved.applying.is_some()
+            || self.annotate.measure.saved.pending.contains_key(&page)
+        {
+            ui.horizontal_wrapped(|ui| {
                 ui.spinner();
                 ui.label(tr(lang, "measure.saved.loading"));
-            } else {
-                ui.label(tr(
-                    lang,
-                    if local {
-                        "measure.saved.session"
-                    } else if data.is_some_and(|d| d.calibration.is_err()) {
-                        "measure.saved.unavailable"
-                    } else if stored {
-                        "measure.saved.pdf"
-                    } else {
-                        "measure.saved.none"
-                    },
-                ));
-            }
-        });
+            });
+        } else {
+            ui.small(tr(
+                lang,
+                if local {
+                    "measure.saved.session"
+                } else if data.is_some_and(|d| d.calibration.is_err()) {
+                    "measure.saved.unavailable"
+                } else if stored {
+                    "measure.saved.pdf"
+                } else {
+                    "measure.saved.none"
+                },
+            ));
+        }
+        let save = measurement_panel_button(
+            ui,
+            ready && local && can_modify,
+            tr(lang, "measure.saved.save"),
+        )
+        .clicked();
+        let reset = measurement_panel_button(
+            ui,
+            ready && local,
+            tr(
+                lang,
+                if data.is_some_and(|d| matches!(d.calibration, Ok(Some(_)))) {
+                    "measure.saved.restore"
+                } else {
+                    "measure.saved.clear_session"
+                },
+            ),
+        )
+        .on_hover_text(tr(lang, "measure.saved.reset_hint"))
+        .clicked();
+        let remove = measurement_panel_button(
+            ui,
+            ready && stored && can_modify,
+            tr(lang, "measure.saved.remove"),
+        )
+        .clicked();
+        let error_color = crate::theme::palette(self.settings.dark_theme).error;
         if let Some(data) = data {
             if !can_modify {
                 ui.small(tr(lang, "measure.saved.restricted"));
             }
             if let Err(error) = &data.calibration {
-                ui.colored_label(egui::Color32::RED, error);
+                ui.colored_label(error_color, error);
             }
         }
         if let Some(error) = &self.annotate.measure.saved.error {
-            ui.colored_label(egui::Color32::RED, error);
+            ui.colored_label(error_color, error);
         }
         if save {
             self.save_measurement_scale(page, false);
@@ -340,10 +331,19 @@ impl SuniApp {
         if remove {
             self.save_measurement_scale(page, true);
         }
-        if inspect {
+    }
+
+    pub(crate) fn measurement_saved_bar(&mut self, ui: &mut egui::Ui) {
+        use crate::measure_tools::measurement_panel_button;
+        let Some(page) = self.document.as_ref().map(|d| d.page) else {
+            return;
+        };
+        let lang = self.lang();
+        let ready = self.measurement_ready() && !self.annotate.measure.is_active_draft();
+        if measurement_panel_button(ui, ready, tr(lang, "measure.saved.inspect")).clicked() {
             self.open_saved_measurements();
         }
-        if refresh {
+        if measurement_panel_button(ui, ready, tr(lang, "register.refresh")).clicked() {
             self.annotate.measure.saved.refresh(page);
             self.request_measurement_page(page);
         }

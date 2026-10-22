@@ -274,8 +274,7 @@ impl SuniApp {
             &mut self.edit,
             Command::ToolFillForm,
         );
-        self.forms.panel_open = true;
-        self.forms.stale = true;
+        self.set_context_panel(Command::ToggleForms, true);
         if self.error == Some("error.form_read_failed") {
             self.error = None;
         }

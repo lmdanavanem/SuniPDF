@@ -4,10 +4,12 @@
 
 Disponible dans [0.49.0](RELEASE_0.49.0.fr.md). [Preuves](qa/RELEASE_0.49.0.json).
 
+La version 0.50.0 utilise la [disposition de lecture et des outils](READER_WORKSPACE.fr.md) décrite ci-dessous ; les limites des géométries enregistrées restent inchangées.
+
 ## Utilisation
 
-1. Ouvrez un PDF contenant une mesure enregistrée compatible et sélectionnez **Mesures**.
-2. Dans **Mesures enregistrées**, choisissez la mesure puis **Modifier la géométrie**.
+1. Ouvrez un PDF contenant une mesure enregistrée compatible et choisissez **Outils → Réviser et mesurer → Mesures**.
+2. Dans **Données enregistrées** du panneau droit, ouvrez **Mesures enregistrées**, choisissez la mesure puis **Modifier la géométrie**.
 3. Choisissez le numéro du point dans **Sommet**, puis déplacez sa poignée sur la page d’origine. La liste distingue aussi les sommets placés au même endroit. Les poignées gardent une taille constante à l’écran lorsque vous zoomez ; les points restent dans la page.
 4. Pour une polyligne, un périmètre ou une surface polygonale, choisissez **Ajouter un sommet**, puis cliquez sur le segment qui doit recevoir le point. Une insertion réussie ajoute un point au brouillon et termine ce mode ; choisissez à nouveau **Ajouter un sommet** pour en placer un autre. **Arrêter l’ajout** désactive ce mode. Le segment de fermeture des périmètres et surfaces est inclus. Pour retirer un point, sélectionnez son numéro puis **Supprimer la sélection**.
 5. Sélectionnez **Aperçu** pour examiner la mesure recalculée, puis **Appliquer à l’objet** pour la valider. **Ajuster les sommets** revient au brouillon si des corrections sont nécessaires.

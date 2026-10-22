@@ -1395,5 +1395,21 @@
   "measure.geometry.add_hint": "Cliquez à l’intérieur d’un segment pour ajouter un sommet, puis déplacez sa poignée si nécessaire. Zoomez si des segments ou des sommets se superposent.",
   "measure.geometry.insert_refused": "Choisissez un segment distinct, loin de ses extrémités et des autres segments. Aucun sommet n’a été ajouté.",
   "measure.geometry.remove_refused": "Supprimer ce sommet rendrait la géométrie invalide. Déplacez-le ou choisissez un autre sommet. Rien n’a été supprimé.",
-  "measure.geometry.fixed_count": "Une longueur conserve deux sommets et un angle en conserve trois. Ces sommets peuvent être déplacés, mais pas ajoutés ni supprimés."
+  "measure.geometry.fixed_count": "Une longueur conserve deux sommets et un angle en conserve trois. Ces sommets peuvent être déplacés, mais pas ajoutés ni supprimés.",
+  "reading.tools": "Outils",
+  "reading.zoom": "Zoom",
+  "reading.view_options": "Options de lecture",
+  "tools.group.review": "Réviser et mesurer",
+  "tools.group.edit": "Modifier et organiser",
+  "tools.group.forms": "Formulaires et signatures",
+  "tools.group.convert": "Créer et convertir",
+  "tools.group.security": "Sécurité",
+  "tools.search": "Rechercher un outil",
+  "tools.no_results": "Aucun outil ne correspond à votre recherche.",
+  "tools.clear_search": "Effacer la recherche",
+  "measure.panel.create": "Créer une mesure",
+  "measure.panel.scale": "Échelle de la page",
+  "measure.panel.drawing": "Tracé",
+  "measure.panel.saved": "Données enregistrées",
+  "measure.finish_draft_first": "Terminez ou annulez la mesure avant de changer de panneau."
 }

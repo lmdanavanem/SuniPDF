@@ -1,6 +1,6 @@
 //! Hub « Tous les outils » : regroupe les commandes du registre par tâche (liste),
 //! bascule d'outil (fonctions pures, testables sans fenêtre) et barre contextuelle de l'outil actif.
-//! Le dessin des lignes du panneau et des cartes d'accueil est dans `shell.rs`.
+//! Les familles du panneau sont dans `tool_hub.rs`, les cartes d'accueil dans `shell.rs`.
 
 use crate::annotate::{AnnotateState, Tool};
 use crate::app::SuniApp;
@@ -63,6 +63,11 @@ impl WsInfo {
 
     pub fn contains(&self, c: Command) -> bool {
         self.commands().any(|x| x == c)
+    }
+
+    fn bar_commands(&self) -> impl Iterator<Item = Command> + '_ {
+        self.commands()
+            .filter(|command| self.ws != Workspace::Measure || *command != C::ToolMeasure)
     }
 }
 
@@ -371,6 +376,9 @@ pub fn switch(
     if from == to {
         return;
     }
+    if from == Some(Workspace::Measure) {
+        a.measure.cancel();
+    }
     if from == Some(Workspace::Organize) {
         o.active = false;
     }
@@ -601,15 +609,21 @@ impl SuniApp {
         match c {
             Command::FullScreenReading => self.reading_full_screen,
             Command::OrganizePages => self.organize.active,
-            Command::ToggleComments => self.annotate.comments_open,
-            Command::ToggleObjects => self.edit.objects_open,
-            Command::ToggleForms => self.forms.panel_open,
+            Command::ToggleComments => {
+                self.context_panel() == Some(crate::reader_layout::ContextPanel::Comments)
+            }
+            Command::ToggleObjects => {
+                self.context_panel() == Some(crate::reader_layout::ContextPanel::Objects)
+            }
+            Command::ToggleForms => {
+                self.context_panel() == Some(crate::reader_layout::ContextPanel::Forms)
+            }
             _ => Tool::from_command(c).is_some_and(|t| t == self.annotate.tool),
         }
     }
 
     pub fn command_enabled(&self, c: Command) -> bool {
-        if self.ink_blocks_command(c) {
+        if self.ink_blocks_command(c) || self.measurement_blocks_panel_command(c) {
             return false;
         }
         let grid_selection = !self.organize.selected.is_empty();
@@ -694,7 +708,7 @@ impl SuniApp {
                 .x
         };
         let spacing = ui.spacing().item_spacing.x;
-        let count = info.commands().count() as f32;
+        let count = info.bar_commands().count() as f32;
         // Marges (6 + 6), retour, pastille, nom (semi-gras, ~8 % plus large), un séparateur de 6 px
         // par groupe, bouton « Quitter l'outil », espacements entre ces éléments, 12 px de sécurité.
         let fixed = 12.0
@@ -708,7 +722,7 @@ impl SuniApp {
             + 4.0 * spacing
             + 12.0;
         let label_w = |tools: bool| -> f32 {
-            info.commands()
+            info.bar_commands()
                 .filter(|c| Tool::from_command(*c).is_some() == tools)
                 .map(|c| width(tr(lang, c.info().label_key), LABEL_FONT) + 10.0)
                 .sum()
@@ -717,7 +731,7 @@ impl SuniApp {
         let tools = label_w(true);
         // Libellé de l'outil de dessin actif, affiché même en icônes seules.
         let active_label: f32 = info
-            .commands()
+            .bar_commands()
             .filter(|c| Tool::from_command(*c) == Some(self.annotate.tool))
             .map(|c| width(tr(lang, c.info().label_key), LABEL_FONT) + 10.0)
             .sum();
@@ -788,8 +802,18 @@ impl SuniApp {
                             ui.spacing_mut().interact_size.y = BAR_BUTTON_H;
                             ui.horizontal(|ui| {
                                 for group in info.groups {
+                                    let commands: Vec<_> = group
+                                        .iter()
+                                        .copied()
+                                        .filter(|command| {
+                                            ws != Workspace::Measure || *command != C::ToolMeasure
+                                        })
+                                        .collect();
+                                    if commands.is_empty() {
+                                        continue;
+                                    }
                                     ui.separator();
-                                    for &c in *group {
+                                    for c in commands {
                                         if self.bar_command(ui, info, c, layout) {
                                             run = Some(c);
                                         }
@@ -823,9 +847,7 @@ impl SuniApp {
             run = Some(Command::HubLeave);
         }
         if back {
-            self.show_tools = true;
-            self.settings.show_tools = true;
-            self.persist_settings();
+            self.set_navigation_panel(Some(crate::reader_layout::NavigationPanel::Tools));
             run = Some(Command::HubLeave);
         }
         if let Some(c) = run {
@@ -1014,6 +1036,52 @@ mod tests {
         assert_eq!(Workspace::Comment.info().groups[0], &[C::ToolMeasure]);
         assert_eq!(Workspace::Measure.info().groups[0], &[C::ToolMeasure]);
         assert!(Workspace::available().any(|w| w == Workspace::Measure));
+    }
+
+    #[test]
+    fn measurement_context_shows_one_title_and_keeps_the_quantity_action() {
+        assert_eq!(
+            Workspace::Measure.info().bar_commands().collect::<Vec<_>>(),
+            vec![C::QuantityTable]
+        );
+        assert!(Workspace::Comment
+            .info()
+            .bar_commands()
+            .any(|c| c == C::ToolMeasure));
+        for lang in Language::ALL {
+            for width in [640.0, 1280.0] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.settings.set_language(lang);
+                let ctx = egui::Context::default();
+                app.has_icons = icons::install(&ctx);
+                ctx.enable_accesskit();
+                app.execute(&ctx, C::HubMeasure);
+                let input = egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(width, 160.0),
+                    )),
+                    ..Default::default()
+                };
+                let mut output = ctx.run_ui(input.clone(), |ui| app.workspace_bar(&ctx, ui));
+                output.textures_delta.clear();
+                let mut output = ctx.run_ui(input, |ui| app.workspace_bar(&ctx, ui));
+                output.textures_delta.clear();
+                let title = tr(lang, Workspace::Measure.info().name_key);
+                assert_eq!(output.shapes.iter().filter(|shape| {
+                    matches!(&shape.shape, egui::Shape::Text(text) if text.galley.text() == title)
+                }).count(), 1);
+                let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+                assert!(!tree.nodes.iter().any(|(_, node)| {
+                    node.role() == egui::accesskit::Role::Button
+                        && node.label() == Some(tr(lang, C::ToolMeasure.info().label_key))
+                }));
+                assert!(tree.nodes.iter().any(|(_, node)| {
+                    node.role() == egui::accesskit::Role::Button
+                        && node.label() == Some(tr(lang, C::QuantityTable.info().label_key))
+                }));
+            }
+        }
     }
 
     #[test]

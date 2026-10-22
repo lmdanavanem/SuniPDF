@@ -365,9 +365,11 @@ impl SuniApp {
             ],
         ));
         ui.add_enabled_ui(ready && draft.dragging.is_none(), |ui| {
-            ui.horizontal_wrapped(|ui| {
+            ui.vertical(|ui| {
                 ui.label(tr(lang, "measure.geometry.vertex"));
                 egui::ComboBox::from_id_salt("measurement-geometry-vertex")
+                    .width(ui.available_width())
+                    .truncate()
                     .selected_text(draft.selected.map_or_else(
                         || tr(lang, "measure.geometry.select_vertex").to_owned(),
                         |index| (index + 1).to_string(),
@@ -387,29 +389,29 @@ impl SuniApp {
                             }
                         }
                     });
-                if ui
-                    .add_enabled(
-                        draft.can_add() || draft.adding,
-                        egui::Button::new(tr(
-                            lang,
-                            if draft.adding {
-                                "measure.geometry.stop_adding"
-                            } else {
-                                "measure.geometry.add_vertex"
-                            },
-                        )),
-                    )
-                    .clicked()
+                if crate::measure_tools::measurement_panel_button(
+                    ui,
+                    draft.can_add() || draft.adding,
+                    tr(
+                        lang,
+                        if draft.adding {
+                            "measure.geometry.stop_adding"
+                        } else {
+                            "measure.geometry.add_vertex"
+                        },
+                    ),
+                )
+                .clicked()
                 {
                     draft.adding = !draft.adding;
                     draft.error = None;
                 }
-                if ui
-                    .add_enabled(
-                        draft.can_remove(),
-                        egui::Button::new(tr(lang, "measure.geometry.remove_vertex")),
-                    )
-                    .clicked()
+                if crate::measure_tools::measurement_panel_button(
+                    ui,
+                    draft.can_remove(),
+                    tr(lang, "measure.geometry.remove_vertex"),
+                )
+                .clicked()
                 {
                     draft.remove_selected();
                 }
@@ -435,14 +437,19 @@ impl SuniApp {
         }
         let mut finish = false;
         let mut cancel = false;
-        ui.horizontal_wrapped(|ui| {
-            finish = ui
-                .add_enabled(
-                    can_finish,
-                    egui::Button::new(tr(lang, "measure.geometry.preview")),
-                )
-                .clicked();
-            cancel = ui.button(tr(lang, "measure.cancel_draft")).clicked();
+        ui.vertical(|ui| {
+            finish = crate::measure_tools::measurement_panel_button(
+                ui,
+                can_finish,
+                tr(lang, "measure.geometry.preview"),
+            )
+            .clicked();
+            cancel = crate::measure_tools::measurement_panel_button(
+                ui,
+                true,
+                tr(lang, "measure.cancel_draft"),
+            )
+            .clicked();
         });
         if can_finish && !ctx.egui_wants_keyboard_input() && !egui::Popup::is_any_open(ctx) {
             finish |= ui.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter));

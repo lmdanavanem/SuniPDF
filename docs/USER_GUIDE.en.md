@@ -3,11 +3,21 @@
 SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.49.0](RELEASE_0.49.0.md). The preceding [0.48.0](RELEASE_0.48.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+This guide describes the 0.50.0 build. Published files and qualification are tracked on the [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0); earlier releases retain their own evidence. English is the default language, with French available in Settings.
+
+## Reader controls and tools
+
+Choose **Tools** in the main toolbar. The left dock shows one of **Tools**, **Pages** or **Bookmarks**. The tools panel offers five families and a search field; measurements, the library, quantity tables and revision overlays are under **Review & measure**.
+
+Page navigation, zoom and page/width fit are below the PDF. The zoom percentage stays on one line, including **149%**. **Reading options** provides layout modes, view rotation and full-screen reading; narrow windows move whole control groups to another row. The right rail opens panels. View rotation changes reading orientation only; use **Organize pages** for a saved PDF page rotation.
+
+The right side shows one context panel at a time. A measurement draft blocks opening another context panel until it is finished or cancelled. Explicitly leaving the measurement tool or changing tools cancels its local draft and preserves confirmed page scales.
+
+[Full reader layout and tool routes](READER_WORKSPACE.md).
 
 ## Edit saved measurement vertices
 
-In **Measurements → Saved measurements**, choose **Edit geometry**. Choose a point by its number in **Vertex**, then drag its handle on the original page. The selector distinguishes coincident points. For a polyline, perimeter or polygon area, choose **Add vertex** and click a segment, including a polygon’s closing segment. One successful insertion ends that mode; **Stop adding** cancels the insertion mode. Select a vertex and choose **Remove selected** to remove it.
+In **Tools → Review & measure → Measurements**, open **Saved measurements** under **Saved data** on the right, then choose **Edit geometry**. Choose a point by its number in **Vertex**, then drag its handle on the original page. The selector distinguishes coincident points. For a polyline, perimeter or polygon area, choose **Add vertex** and click a segment, including a polygon’s closing segment. One successful insertion ends that mode; **Stop adding** cancels the insertion mode. Select a vertex and choose **Remove selected** to remove it.
 
 Choose **Preview** and **Apply to object** to accept the draft. **Adjust vertices** returns from the preview to the edited draft. Cancel or Escape discards it; an applied change has one Undo step. Save the PDF to retain the change.
 
@@ -19,7 +29,7 @@ Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Leng
 
 Available in [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). [Evidence](qa/RELEASE_0.47.0.json).
 
-1. Open **Revision overlay** from **All tools** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.
+1. Open **Revision overlay** from **Tools → Review & measure** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.
 2. Choose **Manual alignment**, set the offsets, clockwise rotation and scale, then choose **Preview**. The base is magenta and the revision cyan; coordinates start at the displayed page’s top-left corner after crop and page rotation.
 3. For **Two-point alignment**, choose **Preview** to load the sources, click two distinct points on the base image and the matching two points on the revision, then preview again. **Reset alignment** clears the points and transform. Preview again after changing opacity, resolution or alignment.
 4. Choose **Export PNG** or **Export report JSON** and a new filename. Both source PDFs must permit copying and still match their recorded hashes. The PDFs remain unchanged; the output is clipped to the base page. Automatic registration and automatic change outlines remain open.
@@ -30,7 +40,7 @@ Available in [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.
 
 Available in [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). [Evidence](qa/RELEASE_0.46.0.json).
 
-1. Open a PDF, then choose **Quantity table** from **All tools**, the measurement controls or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
+1. Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel’s **Saved data** section or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
 2. Choose **Edit row** to enter **Unit price**, **Currency code**, **Price per unit** and **Cost decimal places**. A blank price is missing; `0` is an explicit zero. Counts and saved measurements supply the quantities; ordinary annotations do not acquire an inferred quantity, and angles are not priced.
 3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; close the table before using Undo/Redo, and save the PDF to retain the fields.
 4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
@@ -39,8 +49,7 @@ Available in [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.
 
 ## Reuse local annotation templates
 
-The 0.45 annotation library is available within its [qualified scope](RELEASE_0.45.0.md). Click **Library** in the main toolbar, or choose
-**Annotation library** in **All tools** or **Add comments**. Its local file is separate from PDF files and settings.
+The 0.45 annotation library retains its [qualified scope](RELEASE_0.45.0.md). Open **Tools → Review & measure → Annotation library**. Its local file is separate from PDF files and settings.
 
 Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
 Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
@@ -59,9 +68,7 @@ deleting templates you want to keep. Measurements, page scales, existing PDF ide
 
 ## Measure directly on a PDF
 
-Open a PDF and click **Measurements** beside **All tools** in the main toolbar. You can also choose
-**All tools → Measurements**, or the Measurements shortcut in **Add comments**. The button keeps its
-text label in narrow windows.
+Open a PDF and choose **Tools → Review & measure → Measurements**. Its right-hand panel groups **Create measurement**, **Page scale**, **Drawing** and **Saved data**. Scroll that panel when necessary.
 
 1. Select the unit (`mm`, `cm`, `m`, `in` or `ft`) and 0–4 decimal places. Click **Calibrate this page**,
    then click two different points spanning a known distance. Enter the real **Known distance** and
@@ -93,7 +100,7 @@ Rotation and page reordering preserve eligible defaults. Changed crop bounds or 
 unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
 default. Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
 
-Click **Saved measurements** in the measurement toolbar to inspect the current page. Reading the list leaves the PDF unchanged. It
+Click **Saved measurements** under **Saved data** on the right to inspect the current page. Reading the list leaves the PDF unchanged. It
 shows value/unit, type, annotation index, optional identity, vertex count, precision and known reference
 distance for non-angle measurements, in batches of 50. **View on page** selects the actual annotation and opens
 its comments. **Use this scale** copies a non-angle annotation's calibration to the page's session for
@@ -220,28 +227,15 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 
 ## All tools
 
-The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
-task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Measurements, Annotation library, Add
-comments, Protect a PDF, Redact a PDF, Compress a PDF, Add a stamp, Scan & OCR, Prepare a form and
-Use a certificate. The **Tools** menu and the Ctrl+K palette give the same access.
-Without an open document, a tool that needs one first asks for a file, then starts.
+Open **Tools** from the main toolbar or press **F9**. The left dock groups 18 tools into **Review & measure**, **Edit & organize**, **Forms & signatures**, **Create & convert** and **Security**. **Search tools** filters localized names, descriptions and family names; **Clear search** restores the list. The Tools menu and **Ctrl+K** command palette remain available. A tool needing a document asks for a file when necessary.
 
-- **Export, Create, Combine, Compress, Annotation library** open their dialog directly. The library can be managed without an open PDF.
-- **Fill & Sign, Edit, Organize, Measurements, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
-  the toolbar: the tool's buttons, grouped, with their labels when the width allows (otherwise the icon only,
-  the label staying in the tooltip). Actions that need a selection (object, text, grid pages) stay greyed
-  out without one. Measurements keeps its label visible and exposes its calibration and drawing controls.
-- **Leave tool**: button on the right of the bar, **Esc**, clicking the active tool again in the panel, or the
-  back arrow (which also reopens the panel). Esc first closes what is closer: an open menu or drop-down
-  list, then the search bar, then the selected object, then the tool (one Esc, one effect).
-  An active measurement draft is cancelled before leaving its tool.
-- Single-letter shortcuts open the matching tool: H, U, X, N, A, D, F open **Add comments**; E, T, I, R, O, L open
-  **Edit a PDF**; S opens the **Sign** dialog; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
-- Each tab keeps its own active tool.
-- The main toolbar keeps quick access to Open, Save, Undo, Redo, Measurements and Library.
+**Tools → Review & measure** contains Add comments, Measurements, Quantity table, Annotation library, Revision overlay and Add a stamp. The library can be managed without an open PDF. Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
 
-The 0.45 interface adds **Annotation library** alongside **Measurements**, **Scan & OCR**, **Prepare a form** and **Use a certificate**.
-Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
+**Measurements** uses a scrollable right panel with **Create measurement**, **Page scale**, **Drawing** and **Saved data**. It does not add a horizontal workspace bar. Other tools can expose their existing context bars or dialogs. Actions that require a selection remain disabled without one.
+
+Use **Leave tool**, Escape or the active tool entry to leave a workspace. Escape first closes an open popup or the current draft as applicable; finish or cancel measurement edits before changing tools. Single-letter editing shortcuts and per-tab active tools remain available. The main toolbar keeps generic Open, Save, Undo, Redo and Tools controls.
+
+[Complete tool families and reading controls](READER_WORKSPACE.md).
 
 ## Tabs
 
@@ -263,23 +257,16 @@ Disable automatic snapshots with the checkbox in About. **File → Recover docum
 
 ## Reading
 
-By default pages are **stacked**: the mouse wheel, the scroll bar or the keyboard scroll through the whole
-document, and the page that fills the screen becomes the current page (right-rail number, status bar,
-thumbnail, comments panel; Rotate, Delete and Extract act on it; clicking a page makes it current). **F5**, the
-arrows button of the right rail or the View menu switch between **Continuous Scrolling** and **Single Page**;
-the choice is remembered. Only visible pages are rendered: a document of several hundred pages opens and
-scrolls without rendering every page. The View menu also offers **Two pages** (pairs from the first page) and
-**Book view** (cover alone, then pairs). An unpaired last page is centred. Mixed page sizes share one zoom;
-fit width/page uses the widest spread and tallest page in spread views. These modes use the same tile and texture caps.
+By default pages are **stacked**: the mouse wheel, scroll bar or keyboard scrolls the document. The page in view becomes current in the bottom page field, thumbnails and comments; page operations act on that page. **F5**, **Reading options** below the PDF or the View menu switch between **Continuous Scrolling** and **Single Page**. **Two pages** pairs from the first page; **Book view** shows the cover alone, then pairs. An unpaired last page is centred. Only visible pages render; mixed page sizes share one zoom, with fit based on the widest spread and tallest page. These modes retain the existing tile and texture caps.
 
 | Action | How |
 |---|---|
 | Scroll | Mouse wheel; ↑ ↓ arrows (one line); Space / Shift+Space and Page Down / Page Up (one screen; in single-page view, Page Down / Up change page) |
-| Next / previous page | → ← arrows, right-rail buttons |
+| Next / previous page | → ← arrows, buttons below the PDF |
 | First / last page | Home / End |
-| Go to page | Type the number in the right-rail box, then Enter, or click a thumbnail: the page comes to the top of the screen |
+| Go to page | Type the number or a supported page label in the field below the PDF, then Enter, or click a thumbnail: the page comes to the top of the screen |
 | Zoom | Ctrl + mouse wheel (zooms **around the pointer**; touchpad pinch takes the same path, untested), Ctrl + / Ctrl − (around the centre), Ctrl 0 (actual size), zoom list (25 to 1600%), "Width", "Page"; up to 3200% with the wheel, staying sharp (tiled rendering) |
-| Continuous / single page | F5, right-rail button, View menu |
+| Continuous / single page | F5, Reading options below the PDF, View menu |
 | Thumbnails | **Pages** panel on the left (grid button on the right rail); drag a thumbnail to reorder |
 | Bookmarks | F6 or the list button on the right rail |
 | Find | Ctrl+F: type, match case, ▲ ▼, matches highlighted |
