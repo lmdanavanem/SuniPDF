@@ -717,7 +717,7 @@ pub(crate) mod tests {
             result
         }
         pub(crate) fn click(&mut self, app: &mut SuniApp, key: &str) {
-            self.click_text(app, &tr(app.lang(), key).to_owned());
+            self.click_text(app, tr(app.lang(), key));
         }
         pub(crate) fn click_text(&mut self, app: &mut SuniApp, label: &str) {
             fn find(shape: &egui::Shape, label: &str) -> Option<Pos2> {
