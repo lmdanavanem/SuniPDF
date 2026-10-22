@@ -348,12 +348,17 @@ impl SuniApp {
 
     pub(crate) fn measurement_geometry_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
+        let text_color = crate::theme::palette(self.settings.dark_theme).text;
         let ready = self.measurement_ready();
         let draft = self.annotate.measure.geometry.as_mut().unwrap();
         let valid = draft.replacement.value().is_ok();
         let can_finish =
             ready && draft.changed() && valid && draft.dragging.is_none() && !draft.adding;
-        ui.strong(tr(lang, "measure.geometry.open"));
+        ui.label(
+            egui::RichText::new(tr(lang, "measure.geometry.open"))
+                .strong()
+                .color(text_color),
+        );
         ui.label(tr(lang, "measure.geometry.hint"));
         ui.small(tr_args(
             lang,

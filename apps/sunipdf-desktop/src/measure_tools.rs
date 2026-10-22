@@ -543,7 +543,7 @@ impl SuniApp {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
             ui.spacing_mut().item_spacing.y = 6.0;
             let state = &mut self.annotate.measure;
-            ui.strong(tr(lang, "measure.panel.create"));
+            ui.label(egui::RichText::new(tr(lang, "measure.panel.create")).strong().color(palette.text));
             ui.add_enabled_ui(ready, |ui| {
                 let kind_label = ui.label(tr(lang, "measure.kind"));
                 ui.add_enabled_ui(!state.is_active_draft(), |ui| {
@@ -588,7 +588,7 @@ impl SuniApp {
 
             ui.add_space(4.0);
             ui.separator();
-            ui.strong(tr(lang, "measure.panel.scale"));
+            ui.label(egui::RichText::new(tr(lang, "measure.panel.scale")).strong().color(palette.text));
             ui.add_enabled_ui(ready, |ui| {
                 if measurement_panel_button(
                     ui,
@@ -641,7 +641,7 @@ impl SuniApp {
             self.measurement_saved_scale_controls(ui);
             ui.add_space(4.0);
             ui.separator();
-            ui.strong(tr(lang, "measure.panel.drawing"));
+            ui.label(egui::RichText::new(tr(lang, "measure.panel.drawing")).strong().color(palette.text));
             let state = &mut self.annotate.measure;
             let hint = match &state.gesture {
                 Gesture::Calibrate { points, .. } if points.len() == 2 => "measure.distance_hint",
@@ -712,7 +712,7 @@ impl SuniApp {
             }
             ui.add_space(4.0);
             ui.separator();
-            ui.strong(tr(lang, "measure.panel.saved"));
+            ui.label(egui::RichText::new(tr(lang, "measure.panel.saved")).strong().color(palette.text));
             self.measurement_saved_bar(ui);
             if measurement_panel_button(
                 ui,
@@ -1165,6 +1165,18 @@ mod tests {
 
     #[test]
     fn calibration_prerequisites_are_neutral_and_failed_input_keeps_its_error() {
+        fn luminance(color: egui::Color32) -> f64 {
+            let linear = |value: u8| {
+                let value = f64::from(value) / 255.0;
+                if value <= 0.04045 {
+                    value / 12.92
+                } else {
+                    ((value + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b())
+        }
+
         fn text_colors(shape: &egui::Shape, label: &str, colors: &mut Vec<egui::Color32>) {
             match shape {
                 egui::Shape::Text(text) if text.galley.text() == label => {
@@ -1207,8 +1219,38 @@ mod tests {
                                 )),
                                 ..Default::default()
                             },
-                            |ui| app.measurement_bar(&ctx, ui),
+                            |ui| app.measurement_dock(&ctx, ui),
                         );
+                        output.textures_delta.clear();
+                        let palette = crate::theme::palette(dark);
+                        for key in [
+                            "measure.tool",
+                            "measure.panel.create",
+                            "measure.panel.scale",
+                            "measure.panel.drawing",
+                            "measure.panel.saved",
+                            "measure.kind",
+                            "measure.unit",
+                            "measure.precision",
+                        ] {
+                            let mut heading_colors = Vec::new();
+                            for shape in &output.shapes {
+                                text_colors(&shape.shape, tr(app.lang(), key), &mut heading_colors);
+                            }
+                            assert_eq!(
+                                heading_colors,
+                                vec![palette.text],
+                                "{language}, dark={dark}, {key}"
+                            );
+                            let foreground = luminance(heading_colors[0]);
+                            let background = luminance(palette.surface);
+                            assert!(
+                                (foreground.max(background) + 0.05)
+                                    / (foreground.min(background) + 0.05)
+                                    >= 4.5,
+                                "panel text must be readable: {language}, dark={dark}, {key}"
+                            );
+                        }
                         colors.clear();
                         for shape in &output.shapes {
                             text_colors(
@@ -1224,7 +1266,6 @@ mod tests {
                                 &mut colors,
                             );
                         }
-                        output.textures_delta.clear();
                     }
                     assert_eq!(
                         colors,

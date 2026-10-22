@@ -128,7 +128,6 @@ fn compact_tool_row(
             (text_right - text_left).max(1.0),
         );
         job.wrap.max_rows = 2;
-        job.wrap.break_anywhere = text_right - text_left < 110.0;
         let galley = painter.layout_job(job);
         let text_rect = egui::Rect::from_min_max(
             egui::pos2(text_left, rect.top() + 2.0),
@@ -486,6 +485,14 @@ mod tests {
                             .unwrap_or_else(|| panic!("Missing title: {title}"));
                         assert!(label.0.min.x >= rect.min.x && label.0.max.x <= rect.max.x);
                         assert!(label.1.galley.rows.len() <= 2);
+                        if lang == Language::French && *ws == Workspace::Quantity && width == 160.0
+                        {
+                            let rows: Vec<_> =
+                                label.1.galley.rows.iter().map(|row| row.text()).collect();
+                            assert_eq!(rows.len(), 2);
+                            assert_eq!(rows[0].trim(), "Table des");
+                            assert_eq!(rows[1].trim(), "quantités");
+                        }
                         assert!(
                             label.1.pos.y >= rect.min.y
                                 && label.1.pos.y + label.1.galley.size().y <= rect.max.y

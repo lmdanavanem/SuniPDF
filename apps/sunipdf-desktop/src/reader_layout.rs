@@ -202,7 +202,11 @@ impl SuniApp {
             .show(ui, |ui| {
                 let mut leave = false;
                 ui.horizontal(|ui| {
-                    ui.strong(self.t("measure.tool"));
+                    ui.label(
+                        egui::RichText::new(self.t("measure.tool"))
+                            .strong()
+                            .color(p.text),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         leave = self.icon_button(ui, glyph::CLOSE, "×", self.t("hub.leave"));
                     });
