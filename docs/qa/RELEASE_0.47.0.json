@@ -1,0 +1,459 @@
+{
+  "version": "0.47.0",
+  "source": "db79bc393cd6039a53b03319c503ab57483783d8",
+  "tag": "v0.47.0",
+  "release_id": 420440414,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0",
+  "published_at": "2026-10-22T09:13:56Z",
+  "verified_at": "2026-10-22T09:14:07.1881773Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "workflows": [
+    {
+      "name": "ci",
+      "id": 39743753731,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753731",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119707036050,
+          "name": "windows",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753731/job/119707036050"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "id": 39743766468,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119707078051,
+          "name": "build (arm64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468/job/119707078051"
+        },
+        {
+          "id": 119707078320,
+          "name": "build (x64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468/job/119707078320"
+        },
+        {
+          "id": 119717560969,
+          "name": "publish",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468/job/119717560969"
+        }
+      ]
+    },
+    {
+      "name": "codeql",
+      "id": 39743753810,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119707042960,
+          "name": "Analyze (python)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810/job/119707042960"
+        },
+        {
+          "id": 119707043167,
+          "name": "Analyze (rust)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810/job/119707043167"
+        },
+        {
+          "id": 119707043297,
+          "name": "Analyze (actions)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810/job/119707043297"
+        }
+      ]
+    }
+  ],
+  "qualification": {
+    "tests": {
+      "passed": 744,
+      "failed": 0,
+      "ignored": 10
+    },
+    "portable": {
+      "scenarios": 39,
+      "upgrades": 35,
+      "guards": 4
+    },
+    "msi": {
+      "baselines": 33,
+      "logs": 165
+    },
+    "i18n": 1382,
+    "open_code_scanning_alerts": 0
+  },
+  "assets": [
+    {
+      "id": 665165793,
+      "name": "SuniPDF-0.47.0-win-arm64-portable.zip",
+      "size": 26395933,
+      "sha256": "54e3da08ff08c0198652a5c661ac0aecdd8a1f4d6289e06e6f374eaa50d62786",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665165790,
+      "name": "SuniPDF-0.47.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "af8470b857846de465129e2edd6f89f33ba6eaf78c13873e2b0f729b7f5db7d3",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665165797,
+      "name": "SuniPDF-0.47.0-win-x64-portable.zip",
+      "size": 28165446,
+      "sha256": "c29bb35759b98715824b4ec72b2503c8027e58ccddb156cec0a4bc9e63b13262",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665165794,
+      "name": "SuniPDF-0.47.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "1ef98042eaef82268e3b68de8649524b915804928c9653b442e34305ad8b3b85",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665165792,
+      "name": "SuniPDF-0.47.0-win-x64.msi",
+      "size": 26075136,
+      "sha256": "8e1b329815120b4a14b1691c6d6a8eec9aa930176694a40d0ce64df4e66e02a1",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665165789,
+      "name": "SuniPDF-0.47.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "bc34613bae8a684af7330d870ef59786c4d820f3b971228d844867caa7aa651b",
+      "public_unauthenticated": true
+    }
+  ],
+  "zip_metadata": [
+    {
+      "architecture": "x64",
+      "product_version": "0.47.0",
+      "entries": 60,
+      "expanded_bytes": 94595909
+    },
+    {
+      "architecture": "arm64",
+      "product_version": "0.47.0",
+      "entries": 60,
+      "expanded_bytes": 86661970
+    }
+  ],
+  "msi_metadata": {
+    "ProductLanguage": "1033",
+    "ProductVersion": "0.47.0",
+    "ProductName": "SuniPDF"
+  },
+  "public_verification": {
+    "public_unauthenticated": true,
+    "gui_version": "0.47.0",
+    "cli_version": "sunipdf-cli 0.47.0",
+    "cli_sha256": "07a52ba9c937873a3ef221076bb174a9413ebfdcddf80f440f50985147ec3e6c",
+    "cli_calls": 28,
+    "expected_cli_calls": 28,
+    "command_scenarios": [
+      "version",
+      "overlay-help",
+      "identity-png-0",
+      "identity-json-0",
+      "identity-png-90",
+      "identity-json-90",
+      "identity-png-180",
+      "identity-json-180",
+      "identity-png-270",
+      "identity-json-270",
+      "manual-transform",
+      "two-point-transform",
+      "opacity-and-bounds",
+      "reject-stale-base",
+      "reject-stale-revision",
+      "reject-existing-png",
+      "reject-existing-json",
+      "reject-existing-source",
+      "reject-invalid-transform",
+      "protect-base-aes128",
+      "protect-revision-aes256",
+      "separate-passwords",
+      "protect-no-copy-base-aes128",
+      "protect-no-copy-revision-aes256",
+      "reject-base-copy-user",
+      "reject-base-copy-owner",
+      "reject-revision-copy-user",
+      "reject-revision-copy-owner"
+    ],
+    "cli_results": [
+      {
+        "scenario": "version",
+        "command": "--version",
+        "exit_code": 0,
+        "stdout_sha256": "3a8b45192cb188529951b526ff3154f634a3fc81ab35a610bb97db5c67e17952",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "overlay-help",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "5e23aa651dac2eaaf1a47e9ac6e6050357f3ee8549e31a450229b8082b3b48a5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-png-0",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "097563817eb7ecfede1d85a41c2c679d3af3a66a7f164392fdd9e66a7671bb45",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-json-0",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "3a1b16ed1027aeabbd02e31b48fd2cc6a64c2bd97e3a40d150ad0f8a6cb45149",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-png-90",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "76ecca9de522bbd3835df50a95eb5b348b66efa358145beefcbb31da85d610d5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-json-90",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "b19f6921a8bac6a4f86ed0757c5fbd4f71111badf4826a77159b7580b6023409",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-png-180",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "f30f310d2ecab252df8755b4d9387090e4ff5be9e12760ff01e669e283ed75fd",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-json-180",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "66c46be58b24e66cec161563176459e91e2e36c3d178dc8772c3ffd14bbaee76",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-png-270",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "433c0523a2d294195177440d20657c0afe9ca12dec5e55a08d6d6bf53a930369",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "identity-json-270",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "d43c94371ad6b06163b8df7572c88b64fca9a65e5f25a9c454c719aaeded29e8",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "manual-transform",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "e970be49fedaa1ab390e50dacede359808b06bb722402c3e431b5204bbe882f5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "two-point-transform",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "0ebc82c943cf48ddf5e1e7a732d2217705b028743cf7c02f930e81498678c0f3",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "opacity-and-bounds",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "b4e6e6d4ddcec2d0a5ebea0282e9167a7c35bdb1f7b084524f91325b254c8159",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "reject-stale-base",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "91cd7b2768c78a82a7f36c87b8006d753685d576c473624687d46f495a85c412"
+      },
+      {
+        "scenario": "reject-stale-revision",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "91cd7b2768c78a82a7f36c87b8006d753685d576c473624687d46f495a85c412"
+      },
+      {
+        "scenario": "reject-existing-png",
+        "command": "revision-overlay",
+        "exit_code": 6,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "596ce94de70a554e2d1069132f6f291017a93ee947dc40ba26f83a4953b8ab7f"
+      },
+      {
+        "scenario": "reject-existing-json",
+        "command": "revision-overlay",
+        "exit_code": 6,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "0f5fe696a55d769001cf830f3caa3324b83760e0ea57e631076c0afd5a03f324"
+      },
+      {
+        "scenario": "reject-existing-source",
+        "command": "revision-overlay",
+        "exit_code": 6,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "783481ba4d568c7c31e96727baad1a266aa5c00363cd898f60461324d713ffd7"
+      },
+      {
+        "scenario": "reject-invalid-transform",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ccf98836bf0e112377e7c78aba7f7a7cf0953e7ba61363508db39ee96e5da593"
+      },
+      {
+        "scenario": "protect-base-aes128",
+        "command": "protect",
+        "exit_code": 0,
+        "stdout_sha256": "dacd097714176fcf09364b9c36abe2aa0dc0acd6e363bd2fefd57baae61a1ef5",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "protect-revision-aes256",
+        "command": "protect",
+        "exit_code": 0,
+        "stdout_sha256": "74f2578cdeeee35d1a8423babbf4523fd647179db65c36b9e3ec36fdf09c597a",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "separate-passwords",
+        "command": "revision-overlay",
+        "exit_code": 0,
+        "stdout_sha256": "a0b9e9ceadace6e508c141c136199b05c65745c41fbc39e1e4a504704e435a30",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "protect-no-copy-base-aes128",
+        "command": "protect",
+        "exit_code": 0,
+        "stdout_sha256": "fc77a59d3d06f319b2978696bbe1064d012b235e5038d3f5bc93407234e4058d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "protect-no-copy-revision-aes256",
+        "command": "protect",
+        "exit_code": 0,
+        "stdout_sha256": "e66f6fa7a6c83d59ec62db3a114e5f3894426d1d66ecae02aca2f40b0e3c3a6f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "reject-base-copy-user",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ef621b585df45bbaba1c994e4bce14771aa7286f30250598dcc950c6400bf9d8"
+      },
+      {
+        "scenario": "reject-base-copy-owner",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ef621b585df45bbaba1c994e4bce14771aa7286f30250598dcc950c6400bf9d8"
+      },
+      {
+        "scenario": "reject-revision-copy-user",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ef621b585df45bbaba1c994e4bce14771aa7286f30250598dcc950c6400bf9d8"
+      },
+      {
+        "scenario": "reject-revision-copy-owner",
+        "command": "revision-overlay",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ef621b585df45bbaba1c994e4bce14771aa7286f30250598dcc950c6400bf9d8"
+      }
+    ],
+    "feature": "revision_overlay",
+    "features": {
+      "overlay_schema": true,
+      "crop_and_four_rotations": true,
+      "png_decoded_and_nonblank": true,
+      "json_readback_matches_report": true,
+      "source_hashes_verified": true,
+      "display_coordinates_verified": true,
+      "manual_transform_verified": true,
+      "two_point_transform_equivalent": true,
+      "opacity_and_raster_bounds": true,
+      "base_clipping_declared": true,
+      "stale_base_refused": true,
+      "stale_revision_refused": true,
+      "existing_png_refused": true,
+      "existing_json_refused": true,
+      "source_as_output_refused": true,
+      "invalid_transform_refused": true,
+      "separate_aes_passwords": true,
+      "aes128_base_copy_guard_user_owner": true,
+      "aes256_revision_copy_guard_user_owner": true,
+      "source_files_unchanged": true,
+      "passwords_absent_from_output": true
+    },
+    "overlay_schema": "sunipdf-revision-overlay",
+    "overlay_version": 1,
+    "dist_verified": true,
+    "saved_reopened": true,
+    "original_unchanged": true
+  },
+  "dist_copies_verified": true,
+  "pr_integration": "PR_INTEGRATION_0.47.0.json",
+  "aec_card_count": 24,
+  "aec_status": {
+    "AEC-001": "In progress",
+    "AEC-002": "In progress",
+    "AEC-003": "In progress",
+    "AEC-004": "In progress",
+    "AEC-005": "Done",
+    "AEC-006": "In progress",
+    "AEC-007": "In progress",
+    "AEC-008": "Planned",
+    "AEC-009": "Planned",
+    "AEC-010": "Planned",
+    "AEC-011": "Planned",
+    "AEC-012": "Planned",
+    "AEC-013": "In progress",
+    "AEC-014": "Planned",
+    "AEC-015": "Planned",
+    "AEC-016": "Planned",
+    "AEC-017": "Planned",
+    "AEC-018": "Planned",
+    "AEC-019": "Planned",
+    "AEC-022": "Planned",
+    "AEC-023": "Planned",
+    "AEC-024": "Planned",
+    "AEC-025": "Planned",
+    "AEC-026": "In progress"
+  },
+  "limits": [
+    "Public smoke checks did not install the app or qualify native GUI interaction or ARM64 execution.",
+    "Windows packages remain unsigned; no independent publication key is configured.",
+    "AEC-013 remains partial. Automatic registration, vector comparison, merged PDF output and automatic change outlines remain open; AEC-014 is not delivered. This is a raster overlay of two selected pages clipped to the base. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open."
+  ]
+}

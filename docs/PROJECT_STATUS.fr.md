@@ -1,11 +1,19 @@
-# État du projet - 2026-10-22 (0.46.0 publiée en Latest stable)
+# État du projet - 2026-10-22 (0.47.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.46.0 : tables de quantités et champs typés (Latest stable)
+## 0.47.0 : superpositions de révisions alignées (Latest stable)
+
+[0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Superposez deux pages PDF enregistrées en magenta/cyan, alignez-les par translation, rotation horaire et échelle explicites ou par deux paires de points correspondants, puis exportez un nouveau PNG ou rapport JSON lié aux sources. Les deux fichiers doivent autoriser la copie ; empreintes exactes, géométrie recadrée/pivotée, rasters bornés et sorties nouvelles préservent les originaux.
+
+Source `db79bc393cd6039a53b03319c503ab57483783d8`, PR [#23](https://github.com/lmdanavanem/SuniPDF/pull/23). Source exacte validée: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753731) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810). 744 tests réussis, 10 ignorés par défaut. 1382 clés EN/FR. 39 scénarios portables. 33 références MSI. 165 journaux MSI. Aucune alerte Code Scanning ouverte. Six téléchargements publics et copies dist vérifiés par SHA256. 28 appels CLI vérifient pages recadrées aux quatre rotations, relecture PNG/JSON, alignement explicite et à deux paires, empreintes, refus périmés/d’écrasement, mots de passe AES séparés, droits de copie et conservation des sources.
+
+[Guide et limites](REVISION_OVERLAY.fr.md) · [Notes de version](RELEASE_0.47.0.fr.md) · [Preuves](qa/RELEASE_0.47.0.json).
+
+## 0.46.0 : tables de quantités et champs typés (publiée ; Latest à cette date)
 
 [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Consultez les comptages et mesures réels dans des tables filtrées, modifiez champs typés et prix unitaires explicites avec Annuler, puis exportez CSV/JSON liés à la source. Les totaux distinguent absence et zéro, convertissent les bases de prix compatibles et séparent les monnaies. La CLI exige un enregistrement attendu et une nouvelle copie PDF ; droits de copie et d’annotation restent contrôlés.
 

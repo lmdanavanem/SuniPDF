@@ -4,6 +4,10 @@
 
 SuniPDF is a free, open-source local application for PDF plans, measurements and review, licensed under MIT OR Apache-2.0. This backlog defines planned capabilities and acceptance criteria; statuses distinguish partial implementation from qualified functionality.
 
+## Aligned revision overlays — 0.47.0
+
+Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals. AEC-013 remains **In progress**. AEC-013 remains partial. Automatic registration, vector comparison, merged PDF output and automatic change outlines remain open; AEC-014 is not delivered. This is a raster overlay of two selected pages clipped to the base. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open. [Evidence](qa/RELEASE_0.47.0.json).
+
 ## Quantity tables and typed fields — 0.46.0
 
 Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced. AEC-007 remains **In progress**. Arbitrary formulas, tax calculation, currency exchange, automatic symbol recognition, cross-document aggregation and the remaining full estimating acceptance criteria stay open. Angles are visible but excluded from additive quantities and pricing. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open. [Evidence](qa/RELEASE_0.46.0.json).

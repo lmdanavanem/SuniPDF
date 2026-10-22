@@ -2,7 +2,7 @@
 
 [Français](RELEASE_0.47.0.fr.md) · [Revision overlay guide](REVISION_OVERLAY.md)
 
-This build includes the scope below. Published assets and qualification are tracked on the [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0).
+Status: published as stable Latest [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0), source `db79bc393cd6039a53b03319c503ab57483783d8`, on 2026-10-22. [Previous release](RELEASE_0.46.0.md).
 
 ## Scope
 
@@ -16,7 +16,7 @@ Desktop and CLI export a new PNG or JSON report. The report records both source 
 
 ## Qualification
 
-Qualification records and distribution assets are tracked on the [0.47.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). Results apply to the exact source identified there.
+Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753731) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743766468) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39743753810). 744 tests passed, 10 default ignored. 1382 EN/FR keys. 39 portable scenarios. 33 MSI baselines. 165 MSI logs. No open Code Scanning alerts. Six public downloads and dist copies verified by SHA256. 28 packaged CLI calls verify cropped pages at four rotations, PNG/JSON readback, explicit and two-point alignment, source hashes, stale/overwrite refusals, separate AES passwords, copy restrictions and unchanged sources. [Evidence](qa/RELEASE_0.47.0.json).
 
 ## Remaining limits
 

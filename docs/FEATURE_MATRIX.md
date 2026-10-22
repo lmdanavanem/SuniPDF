@@ -2,7 +2,13 @@
 
 [Français](FEATURE_MATRIX.fr.md)
 
-## 0.46.0: quantity tables and typed fields (stable Latest)
+## 0.47.0: aligned revision overlays (stable Latest)
+
+[0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals.
+
+[Guide and limits](REVISION_OVERLAY.md) · [Release notes](RELEASE_0.47.0.md) · [Evidence](qa/RELEASE_0.47.0.json).
+
+## 0.46.0: quantity tables and typed fields (published; Latest at the time)
 
 [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
 
@@ -439,8 +445,9 @@ installing it on the host. Executed evidence and remaining limits are in `PROJEC
 |---|---|---|
 | Local annotation libraries | Delivered in 0.45.0 | Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions. |
 | Quantity tables and typed fields | Delivered in 0.46.0 | Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced. |
-| Windows x64 | Distributed in 0.46.0 | Public packages and dist copies verified; native qualification remains open. [Evidence](qa/RELEASE_0.46.0.json). |
-| Windows ARM64 | Distributed in 0.46.0 | Cross-build and distribution verified; native ARM64 runtime remains unqualified. [Evidence](qa/RELEASE_0.46.0.json). |
+| Aligned revision overlays | Delivered in 0.47.0 | Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals. |
+| Windows x64 | Distributed in 0.47.0 | Public packages and dist copies verified; native qualification remains open. [Evidence](qa/RELEASE_0.47.0.json). |
+| Windows ARM64 | Distributed in 0.47.0 | Cross-build and distribution verified; native ARM64 runtime remains unqualified. [Evidence](qa/RELEASE_0.47.0.json). |
 | Code signing | Not documented | Planned (P6) if a certificate is provided |
 | Optional GPU renderer | Not documented | **Delivered in 0.30.0**: optional wgpu compatibility and DX12 software-renderer gate; OpenGL remains default. Real GPU/window and ARM64 hardware qualification remain separate |
 | Dependency/component license inventory | Not documented | **Delivered in 0.30.0**: exact-version offline inventory and package-content checks; [scope](RELEASE_0.30.0.md). Ongoing license maintenance remains required |

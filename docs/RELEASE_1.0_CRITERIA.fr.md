@@ -1,6 +1,8 @@
 # Critères d’acceptation de SuniPDF 1.0
 
-Dernier lot vérifié : [0.46.0 — tables de quantités et champs typés](RELEASE_0.46.0.fr.md). Les critères restants restent ouverts.
+Dernier lot vérifié : [0.47.0 — superpositions de révisions alignées](RELEASE_0.47.0.fr.md). Les critères restants restent ouverts.
+
+Lot précédemment vérifié : [0.46.0 — tables de quantités et champs typés](RELEASE_0.46.0.fr.md). Les critères restants restent ouverts.
 
 Lot précédemment vérifié : [0.45.0 — bibliothèques locales d’annotations](RELEASE_0.45.0.fr.md). Les critères restants restent ouverts.
 
@@ -23,7 +25,7 @@ Lot précédemment vérifié : [0.37.0 — filigranes image](RELEASE_0.37.0.fr.m
 [English](RELEASE_1.0_CRITERIA.md)
 
 Ce document décrit la préparation acceptée après la 0.32.0 ; il ne déclare pas la 1.0 validée. La version
-stable est maintenant la [0.46.0](RELEASE_0.46.0.fr.md). Les fonctions et refus prudents de la
+stable est maintenant la [0.47.0](RELEASE_0.47.0.fr.md). Les fonctions et refus prudents de la
 [matrice](FEATURE_MATRIX.fr.md) restent applicables : le numéro 1.0 n’élargit pas la prise en charge des
 polices, des exports Office, des signatures, de XFA ou de la conformité PDF.
 
