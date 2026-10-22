@@ -1380,5 +1380,11 @@
   "quantity.finish_first": "Finish or cancel the quantity-table edit first.",
   "quantity.readonly": "This row cannot be edited with the current document permissions or annotation state.",
   "quantity.source": "Annotation",
-  "quantity.blank_custom": "Remove a custom column to leave it absent. An empty text value remains supplied."
+  "quantity.blank_custom": "Remove a custom column to leave it absent. An empty text value remains supplied.",
+  "measure.geometry.open": "Edit geometry",
+  "measure.geometry.hint": "Drag an existing vertex, then preview the change. Escape cancels without changing the PDF.",
+  "measure.geometry.details": "{points} vertices · {unit} · precision {precision}",
+  "measure.geometry.preview": "Preview",
+  "measure.geometry.preserved": "The original calibration, reference distance, unit, precision and measurement type are preserved.",
+  "measure.geometry.adjust": "Adjust vertices"
 }

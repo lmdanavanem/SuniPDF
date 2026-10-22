@@ -11,6 +11,7 @@ Older `.en.md` addresses remain compatibility links.
 | [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Opening, editing and saving PDFs |
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
 | [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and individual measurement editing |
+| [Measurement geometry](MEASUREMENT_GEOMETRY.md) | [FR](MEASUREMENT_GEOMETRY.fr.md) | Edit existing vertices on the page with Preview, Apply and Undo |
 | [Counts and annotation register](MARKUP_REGISTER.md) | [FR](MARKUP_REGISTER.fr.md) | Markers, quantities and business fields |
 | [Annotation library](ANNOTATION_LIBRARY.md) | [FR](ANNOTATION_LIBRARY.fr.md) | Local templates, groups, placement, import/export and CLI; qualified 0.45 scope |
 | [Quantity tables](QUANTITY_TABLE.md) | [FR](QUANTITY_TABLE.fr.md) | Typed fields, prices, compatible-unit totals and guarded CSV/JSON exports; [qualified 0.46.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) |

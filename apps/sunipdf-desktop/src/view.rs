@@ -920,6 +920,9 @@ impl SuniApp {
     /// disparaîtrait au défilement) et celle de l'éditeur de texte posé sur la page.
     fn pinned_pages(&self) -> Vec<usize> {
         let mut v: Vec<usize> = self.annotate.drag.map(|d| d.page).into_iter().collect();
+        if let Some(draft) = &self.annotate.measure.geometry {
+            v.push(draft.page);
+        }
         if let Some(drag) = self.form_builder.drag {
             v.push(drag.page);
         }
@@ -1068,7 +1071,10 @@ impl SuniApp {
                 v.nav_lock = None;
             }
         }
-        if mode != ViewMode::Single && self.view.nav_lock.is_none() {
+        if mode != ViewMode::Single
+            && self.view.nav_lock.is_none()
+            && self.annotate.measure.geometry.is_none()
+        {
             self.track_page(layout.dominant(viewport.min.y, viewport.max.y));
         }
         if let Some(doc) = &self.document {
@@ -1107,14 +1113,18 @@ impl SuniApp {
                     self.library_click(page, point);
                 }
             } else if self.annotate.tool == crate::annotate::Tool::Measure {
-                match ev {
-                    DragEvent::Click(point) => {
-                        self.measurement_click(ctx, page, point, shift, false);
+                if self.annotate.measure.geometry.is_some() {
+                    self.measurement_geometry_event(page, ev);
+                } else {
+                    match ev {
+                        DragEvent::Click(point) => {
+                            self.measurement_click(ctx, page, point, shift, false);
+                        }
+                        DragEvent::DoubleClick(point) => {
+                            self.measurement_click(ctx, page, point, shift, true);
+                        }
+                        _ => {}
                     }
-                    DragEvent::DoubleClick(point) => {
-                        self.measurement_click(ctx, page, point, shift, true);
-                    }
-                    _ => {}
                 }
             } else {
                 self.handle_page_event(page, ev, shift);
@@ -1235,8 +1245,9 @@ impl SuniApp {
             crate::annotate::to_pdf(rect.min + source.to_vec2(), source_rect, zoom, h)
         };
         let mut event = None;
+        let geometry_editing = self.annotate.measure.geometry.is_some();
         if interact.drag_started()
-            && (!self.form_builder.drawing
+            && ((!self.form_builder.drawing && !geometry_editing)
                 || interact.drag_started_by(egui::PointerButton::Primary))
         {
             // Origine réelle de la pression : le glissement n'est détecté qu'après le seuil.
@@ -1244,12 +1255,17 @@ impl SuniApp {
                 .input(|i| i.pointer.press_origin())
                 .or_else(|| interact.interact_pointer_pos());
             event = origin.map(|p| DragEvent::Start(to_pdf(p)));
-        } else if interact.dragged() {
+        } else if interact.dragged()
+            && (!geometry_editing || interact.dragged_by(egui::PointerButton::Primary))
+        {
             event = interact
                 .interact_pointer_pos()
                 .map(|p| DragEvent::Move(to_pdf(p)));
-        } else if interact.drag_stopped() {
+        } else if interact.drag_stopped()
+            && (!geometry_editing || interact.drag_stopped_by(egui::PointerButton::Primary))
+        {
             if let Some(pt) = interact.interact_pointer_pos().map(to_pdf) {
+                self.measurement_geometry_move(s.page, pt);
                 if let Some(drag) = self.annotate.drag.as_mut().filter(|d| d.page == s.page) {
                     drag.current = pt;
                     let drag = *drag;
@@ -2602,6 +2618,147 @@ mod tests {
             };
             assert!((focus.x - 120.0).abs() < 0.001);
             assert!((focus.y - 600.0).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn geometry_handles_use_transformed_page_coordinates_and_capture_release_position() {
+        use crate::measurement_saved::MeasurementPageData;
+        use sunipdf_core::measurement::{
+            Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit,
+        };
+        for rotation in [
+            ViewRotation::Upright,
+            ViewRotation::Clockwise,
+            ViewRotation::UpsideDown,
+            ViewRotation::Counterclockwise,
+        ] {
+            for pointer_button in [
+                egui::PointerButton::Primary,
+                egui::PointerButton::Secondary,
+                egui::PointerButton::Middle,
+            ] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                let ctx = egui::Context::default();
+                app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+                app.document.as_mut().unwrap().info.page_sizes = vec![letter()];
+                app.open_measurements(&ctx);
+                app.effective_zoom = 0.8;
+                let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+                let record = MeasurementRecord {
+                    index: 0,
+                    annotation_id: Some("rotated-measurement".into()),
+                    measurement: Measurement {
+                        kind: MeasurementKind::Length,
+                        points: vec![(200.0, 500.0), (300.0, 500.0)],
+                        calibration: [(30.0, 40.0), (130.0, 40.0)],
+                        known_distance: 10.0,
+                        unit: MeasurementUnit::Metres,
+                        precision: 2,
+                    },
+                };
+                app.request_measurement_page(0);
+                let Request::MeasurementPage {
+                    page,
+                    epoch,
+                    generation,
+                } = requests.recv().unwrap()
+                else {
+                    panic!("page query")
+                };
+                app.on_measurement_page(
+                    page,
+                    epoch,
+                    generation,
+                    Ok(MeasurementPageData::new(
+                        Ok(None),
+                        Ok(vec![record.clone()]),
+                        true,
+                    )),
+                );
+                assert!(app.start_measurement_geometry(0, record));
+                let size = rotation.size(letter());
+                let slot = Slot {
+                    page: 0,
+                    rect: Rect::from_min_size(
+                        pos2(50.0, 60.0),
+                        vec2(size.width_pt * k, size.height_pt * k),
+                    ),
+                    rotation,
+                    size_pt: letter(),
+                    page_px: None,
+                    scale_milli: 800,
+                    limits: TileLimits::default(),
+                    current: true,
+                    total: 1,
+                    name: "plan.pdf",
+                };
+                let screen = |x: f32, y: f32| {
+                    slot.rect.min
+                        + rotation
+                            .point(pos2(x * k, (792.0 - y) * k), vec2(612.0 * k, 792.0 * k))
+                            .to_vec2()
+                };
+                let start = screen(300.0, 500.0);
+                let moved = screen(320.0, 510.0);
+                let released = screen(365.0, 535.0);
+                let button = |pos, pressed| egui::Event::PointerButton {
+                    pos,
+                    button: pointer_button,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                };
+                let frames = [
+                    vec![],
+                    vec![],
+                    vec![egui::Event::PointerMoved(start), button(start, true)],
+                    vec![egui::Event::PointerMoved(moved)],
+                    // No move-only frame at the final coordinate: Stop must capture it.
+                    vec![egui::Event::PointerMoved(released), button(released, false)],
+                ];
+                for (index, events) in frames.into_iter().enumerate() {
+                    let mut output = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(Rect::from_min_size(
+                                Pos2::ZERO,
+                                vec2(1500.0, 1300.0),
+                            )),
+                            time: Some(1.0 + index as f64 * 0.1),
+                            events,
+                            ..Default::default()
+                        },
+                        |ui| {
+                            if let Some((page, event)) = app.paint_slot(&ctx, ui, &slot) {
+                                app.measurement_geometry_event(page, event);
+                            }
+                        },
+                    );
+                    output.textures_delta.clear();
+                }
+                let draft = app.annotate.measure.geometry.as_ref().unwrap();
+                if pointer_button != egui::PointerButton::Primary {
+                    assert_eq!(
+                        draft.replacement.points,
+                        vec![(200.0, 500.0), (300.0, 500.0)]
+                    );
+                    assert!(!app.finish_measurement_geometry());
+                    assert!(requests.try_recv().is_err());
+                    continue;
+                }
+                assert!((draft.replacement.points[1].0 - 365.0).abs() < 0.001);
+                assert!((draft.replacement.points[1].1 - 535.0).abs() < 0.001);
+                assert_eq!(draft.replacement.points[0], (200.0, 500.0));
+                assert!(!app.dirty);
+                assert!(requests.try_recv().is_err(), "pointer edits remain local");
+                assert!(
+                    app.finish_measurement_geometry(),
+                    "release clears the captured vertex"
+                );
+                assert!(matches!(
+                    requests.recv().unwrap(),
+                    Request::PreviewMeasurementEdit { .. }
+                ));
+            }
         }
     }
 

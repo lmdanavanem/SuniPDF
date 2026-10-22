@@ -1380,5 +1380,11 @@
   "quantity.finish_first": "Terminez ou annulez d’abord la modification de la table des quantités.",
   "quantity.readonly": "Cette ligne ne peut pas être modifiée avec les droits du document ou l’état de l’annotation.",
   "quantity.source": "Annotation",
-  "quantity.blank_custom": "Retirez une colonne pour laisser sa valeur absente. Un texte vide reste une valeur renseignée."
+  "quantity.blank_custom": "Retirez une colonne pour laisser sa valeur absente. Un texte vide reste une valeur renseignée.",
+  "measure.geometry.open": "Modifier la géométrie",
+  "measure.geometry.hint": "Faites glisser un sommet existant, puis prévisualisez la modification. Échap annule sans modifier le PDF.",
+  "measure.geometry.details": "{points} sommets · {unit} · précision {precision}",
+  "measure.geometry.preview": "Aperçu",
+  "measure.geometry.preserved": "L’étalonnage, la distance de référence, l’unité, la précision et le type de mesure d’origine sont conservés.",
+  "measure.geometry.adjust": "Ajuster les sommets"
 }

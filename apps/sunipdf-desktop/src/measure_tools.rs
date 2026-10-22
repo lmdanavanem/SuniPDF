@@ -34,6 +34,7 @@ enum Gesture {
 
 pub struct MeasurementState {
     pub(crate) saved: crate::measurement_saved::SavedMeasurements,
+    pub(crate) geometry: Option<crate::measurement_geometry::GeometryDraft>,
     pub(crate) kind: MeasurementKind,
     pub(crate) unit: MeasurementUnit,
     pub(crate) precision: usize,
@@ -49,6 +50,7 @@ impl Default for MeasurementState {
     fn default() -> Self {
         Self {
             saved: Default::default(),
+            geometry: None,
             kind: MeasurementKind::Length,
             unit: MeasurementUnit::Metres,
             precision: 2,
@@ -64,11 +66,12 @@ impl Default for MeasurementState {
 
 impl MeasurementState {
     pub fn is_active_draft(&self) -> bool {
-        !matches!(self.gesture, Gesture::Idle)
+        self.geometry.is_some() || !matches!(self.gesture, Gesture::Idle)
     }
 
     pub fn cancel(&mut self) -> bool {
         let active = self.is_active_draft();
+        self.geometry = None;
         self.gesture = Gesture::Idle;
         self.input_distance.clear();
         self.hover = None;
@@ -382,6 +385,17 @@ impl SuniApp {
                 state.error = Some("measure.stale");
             }
         }
+        if state.geometry.as_ref().is_some_and(|draft| {
+            draft.epoch != self.view.epoch
+                || !self
+                    .document
+                    .as_ref()
+                    .is_some_and(|doc| doc.page == draft.page && draft.page < doc.info.page_count())
+                || !state.saved.can_edit(draft.page, &draft.original)
+        }) {
+            state.cancel();
+            state.error = Some("measure.stale");
+        }
     }
 
     pub(crate) fn measurement_ready(&self) -> bool {
@@ -421,7 +435,7 @@ impl SuniApp {
         double_click: bool,
     ) {
         self.validate_measurement_context();
-        if !self.measurement_ready() {
+        if !self.measurement_ready() || self.annotate.measure.geometry.is_some() {
             return;
         }
         let Some(size) = self
@@ -469,7 +483,7 @@ impl SuniApp {
     }
 
     pub(crate) fn measurement_hover(&mut self, page: usize, point: Option<Point>, shift: bool) {
-        if self.annotate.tool != Tool::Measure {
+        if self.annotate.tool != Tool::Measure || self.annotate.measure.geometry.is_some() {
             return;
         }
         if point.is_some() {
@@ -511,6 +525,10 @@ impl SuniApp {
         }
         self.validate_measurement_context();
         self.request_measurement_page_if_needed();
+        if self.annotate.measure.geometry.is_some() {
+            self.measurement_geometry_bar(ctx, ui);
+            return;
+        }
         let lang = self.lang();
         let ready = self.measurement_ready();
         let popup_was_open = egui::Popup::is_any_open(ctx);
@@ -679,6 +697,10 @@ impl SuniApp {
         page_h_pt: f32,
     ) {
         if self.annotate.tool != Tool::Measure {
+            return;
+        }
+        if self.annotate.measure.geometry.is_some() {
+            self.paint_measurement_geometry(painter, rect, page, page_h_pt);
             return;
         }
         let state = &self.annotate.measure;

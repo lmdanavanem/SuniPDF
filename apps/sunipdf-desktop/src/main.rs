@@ -21,6 +21,7 @@ mod local_review;
 #[cfg(test)]
 mod measure_integration_tests;
 mod measure_tools;
+mod measurement_geometry;
 mod measurement_saved;
 mod objects;
 mod ocr;

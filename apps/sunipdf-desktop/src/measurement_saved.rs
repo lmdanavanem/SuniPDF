@@ -22,6 +22,7 @@ pub(crate) struct MeasurementPageData {
     pub calibration: Result<Option<PageCalibration>, String>,
     pub records: Result<Arc<[MeasurementRecord]>, String>,
     pub can_modify: bool,
+    pub can_annotate: bool,
     labels: Arc<[String]>,
 }
 
@@ -56,6 +57,7 @@ impl MeasurementPageData {
             calibration,
             records: records.map(Arc::from),
             can_modify,
+            can_annotate: can_modify,
             labels: labels.into(),
         }
     }
@@ -73,6 +75,10 @@ pub(crate) struct SavedMeasurements {
 }
 
 impl SavedMeasurements {
+    pub(crate) fn can_edit(&self, page: usize, record: &MeasurementRecord) -> bool {
+        self.pages.get(&page).is_some_and(|data| data.can_annotate) && self.contains(page, record)
+    }
+
     pub(crate) fn contains(&self, page: usize, record: &MeasurementRecord) -> bool {
         self.pages
             .get(&page)
@@ -365,6 +371,7 @@ impl SuniApp {
         let mut view = None;
         let mut use_scale = None;
         let mut edit = None;
+        let mut geometry = None;
         let mut offset = self.annotate.measure.saved.offset;
         dialog::show(
             ctx,
@@ -444,6 +451,20 @@ impl SuniApp {
                                         .clicked()
                                     {
                                         edit = Some(record.clone());
+                                    }
+                                    if ui
+                                        .add_enabled(
+                                            enabled
+                                                && data.as_ref().is_some_and(|d| d.can_annotate),
+                                            egui::Button::new(tr(lang, "measure.geometry.open")),
+                                        )
+                                        .on_disabled_hover_text(tr(
+                                            lang,
+                                            "measure.saved.restricted",
+                                        ))
+                                        .clicked()
+                                    {
+                                        geometry = Some(record.clone());
                                     }
                                     if ui
                                         .add_enabled(
@@ -531,6 +552,14 @@ impl SuniApp {
         if let Some(record) = edit {
             self.annotate.measure.saved.inspector = None;
             if self.open_saved_measurement_editor(page, record) {
+                close = true;
+            } else {
+                self.annotate.measure.saved.inspector = Some(page);
+            }
+        }
+        if let Some(record) = geometry {
+            self.annotate.measure.saved.inspector = None;
+            if self.start_measurement_geometry(page, record) {
                 close = true;
             } else {
                 self.annotate.measure.saved.inspector = Some(page);
@@ -924,6 +953,194 @@ mod tests {
         assert!(Arc::ptr_eq(&original.labels, &cloned.labels));
         assert_eq!(cloned.labels.len(), 4096);
         assert_eq!(cloned.labels[4095], "10.00 m");
+    }
+
+    #[test]
+    fn geometry_controls_preserve_original_scale_and_allow_preview_correction_then_commit() {
+        use crate::view::DragEvent;
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            ready(&mut app);
+            app.settings.language = language.into();
+            app.effective_zoom = 1.0;
+            app.annotate.measure.use_calibration(0, &calibration(25.0));
+            let mut original = record(MeasurementKind::Length);
+            original.measurement.unit = MeasurementUnit::Feet;
+            original.measurement.precision = 3;
+            app.annotate
+                .measure
+                .saved
+                .pages
+                .insert(0, data(Some(calibration(5.0)), vec![original.clone()]));
+            let mut controls = Controls::new();
+            controls.click(&mut app, "measure.saved.inspect");
+            controls.click(&mut app, "measure.geometry.open");
+            assert!(app.annotate.measure.is_active_draft());
+            assert!(app.navigation_blocked());
+            assert!(requests.try_recv().is_err());
+            app.measurement_geometry_event(0, DragEvent::Start((150.0, 100.0)));
+            app.measurement_geometry_event(0, DragEvent::Move((190.0, 100.0)));
+            app.measurement_geometry_move(0, (225.0, 125.0));
+            app.measurement_geometry_event(0, DragEvent::Stop);
+            controls.click(&mut app, "measure.geometry.preview");
+            let (replacement, epoch, generation) = match requests.recv().unwrap() {
+                Request::PreviewMeasurementEdit {
+                    page: 0,
+                    record,
+                    measurement,
+                    epoch,
+                    generation,
+                } => {
+                    assert_eq!(record, original);
+                    assert_eq!(measurement.points, vec![(50.0, 100.0), (225.0, 125.0)]);
+                    assert_eq!(measurement.calibration, original.measurement.calibration);
+                    assert_eq!(
+                        measurement.known_distance,
+                        original.measurement.known_distance
+                    );
+                    assert_eq!(measurement.unit, original.measurement.unit);
+                    assert_eq!(measurement.precision, original.measurement.precision);
+                    (measurement, epoch, generation)
+                }
+                _ => panic!("geometry edit preview"),
+            };
+            assert!(!app.annotate.measure.is_active_draft());
+            controls.click(&mut app, "bar.apply");
+            assert!(
+                requests.try_recv().is_err(),
+                "pending preview cannot commit"
+            );
+            app.on_rich_preview(
+                &controls.ctx,
+                epoch,
+                generation,
+                Err(EngineError::Other("preview refused".into())),
+            );
+            controls.click(&mut app, "measure.geometry.adjust");
+            assert!(
+                matches!(requests.recv().unwrap(), Request::DiscardRichAnnotationPreview { epoch: e, generation: g } if e == epoch && g == generation)
+            );
+            assert_eq!(
+                app.annotate.measure.geometry.as_ref().unwrap().replacement,
+                replacement
+            );
+            assert!(app.annotate.adv.rich.is_none());
+            controls.click(&mut app, "measure.geometry.preview");
+            let Request::PreviewMeasurementEdit {
+                epoch, generation, ..
+            } = requests.recv().unwrap()
+            else {
+                panic!("second preview")
+            };
+            let preview = || sunipdf_core::annot_rich::RichAnnotationPreview {
+                image: sunipdf_core::RenderedPage {
+                    page_index: 0,
+                    width: 4,
+                    height: 2,
+                    rgba: vec![255; 32],
+                },
+                scale: 1.0,
+                region: sunipdf_core::PixelRect::new(0, 0, 4, 2),
+                index: original.index,
+                prepared: None,
+            };
+            app.on_rich_preview(
+                &controls.ctx,
+                epoch,
+                generation.wrapping_sub(1),
+                Ok(preview()),
+            );
+            assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+            app.on_rich_preview(&controls.ctx, epoch, generation, Ok(preview()));
+            controls.click(&mut app, "bar.apply");
+            assert!(
+                matches!(requests.recv().unwrap(), Request::Edit(EditOp::CommitRichAnnotationPreview { epoch: e, generation: g }) if e == epoch && g == generation)
+            );
+            assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+            assert!(requests.try_recv().is_err(), "exactly one guarded mutation");
+        }
+    }
+
+    #[test]
+    fn geometry_drafts_cancel_and_reject_readonly_stale_contexts_or_changed_identity() {
+        use crate::view::DragEvent;
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        ready(&mut app);
+        app.effective_zoom = 1.0;
+        let original = record(MeasurementKind::Length);
+        let mut readonly = data(None, vec![original.clone()]);
+        readonly.can_annotate = false;
+        app.annotate.measure.saved.pages.insert(0, readonly);
+        assert!(!app.start_measurement_geometry(0, original.clone()));
+        let mut annotatable = data(None, vec![original.clone()]);
+        annotatable.can_modify = false;
+        app.annotate.measure.saved.pages.insert(0, annotatable);
+        assert!(
+            app.start_measurement_geometry(0, original.clone()),
+            "annotation rights are independent of page modification rights"
+        );
+        assert!(app.cancel_measurement());
+        for cause in 0..5 {
+            app.annotate
+                .measure
+                .saved
+                .pages
+                .insert(0, data(None, vec![original.clone()]));
+            assert!(app.start_measurement_geometry(0, original.clone()));
+            assert!(app.ink_blocks_command(Command::ToolSelect));
+            assert!(!app.ink_blocks_command(Command::ZoomIn));
+            app.measurement_geometry_event(0, DragEvent::Start((150.0, 100.0)));
+            app.measurement_geometry_move(1, (250.0, 100.0));
+            assert_eq!(
+                app.annotate.measure.geometry.as_ref().unwrap().replacement,
+                original.measurement
+            );
+            app.measurement_geometry_move(0, (200.0, 100.0));
+            app.measurement_geometry_event(0, DragEvent::Stop);
+            match cause {
+                0 => {
+                    assert!(app.cancel_measurement());
+                }
+                1 => {
+                    app.view.epoch = app.view.epoch.wrapping_add(1);
+                    app.validate_measurement_context();
+                }
+                2 => {
+                    app.annotate.measure.saved.invalidate();
+                    app.validate_measurement_context();
+                }
+                3 => {
+                    app.annotate
+                        .measure
+                        .saved
+                        .pages
+                        .get_mut(&0)
+                        .unwrap()
+                        .can_annotate = false;
+                    app.validate_measurement_context();
+                }
+                _ => {
+                    let size = app.document.as_ref().unwrap().info.page_sizes[0];
+                    app.document.as_mut().unwrap().info.page_sizes.push(size);
+                    app.go_to_page(1);
+                    assert_eq!(
+                        app.document.as_ref().unwrap().page,
+                        0,
+                        "navigation is blocked"
+                    );
+                    app.document.as_mut().unwrap().page = 1;
+                    app.validate_measurement_context();
+                    app.document.as_mut().unwrap().page = 0;
+                }
+            }
+            assert!(!app.annotate.measure.is_active_draft());
+            assert!(!app.finish_measurement_geometry());
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(
+                requests.try_recv().is_err(),
+                "cancel and stale drafts never edit or preview"
+            );
+        }
     }
 
     #[test]
