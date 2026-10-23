@@ -33,6 +33,7 @@ enum Gesture {
 }
 
 pub struct MeasurementState {
+    pub(crate) scales_ui: crate::measurement_scales_ui::ScaleToolsState,
     pub(crate) saved: crate::measurement_saved::SavedMeasurements,
     pub(crate) geometry: Option<crate::measurement_geometry::GeometryDraft>,
     pub(crate) kind: MeasurementKind,
@@ -42,13 +43,14 @@ pub struct MeasurementState {
     epoch: Option<u64>,
     scales: BTreeMap<usize, Scale>,
     gesture: Gesture,
-    hover: Option<(usize, Point)>,
+    pub(crate) hover: Option<(usize, Point)>,
     error: Option<&'static str>,
 }
 
 impl Default for MeasurementState {
     fn default() -> Self {
         Self {
+            scales_ui: Default::default(),
             saved: Default::default(),
             geometry: None,
             kind: MeasurementKind::Length,
@@ -66,12 +68,15 @@ impl Default for MeasurementState {
 
 impl MeasurementState {
     pub fn is_active_draft(&self) -> bool {
-        self.geometry.is_some() || !matches!(self.gesture, Gesture::Idle)
+        self.geometry.is_some()
+            || self.scales_ui.region.is_some()
+            || !matches!(self.gesture, Gesture::Idle)
     }
 
     pub fn cancel(&mut self) -> bool {
         let active = self.is_active_draft();
         self.geometry = None;
+        self.scales_ui.cancel_region();
         self.gesture = Gesture::Idle;
         self.input_distance.clear();
         self.hover = None;
@@ -83,6 +88,7 @@ impl MeasurementState {
     pub(crate) fn advance_epoch(&mut self, epoch: u64) {
         self.cancel();
         self.saved.invalidate();
+        self.scales_ui.invalidate();
         self.epoch = Some(epoch);
     }
 
@@ -110,13 +116,9 @@ impl MeasurementState {
         let Ok(points) = <[Point; 2]>::try_from(points.as_slice()) else {
             return false;
         };
-        let distance = self
-            .input_distance
-            .trim()
-            .replace(',', ".")
-            .parse::<f64>()
-            .ok();
-        let Some(distance) = distance else {
+        let Ok(distance) =
+            sunipdf_core::measurement::parse_measurement_distance(&self.input_distance, self.unit)
+        else {
             self.error = Some("measure.scale_invalid");
             return false;
         };
@@ -168,9 +170,10 @@ impl MeasurementState {
             Gesture::Draw { page, .. } => Some(page),
             Gesture::Idle => None,
         }
+        .or_else(|| self.scales_ui.region_page())
     }
 
-    fn points(&self) -> &[Point] {
+    pub(crate) fn points(&self) -> &[Point] {
         match &self.gesture {
             Gesture::Calibrate { points, .. } | Gesture::Draw { points, .. } => points,
             Gesture::Idle => &[],
@@ -186,7 +189,7 @@ impl MeasurementState {
                 unit: self.unit,
             }
         } else {
-            self.scale(page)?
+            self.scale_for_points(page, &points).ok()?
         };
         Some(measurement(
             self.kind,
@@ -211,17 +214,22 @@ impl MeasurementState {
             self.error = Some("measure.same_page");
             return false;
         }
-        if matches!(self.gesture, Gesture::Idle) {
-            if self.kind != MeasurementKind::Angle && self.scale(page).is_none() {
-                self.error = Some("measure.no_scale");
+        let point = constrain(self.points().last().copied(), point, shift);
+        if !matches!(self.gesture, Gesture::Calibrate { .. }) && self.kind != MeasurementKind::Angle
+        {
+            let mut proposed = self.points().to_vec();
+            proposed.push(point);
+            if let Err(key) = self.scale_for_points(page, &proposed) {
+                self.error = Some(key);
                 return false;
             }
+        }
+        if matches!(self.gesture, Gesture::Idle) {
             self.gesture = Gesture::Draw {
                 page,
                 points: Vec::new(),
             };
         }
-        let point = constrain(self.points().last().copied(), point, shift);
         let calibrating = matches!(self.gesture, Gesture::Calibrate { .. });
         let max = if calibrating { 2 } else { 128 };
         match &mut self.gesture {
@@ -258,6 +266,65 @@ impl MeasurementState {
                 distance: calibration.known_distance,
                 unit: calibration.unit,
             })
+        })
+    }
+
+    fn scale_for_points(&self, page: usize, points: &[Point]) -> Result<Scale, &'static str> {
+        if self.saved.page_data(page).is_none() && self.scales_ui.needs_region_metadata(page) {
+            return Err("measure.viewport.unavailable");
+        }
+        if let Some(data) = self.saved.page_data(page) {
+            let viewports = data
+                .viewports
+                .as_ref()
+                .map_err(|_| "measure.viewport.unavailable")?;
+            let selected = self.scales_ui.selected.get(&page).map(String::as_str);
+            if selected == Some(crate::measurement_scales_ui::PAGE_SCALE) {
+                return self.scale(page).ok_or("measure.no_scale");
+            }
+            let region = sunipdf_core::measurement::select_viewport(viewports, points, selected)
+                .map_err(|_| "measure.viewport.conflict")?;
+            if let Some(region) = region {
+                return Ok(Scale {
+                    points: region.calibration.points,
+                    distance: region.calibration.known_distance,
+                    unit: region.calibration.unit,
+                });
+            }
+        }
+        self.scale(page).ok_or("measure.no_scale")
+    }
+
+    pub(crate) fn effective_calibration(&self, page: usize) -> Option<PageCalibration> {
+        if let Gesture::Draw {
+            page: drawing_page,
+            points,
+        } = &self.gesture
+        {
+            if *drawing_page == page {
+                let scale = self.scale_for_points(page, points).ok()?;
+                return Some(PageCalibration {
+                    points: scale.points,
+                    known_distance: scale.distance,
+                    unit: scale.unit,
+                });
+            }
+        }
+
+        if let Some(id) = self
+            .scales_ui
+            .selected
+            .get(&page)
+            .filter(|id| id.as_str() != crate::measurement_scales_ui::PAGE_SCALE)
+        {
+            let data = self.saved.page_data(page)?;
+            let viewport = data.viewports.as_ref().ok()?.iter().find(|v| &v.id == id)?;
+            return Some(viewport.calibration.clone());
+        }
+        self.scale(page).map(|s| PageCalibration {
+            points: s.points,
+            known_distance: s.distance,
+            unit: s.unit,
         })
     }
 
@@ -313,7 +380,7 @@ fn distance(a: Point, b: Point) -> f64 {
     (f64::from(a.0) - f64::from(b.0)).hypot(f64::from(a.1) - f64::from(b.1))
 }
 
-fn constrain(anchor: Option<Point>, point: Point, shift: bool) -> Point {
+pub(crate) fn constrain(anchor: Option<Point>, point: Point, shift: bool) -> Point {
     match (anchor, shift) {
         (Some(a), true) if (point.0 - a.0).abs() >= (point.1 - a.1).abs() => (point.0, a.1),
         (Some(a), true) => (a.0, point.1),
@@ -463,6 +530,12 @@ impl SuniApp {
             self.annotate.measure.error = Some("measure.same_page");
             return;
         }
+        if self.annotate.measure.scales_ui.region.is_some() {
+            self.measurement_region_click(page, point);
+            self.make_current(page);
+            return;
+        }
+        let point = self.snap_measurement_point(page, point, shift);
         if double_click && matches!(self.annotate.measure.gesture, Gesture::Draw { .. }) {
             // The first release already added the final vertex. Mouse jitter on the
             // second release must not create a tiny extra segment or closing edge.
@@ -488,6 +561,10 @@ impl SuniApp {
         }
         if point.is_some() {
             self.request_measurement_page(page);
+        }
+        let point = point.map(|point| self.snap_measurement_point(page, point, shift));
+        if point.is_none() {
+            self.annotate.measure.scales_ui.snapped = None;
         }
         let state = &mut self.annotate.measure;
         if state.page().is_some_and(|p| p != page) {
@@ -608,7 +685,8 @@ impl SuniApp {
                         let distance = ui.add(
                             egui::TextEdit::singleline(&mut state.input_distance)
                                 .desired_width(input_width)
-                                .char_limit(32),
+                                .char_limit(64)
+                                .hint_text(tr(lang, "measure.distance_format")),
                         );
                         ui.label(state.unit.id());
                         distance.labelled_by(distance_label.id)
@@ -620,7 +698,7 @@ impl SuniApp {
                         state.confirm_calibration();
                     }
                 }
-                if let Some((page, scale)) = page.and_then(|p| state.scale(p).map(|s| (p, s))) {
+                if let Some((page, scale)) = page.and_then(|p| state.effective_calibration(p).map(|s| (p, s))) {
                     ui.small(tr_args(
                         lang,
                         "measure.scale_summary",
@@ -630,7 +708,7 @@ impl SuniApp {
                                 "span",
                                 &format!("{:.2}", distance(scale.points[0], scale.points[1])),
                             ),
-                            ("distance", &scale.distance.to_string()),
+                            ("distance", &scale.known_distance.to_string()),
                             ("unit", scale.unit.id()),
                         ],
                     ))
@@ -639,11 +717,13 @@ impl SuniApp {
             });
 
             self.measurement_saved_scale_controls(ui);
+            self.measurement_advanced_scale_controls(ctx, ui);
             ui.add_space(4.0);
             ui.separator();
             ui.label(egui::RichText::new(tr(lang, "measure.panel.drawing")).strong().color(palette.text));
             let state = &mut self.annotate.measure;
             let hint = match &state.gesture {
+                _ if state.scales_ui.region.is_some() => "measure.viewport.draw",
                 Gesture::Calibrate { points, .. } if points.len() == 2 => "measure.distance_hint",
                 Gesture::Calibrate { .. } => "measure.calibration_hint",
                 Gesture::Draw { .. } if state.kind == MeasurementKind::Angle => {
@@ -736,6 +816,7 @@ impl SuniApp {
         if self.annotate.tool != Tool::Measure {
             return;
         }
+        self.paint_measurement_scales(painter, rect, page, page_h_pt);
         if self.annotate.measure.geometry.is_some() {
             self.paint_measurement_geometry(painter, rect, page, page_h_pt);
             return;
@@ -1360,5 +1441,104 @@ mod tests {
         assert!(requests
             .try_iter()
             .all(|request| !matches!(request, crate::worker::Request::Edit(_))));
+    }
+    #[test]
+    fn feet_inches_calibration_is_parsed_in_the_selected_unit() {
+        let mut state = MeasurementState {
+            unit: MeasurementUnit::Feet,
+            ..Default::default()
+        };
+        state.start_calibration();
+        state.push_point(0, (20.0, 20.0), false);
+        state.push_point(0, (140.0, 20.0), false);
+        state.input_distance = "5' 6 1/2\"".into();
+        assert!(state.confirm_calibration());
+        state.push_point(0, (20.0, 40.0), false);
+        state.push_point(0, (140.0, 40.0), false);
+        assert!(
+            (state.ready_result().unwrap().1.value().unwrap() - (5.0 + 6.5 / 12.0)).abs() < 1e-10
+        );
+    }
+
+    #[test]
+    fn viewport_overlap_refuses_drawing_until_user_chooses_a_region_or_page_scale() {
+        use crate::measurement_saved::MeasurementPageData;
+        use crate::worker::Request;
+        use sunipdf_core::{measurement::MeasurementViewport, PointRect};
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+        app.open_measurements(&egui::Context::default());
+        app.validate_measurement_context();
+        app.annotate.measure.use_calibration(
+            0,
+            &PageCalibration {
+                points: [(20.0, 20.0), (100.0, 20.0)],
+                known_distance: 8.0,
+                unit: MeasurementUnit::Metres,
+            },
+        );
+        app.request_measurement_page(0);
+        let Request::MeasurementPage {
+            page,
+            epoch,
+            generation,
+        } = requests.recv().unwrap()
+        else {
+            panic!("metadata")
+        };
+        let mut data = MeasurementPageData::new(Ok(None), Ok(vec![]), true);
+        data.viewports = Ok(std::sync::Arc::from(vec![
+            MeasurementViewport {
+                id: "a".into(),
+                name: "A".into(),
+                bounds: PointRect {
+                    left: 0.0,
+                    bottom: 0.0,
+                    right: 180.0,
+                    top: 180.0,
+                },
+                calibration: PageCalibration {
+                    points: [(20.0, 20.0), (100.0, 20.0)],
+                    known_distance: 16.0,
+                    unit: MeasurementUnit::Metres,
+                },
+            },
+            MeasurementViewport {
+                id: "b".into(),
+                name: "B".into(),
+                bounds: PointRect {
+                    left: 0.0,
+                    bottom: 0.0,
+                    right: 180.0,
+                    top: 180.0,
+                },
+                calibration: PageCalibration {
+                    points: [(20.0, 20.0), (100.0, 20.0)],
+                    known_distance: 24.0,
+                    unit: MeasurementUnit::Metres,
+                },
+            },
+        ]));
+        app.on_measurement_page(page, epoch, generation, Ok(data));
+        let state = &mut app.annotate.measure;
+        assert!(!state.push_point(0, (20.0, 60.0), false));
+        assert_eq!(state.error, Some("measure.viewport.conflict"));
+        state.scales_ui.selected.insert(0, "b".into());
+        assert!(state.push_point(0, (20.0, 60.0), false));
+        assert!(
+            !state.push_point(0, (200.0, 60.0), false),
+            "selected region boundary is enforced"
+        );
+        assert!(state.push_point(0, (100.0, 60.0), false));
+        assert!((state.ready_result().unwrap().1.value().unwrap() - 24.0).abs() < 1e-9);
+        assert_eq!(state.effective_calibration(0).unwrap().known_distance, 24.0);
+        state.cancel();
+        state
+            .scales_ui
+            .selected
+            .insert(0, crate::measurement_scales_ui::PAGE_SCALE.into());
+        assert!(state.push_point(0, (20.0, 60.0), false));
+        assert!(state.push_point(0, (200.0, 60.0), false));
+        assert!((state.ready_result().unwrap().1.value().unwrap() - 18.0).abs() < 1e-9);
     }
 }

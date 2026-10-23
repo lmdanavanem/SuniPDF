@@ -257,6 +257,12 @@ pub enum EditOp {
         page: usize,
         calibration: Option<sunipdf_core::measurement::PageCalibration>,
     },
+    ApplyRecalibration(sunipdf_core::measurement::RecalibrationPlan),
+    SetMeasurementViewports {
+        page: usize,
+        expected: Vec<sunipdf_core::measurement::MeasurementViewport>,
+        replacement: Vec<sunipdf_core::measurement::MeasurementViewport>,
+    },
     PreparedRichAnnotation(sunipdf_core::annot_rich::PreparedRichAnnotation),
     ResizeObjects {
         page: usize,
@@ -642,6 +648,9 @@ pub enum Request {
         match_case: bool,
         generation: u64,
     },
+    CancelSearch {
+        generation: u64,
+    },
     Edit(EditOp),
     TextInRect {
         page: usize,
@@ -709,8 +718,17 @@ pub enum Request {
         epoch: u64,
         generation: u64,
     },
+    CancelAnnotationRegister {
+        epoch: u64,
+        generation: u64,
+    },
     MeasurementPage {
         page: usize,
+        epoch: u64,
+        generation: u64,
+    },
+    PreviewRecalibration {
+        requests: Vec<sunipdf_core::measurement::RecalibrationRequest>,
         epoch: u64,
         generation: u64,
     },
@@ -908,6 +926,15 @@ pub enum Response {
         generation: u64,
         matches: Vec<TextMatch>,
     },
+    SearchProgress {
+        generation: u64,
+        done: usize,
+        total: usize,
+    },
+    SearchFailed {
+        generation: u64,
+        error: EngineError,
+    },
     /// Pages modifiées en mémoire : tailles rafraîchies, rendus invalidés.
     DocumentChanged(DocState),
     OperationFailed(EngineError),
@@ -935,11 +962,22 @@ pub enum Response {
         generation: u64,
         result: Result<sunipdf_core::annotation_register::AnnotationRegister, EngineError>,
     },
+    AnnotationRegisterProgress {
+        epoch: u64,
+        generation: u64,
+        done: usize,
+        total: usize,
+    },
     MeasurementPage {
         page: usize,
         epoch: u64,
         generation: u64,
         result: Result<crate::measurement_saved::MeasurementPageData, EngineError>,
+    },
+    RecalibrationPreview {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::measurement::RecalibrationPlan, EngineError>,
     },
     Links {
         page: usize,
@@ -1119,9 +1157,43 @@ struct State<'a> {
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
     redaction_preview: Option<(u64, u64, sunipdf_core::redact::PreparedRedaction)>,
+    search: Option<SearchJob>,
+    register: Option<RegisterJob>,
+    register_turn: bool,
+}
+
+struct SearchJob {
+    query: String,
+    match_case: bool,
+    generation: u64,
+    next_page: usize,
+    matches: Vec<TextMatch>,
+    rectangles: usize,
+}
+
+struct RegisterJob {
+    epoch: u64,
+    generation: u64,
+    reader: Option<sunipdf_core::annotation_register::RegisterReader<'static>>,
+}
+
+enum IdleWork {
+    Tile(u64, TileJob),
+    Background,
+    Wait,
 }
 
 impl State<'_> {
+    fn next_idle_work(&mut self) -> IdleWork {
+        if let Some((epoch, job)) = self.wanted.pop() {
+            IdleWork::Tile(epoch, job)
+        } else if self.search.is_some() || self.register.is_some() {
+            IdleWork::Background
+        } else {
+            IdleWork::Wait
+        }
+    }
+
     fn signature_bytes(&self) -> Result<&[u8], EngineError> {
         let doc = self
             .document
@@ -1163,6 +1235,98 @@ impl State<'_> {
         self.wanted.clear();
         self.rich_preview = None;
         self.redaction_preview = None;
+        self.search = None;
+        self.register = None;
+    }
+
+    /// One bounded unit of background work; called only after requests and visible tiles.
+    /// PDFium remains confined to this thread. Jobs never hold a document borrow across turns.
+    fn background_step(&mut self) -> Option<Response> {
+        let register = self.register.is_some() && (self.register_turn || self.search.is_none());
+        self.register_turn = !register;
+        if register {
+            let mut job = self.register.take()?;
+            let result = (|| {
+                let doc = self
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))?;
+                if job.reader.is_none() {
+                    job.reader = Some(doc.annotation_register_reader()?);
+                    return Ok(None);
+                }
+                let reader = job.reader.as_mut().expect("initialized register reader");
+                if reader.read_next(doc)? {
+                    return job
+                        .reader
+                        .take()
+                        .expect("completed reader")
+                        .finish()
+                        .map(Some);
+                }
+                Ok(None)
+            })();
+            return Some(match result {
+                Ok(None) => {
+                    let (done, total) = job.reader.as_ref().expect("initialized reader").progress();
+                    let response = Response::AnnotationRegisterProgress {
+                        epoch: job.epoch,
+                        generation: job.generation,
+                        done,
+                        total,
+                    };
+                    self.register = Some(job);
+                    response
+                }
+                result => Response::AnnotationRegister {
+                    epoch: job.epoch,
+                    generation: job.generation,
+                    result: result.and_then(|report| {
+                        report.ok_or_else(|| EngineError::Other("incomplete register".into()))
+                    }),
+                },
+            });
+        }
+        let mut job = self.search.take()?;
+        let result = (|| {
+            let doc = self
+                .document
+                .as_ref()
+                .ok_or_else(|| EngineError::Other("no document".into()))?;
+            let total = doc.page_count();
+            if job.next_page < total {
+                let matches = doc.search_page(job.next_page, &job.query, job.match_case)?;
+                job.rectangles += matches.iter().map(|item| item.rects.len()).sum::<usize>();
+                if job.matches.len() + matches.len() > 100_000 || job.rectangles > 1_000_000 {
+                    return Err(EngineError::Other(
+                        "Search results exceed the display limit; use a more specific query."
+                            .into(),
+                    ));
+                }
+                job.matches.extend(matches);
+                job.next_page += 1;
+            }
+            Ok(total)
+        })();
+        Some(match result {
+            Err(error) => Response::SearchFailed {
+                generation: job.generation,
+                error,
+            },
+            Ok(total) if job.next_page >= total => Response::SearchResults {
+                generation: job.generation,
+                matches: job.matches,
+            },
+            Ok(total) => {
+                let response = Response::SearchProgress {
+                    generation: job.generation,
+                    done: job.next_page,
+                    total,
+                };
+                self.search = Some(job);
+                response
+            }
+        })
     }
 
     fn modified(&self) -> bool {
@@ -1411,6 +1575,9 @@ mod save_point_tests {
             fonts: None,
             rich_preview: None,
             redaction_preview: None,
+            search: None,
+            register: None,
+            register_turn: false,
         }
     }
 
@@ -1421,6 +1588,36 @@ mod save_point_tests {
             pages_unchanged: false,
             measurement_scales_unchanged: false,
         }
+    }
+
+    #[test]
+    fn visible_tiles_precede_background_jobs_and_document_changes_discard_them() {
+        let mut state = state();
+        state.search = Some(SearchJob {
+            query: "drawing".into(),
+            match_case: false,
+            generation: 31,
+            next_page: 0,
+            matches: Vec::new(),
+            rectangles: 0,
+        });
+        state.register = Some(RegisterJob {
+            epoch: 9,
+            generation: 32,
+            reader: None,
+        });
+        let tile = TileJob {
+            page: 4,
+            scale_milli: 1000,
+            region: sunipdf_core::PixelRect::new(0, 0, 10, 10),
+        };
+        state.wanted.replace(9, vec![tile]);
+        assert!(matches!(state.next_idle_work(), IdleWork::Tile(9, selected) if selected == tile));
+        assert!(state.search.is_some() && state.register.is_some());
+        assert!(matches!(state.next_idle_work(), IdleWork::Background));
+        state.invalidate();
+        assert!(matches!(state.next_idle_work(), IdleWork::Wait));
+        assert!(state.search.is_none() && state.register.is_none());
     }
 
     #[test]
@@ -1631,6 +1828,12 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
         EditOp::SetPageCalibration { page, calibration } => {
             doc.set_page_calibration(page, calibration.as_ref())
         }
+        EditOp::ApplyRecalibration(plan) => doc.apply_recalibration(&plan),
+        EditOp::SetMeasurementViewports {
+            page,
+            expected,
+            replacement,
+        } => doc.set_measurement_viewports(page, &expected, &replacement),
         EditOp::SetQuantityFields { target, fields } => doc.set_quantity_fields(&target, &fields),
         EditOp::SetAnnotationRegisterFields {
             target,
@@ -1956,6 +2159,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         fonts: None,
         rich_preview: None,
         redaction_preview: None,
+        search: None,
+        register: None,
+        register_turn: false,
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     let mut navigation_failed = false;
@@ -1968,8 +2174,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             None => match rx.try_recv() {
                 Ok(r) => r,
                 Err(TryRecvError::Disconnected) => return,
-                Err(TryRecvError::Empty) => match state.wanted.pop() {
-                    Some((epoch, job)) => {
+                Err(TryRecvError::Empty) => match state.next_idle_work() {
+                    IdleWork::Tile(epoch, job) => {
                         let response = match state.render_tile(&job) {
                             Ok(image) => Response::Tile { epoch, job, image },
                             Err(error) => Response::TileFailed { epoch, job, error },
@@ -1980,7 +2186,16 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         ctx.request_repaint();
                         continue;
                     }
-                    None => match rx.recv() {
+                    IdleWork::Background => {
+                        if let Some(response) = state.background_step() {
+                            if tx.send(response).is_err() {
+                                return;
+                            }
+                            ctx.request_repaint();
+                        }
+                        continue;
+                    }
+                    IdleWork::Wait => match rx.recv() {
                         Ok(r) => r,
                         Err(_) => return,
                     },
@@ -2306,15 +2521,25 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 match_case,
                 generation,
             } => {
-                let Some(doc) = &state.document else { continue };
-                let matches = doc.search(&query, match_case).unwrap_or_else(|e| {
-                    log::warn!("recherche impossible : {e}");
-                    Vec::new()
-                });
-                Response::SearchResults {
+                state.search = Some(SearchJob {
+                    query,
+                    match_case,
                     generation,
-                    matches,
+                    next_page: 0,
+                    matches: Vec::new(),
+                    rectangles: 0,
+                });
+                continue;
+            }
+            Request::CancelSearch { generation } => {
+                if state
+                    .search
+                    .as_ref()
+                    .is_some_and(|job| job.generation == generation)
+                {
+                    state.search = None;
                 }
+                continue;
             }
             Request::Edit(op) => state.edit(op),
             Request::CommitRedactionPreview { epoch, generation } => {
@@ -2760,6 +2985,19 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 let Some(doc) = &state.document else { continue };
                 Response::Bookmarks(doc.bookmarks())
             }
+            Request::PreviewRecalibration {
+                requests,
+                epoch,
+                generation,
+            } => Response::RecalibrationPreview {
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.preview_recalibration(&requests)),
+            },
             Request::MeasurementPage {
                 page,
                 epoch,
@@ -2779,6 +3017,14 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             doc.properties().can_modify,
                         );
                         data.can_annotate = doc.properties().can_annotate;
+                        data.viewports = doc
+                            .measurement_viewports(page)
+                            .map(Arc::from)
+                            .map_err(|e| e.to_string());
+                        data.snap_geometry = doc
+                            .vector_snap_geometry(page)
+                            .map(Arc::new)
+                            .map_err(|e| e.to_string());
                         data
                     }),
             },
@@ -2816,15 +3062,24 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         sunipdf_core::write_new_copy(&path, &bytes)
                     }),
             },
-            Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
-                epoch,
-                generation,
-                result: state
-                    .document
+            Request::AnnotationRegister { epoch, generation } => {
+                state.register = Some(RegisterJob {
+                    epoch,
+                    generation,
+                    reader: None,
+                });
+                continue;
+            }
+            Request::CancelAnnotationRegister { epoch, generation } => {
+                if state
+                    .register
                     .as_ref()
-                    .ok_or_else(|| EngineError::Other("no document".into()))
-                    .and_then(|doc| doc.annotation_register()),
-            },
+                    .is_some_and(|job| job.epoch == epoch && job.generation == generation)
+                {
+                    state.register = None;
+                }
+                continue;
+            }
             Request::Annotations { page, detailed } => {
                 let Some(doc) = &state.document else { continue };
                 let list = doc.annotations(page).unwrap_or_default();
@@ -2987,6 +3242,97 @@ mod tests {
         library_groups_use_one_preview_and_one_history_step(&worker);
         revision_overlay_jobs_preserve_sources_and_guard_exports(&worker);
         quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
+        cooperative_search_and_register_publish_complete_generation_scoped_results(&worker);
+    }
+
+    fn cooperative_search_and_register_publish_complete_generation_scoped_results(worker: &Worker) {
+        worker.send(Request::Open {
+            path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Search {
+            query: "sunipdf".into(),
+            match_case: false,
+            generation: 901,
+        });
+        let mut progress = Vec::new();
+        loop {
+            match worker
+                .rx
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .unwrap()
+            {
+                Response::SearchProgress {
+                    generation: 901,
+                    done,
+                    total,
+                } => progress.push((done, total)),
+                Response::SearchResults {
+                    generation: 901,
+                    matches,
+                } => {
+                    assert_eq!(
+                        matches.iter().map(|item| item.page).collect::<Vec<_>>(),
+                        vec![0, 1]
+                    );
+                    assert!(matches.iter().all(|item| !item.rects.is_empty()));
+                    break;
+                }
+                _ => panic!("unexpected search response"),
+            }
+        }
+        assert_eq!(progress, vec![(1, 2)], "one PDF page is processed per turn");
+        worker.send(Request::AnnotationRegister {
+            epoch: 55,
+            generation: 902,
+        });
+        let mut progress = Vec::new();
+        loop {
+            match worker
+                .rx
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .unwrap()
+            {
+                Response::AnnotationRegisterProgress {
+                    epoch: 55,
+                    generation: 902,
+                    done,
+                    total,
+                } => progress.push((done, total)),
+                Response::AnnotationRegister {
+                    epoch: 55,
+                    generation: 902,
+                    result,
+                } => {
+                    let report = result.unwrap();
+                    assert_eq!(report.page_count, 2);
+                    assert_eq!(report.source_sha256.len(), 64);
+                    break;
+                }
+                _ => panic!("unexpected register response"),
+            }
+        }
+        assert_eq!(progress, vec![(0, 2), (1, 2)]);
+        // Cancellation of an older generation must not remove a replacement job.
+        worker.send(Request::Search {
+            query: "sunipdf".into(),
+            match_case: true,
+            generation: 903,
+        });
+        worker.send(Request::CancelSearch { generation: 901 });
+        match next_response(worker) {
+            Response::SearchResults {
+                generation: 903,
+                matches,
+            } => assert!(matches.is_empty()),
+            _ => panic!("a stale cancellation removed the current search"),
+        }
+        assert!(
+            !worker.has_pending_mutations(),
+            "read-only jobs do not enter document history"
+        );
     }
 
     fn revision_overlay_jobs_preserve_sources_and_guard_exports(worker: &Worker) {
@@ -3877,6 +4223,11 @@ mod tests {
                 .expect("worker response");
             if matches!(response, Response::MutationFinished) {
                 worker.finish_mutation();
+            } else if matches!(
+                response,
+                Response::SearchProgress { .. } | Response::AnnotationRegisterProgress { .. }
+            ) {
+                continue;
             } else {
                 return response;
             }

@@ -64,6 +64,7 @@ impl Canvas {
                     });
                 app.document_view(&self.ctx, ui);
                 app.saved_measurements_dialog(&self.ctx);
+                app.measurement_scale_dialogs(&self.ctx);
                 app.rich_annotation_dialog(&self.ctx);
             },
         );
@@ -737,5 +738,63 @@ fn narrow_measurement_panel_scrolls_without_overflow_and_keeps_busy_cancel_reach
             assert_eq!(app.annotate.measure.precision, 2);
             assert_no_edit_or_preview(&requests);
         }
+    }
+}
+
+#[test]
+fn canvas_exposes_regions_and_batch_preview_without_mutating_before_confirmation() {
+    for language in ["en-US", "fr-FR"] {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.settings.language = language.into();
+        let mut canvas = Canvas::new(&mut app);
+        let (page, epoch, generation) = requests
+            .try_iter()
+            .find_map(|r| match r {
+                Request::MeasurementPage {
+                    page,
+                    epoch,
+                    generation,
+                } => Some((page, epoch, generation)),
+                _ => None,
+            })
+            .unwrap();
+        app.on_measurement_page(
+            page,
+            epoch,
+            generation,
+            Ok(crate::measurement_saved::MeasurementPageData::new(
+                Ok(None),
+                Ok(vec![]),
+                true,
+            )),
+        );
+        canvas.calibrate(&mut app, "10");
+        canvas.control(&mut app, "measure.viewport.create");
+        assert!(app.annotate.measure.scales_ui.region.is_some());
+        canvas.point(&mut app, (30.0, 680.0), false);
+        canvas.point(&mut app, (180.0, 610.0), false);
+        assert!(
+            app.annotate.adv.rich.is_none(),
+            "region corners are not measurements"
+        );
+        assert_no_edit_or_preview(&requests);
+        canvas.control(&mut app, "measure.cancel_draft");
+        assert!(!app.annotate.measure.is_active_draft());
+        canvas.control(&mut app, "measure.batch.open");
+        assert!(app.annotate.measure.scales_ui.dialog_open());
+        canvas.control(&mut app, "measure.batch.preview");
+        let batch = requests
+            .try_iter()
+            .find_map(|r| match r {
+                Request::PreviewRecalibration { requests, .. } => Some(requests),
+                Request::Edit(_) => panic!("preview must not mutate"),
+                _ => None,
+            })
+            .expect("batch preview from visible controls");
+        assert_eq!(batch.len(), 1);
+        assert!(batch[0].measurements.is_empty());
+        canvas.control(&mut app, "register.close");
+        assert!(!app.annotate.measure.scales_ui.dialog_open());
+        assert_no_edit_or_preview(&requests);
     }
 }

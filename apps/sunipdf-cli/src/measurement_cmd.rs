@@ -84,7 +84,7 @@ fn json_points(value: &Value, maximum: usize) -> Result<Vec<(f32, f32)>, EngineE
         .collect()
 }
 
-fn parse_record(value: Value) -> Result<MeasurementRecord, EngineError> {
+pub(crate) fn parse_record(value: Value) -> Result<MeasurementRecord, EngineError> {
     if value["version"].as_u64() != Some(1) {
         return Err(invalid_record());
     }

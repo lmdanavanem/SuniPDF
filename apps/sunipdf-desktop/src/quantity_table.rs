@@ -33,6 +33,7 @@ pub struct QuantityState {
     column_filter: String,
     summary: Option<QuantitySummary>,
     offset: usize,
+    followed: Option<(usize, usize)>,
     page_filter: usize,
     error: Option<String>,
     message: Option<String>,
@@ -40,6 +41,9 @@ pub struct QuantityState {
 }
 
 impl QuantityState {
+    pub(crate) fn blocks_document(&self) -> bool {
+        self.edit.is_some() || self.exporting.is_some()
+    }
     pub(crate) fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         self.pending = None;
@@ -246,6 +250,7 @@ impl SuniApp {
         self.annotate.quantities.edit = None;
         self.annotate.quantities.epoch = Some(self.view.epoch);
         self.annotate.quantities.open = true;
+        self.annotate.register.open = false;
     }
     pub(crate) fn validate_quantity_context(&mut self) {
         let state = &mut self.annotate.quantities;
@@ -335,6 +340,18 @@ impl SuniApp {
         });
     }
     pub(crate) fn quantity_table_dialog(&mut self, ctx: &egui::Context) {
+        if self.settings.tables.placement == crate::workspace_table::Placement::Floating {
+            self.quantity_table_ui(ctx, None);
+        }
+    }
+
+    pub(crate) fn quantity_table_dock(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.settings.tables.placement == crate::workspace_table::Placement::Bottom {
+            self.quantity_table_ui(ctx, Some(ui));
+        }
+    }
+
+    fn quantity_table_ui(&mut self, ctx: &egui::Context, host: Option<&mut egui::Ui>) {
         if !self.annotate.quantities.open {
             return;
         }
@@ -358,8 +375,18 @@ impl SuniApp {
         let can_export = can_refresh && report.as_ref().is_some_and(|r| r.can_export());
         let (mut close, mut refresh, mut apply, mut cancel, mut export) =
             (false, false, false, false, None);
-        dialog::show(
+        let mut navigate = None;
+        let selection = self
+            .annotate
+            .adv
+            .selected
+            .as_ref()
+            .map(|(page, detail)| (*page + 1, detail.index));
+        let layout_changed = crate::workspace_table::show(
             ctx,
+            host,
+            &mut self.settings.tables,
+            lang,
             dialog::Spec::new(
                 "quantity-table",
                 tr(lang, "quantity.title"),
@@ -398,83 +425,100 @@ impl SuniApp {
                     });
                 } else if let Some(report) = &report {
                     let mut changed = false;
-                    ui.add_enabled_ui(idle, |ui| {
-                        egui::Grid::new("quantity-filters")
-                            .num_columns(4)
-                            .show(ui, |ui| {
-                                for (i, (key, value)) in [
-                                    ("register.search", &mut state.options.filter.query),
-                                    ("register.kind", &mut state.options.filter.kind),
-                                    ("register.discipline", &mut state.options.filter.discipline),
-                                    (
-                                        "register.business_status",
-                                        &mut state.options.filter.business_status,
-                                    ),
-                                    (
-                                        "register.count_group",
-                                        &mut state.options.filter.count_group,
-                                    ),
-                                    ("register.author", &mut state.options.filter.author),
-                                ]
-                                .into_iter()
-                                .enumerate()
-                                {
-                                    ui.label(tr(lang, key));
+                    ui.horizontal_wrapped(|ui| {
+                        ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
+                            ui.add_enabled_ui(idle, |ui| {
+                                egui::Grid::new("quantity-filters")
+                                    .num_columns(4)
+                                    .show(ui, |ui| {
+                                        for (i, (key, value)) in [
+                                            ("register.search", &mut state.options.filter.query),
+                                            ("register.kind", &mut state.options.filter.kind),
+                                            (
+                                                "register.discipline",
+                                                &mut state.options.filter.discipline,
+                                            ),
+                                            (
+                                                "register.business_status",
+                                                &mut state.options.filter.business_status,
+                                            ),
+                                            (
+                                                "register.count_group",
+                                                &mut state.options.filter.count_group,
+                                            ),
+                                            ("register.author", &mut state.options.filter.author),
+                                        ]
+                                        .into_iter()
+                                        .enumerate()
+                                        {
+                                            ui.label(tr(lang, key));
+                                            changed |= ui
+                                                .add(
+                                                    egui::TextEdit::singleline(value)
+                                                        .char_limit(512)
+                                                        .desired_width(150.0),
+                                                )
+                                                .changed();
+                                            if i % 2 == 1 {
+                                                ui.end_row();
+                                            }
+                                        }
+                                    });
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.label(tr(lang, "register.page_filter"));
                                     changed |= ui
                                         .add(
-                                            egui::TextEdit::singleline(value)
-                                                .char_limit(512)
-                                                .desired_width(150.0),
+                                            egui::DragValue::new(&mut state.page_filter)
+                                                .range(0..=report.page_count()),
                                         )
                                         .changed();
-                                    if i % 2 == 1 {
-                                        ui.end_row();
-                                    }
-                                }
-                            });
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(tr(lang, "register.page_filter"));
-                            changed |= ui
-                                .add(
-                                    egui::DragValue::new(&mut state.page_filter)
-                                        .range(0..=report.page_count()),
-                                )
-                                .changed();
-                            state.options.filter.page =
-                                (state.page_filter > 0).then_some(state.page_filter);
-                            let previous = state.options.group_by;
-                            ui.label(tr(lang, "quantity.group"));
-                            egui::ComboBox::from_id_salt("quantity-groups")
-                                .selected_text(tr(
-                                    lang,
-                                    &format!("quantity.group.{}", state.options.group_by.id()),
-                                ))
-                                .show_ui(ui, |ui| {
-                                    for group in QuantityGrouping::ALL {
-                                        ui.selectable_value(
-                                            &mut state.options.group_by,
-                                            group,
-                                            tr(lang, &format!("quantity.group.{}", group.id())),
-                                        );
-                                    }
+                                    state.options.filter.page =
+                                        (state.page_filter > 0).then_some(state.page_filter);
+                                    let previous = state.options.group_by;
+                                    ui.label(tr(lang, "quantity.group"));
+                                    egui::ComboBox::from_id_salt("quantity-groups")
+                                        .selected_text(tr(
+                                            lang,
+                                            &format!(
+                                                "quantity.group.{}",
+                                                state.options.group_by.id()
+                                            ),
+                                        ))
+                                        .show_ui(ui, |ui| {
+                                            for group in QuantityGrouping::ALL {
+                                                ui.selectable_value(
+                                                    &mut state.options.group_by,
+                                                    group,
+                                                    tr(
+                                                        lang,
+                                                        &format!("quantity.group.{}", group.id()),
+                                                    ),
+                                                );
+                                            }
+                                        });
+                                    changed |= previous != state.options.group_by;
                                 });
-                            changed |= previous != state.options.group_by;
+                            });
+                        });
+                        if let Some(summary) = &state.summary {
+                            ui.menu_button(tr(lang, "workspace.table.summary"), |ui| {
+                                draw_summary(ui, summary, lang);
+                            });
+                        }
+                        ui.menu_button(tr(lang, "quantity.column_filter"), |ui| {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut state.column_filter)
+                                    .hint_text(tr(lang, "quantity.column_filter"))
+                                    .char_limit(128),
+                            );
                         });
                     });
                     if changed {
                         state.refresh_selection();
                     }
-                    if let Some(summary) = &state.summary {
-                        draw_summary(ui, summary, lang);
-                    }
                     if !report.can_export() {
-                        ui.label(tr(lang, "quantity.no_export"));
+                        ui.small(tr(lang, "quantity.no_export"));
                     }
-                    ui.add(
-                        egui::TextEdit::singleline(&mut state.column_filter)
-                            .hint_text(tr(lang, "quantity.column_filter"))
-                            .char_limit(128),
-                    );
                     let filter = state.column_filter.to_lowercase();
                     let columns: Vec<_> = state
                         .columns
@@ -484,6 +528,18 @@ impl SuniApp {
                         .collect();
                     if state.columns.len() > 16 {
                         ui.small(tr(lang, "quantity.more_columns"));
+                    }
+                    if selection != state.followed {
+                        state.followed = selection;
+                        if let Some(position) = state.selected.iter().position(|index| {
+                            selection
+                                == Some((
+                                    report.rows()[*index].register.page,
+                                    report.rows()[*index].register.index,
+                                ))
+                        }) {
+                            state.offset = position / 50 * 50;
+                        }
                     }
                     ui.horizontal(|ui| {
                         if ui
@@ -540,7 +596,23 @@ impl SuniApp {
                                     ui.end_row();
                                     for index in state.selected.iter().skip(state.offset).take(50) {
                                         let row = &report.rows()[*index];
-                                        ui.label(row.register.page.to_string());
+                                        if ui
+                                            .add_enabled(
+                                                idle && row.register.rect.is_some(),
+                                                egui::Button::selectable(
+                                                    selection
+                                                        == Some((
+                                                            row.register.page,
+                                                            row.register.index,
+                                                        )),
+                                                    row.register.page.to_string(),
+                                                ),
+                                            )
+                                            .on_hover_text(tr(lang, "register.view"))
+                                            .clicked()
+                                        {
+                                            navigate = Some(row.register.clone());
+                                        }
                                         ui.label(row.register.index.to_string());
                                         short_label(ui, &row.register.kind);
                                         short_label(
@@ -640,6 +712,12 @@ impl SuniApp {
                         }));
             },
         );
+        if layout_changed {
+            self.persist_settings();
+        }
+        if let Some(row) = navigate {
+            self.follow_table_annotation(&row);
+        }
         if apply {
             if let Some(edit) = &mut state.edit {
                 match edit.fields() {
@@ -844,7 +922,7 @@ pub(crate) mod tests {
                 },
                 |ui| {
                     app.measurement_bar(&self.ctx, ui);
-                    app.quantity_table_dialog(&self.ctx);
+                    app.quantity_table_dock(&self.ctx, ui);
                 },
             );
             output.textures_delta.clear();

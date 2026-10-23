@@ -64,7 +64,20 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
       - name: Workspace tests
-        run: cargo test --workspace --locked -j 2 --no-fail-fast
+        run: |
+          set -o pipefail
+          cargo test --workspace --locked -j 2 --no-fail-fast 2>&1 | tee target/workspace-tests.log
+      - name: Bounded layout and register performance evidence
+        run: |
+          python scripts/run-performance-evidence.py --self-test
+          python scripts/run-performance-evidence.py
+      - name: Performance measurement evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: performance-linux-amd64
+          path: target/performance-evidence/
+          if-no-files-found: warn
       - name: Build Linux desktop and CLI
         run: cargo build --release --workspace --locked --target x86_64-unknown-linux-gnu -j 2
       - name: Save Linux release artifacts

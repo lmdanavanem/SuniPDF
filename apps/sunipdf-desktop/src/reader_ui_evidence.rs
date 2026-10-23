@@ -53,6 +53,13 @@ struct Scene {
     height: u32,
     measurements: bool,
     zoom: Zoom,
+    table: Option<TableKind>,
+}
+
+#[derive(Clone, Copy)]
+enum TableKind {
+    Register,
+    Quantities,
 }
 
 /// Respond to the real view's read requests using the fixture document.
@@ -111,6 +118,14 @@ fn fulfill_requests(
                     document.properties().can_modify,
                 );
                 data.can_annotate = document.properties().can_annotate;
+                data.viewports = document
+                    .measurement_viewports(page)
+                    .map(Arc::from)
+                    .map_err(|e| e.to_string());
+                data.snap_geometry = document
+                    .vector_snap_geometry(page)
+                    .map(Arc::new)
+                    .map_err(|e| e.to_string());
                 Response::MeasurementPage {
                     page,
                     epoch,
@@ -134,6 +149,16 @@ fn fulfill_requests(
             Request::FormInfo => Response::FormInfo(document.form_info()),
             Request::Bookmarks => Response::Bookmarks(document.bookmarks()),
             Request::Properties => Response::Properties(document.properties()),
+            Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
+                epoch,
+                generation,
+                result: document.annotation_register(),
+            },
+            Request::QuantityTable { epoch, generation } => Response::QuantityTable {
+                epoch,
+                generation,
+                result: document.quantity_table(),
+            },
             Request::FinishMutation | Request::SetRecovery(_) => continue,
             _ => {
                 return Err(
@@ -274,7 +299,7 @@ fn capture_scene(
     app.settings.dark_theme = scene.dark;
     app.settings.set_language(scene.language);
     app.settings.autosave = false;
-    app.settings.show_thumbnails = !scene.measurements;
+    app.settings.show_thumbnails = !scene.measurements && scene.table.is_none();
     app.show_tools = scene.measurements;
     app.settings.show_tools = scene.measurements;
     let mut info = document.info().clone();
@@ -297,6 +322,16 @@ fn capture_scene(
     }
     if scene.measurements {
         app.execute(&context, Command::HubMeasure);
+    }
+    if let Some(table) = scene.table {
+        app.settings.tables.placement = crate::workspace_table::Placement::Bottom;
+        app.execute(
+            &context,
+            match table {
+                TableKind::Register => Command::AnnotationRegister,
+                TableKind::Quantities => Command::QuantityTable,
+            },
+        );
     }
     let mut renderer = egui_wgpu::Renderer::new(
         device,
@@ -362,6 +397,43 @@ fn capture_scene(
                 .iter()
                 .any(|(_, node)| node.label() == Some(label)),
             "Expected reader control is absent from the real UI",
+        )?;
+    }
+    let table_name = scene.table.map(|table| match table {
+        TableKind::Register => "annotations",
+        TableKind::Quantities => "quantities",
+    });
+    if let Some(table) = scene.table {
+        let (title, close) = match table {
+            TableKind::Register => ("register.title", "register.close"),
+            TableKind::Quantities => ("quantity.title", "quantity.close"),
+        };
+        for key in [
+            title,
+            "workspace.table.dock",
+            "workspace.table.float",
+            close,
+        ] {
+            let label = tr(scene.language, key);
+            require(
+                tree.nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(label)),
+                "A docked table control is missing from the real application UI",
+            )?;
+        }
+        require(
+            frame.shapes.iter().any(|shape| {
+                matches!(&shape.shape, egui::Shape::Text(text)
+                if matches!(text.galley.text(), "Fixture equipment" | "Count: Fixture equipment")
+                && Rect::from_min_size(text.pos, text.galley.size()).intersect(shape.clip_rect)
+                    .intersect(viewport).is_positive())
+            }),
+            "The docked table does not show its actual fixture count row",
+        )?;
+        require(
+            !app.dialog_open(),
+            "Docked table incorrectly blocks document interactions",
         )?;
     }
     let tile_ids: Vec<_> = tiles
@@ -463,6 +535,7 @@ fn capture_scene(
     Ok(json!({
         "name": scene.name, "language": scene.language.code(), "darkTheme": scene.dark,
         "outputPixels": [scene.width, scene.height], "measurementToolsOpen": scene.measurements,
+        "dockedTable": table_name, "dockedTableControlsAndRowVerified": scene.table.is_some(),
         "effectiveZoom": app.effective_zoom, "actualApplicationRenderUi": true,
         "fixtureNavigation": fixture_destination.map(|(x_pt, y_from_top_pt)| json!({
             "pageIndex": 0, "coordinateOrigin": "page-top-left", "unit": "PDF points",
@@ -514,6 +587,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             height: 780,
             measurements: true,
             zoom: Zoom::FitPage,
+            table: None,
         },
         Scene {
             name: "reader-fr-light-720-zoom149",
@@ -523,6 +597,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             height: 480,
             measurements: true,
             zoom: Zoom::Fixed(1.49),
+            table: None,
         },
         Scene {
             name: "reader-en-light-pages",
@@ -532,11 +607,63 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             height: 780,
             measurements: false,
             zoom: Zoom::FitPage,
+            table: None,
         },
     ];
     let mut results = Vec::new();
     for scene in scenes {
         results.push(capture_scene(&device, &queue, &document, scene, output)?);
+    }
+    // Prepare actual editable records in memory; never alter the checked-in fixture file.
+    let mut table_document = engine.open_bytes(std::fs::read(&fixture)?, None, &fixture)?;
+    table_document.add_count_marker(
+        0,
+        (200.0, 100.0),
+        18.0,
+        "Fixture equipment",
+        Some("Fixture reviewer"),
+    )?;
+    table_document.add_measurement_annotation(
+        0,
+        &sunipdf_core::measurement::Measurement {
+            kind: sunipdf_core::measurement::MeasurementKind::Length,
+            points: vec![(40.0, 80.0), (140.0, 80.0)],
+            calibration: [(40.0, 40.0), (140.0, 40.0)],
+            known_distance: 10.0,
+            unit: sunipdf_core::measurement::MeasurementUnit::Metres,
+            precision: 2,
+        },
+        None,
+    )?;
+    for scene in [
+        Scene {
+            name: "reader-en-dark-docked-register",
+            language: Language::English,
+            dark: true,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: Some(TableKind::Register),
+        },
+        Scene {
+            name: "reader-fr-light-720-docked-quantities",
+            language: Language::French,
+            dark: false,
+            width: 720,
+            height: 480,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: Some(TableKind::Quantities),
+        },
+    ] {
+        results.push(capture_scene(
+            &device,
+            &queue,
+            &table_document,
+            scene,
+            output,
+        )?);
     }
     require(
         sha256(&std::fs::read(&fixture)?) == fixture_sha,
@@ -549,6 +676,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
         "adapter": { "name": info.name, "backend": format!("{:?}", info.backend), "deviceType": format!("{:?}", info.device_type) },
         "fixture": "crates/sunipdf-core/tests/fixtures/two-pages.pdf", "fixtureSha256": fixture_sha,
         "fixtureUnchanged": true, "scenes": results
+        , "tableFixture": { "source": "same two-page fixture, prepared only in memory", "countGroup": "Fixture equipment", "count": 1, "lengthMetres": 10 }
     }))
 }
 
@@ -579,5 +707,5 @@ fn reader_ui_dx12_warp_evidence() {
     if let Err(error) = result {
         panic!("Reader UI evidence failed: {error}");
     }
-    eprintln!("Reader UI offscreen evidence PASS: 3 actual application scenes");
+    eprintln!("Reader UI offscreen evidence PASS: 5 actual application scenes");
 }

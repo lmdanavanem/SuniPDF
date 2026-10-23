@@ -35,7 +35,7 @@ impl PageCalibration {
         .map(|_| ())
     }
 
-    fn validate_on_page(&self, geo: &PageGeometry) -> Result<(), EngineError> {
+    pub(crate) fn validate_on_page(&self, geo: &PageGeometry) -> Result<(), EngineError> {
         self.validate()?;
         let (w, h) = geo.display_size();
         if self
@@ -115,7 +115,7 @@ fn read_record(dict: &Dictionary) -> Result<Option<StoredCalibration>, EngineErr
     Ok(Some(record))
 }
 
-fn check_user_unit(pdf: &lopdf::Document, page: &Dictionary) -> Result<(), EngineError> {
+pub(crate) fn check_user_unit(pdf: &lopdf::Document, page: &Dictionary) -> Result<(), EngineError> {
     if let Ok(raw) = page.get(b"UserUnit") {
         let value = pdf.dereference(raw).map_err(lopdf_err)?.1;
         if value.as_float().ok() != Some(1.0) {
@@ -129,7 +129,10 @@ fn check_user_unit(pdf: &lopdf::Document, page: &Dictionary) -> Result<(), Engin
 
 /// Hash decoded content without object IDs, stream filters or annotations. This rejects a stale
 /// default after content edits and resizing, while preserving it through rotation and reordering.
-fn content_digest(pdf: &lopdf::Document, page: &Dictionary) -> Result<String, EngineError> {
+pub(crate) fn content_digest(
+    pdf: &lopdf::Document,
+    page: &Dictionary,
+) -> Result<String, EngineError> {
     let mut digest = Sha256::new();
     let mut total = 0usize;
     if let Ok(raw) = page.get(b"Contents") {
@@ -222,37 +225,46 @@ impl Document<'_> {
             return Err(EngineError::SecurityRestricted);
         }
         self.edit_pdf(page_index, |pdf, page, geo| {
-            let dict = pdf.get_dictionary(page).map_err(lopdf_err)?;
-            read_record(dict)?;
-            let metadata = if let Some(calibration) = calibration {
-                calibration.validate_on_page(geo)?;
-                check_user_unit(pdf, dict)?;
-                let record = StoredCalibration {
-                    version: 1,
-                    coordinate_system: "pdf-user-space".into(),
-                    points: calibration.points.map(|(x, y)| geo.to_user(x, y)),
-                    known_distance: calibration.known_distance,
-                    unit: calibration.unit.id().into(),
-                    bbox: bounds(geo),
-                    user_unit: 1.0,
-                    content_sha256: content_digest(pdf, dict)?,
-                };
-                let text = serde_json::to_string(&record)
-                    .map_err(|_| invalid("could not encode the scale"))?;
-                let mut check = Dictionary::new();
-                check.set(KEY, Object::string_literal(text.clone()));
-                read_record(&check)?;
-                Some(text)
-            } else {
-                None
-            };
-            let dict = pdf.get_dictionary_mut(page).map_err(lopdf_err)?;
-            if let Some(text) = metadata {
-                dict.set(KEY, Object::string_literal(text));
-            } else {
-                dict.remove(KEY);
-            }
-            Ok(())
+            set_in_pdf(pdf, page, geo, calibration)
         })
     }
+}
+
+pub(crate) fn set_in_pdf(
+    pdf: &mut lopdf::Document,
+    page: lopdf::ObjectId,
+    geo: &PageGeometry,
+    calibration: Option<&PageCalibration>,
+) -> Result<(), EngineError> {
+    let dict = pdf.get_dictionary(page).map_err(lopdf_err)?;
+    read_record(dict)?;
+    let metadata = if let Some(calibration) = calibration {
+        calibration.validate_on_page(geo)?;
+        check_user_unit(pdf, dict)?;
+        let record = StoredCalibration {
+            version: 1,
+            coordinate_system: "pdf-user-space".into(),
+            points: calibration.points.map(|(x, y)| geo.to_user(x, y)),
+            known_distance: calibration.known_distance,
+            unit: calibration.unit.id().into(),
+            bbox: bounds(geo),
+            user_unit: 1.0,
+            content_sha256: content_digest(pdf, dict)?,
+        };
+        let text =
+            serde_json::to_string(&record).map_err(|_| invalid("could not encode the scale"))?;
+        let mut check = Dictionary::new();
+        check.set(KEY, Object::string_literal(text.clone()));
+        read_record(&check)?;
+        Some(text)
+    } else {
+        None
+    };
+    let dict = pdf.get_dictionary_mut(page).map_err(lopdf_err)?;
+    if let Some(text) = metadata {
+        dict.set(KEY, Object::string_literal(text));
+    } else {
+        dict.remove(KEY);
+    }
+    Ok(())
 }

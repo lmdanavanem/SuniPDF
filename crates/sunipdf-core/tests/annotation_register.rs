@@ -46,6 +46,19 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
         doc.add_count_marker(1, (60.0, 70.0), 24.0, "Lights été 中文", None)
             .unwrap();
         let report = doc.annotation_register().unwrap();
+        let partial = doc.annotation_register_reader().unwrap();
+        assert_eq!(partial.progress(), (0, 2));
+        assert!(
+            partial.finish().is_err(),
+            "partial registers cannot be exported as complete"
+        );
+        let mut reader = doc.annotation_register_reader().unwrap();
+        assert!(!reader.read_next(&doc).unwrap());
+        assert_eq!(reader.progress(), (1, 2));
+        assert!(reader.read_next(&doc).unwrap());
+        let cooperative = reader.finish().unwrap();
+        assert_eq!(cooperative.rows, report.rows);
+        assert_eq!(cooperative.source_sha256, report.source_sha256);
         let filter = RegisterFilter {
             count_group: "Lights été 中文".into(),
             ..Default::default()
@@ -419,6 +432,24 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
         assert!(
             changed.annotation_register().is_err(),
             "malformed case {fault} must not become a plausible zero or partial total"
+        );
+        let mut reader = changed.annotation_register_reader().unwrap();
+        loop {
+            match reader.read_next(&changed) {
+                Ok(false) => continue,
+                Ok(true) => break,
+                Err(_) => {
+                    assert!(
+                        reader.read_next(&changed).is_err(),
+                        "failed page cannot be skipped by retrying"
+                    );
+                    break;
+                }
+            }
+        }
+        assert!(
+            reader.finish().is_err(),
+            "malformed incremental case {fault} must fail closed"
         );
     }
 }

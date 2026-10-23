@@ -295,6 +295,7 @@ impl SuniApp {
         if !self.measurement_ready() || !point.0.is_finite() || !point.1.is_finite() {
             return;
         }
+        let point = self.snap_measurement_point(page, point, false);
         let Some(size) = self
             .document
             .as_ref()

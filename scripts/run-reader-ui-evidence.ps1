@@ -47,8 +47,8 @@ try {
     if ($reportFile.Length -gt 128KB -or $reportFile.LastWriteTimeUtc -lt $started) { throw 'Reader UI report is oversized or stale.' }
     $report = [IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
     if ($report.status -cne 'passed' -or $report.sourceSha -cne $env:GITHUB_SHA -or
-        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 3) { throw 'Reader UI report did not qualify the current source.' }
-    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages')
+        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 5) { throw 'Reader UI report did not qualify the current source.' }
+    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities')
     foreach ($scene in $report.scenes) {
         if ($scene.name -cnotin $expected -or $scene.png -cne "$($scene.name).png" -or
             -not $scene.actualApplicationRenderUi -or $scene.actualPdfiumTiles -lt 1 -or
@@ -59,6 +59,9 @@ try {
         if ((Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash.ToLowerInvariant() -cne $scene.pngSha256) {
             throw 'Reader UI screenshot digest differs from its report.'
         }
+        if ($scene.name -like '*docked*' -and (-not $scene.dockedTableControlsAndRowVerified -or $scene.dockedTable -cnotin @('annotations','quantities'))) {
+            throw 'Docked table evidence is incomplete.'
+        }
     }
-    if (@($report.scenes.name | Select-Object -Unique).Count -ne 3) { throw 'Reader UI scene names are not unique.' }
+    if (@($report.scenes.name | Select-Object -Unique).Count -ne 5) { throw 'Reader UI scene names are not unique.' }
 } finally { Pop-Location }
