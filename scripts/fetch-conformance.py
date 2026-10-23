@@ -54,6 +54,10 @@ def manifest():
             raise ValueError('Invalid corpus file bounds or digest')
         if item['profile'] not in ('1b', '2b', 'ua1') or type(item['expectedCompliant']) is not bool:
             raise ValueError('Invalid corpus expectation')
+        if item['expectedCompliant'] and ('expectedQpdfWarnings' in item or 'rasterThreshold' in item):
+            raise ValueError('Positive fixtures require strict structural and appearance checks')
+        if 'rasterThreshold' in item and (item['rasterThreshold'] != 240 or not item.get('rasterReason')):
+            raise ValueError('Unexpected negative raster threshold')
     if sum(item['bytes'] for item in files) > 64 * 1024 * 1024:
         raise ValueError('Corpus exceeds aggregate limit')
     validator = value['validator']

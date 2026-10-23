@@ -8,9 +8,9 @@ The additional corpus contains 12 unmodified fixtures from the [veraPDF test cor
 
 | Profile | Positive and negative pairs |
 | --- | --- |
-| PDF/A-1b | Font metrics; form XObjects |
+| PDF/A-1b | Composite fonts; form XObjects |
 | PDF/A-2b | Subset font embedding; interactive forms |
-| PDF/UA-1 | Form labels; table structure |
+| PDF/UA-1 | Form structure; language tags |
 
 These are atomic upstream test files, not a representative collection of production documents. An upstream `pass` filename describes the intended rule test; the gate independently requires the whole selected machine-validation profile to pass. An unexpected baseline outcome is a failed gate and must be investigated. The existing public PDF and large-plan regression suites remain separate and continue to run.
 
@@ -27,7 +27,11 @@ Each positive source is checked before and after these operations:
 
 Negative fixtures must fail their intended rule. A missing validator, truncated report, wrong file or profile, parse error, timeout, inconsistent summary, or unexpected conformance result fails the gate. The validator's exit code alone is never treated as proof. Reports must contain exactly one complete job for the tested file, valid rule counts, and no processing failures. Original fixture hashes are checked before and after processing.
 
-Every tested PDF also undergoes a strict `qpdf --check`. The first page is rendered independently by PDFium through SuniPDF and by Poppler. Geometry must agree; comparison allows two pixels of antialiasing displacement, requires at least 70% mutual dark-pixel coverage, and limits the dark-pixel ratio to 0.5–2.0 and RGB mean absolute error to 12. Rewritten pages are also compared with their original Poppler rendering; the intermediate 90-degree rotation is compared across readers in its own orientation. This is first-page appearance evidence, not a proof that every page, annotation interaction, or assistive-technology behavior is preserved.
+Every tested PDF also undergoes `qpdf --check`. Positive sources and all rewritten files require a clean result. Two negative upstream fixtures have known structural warnings, recorded verbatim in the manifest; only those exact warnings are accepted for those unchanged negative sources, and the report identifies them as warnings rather than clean syntax checks. Unexpected warnings fail.
+
+The first page is rendered independently by PDFium through SuniPDF and by Poppler. Fractional page dimensions can produce raster canvases differing by one pixel because the readers round differently. Only that one-pixel canvas difference is permitted: the smaller canvas is padded with white on its trailing edge without rescaling the content, and both original sizes are recorded. Larger geometry differences fail. Appearance comparison allows two pixels of antialiasing displacement, requires at least 70% mutual dark-pixel coverage, and limits the dark-pixel ratio to 0.5–2.0 and RGB mean absolute error to 12. Dark pixels normally use luminance below 160; one invalid form fixture contains only a light-gray widget border and explicitly uses 240, as documented in the manifest. Positive fixtures keep the default threshold.
+
+Rewritten pages are also compared with their original Poppler rendering using exact raster geometry; the intermediate 90-degree rotation is compared across readers in its own orientation. This is first-page appearance evidence, not a proof that every page, annotation interaction, or assistive-technology behavior is preserved.
 
 `report.json` records all cases and failures, source/output hashes, byte changes, tool versions, executable hashes and appearance measurements. Raw validation XML, tool output, rewritten PDFs and rendered images remain beside it for diagnosis. Failure in one case does not hide the remaining cases. Downloads, file counts, file sizes, raster dimensions, tool output and subprocess runtimes are bounded.
 

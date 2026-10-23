@@ -14,27 +14,27 @@
   },
   "files": [
     {
-      "id": "a1b-font-metrics-pass",
-      "path": "PDF_A-1b/6.3 Fonts/6.3.6 Font metrics/veraPDF test suite 6-3-6-t01-pass-a.pdf",
-      "bytes": 29813,
-      "sha256": "410a63018a27141d889be77f33de1d29c89f49cac21c54d43a6ae3f4994ef0eb",
+      "id": "a1b-composite-font-pass",
+      "path": "PDF_A-1b/6.3 Fonts/6.3.3.1 General/veraPDF test suite 6-3-3-1-t01-pass-a.pdf",
+      "bytes": 12379,
+      "sha256": "a5e13a5f58b7a779cecdaa119cfa92250f94d05ab918d55a347524433017bb5b",
       "profile": "1b",
       "expectedCompliant": true,
       "rule": {
-        "clause": "6.3.6",
+        "clause": "6.3.3.1",
         "testNumber": "1"
       },
       "upstreamIntent": "atomic pass"
     },
     {
-      "id": "a1b-font-metrics-fail",
-      "path": "PDF_A-1b/6.3 Fonts/6.3.6 Font metrics/veraPDF test suite 6-3-6-t01-fail-a.pdf",
-      "bytes": 3631,
-      "sha256": "9bcf1136a53ebef60ade9466f40d7d882cf971928f231404f6858d4e5c944825",
+      "id": "a1b-composite-font-fail",
+      "path": "PDF_A-1b/6.3 Fonts/6.3.3.1 General/veraPDF test suite 6-3-3-1-t01-fail-a.pdf",
+      "bytes": 12368,
+      "sha256": "236d45b0394f11039bb7e41bf2c0687497ad96851719a97b0f633c45951e870c",
       "profile": "1b",
       "expectedCompliant": false,
       "rule": {
-        "clause": "6.3.6",
+        "clause": "6.3.3.1",
         "testNumber": "1"
       },
       "upstreamIntent": "atomic fail"
@@ -48,7 +48,7 @@
       "expectedCompliant": true,
       "rule": {
         "clause": "6.2.5",
-        "testNumber": "2"
+        "testNumber": "1"
       },
       "upstreamIntent": "atomic pass"
     },
@@ -61,7 +61,7 @@
       "expectedCompliant": false,
       "rule": {
         "clause": "6.2.5",
-        "testNumber": "2"
+        "testNumber": "1"
       },
       "upstreamIntent": "atomic fail"
     },
@@ -100,7 +100,7 @@
       "expectedCompliant": true,
       "rule": {
         "clause": "6.4.1",
-        "testNumber": "2"
+        "testNumber": "3"
       },
       "upstreamIntent": "atomic pass"
     },
@@ -113,9 +113,11 @@
       "expectedCompliant": false,
       "rule": {
         "clause": "6.4.1",
-        "testNumber": "2"
+        "testNumber": "3"
       },
-      "upstreamIntent": "atomic fail"
+      "upstreamIntent": "atomic fail",
+      "rasterThreshold": 240,
+      "rasterReason": "The invalid NeedAppearances fixture has only a light-gray widget border (minimum luminance 192 in both independent readers)."
     },
     {
       "id": "ua1-form-label-pass",
@@ -141,33 +143,41 @@
         "clause": "7.18.4",
         "testNumber": "1"
       },
-      "upstreamIntent": "atomic fail"
+      "upstreamIntent": "atomic fail",
+      "expectedQpdfWarnings": [
+        "part 8 is empty but nshared_total > nshared_first_page",
+        "first shared object offset mismatch: hint table = 1741; computed = 1557",
+        "incorrect offset in outlines table: hint table = 2327; computed = 2143"
+      ]
     },
     {
-      "id": "ua1-table-tags-pass",
-      "path": "PDF_UA-1/7.5 Tables/7.5-t01-pass-a.pdf",
-      "bytes": 37174,
-      "sha256": "d91d6aeb4203b6852a20aebbb2d1399f72ad5527e7056a2577168a2fde60eb4f",
+      "id": "ua1-language-tags-pass",
+      "path": "PDF_UA-1/7.2 Text/7.2-t02-pass-a.pdf",
+      "bytes": 60259,
+      "sha256": "d23e975cd682506ff027f16a56ae00e19abbfce47083881def90c003bc1da000",
       "profile": "ua1",
       "expectedCompliant": true,
       "rule": {
-        "clause": "7.5",
-        "testNumber": "1"
+        "clause": "7.2",
+        "testNumber": "2"
       },
       "upstreamIntent": "atomic pass"
     },
     {
-      "id": "ua1-table-tags-fail",
-      "path": "PDF_UA-1/7.5 Tables/7.5-t01-fail-a.pdf",
-      "bytes": 35332,
-      "sha256": "54d49f7289d91b120fce690e59dc97f2ed7a3cadc09a2d4eef94ccc42f1da928",
+      "id": "ua1-language-tags-fail",
+      "path": "PDF_UA-1/7.2 Text/7.2-t02-fail-a.pdf",
+      "bytes": 31123,
+      "sha256": "13b1bb2783599efec203a9080a4233d71c6e45d9f2a8403fdaa7e61049f37500",
       "profile": "ua1",
       "expectedCompliant": false,
       "rule": {
-        "clause": "7.5",
-        "testNumber": "1"
+        "clause": "7.2",
+        "testNumber": "2"
       },
-      "upstreamIntent": "atomic fail"
+      "upstreamIntent": "atomic fail",
+      "expectedQpdfWarnings": [
+        "reported number of objects (38) is not one plus the highest object number (36)"
+      ]
     }
   ]
 }

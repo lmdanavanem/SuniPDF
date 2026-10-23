@@ -102,12 +102,20 @@ def image(path):
         return source.convert('RGB')
 
 
-def appearance(first, second):
-    from PIL import ImageChops, ImageFilter, ImageStat
+def appearance(first, second, allow_rounding=False, threshold=160):
+    from PIL import Image, ImageChops, ImageFilter, ImageStat
+    original_sizes = [list(first.size), list(second.size)]
     if first.size != second.size:
-        raise ValueError('Independent page geometry differs')
-    left = first.convert('L').point(lambda x: 255 if x < 160 else 0)
-    right = second.convert('L').point(lambda x: 255 if x < 160 else 0)
+        if not allow_rounding or any(abs(a - b) > 1 for a, b in zip(first.size, second.size)):
+            raise ValueError('Independent page geometry differs')
+        size = tuple(max(a, b) for a, b in zip(first.size, second.size))
+        def padded(source):
+            result = Image.new('RGB', size, 'white')
+            result.paste(source, (0, 0))
+            return result
+        first, second = padded(first), padded(second)
+    left = first.convert('L').point(lambda x: 255 if x < threshold else 0)
+    right = second.convert('L').point(lambda x: 255 if x < threshold else 0)
     left_count = left.histogram()[255]
     right_count = right.histogram()[255]
     if min(left_count, right_count) < 8:
@@ -118,7 +126,7 @@ def appearance(first, second):
     ratio = right_count / left_count
     if min(left_covered, right_covered) < .70 or not .50 <= ratio <= 2 or mae > 12:
         raise ValueError(f'Independent appearance differs: coverage {left_covered:.4f}/{right_covered:.4f}, ink ratio {ratio:.4f}, RGB MAE {mae:.4f}')
-    return {'coverageWithinTwoPixels': round(left_covered, 6), 'reverseCoverageWithinTwoPixels': round(right_covered, 6), 'inkRatio': round(ratio, 6), 'rgbMeanAbsoluteError': round(mae, 6)}
+    return {'coverageWithinTwoPixels': round(left_covered, 6), 'reverseCoverageWithinTwoPixels': round(right_covered, 6), 'inkRatio': round(ratio, 6), 'rgbMeanAbsoluteError': round(mae, 6), 'rasterSizes': original_sizes, 'canvasRoundingPadded': original_sizes[0] != original_sizes[1], 'inkThreshold': threshold}
 
 
 def qualify(args):
@@ -182,7 +190,7 @@ def qualify(args):
                             raise ValueError('Expected a real document rewrite')
                         checks = [
                             ('conformance', lambda: validate(pdf, fixture, expected, folder / (name + '-verapdf.xml'), args.verapdf, fixture['rule'] if name == 'source' and not expected else None)),
-                            ('qpdf', lambda: syntax(pdf, folder / (name + '-qpdf.txt'), args.qpdf)),
+                            ('qpdf', lambda: syntax(pdf, folder / (name + '-qpdf.txt'), args.qpdf, fixture.get('expectedQpdfWarnings', []) if name == 'source' and not expected else [])),
                         ]
                         for check, action in checks:
                             try:
@@ -196,7 +204,7 @@ def qualify(args):
                             run([args.cli, 'render', pdf, '--page', '1', '--scale', '1', '--out', raster], folder / (name + '-pdfium.txt'))
                             run([args.pdftoppm, '-f', '1', '-singlefile', '-cropbox', '-r', '72', '-png', pdf, independent], folder / (name + '-poppler.txt'))
                             native, reader = image(raster), image(independent.with_suffix('.png'))
-                            stage['appearance'] = appearance(native, reader)
+                            stage['appearance'] = appearance(native, reader, allow_rounding=True, threshold=fixture.get('rasterThreshold', 160))
                             if name == 'source':
                                 baseline = reader
                             elif name != 'rotated' and baseline is not None:
@@ -224,13 +232,34 @@ def qualify(args):
 
 
 def validate(pdf, fixture, expected, path, executable, rule):
-    run([executable, '--format', 'raw', '--flavour', fixture['profile'], '--maxfailuresdisplayed', '1', pdf], path, allowed=(0, 1))
+    run([executable, '--format', 'xml', '--flavour', fixture['profile'], '--maxfailuresdisplayed', '1', pdf], path, allowed=(0, 1))
     return parse_report(path.read_bytes(), pdf, fixture['profile'], expected, rule)
 
 
-def syntax(pdf, path, executable):
-    run([executable, '--check', pdf], path)
-    return {'passed': True}
+def syntax(pdf, path, executable, expected_warnings=None):
+    code = run([executable, '--check', pdf], path, allowed=(0, 3))
+    diagnostic = path.with_suffix(path.suffix + '.stderr').read_text(encoding='utf-8', errors='replace')
+    return qpdf_result(code, diagnostic, pdf, expected_warnings or [])
+
+
+def qpdf_result(code, diagnostic, pdf, expected_warnings):
+    if code == 0:
+        if diagnostic.strip():
+            raise ValueError('Unexpected QPDF diagnostic: ' + diagnostic)
+        return {'passed': True}
+    warnings = []
+    for line in diagnostic.splitlines():
+        if line == 'qpdf: operation succeeded with warnings':
+            continue
+        if not line.startswith('WARNING: '):
+            raise ValueError('Unexpected QPDF diagnostic: ' + line)
+        message = line[len('WARNING: '):]
+        if message.startswith(str(pdf) + ': '):
+            message = message[len(str(pdf)) + 2:]
+        warnings.append(message)
+    if code != 3 or not expected_warnings or warnings != expected_warnings:
+        raise ValueError('Unexpected QPDF warnings: ' + json.dumps(warnings))
+    return {'passed': False, 'acceptedNegativeFixtureWarnings': True, 'warnings': warnings}
 
 
 class ReportTests(unittest.TestCase):
@@ -244,6 +273,23 @@ class ReportTests(unittest.TestCase):
         for changed in (Image.new('RGB', first.size, 'white'), shifted, Image.new('RGB', (90, 80), 'black')):
             with self.assertRaises(ValueError):
                 appearance(first, changed)
+        rounded = Image.new('RGB', (81, 80), 'white')
+        rounded.paste(first, (0, 0))
+        self.assertTrue(appearance(first, rounded, allow_rounding=True)['canvasRoundingPadded'])
+        with self.assertRaises(ValueError):
+            appearance(first, rounded)
+
+    def test_only_exact_declared_negative_qpdf_warnings_are_accepted(self):
+        pdf = Path('fixture.pdf')
+        diagnostic = 'WARNING: ' + str(pdf) + ': known negative fixture defect\nqpdf: operation succeeded with warnings\n'
+        result = qpdf_result(3, diagnostic, pdf, ['known negative fixture defect'])
+        self.assertFalse(result['passed'])
+        self.assertTrue(result['acceptedNegativeFixtureWarnings'])
+        for expected in ([], ['another warning']):
+            with self.assertRaises(ValueError):
+                qpdf_result(3, diagnostic, pdf, expected)
+        with self.assertRaises(ValueError):
+            qpdf_result(3, diagnostic + 'WARNING: new defect\n', pdf, ['known negative fixture defect'])
 
     def test_process_timeout_and_output_bounds(self):
         with tempfile.TemporaryDirectory() as folder:
