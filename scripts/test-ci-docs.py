@@ -27,7 +27,7 @@ def record(path='docs/USER_GUIDE.en.md', status='M', old_mode='100644', new_mode
 
 class ClassificationTests(unittest.TestCase):
     def test_only_explicit_document_paths_are_eligible(self):
-        for path in ['README.md', 'README.fr.md', 'CHANGELOG.en.md', 'SECURITY.md',
+        for path in ['README.md', 'CHANGELOG.md', 'SECURITY.md',
                      'docs/USER_GUIDE.en.md', 'docs/nested/guide.md',
                      'docs/qa/RELEASE_0.47.0.json', 'docs/AEC_BACKLOG.csv']:
             with self.subTest(path=path):
@@ -35,6 +35,8 @@ class ClassificationTests(unittest.TestCase):
                 self.assertTrue(DOCS.classify_changes([record(path, 'A', '000000')]))
         for path in ['unknown.md', 'Cargo.toml', 'README.md.exe', '.github/PULL_REQUEST_TEMPLATE.md',
                      '.github/workflows/ci.yml', 'scripts/ci-docs.py', 'apps/app/README.md',
+                     'scripts/package-guides.py', 'scripts/package-portable.ps1', 'scripts/package-deb.py',
+                     'README.fr.md', 'CHANGELOG.en.md',
                      'docs/screenshots/image.png', 'docs/qa/nested/report.json', 'docs/other.csv',
                      'docs/tests/guide.md', 'docs/fixtures/guide.md', 'docs/corpus/README.md',
                      'docs/Scripts/README.md', 'docs/examples/README.md', 'docs/testdata/README.md',
@@ -160,8 +162,7 @@ class DocumentationTests(unittest.TestCase):
         (self.root / 'scripts').mkdir()
         shutil.copyfile(Path(__file__).with_name('package-guides.py'), self.root / 'scripts' / 'package-guides.py')
         (self.root / 'Cargo.toml').write_text('[workspace.package]\nversion = "0.48.0"\n', encoding='utf-8')
-        for name in ('USER_GUIDE.en.md', 'USER_GUIDE.fr.md'):
-            (self.root / 'docs' / name).write_text('# Guide\n\n[Info](DETAILS.md)\n', encoding='utf-8')
+        (self.root / 'docs' / 'USER_GUIDE.en.md').write_text('# Guide\n\n[Info](DETAILS.md)\n', encoding='utf-8')
         (self.root / 'docs' / 'DETAILS.md').write_text('# Details\n', encoding='utf-8')
         self.backlog = self.root / 'docs' / 'AEC_BACKLOG.csv'
         with self.backlog.open('w', encoding='utf-8', newline='') as output:
@@ -174,7 +175,7 @@ class DocumentationTests(unittest.TestCase):
     def test_actual_packaged_guides_and_repository_data_are_checked(self):
         before = (self.root / 'docs' / 'USER_GUIDE.en.md').read_bytes()
         report = DOCS.validate(self.root, all_markdown=True)
-        self.assertEqual(report['packaged_guides'], {'USER_GUIDE.en.md': 1, 'USER_GUIDE.fr.md': 1})
+        self.assertEqual(report['packaged_guides'], {'USER_GUIDE.en.md': 1})
         self.assertEqual(report['backlog_rows'], 1)
         self.assertEqual(report['evidence_json_files'], 1)
         self.assertEqual((self.root / 'docs' / 'USER_GUIDE.en.md').read_bytes(), before)

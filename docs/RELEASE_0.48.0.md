@@ -1,6 +1,5 @@
 # SuniPDF 0.48.0 — edit saved measurement vertices
-
-[Français](RELEASE_0.48.0.fr.md) · [Geometry editing guide](MEASUREMENT_GEOMETRY.md)
+[Geometry editing guide](MEASUREMENT_GEOMETRY.md)
 
 Status: published as stable Latest [0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0), source `6f32c20259f6bae6e1b60090fe74acfb5dc69ba7`, on 2026-10-22. [Previous release](RELEASE_0.47.0.md).
 

@@ -31,7 +31,7 @@ Copy-Item "$targetDir\sunipdf.exe", "$targetDir\sunipdf-cli.exe" $stage
 Copy-Item "third_party\pdfium\win-$Arch\bin\pdfium.dll" $stage
 Copy-Item "third_party\pdfium\win-$Arch\LICENSE" "$stage\licenses\pdfium-binaries-MIT.txt"
 Copy-Item "third_party\pdfium\win-$Arch\licenses\*" "$stage\licenses\"
-Copy-Item "docs\THIRD_PARTY_NOTICES.md", "docs\THIRD_PARTY_NOTICES.fr.md" "$stage\licenses\"
+Copy-Item "docs\THIRD_PARTY_NOTICES.md" "$stage\licenses\"
 Copy-Item "assets\licenses\update-dependencies.txt" "$stage\licenses\"
 Copy-Item "assets\licenses\xml-rs-MIT.txt" "$stage\licenses\"
 Copy-Item "assets\licenses\lopdf-MIT.txt" "$stage\licenses\"
@@ -44,24 +44,16 @@ foreach ($license in (Get-ChildItem -LiteralPath (Join-Path $ocr 'licenses') -Fi
 }
 Copy-Item -LiteralPath (Join-Path $ocr 'NOTICE.txt') -Destination "$stage\licenses\ocr-NOTICE.txt"
 Copy-Item -LiteralPath (Join-Path $ocr 'VERSION') -Destination "$stage\licenses\ocr-VERSION.txt"
-Copy-Item "docs\USER_GUIDE.fr.md", "docs\USER_GUIDE.en.md", "CHANGELOG.md", "CHANGELOG.fr.md" $stage
+Copy-Item "docs\USER_GUIDE.en.md", "CHANGELOG.md" $stage
 & python (Join-Path $PSScriptRoot 'package-guides.py') --source-root $root --stage $stage --tag "v$version"
 if ($LASTEXITCODE -ne 0) { throw 'Packaged user guide link preparation failed.' }
-Set-Content -Path "$stage\LISEZMOI.txt" -Encoding utf8 -Value @"
-SuniPDF $version (portable, Windows $Arch)
-Lancer sunipdf.exe. Aucune installation requise. Les préférences sont dans %APPDATA%\SuniPDF.
-La vérification facultative au démarrage consulte les versions GitHub. Aucun fichier PDF n'est envoyé.
-Reconnaissance de texte (OCR) en anglais et français : moteur et langues inclus, utilisables hors ligne.
-Ligne de commande : sunipdf-cli.exe --help
-Licences : dossier licenses\
-"@
 Set-Content -Path "$stage\README.txt" -Encoding utf8 -Value @"
 SuniPDF $version (portable, Windows $Arch)
 Run sunipdf.exe. No installation is required. Preferences are stored in %APPDATA%\SuniPDF.
 The optional startup update check contacts GitHub for release information. No PDF files are sent.
 English and French text recognition (OCR) works offline with its included engine and language data.
 Command line: sunipdf-cli.exe --help
-User guides: USER_GUIDE.en.md and USER_GUIDE.fr.md
+User guide: USER_GUIDE.en.md
 Licenses: licenses\
 "@
 

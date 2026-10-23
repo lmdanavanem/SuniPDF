@@ -1,7 +1,5 @@
 # Page object ordering
 
-[Français](OBJECT_ORDER.fr.md)
-
 Published in 0.32.0; release qualification is recorded in [Project status](PROJECT_STATUS.md).
 
 ## Desktop

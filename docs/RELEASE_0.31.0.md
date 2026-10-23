@@ -1,7 +1,5 @@
 # SuniPDF 0.31.0
 
-[Français](RELEASE_0.31.0.fr.md)
-
 ## New features
 
 - **Compare two saved PDF versions locally.** Align physical pages with explicit offsets, review extracted-text, page-size and preview-pixel differences, then open an original/revised/red-difference preview for a changed pair. A changed source is refused before previewing.

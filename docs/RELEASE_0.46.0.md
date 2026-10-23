@@ -1,6 +1,5 @@
 # SuniPDF 0.46.0 — quantity tables and typed business fields
-
-[Français](RELEASE_0.46.0.fr.md) · [Quantity-table guide](QUANTITY_TABLE.md)
+[Quantity-table guide](QUANTITY_TABLE.md)
 
 Status: published as stable Latest [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0), source `3e6763964d6b06f004a09fd7473ddf5bb4a6417f`, on 2026-10-22. [Previous release](RELEASE_0.45.0.md).
 

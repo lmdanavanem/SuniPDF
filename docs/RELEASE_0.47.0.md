@@ -1,6 +1,5 @@
 # SuniPDF 0.47.0 — aligned revision overlays
-
-[Français](RELEASE_0.47.0.fr.md) · [Revision overlay guide](REVISION_OVERLAY.md)
+[Revision overlay guide](REVISION_OVERLAY.md)
 
 Status: published as stable Latest [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0), source `db79bc393cd6039a53b03319c503ab57483783d8`, on 2026-10-22. [Previous release](RELEASE_0.46.0.md).
 

@@ -1,7 +1,5 @@
 # Local PDF comparison and multi-document search
 
-[Français](LOCAL_REVIEW.fr.md)
-
 Published in 0.31.0. Executed release qualification is recorded in [Project status](PROJECT_STATUS.md).
 
 ## Search selected files

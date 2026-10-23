@@ -1,6 +1,5 @@
 # SuniPDF 0.51.0 — Ubuntu desktop package
-
-[Français](RELEASE_0.51.0.fr.md) · [Ubuntu installation and limits](UBUNTU.md)
+[Ubuntu installation and limits](UBUNTU.md)
 
 [0.51.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) on 2026-10-23, under `lmdanavanem`.
 
@@ -13,7 +12,6 @@
 - The published 0.50.0 packages are included in Windows portable and MSI upgrade regressions.
 
 The first Linux package targets Ubuntu 22.04 and 24.04 on amd64. Native printing, certificate signing/trust verification, protected Office import and the persistent encrypted visual-signature library remain Windows-only. Session visual signatures and PDF-to-Office exports remain available. Linux ARM64 and physical-device qualification are outside this release's scope. Windows packages remain unsigned.
-
 
 ## Qualification
 

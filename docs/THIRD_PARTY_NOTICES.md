@@ -1,7 +1,5 @@
 # Third-party notices
 
-[Français](THIRD_PARTY_NOTICES.fr.md)
-
 Every portable ZIP and MSI includes `licenses/dependency-inventory.json` and
 `licenses/dependency-licenses.txt`: exact locked Rust versions, source revisions or
 registry archive checksums, declared license expressions and full license, copyright

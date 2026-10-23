@@ -1,6 +1,5 @@
 # Edit saved measurement geometry
-
-[Français](MEASUREMENT_GEOMETRY.fr.md) · [Measurements](MEASUREMENTS.md)
+[Measurements](MEASUREMENTS.md)
 
 Available in [0.49.0](RELEASE_0.49.0.md). [Evidence](qa/RELEASE_0.49.0.json).
 
@@ -29,6 +28,6 @@ Preview and Apply use the existing guarded measurement operation. A changed sour
 
 Use **Vertex** to identify a point explicitly when handles overlap. Zoom in when nearby segments make insertion ambiguous. A point is inserted on the selected measurement's segment; this does not snap to underlying PDF lines. Invalid geometry still has to be corrected before Apply.
 
-This edits supported saved measurements one at a time. Vector snapping, batch recalculation and multiple-scale viewports remain separate work. Raster drawings do not acquire vector snapping from this feature. Automated interaction tests do not establish native hardware or accessibility qualification. AEC-002 and AEC-003 remain partial.
+This editor changes one supported saved measurement at a time. The [plan workspace](PLAN_WORKSPACE.md) provides eligible vector snapping, batch recalibration and named scale regions. Raster drawings do not produce vector snap points. Automated interaction tests do not establish native hardware or accessibility qualification. AEC-002 and AEC-003 remain partially qualified.
 
 The existing `edit-measurement` CLI remains available for explicit geometry replacement in a new PDF copy with an expected record; see the [measurement guide](MEASUREMENTS.md). No new CLI command is introduced by the on-page workflow.

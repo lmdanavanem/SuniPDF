@@ -101,7 +101,7 @@ stores recovery data.
 .SH SEE ALSO
 .BR sunipdf-cli (1)
 .PP
-User guides and Ubuntu platform limitations are installed in
+The user guide and Ubuntu platform limitations are installed in
 .IR /usr/share/doc/sunipdf/ .
 """,
         "sunipdf-cli": r""".SH NAME
@@ -133,7 +133,7 @@ Allow replacing existing output files.
 .SH SEE ALSO
 .BR sunipdf (1)
 .PP
-User guides and Ubuntu platform limitations are installed in
+The user guide and Ubuntu platform limitations are installed in
 .IR /usr/share/doc/sunipdf/ .
 """,
     }
@@ -186,15 +186,15 @@ def package(binary_dir, output):
         run(["desktop-file-validate", stage / "usr/share/applications/sunipdf.desktop"])
         for size in (16, 24, 32, 48, 64, 128, 256, 512):
             copy(ROOT / f"assets/icon/sunipdf-{size}.png", stage / f"usr/share/icons/hicolor/{size}x{size}/apps/sunipdf.png")
-        for name in ("USER_GUIDE.en.md", "USER_GUIDE.fr.md"):
+        guides = module("package-guides")
+        for name in guides.GUIDES:
             copy(ROOT / "docs" / name, doc / name)
         run([sys.executable, ROOT / "scripts/package-guides.py", "--source-root", ROOT, "--stage", doc, "--tag", "v" + version])
         # Atomic guide replacement creates private temporary files; the installed
         # documentation must remain readable by every desktop user.
-        for name in ("USER_GUIDE.en.md", "USER_GUIDE.fr.md"):
+        for name in guides.GUIDES:
             (doc / name).chmod(0o644)
-        guides = module("package-guides")
-        for name in ("UBUNTU.md", "UBUNTU.fr.md"):
+        for name in ("UBUNTU.md",):
             source = ROOT / "docs" / name
             prepared, _ = guides.rewrite_guide(source.read_text(encoding="utf-8"), source, ROOT, "v" + version)
             write(doc / name, prepared)

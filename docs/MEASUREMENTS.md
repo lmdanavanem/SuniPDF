@@ -1,6 +1,5 @@
 # Local calibrated measurements
-
-[Français](MEASUREMENTS.fr.md) · [AEC backlog](AEC_BACKLOG.md)
+[AEC backlog](AEC_BACKLOG.md)
 
 The [0.60 plan workspace](PLAN_WORKSPACE.md) adds vector snapping, feet/inches entry, independent named regions and explicit atomic batch recalibration. See its workflow and qualification limits.
 

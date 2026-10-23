@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.51.0](RELEASE_0.51.0.md). The preceding [0.50.0](RELEASE_0.50.0.md) retains its own evidence. Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English remains the default language; French is available in Settings.
+This guide covers [0.60.0](RELEASE_0.60.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
 
 Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
 
@@ -17,19 +17,40 @@ The right side shows one context panel at a time. A measurement draft blocks ope
 
 [Full reader layout and tool routes](READER_WORKSPACE.md).
 
+## Plan workspace
+
+The annotation register and quantity table can be docked below the PDF or displayed in a floating window.
+Resize the dock and choose its placement; these preferences are saved. Select a row to follow the actual annotation
+and open its contextual properties. Read-only tables can remain open while navigating the document; finish or cancel
+an active field editor before conflicting actions.
+
+Search and annotation inventory show progress and support cancellation between page tasks. A running PDF engine call
+finishes before cancellation is observed. Cached layouts and table results reduce repeated work on unchanged documents.
+
+For multiple scales on one sheet, calibrate a reference inside the intended region, create a named region and place
+its opposite corners. Save the region and the PDF. An unambiguous containing region can be selected automatically;
+overlapping regions or crossing geometry require an explicit choice. Each region, page default and saved measurement
+keeps its own scale. Updating a region affects future drawing.
+
+To change existing measurements across pages, open batch recalibration, select the physical page range and read the
+records. The desktop batch replaces the selected page defaults and can include their supported saved measurements.
+Preview the before/after values, then apply once. One Undo restores the whole batch; named region scales are unchanged.
+The operation refuses stale, signed, protected or unsupported inputs without leaving a partially applied batch.
+Bounds are 512 pages, 4,096 records and 128 MiB per document.
+
+[Scale selection, vector snapping, batch instructions and limits](PLAN_WORKSPACE.md).
+
 ## Edit saved measurement vertices
 
 In **Tools → Review & measure → Measurements**, open **Saved measurements** under **Saved data** on the right, then choose **Edit geometry**. Choose a point by its number in **Vertex**, then drag its handle on the original page. The selector distinguishes coincident points. For a polyline, perimeter or polygon area, choose **Add vertex** and click a segment, including a polygon’s closing segment. One successful insertion ends that mode; **Stop adding** cancels the insertion mode. Select a vertex and choose **Remove selected** to remove it.
 
 Choose **Preview** and **Apply to object** to accept the draft. **Adjust vertices** returns from the preview to the edited draft. Cancel or Escape discards it; an applied change has one Undo step. Save the PDF to retain the change.
 
-Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Length and angle measurements keep their original two or three points. The measurement type, calibration, unit and precision stay fixed. Identity, replies and entered quantity fields and prices are retained; measured values and compatible price totals recalculate from the accepted geometry. Invalid or stale edits cannot be applied. Vector snapping and batch recalculation remain open.
+Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Length and angle measurements keep their original two or three points. The measurement type, calibration, unit and precision stay fixed. Identity, replies and entered quantity fields and prices are retained; measured values and compatible price totals recalculate from the accepted geometry. Invalid or stale edits cannot be applied. The [plan workspace](PLAN_WORKSPACE.md) adds eligible vector snapping and a separate batch recalibration workflow.
 
 [Full workflow and limits](MEASUREMENT_GEOMETRY.md).
 
 ## Aligned revision overlays
-
-Available in [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0). [Evidence](qa/RELEASE_0.47.0.json).
 
 1. Open **Revision overlay** from **Tools → Review & measure** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.
 2. Choose **Manual alignment**, set the offsets, clockwise rotation and scale, then choose **Preview**. The base is magenta and the revision cyan; coordinates start at the displayed page’s top-left corner after crop and page rotation.
@@ -40,18 +61,16 @@ Available in [0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.
 
 ## Quantity tables and typed fields
 
-Available in [0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0). [Evidence](qa/RELEASE_0.46.0.json).
-
 1. Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel’s **Saved data** section or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
 2. Choose **Edit row** to enter **Unit price**, **Currency code**, **Price per unit** and **Cost decimal places**. A blank price is missing; `0` is an explicit zero. Counts and saved measurements supply the quantities; ordinary annotations do not acquire an inferred quantity, and angles are not priced.
-3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; close the table before using Undo/Redo, and save the PDF to retain the fields.
+3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; finish or cancel the field editor before using Undo/Redo, and save the PDF to retain the fields.
 4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
 
 [Full instructions, limits and CLI](QUANTITY_TABLE.md).
 
 ## Reuse local annotation templates
 
-The 0.45 annotation library retains its [qualified scope](RELEASE_0.45.0.md). Open **Tools → Review & measure → Annotation library**. Its local file is separate from PDF files and settings.
+Open **Tools → Review & measure → Annotation library**. Its local file is separate from PDF files and settings.
 
 Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
 Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
@@ -74,7 +93,7 @@ Open a PDF and choose **Tools → Review & measure → Measurements**. Its right
 
 1. Select the unit (`mm`, `cm`, `m`, `in` or `ft`) and 0–4 decimal places. Click **Calibrate this page**,
    then click two different points spanning a known distance. Enter the real **Known distance** and
-   click **Confirm scale**. Decimal feet and inches are supported: 10 feet 6 inches is `10.5 ft` or `126 in`.
+   click **Confirm scale**. Decimal input uses the chosen unit; feet/inches notation such as `10 ft 6 in` or `5' 6 1/2"` converts to that unit.
 2. Choose **Length**, **Polyline length**, **Polygon perimeter**, **Polygon area** or **Angle**, then
    click the points directly on the PDF. Length opens the preview after two points. Angle uses three
    points in this order: first arm, vertex, second arm; it does not require a physical calibration.
@@ -85,12 +104,15 @@ Open a PDF and choose **Tools → Review & measure → Measurements**. Its right
    and its measurement data together. The tool stays active for the next measurement.
 
 During drawing, **Backspace** or **Undo point** removes the last point. **Shift** constrains a segment
-horizontally or vertically in the displayed page axes; it does not snap to existing PDF lines.
+horizontally or vertically in the displayed page axes. Enable vector snapping to show the nearest eligible
+endpoint or straight-line intersection. Scans, text/image bounds and unsupported clips do not supply snap points;
+dense or excessive geometry can decline snapping. Confirm the intended point and use manual placement when needed.
 **Escape** or **Cancel drawing** discards the draft. Finish or cancel before changing page, document or tool.
 
 Each page has its own session scale. Ordinary annotation edits and normal tab switches retain confirmed
-scales; changes to page geometry, structure or content clear them. A session scale takes priority over the page's
-saved default. Changing units converts the confirmed distance. Saved measurements keep their own
+scales; changes to page geometry, structure or content clear them. When using the page scale, a session scale takes priority over the page's
+saved default. Named regions provide independent scales; choose explicitly when automatic selection is ambiguous.
+Changing units converts the confirmed distance. Saved measurements keep their own
 geometry and scale; recalibrating new measurements does not change existing ones.
 
 To keep a scale across closing/reopening, click **Save scale in PDF** after calibration, then save the
@@ -98,9 +120,11 @@ PDF file. The saved default is reused when valid. **Remove saved scale** removes
 default, while retaining any explicitly chosen session scale; save the file to retain the removal.
 **Undo**/**Redo** restores the document state and reloads its saved default; it does not restore a cleared session scale. Saving/removing a default
 requires document-modification permission; measurement creation requires annotation permission.
-Rotation and page reordering preserve eligible defaults. Changed crop bounds or decoded page content,
-unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
-default. Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
+Rotation and page reordering preserve eligible defaults. Changed crop bounds, decoded page content or reachable
+resources, unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
+default. New page defaults use version 2. Resource-dependent version-1 defaults require explicit recalibration or removal.
+Supported stale regions can be explicitly cleared and recreated; malformed or unknown records are refused.
+Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
 
 Click **Saved measurements** under **Saved data** on the right to inspect the current page. Reading the list leaves the PDF unchanged. It
 shows value/unit, type, annotation index, optional identity, vertex count, precision and known reference
@@ -115,26 +139,27 @@ The CLI exposes `page-calibration`, `set-page-calibration` and `remove-page-cali
 manual `--calibration`/`--known-distance`. Writes always require a new output file, even with `--overwrite`.
 Use password environment/stdin options for protected files. [Examples and bounds](MEASUREMENTS.md#cli-and-quantities).
 
-In 0.44, choose **Edit measurement** in the inspector to change that annotation's known reference
+Choose **Edit measurement** in the inspector to change that annotation's known reference
 distance, unit or precision. Unit changes preserve physical size; reference-distance changes recalculate
 only this measurement. Angles expose precision only. Request a **Preview**, inspect the rendered
 candidate, then **Apply**; **Cancel** changes nothing. One Undo/Redo step restores the previous/replacement
 measurement, including its identity and linked comments. Save the PDF to retain the edit. Measured
-vertices and reference points remain fixed in this desktop editor; changed or unsupported targets are refused.
+vertices and reference points remain fixed in this scale editor; use **Edit geometry** for supported saved-vertex changes. Changed or unsupported targets are refused.
 
 **Use saved page scale** discards the temporary override when a valid saved default exists. Otherwise
 **Clear temporary scale** discards only the page's temporary scale. Neither control modifies the PDF.
 The manual rich-annotation path now requires an explicit calibration instead of supplying a positive default.
 
-The 0.44 CLI adds `edit-measurement`: supply a fresh `--expected-record` from `measurements`, the physical
+For the CLI `edit-measurement` command, supply a fresh `--expected-record` from `measurements`, the physical
 `--page`, the record's annotation `--index` and a new `--out`. The CLI can replace explicit vertices;
 see the measurement guide for calibration and identity requirements. Export requires copying permission.
 Permitted creation/editing without it returns `measurement: null` and `export_unavailable: true`.
 Resizing content and annotations on measured pages is refused before changes are committed.
 
-Global recalculation, saved-vertex dragging, vector snapping and multiple-scale viewports remain unavailable. Check the known distance and drawing revision; a
-calculated value does not establish physical accuracy. See the [measurement guide](MEASUREMENTS.md)
-for the open metadata format, permissions and geometry limits.
+Saved-vertex editing, eligible vector snapping, named scale regions and explicit batch recalibration are available
+within their documented limits. Check the known distance and drawing revision; a calculated value does not establish
+physical accuracy. See the [measurement guide](MEASUREMENTS.md) and [plan workspace](PLAN_WORKSPACE.md) for formats,
+permissions and geometry limits. Private real-project plan qualification remains deferred.
 
 ## Prepare a visual signature
 
@@ -158,7 +183,7 @@ JSON exit `0` means the bounded inventory completed; exit `2` means partial resu
 establish file safety or PDF/A/PDF/UA compliance and do not verify signature integrity. Payloads are not
 inspected. The input limit is 128 MiB; object/traversal limits can also produce a refusal or partial result.
 
-## New editing and document tools
+## Editing and document tools
 
 - **Edit → Rich annotations** opens guarded controls for embedded-font FreeText, polygons,
   polylines, clouds, stamps and attachments. Preview before applying. **Erase ink strokes** removes
@@ -208,7 +233,10 @@ See [rich annotations](RICH_ANNOTATIONS.md), [redaction](REDACTION.md),
   installed system-wide. Preferences use `%APPDATA%\SuniPDF\settings.json`; update downloads use a temporary folder.
 - **MSI installer**: double-click `SuniPDF-<version>-win-x64.msi`. SuniPDF appears in the Start menu and in
   "Open with" for PDF files; it does not become the default reader without your consent.
-- Uninstall: Windows Settings › Apps, or delete the folder for the portable version.
+- **Ubuntu amd64**: download the DEB for Ubuntu 22.04/24.04 and install it with
+  `sudo apt install ./SuniPDF-0.60.0-linux-amd64.deb`. Start SuniPDF from the application menu.
+  See [Ubuntu installation](UBUNTU.md) for checksums, dependencies and platform limits.
+- Uninstall: Windows Settings › Apps, delete the portable folder, or use `sudo apt remove sunipdf` on Ubuntu.
 
 ## Updates and language
 
@@ -216,11 +244,14 @@ English is the default interface language. French is available in Settings; an e
 From 0.8.2, the application checks GitHub Releases at startup without sending PDF files. Disable automatic checks in About,
 or use **Check for updates** there at any time. A failed automatic check does not block local PDF work.
 
-When a newer version is available, choose **Download update**. After size and SHA256 verification, choose **Close and install**.
+On Windows, when a newer version is available, choose **Download update**. After size and SHA256 verification, choose **Close and install**.
 Save or discard changes in each open document as usual; cancelling or a failed save cancels installation.
 Installed x64 copies use the Windows MSI installer and may show a Windows administrator prompt. Portable x64/ARM64 copies
 replace the application files in their own folder and keep a rollback backup. A failed portable replacement restores the old files.
 Older versions require one manual upgrade to obtain this feature. The updater never restarts the computer automatically.
+
+On Ubuntu, **Download update** opens the release page. Download and verify the DEB, then install it through APT;
+the application does not elevate privileges or configure an APT repository.
 
 ## Home screen
 
@@ -294,7 +325,7 @@ comment. **Advanced annotations**, real PDF annotations (not page content: other
 | **Rectangle, Ellipse, Line or arrow** (annotations) | Drag; colour, width, fill (rectangle and ellipse), opacity, "Arrow" checkbox |
 | **Link** | Draw an area (at least 6 points) then choose "Go to a page" or "Open a web address" (`http`, `https` or `mailto` only) |
 
-**On-page free text — from 0.20.0.** With **Free text box** (F), click the page for a default box or
+**On-page free text.** With **Free text box** (F), click the page for a default box or
 drag its rectangle, then type directly in the anchored multiline editor. Adjust size, text colour,
 background and border with the existing controls (size 6–96 pt, border 0–10 pt). Choose **Add** to create the annotation. To edit one,
 select the FreeText annotation and choose **Edit Text**, or double-click it, then choose **Save**.
@@ -307,12 +338,13 @@ or worker failure retains typed text and style for retry. Text must be nonempty,
 rectangle at least twice the font size wide and at least 2 pt high. A successful Add/Save is one Undo step; save the PDF explicitly
 afterwards. Unsubmitted editor text stays in memory and is absent from crash recovery.
 
-The box can grow downwards for wrapped text. Rendering still uses Helvetica WinAnsi (Latin accents, € and
-common punctuation); unsupported characters appear as "?", while `/Contents` retains the exact text.
-Bold/italic, rich text, CJK and right-to-left layout remain unsupported. Locked annotations and malformed
-free-text borders keep the existing editing restrictions. This editor does not edit PDF page text objects.
+The basic editor uses Helvetica WinAnsi. Choose **Embedded fonts, bold, italic and CJK** to open the rich-annotation
+dialog while retaining the draft text and rectangle. It supports one selected font face, horizontal Latin/CJK text and
+an actual PDF preview; absent glyphs, unsupported shaping or text that does not fit are refused.
+Span-level rich text and right-to-left shaping remain unsupported. Locked annotations and malformed borders retain
+their editing restrictions. This editor does not edit PDF page text objects. See [rich annotations](RICH_ANNOTATIONS.md).
 
-**Grouped drawing — available in 0.18.0.** Draw multiple strokes on one page, then click
+**Grouped drawing.** Draw multiple strokes on one page, then click
 **Finish drawing** to create one annotation and one Undo step, or **Cancel drawing** to discard only that draft.
 Esc also cancels an unsubmitted draft. Colour, width and opacity restyle the whole draft until Finish captures
 them. Finish or cancel before saving/closing, switching document/tool or making a conflicting edit; navigation,
@@ -327,7 +359,7 @@ An annotation created by SuniPDF can be resized and restyled ("Apply to annotati
 applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can
 also be recoloured). A locked annotation cannot be changed.
 
-**Dashed shapes — available in 0.16.0.** For Rectangle, Ellipse, Line or Arrow annotations, choose
+**Dashed shapes.** For Rectangle, Ellipse, Line or Arrow annotations, choose
 **Dashed border** before drawing. On an editable existing SuniPDF shape, change the checkbox and use
 **Apply to annotation**. Checked means 6-point dashes with 3-point gaps; unchecked means solid. Fill stays
 continuous and arrowheads stay solid. A loaded custom pattern is retained when selecting, recolouring, moving,
@@ -347,7 +379,7 @@ to the page; an external link first opens a **confirmation dialog that shows the
 Copy address, Cancel): nothing opens without your agreement, and only `http`, `https` and `mailto` addresses are
 accepted. Actions that launch a program or a script are never run.
 
-**Edit an existing target — available in 0.15.0.** Use **Select an annotation** (A), select the link and choose
+**Edit an existing target.** Use **Select an annotation** (A), select the link and choose
 **Edit target**, or double-click it. Choose an `http`, `https` or `mailto` address, or a physical page number.
 An existing resolved named/XYZ destination prefills its page. Replacing a page target fits the whole page;
 the old detailed position/zoom is not retained, as the dialog explains. An unsupported destination starts with
@@ -550,7 +582,7 @@ Use **View** for view-only quarter-turn rotation and full screen. These controls
 starting an editing tool returns to upright view. Back/Forward navigation (Alt+Left/Alt+Right) keeps up to 256 positions
 per tab, including page and scroll anchors. View state/history belongs to each tab and is not PDF content.
 
-### 0.11.0 navigation
+### Navigation
 
 PDF page labels such as `iv`, `1` or `Annexe-É7` appear alongside physical page indices in thumbnails, the status bar
 and accessibility descriptions. Type an exact, case-sensitive, unique label into the page box and press Enter.
@@ -571,7 +603,7 @@ returns through the tab's page, position and zoom history, including destination
 text or form edits before following a destination. Unsupported fit modes, unreadable destination details and
 `/FitH` zero/null positions fall back to the target page without applying destination zoom or position.
 
-### Page-label authoring — available in 0.14.0
+### Page-label authoring
 
 Open **Pages → Page Labels…**, or the Page Labels command in **Organize pages**. Set **First physical page**
 and **Last physical page**: the range includes both ends. Choose decimal, uppercase/lowercase Roman,
@@ -644,8 +676,8 @@ passed. See [Project status](PROJECT_STATUS.md) for evidence and remaining hardw
   extracted under the areas, otherwise nothing is changed: check "Convert redacted pages entirely to images" in
   that case. Ctrl+Z undoes while the document is open; the file only changes when you save (saving with
   unapplied areas asks for confirmation). Limits: text inside a scanned image without OCR cannot be found by
-  searching, bookmarks and attachments are not changed, a digital signature becomes invalid (details:
-  `docs/KNOWN_ISSUES.en.md` A40). From the command line:
+  searching. Review the [redaction workflow and limits](REDACTION.md), including hidden-data cleanup,
+  before sharing a saved copy. From the command line:
   `sunipdf-cli redact input.pdf --text "John Smith" --rect "1:72,500,272,560" --out redacted.pdf`.
 
 ## Saving
@@ -692,8 +724,9 @@ streams, actions, attachments and rich text are refused. Referenced document loc
 ## Offline OCR
 
 Open **Scan & OCR**, choose English, French or both, and the current page or all pages, then start recognition.
-The embedded Tesseract 5.5.3 / Leptonica 1.87 runtime and fast `eng`/`fra` models run locally; no model download
-or PDF upload is required. Pages already containing extractable text are skipped. Recognised words become
+Windows packages bundle Tesseract and fast `eng`/`fra` models; Ubuntu uses the local Tesseract and language packages
+installed as dependencies. Recognition runs locally without a model download or PDF upload.
+Pages already containing extractable text are skipped. Recognised words become
 an invisible text layer for search and copy, while the existing page appearance is retained.
 Recognition targets 300 dpi, reduced for large pages (16 million pixels, 8192 pixels per side); very large
 pages are refused. Progress is reported per page. Cancellation or an error leaves the document unchanged;
@@ -845,10 +878,10 @@ Office conversion has the bounded local scope above; editable XFA forms remain u
 order is not inferred. Field creation supports text, checkbox, radio, combo and list widgets; FDF interchange has the value-only limits above. OCR accuracy depends on the scan
 and language; existing text is not replaced. Windows trust, revocation and supported RFC3161 timestamps have explicit results; archival LTV validation and AATL/EUTL qualification remain unsupported.
 Real printer, installation/update and ARM64 hardware validation remain separate from automated tests.
-See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.
+See [known issues](KNOWN_ISSUES.md) and the [roadmap](ROADMAP.md).
 
 
-## Local comparison and search across selected PDFs (0.31.0)
+## Local comparison and search across selected PDFs
 
 Use **File → Compare PDF files…** or **Edit → Search in PDF files…**. Save current edits before selecting the files. Compare physical page pairs with adjustable starting pages; select a changed pair for three previews. Search results open their physical page. Both operations are read-only, local and cancellable. Partial results never mean the remaining files are clean. See the [complete guide and limits](LOCAL_REVIEW.md), including protected files, image-only pages, JSON commands and preview resolution.
 

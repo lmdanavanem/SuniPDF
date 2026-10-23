@@ -12,7 +12,7 @@ import unittest
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
 
-GUIDES = ('USER_GUIDE.en.md', 'USER_GUIDE.fr.md')
+GUIDES = ('USER_GUIDE.en.md',)
 REPOSITORY = 'https://github.com/lmdanavanem/SuniPDF'
 MAX_GUIDE_BYTES = 4 * 1024 * 1024
 INLINE_LINK = re.compile(
@@ -119,7 +119,7 @@ def prepare_guides(root: Path, stage: Path, tag: str) -> dict[str, int]:
             raise ValueError(f'The guide exceeds {MAX_GUIDE_BYTES} bytes: {name}')
         rendered, count = rewrite_guide(source.read_bytes().decode('utf-8'), source, root, tag)
         prepared.append((destination, rendered.encode('utf-8'), count))
-    # Validate both documents before replacing either staged copy.
+    # Validate every guide before replacing its staged copy.
     for destination, payload, _ in prepared:
         temporary = None
         try:
@@ -145,7 +145,6 @@ class GuideTests(unittest.TestCase):
         self.stage.mkdir()
         self.source = self.docs / GUIDES[0]
         self.source.write_text('# Guide\n', encoding='utf-8')
-        (self.docs / GUIDES[1]).write_text('# Guide FR\n', encoding='utf-8')
         (self.docs / 'MEASUREMENTS.md').write_text('# Measurements\n', encoding='utf-8')
         (self.root / 'CHANGELOG.md').write_text('# Changes\n', encoding='utf-8')
 
@@ -194,10 +193,10 @@ class GuideTests(unittest.TestCase):
             self.assertIn(b'/blob/v0.43.0/docs/MEASUREMENTS.md', (self.stage / name).read_bytes())
             self.assertTrue((self.stage / name).read_bytes().startswith(b'\xef\xbb\xbf'))
 
-    def test_validation_failure_preserves_both_staged_files(self) -> None:
+    def test_validation_failure_preserves_staged_file(self) -> None:
         for name in GUIDES:
             (self.stage / name).write_bytes(b'original copy')
-        (self.docs / GUIDES[1]).write_text('[bad](missing.md)', encoding='utf-8')
+        self.source.write_text('[bad](missing.md)', encoding='utf-8')
         with self.assertRaises(FileNotFoundError):
             prepare_guides(self.root, self.stage, 'v0.43.0')
         for name in GUIDES:

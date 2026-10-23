@@ -10,4 +10,4 @@ labels: enhancement
 
 **Alternatives considered**
 
-Check `docs/ROADMAP.md` and `docs/NEXT_TASKS.md` first; the feature may already be planned.
+Check `docs/ROADMAP.md` first; the feature may already be planned.

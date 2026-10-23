@@ -1,7 +1,5 @@
 # SuniPDF 0.33.0
 
-[Français](RELEASE_0.33.0.fr.md)
-
 ## Changes
 
 - Preserve bounded imported UTF-8 bookmark titles containing tabs and line breaks during page/destination

@@ -1,6 +1,5 @@
 # Reader controls and tools
-
-[Français](READER_WORKSPACE.fr.md) · [User guide](USER_GUIDE.en.md)
+[User guide](USER_GUIDE.en.md)
 
 The 0.60 plan workspace adds resizable docked/floating tables, cached page layouts and measurement scale tools. This page retains the reading controls introduced in 0.50. [0.60](PLAN_WORKSPACE.md).
 

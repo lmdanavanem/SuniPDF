@@ -1,17 +1,17 @@
 # Changelog
 
-[Français](CHANGELOG.fr.md)
-
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB) on the GitHub Releases page.
 
 ## [Unreleased]
 
-## [0.60.0] - release candidate
+- Maintain one English documentation set, consolidate current priorities in the roadmap and archive earlier project-status records. Future packages include the English user guide; application translations and OCR remain available in English and French.
+
+## [0.60.0] - 2026-10-23
 
 0.60 implements cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
 
-[0.60 scope](docs/RELEASE_0.60.0.md).
+[Release notes](docs/RELEASE_0.60.0.md) · [Evidence](docs/qa/RELEASE_0.60.0.json).
 
 ## [0.51.0] - 2026-10-23
 
@@ -819,7 +819,6 @@ AcroForm forms (the "fill" half), AES-256 encryption and normalized passwords, d
 
 Backlog wave 1, delivered in slices with independent review: "All tools" hub, advanced content editing,
 continuous view, then fixes from the adversarial review and hardened distribution.
-
 
 ### Added (continuous view, SUNI-012b)
 - **Continuous scrolling**: all pages stacked in a single scroll area (default mode); **Single Page** remains

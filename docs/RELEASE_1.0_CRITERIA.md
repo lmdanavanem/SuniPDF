@@ -1,37 +1,7 @@
 # SuniPDF 1.0 acceptance criteria
 
-Latest qualified slice: [0.50.0 — reader controls and organized tools](RELEASE_0.50.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.49.0 — adding and removing saved measurement vertices](RELEASE_0.49.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.48.0 — editing saved measurement vertices](RELEASE_0.48.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.47.0 — aligned revision overlays](RELEASE_0.47.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.46.0 — quantity tables and typed fields](RELEASE_0.46.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.45.0 — local annotation libraries](RELEASE_0.45.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.44.0 — editing saved measurements](RELEASE_0.44.0.md). Remaining criteria stay open.
-
-Previously qualified slice: [0.43.0 — saved page scales and measurement inspection](RELEASE_0.43.0.md). Remaining acceptance criteria below stay open.
-
-Previously qualified slice: [0.42.0 — on-page measurement tools](RELEASE_0.42.0.md). Remaining acceptance criteria below stay open.
-
-Previously qualified slice: [0.41.0 — manual plan counts and annotation registers](RELEASE_0.41.0.md). Remaining acceptance criteria below stay open.
-
-Previously qualified slice: [0.40.0 — calibrated measurements and image stamps](RELEASE_0.40.0.md). Remaining acceptance criteria below stay open.
-
-Previously qualified slice: [0.39.0 — reusable decoration presets](RELEASE_0.39.0.md). Remaining acceptance criteria below stay open.
-
-Previously qualified slice: [0.38.0 — six-zone headers and footers](RELEASE_0.38.0.md). Remaining acceptance criteria below stay open.
-
-Previously qualified slice: [0.37.0 — image watermarks](RELEASE_0.37.0.md). Remaining acceptance criteria below stay open.
-
-[Français](RELEASE_1.0_CRITERIA.fr.md)
-
-This is the accepted preparation track after 0.32.0, not a claim that 1.0 is qualified. The current
-stable release is now [0.50.0](RELEASE_0.50.0.md). Existing supported operations and conservative refusals
+The current stable release is [0.60.0](RELEASE_0.60.0.md), with [recorded qualification](qa/RELEASE_0.60.0.json).
+The gates below remain open before 1.0. Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
 
@@ -63,7 +33,7 @@ criteria have independent evidence.
 Prepare a release candidate only after required CI/security/package gates pass on the frozen source and
 all P1 criteria in the advertised 1.0 scope are met. Freeze features for pilot use, fix regressions,
 then qualify the same source and its actual downloaded packages. Retain updater and installer evidence,
-English/French guides, license inventories, reproducible source links and recovery instructions.
+the English user guide, license inventories, reproducible source links and recovery instructions.
 
-Remaining P3 Suggestions can follow 1.0 unless a concrete user failure makes one necessary. The 0.35.0 visual-signature and 0.36.0 keyboard-shortcut slices are delivered within their documented bounds; native qualification and Explorer remain open. Project counts are historical while edits remain deferred.
+Remaining P3 suggestions can follow 1.0 unless a concrete user failure makes one necessary. See the [roadmap](ROADMAP.md) for current priorities and the [changelog](../CHANGELOG.md) for delivered work.
 No release date or hardware-validation result is implied by this checklist.

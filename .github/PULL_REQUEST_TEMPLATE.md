@@ -11,8 +11,8 @@
 
 ## Documentation
 
-- [ ] `CHANGELOG.md` and `CHANGELOG.fr.md`
-- [ ] English and French user guides if visible behavior changes
+- [ ] `CHANGELOG.md`
+- [ ] `docs/USER_GUIDE.en.md` if visible behavior changes
 - [ ] `docs/KNOWN_ISSUES.md` for remaining limits
 
 ## Not covered

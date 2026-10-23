@@ -1,6 +1,5 @@
 # Manual plan counts and annotation register
-
-[Français](MARKUP_REGISTER.fr.md) · [Measurements](MEASUREMENTS.md) · [AEC backlog](AEC_BACKLOG.md)
+[Measurements](MEASUREMENTS.md) · [AEC backlog](AEC_BACKLOG.md)
 
 The local 0.41.0 slice adds persistent manual counts and an all-page markup register. These tools run offline and remain free and open source.
 
