@@ -58,7 +58,9 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
         assert!(reader.read_next(&doc).unwrap());
         let cooperative = reader.finish().unwrap();
         assert_eq!(cooperative.rows, report.rows);
-        assert_eq!(cooperative.source_sha256, report.source_sha256);
+        assert_eq!(cooperative.page_count, report.page_count);
+        // Each collection owns a separate PDFium serialization, whose trailer ID may differ.
+        // Row semantics must match; the captured source hash is checked through the edit API.
         let filter = RegisterFilter {
             count_group: "Lights été 中文".into(),
             ..Default::default()
@@ -74,7 +76,14 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
         assert_eq!(row.rect, Some([71.0, 81.0, 89.0, 99.0]));
         assert_eq!(row.author.as_deref(), Some("Site reviewer"));
         let id = row.annotation_id.clone();
-        let target = report.target(row);
+        let synchronous_target = report.target(row);
+        let target = cooperative.target(
+            cooperative
+                .rows
+                .iter()
+                .find(|r| r.page == row.page && r.index == row.index)
+                .unwrap(),
+        );
         let fields = RegisterFields {
             business_status: Some("Ready for site".into()),
             discipline: Some("Electrical".into()),
@@ -83,8 +92,20 @@ fn count_markers_and_register_keep_identity_totals_rotation_permissions_and_stal
                 ("Formula-like text".into(), "=2+3".into()),
             ]),
         };
+        let mut tampered = target.clone();
+        tampered.source_sha256.push('0');
+        assert!(
+            doc.set_annotation_register_fields(&tampered, &fields, Some("Sockets"))
+                .is_err(),
+            "a cooperative target must still prove its exact captured source bytes"
+        );
         doc.set_annotation_register_fields(&target, &fields, Some("Sockets"))
             .unwrap();
+        assert!(
+            doc.set_annotation_register_fields(&synchronous_target, &fields, None)
+                .is_err(),
+            "the earlier synchronous snapshot is stale after a cooperative target edit"
+        );
         assert!(
             doc.set_annotation_register_fields(&target, &fields, None)
                 .is_err(),

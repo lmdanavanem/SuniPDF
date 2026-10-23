@@ -163,7 +163,7 @@ fn fulfill_requests(
             _ => {
                 return Err(
                     "Reader UI requested an unexpected operation during read-only evidence".into(),
-                )
+                );
             }
         };
         responses.send(response)?;
@@ -381,11 +381,47 @@ fn capture_scene(
         "Actual document view did not request PDF tiles",
     )?;
     let frame = final_frame.ok_or("Missing application UI frame")?;
+    // Persist the actual failed scene too: structural checks below must not hide the frame
+    // needed to distinguish a product layout regression from an evidence expectation error.
+    let pixel_result = readback(
+        device,
+        queue,
+        &mut renderer,
+        &context,
+        frame.clone(),
+        [scene.width, scene.height],
+    );
+    for id in pending_texture_frees {
+        renderer.free_texture(&id);
+    }
+    let pixels = pixel_result?;
+    let png_name = format!("{}.png", scene.name);
+    let png = output.join(&png_name);
+    image::save_buffer(
+        &png,
+        &pixels,
+        scene.width,
+        scene.height,
+        image::ColorType::Rgba8,
+    )?;
     let tree = frame
         .platform_output
         .accesskit_update
         .as_ref()
         .ok_or("Missing application accessibility tree")?;
+    require(
+        tree.nodes.len() <= 10_000,
+        "Reader UI accessibility tree exceeds its evidence bound",
+    )?;
+    std::fs::write(
+        output.join(format!("{}-accessibility.json", scene.name)),
+        serde_json::to_vec_pretty(&json!({
+            "scene": scene.name,
+            "nodes": tree.nodes.iter().map(|(_, node)| json!({
+                "role": format!("{:?}", node.role()), "label": node.label(), "value": node.value(),
+            })).collect::<Vec<_>>()
+        }))?,
+    )?;
     let viewport = Rect::from_min_size(
         pos2(0.0, 0.0),
         vec2(scene.width as f32, scene.height as f32),
@@ -408,18 +444,26 @@ fn capture_scene(
             TableKind::Register => ("register.title", "register.close"),
             TableKind::Quantities => ("quantity.title", "quantity.close"),
         };
-        for key in [
-            title,
-            "workspace.table.dock",
-            "workspace.table.float",
-            close,
-        ] {
+        let title = tr(scene.language, title);
+        // egui exposes static Role::Label text through value(), while actionable controls use
+        // label(). Verify both accessibility and visible paint for the non-interactive title.
+        require(
+            tree.nodes.iter().any(|(_, node)| node.value() == Some(title) || node.label() == Some(title))
+                && frame.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Text(text)
+                    if text.galley.text() == title && Rect::from_min_size(text.pos, text.galley.size())
+                        .intersect(shape.clip_rect).intersect(viewport).is_positive())),
+            &format!("{}: docked table title {title:?} is not accessible and visible", scene.name),
+        )?;
+        for key in ["workspace.table.dock", "workspace.table.float", close] {
             let label = tr(scene.language, key);
             require(
                 tree.nodes
                     .iter()
                     .any(|(_, node)| node.label() == Some(label)),
-                "A docked table control is missing from the real application UI",
+                &format!(
+                    "{}: docked table control {key} ({label:?}) is missing; see the scene accessibility JSON",
+                    scene.name
+                ),
             )?;
         }
         require(
@@ -491,18 +535,6 @@ fn capture_scene(
         .iter()
         .map(|rect| [rect.min.x, rect.min.y, rect.max.x, rect.max.y])
         .collect();
-    let pixel_result = readback(
-        device,
-        queue,
-        &mut renderer,
-        &context,
-        frame,
-        [scene.width, scene.height],
-    );
-    for id in pending_texture_frees {
-        renderer.free_texture(&id);
-    }
-    let pixels = pixel_result?;
     let mut blue_ink = 0_u64;
     for y in visible.top().ceil() as u32..visible.bottom().floor() as u32 {
         for x in visible.left().ceil() as u32..visible.right().floor() as u32 {
@@ -522,15 +554,6 @@ fn capture_scene(
     require(
         blue_ink > 20,
         "PDFium fixture ink is missing from the actual UI pixel readback",
-    )?;
-    let png_name = format!("{}.png", scene.name);
-    let png = output.join(&png_name);
-    image::save_buffer(
-        &png,
-        &pixels,
-        scene.width,
-        scene.height,
-        image::ColorType::Rgba8,
     )?;
     Ok(json!({
         "name": scene.name, "language": scene.language.code(), "darkTheme": scene.dark,

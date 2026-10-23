@@ -961,7 +961,7 @@ mod tests {
         state.input_distance = "2,5".into();
         assert!(state.confirm_calibration());
         assert!(!state.is_active_draft());
-        assert!(state.scales.contains_key(&0));
+        assert_eq!(state.scales[&0].distance, 2.5);
         assert!(!state.push_point(1, (10.0, 20.0), false));
     }
 
@@ -1263,9 +1263,17 @@ mod tests {
             0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b())
         }
 
-        fn text_colors(shape: &egui::Shape, label: &str, colors: &mut Vec<egui::Color32>) {
+        fn text_colors(
+            shape: &egui::Shape,
+            label: &str,
+            clip: Rect,
+            colors: &mut Vec<egui::Color32>,
+        ) {
             match shape {
-                egui::Shape::Text(text) if text.galley.text() == label => {
+                egui::Shape::Text(text)
+                    if text.galley.text() == label
+                        && clip.intersects(Rect::from_min_size(text.pos, text.galley.size())) =>
+                {
                     let color = text.galley.job.sections[0].format.color;
                     let painted = if let Some(override_color) = text.override_text_color {
                         override_color
@@ -1278,7 +1286,7 @@ mod tests {
                 }
                 egui::Shape::Vec(shapes) => {
                     for shape in shapes {
-                        text_colors(shape, label, colors);
+                        text_colors(shape, label, clip, colors);
                     }
                 }
                 _ => {}
@@ -1303,40 +1311,72 @@ mod tests {
                         state.input_distance = "invalid".into();
                         assert!(!state.confirm_calibration());
                     }
-                    let mut colors = Vec::new();
-                    for _ in 0..3 {
+                    let headings = [
+                        "measure.tool",
+                        "measure.panel.create",
+                        "measure.panel.scale",
+                        "measure.panel.drawing",
+                        "measure.panel.saved",
+                        "measure.kind",
+                        "measure.unit",
+                        "measure.precision",
+                    ];
+                    let mut seen = std::collections::BTreeSet::new();
+                    let mut saw_message = false;
+                    let palette = crate::theme::palette(dark);
+                    for frame in 0..48 {
+                        let events = if frame == 0 || (frame >= 8 && frame % 8 == 0) {
+                            vec![
+                                egui::Event::PointerMoved(Pos2::new(140.0, 360.0)),
+                                egui::Event::MouseWheel {
+                                    unit: egui::MouseWheelUnit::Point,
+                                    delta: egui::vec2(
+                                        0.0,
+                                        if frame == 0 { 2000.0 } else { -250.0 },
+                                    ),
+                                    phase: egui::TouchPhase::Move,
+                                    source: egui::MouseWheelSource::Wheel,
+                                    modifiers: Modifiers::NONE,
+                                },
+                            ]
+                        } else {
+                            Vec::new()
+                        };
                         let mut output = ctx.run_ui(
                             egui::RawInput {
                                 screen_rect: Some(Rect::from_min_size(
                                     Pos2::ZERO,
-                                    egui::vec2(280.0, 1100.0),
+                                    egui::vec2(280.0, 720.0),
                                 )),
+                                time: Some(
+                                    (if invalid { 48.0 } else { 0.0 } + frame as f64) * 0.05,
+                                ),
+                                events,
                                 ..Default::default()
                             },
                             |ui| app.measurement_dock(&ctx, ui),
                         );
                         output.textures_delta.clear();
-                        let palette = crate::theme::palette(dark);
-                        for key in [
-                            "measure.tool",
-                            "measure.panel.create",
-                            "measure.panel.scale",
-                            "measure.panel.drawing",
-                            "measure.panel.saved",
-                            "measure.kind",
-                            "measure.unit",
-                            "measure.precision",
-                        ] {
-                            let mut heading_colors = Vec::new();
+                        for key in headings {
+                            let mut colors = Vec::new();
                             for shape in &output.shapes {
-                                text_colors(&shape.shape, tr(app.lang(), key), &mut heading_colors);
+                                text_colors(
+                                    &shape.shape,
+                                    tr(app.lang(), key),
+                                    shape.clip_rect,
+                                    &mut colors,
+                                );
                             }
+                            if colors.is_empty() {
+                                continue;
+                            }
+                            seen.insert(key);
                             assert_eq!(
-                                heading_colors,
+                                colors,
                                 vec![palette.text],
                                 "{language}, dark={dark}, {key}"
                             );
-                            let foreground = luminance(heading_colors[0]);
+                            let foreground = luminance(colors[0]);
                             let background = luminance(palette.surface);
                             assert!(
                                 (foreground.max(background) + 0.05)
@@ -1345,30 +1385,33 @@ mod tests {
                                 "panel text must be readable: {language}, dark={dark}, {key}"
                             );
                         }
-                        colors.clear();
+                        let mut colors = Vec::new();
+                        let message = if invalid {
+                            "measure.scale_invalid"
+                        } else {
+                            "measure.no_scale"
+                        };
                         for shape in &output.shapes {
                             text_colors(
                                 &shape.shape,
-                                tr(
-                                    app.lang(),
-                                    if invalid {
-                                        "measure.scale_invalid"
-                                    } else {
-                                        "measure.no_scale"
-                                    },
-                                ),
+                                tr(app.lang(), message),
+                                shape.clip_rect,
                                 &mut colors,
                             );
                         }
+                        if !colors.is_empty() {
+                            saw_message = true;
+                            assert_eq!(
+                                colors,
+                                vec![if invalid { palette.error } else { palette.text_muted }],
+                                "show one neutral prerequisite or one actual failure: {language}, dark={dark}"
+                            );
+                        }
                     }
-                    assert_eq!(
-                        colors,
-                        vec![if invalid {
-                            crate::theme::palette(dark).error
-                        } else {
-                            crate::theme::palette(dark).text_muted
-                        }],
-                        "show one neutral prerequisite or one actual failure: {language}, dark={dark}"
+                    assert_eq!(seen, headings.into_iter().collect(), "all panel sections must be reachable by scrolling: {language}, dark={dark}");
+                    assert!(
+                        saw_message,
+                        "calibration guidance must remain reachable: {language}, dark={dark}"
                     );
                 }
             }

@@ -156,6 +156,8 @@ impl RegisterSort {
 
 #[derive(Debug, Clone, Default)]
 pub struct AnnotationRegister {
+    /// Hash of this collection's exact serialized snapshot, not a canonical document identity.
+    /// Unchanged documents may serialize with different trailer IDs on a subsequent collection.
     pub source_sha256: String,
     pub page_count: usize,
     pub rows: Vec<RegisterRow>,
@@ -289,7 +291,9 @@ impl AnnotationRegister {
 
     /// Every value is quoted; dangerous spreadsheet prefixes are escaped even after whitespace/BOM.
     pub fn csv(&self, filter: &RegisterFilter, sort: RegisterSort, descending: bool) -> String {
-        let mut output = String::from("source_sha256,page,index,annotation_id,kind,author,modified,review_status,business_status,discipline,subject,contents,count_group,quantity,rect,custom_fields,is_reply,hidden,locked\r\n");
+        let mut output = String::from(
+            "source_sha256,page,index,annotation_id,kind,author,modified,review_status,business_status,discipline,subject,contents,count_group,quantity,rect,custom_fields,is_reply,hidden,locked\r\n",
+        );
         for r in self.select(filter, sort, descending) {
             let cells = [
                 Some(self.source_sha256.clone()),

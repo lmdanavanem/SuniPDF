@@ -2,13 +2,14 @@
 
 use crate::{measurement::MeasurementUnit, EngineError};
 
-/// Parse a positive distance in `unit`. Plain decimal input uses that unit. Feet/inches
+/// Parse a positive distance in `unit`. A decimal point or comma uses that unit; grouping
+/// separators and mixed decimal conventions are rejected. Feet/inches
 /// notation (`5' 6 1/2"`, `5 ft 6 in`, `6 1/2 in`) is converted explicitly; mixed signs,
 /// missing units, zero denominators, NaN and ambiguous trailing input are rejected.
 pub fn parse_measurement_distance(text: &str, unit: MeasurementUnit) -> Result<f64, EngineError> {
     let invalid =
         || EngineError::Other("enter a positive distance or feet/inches such as 5' 6 1/2\"".into());
-    if text.len() > 128 || !text.is_ascii() {
+    if text.len() > 128 || !text.is_ascii() || (text.contains('.') && text.contains(',')) {
         return Err(invalid());
     }
     let text = text.trim().to_ascii_lowercase();
@@ -18,10 +19,18 @@ pub fn parse_measurement_distance(text: &str, unit: MeasurementUnit) -> Result<f
             return None;
         }
         let positive = |s: &str| -> Option<f64> {
-            if s.is_empty() || s.bytes().any(|b| !b.is_ascii_digit() && b != b'.') {
+            if s.is_empty()
+                || s.bytes()
+                    .any(|b| !b.is_ascii_digit() && b != b'.' && b != b',')
+            {
                 return None;
             }
-            s.parse::<f64>().ok().filter(|v| v.is_finite() && *v >= 0.0)
+            // A comma is always a decimal separator, never a thousands separator. Parsing
+            // the normalized scalar also rejects repeated separators within one number.
+            s.replace(',', ".")
+                .parse::<f64>()
+                .ok()
+                .filter(|v| v.is_finite() && *v >= 0.0)
         };
         let fraction = |s: &str| -> Option<f64> {
             let (n, d) = s.split_once('/')?;
@@ -82,6 +91,51 @@ pub fn parse_measurement_distance(text: &str, unit: MeasurementUnit) -> Result<f
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn decimal_comma_preserves_distance_and_explicit_unit_conversion() {
+        assert_eq!(
+            parse_measurement_distance("2,5", MeasurementUnit::Metres).unwrap(),
+            2.5
+        );
+        assert_eq!(
+            parse_measurement_distance("1,234", MeasurementUnit::Metres).unwrap(),
+            1.234
+        );
+        assert_eq!(
+            parse_measurement_distance("5' 6,5\"", MeasurementUnit::Inches).unwrap(),
+            66.5
+        );
+        assert_eq!(
+            parse_measurement_distance("5,5 ft 6,5 in", MeasurementUnit::Inches).unwrap(),
+            72.5
+        );
+        assert_eq!(
+            parse_measurement_distance("2,0 1/2", MeasurementUnit::Metres).unwrap(),
+            2.5
+        );
+        assert!(
+            (parse_measurement_distance("6,5 in", MeasurementUnit::Metres).unwrap() - 0.1651).abs()
+                < 1e-10
+        );
+        for bad in [
+            "2,,5",
+            "1,234,567",
+            "1.234,5",
+            "1,234.5",
+            "5.5 ft 6,5 in",
+            "2,5 1/2",
+            "1,5/2",
+            "1/0,0",
+            "3' 12,0\"",
+            "0,0",
+        ] {
+            assert!(
+                parse_measurement_distance(bad, MeasurementUnit::Metres).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
     #[test]
     fn feet_inches_fractions_are_explicit_and_convert_units() {
         for value in ["5' 6 1/2\"", "5 ft 6 1/2 in", "5 feet 6 1/2 inches"] {

@@ -571,7 +571,11 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
-        if self.annotate.quantities.open {
+        if self.annotate.register.dialog_open() {
+            self.status_msg = Some(self.t("quantity.finish_first").into());
+            return true;
+        }
+        if self.annotate.quantities.blocks_document() {
             self.status_msg = Some(self.t("quantity.finish_first").into());
             return true;
         }
@@ -579,7 +583,9 @@ impl SuniApp {
             self.status_msg = Some(self.t("library.finish_first").into());
             return true;
         }
-        if self.annotate.measure.saved.dialog_open() {
+        if self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+        {
             self.status_msg = Some(self.t("measure.saved.finish_first").into());
             return true;
         }
@@ -603,13 +609,18 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
-        if self.annotate.quantities.open {
+        if self.annotate.register.dialog_open() {
+            return true;
+        }
+        if self.annotate.quantities.blocks_document() {
             return true;
         }
         if self.library.blocks_document() {
             return true;
         }
-        if self.annotate.measure.saved.dialog_open() {
+        if self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+        {
             return true;
         }
         if self.annotate.measure.is_active_draft() && !self.leaves_measurement_workspace(command) {

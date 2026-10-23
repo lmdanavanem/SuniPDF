@@ -1036,8 +1036,12 @@ pub(crate) mod tests {
             app.on_quantity_table(epoch, generation.wrapping_sub(1), Ok(table.clone()));
             assert!(app.annotate.quantities.report.is_none());
             app.on_quantity_table(epoch, generation, Ok(table.clone()));
-            assert!(app.navigation_blocked());
-            assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
+            assert!(!app.navigation_blocked());
+            assert!(!app.ink_blocks_command(sunipdf_core::Command::ZoomIn));
+            app.zoom = crate::app::Zoom::Fixed(1.0);
+            app.execute(&controls.ctx, sunipdf_core::Command::ZoomIn);
+            assert_eq!(app.zoom, crate::app::Zoom::Fixed(1.25));
+            assert!(app.annotate.quantities.open, "reading keeps the table open");
             let active = app.annotate.quantities.report.as_ref().unwrap().clone();
             controls.frame(&mut app, vec![]);
             assert!(Arc::ptr_eq(
@@ -1050,6 +1054,14 @@ pub(crate) mod tests {
             app.annotate.quantities.options.filter.page = None;
             app.annotate.quantities.refresh_selection();
             controls.click(&mut app, "quantity.edit");
+            assert!(app.navigation_blocked());
+            assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
+            let zoom = app.zoom;
+            app.execute(&controls.ctx, sunipdf_core::Command::ZoomIn);
+            assert_eq!(
+                app.zoom, zoom,
+                "a pending field draft keeps document guards"
+            );
             let draft = app.annotate.quantities.edit.as_mut().unwrap();
             draft.price = "0".into();
             draft.currency = "CHF".into();
@@ -1080,6 +1092,7 @@ pub(crate) mod tests {
             draft.custom.pop();
             controls.click(&mut app, "quantity.cancel");
             assert!(app.annotate.quantities.edit.is_none());
+            assert!(!app.navigation_blocked());
             assert!(!requests.try_iter().any(|r| matches!(r, Request::Edit(_))));
             controls.click(&mut app, "quantity.edit");
             let draft = app.annotate.quantities.edit.as_mut().unwrap();
@@ -1108,6 +1121,11 @@ pub(crate) mod tests {
             controls.click(&mut app, "quantity.cancel");
             let directory = tempfile::tempdir().unwrap();
             app.export_quantity_path(directory.path().join("quantities.csv"), true);
+            assert!(app.navigation_blocked());
+            assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
+            let zoom = app.zoom;
+            app.execute(&controls.ctx, sunipdf_core::Command::ZoomIn);
+            assert_eq!(app.zoom, zoom, "an accepted export keeps document guards");
             let export = requests
                 .try_iter()
                 .find_map(|r| match r {
@@ -1128,6 +1146,7 @@ pub(crate) mod tests {
             controls.click(&mut app, "quantity.close");
             assert!(app.annotate.quantities.open, "wait for the accepted export");
             app.on_quantity_exported(export.0, export.1, Ok(()));
+            assert!(!app.navigation_blocked());
             controls.click(&mut app, "quantity.close");
             assert!(!app.annotate.quantities.open);
             app.on_quantity_table(epoch, generation, Ok(table.clone()));
