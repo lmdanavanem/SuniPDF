@@ -312,6 +312,7 @@ mod tests {
 
     fn optimization_metadata_fixture(compressed_metadata: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
         let mut doc = lopdf::Document::with_version("1.4");
+        doc.reference_table.cross_reference_type = lopdf::xref::XrefType::CrossReferenceTable;
         let pages = doc.new_object_id();
         let content = b"q 0 0 10 10 re f Q\n".repeat(512);
         let contents = doc.add_object(Stream::new(dictionary! {}, content.clone()));
@@ -427,7 +428,7 @@ mod tests {
     fn optimize_file_preserves_source_and_reuses_bytes_when_no_smaller_output_exists() {
         let (source, _, _) = optimization_metadata_fixture(false);
         let stable = optimize(&source, None).unwrap();
-        assert!(optimize(&stable, None).unwrap().len() >= stable.len());
+        assert_eq!(optimize(&stable, None).unwrap(), stable);
         let dir = tempfile::tempdir().unwrap();
         let input = dir.path().join("source.pdf");
         let output = dir.path().join("optimized.pdf");

@@ -40,6 +40,11 @@ or existing subtotals. [Examples and bounds](QUANTITY_TABLE.md#report-formula-co
 
 ## Qualification scope and remaining work
 
+Lossless optimization preserves the existing compression state of Metadata/XML streams.
+This corrects a PDF/A-1 regression found by the new corpus: adding a compression filter to
+unfiltered catalog XMP can invalidate a previously conforming file. Existing invalid metadata
+is not repaired, and this change makes no claim of automatic PDF/A conversion.
+
 Regression additions cover typed sorting, formula arithmetic/error/export behavior, supported saved-group
 roundtrips on rotated/cropped pages, stale selections, copy restrictions and source preservation.
 Remote CI and corpus results must be verified before publication; no passing counts are claimed here.
