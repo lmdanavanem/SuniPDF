@@ -298,6 +298,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
+        let text_color = crate::theme::palette(self.settings.dark_theme).text;
         let mut state = std::mem::take(&mut self.annotate.register);
         if state.report.is_none() && state.pending.is_none() && state.error.is_none() {
             state.generation = state.generation.wrapping_add(1);
@@ -481,7 +482,10 @@ impl SuniApp {
                                     "discipline",
                                     "actions",
                                 ] {
-                                    ui.strong(tr(lang, &format!("register.{key}")));
+                                    ui.strong(
+                                        egui::RichText::new(tr(lang, &format!("register.{key}")))
+                                            .color(text_color),
+                                    );
                                 }
                                 ui.end_row();
                                 for index in rows.iter().skip(state.offset).take(50) {
@@ -569,7 +573,7 @@ impl SuniApp {
                 }
                 if let Some(edit) = &mut state.edit {
                     ui.separator();
-                    ui.heading(tr(lang, "register.fields"));
+                    ui.heading(egui::RichText::new(tr(lang, "register.fields")).color(text_color));
                     ui.add_enabled_ui(!edit.applying, |ui| {
                         for (key, text) in [
                             ("register.business_status", &mut edit.business_status),
@@ -1015,5 +1019,46 @@ mod tests {
         assert!(requests
             .try_iter()
             .all(|request| !matches!(request, Request::Edit(_) | Request::Save { .. })));
+    }
+
+    #[test]
+    fn register_headings_remain_readable_in_both_languages_and_themes() {
+        for language in ["en-US", "fr-FR"] {
+            for dark in [false, true] {
+                let (mut app, _requests, _responses) = crate::app::tests::test_app();
+                app.settings.language = language.into();
+                app.settings.dark_theme = dark;
+                app.annotate.register.open = true;
+                let mut report = (*large_register()).clone();
+                report.rows.truncate(2);
+                app.annotate.register.report = Some(Arc::new(report));
+                let ctx = egui::Context::default();
+                crate::theme::apply(&ctx, dark);
+                for _ in 0..3 {
+                    let mut output = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(egui::Rect::from_min_size(
+                                egui::Pos2::ZERO,
+                                egui::vec2(1280.0, 780.0),
+                            )),
+                            ..Default::default()
+                        },
+                        |ui| app.annotation_register_dock(&ctx, ui),
+                    );
+                    output.textures_delta.clear();
+                    crate::workspace_table::assert_visible_text_contrast(
+                        &output,
+                        &[
+                            "register.title",
+                            "register.page",
+                            "register.kind",
+                            "register.contents",
+                        ]
+                        .map(|key| tr(app.lang(), key)),
+                        dark,
+                    );
+                }
+            }
+        }
     }
 }

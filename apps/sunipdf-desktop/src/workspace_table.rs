@@ -120,7 +120,7 @@ pub(crate) fn show(
             ui.spacing_mut().interact_size.y = 22.0;
         }
         ui.horizontal_wrapped(|ui| {
-            ui.strong(&spec.title);
+            ui.strong(egui::RichText::new(&spec.title).color(p.text));
             ui.add_space(12.0);
             ui.selectable_value(
                 &mut prefs.placement,
@@ -195,6 +195,73 @@ pub(crate) fn show(
         _ => {}
     }
     *prefs != previous
+}
+
+#[cfg(test)]
+pub(crate) fn assert_visible_text_contrast(output: &egui::FullOutput, labels: &[&str], dark: bool) {
+    fn luminance(color: egui::Color32) -> f64 {
+        let linear = |channel: u8| {
+            let value = f64::from(channel) / 255.0;
+            if value <= 0.04045 {
+                value / 12.92
+            } else {
+                ((value + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b())
+    }
+    fn collect(
+        shape: &egui::Shape,
+        clip: egui::Rect,
+        label: &str,
+        colors: &mut Vec<egui::Color32>,
+    ) {
+        match shape {
+            egui::Shape::Text(text)
+                if text.galley.text() == label
+                    && clip
+                        .contains_rect(egui::Rect::from_min_size(text.pos, text.galley.size())) =>
+            {
+                for section in &text.galley.job.sections {
+                    colors.push(text.override_text_color.unwrap_or({
+                        if section.format.color == egui::Color32::PLACEHOLDER {
+                            text.fallback_color
+                        } else {
+                            section.format.color
+                        }
+                    }));
+                }
+            }
+            egui::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    collect(shape, clip, label, colors);
+                }
+            }
+            _ => {}
+        }
+    }
+    let palette = theme::palette(dark);
+    for label in labels {
+        let mut colors = Vec::new();
+        for shape in &output.shapes {
+            collect(&shape.shape, shape.clip_rect, label, &mut colors);
+        }
+        assert!(
+            !colors.is_empty(),
+            "fully visible table label missing: {label}, dark={dark}"
+        );
+        for color in colors {
+            for background in [palette.surface, palette.hover] {
+                let (foreground, background) = (luminance(color), luminance(background));
+                let contrast =
+                    (foreground.max(background) + 0.05) / (foreground.min(background) + 0.05);
+                assert!(
+                    color.a() == 255 && contrast >= 4.5,
+                    "table text contrast below 4.5: {label}, dark={dark}, color={color:?}, contrast={contrast}"
+                );
+            }
+        }
+    }
 }
 
 #[cfg(test)]

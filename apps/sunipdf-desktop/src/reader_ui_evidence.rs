@@ -30,6 +30,88 @@ fn sha256(bytes: &[u8]) -> String {
         .collect()
 }
 
+fn relative_luminance(rgb: [u8; 3]) -> f64 {
+    let channel = |value: u8| {
+        let value = f64::from(value) / 255.0;
+        if value <= 0.04045 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])
+}
+
+fn readable_text_pixels(
+    pixels: &[u8],
+    size: [u32; 2],
+    rect: Rect,
+    foreground: egui::Color32,
+    background: egui::Color32,
+) -> usize {
+    let [width, height] = size;
+    let rect = rect.intersect(Rect::from_min_size(
+        egui::Pos2::ZERO,
+        vec2(width as f32, height as f32),
+    ));
+    let background = relative_luminance([background.r(), background.g(), background.b()]);
+    let foreground = [foreground.r(), foreground.g(), foreground.b()];
+    let mut readable = 0;
+    for y in rect.top().ceil().max(0.0) as u32..rect.bottom().floor().max(0.0) as u32 {
+        for x in rect.left().ceil().max(0.0) as u32..rect.right().floor().max(0.0) as u32 {
+            let offset = ((y * width + x) * 4) as usize;
+            let rgb = [pixels[offset], pixels[offset + 1], pixels[offset + 2]];
+            // Match actual text ink, excluding borders, selection fills and background pixels.
+            if rgb
+                .iter()
+                .zip(foreground)
+                .any(|(&actual, expected)| actual.abs_diff(expected) > 64)
+            {
+                continue;
+            }
+            let luminance = relative_luminance(rgb);
+            let contrast = (luminance.max(background) + 0.05) / (luminance.min(background) + 0.05);
+            if contrast >= 4.5 {
+                readable += 1;
+            }
+        }
+    }
+    readable
+}
+
+#[test]
+fn text_pixel_evidence_rejects_blank_and_low_contrast_headings() {
+    let rect = Rect::from_min_size(egui::Pos2::ZERO, vec2(32.0, 4.0));
+    for (foreground, background) in [
+        (egui::Color32::BLACK, egui::Color32::WHITE),
+        (egui::Color32::WHITE, egui::Color32::BLACK),
+    ] {
+        let mut pixels = background.to_array().repeat(128);
+        assert_eq!(
+            readable_text_pixels(&pixels, [32, 4], rect, foreground, background),
+            0
+        );
+        for pixel in pixels.chunks_exact_mut(4).take(20) {
+            pixel.copy_from_slice(&foreground.to_array());
+        }
+        assert_eq!(
+            readable_text_pixels(&pixels, [32, 4], rect, foreground, background),
+            20
+        );
+    }
+    let pixels = egui::Color32::from_gray(220).to_array().repeat(128);
+    assert_eq!(
+        readable_text_pixels(
+            &pixels,
+            [32, 4],
+            rect,
+            egui::Color32::from_gray(220),
+            egui::Color32::WHITE
+        ),
+        0
+    );
+}
+
 fn wait_future<T>(stage: &str, future: impl Future<Output = T>) -> EvidenceResult<T> {
     let mut future = std::pin::pin!(future);
     let mut context = std::task::Context::from_waker(std::task::Waker::noop());
@@ -466,6 +548,7 @@ fn capture_scene(
         TableKind::Register => "annotations",
         TableKind::Quantities => "quantities",
     });
+    let mut table_text_contrast = Vec::new();
     if let Some(table) = scene.table {
         let (title, close) = match table {
             TableKind::Register => ("register.title", "register.close"),
@@ -481,6 +564,42 @@ fn capture_scene(
                         .intersect(shape.clip_rect).intersect(viewport).is_positive())),
             &format!("{}: docked table title {title:?} is not accessible and visible", scene.name),
         )?;
+        let palette = crate::theme::palette(scene.dark);
+        for (part, label) in [
+            ("title", title),
+            ("firstColumnHeader", tr(scene.language, "register.page")),
+        ] {
+            let rect = frame
+                .shapes
+                .iter()
+                .find_map(|shape| match &shape.shape {
+                    egui::Shape::Text(text) if text.galley.text() == label => Some(
+                        Rect::from_min_size(text.pos, text.galley.size())
+                            .intersect(shape.clip_rect)
+                            .intersect(viewport),
+                    ),
+                    _ => None,
+                })
+                .ok_or_else(|| {
+                    format!("{}: missing docked table {part} paint bounds", scene.name)
+                })?;
+            let ink = readable_text_pixels(
+                &pixels,
+                [scene.width, scene.height],
+                rect,
+                palette.text,
+                palette.surface,
+            );
+            require(
+                ink >= 20,
+                &format!(
+                    "{}: docked table {part} ({label:?}) has only {ink} readable text pixels; need20 at contrast>=4.5:1 against its surface",
+                    scene.name
+                ),
+            )?;
+            table_text_contrast
+                .push(json!({"part": part, "readablePixels": ink, "minimumContrast": 4.5}));
+        }
         for key in ["workspace.table.dock", "workspace.table.float", close] {
             let label = tr(scene.language, key);
             require(
@@ -589,6 +708,7 @@ fn capture_scene(
         "name": scene.name, "language": scene.language.code(), "darkTheme": scene.dark,
         "outputPixels": [scene.width, scene.height], "measurementToolsOpen": scene.measurements,
         "dockedTable": table_name, "dockedTableControlsAndRowVerified": scene.table.is_some(),
+        "dockedTableTextContrast": table_text_contrast,
         "effectiveZoom": app.effective_zoom, "actualApplicationRenderUi": true,
         "fixtureNavigation": fixture_destination.map(|(x_pt, y_from_top_pt)| json!({
             "pageIndex": 0, "coordinateOrigin": "page-top-left", "unit": "PDF points",
