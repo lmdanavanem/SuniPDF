@@ -107,6 +107,12 @@ pub(crate) fn show(
     );
     let popup_open = egui::Popup::is_any_open(ctx);
     let content = |ui: &mut egui::Ui| {
+        if placement == Placement::Bottom {
+            // PanelState remembers the frame's used height. Keep the allocated
+            // height even when the bounded body/footer leave a few pixels free,
+            // otherwise each idle frame shrinks the dock and changes Fit Page.
+            ui.set_min_height(ui.available_height());
+        }
         let compact = ui.available_height() < 210.0;
         ui.spacing_mut().item_spacing.y = if compact { 2.0 } else { 4.0 };
         if compact {
@@ -194,6 +200,56 @@ pub(crate) fn show(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn idle_docks_preserve_height_and_fit_page_zoom_across_frames() {
+        for dark in [false, true] {
+            for (size, command) in [
+                (
+                    egui::vec2(1280.0, 780.0),
+                    sunipdf_core::Command::AnnotationRegister,
+                ),
+                (
+                    egui::vec2(720.0, 480.0),
+                    sunipdf_core::Command::QuantityTable,
+                ),
+            ] {
+                let ctx = egui::Context::default();
+                let (mut app, _requests, _responses) = crate::app::tests::test_app();
+                app.has_icons = crate::icons::install(&ctx);
+                theme::apply(&ctx, dark);
+                app.settings.dark_theme = dark;
+                app.settings.show_thumbnails = false;
+                app.settings.autosave = false;
+                app.show_tools = false;
+                app.settings.show_tools = false;
+                app.zoom = crate::app::Zoom::FitPage;
+                app.execute(&ctx, command);
+                let mut frames = Vec::new();
+                for index in 0..32 {
+                    let mut frame = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
+                            time: Some(index as f64 * 0.25),
+                            ..Default::default()
+                        },
+                        |ui| app.render_ui(ui),
+                    );
+                    frame.textures_delta.clear();
+                    frames.push((app.settings.tables.height, app.effective_zoom));
+                }
+                assert!(app.error.is_none(), "{:?}", app.error);
+                let settled = frames[4];
+                assert!(settled.0 >= 120.0 && settled.1 > 0.05);
+                assert!(
+                    frames[4..].iter().all(|&(height, zoom)| {
+                        (height - settled.0).abs() < 0.01 && (zoom - settled.1).abs() < 0.000_001
+                    }),
+                    "idle dock and Fit Page must settle: size={size:?}, dark={dark}, frames={frames:?}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn persisted_table_layout_is_bounded_on_small_windows() {
