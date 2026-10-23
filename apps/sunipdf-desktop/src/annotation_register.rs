@@ -431,11 +431,17 @@ impl SuniApp {
                                     ))
                                     .show_ui(ui, |ui| {
                                         for sort in RegisterSort::ALL {
-                                            ui.selectable_value(
-                                                &mut state.sort,
-                                                sort,
-                                                tr(lang, &format!("register.{}", sort.id())),
-                                            );
+                                            if ui
+                                                .selectable_value(
+                                                    &mut state.sort,
+                                                    sort,
+                                                    tr(lang, &format!("register.{}", sort.id())),
+                                                )
+                                                .clicked()
+                                            {
+                                                state.filter.custom_sort = None;
+                                                state.offset = 0;
+                                            }
                                         }
                                     });
                                 ui.checkbox(&mut state.descending, tr(lang, "register.descending"));

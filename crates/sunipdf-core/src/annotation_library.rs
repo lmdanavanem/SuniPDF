@@ -747,7 +747,7 @@ fn capture_dictionary(
     dict: &lopdf::Dictionary,
     depth: usize,
     budget: &mut CaptureBudget,
-    stream: bool,
+    ignored: &[&[u8]],
 ) -> Result<serde_json::Value, EngineError> {
     if depth > 16 || dict.len() > 256 {
         return Err(invalid("annotation dictionary exceeds capture limits"));
@@ -758,7 +758,7 @@ fn capture_dictionary(
             return Err(invalid("annotation key exceeds capture limits"));
         }
         budget.bytes(key.len())?;
-        if stream && matches!(key.as_slice(), b"Length" | b"Filter" | b"DecodeParms") {
+        if ignored.contains(&key.as_slice()) {
             continue;
         }
         let key = std::str::from_utf8(key).map_err(|_| invalid("unsupported annotation key"))?;
@@ -812,11 +812,17 @@ fn capture_object_bounded<'a>(
                 .map(|value| capture_object_bounded(pdf, value, depth + 1, budget))
                 .collect::<Result<_, _>>()?,
         ),
-        Object::Dictionary(dict) => capture_dictionary(pdf, dict, depth, budget, false)?,
+        Object::Dictionary(dict) => capture_dictionary(pdf, dict, depth, budget, &[])?,
         Object::Stream(stream) => {
             // Charge every traversal, including repeated references, before cloning or decoding.
             budget.bytes(stream.content.len())?;
-            let dictionary = capture_dictionary(pdf, &stream.dict, depth + 1, budget, true)?;
+            let dictionary = capture_dictionary(
+                pdf,
+                &stream.dict,
+                depth + 1,
+                budget,
+                &[b"Length", b"Filter", b"DecodeParms"],
+            )?;
             let content = if stream.dict.has(b"Filter") {
                 let filter = stream
                     .dict
@@ -900,6 +906,12 @@ fn capture_primitive(
             (*b * 255.0).round() as u8,
         ]))
     };
+    for key in [b"NM".as_slice(), b"T", b"M", b"CreationDate"] {
+        if dict.has(key) && !matches!(field(key)?, Object::String(bytes, _) if bytes.len() <= 8192)
+        {
+            return Err(unsupported());
+        }
+    }
     if !crate::annot_write::text_of(pdf, dict, b"NM")
         .is_some_and(|name| name.starts_with(crate::annot_write::NAME_PREFIX))
         || field(b"F")?.as_i64().ok() != Some(4)
@@ -964,8 +976,16 @@ fn capture_primitive(
         Vec::new()
     };
     let expected_border = crate::annot_write::border_style(width, &dash);
-    if capture_object(pdf, &Object::Dictionary(border.clone()), 0, &mut 128)?
-        != capture_object(pdf, &expected_border, 0, &mut 128)?
+    if capture_dictionary(
+        pdf,
+        border,
+        0,
+        &mut CaptureBudget {
+            nodes: 128,
+            bytes: 2 * 1024 * 1024,
+        },
+        &[],
+    )? != capture_object(pdf, &expected_border, 0, &mut 128)?
     {
         return Err(unsupported());
     }
@@ -1154,13 +1174,61 @@ fn capture_primitive(
     if capture_object(pdf, source, 0, &mut 4096)? != capture_object(pdf, &expected, 0, &mut 4096)? {
         return Err(unsupported());
     }
-    let mut fingerprint = dict.clone();
-    fingerprint.remove(b"P");
-    let fingerprint = capture_object(pdf, &Object::Dictionary(fingerprint), 0, &mut 8192)?;
+    let fingerprint = capture_dictionary(
+        pdf,
+        dict,
+        0,
+        &mut CaptureBudget {
+            nodes: 8192,
+            bytes: 2 * 1024 * 1024,
+        },
+        &[b"P"],
+    )?;
     Ok((
         primitive,
         digest_hex(&serde_json::to_vec(&fingerprint).map_err(|_| unsupported())?),
     ))
+}
+
+fn capture_annotation_entries(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+) -> Result<&[lopdf::Object], EngineError> {
+    let page = pdf
+        .get_dictionary(page)
+        .map_err(crate::security::lopdf_err)?;
+    let Ok(raw) = page.get(b"Annots") else {
+        return Ok(&[]);
+    };
+    let (_, entries) = pdf.dereference(raw).map_err(crate::security::lopdf_err)?;
+    let entries = entries.as_array().map_err(crate::security::lopdf_err)?;
+    if entries.len() > 512 {
+        return Err(invalid(
+            "capture selection is limited to pages with 512 annotations",
+        ));
+    }
+    Ok(entries)
+}
+
+fn capture_annotation(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    index: usize,
+) -> Result<&lopdf::Dictionary, EngineError> {
+    let entry = capture_annotation_entries(pdf, page)?
+        .get(index)
+        .ok_or_else(|| invalid("capture annotation is unavailable"))?;
+    let (_, entry) = pdf.dereference(entry).map_err(crate::security::lopdf_err)?;
+    entry.as_dict().map_err(crate::security::lopdf_err)
+}
+
+fn capture_subtype(dict: &lopdf::Dictionary) -> String {
+    dict.get(b"Subtype")
+        .and_then(lopdf::Object::as_name)
+        .ok()
+        .filter(|value| value.len() <= 64)
+        .map(|value| String::from_utf8_lossy(value).into_owned())
+        .unwrap_or_default()
 }
 
 impl Document<'_> {
@@ -1188,6 +1256,7 @@ impl Document<'_> {
             .get_pages()
             .get(&(page as u32 + 1))
             .ok_or_else(|| invalid("page is unavailable"))?;
+        capture_annotation_entries(&pdf, id)?;
         Ok((pdf, id, geometry))
     }
 
@@ -1195,22 +1264,13 @@ impl Document<'_> {
         &self,
         page: usize,
     ) -> Result<Vec<LibraryCaptureCandidate>, EngineError> {
-        let (mut pdf, page_id, geo) = self.capture_source(page)?;
-        let count = crate::annot_write::annots_mut(&mut pdf, page_id)?.len();
-        if count > 512 {
-            return Err(invalid(
-                "capture selection is limited to pages with 512 annotations",
-            ));
-        }
+        let (pdf, page_id, geo) = self.capture_source(page)?;
+        let count = capture_annotation_entries(&pdf, page_id)?.len();
         (0..count)
             .map(|index| {
-                let (_, dict) = crate::annot_write::load_annot(&pdf, page_id, index)?;
-                let subtype = dict
-                    .get(b"Subtype")
-                    .and_then(lopdf::Object::as_name)
-                    .map(|value| String::from_utf8_lossy(value).into_owned())
-                    .unwrap_or_default();
-                let result = capture_primitive(&pdf, &dict, &geo);
+                let dict = capture_annotation(&pdf, page_id, index)?;
+                let subtype = capture_subtype(dict);
+                let result = capture_primitive(&pdf, dict, &geo);
                 Ok(LibraryCaptureCandidate {
                     index,
                     subtype,
@@ -1247,8 +1307,8 @@ impl Document<'_> {
             if !seen.insert(selected.index) {
                 return Err(invalid("duplicate annotation selection"));
             }
-            let (_, dict) = crate::annot_write::load_annot(&pdf, page_id, selected.index)?;
-            let (primitive, fingerprint) = capture_primitive(&pdf, &dict, &geo)?;
+            let dict = capture_annotation(&pdf, page_id, selected.index)?;
+            let (primitive, fingerprint) = capture_primitive(&pdf, dict, &geo)?;
             if fingerprint != selected.fingerprint {
                 return Err(invalid("source annotation changed; refresh the selection"));
             }
@@ -1418,6 +1478,34 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn capture_inventory_bounds_page_count_and_borrows_oversized_subtypes() {
+        use lopdf::{dictionary, Object};
+        let mut pdf = lopdf::Document::with_version("1.7");
+        let annotation =
+            pdf.add_object(dictionary! {"Subtype" => Object::Name(vec![b'A'; 1024 * 1024])});
+        let entries = pdf.add_object(Object::Array(vec![Object::Reference(annotation); 512]));
+        let page = pdf.add_object(dictionary! {"Type" => "Page", "Annots" => entries});
+        for index in 0..512 {
+            let borrowed = capture_annotation(&pdf, page, index).unwrap();
+            assert!(std::ptr::eq(
+                borrowed,
+                pdf.get_dictionary(annotation).unwrap()
+            ));
+            assert!(
+                capture_subtype(borrowed).is_empty(),
+                "oversized names must not be retained in inventory rows"
+            );
+        }
+        pdf.get_object_mut(entries)
+            .unwrap()
+            .as_array_mut()
+            .unwrap()
+            .push(Object::Reference(annotation));
+        assert!(capture_annotation_entries(&pdf, page).is_err());
+        assert!(capture_annotation(&pdf, page, 0).is_err());
+    }
+
+    #[test]
     fn capture_budget_rejects_large_names_keys_and_repeated_reference_payloads() {
         use lopdf::{Dictionary, Object, Stream};
         let mut pdf = lopdf::Document::with_version("1.7");
@@ -1517,6 +1605,31 @@ mod tests {
                 style: LibraryStyle::from(&style)
             }
         );
+        for key in ["NM", "T", "M", "CreationDate"] {
+            let previous = annotation.get(key.as_bytes()).ok().cloned();
+            annotation.set(
+                key,
+                Object::string_literal(format!("SuniPDF-{}", "x".repeat(8192))),
+            );
+            assert!(
+                capture_primitive(&pdf, &annotation, &geo).is_err(),
+                "oversized {key} must be refused before text decoding"
+            );
+            if let Some(previous) = previous {
+                annotation.set(key, previous);
+            } else {
+                annotation.remove(key.as_bytes());
+            }
+        }
+        annotation.set(
+            "P",
+            dictionary! {"IgnoredPagePayload" => Object::Name(vec![b'x'; 1024 * 1024])},
+        );
+        assert!(
+            capture_primitive(&pdf, &annotation, &geo).is_ok(),
+            "page references are excluded without cloning or traversing their payload"
+        );
+        annotation.remove(b"P");
         pdf.get_object_mut(appearance_id)
             .unwrap()
             .as_stream_mut()

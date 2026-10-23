@@ -523,5 +523,53 @@ fn saved_groups_capture_round_trip_and_refuse_stale_or_mixed_sources(engine: &En
         assert!(doc.library_capture_candidates(0).unwrap()[0]
             .fingerprint
             .is_none());
+        if rotation == 0 {
+            let mut crowded = lopdf::Document::load_mem(&before).unwrap();
+            let page = crowded.get_pages()[&1];
+            let first = crowded
+                .get_dictionary(page)
+                .unwrap()
+                .get(b"Annots")
+                .unwrap()
+                .as_array()
+                .unwrap()[0]
+                .as_reference()
+                .unwrap();
+            let template = crowded.get_dictionary(first).unwrap().clone();
+            let mut annotations = Vec::new();
+            for index in 0..513 {
+                let mut annotation = template.clone();
+                annotation.set(
+                    "NM",
+                    lopdf::text_string(&format!("SuniPDF-crowded-{index}")),
+                );
+                annotations.push(Object::Reference(crowded.add_object(annotation)));
+            }
+            crowded
+                .get_dictionary_mut(page)
+                .unwrap()
+                .set("Annots", Object::Array(annotations));
+            let mut bytes = Vec::new();
+            crowded.save_to(&mut bytes).unwrap();
+            doc.restore(bytes).unwrap();
+            assert!(doc
+                .library_capture_candidates(0)
+                .unwrap_err()
+                .to_string()
+                .contains("512"));
+            assert!(
+                doc.capture_library_entry(
+                    0,
+                    &[selections[0].clone()],
+                    "crowded".into(),
+                    "Crowded".into(),
+                    provenance.clone()
+                )
+                .unwrap_err()
+                .to_string()
+                .contains("512"),
+                "direct capture must enforce the same page limit as the inventory"
+            );
+        }
     }
 }

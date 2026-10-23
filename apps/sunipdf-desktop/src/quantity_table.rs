@@ -542,7 +542,7 @@ impl SuniApp {
                                             for sort in
                                                 sunipdf_core::annotation_register::RegisterSort::ALL
                                             {
-                                                changed |= ui
+                                                if ui
                                                     .selectable_value(
                                                         &mut state.options.sort,
                                                         sort,
@@ -551,7 +551,11 @@ impl SuniApp {
                                                             &format!("register.{}", sort.id()),
                                                         ),
                                                     )
-                                                    .changed();
+                                                    .clicked()
+                                                {
+                                                    state.options.filter.custom_sort = None;
+                                                    changed = true;
+                                                }
                                             }
                                         });
                                     changed |= custom_sort(
