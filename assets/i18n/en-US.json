@@ -1424,7 +1424,7 @@
   "measure.snap.intersection": "Vector intersection",
   "measure.snap.help": "Move within 8 pixels of a vector endpoint or intersection. Scanned pixels are not snap targets.",
   "measure.snap.empty": "No eligible vectors on this page.",
-  "measure.snap.clipped": "Clipped paths are omitted from snapping.",
+  "measure.snap.clipped": "Unsupported clipped paths are omitted from snapping.",
   "measure.snap.unavailable": "Vector snapping unavailable for this page.",
   "measure.viewport.title": "Scale regions",
   "measure.viewport.automatic": "Automatic region selection",
@@ -1464,5 +1464,8 @@
   "workspace.table.dock": "Dock below document",
   "workspace.table.float": "Float table",
   "workspace.table.filters": "Filters",
-  "workspace.table.summary": "Totals"
+  "workspace.table.summary": "Totals",
+  "measure.viewport.reset": "Reset stale scale regions…",
+  "measure.viewport.reset_help": "The saved scale regions no longer match this page. Clear those region definitions? Existing measurement values are preserved. This change can be undone.",
+  "measure.viewport.reset_confirm": "Clear stale region definitions"
 }

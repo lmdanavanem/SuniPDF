@@ -9,6 +9,12 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
+## 0.60 : lot P1 de travail sur plans
+
+La 0.60 ajoute la disposition et les vues du registre en cache, la recherche et l'inventaire coopératifs page par page, les tables ancrables, l'accrochage vectoriel, la saisie pieds/pouces, les zones d'échelles indépendantes et le recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
+
+[Périmètre et limites 0.60](RELEASE_0.60.0.fr.md).
+
 ## 0.44–0.51 : fonctions locales pour les plans, séquence prévue
 
 | Version | Périmètre | État actuel |
@@ -24,7 +30,7 @@ d’authenticité ou de conformité.
 
 L'éditeur 0.44 modifie distance de référence, unité et précision en conservant sommets et points de référence. La CLI peut remplacer explicitement la géométrie avec un enregistrement attendu ; les deux parcours conservent l'identité et refusent les cibles périmées ou incompatibles. Qualification de la source finale et limites : [Preuves](qa/RELEASE_0.44.0.json). [Périmètre et audit préalable 0.44](RELEASE_0.44.0.fr.md) · [Guide des mesures](MEASUREMENTS.fr.md).
 
-Cette séquence apporte des incréments bornés. La modification des sommets existants est incluse en 0.48, l’ajout/suppression avec sélection explicite en 0.49 ; accrochage vectoriel, recalcul par lots, vues multi-échelles, justesse sur plans réels et critères généraux 1.0 restent ouverts. AEC-001/002/003/004/026 restent partiels. Les preuves historiques ci-dessous restent attachées à leur version d’origine.
+Cette séquence apporte des incréments bornés. Modification des sommets en 0.48, ajout/suppression en 0.49 ; la 0.60 ajoute accrochage vectoriel, recalcul explicite par lots et zones multi-échelles. La justesse sur projets réels et les critères 1.0 restent ouverts ; la qualification sur plans privés est explicitement reportée. Les preuves historiques restent attachées à leur version d'origine.
 
 ## 0.51.0 : paquet Ubuntu (Latest stable)
 

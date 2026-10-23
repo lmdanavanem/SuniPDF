@@ -13,6 +13,9 @@ impl crate::app::SuniApp {
             return;
         };
         let Some(rect) = row.rect else { return };
+        if !rect.iter().all(|v| v.is_finite()) || rect[0] > rect[2] || rect[1] > rect[3] {
+            return;
+        }
         let Some(size) = self
             .document
             .as_ref()
@@ -82,7 +85,7 @@ pub(crate) fn show(
     if (prefs.placement == Placement::Bottom) != host.is_some() {
         return false;
     }
-    let render_id = egui::Id::new((spec.id, "render-pass"));
+    let render_id = egui::Id::unique((spec.id, "render-pass"));
     let stamp = (ctx.cumulative_frame_nr(), ctx.cumulative_pass_nr());
     let already_rendered = ctx.data_mut(|data| {
         if data.get_temp::<(u64, u64)>(render_id) == Some(stamp) {
@@ -156,7 +159,7 @@ pub(crate) fn show(
             let maximum =
                 (ctx.content_rect().size() - egui::vec2(32.0, 32.0)).max(egui::vec2(320.0, 180.0));
             egui::Window::new(&spec.title)
-                .id(egui::Id::new((spec.id, "floating")))
+                .id(egui::Id::unique((spec.id, "floating")))
                 .title_bar(false)
                 .resizable(true)
                 .default_size(egui::vec2(spec.width.min(maximum.x), height.max(220.0)))
@@ -196,5 +199,129 @@ mod tests {
             serde_json::from_str::<Preferences>("{}").unwrap(),
             Preferences::default()
         );
+    }
+    #[test]
+    fn placement_switch_cannot_render_the_same_table_twice_in_a_pass() {
+        let ctx = egui::Context::default();
+        let mut prefs = Preferences::default();
+        let dock_calls = std::cell::Cell::new(0);
+        let duplicate_calls = std::cell::Cell::new(0);
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(720.0, 480.0),
+            )),
+            ..Default::default()
+        };
+        let mut output = ctx.run_ui(input.clone(), |ui| {
+            prefs.placement = Placement::Bottom;
+            show(
+                &ctx,
+                Some(ui),
+                &mut prefs,
+                Language::English,
+                Spec::new("one-table", "Rows", false, false),
+                |ui| {
+                    dock_calls.set(dock_calls.get() + 1);
+                    ui.label("First row");
+                },
+                |ui| {
+                    ui.label("Close");
+                },
+            );
+            prefs.placement = Placement::Floating;
+            show(
+                &ctx,
+                None,
+                &mut prefs,
+                Language::English,
+                Spec::new("one-table", "Rows", false, false),
+                |_| {
+                    duplicate_calls.set(duplicate_calls.get() + 1);
+                },
+                |_| {},
+            );
+        });
+        output.textures_delta.clear();
+        assert!(dock_calls.get() > 0);
+        assert_eq!(duplicate_calls.get(), 0);
+        let mut output = ctx.run_ui(input, |_| {
+            show(
+                &ctx,
+                None,
+                &mut prefs,
+                Language::English,
+                Spec::new("one-table", "Rows", false, false),
+                |ui| {
+                    duplicate_calls.set(duplicate_calls.get() + 1);
+                    ui.label("First row");
+                },
+                |_| {},
+            );
+        });
+        output.textures_delta.clear();
+        assert!(
+            duplicate_calls.get() > 0,
+            "the floating host takes over on the next frame"
+        );
+    }
+
+    #[test]
+    fn compact_dock_preserves_canvas_height_and_visible_first_row() {
+        let ctx = egui::Context::default();
+        let mut prefs = Preferences::default();
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(720.0, 480.0),
+            )),
+            ..Default::default()
+        };
+        let mut remaining = 0.0;
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(input.clone(), |ui| {
+                ui.allocate_space(egui::vec2(720.0, 95.0));
+                show(
+                    &ctx,
+                    Some(ui),
+                    &mut prefs,
+                    Language::French,
+                    Spec::new("small-table", "Quantities", false, false),
+                    |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Filters");
+                            ui.label("Totals");
+                            ui.label("1-2 / 2");
+                        });
+                        egui::Grid::new("compact-grid").show(ui, |ui| {
+                            ui.label("Page");
+                            ui.label("Contents");
+                            ui.end_row();
+                            ui.label("1");
+                            ui.label("Fixture equipment");
+                            ui.end_row();
+                        });
+                    },
+                    |ui| {
+                        ui.label("Refresh");
+                        ui.label("Export");
+                        ui.label("Close");
+                    },
+                );
+                remaining = ui.available_height();
+            });
+            output.textures_delta.clear();
+            let visible = output.shapes.iter().any(|shape| match &shape.shape {
+                egui::Shape::Text(text) if text.galley.text() == "Fixture equipment" => shape
+                    .clip_rect
+                    .contains(text.pos + text.galley.size() / 2.0),
+                _ => false,
+            });
+            assert!(
+                remaining >= 120.0,
+                "document viewport retained: {remaining}"
+            );
+            assert!(visible, "first row visible without scrolling");
+        }
     }
 }

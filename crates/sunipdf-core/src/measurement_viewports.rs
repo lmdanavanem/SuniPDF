@@ -7,6 +7,7 @@ use crate::{Document, EngineError, PageGeometry, PointRect};
 use lopdf::{Dictionary, Object};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::sync::Arc;
 
 const KEY: &[u8] = b"SuniPDFMeasurementViewports";
 const MAX_VIEWPORTS: usize = 64;
@@ -20,6 +21,25 @@ pub struct MeasurementViewport {
     /// Displayed-page coordinates, bottom-left origin.
     pub bounds: PointRect,
     pub calibration: PageCalibration,
+}
+
+/// Exact supported page metadata captured for an explicit reset, including stale scale records.
+#[derive(Clone)]
+pub struct MeasurementViewportResetTarget {
+    page: usize,
+    source: Arc<Vec<u8>>,
+}
+impl std::fmt::Debug for MeasurementViewportResetTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MeasurementViewportResetTarget")
+            .field("page", &self.page)
+            .finish_non_exhaustive()
+    }
+}
+impl MeasurementViewportResetTarget {
+    pub fn page(&self) -> usize {
+        self.page
+    }
 }
 
 fn invalid(reason: &str) -> EngineError {
@@ -61,6 +81,22 @@ fn segment_touches(bounds: PointRect, a: (f32, f32), b: (f32, f32)) -> bool {
     true
 }
 
+fn polygon_contains(points: &[(f32, f32)], point: (f32, f32)) -> bool {
+    let mut inside = false;
+    for i in 0..points.len() {
+        let (a, b) = (points[i], points[(i + 1) % points.len()]);
+        if (a.1 > point.1) != (b.1 > point.1) {
+            let x = f64::from(a.0)
+                + (f64::from(point.1) - f64::from(a.1)) * (f64::from(b.0) - f64::from(a.0))
+                    / (f64::from(b.1) - f64::from(a.1));
+            if f64::from(point.0) < x {
+                inside = !inside;
+            }
+        }
+    }
+    inside
+}
+
 /// Select a region only when all geometry is inside it. A selected ID is always checked.
 /// Without an ID, more than one matching region is an error: never guess an overlap scale.
 /// Geometry touching a region without fitting completely also requires an explicit choice.
@@ -98,6 +134,10 @@ pub fn select_viewport<'a>(
             || points
                 .windows(2)
                 .any(|p| segment_touches(v.bounds, p[0], p[1]))
+            // Three or more points may be a closed area/perimeter. Conservative refusal also
+            // covers a region wholly inside the area, with no measured vertex in the region.
+            || (points.len()>=3 && (segment_touches(v.bounds,points[points.len()-1],points[0])
+                || [(v.bounds.left,v.bounds.bottom),(v.bounds.left,v.bounds.top),(v.bounds.right,v.bounds.bottom),(v.bounds.right,v.bounds.top)].iter().any(|&p|polygon_contains(points,p))))
     };
     if viewports
         .iter()
@@ -178,13 +218,9 @@ fn validate(viewports: &[MeasurementViewport], geo: &PageGeometry) -> Result<(),
     Ok(())
 }
 
-fn decode(
-    pdf: &lopdf::Document,
-    page: &Dictionary,
-    geo: &PageGeometry,
-) -> Result<Vec<MeasurementViewport>, EngineError> {
+fn read_stored(page: &Dictionary) -> Result<Option<StoredViewports>, EngineError> {
     let Ok(raw) = page.get(KEY) else {
-        return Ok(Vec::new());
+        return Ok(None);
     };
     let raw = raw
         .as_str()
@@ -194,24 +230,38 @@ fn decode(
     }
     let record: StoredViewports =
         serde_json::from_slice(raw).map_err(|_| invalid("malformed or unsupported record"))?;
-    check_user_unit(pdf, page)?;
     if record.version != 1
         || record.coordinate_system != "pdf-user-space"
         || record.regions.len() > MAX_VIEWPORTS
         || record
             .page_bounds
             .iter()
-            .zip(array(geo.bbox))
-            .any(|(a, b)| !a.is_finite() || (a - b).abs() > 0.001)
-        || record.content_sha256 != content_digest(pdf, page)?
+            .any(|x| !x.is_finite() || x.abs() > 1e8)
+        || record.page_bounds[0] >= record.page_bounds[2]
+        || record.page_bounds[1] >= record.page_bounds[3]
+        || record.content_sha256.len() != 64
+        || !record
+            .content_sha256
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     {
-        return Err(invalid(
-            "unsupported or stale page geometry/content; existing region records are preserved",
-        ));
+        return Err(invalid("unsupported or malformed region record"));
     }
+    let original = PageGeometry {
+        bbox: rect(record.page_bounds),
+        rotation: crate::Rotation::R0,
+    };
+    display_regions(&record, &original)?;
+    Ok(Some(record))
+}
+
+fn display_regions(
+    record: &StoredViewports,
+    geo: &PageGeometry,
+) -> Result<Vec<MeasurementViewport>, EngineError> {
     let result: Vec<_> = record
         .regions
-        .into_iter()
+        .iter()
         .map(|v| {
             if v.bounds
                 .iter()
@@ -223,8 +273,8 @@ fn decode(
                 return Err(invalid("invalid stored region geometry"));
             }
             Ok(MeasurementViewport {
-                id: v.id,
-                name: v.name,
+                id: v.id.clone(),
+                name: v.name.clone(),
                 bounds: geo.rect_to_display(rect(v.bounds)),
                 calibration: PageCalibration {
                     points: v.points.map(|(x, y)| geo.to_display(x, y)),
@@ -239,7 +289,85 @@ fn decode(
     Ok(result)
 }
 
+fn decode(
+    pdf: &lopdf::Document,
+    page: &Dictionary,
+    geo: &PageGeometry,
+) -> Result<Vec<MeasurementViewport>, EngineError> {
+    let Some(record) = read_stored(page)? else {
+        return Ok(Vec::new());
+    };
+    check_user_unit(pdf, page)?;
+    if record
+        .page_bounds
+        .iter()
+        .zip(array(geo.bbox))
+        .any(|(a, b)| (a - b).abs() > 0.001)
+        || record.content_sha256 != content_digest(pdf, page)?
+    {
+        return Err(invalid(
+            "page geometry/content changed; explicitly clear supported regions and recalibrate",
+        ));
+    }
+    display_regions(&record, geo)
+}
+
 impl Document<'_> {
+    /// Captures supported metadata for explicit removal even when its content/bounds guard is
+    /// stale. Unknown versions or malformed records cannot obtain a reset target.
+    pub fn measurement_viewport_reset_target(
+        &self,
+        page_index: usize,
+    ) -> Result<MeasurementViewportResetTarget, EngineError> {
+        if !self.properties().can_modify {
+            return Err(EngineError::SecurityRestricted);
+        }
+        if self.signature_count() != 0 {
+            return Err(invalid("signed PDFs cannot change regions"));
+        }
+        self.page_geometry(page_index)?;
+        let source = self.snapshot()?;
+        if source.len() > 128 * 1024 * 1024 {
+            return Err(invalid("document exceeds the 128 MiB editing limit"));
+        }
+        let pdf = security::load(&source, self.password())?;
+        let page = *pdf
+            .get_pages()
+            .get(&(page_index as u32 + 1))
+            .ok_or(EngineError::PageOutOfRange(page_index))?;
+        if read_stored(pdf.get_dictionary(page).map_err(lopdf_err)?)?.is_none() {
+            return Err(invalid("no supported regions to clear"));
+        }
+        Ok(MeasurementViewportResetTarget {
+            page: page_index,
+            source: Arc::new(source),
+        })
+    }
+
+    /// One atomic, undoable removal of the captured supported region metadata. Annotation
+    /// geometry/scales remain untouched; a later document edit invalidates the reset target.
+    pub fn clear_measurement_viewports(
+        &mut self,
+        target: &MeasurementViewportResetTarget,
+    ) -> Result<(), EngineError> {
+        if !self.properties().can_modify {
+            return Err(EngineError::SecurityRestricted);
+        }
+        if self.signature_count() != 0 {
+            return Err(invalid("signed PDFs cannot change regions"));
+        }
+        if !crate::annot_rich::same_document(&target.source, &self.snapshot()?, self.password())? {
+            return Err(invalid("document changed; refresh before clearing regions"));
+        }
+        self.edit_pdf(target.page, |pdf, page, _| {
+            if read_stored(pdf.get_dictionary(page).map_err(lopdf_err)?)?.is_none() {
+                return Err(invalid("no supported regions to clear"));
+            }
+            pdf.get_dictionary_mut(page).map_err(lopdf_err)?.remove(KEY);
+            Ok(())
+        })
+    }
+
     pub fn measurement_viewports(
         &self,
         page_index: usize,
@@ -343,5 +471,36 @@ mod tests {
         assert!(select_viewport(&v, &[(5.0, 5.0), (95.0, 5.0)], None).is_err());
         assert!(select_viewport(&v, &[], None).is_err());
         assert!(select_viewport(&v, &[(f32::NAN, 0.0)], None).is_err());
+    }
+
+    #[test]
+    fn closed_geometry_never_silently_falls_back_when_it_encloses_or_crosses_a_region() {
+        let mut v = region("detail", 40.0, 60.0);
+        v.bounds.bottom = 40.0;
+        v.bounds.top = 60.0;
+        let regions = vec![v];
+        assert!(select_viewport(
+            &regions,
+            &[
+                (-10.0, -10.0),
+                (110.0, -10.0),
+                (110.0, 110.0),
+                (-10.0, 110.0)
+            ],
+            None
+        )
+        .is_err());
+        assert!(select_viewport(
+            &regions,
+            &[(-10.0, -10.0), (110.0, -10.0), (110.0, 110.0)],
+            None
+        )
+        .is_err());
+        assert!(select_viewport(
+            &regions,
+            &[(-10.0, -10.0), (110.0, -10.0), (110.0, 110.0)],
+            Some("detail")
+        )
+        .is_err());
     }
 }

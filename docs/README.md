@@ -12,6 +12,7 @@ Older `.en.md` addresses remain compatibility links.
 | [Ubuntu installation](UBUNTU.md) | [FR](UBUNTU.fr.md) | Ubuntu amd64 package, local OCR, settings, updates and platform limits |
 | [Reader controls and tools](READER_WORKSPACE.md) | [FR](READER_WORKSPACE.fr.md) | Bottom page/zoom controls, searchable tool families and the measurement side panel; [qualified 0.50.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) |
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
+| [Plan workspace](PLAN_WORKSPACE.md) | [FR](PLAN_WORKSPACE.fr.md) | 0.60 named scales, vector snapping, atomic recalibration, docked tables and qualification limits |
 | [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and individual measurement editing |
 | [Measurement geometry](MEASUREMENT_GEOMETRY.md) | [FR](MEASUREMENT_GEOMETRY.fr.md) | Move, add and remove saved vertices with explicit selection, Preview, Apply and Undo; [qualified 0.49.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) |
 | [Counts and annotation register](MARKUP_REGISTER.md) | [FR](MARKUP_REGISTER.fr.md) | Markers, quantities and business fields |
@@ -46,6 +47,8 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 | [Third-party notices](THIRD_PARTY_NOTICES.md) | [FR](THIRD_PARTY_NOTICES.fr.md) | Licenses and redistribution |
 
 ## Planning
+
+- [0.60 release scope](RELEASE_0.60.0.md) · [FR](RELEASE_0.60.0.fr.md): candidate implementation, explicit qualification limits and deferred private project-plan validation.
 
 - [0.51 release](RELEASE_0.51.0.md) · [FR](RELEASE_0.51.0.fr.md): published stable Latest; Ubuntu 22.04/24.04 amd64 package and retained Windows packages, within [verified scope](qa/RELEASE_0.51.0.json).
 - [0.50 release](RELEASE_0.50.0.md) · [FR](RELEASE_0.50.0.fr.md): reader controls and organized tools within documented bounds and [publication evidence](qa/RELEASE_0.50.0.json).

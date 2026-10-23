@@ -318,7 +318,10 @@ fn collect(
     }
     let matrix = object.matrix()?.multiply(parent);
     if let Some(path) = object.as_path_object() {
-        if !path.is_stroked()? && path.fill_mode()? == PdfPathFillMode::None {
+        let visible_stroke = path.is_stroked()? && path.stroke_color()?.alpha() > 0;
+        let visible_fill =
+            path.fill_mode()? != PdfPathFillMode::None && path.fill_color()?.alpha() > 0;
+        if !visible_stroke && !visible_fill {
             return Ok(());
         }
         let segments = path.segments();

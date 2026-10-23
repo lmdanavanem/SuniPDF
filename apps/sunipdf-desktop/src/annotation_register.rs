@@ -353,61 +353,6 @@ impl SuniApp {
                     cancel_collection = ui.button(tr(lang, "register.cancel")).clicked();
                 }
                 if let Some(report) = &report {
-                    ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
-                        egui::Grid::new("register-filters")
-                            .num_columns(4)
-                            .show(ui, |ui| {
-                                for (key, text) in [
-                                    ("register.search", &mut state.filter.query),
-                                    ("register.author", &mut state.filter.author),
-                                    (
-                                        "register.business_status",
-                                        &mut state.filter.business_status,
-                                    ),
-                                    ("register.discipline", &mut state.filter.discipline),
-                                    ("register.review_status", &mut state.filter.review_status),
-                                    ("register.modified", &mut state.filter.modified),
-                                    ("register.kind", &mut state.filter.kind),
-                                    ("register.count_group", &mut state.filter.count_group),
-                                ]
-                                .into_iter()
-                                .enumerate()
-                                {
-                                    ui.label(tr(lang, text.0));
-                                    ui.add(
-                                        egui::TextEdit::singleline(text.1)
-                                            .char_limit(512)
-                                            .desired_width(150.0),
-                                    );
-                                    if key % 2 == 1 {
-                                        ui.end_row();
-                                    }
-                                }
-                            });
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(tr(lang, "register.page_filter"));
-                            ui.add(
-                                egui::DragValue::new(&mut state.page).range(0..=report.page_count),
-                            );
-                            state.filter.page = (state.page > 0).then_some(state.page);
-                            ui.checkbox(
-                                &mut state.filter.include_replies,
-                                tr(lang, "register.include_replies"),
-                            );
-                            egui::ComboBox::from_id_salt("register-sort")
-                                .selected_text(tr(lang, &format!("register.{}", state.sort.id())))
-                                .show_ui(ui, |ui| {
-                                    for sort in RegisterSort::ALL {
-                                        ui.selectable_value(
-                                            &mut state.sort,
-                                            sort,
-                                            tr(lang, &format!("register.{}", sort.id())),
-                                        );
-                                    }
-                                });
-                            ui.checkbox(&mut state.descending, tr(lang, "register.descending"));
-                        });
-                    });
                     let selected =
                         state
                             .selection
@@ -424,7 +369,67 @@ impl SuniApp {
                     state.offset = state.offset.min(rows.len().saturating_sub(1) / 50 * 50);
                     let totals = &selected.totals;
                     // Group totals are available without pushing the first result below the fold.
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
+                            egui::Grid::new("register-filters")
+                                .num_columns(4)
+                                .show(ui, |ui| {
+                                    for (key, text) in [
+                                        ("register.search", &mut state.filter.query),
+                                        ("register.author", &mut state.filter.author),
+                                        (
+                                            "register.business_status",
+                                            &mut state.filter.business_status,
+                                        ),
+                                        ("register.discipline", &mut state.filter.discipline),
+                                        ("register.review_status", &mut state.filter.review_status),
+                                        ("register.modified", &mut state.filter.modified),
+                                        ("register.kind", &mut state.filter.kind),
+                                        ("register.count_group", &mut state.filter.count_group),
+                                    ]
+                                    .into_iter()
+                                    .enumerate()
+                                    {
+                                        ui.label(tr(lang, text.0));
+                                        ui.add(
+                                            egui::TextEdit::singleline(text.1)
+                                                .char_limit(512)
+                                                .desired_width(150.0),
+                                        );
+                                        if key % 2 == 1 {
+                                            ui.end_row();
+                                        }
+                                    }
+                                });
+                            ui.horizontal_wrapped(|ui| {
+                                ui.label(tr(lang, "register.page_filter"));
+                                ui.add(
+                                    egui::DragValue::new(&mut state.page)
+                                        .range(0..=report.page_count),
+                                );
+                                state.filter.page = (state.page > 0).then_some(state.page);
+                                ui.checkbox(
+                                    &mut state.filter.include_replies,
+                                    tr(lang, "register.include_replies"),
+                                );
+                                egui::ComboBox::from_id_salt("register-sort")
+                                    .selected_text(tr(
+                                        lang,
+                                        &format!("register.{}", state.sort.id()),
+                                    ))
+                                    .show_ui(ui, |ui| {
+                                        for sort in RegisterSort::ALL {
+                                            ui.selectable_value(
+                                                &mut state.sort,
+                                                sort,
+                                                tr(lang, &format!("register.{}", sort.id())),
+                                            );
+                                        }
+                                    });
+                                ui.checkbox(&mut state.descending, tr(lang, "register.descending"));
+                            });
+                        });
+
                         if !totals.is_empty() {
                             ui.menu_button(tr(lang, "workspace.table.summary"), |ui| {
                                 for (group, count) in totals.iter().take(20) {
@@ -925,5 +930,92 @@ mod tests {
         state.pending = Some((4, 2));
         state.invalidate();
         assert!(state.open && state.pending.is_none() && state.report.is_none());
+    }
+    #[test]
+    fn docked_register_row_navigation_keeps_table_and_document_open() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes = vec![size; 3];
+        app.annotate.register.open = true;
+        let report = large_register();
+        let mut row = report.rows[0].clone();
+        row.page = 2;
+        row.index = 7;
+        assert!(
+            !app.dialog_open(),
+            "a read-only register does not block the document"
+        );
+        app.follow_table_annotation(&row);
+        assert!(app.annotate.register.open);
+        assert_eq!(app.document.as_ref().unwrap().page, 1);
+        assert_eq!(app.annotate.adv.reselect, Some((1, 7)));
+        assert!(!app.dirty);
+        assert!(requests
+            .try_iter()
+            .all(|request| !matches!(request, Request::Edit(_) | Request::Save { .. })));
+        row.page = 0;
+        app.follow_table_annotation(&row);
+        assert_eq!(
+            app.document.as_ref().unwrap().page,
+            1,
+            "invalid pages do not change selection"
+        );
+        row.page = 3;
+        row.rect = Some([f32::NAN, 0.0, 20.0, 20.0]);
+        app.follow_table_annotation(&row);
+        assert_eq!(
+            app.document.as_ref().unwrap().page,
+            1,
+            "invalid coordinates cannot navigate"
+        );
+    }
+
+    #[test]
+    fn compact_register_keeps_first_row_visible_and_close_preserves_document() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.annotate.register.open = true;
+        let mut report = (*large_register()).clone();
+        report.rows.truncate(2);
+        app.annotate.register.report = Some(Arc::new(report));
+        let pages = app.document.as_ref().unwrap().info.page_sizes.clone();
+        let ctx = egui::Context::default();
+        let mut input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(720.0, 480.0),
+            )),
+            ..Default::default()
+        };
+        for _ in 0..3 {
+            let mut output = ctx.run_ui(input.clone(), |ui| {
+                ui.allocate_space(egui::vec2(720.0, 95.0));
+                app.annotation_register_dock(&ctx, ui);
+            });
+            output.textures_delta.clear();
+            assert!(
+                output.shapes.iter().any(|shape| match &shape.shape {
+                    egui::Shape::Text(text) if text.galley.text() == "1 / 0" => shape
+                        .clip_rect
+                        .contains(text.pos + text.galley.size() / 2.0),
+                    _ => false,
+                }),
+                "first result must be visible at 720x480"
+            );
+        }
+        input.events.push(egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        });
+        let mut output = ctx.run_ui(input, |ui| app.annotation_register_dock(&ctx, ui));
+        output.textures_delta.clear();
+        assert!(!app.annotate.register.open);
+        assert_eq!(app.document.as_ref().unwrap().info.page_sizes, pages);
+        assert!(!app.dirty);
+        assert!(requests
+            .try_iter()
+            .all(|request| !matches!(request, Request::Edit(_) | Request::Save { .. })));
     }
 }

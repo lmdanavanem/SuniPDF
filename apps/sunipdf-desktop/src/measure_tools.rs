@@ -270,6 +270,14 @@ impl MeasurementState {
     }
 
     fn scale_for_points(&self, page: usize, points: &[Point]) -> Result<Scale, &'static str> {
+        if self
+            .scales_ui
+            .selected
+            .get(&page)
+            .is_some_and(|id| id == crate::measurement_scales_ui::PAGE_SCALE)
+        {
+            return self.scale(page).ok_or("measure.no_scale");
+        }
         if self.saved.page_data(page).is_none() && self.scales_ui.needs_region_metadata(page) {
             return Err("measure.viewport.unavailable");
         }
@@ -279,9 +287,6 @@ impl MeasurementState {
                 .as_ref()
                 .map_err(|_| "measure.viewport.unavailable")?;
             let selected = self.scales_ui.selected.get(&page).map(String::as_str);
-            if selected == Some(crate::measurement_scales_ui::PAGE_SCALE) {
-                return self.scale(page).ok_or("measure.no_scale");
-            }
             let region = sunipdf_core::measurement::select_viewport(viewports, points, selected)
                 .map_err(|_| "measure.viewport.conflict")?;
             if let Some(region) = region {

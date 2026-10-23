@@ -178,6 +178,21 @@ pub fn set_viewports(engine: &Engine, args: SetViewportsArgs) -> Result<Value, E
         json!({"out":args.out,"page":args.page,"regions":regions.iter().map(region_json).collect::<Vec<_>>(),"original_unchanged":true,"encrypted":doc.properties().encrypted,"existing_measurements_changed":false}),
     )
 }
+
+pub fn clear_viewports(
+    engine: &Engine,
+    args: crate::calibration_cmd::RemoveArgs,
+) -> Result<Value, EngineError> {
+    new_output(&args.out)?;
+    let mut doc = engine.open(&args.file, args.password.as_deref())?;
+    let page = crate::page_index(args.page, doc.page_count())?;
+    let target = doc.measurement_viewport_reset_target(page)?;
+    doc.clear_measurement_viewports(&target)?;
+    sunipdf_core::write_new_copy(&args.out, &doc.snapshot()?)?;
+    Ok(
+        json!({"out":args.out,"page":args.page,"regions":[],"original_unchanged":true,"encrypted":doc.properties().encrypted,"existing_measurements_changed":false}),
+    )
+}
 pub fn recalibrate(engine: &Engine, args: RecalibrateArgs) -> Result<Value, EngineError> {
     if let Some(out) = &args.out {
         new_output(out)?;

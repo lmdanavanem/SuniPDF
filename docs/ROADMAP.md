@@ -8,6 +8,12 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
+## 0.60: P1 plan-workspace scope
+
+0.60 implements cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
+
+[0.60 scope and limits](RELEASE_0.60.0.md).
+
 ## 0.44–0.51: local plan workflow deliveries
 
 | Version | Scope | Current state |
@@ -23,7 +29,7 @@ Partial corpus/mutation work does not close native, interoperability, authentici
 
 The 0.44 desktop editor changes reference distance, unit and precision while keeping vertices/reference points fixed. The CLI can replace explicit geometry using an expected record; both paths preserve annotation identity and reject stale or unsupported targets. Final-source qualification and limits: [Evidence](qa/RELEASE_0.44.0.json). [0.44 scope and preliminary audit](RELEASE_0.44.0.md) · [Measurement guide](MEASUREMENTS.md).
 
-This sequence delivers bounded increments. Existing vertex editing is included in 0.48, and insertion/removal with explicit vertex selection in 0.49; vector snapping, batch recalculation, multiple-scale viewports, real-plan accuracy and full 1.0 criteria remain open. AEC-001/002/003/004/026 remain partial. Historical evidence below stays attached to its original release.
+This sequence delivers bounded increments. Existing-vertex editing arrived in 0.48 and insertion/removal in 0.49. The 0.60 implementation adds vector snapping, explicit batch recalibration and multiple-scale regions. Real-project accuracy and the full 1.0 criteria remain open; private project-plan qualification is explicitly deferred. Historical evidence below stays attached to its original release.
 
 ## 0.51.0: Ubuntu desktop package (stable Latest)
 

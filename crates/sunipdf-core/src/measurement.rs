@@ -15,7 +15,9 @@ use std::sync::Arc;
 pub use crate::measurement_batch::{RecalibrationChange, RecalibrationPlan, RecalibrationRequest};
 pub use crate::measurement_distance::parse_measurement_distance;
 pub use crate::measurement_snap::{SnapKind, SnapPoint, VectorSnapGeometry};
-pub use crate::measurement_viewports::{select_viewport, MeasurementViewport};
+pub use crate::measurement_viewports::{
+    select_viewport, MeasurementViewport, MeasurementViewportResetTarget,
+};
 pub use crate::page_calibration::PageCalibration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

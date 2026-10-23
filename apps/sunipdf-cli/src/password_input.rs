@@ -87,6 +87,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         Command::EditMeasurement(args) => Some(&mut args.password),
         Command::MeasurementViewports(args) => Some(&mut args.password),
         Command::SetMeasurementViewports(args) => Some(&mut args.password),
+        Command::ClearMeasurementViewports(args) => Some(&mut args.password),
         Command::RecalibrateMeasurements(args) => Some(&mut args.password),
         Command::MeasurementSnap(args) => Some(&mut args.password),
         Command::AddFormField { password, .. }

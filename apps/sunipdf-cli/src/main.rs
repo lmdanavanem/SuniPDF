@@ -71,6 +71,8 @@ enum Command {
     MeasurementViewports(measurement_workspace_cmd::ViewportsArgs),
     /// Replace an exact expected region set in a new PDF copy.
     SetMeasurementViewports(measurement_workspace_cmd::SetViewportsArgs),
+    /// Explicitly clear supported measurement regions, including stale scales, in a new copy.
+    ClearMeasurementViewports(calibration_cmd::RemoveArgs),
     /// Preview or atomically apply explicit multi-page measurement recalibration.
     RecalibrateMeasurements(measurement_workspace_cmd::RecalibrateArgs),
     /// Find a real vector endpoint or straight-segment intersection near a displayed point.
@@ -1612,6 +1614,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::SetMeasurementViewports(args) => {
             measurement_workspace_cmd::set_viewports(&engine, args)
         }
+        Command::ClearMeasurementViewports(args) => {
+            measurement_workspace_cmd::clear_viewports(&engine, args)
+        }
         Command::RecalibrateMeasurements(args) => {
             measurement_workspace_cmd::recalibrate(&engine, args)
         }
@@ -2971,6 +2976,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::RemovePageCalibration(args) => Some(&args.out),
         Command::EditMeasurement(args) => Some(&args.out),
         Command::SetMeasurementViewports(args) => Some(&args.out),
+        Command::ClearMeasurementViewports(args) => Some(&args.out),
         Command::RecalibrateMeasurements(args) => args.out.as_deref(),
         Command::Merge { out, .. }
         | Command::BookmarkAdd { out, .. }

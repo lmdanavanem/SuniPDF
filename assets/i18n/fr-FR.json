@@ -1424,7 +1424,7 @@
   "measure.snap.intersection": "Intersection vectorielle",
   "measure.snap.help": "Approchez à 8 pixels d’une extrémité ou intersection vectorielle. Les pixels des scans ne sont pas des cibles.",
   "measure.snap.empty": "Aucun vecteur admissible sur cette page.",
-  "measure.snap.clipped": "Les tracés découpés sont exclus de l’accrochage.",
+  "measure.snap.clipped": "Les tracés découpés non pris en charge sont exclus de l’accrochage.",
   "measure.snap.unavailable": "Accrochage vectoriel indisponible sur cette page.",
   "measure.viewport.title": "Zones d’échelle",
   "measure.viewport.automatic": "Sélection automatique de la zone",
@@ -1464,5 +1464,8 @@
   "workspace.table.dock": "Ancrer sous le document",
   "workspace.table.float": "Tableau flottant",
   "workspace.table.filters": "Filtres",
-  "workspace.table.summary": "Totaux"
+  "workspace.table.summary": "Totaux",
+  "measure.viewport.reset": "Réinitialiser les zones d’échelle périmées…",
+  "measure.viewport.reset_help": "Les zones d’échelle enregistrées ne correspondent plus à cette page. Effacer leurs définitions ? Les valeurs des mesures existantes sont conservées. Cette modification peut être annulée.",
+  "measure.viewport.reset_confirm": "Effacer les définitions périmées"
 }

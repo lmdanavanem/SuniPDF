@@ -237,8 +237,11 @@ fn typed_text(value: &TypedValue) -> &str {
     }
 }
 fn short_label(ui: &mut egui::Ui, text: &str) {
-    ui.label(text.chars().take(60).collect::<String>())
-        .on_hover_text(text);
+    ui.add_sized(
+        [170.0, 20.0],
+        egui::Label::new(text.chars().take(60).collect::<String>()).truncate(),
+    )
+    .on_hover_text(text);
 }
 
 impl SuniApp {
@@ -512,36 +515,6 @@ impl SuniApp {
                                     .char_limit(128),
                             );
                         });
-                    });
-                    if changed {
-                        state.refresh_selection();
-                    }
-                    if !report.can_export() {
-                        ui.small(tr(lang, "quantity.no_export"));
-                    }
-                    let filter = state.column_filter.to_lowercase();
-                    let columns: Vec<_> = state
-                        .columns
-                        .iter()
-                        .filter(|name| name.to_lowercase().contains(&filter))
-                        .take(16)
-                        .collect();
-                    if state.columns.len() > 16 {
-                        ui.small(tr(lang, "quantity.more_columns"));
-                    }
-                    if selection != state.followed {
-                        state.followed = selection;
-                        if let Some(position) = state.selected.iter().position(|index| {
-                            selection
-                                == Some((
-                                    report.rows()[*index].register.page,
-                                    report.rows()[*index].register.index,
-                                ))
-                        }) {
-                            state.offset = position / 50 * 50;
-                        }
-                    }
-                    ui.horizontal(|ui| {
                         if ui
                             .add_enabled(
                                 state.offset > 0,
@@ -571,6 +544,34 @@ impl SuniApp {
                             state.offset += 50;
                         }
                     });
+                    if changed {
+                        state.refresh_selection();
+                    }
+                    if !report.can_export() {
+                        ui.small(tr(lang, "quantity.no_export"));
+                    }
+                    let filter = state.column_filter.to_lowercase();
+                    let columns: Vec<_> = state
+                        .columns
+                        .iter()
+                        .filter(|name| name.to_lowercase().contains(&filter))
+                        .take(16)
+                        .collect();
+                    if state.columns.len() > 16 {
+                        ui.small(tr(lang, "quantity.more_columns"));
+                    }
+                    if selection != state.followed {
+                        state.followed = selection;
+                        if let Some(position) = state.selected.iter().position(|index| {
+                            selection
+                                == Some((
+                                    report.rows()[*index].register.page,
+                                    report.rows()[*index].register.index,
+                                ))
+                        }) {
+                            state.offset = position / 50 * 50;
+                        }
+                    }
                     egui::ScrollArea::horizontal()
                         .id_salt("quantity-table-scroll")
                         .show(ui, |ui| {
@@ -921,8 +922,14 @@ pub(crate) mod tests {
                     ..Default::default()
                 },
                 |ui| {
-                    app.measurement_bar(&self.ctx, ui);
                     app.quantity_table_dock(&self.ctx, ui);
+                    egui::Panel::left("quantity-test-measurements")
+                        .exact_size(280.0)
+                        .show(ui, |ui| {
+                            egui::ScrollArea::vertical()
+                                .show(ui, |ui| app.measurement_bar(&self.ctx, ui));
+                        });
+                    app.quantity_table_dialog(&self.ctx);
                 },
             );
             output.textures_delta.clear();
@@ -939,14 +946,36 @@ pub(crate) mod tests {
                 }
             }
             self.frame(app, vec![]);
-            let output = self.frame(app, vec![]);
             let label = tr(app.lang(), key);
-            let point = output
-                .shapes
-                .iter()
-                .rev()
-                .find_map(|s| find(&s.shape, label))
-                .unwrap_or_else(|| panic!("visible quantity control {key}"));
+            let mut point = None;
+            for attempt in 0..20 {
+                let output = self.frame(app, vec![]);
+                point = output
+                    .shapes
+                    .iter()
+                    .rev()
+                    .find_map(|s| find(&s.shape, label).filter(|p| s.clip_rect.contains(*p)));
+                if point.is_some() {
+                    break;
+                }
+                let at = if app.annotate.quantities.open {
+                    Pos2::new(800.0, 990.0)
+                } else {
+                    Pos2::new(140.0, 600.0)
+                };
+                self.frame(
+                    app,
+                    vec![
+                        Event::PointerMoved(at),
+                        Event::MouseWheel {
+                            unit: egui::MouseWheelUnit::Point,
+                            delta: egui::vec2(0.0, if attempt < 10 { -150.0 } else { 150.0 }),
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            let point = point.unwrap_or_else(|| panic!("visible quantity control {key}"));
             self.time += 0.6;
             for pressed in [true, false] {
                 self.frame(

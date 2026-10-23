@@ -546,47 +546,6 @@ impl Document<'_> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn csv_cells_neutralize_formulas_after_spaces_bom_and_controls() {
-        for value in [
-            "=1+2",
-            " @SUM(A1)",
-            "\u{feff}-2+3",
-            "\tplain",
-            "\r\n=1",
-            "\0=1",
-            "+cmd",
-        ] {
-            assert!(csv_cell(value).starts_with("\"'"), "{value:?}");
-        }
-        assert_eq!(csv_cell("a,\"b\"\nc"), "\"a,\"\"b\"\"\nc\"");
-        assert_eq!(csv_cell("été 中文"), "\"été 中文\"");
-        assert!(validate_count_group("  ").is_err());
-        assert!(validate_count_group("Lights\n").is_err());
-        assert!(RegisterFields {
-            business_status: Some("Ready".into()),
-            discipline: None,
-            custom: BTreeMap::from([("Room".into(), "A-101".into())])
-        }
-        .validate()
-        .is_ok());
-        for key in ["Room=Floor", " Room", "Room "] {
-            assert!(
-                RegisterFields {
-                    custom: BTreeMap::from([(key.into(), "A101".into())]),
-                    ..Default::default()
-                }
-                .validate()
-                .is_err(),
-                "field keys must round-trip through the text editor without being renamed"
-            );
-        }
-    }
-}
-
 /// Snapshot-owned parser whose individual steps read a single page. No PDFium handle is moved
 /// between threads. Partial rows are never exposed as a complete register.
 pub struct RegisterReader<'a> {
@@ -838,5 +797,46 @@ impl<'a> RegisterReader<'a> {
             rows,
             source_snapshot: bytes,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn csv_cells_neutralize_formulas_after_spaces_bom_and_controls() {
+        for value in [
+            "=1+2",
+            " @SUM(A1)",
+            "\u{feff}-2+3",
+            "\tplain",
+            "\r\n=1",
+            "\0=1",
+            "+cmd",
+        ] {
+            assert!(csv_cell(value).starts_with("\"'"), "{value:?}");
+        }
+        assert_eq!(csv_cell("a,\"b\"\nc"), "\"a,\"\"b\"\"\nc\"");
+        assert_eq!(csv_cell("été 中文"), "\"été 中文\"");
+        assert!(validate_count_group("  ").is_err());
+        assert!(validate_count_group("Lights\n").is_err());
+        assert!(RegisterFields {
+            business_status: Some("Ready".into()),
+            discipline: None,
+            custom: BTreeMap::from([("Room".into(), "A-101".into())])
+        }
+        .validate()
+        .is_ok());
+        for key in ["Room=Floor", " Room", "Room "] {
+            assert!(
+                RegisterFields {
+                    custom: BTreeMap::from([(key.into(), "A101".into())]),
+                    ..Default::default()
+                }
+                .validate()
+                .is_err(),
+                "field keys must round-trip through the text editor without being renamed"
+            );
+        }
     }
 }

@@ -247,7 +247,7 @@ fn calibrated_regions_survive_all_rotations_and_preserve_existing_annotation_sca
             .open_bytes(source, None, Path::new("regions.pdf"))
             .unwrap();
         let original = region("a", 10.0);
-        doc.set_measurement_viewports(0, &[], &[original.clone()])
+        doc.set_measurement_viewports(0, &[], std::slice::from_ref(&original))
             .unwrap();
         doc.add_measurement_annotation(0, &measurement(), None)
             .unwrap();
@@ -354,6 +354,19 @@ fn overlapping_regions_are_explicit_and_malformed_or_stale_metadata_is_preserved
             "{change}"
         );
         unchanged(&before, &broken.snapshot().unwrap());
+        if matches!(change, "crop" | "content") {
+            let target = broken.measurement_viewport_reset_target(0).unwrap();
+            broken.clear_measurement_viewports(&target).unwrap();
+            assert!(broken.measurement_viewports(0).unwrap().is_empty());
+            assert!(broken.clear_measurement_viewports(&target).is_err());
+            broken.restore(before).unwrap();
+            assert!(broken.measurement_viewports(0).is_err());
+        } else {
+            assert!(
+                broken.measurement_viewport_reset_target(0).is_err(),
+                "{change}"
+            );
+        }
     }
     for bytes in [
         security::strip_metadata(&saved, None).unwrap(),
@@ -400,11 +413,13 @@ fn new_measurement_writes_preserve_aes_and_honor_independent_permissions() {
                 measurements: doc.measurement_records(0).unwrap(),
             };
             if allow_annotate {
-                let plan = doc.preview_recalibration(&[request.clone()]).unwrap();
+                let plan = doc
+                    .preview_recalibration(std::slice::from_ref(&request))
+                    .unwrap();
                 doc.apply_recalibration(&plan).unwrap();
             } else {
                 assert!(matches!(
-                    doc.preview_recalibration(&[request.clone()]),
+                    doc.preview_recalibration(std::slice::from_ref(&request)),
                     Err(EngineError::SecurityRestricted)
                 ));
             }
@@ -534,4 +549,30 @@ fn native_nested_form_paths_use_composed_transforms_and_clipped_content_is_not_g
         SnapKind::Intersection
     );
     assert!(geometry.nearest((400.0, 400.0), 0.1).is_none());
+}
+
+#[test]
+fn transparent_vector_paint_never_offers_an_invisible_snap() {
+    let e = engine();
+    let bytes = mutate(SOURCE, |pdf| {
+        let content = pdf.add_object(Stream::new(
+            dictionary! {},
+            b"q /Invisible gs 10 10 m 200 200 l S 10 200 m 200 10 l S Q 300 300 m 400 400 l S"
+                .to_vec(),
+        ));
+        let page = pdf.get_pages()[&1];
+        let page = pdf.get_dictionary_mut(page).unwrap();
+        page.set("Contents", content);
+        page.set("Resources",dictionary!{"ExtGState"=>dictionary!{"Invisible"=>dictionary!{"Type"=>"ExtGState","CA"=>0,"ca"=>0}}});
+    });
+    let doc = e
+        .open_bytes(bytes, None, Path::new("transparent.pdf"))
+        .unwrap();
+    let geometry = doc.vector_snap_geometry(0).unwrap();
+    assert!(geometry.nearest((10.0, 10.0), 0.1).is_none());
+    assert!(geometry.nearest((105.0, 105.0), 0.1).is_none());
+    assert_eq!(
+        geometry.nearest((300.0, 300.0), 0.1).unwrap().kind,
+        SnapKind::Endpoint
+    );
 }

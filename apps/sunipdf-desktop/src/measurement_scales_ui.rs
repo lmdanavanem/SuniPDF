@@ -56,6 +56,7 @@ pub(crate) struct ScaleToolsState {
     batch: Option<BatchDraft>,
     applying: bool,
     remove_region: Option<(usize, String)>,
+    reset_regions: Option<sunipdf_core::measurement::MeasurementViewportResetTarget>,
     error: Option<String>,
     generation: u64,
 }
@@ -71,6 +72,7 @@ impl Default for ScaleToolsState {
             batch: None,
             applying: false,
             remove_region: None,
+            reset_regions: None,
             error: None,
             generation: 0,
         }
@@ -86,7 +88,10 @@ impl ScaleToolsState {
             || self.selected.get(&page).is_some_and(|id| id != PAGE_SCALE)
     }
     pub(crate) fn dialog_open(&self) -> bool {
-        self.batch.is_some() || self.applying || self.remove_region.is_some()
+        self.batch.is_some()
+            || self.applying
+            || self.remove_region.is_some()
+            || self.reset_regions.is_some()
     }
     pub(crate) fn cancel_region(&mut self) {
         self.region = None;
@@ -96,6 +101,7 @@ impl ScaleToolsState {
         self.region = None;
         self.batch = None;
         self.remove_region = None;
+        self.reset_regions = None;
         self.snapped = None;
         self.generation = self.generation.wrapping_add(1);
         // Selection survives a content edit, but is revalidated against freshly read metadata.
@@ -447,6 +453,19 @@ impl SuniApp {
         if let Some(Err(error)) = data.as_ref().map(|d| &d.viewports) {
             ui.colored_label(Color32::RED, error);
         }
+        if let Some(data) = data.as_ref().filter(|data| data.viewports.is_err()) {
+            if let Some(target) = &data.viewport_reset_target {
+                if measurement_panel_button(
+                    ui,
+                    idle && data.can_modify,
+                    tr(lang, "measure.viewport.reset"),
+                )
+                .clicked()
+                {
+                    self.annotate.measure.scales_ui.reset_regions = Some(target.clone());
+                }
+            }
+        }
         let can_modify = data
             .as_ref()
             .is_some_and(|d| d.can_modify && d.viewports.is_ok());
@@ -667,6 +686,7 @@ impl SuniApp {
     }
 
     pub(crate) fn measurement_scale_dialogs(&mut self, ctx: &egui::Context) {
+        self.measurement_reset_regions_dialog(ctx);
         self.measurement_remove_region_dialog(ctx);
         if self
             .annotate
@@ -852,6 +872,47 @@ impl SuniApp {
                 self.worker
                     .send(Request::Edit(EditOp::ApplyRecalibration(plan)));
             }
+        }
+    }
+
+    fn measurement_reset_regions_dialog(&mut self, ctx: &egui::Context) {
+        let Some(target) = self.annotate.measure.scales_ui.reset_regions.clone() else {
+            return;
+        };
+        let lang = self.lang();
+        let mut close = false;
+        let mut reset = false;
+        dialog::show(
+            ctx,
+            dialog::Spec::new(
+                "measurement-reset-regions",
+                tr(lang, "measure.viewport.reset"),
+                self.settings.dark_theme,
+                self.has_icons,
+            )
+            .width(480.0),
+            |ui| {
+                ui.label(tr(lang, "measure.viewport.reset_help"));
+            },
+            |ui| {
+                close = ui.button(tr(lang, "register.close")).clicked();
+                reset = ui
+                    .add_enabled(
+                        self.scale_dialog_mutation_ready(),
+                        egui::Button::new(tr(lang, "measure.viewport.reset_confirm")),
+                    )
+                    .clicked();
+            },
+        );
+        if close {
+            self.annotate.measure.scales_ui.reset_regions = None;
+        }
+        if reset && self.scale_dialog_mutation_ready() {
+            self.annotate.measure.scales_ui.reset_regions = None;
+            self.annotate.measure.scales_ui.applying = true;
+            self.annotate.measure.scales_ui.error = None;
+            self.worker
+                .send(Request::Edit(EditOp::ClearMeasurementViewports(target)));
         }
     }
 

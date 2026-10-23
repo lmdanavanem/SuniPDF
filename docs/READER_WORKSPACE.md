@@ -2,6 +2,8 @@
 
 [Français](READER_WORKSPACE.fr.md) · [User guide](USER_GUIDE.en.md)
 
+The 0.60 plan workspace adds resizable docked/floating tables, cached page layouts and measurement scale tools. This page retains the reading controls introduced in 0.50. [0.60](PLAN_WORKSPACE.md).
+
 Available in [0.50.0](RELEASE_0.50.0.md). [Evidence](qa/RELEASE_0.50.0.json).
 
 ## Find a tool
@@ -47,6 +49,6 @@ View rotation changes reading orientation only. To change the PDF's page rotatio
 
 ## Scope
 
-This reorganizes existing reading, navigation and measurement operations. It does not add vector snapping, batch recalculation or new measurement types. PDF permissions and draft/preview guards still apply.
+The 0.50 release reorganized reading, navigation and measurement operations. The [0.60 workspace](PLAN_WORKSPACE.md) adds eligible vector snapping, scale regions and batch recalibration. PDF permissions and draft/preview guards still apply.
 
 Offscreen rendering and automated interaction checks can verify the tested layouts. They do not establish native-window, physical-device, screen-reader or ARM64 hardware qualification. Publication evidence records which checks actually ran.

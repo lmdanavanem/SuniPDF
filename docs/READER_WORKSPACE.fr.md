@@ -2,6 +2,8 @@
 
 [English](READER_WORKSPACE.md) · [Guide utilisateur](USER_GUIDE.fr.md)
 
+L'espace des plans 0.60 ajoute les tables ancrées/flottantes redimensionnables, la disposition en cache et les outils d'échelle. Cette page conserve les commandes de lecture introduites en 0.50. [0.60](PLAN_WORKSPACE.fr.md).
+
 Disponible dans [0.50.0](RELEASE_0.50.0.fr.md). [Preuves](qa/RELEASE_0.50.0.json).
 
 ## Trouver un outil
@@ -47,6 +49,6 @@ La rotation de lecture change uniquement l’orientation de l’affichage. Pour 
 
 ## Périmètre
 
-Cette version réorganise les opérations existantes de lecture, navigation et mesure. Elle n’ajoute ni accrochage vectoriel, ni recalcul par lots, ni nouveaux types de mesure. Les permissions PDF et les gardes des brouillons et aperçus restent applicables.
+La version 0.50 réorganisait les opérations de lecture, navigation et mesure. La [0.60](PLAN_WORKSPACE.fr.md) ajoute l'accrochage vectoriel compatible, les zones d'échelle et le recalcul par lots. Les permissions PDF et les gardes des brouillons et aperçus restent applicables.
 
 Le rendu hors écran et les interactions automatisées peuvent vérifier les dispositions testées. Ils ne constituent pas une qualification en fenêtre native, sur périphérique physique, avec lecteur d’écran ou sur matériel ARM64. Les preuves de publication précisent les contrôles réellement exécutés.

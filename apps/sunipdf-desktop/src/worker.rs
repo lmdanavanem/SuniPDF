@@ -263,6 +263,7 @@ pub enum EditOp {
         expected: Vec<sunipdf_core::measurement::MeasurementViewport>,
         replacement: Vec<sunipdf_core::measurement::MeasurementViewport>,
     },
+    ClearMeasurementViewports(sunipdf_core::measurement::MeasurementViewportResetTarget),
     PreparedRichAnnotation(sunipdf_core::annot_rich::PreparedRichAnnotation),
     ResizeObjects {
         page: usize,
@@ -1834,6 +1835,7 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             expected,
             replacement,
         } => doc.set_measurement_viewports(page, &expected, &replacement),
+        EditOp::ClearMeasurementViewports(target) => doc.clear_measurement_viewports(&target),
         EditOp::SetQuantityFields { target, fields } => doc.set_quantity_fields(&target, &fields),
         EditOp::SetAnnotationRegisterFields {
             target,
@@ -3021,6 +3023,10 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             .measurement_viewports(page)
                             .map(Arc::from)
                             .map_err(|e| e.to_string());
+                        if data.viewports.is_err() {
+                            data.viewport_reset_target =
+                                doc.measurement_viewport_reset_target(page).ok();
+                        }
                         data.snap_geometry = doc
                             .vector_snap_geometry(page)
                             .map(Arc::new)
