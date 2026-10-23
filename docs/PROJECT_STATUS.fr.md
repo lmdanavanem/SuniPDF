@@ -1,11 +1,21 @@
-# État du projet - 2026-10-22 (0.50.0 publiée en Latest stable)
+# État du projet - 2026-10-23 (0.51.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.50.0 : commandes de lecture et outils organisés (Latest stable)
+## 0.51.0 : paquet Ubuntu (Latest stable)
+
+[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
+
+Source `f046c51df5d2caa31d4fa8710edd48471b241809`, PR [#31](https://github.com/lmdanavanem/SuniPDF/pull/31). Source exacte validée : [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879765536) · [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879765566) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879777012) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879764800). Windows : 781 tests réussis, 0 échec, 12 ignorés. Linux : 763 tests réussis, 0 échec, 7 ignorés. 1417 clés EN/FR. 43 scénarios portables ; 37 références MSI / 185 journaux. Huit fichiers téléchargés publiquement et vérifiés par SHA256. Aucune alerte Code Scanning ouverte.
+
+La qualification Ubuntu utilise des conteneurs 22.04/24.04 propres, un utilisateur normal, Xvfb et Glow logiciel. Elle couvre le paquet installé, le PDF visible, l’enregistrement/réouverture, l’OCR français/anglais et la suppression/réinstallation du même candidat ; elle ne valide ni une migration depuis une version Linux antérieure ni le matériel physique. Linux ARM64 est hors périmètre. L’impression native, la signature et la confiance par certificat, l’import Office protégé et la bibliothèque persistante chiffrée de signatures visuelles restent réservés à Windows. Les signatures visuelles de session et les exports PDF vers Office restent disponibles. Les paquets Windows restent non signés ; Windows ARM64 est compilé sans exécution native. La mise à jour de Projects reste différée.
+
+[Installation et limites](UBUNTU.fr.md) · [Notes de version](RELEASE_0.51.0.fr.md) · [Preuves](qa/RELEASE_0.51.0.json).
+
+## 0.50.0 : commandes de lecture et outils organisés (publiée ; Latest à cette date)
 
 [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Retrouvez 18 outils dans cinq familles filtrables depuis Outils, avec Mesures et la bibliothèque sous Réviser et mesurer. Basculez le volet gauche entre Outils, Pages et Signets ; utilisez quatre sections de mesure à droite. Les commandes de page et de zoom sont sous le PDF, les pourcentages comme 149% restent sur une ligne et les options de lecture restent accessibles dans les dispositions compactes. La rotation de lecture change uniquement l’affichage ; le rail droit ouvre les panneaux. Un seul panneau contextuel occupe le côté droit. Un brouillon de mesure actif bloque l’ouverture des autres panneaux ; quitter explicitement l’outil ou en changer annule ce brouillon local et conserve les échelles confirmées.
 

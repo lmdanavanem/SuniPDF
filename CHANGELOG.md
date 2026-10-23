@@ -3,9 +3,15 @@
 [Français](CHANGELOG.fr.md)
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
-`release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
+`release.yml` builds and publishes the artefacts (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB) on the GitHub Releases page.
 
 ## [Unreleased]
+
+## [0.51.0] - 2026-10-23
+
+Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
+
+[Release notes](docs/RELEASE_0.51.0.md) · [Evidence](docs/qa/RELEASE_0.51.0.json).
 
 ## [0.50.0] - 2026-10-22
 

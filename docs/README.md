@@ -47,7 +47,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
-- [0.51 release](RELEASE_0.51.0.md) · [FR](RELEASE_0.51.0.fr.md): Ubuntu amd64 package and platform adaptations; qualification is tracked on its release page.
+- [0.51 release](RELEASE_0.51.0.md) · [FR](RELEASE_0.51.0.fr.md): published stable Latest; Ubuntu 22.04/24.04 amd64 package and retained Windows packages, within [verified scope](qa/RELEASE_0.51.0.json).
 - [0.50 release](RELEASE_0.50.0.md) · [FR](RELEASE_0.50.0.fr.md): reader controls and organized tools within documented bounds and [publication evidence](qa/RELEASE_0.50.0.json).
 - [0.49 release](RELEASE_0.49.0.md) · [FR](RELEASE_0.49.0.fr.md): adding/removing saved vertices with explicit selection within documented bounds and [publication evidence](qa/RELEASE_0.49.0.json).
 - [0.48 release](RELEASE_0.48.0.md) · [FR](RELEASE_0.48.0.fr.md): editing saved measurement vertices within documented bounds and [publication evidence](qa/RELEASE_0.48.0.json).
@@ -57,7 +57,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 - [0.44 release and audit](RELEASE_0.44.0.md) · [FR](RELEASE_0.44.0.fr.md): individual editing, corrective work and [verified publication evidence](qa/RELEASE_0.44.0.json).
 - [Feature matrix](FEATURE_MATRIX.md) · [FR](FEATURE_MATRIX.fr.md): implemented features and boundaries.
 - [Roadmap](ROADMAP.md) · [FR](ROADMAP.fr.md): phases and acceptance criteria.
-- Delivered: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 aligned revision overlays, 0.48 editing saved measurement vertices, 0.49 adding/removing saved vertices with explicit selection and 0.50 reader controls and organized tools. Automatic change outlines and remaining acceptance criteria stay open; future stages still require implementation and qualification.
+- Delivered: 0.44 saved-measurement editing, 0.45 annotation library, 0.46 quantity columns/totals/export, 0.47 aligned revision overlays, 0.48 editing saved measurement vertices, 0.49 adding/removing saved vertices with explicit selection, 0.50 reader controls and organized tools, and 0.51 Ubuntu amd64 packaging. Automatic change outlines and remaining acceptance criteria stay open; future stages still require implementation and qualification.
 - [Next tasks](NEXT_TASKS.md) · [FR](NEXT_TASKS.fr.md): current priorities.
 - [Local plan workflows backlog](AEC_BACKLOG.md) · [FR](AEC_BACKLOG.fr.md) · [CSV](AEC_BACKLOG.csv): measurements, quantities and revision workflows.
 - [1.0 release criteria](RELEASE_1.0_CRITERIA.md) · [FR](RELEASE_1.0_CRITERIA.fr.md): remaining qualification gates.

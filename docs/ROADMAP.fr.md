@@ -9,7 +9,7 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.44–0.50 : fonctions locales pour les plans, séquence prévue
+## 0.44–0.51 : fonctions locales pour les plans, séquence prévue
 
 | Version | Périmètre | État actuel |
 |---|---|---|
@@ -20,12 +20,19 @@ d’authenticité ou de conformité.
 | 0.48 | Modification des sommets des mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.48.0](RELEASE_0.48.0.fr.md). |
 | 0.49 | Ajout et suppression de sommets de mesures enregistrées | Lot livré dans ses limites ; critères complets encore ouverts. [0.49.0](RELEASE_0.49.0.fr.md). |
 | 0.50 | Commandes de lecture et outils organisés | Lot livré dans ses limites ; critères complets encore ouverts. [0.50.0](RELEASE_0.50.0.fr.md). |
+| 0.51 | Paquet Ubuntu amd64 | Publiée dans les limites de la plateforme. [0.51.0](RELEASE_0.51.0.fr.md). |
 
 L'éditeur 0.44 modifie distance de référence, unité et précision en conservant sommets et points de référence. La CLI peut remplacer explicitement la géométrie avec un enregistrement attendu ; les deux parcours conservent l'identité et refusent les cibles périmées ou incompatibles. Qualification de la source finale et limites : [Preuves](qa/RELEASE_0.44.0.json). [Périmètre et audit préalable 0.44](RELEASE_0.44.0.fr.md) · [Guide des mesures](MEASUREMENTS.fr.md).
 
 Cette séquence apporte des incréments bornés. La modification des sommets existants est incluse en 0.48, l’ajout/suppression avec sélection explicite en 0.49 ; accrochage vectoriel, recalcul par lots, vues multi-échelles, justesse sur plans réels et critères généraux 1.0 restent ouverts. AEC-001/002/003/004/026 restent partiels. Les preuves historiques ci-dessous restent attachées à leur version d’origine.
 
-## 0.50.0 : commandes de lecture et outils organisés (Latest stable)
+## 0.51.0 : paquet Ubuntu (Latest stable)
+
+[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
+
+[Installation et limites](UBUNTU.fr.md) · [Notes de version](RELEASE_0.51.0.fr.md) · [Preuves](qa/RELEASE_0.51.0.json).
+
+## 0.50.0 : commandes de lecture et outils organisés (publiée ; Latest à cette date)
 
 [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Retrouvez 18 outils dans cinq familles filtrables depuis Outils, avec Mesures et la bibliothèque sous Réviser et mesurer. Basculez le volet gauche entre Outils, Pages et Signets ; utilisez quatre sections de mesure à droite. Les commandes de page et de zoom sont sous le PDF, les pourcentages comme 149% restent sur une ligne et les options de lecture restent accessibles dans les dispositions compactes. La rotation de lecture change uniquement l’affichage ; le rail droit ouvre les panneaux. Un seul panneau contextuel occupe le côté droit. Un brouillon de mesure actif bloque l’ouverture des autres panneaux ; quitter explicitement l’outil ou en changer annule ce brouillon local et conserve les échelles confirmées.
 

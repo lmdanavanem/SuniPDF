@@ -22,12 +22,24 @@ Licence MIT ou Apache-2.0, au choix.
 
 ## Pourquoi SuniPDF
 - **Vos fichiers restent chez vous** : aucun PDF envoyé, aucun compte, aucune télémétrie ; traitement local des PDF. La recherche de mises à jour contacte GitHub et peut être désactivée.
-- **Natif** : Rust, interface egui, moteur PDFium ; ZIP portable ou MSI, avec OCR embarqué.
+- **Natif Windows et Ubuntu** : Rust, interface egui et moteur PDFium ; ZIP portable/MSI Windows ou DEB Ubuntu amd64, avec OCR local.
 - **Complet** : lecture, annotation, édition du contenu, organisation des pages, formulaires, signature visuelle,
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## 0.50.0 : commandes de lecture et outils organisés (Latest stable)
+## 0.51.0 : paquet Ubuntu (Latest stable)
+
+[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
+
+[Télécharger Ubuntu amd64](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-linux-amd64.deb)
+
+```bash
+sudo apt install ./SuniPDF-0.51.0-linux-amd64.deb
+```
+
+[Installation et limites](docs/UBUNTU.fr.md) · [Notes de version](docs/RELEASE_0.51.0.fr.md) · [Preuves](docs/qa/RELEASE_0.51.0.json).
+
+## 0.50.0 : commandes de lecture et outils organisés (publiée ; Latest à cette date)
 
 [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Retrouvez 18 outils dans cinq familles filtrables depuis Outils, avec Mesures et la bibliothèque sous Réviser et mesurer. Basculez le volet gauche entre Outils, Pages et Signets ; utilisez quatre sections de mesure à droite. Les commandes de page et de zoom sont sous le PDF, les pourcentages comme 149% restent sur une ligne et les options de lecture restent accessibles dans les dispositions compactes. La rotation de lecture change uniquement l’affichage ; le rail droit ouvre les panneaux. Un seul panneau contextuel occupe le côté droit. Un brouillon de mesure actif bloque l’ouverture des autres panneaux ; quitter explicitement l’outil ou en changer annule ce brouillon local et conserve les échelles confirmées.
 

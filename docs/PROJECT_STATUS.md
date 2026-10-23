@@ -1,11 +1,21 @@
-# Project status - updated 2026-10-22 (0.50.0 published stable Latest)
+# Project status - updated 2026-10-23 (0.51.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.50.0: reader controls and organized tools (stable Latest)
+## 0.51.0: Ubuntu desktop package (stable Latest)
+
+[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
+
+Source `f046c51df5d2caa31d4fa8710edd48471b241809`, PR [#31](https://github.com/lmdanavanem/SuniPDF/pull/31). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879765536) · [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879765566) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879777012) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39879764800). Windows: 781 passed, 0 failed, 12 ignored. Linux: 763 passed, 0 failed, 7 ignored. 1417 EN/FR keys. 43 portable scenarios; 37 MSI baselines / 185 logs. Eight anonymous public downloads verified by SHA256. No open Code Scanning alerts.
+
+Ubuntu qualification uses clean 22.04/24.04 containers, a normal user, Xvfb and software Glow. It covers the installed package, visible PDF rendering, save/reopen, English/French OCR and removal/reinstallation of the same candidate; it does not establish a previous-version Linux upgrade or physical-device qualification. Linux ARM64 is outside this release. Native printing, certificate signing/trust verification, protected Office import and the persistent encrypted visual-signature library remain Windows-only. Session visual signatures and PDF-to-Office exports remain available. Windows packages remain unsigned; Windows ARM64 is cross-built without native execution. Projects updates remain deferred.
+
+[Installation and limits](UBUNTU.md) · [Release notes](RELEASE_0.51.0.md) · [Evidence](qa/RELEASE_0.51.0.json).
+
+## 0.50.0: reader controls and organized tools (published; Latest at the time)
 
 [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
 
