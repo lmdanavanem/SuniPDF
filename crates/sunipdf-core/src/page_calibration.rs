@@ -254,7 +254,7 @@ impl<'a> ResourceDigest<'a> {
                         && matches!(key.as_slice(), b"Filter" | b"DecodeParms"))
             })
             .collect();
-        entries.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+        entries.sort_unstable_by_key(|(key, _)| *key);
         digest.update((entries.len() as u64).to_le_bytes());
         for (key, value) in entries {
             self.data(digest, key)?;
