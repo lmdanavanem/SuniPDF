@@ -1,0 +1,156 @@
+name: linux
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Ubuntu 22.04 amd64
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install Linux build dependencies
+        run: |
+          cat > "$RUNNER_TEMP/sunipdf-ubuntu.list" <<'EOF'
+          deb https://archive.ubuntu.com/ubuntu jammy main universe
+          deb https://archive.ubuntu.com/ubuntu jammy-updates main universe
+          deb https://security.ubuntu.com/ubuntu jammy-security main universe
+          EOF
+          apt_options=(-o "Dir::Etc::sourcelist=$RUNNER_TEMP/sunipdf-ubuntu.list" -o 'Dir::Etc::sourceparts=-' -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          sudo apt-get "${apt_options[@]}" update
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends build-essential pkg-config libx11-dev libxi-dev libxcursor-dev libxrandr-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libegl1-mesa-dev libudev-dev libdbus-1-dev libgtk-3-dev libvulkan-dev fonts-dejavu-core tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra dpkg-dev desktop-file-utils lintian
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: rustfmt, clippy
+          targets: x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: ubuntu22-amd64-native
+          cache-on-failure: true
+          cache-workspace-crates: true
+      - name: Fingerprint Linux compiler
+        id: compiler
+        run: echo "hash=$(rustc -vV | sha256sum | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
+      - name: Restore Linux release artifacts
+        id: release_cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            target/release
+            target/x86_64-unknown-linux-gnu/release
+          key: linux-release-v1-ubuntu22-amd64-${{ steps.compiler.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', '.cargo/config.toml') }}-${{ github.sha }}
+          restore-keys: |
+            linux-release-v1-ubuntu22-amd64-${{ steps.compiler.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', '.cargo/config.toml') }}-
+            linux-release-v1-ubuntu22-amd64-${{ steps.compiler.outputs.hash }}-
+      - name: Fetch verified Linux PDFium
+        run: python scripts/fetch-pdfium-linux.py
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Packaging boundary regressions
+        run: |
+          python scripts/test-linux-packaging.py
+          python scripts/license-inventory.py --self-test
+          python scripts/package-guides.py --self-test
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
+      - name: Workspace tests
+        run: cargo test --workspace --locked -j 2 --no-fail-fast
+      - name: Build Linux desktop and CLI
+        run: cargo build --release --workspace --locked --target x86_64-unknown-linux-gnu -j 2
+      - name: Save Linux release artifacts
+        if: steps.release_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            target/release
+            target/x86_64-unknown-linux-gnu/release
+          key: ${{ steps.release_cache.outputs.cache-primary-key }}
+      - name: Build and verify Debian package
+        run: |
+          python scripts/package-deb.py
+          lintian --fail-on error dist/SuniPDF-*-linux-amd64.deb
+      - name: Upload exact Debian candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: sunipdf-linux-amd64
+          path: |
+            dist/SuniPDF-*-linux-amd64.deb
+            dist/SuniPDF-*-linux-amd64.deb.sha256
+          if-no-files-found: error
+
+  validate:
+    name: Install and run on Ubuntu ${{ matrix.ubuntu }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu: ['22.04', '24.04']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: sunipdf-linux-amd64
+          path: dist
+      - name: Validate the installed candidate in a clean Ubuntu system
+        env:
+          UBUNTU_VERSION: ${{ matrix.ubuntu }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/linux-evidence"
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/workspace:ro" \
+            --volume "$RUNNER_TEMP/linux-evidence:/evidence" \
+            --env DEBIAN_FRONTEND=noninteractive \
+            --env GITHUB_SHA="$GITHUB_SHA" \
+            "ubuntu:$UBUNTU_VERSION" bash -euo pipefail -c '
+              apt-get update
+              apt-get install -y --no-install-recommends ca-certificates
+              for source in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources; do
+                if [ -f "$source" ]; then
+                  sed -i "s|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g" "$source"
+                fi
+              done
+              apt-get install -y --no-install-recommends python3 python3-pil xvfb xauth dbus-x11 openbox imagemagick xdotool wmctrl qpdf desktop-file-utils fonts-dejavu-core ca-certificates
+              cat /etc/dpkg/dpkg.cfg.d/* > /evidence/dpkg-image-policy.txt
+              # Minimal container images exclude documentation that desktop installations retain.
+              printf "%s\n" \
+                "path-include=/usr/share/doc/sunipdf" \
+                "path-include=/usr/share/doc/sunipdf/*" \
+                "path-include=/usr/share/man/man1" \
+                "path-include=/usr/share/man/man1/sunipdf.1.gz" \
+                "path-include=/usr/share/man/man1/sunipdf-cli.1.gz" \
+                "path-include=/usr/share/lintian" \
+                "path-include=/usr/share/lintian/overrides" \
+                "path-include=/usr/share/lintian/overrides/sunipdf" \
+                > /etc/dpkg/dpkg.cfg.d/zz-sunipdf-validation
+              python3 /workspace/scripts/test-deb.py --deb /workspace/dist/SuniPDF-*-linux-amd64.deb --evidence /evidence
+              dpkg-query -W > /evidence/installed-system-packages.txt
+            '
+      - name: Restore runner ownership of validation evidence
+        if: always()
+        run: |
+          evidence="$RUNNER_TEMP/linux-evidence"
+          if [ -e "$evidence" ] || [ -L "$evidence" ]; then
+            test -d "$evidence"
+            test ! -L "$evidence"
+            test "$(realpath -- "$evidence")" = "$(realpath -- "$RUNNER_TEMP")/linux-evidence"
+            sudo chown --recursive -P --no-dereference --preserve-root -- "$(id -u):$(id -g)" "$evidence"
+          fi
+      - name: Upload installation and native UI evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: linux-validation-ubuntu-${{ matrix.ubuntu }}
+          path: ${{ runner.temp }}/linux-evidence
+          if-no-files-found: warn

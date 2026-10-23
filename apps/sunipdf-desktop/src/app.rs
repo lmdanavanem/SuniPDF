@@ -660,12 +660,10 @@ impl SuniApp {
                         .filter(|entry| entry.snapshot == info.path)
                         .cloned();
                     if let Some(entry) = &restored {
-                        info.path = entry.original.clone().unwrap_or_else(|| {
-                            std::env::var_os("USERPROFILE")
-                                .map(std::path::PathBuf::from)
-                                .unwrap_or_default()
-                                .join("Documents/Recovered.pdf")
-                        });
+                        info.path = entry
+                            .original
+                            .clone()
+                            .unwrap_or_else(crate::recovery::recovered_document_path);
                         self.recovery.pending_restore = None;
                     }
                     self.opening = None;
@@ -1225,8 +1223,20 @@ impl SuniApp {
                     "updates.available",
                     &[("version", &release.version)],
                 ));
-                download = ui.button(tr(lang, "updates.download")).clicked();
+                download = ui
+                    .button(tr(
+                        lang,
+                        if release.kind == crate::updater::UpdateKind::Deb {
+                            "updates.download_linux"
+                        } else {
+                            "updates.download"
+                        },
+                    ))
+                    .clicked();
                 ui.hyperlink_to(tr(lang, "updates.notes"), &release.notes_url);
+                if release.kind == crate::updater::UpdateKind::Deb {
+                    ui.label(tr(lang, "updates.linux_install"));
+                }
             }
             UpdatePhase::Downloading => {
                 ui.spinner();
@@ -1694,6 +1704,10 @@ impl SuniApp {
     }
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
+        if let Some(reason) = crate::workspace::platform_unavailable(command) {
+            self.status_msg = Some(self.t(reason).to_owned());
+            return;
+        }
         if self.measurement_blocks_panel_command(command) {
             self.status_msg = Some(self.t("measure.finish_draft_first").to_owned());
             return;
@@ -2235,7 +2249,8 @@ impl SuniApp {
                     ui.separator();
                 }
                 let shortcut = self.shortcut_text(info.command);
-                let enabled = !info.needs_document || has_doc;
+                let unavailable = crate::workspace::platform_unavailable(info.command);
+                let enabled = (!info.needs_document || has_doc) && unavailable.is_none();
                 // Mode de vue actif surligné (les deux entrées partagent F5).
                 let active = has_doc
                     && match info.command {
@@ -2245,7 +2260,17 @@ impl SuniApp {
                         Command::ViewBook => self.view.mode == ViewMode::Book,
                         _ => false,
                     };
-                if menu_item(ui, tr(lang, info.label_key), &shortcut, enabled, active) {
+                let clicked = if let Some(reason) = unavailable {
+                    ui.add_enabled(
+                        false,
+                        egui::Button::new(tr(lang, info.label_key)).shortcut_text(&shortcut),
+                    )
+                    .on_disabled_hover_text(tr(lang, reason));
+                    false
+                } else {
+                    menu_item(ui, tr(lang, info.label_key), &shortcut, enabled, active)
+                };
+                if clicked {
                     self.execute(ctx, info.command);
                 }
             }

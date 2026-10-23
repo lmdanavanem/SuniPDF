@@ -12,6 +12,18 @@ use egui::Color32;
 use sunipdf_core::Command;
 use sunipdf_i18n::tr;
 
+pub(crate) fn platform_unavailable(command: Command) -> Option<&'static str> {
+    (!cfg!(windows)
+        && matches!(
+            command,
+            Command::PrintDocument
+                | Command::OfficeToPdf
+                | Command::VerifySignatures
+                | Command::SignWithCertificate
+        ))
+    .then_some("platform.windows_only")
+}
+
 /// Ordre des outils tel qu'affiché ; `TABLE[w as usize].ws == w` (testé).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Workspace {
@@ -633,7 +645,10 @@ impl SuniApp {
     }
 
     pub fn command_enabled(&self, c: Command) -> bool {
-        if self.ink_blocks_command(c) || self.measurement_blocks_panel_command(c) {
+        if platform_unavailable(c).is_some()
+            || self.ink_blocks_command(c)
+            || self.measurement_blocks_panel_command(c)
+        {
             return false;
         }
         let grid_selection = !self.organize.selected.is_empty();
@@ -871,7 +886,9 @@ impl SuniApp {
         let ci = c.info();
         let label = tr(lang, ci.label_key);
         let shortcut = self.shortcut_text(ci.command);
-        let tooltip = if shortcut.is_empty() {
+        let tooltip = if let Some(reason) = platform_unavailable(c) {
+            format!("{label}\n{}", tr(lang, reason))
+        } else if shortcut.is_empty() {
             label.to_string()
         } else {
             format!("{label}  ({shortcut})")
@@ -1108,10 +1125,39 @@ mod tests {
         app.form_builder.visible = false;
         app.execute(&ctx, Workspace::Certificate.activate().unwrap());
         app.execute(&ctx, C::VerifySignatures);
-        assert!(app.certificate.visible);
-        assert!(requests
-            .try_iter()
-            .any(|r| matches!(r, crate::worker::Request::VerifySignatures)));
+        assert_eq!(app.certificate.visible, cfg!(windows));
+        assert_eq!(
+            requests
+                .try_iter()
+                .any(|r| matches!(r, crate::worker::Request::VerifySignatures)),
+            cfg!(windows)
+        );
+    }
+
+    #[test]
+    fn unsupported_platform_commands_are_disabled_and_do_not_dispatch_worker_requests() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        for command in [
+            C::PrintDocument,
+            C::OfficeToPdf,
+            C::VerifySignatures,
+            C::SignWithCertificate,
+        ] {
+            assert_eq!(platform_unavailable(command).is_none(), cfg!(windows));
+            if !cfg!(windows) {
+                assert!(!app.command_enabled(command));
+                app.execute(&egui::Context::default(), command);
+                assert_eq!(
+                    app.status_msg.as_deref(),
+                    Some(app.t("platform.windows_only"))
+                );
+                assert!(!app.dialog_open());
+                assert!(requests.try_recv().is_err());
+            }
+        }
+        for command in [C::ExportOffice, C::SignDocument, C::SignInitials] {
+            assert!(platform_unavailable(command).is_none());
+        }
     }
 
     #[test]

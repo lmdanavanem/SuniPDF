@@ -1,0 +1,648 @@
+{
+  "schema": 1,
+  "mapping": [
+    {
+      "codepoint": "E700",
+      "upstreamName": "ic_fluent_navigation_20_regular",
+      "upstreamCodepoint": 62816,
+      "uses": [
+        "MENU"
+      ]
+    },
+    {
+      "codepoint": "E706",
+      "upstreamName": "ic_fluent_weather_sunny_20_regular",
+      "upstreamCodepoint": 63649,
+      "uses": [
+        "SUN"
+      ]
+    },
+    {
+      "codepoint": "E708",
+      "upstreamName": "ic_fluent_weather_moon_20_regular",
+      "upstreamCodepoint": 63613,
+      "uses": [
+        "MOON"
+      ]
+    },
+    {
+      "codepoint": "E70B",
+      "upstreamName": "ic_fluent_note_20_regular",
+      "upstreamCodepoint": 62827,
+      "uses": [
+        "NOTE"
+      ]
+    },
+    {
+      "codepoint": "E70D",
+      "upstreamName": "ic_fluent_chevron_down_20_regular",
+      "upstreamCodepoint": 62115,
+      "uses": [
+        "CHEVRON_DOWN"
+      ]
+    },
+    {
+      "codepoint": "E70E",
+      "upstreamName": "ic_fluent_chevron_up_20_regular",
+      "upstreamCodepoint": 62134,
+      "uses": [
+        "CHEVRON_UP"
+      ]
+    },
+    {
+      "codepoint": "E70F",
+      "upstreamName": "ic_fluent_document_edit_20_regular",
+      "upstreamCodepoint": 62342,
+      "uses": [
+        "EDIT_DOC"
+      ]
+    },
+    {
+      "codepoint": "E710",
+      "upstreamName": "ic_fluent_add_20_regular",
+      "upstreamCodepoint": 61705,
+      "uses": [
+        "ADD"
+      ]
+    },
+    {
+      "codepoint": "E711",
+      "upstreamName": "ic_fluent_dismiss_20_regular",
+      "upstreamCodepoint": 62313,
+      "uses": [
+        "CLOSE"
+      ]
+    },
+    {
+      "codepoint": "E712",
+      "upstreamName": "ic_fluent_more_horizontal_20_regular",
+      "upstreamCodepoint": 59428,
+      "uses": [
+        "MORE"
+      ]
+    },
+    {
+      "codepoint": "E71B",
+      "upstreamName": "ic_fluent_link_20_regular",
+      "upstreamCodepoint": 62692,
+      "uses": [
+        "LINK"
+      ]
+    },
+    {
+      "codepoint": "E71D",
+      "upstreamName": "ic_fluent_apps_20_regular",
+      "upstreamCodepoint": 61747,
+      "uses": [
+        "ALL_APPS"
+      ]
+    },
+    {
+      "codepoint": "E71F",
+      "upstreamName": "ic_fluent_zoom_out_20_regular",
+      "upstreamCodepoint": 63686,
+      "uses": [
+        "ZOOM_OUT"
+      ]
+    },
+    {
+      "codepoint": "E721",
+      "upstreamName": "ic_fluent_search_20_regular",
+      "upstreamCodepoint": 63119,
+      "uses": [
+        "FIND",
+        "SEARCH_BOX"
+      ]
+    },
+    {
+      "codepoint": "E72B",
+      "upstreamName": "ic_fluent_arrow_left_20_regular",
+      "upstreamCodepoint": 61787,
+      "uses": [
+        "ARROW_LEFT"
+      ]
+    },
+    {
+      "codepoint": "E72E",
+      "upstreamName": "ic_fluent_lock_closed_20_regular",
+      "upstreamCodepoint": 59279,
+      "uses": [
+        "LOCK"
+      ]
+    },
+    {
+      "codepoint": "E738",
+      "upstreamName": "ic_fluent_line_20_regular",
+      "upstreamCodepoint": 59237,
+      "uses": [
+        "LINE"
+      ]
+    },
+    {
+      "codepoint": "E739",
+      "upstreamName": "ic_fluent_rectangle_landscape_20_regular",
+      "upstreamCodepoint": 59913,
+      "uses": [
+        "RECT"
+      ]
+    },
+    {
+      "codepoint": "E73B",
+      "upstreamName": "ic_fluent_rectangle_landscape_20_regular",
+      "upstreamCodepoint": 59913,
+      "uses": [
+        "REDACT"
+      ]
+    },
+    {
+      "codepoint": "E740",
+      "upstreamName": "ic_fluent_arrow_autofit_width_20_regular",
+      "upstreamCodepoint": 57468,
+      "uses": [
+        "FIT_WIDTH"
+      ]
+    },
+    {
+      "codepoint": "E749",
+      "upstreamName": "ic_fluent_print_20_regular",
+      "upstreamCodepoint": 63018,
+      "uses": [
+        "PRINT"
+      ]
+    },
+    {
+      "codepoint": "E74A",
+      "upstreamName": "ic_fluent_text_position_front_20_regular",
+      "upstreamCodepoint": 60749,
+      "uses": [
+        "FRONT"
+      ]
+    },
+    {
+      "codepoint": "E74B",
+      "upstreamName": "ic_fluent_text_position_behind_20_regular",
+      "upstreamCodepoint": 60747,
+      "uses": [
+        "BACK"
+      ]
+    },
+    {
+      "codepoint": "E74D",
+      "upstreamName": "ic_fluent_delete_20_regular",
+      "upstreamCodepoint": 62284,
+      "uses": [
+        "DELETE"
+      ]
+    },
+    {
+      "codepoint": "E74E",
+      "upstreamName": "ic_fluent_save_20_regular",
+      "upstreamCodepoint": 63103,
+      "uses": [
+        "SAVE"
+      ]
+    },
+    {
+      "codepoint": "E75C",
+      "upstreamName": "ic_fluent_eraser_20_regular",
+      "upstreamCodepoint": 58852,
+      "uses": [
+        "ERASE"
+      ]
+    },
+    {
+      "codepoint": "E762",
+      "upstreamName": "ic_fluent_text_bullet_list_square_20_regular",
+      "upstreamCodepoint": 60642,
+      "uses": [
+        "FORM_LIST"
+      ]
+    },
+    {
+      "codepoint": "E76B",
+      "upstreamName": "ic_fluent_chevron_left_20_regular",
+      "upstreamCodepoint": 62122,
+      "uses": [
+        "CHEVRON_LEFT"
+      ]
+    },
+    {
+      "codepoint": "E76C",
+      "upstreamName": "ic_fluent_chevron_right_20_regular",
+      "upstreamCodepoint": 62128,
+      "uses": [
+        "CHEVRON_RIGHT"
+      ]
+    },
+    {
+      "codepoint": "E774",
+      "upstreamName": "ic_fluent_globe_20_regular",
+      "upstreamCodepoint": 62554,
+      "uses": [
+        "GLOBE"
+      ]
+    },
+    {
+      "codepoint": "E77F",
+      "upstreamName": "ic_fluent_clipboard_paste_20_regular",
+      "upstreamCodepoint": 62165,
+      "uses": [
+        "PASTE"
+      ]
+    },
+    {
+      "codepoint": "E785",
+      "upstreamName": "ic_fluent_lock_open_20_regular",
+      "upstreamCodepoint": 59285,
+      "uses": [
+        "UNLOCK"
+      ]
+    },
+    {
+      "codepoint": "E787",
+      "upstreamName": "ic_fluent_calendar_20_regular",
+      "upstreamCodepoint": 983684,
+      "uses": [
+        "CALENDAR"
+      ]
+    },
+    {
+      "codepoint": "E792",
+      "upstreamName": "ic_fluent_save_edit_20_regular",
+      "upstreamCodepoint": 59976,
+      "uses": [
+        "SAVE_AS"
+      ]
+    },
+    {
+      "codepoint": "E7A6",
+      "upstreamName": "ic_fluent_arrow_redo_20_regular",
+      "upstreamCodepoint": 61806,
+      "uses": [
+        "REDO"
+      ]
+    },
+    {
+      "codepoint": "E7A7",
+      "upstreamName": "ic_fluent_arrow_undo_20_regular",
+      "upstreamCodepoint": 61849,
+      "uses": [
+        "UNDO"
+      ]
+    },
+    {
+      "codepoint": "E7A8",
+      "upstreamName": "ic_fluent_crop_20_regular",
+      "upstreamCodepoint": 58411,
+      "uses": [
+        "CROP"
+      ]
+    },
+    {
+      "codepoint": "E7BA",
+      "upstreamName": "ic_fluent_warning_20_regular",
+      "upstreamCodepoint": 63593,
+      "uses": [
+        "WARNING"
+      ]
+    },
+    {
+      "codepoint": "E7C3",
+      "upstreamName": "ic_fluent_document_multiple_20_regular",
+      "upstreamCodepoint": 58656,
+      "uses": [
+        "PAGES"
+      ]
+    },
+    {
+      "codepoint": "E7C9",
+      "upstreamName": "ic_fluent_cursor_click_20_regular",
+      "upstreamCodepoint": 58437,
+      "uses": [
+        "SELECT_ANNOT"
+      ]
+    },
+    {
+      "codepoint": "E7E6",
+      "upstreamName": "ic_fluent_highlight_20_regular",
+      "upstreamCodepoint": 62588,
+      "uses": [
+        "HIGHLIGHT"
+      ]
+    },
+    {
+      "codepoint": "E80C",
+      "upstreamName": "ic_fluent_arrow_rotate_counterclockwise_20_regular",
+      "upstreamCodepoint": 61831,
+      "uses": [
+        "ROTATE_LEFT"
+      ]
+    },
+    {
+      "codepoint": "E80D",
+      "upstreamName": "ic_fluent_arrow_rotate_clockwise_20_regular",
+      "upstreamCodepoint": 61829,
+      "uses": [
+        "ROTATE_RIGHT"
+      ]
+    },
+    {
+      "codepoint": "E80F",
+      "upstreamName": "ic_fluent_home_20_regular",
+      "upstreamCodepoint": 62592,
+      "uses": [
+        "HOME"
+      ]
+    },
+    {
+      "codepoint": "E81E",
+      "upstreamName": "ic_fluent_layer_20_regular",
+      "upstreamCodepoint": 62667,
+      "uses": [
+        "LAYERS"
+      ]
+    },
+    {
+      "codepoint": "E838",
+      "upstreamName": "ic_fluent_folder_open_20_regular",
+      "upstreamCodepoint": 62510,
+      "uses": [
+        "FOLDER_OPEN"
+      ]
+    },
+    {
+      "codepoint": "E897",
+      "upstreamName": "ic_fluent_question_circle_20_regular",
+      "upstreamCodepoint": 63037,
+      "uses": [
+        "HELP"
+      ]
+    },
+    {
+      "codepoint": "E8A3",
+      "upstreamName": "ic_fluent_zoom_in_20_regular",
+      "upstreamCodepoint": 63684,
+      "uses": [
+        "ZOOM_IN"
+      ]
+    },
+    {
+      "codepoint": "E8A4",
+      "upstreamName": "ic_fluent_bookmark_20_regular",
+      "upstreamCodepoint": 61941,
+      "uses": [
+        "BOOKMARK"
+      ]
+    },
+    {
+      "codepoint": "E8A5",
+      "upstreamName": "ic_fluent_document_20_regular",
+      "upstreamCodepoint": 62328,
+      "uses": [
+        "DOCUMENT",
+        "APP"
+      ]
+    },
+    {
+      "codepoint": "E8A9",
+      "upstreamName": "ic_fluent_grid_20_regular",
+      "upstreamCodepoint": 62562,
+      "uses": [
+        "GRID"
+      ]
+    },
+    {
+      "codepoint": "E8AC",
+      "upstreamName": "ic_fluent_rename_20_regular",
+      "upstreamCodepoint": 63081,
+      "uses": [
+        "RENAME"
+      ]
+    },
+    {
+      "codepoint": "E8B0",
+      "upstreamName": "ic_fluent_cursor_20_regular",
+      "upstreamCodepoint": 58435,
+      "uses": [
+        "CURSOR"
+      ]
+    },
+    {
+      "codepoint": "E8B3",
+      "upstreamName": "ic_fluent_select_all_on_20_regular",
+      "upstreamCodepoint": 60038,
+      "uses": [
+        "SELECT_ALL"
+      ]
+    },
+    {
+      "codepoint": "E8B5",
+      "upstreamName": "ic_fluent_document_arrow_down_20_regular",
+      "upstreamCodepoint": 58592,
+      "uses": [
+        "IMPORT"
+      ]
+    },
+    {
+      "codepoint": "E8B9",
+      "upstreamName": "ic_fluent_image_20_regular",
+      "upstreamCodepoint": 62600,
+      "uses": [
+        "PICTURE"
+      ]
+    },
+    {
+      "codepoint": "E8C6",
+      "upstreamName": "ic_fluent_cut_20_regular",
+      "upstreamCodepoint": 62266,
+      "uses": [
+        "SPLIT",
+        "CUT"
+      ]
+    },
+    {
+      "codepoint": "E8C8",
+      "upstreamName": "ic_fluent_copy_20_regular",
+      "upstreamCodepoint": 62251,
+      "uses": [
+        "DUPLICATE"
+      ]
+    },
+    {
+      "codepoint": "E8D1",
+      "upstreamName": "ic_fluent_document_arrow_right_20_regular",
+      "upstreamCodepoint": 58598,
+      "uses": [
+        "EXTRACT"
+      ]
+    },
+    {
+      "codepoint": "E8D2",
+      "upstreamName": "ic_fluent_text_font_20_regular",
+      "upstreamCodepoint": 63460,
+      "uses": [
+        "FONT"
+      ]
+    },
+    {
+      "codepoint": "E8DC",
+      "upstreamName": "ic_fluent_text_underline_20_regular",
+      "upstreamCodepoint": 63498,
+      "uses": [
+        "UNDERLINE"
+      ]
+    },
+    {
+      "codepoint": "E8E6",
+      "upstreamName": "ic_fluent_select_object_20_regular",
+      "upstreamCodepoint": 63127,
+      "uses": [
+        "SELECT"
+      ]
+    },
+    {
+      "codepoint": "E8E9",
+      "upstreamName": "ic_fluent_textbox_20_regular",
+      "upstreamCodepoint": 63503,
+      "uses": [
+        "FREE_TEXT"
+      ]
+    },
+    {
+      "codepoint": "E8EC",
+      "upstreamName": "ic_fluent_approvals_app_20_regular",
+      "upstreamCodepoint": 57440,
+      "uses": [
+        "STAMP"
+      ]
+    },
+    {
+      "codepoint": "E8EF",
+      "upstreamName": "ic_fluent_number_symbol_20_regular",
+      "upstreamCodepoint": 62845,
+      "uses": [
+        "NUMBERS"
+      ]
+    },
+    {
+      "codepoint": "E90A",
+      "upstreamName": "ic_fluent_comment_20_regular",
+      "upstreamCodepoint": 62207,
+      "uses": [
+        "COMMENT"
+      ]
+    },
+    {
+      "codepoint": "E91B",
+      "upstreamName": "ic_fluent_camera_20_regular",
+      "upstreamCodepoint": 62036,
+      "uses": [
+        "PHOTO"
+      ]
+    },
+    {
+      "codepoint": "E929",
+      "upstreamName": "ic_fluent_signature_20_regular",
+      "upstreamCodepoint": 63196,
+      "uses": [
+        "SIGN"
+      ]
+    },
+    {
+      "codepoint": "E92C",
+      "upstreamName": "ic_fluent_arrow_minimize_20_regular",
+      "upstreamCodepoint": 61797,
+      "uses": [
+        "OPTIMIZE"
+      ]
+    },
+    {
+      "codepoint": "E946",
+      "upstreamName": "ic_fluent_info_20_regular",
+      "upstreamCodepoint": 62627,
+      "uses": [
+        "INFO"
+      ]
+    },
+    {
+      "codepoint": "E9A6",
+      "upstreamName": "ic_fluent_page_fit_20_regular",
+      "upstreamCodepoint": 62863,
+      "uses": [
+        "FIT_PAGE"
+      ]
+    },
+    {
+      "codepoint": "E9D5",
+      "upstreamName": "ic_fluent_form_20_regular",
+      "upstreamCodepoint": 61095,
+      "uses": [
+        "FORM"
+      ]
+    },
+    {
+      "codepoint": "EA18",
+      "upstreamName": "ic_fluent_shield_20_regular",
+      "upstreamCodepoint": 63166,
+      "uses": [
+        "SHIELD"
+      ]
+    },
+    {
+      "codepoint": "EA3A",
+      "upstreamName": "ic_fluent_circle_20_regular",
+      "upstreamCodepoint": 62139,
+      "uses": [
+        "ELLIPSE"
+      ]
+    },
+    {
+      "codepoint": "EA3C",
+      "upstreamName": "ic_fluent_merge_20_regular",
+      "upstreamCodepoint": 59383,
+      "uses": [
+        "COMBINE"
+      ]
+    },
+    {
+      "codepoint": "EC87",
+      "upstreamName": "ic_fluent_inking_tool_20_regular",
+      "upstreamCodepoint": 62631,
+      "uses": [
+        "INK"
+      ]
+    },
+    {
+      "codepoint": "ECE7",
+      "upstreamName": "ic_fluent_arrow_bidirectional_up_down_20_regular",
+      "upstreamCodepoint": 57476,
+      "uses": [
+        "SCROLL"
+      ]
+    },
+    {
+      "codepoint": "ED5E",
+      "upstreamName": "ic_fluent_ruler_20_regular",
+      "upstreamCodepoint": 63100,
+      "uses": [
+        "MEASURE"
+      ]
+    },
+    {
+      "codepoint": "EDE0",
+      "upstreamName": "ic_fluent_text_strikethrough_20_regular",
+      "upstreamCodepoint": 60767,
+      "uses": [
+        "STRIKE"
+      ]
+    },
+    {
+      "codepoint": "EDE1",
+      "upstreamName": "ic_fluent_document_arrow_up_20_regular",
+      "upstreamCodepoint": 58600,
+      "uses": [
+        "EXPORT"
+      ]
+    }
+  ]
+}

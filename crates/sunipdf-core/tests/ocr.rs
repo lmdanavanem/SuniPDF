@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use sunipdf_core::ocr::{OcrLanguage, OcrOptions};
-use sunipdf_core::{Document, Engine, EngineError, PageMargins, Rotation, TextStyle};
+use sunipdf_core::{Document, Engine, EngineError, PageMargins, PointRect, Rotation, TextStyle};
 
 static SERIAL: Mutex<()> = Mutex::new(());
 static ENGINE: OnceLock<EnginePtr> = OnceLock::new();
@@ -30,7 +30,7 @@ fn assert_same_pdf_contents(before: &[u8], after: &[u8]) {
     assert_eq!(after.trailer, before.trailer);
 }
 
-fn scans(engine: &Engine) -> Document<'_> {
+fn scans(engine: &Engine) -> (Document<'_>, Vec<PointRect>) {
     let mut vector = engine.open(&fixture(), None).unwrap();
     vector.insert_blank_pages(0, 1, 500.0, 160.0).unwrap();
     vector.delete_page(2).unwrap();
@@ -51,9 +51,10 @@ fn scans(engine: &Engine) -> Document<'_> {
     )
     .unwrap();
     doc.set_page_rotation(1, Rotation::R90).unwrap();
-    for (page, text) in [
-        (0, "The quick brown fox jumps over the lazy dog."),
-        (1, "Bonjour, l'été français arrive bientôt."),
+    let mut word_bounds = Vec::new();
+    for (page, text, word) in [
+        (0, "The quick brown fox jumps over the lazy dog.", "quick"),
+        (1, "Bonjour, l'été français arrive bientôt.", "français"),
     ] {
         vector.restore(blank.clone()).unwrap();
         vector
@@ -68,6 +69,10 @@ fn scans(engine: &Engine) -> Document<'_> {
                 },
             )
             .unwrap();
+        let matches = vector.search_page(0, word, true).unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].rects.len(), 1);
+        word_bounds.push(matches[0].rects[0]);
         let image = vector.render_page(0, 3.0).unwrap();
         let image = image::DynamicImage::ImageRgba8(
             image::RgbaImage::from_raw(image.width, image.height, image.rgba).unwrap(),
@@ -75,14 +80,14 @@ fn scans(engine: &Engine) -> Document<'_> {
         doc.add_image_data(page, &image, 0.0, 0.0, 500.0).unwrap();
         assert!(doc.page_text(page).unwrap().trim().is_empty());
     }
-    doc
+    (doc, word_bounds)
 }
 
 #[test]
 fn local_english_french_ocr_keeps_pixels_and_page_geometry() {
     let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let engine = engine();
-    let mut doc = scans(engine);
+    let (mut doc, word_bounds) = scans(engine);
     let before: Vec<_> = (0..2)
         .map(|page| doc.render_page(page, 1.0).unwrap().rgba)
         .collect();
@@ -116,10 +121,19 @@ fn local_english_french_ocr_keeps_pixels_and_page_geometry() {
         );
         let matches = doc.search_page(page, word, true).unwrap();
         assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].rects.len(), 1);
         for rect in &matches[0].rects {
+            let expected = word_bounds[page];
+            // Compare with the source glyphs, including descenders and accents. Rasterizing at
+            // 216 dpi, resampling for 300 dpi OCR, and fitting invisible glyphs can move edges
+            // slightly; two points allow that rounding while detecting misplaced/scaled words.
+            const EDGE_TOLERANCE_PT: f32 = 2.0;
             assert!(
-                rect.left >= 20.0 && rect.right < 490.0 && rect.bottom > 95.0 && rect.top < 130.0,
-                "unexpected OCR geometry: {rect:?}"
+                (rect.left - expected.left).abs() <= EDGE_TOLERANCE_PT
+                    && (rect.right - expected.right).abs() <= EDGE_TOLERANCE_PT
+                    && (rect.bottom - expected.bottom).abs() <= EDGE_TOLERANCE_PT
+                    && (rect.top - expected.top).abs() <= EDGE_TOLERANCE_PT,
+                "unexpected OCR geometry for {word}: {rect:?}; source glyphs: {expected:?}"
             );
         }
     }
@@ -134,7 +148,7 @@ fn local_english_french_ocr_keeps_pixels_and_page_geometry() {
 fn cancellation_after_a_recognized_page_does_not_mutate_document() {
     let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
     let engine = engine();
-    let mut doc = scans(engine);
+    let (mut doc, _) = scans(engine);
     let before = doc.snapshot().unwrap();
     let cancel = AtomicBool::new(false);
     let result = doc.ocr(

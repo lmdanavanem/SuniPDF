@@ -1,9 +1,11 @@
 # SuniPDF — Guide utilisateur
 
-SuniPDF est un lecteur et éditeur PDF pour Windows 10/11. Le traitement des PDF reste local : aucun
+SuniPDF est un lecteur et éditeur PDF pour Windows 10/11 et Ubuntu Linux. Le traitement des PDF reste local : aucun
 compte, aucune télémétrie, aucun document envoyé sur Internet.
 
-Ce guide couvre [0.50.0](RELEASE_0.50.0.fr.md). La version précédente [0.49.0](RELEASE_0.49.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+Ce guide couvre [0.51.0](RELEASE_0.51.0.fr.md). La version précédente [0.50.0](RELEASE_0.50.0.fr.md) conserve ses propres preuves. Les contrôles exécutés et limites sont consignés dans [l’état du projet](PROJECT_STATUS.fr.md). L’anglais reste la langue par défaut ; le français est disponible dans les réglages.
+
+Sous Ubuntu, commencez par [l’installation et les limites de la plateforme](UBUNTU.fr.md). L’impression native, la signature et la confiance par certificat, l’import Office protégé et le stockage persistant chiffré des signatures visuelles nécessitent actuellement Windows. Les autres fonctions ci-dessous conservent leurs limites documentaires et de permissions.
 
 ## Commandes de lecture et outils
 

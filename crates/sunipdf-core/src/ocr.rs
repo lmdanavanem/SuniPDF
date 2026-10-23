@@ -1,4 +1,4 @@
-//! Offline OCR using the bundled Tesseract runtime and an invisible PDF text layer.
+//! Offline OCR using bundled Windows or Ubuntu system Tesseract and an invisible PDF text layer.
 
 use crate::{Document, EngineError, PageSize, PointRect, RenderedPage};
 use pdfium_render::prelude::*;
@@ -64,6 +64,7 @@ fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
 }
 
 /// Search the application directory; debug builds also accept an explicit development override.
+#[cfg(windows)]
 pub fn runtime_dir() -> Result<PathBuf, EngineError> {
     let mut candidates = Vec::new();
     #[cfg(debug_assertions)]
@@ -99,7 +100,62 @@ pub fn runtime_dir() -> Result<PathBuf, EngineError> {
         .map_err(EngineError::Io)
 }
 
+#[cfg(target_os = "linux")]
+const SYSTEM_TESSDATA_DIRS: [&str; 3] = [
+    "/usr/share/tesseract-ocr/5/tessdata",
+    "/usr/share/tesseract-ocr/4.00/tessdata",
+    "/usr/share/tessdata",
+];
+
+/// Ubuntu packages supply an absolute executable and both offline language datasets.
+#[cfg(target_os = "linux")]
+pub fn runtime_dir() -> Result<PathBuf, EngineError> {
+    use std::os::unix::fs::PermissionsExt;
+    let directory = PathBuf::from("/usr/bin");
+    let executable = runtime_executable(&directory);
+    let runnable = std::fs::metadata(executable)
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0);
+    if runnable && has_language_data(&data_dir(&directory)) {
+        Ok(directory)
+    } else {
+        Err(failure(
+            "system OCR requires /usr/bin/tesseract and the English and French language packages",
+        ))
+    }
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+pub fn runtime_dir() -> Result<PathBuf, EngineError> {
+    Err(failure("OCR is unavailable on this platform"))
+}
+
+fn runtime_executable(runtime: &Path) -> PathBuf {
+    #[cfg(target_os = "linux")]
+    {
+        let _ = runtime;
+        PathBuf::from("/usr/bin/tesseract")
+    }
+    #[cfg(not(target_os = "linux"))]
+    runtime.join("tesseract.exe")
+}
+
+#[cfg(target_os = "linux")]
+fn has_language_data(directory: &Path) -> bool {
+    ["eng.traineddata", "fra.traineddata"]
+        .iter()
+        .all(|name| directory.join(name).is_file())
+}
+
+#[cfg(target_os = "linux")]
+fn find_system_data<'a>(directories: impl IntoIterator<Item = &'a Path>) -> Option<PathBuf> {
+    directories
+        .into_iter()
+        .find(|directory| directory.is_absolute() && has_language_data(directory))
+        .map(Path::to_path_buf)
+}
+
 // Tesseract appends ordinary separators to its C stdio paths; Windows verbatim prefixes break them.
+#[cfg(windows)]
 fn ordinary_path(path: &Path) -> PathBuf {
     #[cfg(windows)]
     {
@@ -123,6 +179,7 @@ fn ordinary_path(path: &Path) -> PathBuf {
     path.to_owned()
 }
 
+#[cfg(not(target_os = "linux"))]
 fn data_dir(runtime: &Path) -> PathBuf {
     let data = runtime.join("tessdata");
     if data.is_dir() {
@@ -130,6 +187,12 @@ fn data_dir(runtime: &Path) -> PathBuf {
     } else {
         runtime.to_path_buf()
     }
+}
+
+#[cfg(target_os = "linux")]
+fn data_dir(_runtime: &Path) -> PathBuf {
+    find_system_data(SYSTEM_TESSDATA_DIRS.iter().map(Path::new))
+        .unwrap_or_else(|| PathBuf::from(SYSTEM_TESSDATA_DIRS[0]))
 }
 
 fn render_scale(size: PageSize) -> Result<f32, EngineError> {
@@ -187,7 +250,7 @@ fn recognize(
     let stderr = temp.path().join("stderr.txt");
     write_pnm(&input, image)?;
     check_cancel(cancel)?;
-    let mut command = std::process::Command::new(runtime.join("tesseract.exe"));
+    let mut command = std::process::Command::new(runtime_executable(runtime));
     command
         .arg(&input)
         .arg("stdout")
@@ -382,12 +445,35 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
     #[test]
     fn development_and_compatible_portable_data_layouts_are_supported() {
         let temp = tempfile::tempdir().unwrap();
         assert_eq!(data_dir(temp.path()), temp.path());
         std::fs::create_dir(temp.path().join("tessdata")).unwrap();
         assert_eq!(data_dir(temp.path()), temp.path().join("tessdata"));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn system_ocr_requires_both_languages_and_never_resolves_a_path_executable() {
+        let temp = tempfile::tempdir().unwrap();
+        let incomplete = temp.path().join("incomplete");
+        let complete = temp.path().join("complete");
+        for directory in [&incomplete, &complete] {
+            std::fs::create_dir(directory).unwrap();
+            std::fs::write(directory.join("eng.traineddata"), b"fixture").unwrap();
+        }
+        std::fs::write(complete.join("fra.traineddata"), b"fixture").unwrap();
+        assert_eq!(
+            find_system_data([incomplete.as_path(), complete.as_path()]),
+            Some(complete)
+        );
+        assert!(find_system_data([incomplete.as_path(), Path::new("tessdata")]).is_none());
+        assert_eq!(
+            runtime_executable(Path::new("untrusted-runtime")),
+            PathBuf::from("/usr/bin/tesseract")
+        );
     }
 
     #[cfg(windows)]

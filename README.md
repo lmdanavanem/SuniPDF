@@ -7,7 +7,9 @@
   </picture>
 </p>
 
-**Free native PDF reader and editor for Windows 10/11. Private local processing, English and French.**
+**Free native PDF reader and editor for Windows 10/11 and Ubuntu Linux. Private local processing, English and French.**
+
+[Ubuntu amd64 installation and platform limits](docs/UBUNTU.md). Available packages and their qualification are listed on each release page.
 
 [Français](README.fr.md) · Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Navanem](https://navanem.com/projets/sunipdf/)
 

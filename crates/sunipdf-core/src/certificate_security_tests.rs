@@ -108,6 +108,7 @@ fn detached_cms_layout_rejects_even_an_empty_explicit_content_value() {
     }
 }
 
+#[cfg(windows)]
 fn openssl(dir: &std::path::Path, args: &[&str]) {
     let output = std::process::Command::new(test_identity::openssl())
         .current_dir(dir)
@@ -121,6 +122,7 @@ fn openssl(dir: &std::path::Path, args: &[&str]) {
     );
 }
 
+#[cfg(windows)]
 #[test]
 fn weak_digests_and_attached_cms_are_rejected_before_a_valid_pdf_verdict() {
     let pfx = test_identity::identity();
@@ -228,6 +230,7 @@ fn weak_digests_and_attached_cms_are_rejected_before_a_valid_pdf_verdict() {
     );
 }
 
+#[cfg(windows)]
 fn replace_cms(signed: &[u8], range: &[usize], cms: &[u8]) -> Vec<u8> {
     assert!(cms.len() * 2 <= range[2] - range[1] - 2);
     let mut output = signed.to_vec();
@@ -241,6 +244,7 @@ fn replace_cms(signed: &[u8], range: &[usize], cms: &[u8]) -> Vec<u8> {
     output
 }
 
+#[cfg(windows)]
 #[test]
 fn certificate_names_include_distinguished_fields_and_multiple_private_identities_are_refused() {
     let first = test_identity::identity_with_subject(

@@ -21,7 +21,22 @@ fn now() -> u64 {
         .as_secs()
 }
 
-fn lock(path: &Path) -> io::Result<File> {
+#[derive(Debug)]
+struct SessionLock {
+    _file: File,
+}
+
+#[cfg(not(windows))]
+impl Drop for SessionLock {
+    fn drop(&mut self) {
+        // Duplicated descriptors share the lock, so closing this handle alone is insufficient.
+        if let Err(error) = self._file.unlock() {
+            log::warn!("Recovery session unlock failed: {error}");
+        }
+    }
+}
+
+fn lock(path: &Path) -> io::Result<SessionLock> {
     let mut options = OpenOptions::new();
     options.read(true).write(true).create(true).truncate(false);
     #[cfg(windows)]
@@ -29,7 +44,15 @@ fn lock(path: &Path) -> io::Result<File> {
         use std::os::windows::fs::OpenOptionsExt;
         options.share_mode(0);
     }
-    options.open(path)
+    let file = options.open(path)?;
+    #[cfg(not(windows))]
+    file.try_lock().map_err(|error| match error {
+        std::fs::TryLockError::WouldBlock => {
+            io::Error::new(io::ErrorKind::WouldBlock, "recovery session is active")
+        }
+        std::fs::TryLockError::Error(error) => error,
+    })?;
+    Ok(SessionLock { _file: file })
 }
 
 #[derive(Clone, Debug)]
@@ -91,11 +114,17 @@ impl Entry {
 pub struct Session {
     root: PathBuf,
     dir: PathBuf,
-    _lock: File,
+    _lock: SessionLock,
 }
 
 impl Session {
     pub(crate) fn create(root: PathBuf) -> io::Result<Self> {
+        if !root.is_absolute() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "recovery directory must be absolute",
+            ));
+        }
         fs::create_dir_all(&root)?;
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -134,7 +163,7 @@ impl Session {
             if !canonical.starts_with(&root) {
                 continue;
             }
-            // An exclusive Windows handle distinguishes a running instance from a crashed session.
+            // An exclusive handle or file lock prevents recovery from another running instance.
             let Ok(_guard) = lock(&path.join("session.lock")) else {
                 continue;
             };
@@ -198,11 +227,8 @@ impl Default for RecoveryState {
 
 impl RecoveryState {
     pub fn load() -> Self {
-        let root = std::env::var_os("SUNIPDF_RECOVERY_DIR")
-            .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var_os("LOCALAPPDATA").map(|p| PathBuf::from(p).join("SuniPDF/recovery"))
-            });
+        let root = crate::settings::absolute_path(std::env::var_os("SUNIPDF_RECOVERY_DIR"))
+            .or_else(default_recovery_directory);
         let mut state = Self::default();
         if let Some(root) = root {
             match Session::create(root) {
@@ -241,6 +267,28 @@ impl RecoveryState {
         self.restored.remove(&id);
         Ok(())
     }
+}
+
+fn default_recovery_directory() -> Option<PathBuf> {
+    #[cfg(windows)]
+    let root = crate::settings::absolute_path(std::env::var_os("LOCALAPPDATA"));
+    #[cfg(not(windows))]
+    let root = crate::settings::xdg_directory(
+        std::env::var_os("XDG_STATE_HOME"),
+        std::env::var_os("HOME"),
+        ".local/state",
+    );
+    root.map(|root| crate::settings::storage_path(root, "recovery"))
+}
+
+pub(crate) fn recovered_document_path() -> PathBuf {
+    #[cfg(windows)]
+    let root = crate::settings::absolute_path(std::env::var_os("USERPROFILE"))
+        .map(|path| path.join("Documents"));
+    #[cfg(not(windows))]
+    let root = crate::settings::absolute_path(std::env::var_os("HOME"));
+    root.unwrap_or_else(std::env::temp_dir)
+        .join("Recovered.pdf")
 }
 
 impl crate::app::SuniApp {
@@ -410,7 +458,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(windows)]
     fn live_sessions_are_skipped_and_slots_do_not_depend_on_tab_indices() {
         let dir = tempfile::tempdir().unwrap();
         let first = Session::create(dir.path().into()).unwrap();
@@ -422,5 +469,135 @@ mod tests {
         assert_eq!(second.scan().unwrap().len(), 1);
         slot.remove().unwrap();
         assert!(second.scan().unwrap().is_empty());
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn released_session_is_recoverable_while_a_duplicate_descriptor_remains_open() {
+        let dir = tempfile::tempdir().unwrap();
+        let session = Session::create(dir.path().into()).unwrap();
+        let slot = session.slot(next_id(), dir.path().join("original.pdf"), 1);
+        slot.save(b"snapshot").unwrap();
+        let duplicate = session._lock._file.try_clone().unwrap();
+        let observer = Session::create(dir.path().into()).unwrap();
+        assert!(observer.scan().unwrap().is_empty());
+
+        drop(session);
+
+        let entries = observer.scan().unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].snapshot, slot.base.with_extension("pdf"));
+        assert_eq!(fs::read(&entries[0].snapshot).unwrap(), b"snapshot");
+        drop(duplicate);
+    }
+
+    #[test]
+    fn recovery_lock_excludes_another_process_until_the_owner_releases_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let session = Session::create(dir.path().join("recovery")).unwrap();
+        session
+            .slot(next_id(), dir.path().join("original.pdf"), 1)
+            .save(b"snapshot")
+            .unwrap();
+        let lock_path = session.dir.join("session.lock");
+
+        fn probe(lock_path: &Path, directory: &Path, expected: &str) {
+            struct ChildGuard(std::process::Child);
+            impl Drop for ChildGuard {
+                fn drop(&mut self) {
+                    let _ = self.0.kill();
+                    let _ = self.0.wait();
+                }
+            }
+
+            let report = directory.join(format!("probe-{expected}.txt"));
+            let log_path = directory.join(format!("probe-{expected}.log"));
+            let log = File::create(&log_path).unwrap();
+            let mut child = ChildGuard(
+                std::process::Command::new(std::env::current_exe().unwrap())
+                    .args([
+                        "--exact",
+                        "recovery::tests::recovery_lock_subprocess_probe",
+                        "--ignored",
+                        "--nocapture",
+                    ])
+                    .env("SUNIPDF_TEST_RECOVERY_LOCK_PATH", lock_path)
+                    .env("SUNIPDF_TEST_RECOVERY_LOCK_REPORT", &report)
+                    .env("SUNIPDF_TEST_RECOVERY_LOCK_EXPECTED", expected)
+                    .stdin(std::process::Stdio::null())
+                    .stdout(log.try_clone().unwrap())
+                    .stderr(log)
+                    .spawn()
+                    .unwrap(),
+            );
+            let deadline = Instant::now() + Duration::from_secs(20);
+            let status = loop {
+                if let Some(status) = child.0.try_wait().unwrap() {
+                    break status;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "recovery lock subprocess timed out"
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            };
+            assert!(
+                status.success(),
+                "recovery lock subprocess failed: {}",
+                fs::read_to_string(log_path).unwrap_or_default()
+            );
+            assert_eq!(
+                fs::read_to_string(report).unwrap(),
+                expected,
+                "the exact child test must run and report its observation"
+            );
+        }
+
+        probe(&lock_path, dir.path(), "locked");
+        drop(session);
+        probe(&lock_path, dir.path(), "available");
+    }
+
+    #[test]
+    #[ignore = "Invoked by the recovery lock parent test with an isolated temporary directory."]
+    fn recovery_lock_subprocess_probe() {
+        let Some(path) = std::env::var_os("SUNIPDF_TEST_RECOVERY_LOCK_PATH") else {
+            return;
+        };
+        let path = PathBuf::from(path);
+        let report = PathBuf::from(std::env::var_os("SUNIPDF_TEST_RECOVERY_LOCK_REPORT").unwrap());
+        let expected = std::env::var("SUNIPDF_TEST_RECOVERY_LOCK_EXPECTED").unwrap();
+        assert!(path.is_absolute() && path.parent().unwrap().is_dir());
+        match expected.as_str() {
+            "locked" => {
+                let error = lock(&path).expect_err("another process still owns this session");
+                #[cfg(windows)]
+                assert_eq!(
+                    error.raw_os_error(),
+                    Some(32),
+                    "expected a Windows sharing violation"
+                );
+                #[cfg(not(windows))]
+                assert_eq!(error.kind(), io::ErrorKind::WouldBlock);
+            }
+            "available" => {
+                assert!(path.is_file());
+                drop(lock(&path).expect("the released session must be recoverable"))
+            }
+            _ => panic!("invalid recovery lock probe expectation"),
+        }
+        let root = path.parent().unwrap().parent().unwrap();
+        let observer = Session::create(root.to_owned()).unwrap();
+        assert_eq!(
+            observer.scan().unwrap().len(),
+            usize::from(expected == "available")
+        );
+        fs::write(report, expected).unwrap();
+    }
+
+    #[test]
+    fn relative_recovery_root_is_rejected() {
+        assert!(Session::create(PathBuf::from("relative-recovery")).is_err());
+        assert!(recovered_document_path().is_absolute());
     }
 }

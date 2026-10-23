@@ -217,7 +217,7 @@ fn normalized_fallback(password: Option<&str>) -> Option<String> {
     (norm != raw).then_some(norm)
 }
 
-/// Répertoires explorés pour trouver `pdfium.dll`, dans l'ordre.
+/// Directories searched for the platform PDFium library, in order.
 pub fn default_library_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     #[cfg(debug_assertions)]
@@ -230,7 +230,7 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
     {
         dirs.push(dir);
     }
-    // Confort de développement seulement : en version publiée, pdfium.dll est cherché à côté de
+    // Confort de développement seulement : en version publiée, PDFium est cherché à côté de
     // l'exécutable, jamais dans une variable d'environnement, le répertoire courant ni dans un
     // chemin de la machine de build.
     #[cfg(debug_assertions)]
@@ -243,11 +243,20 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
         } else {
             "x64"
         };
+        let platform = if cfg!(target_os = "linux") {
+            "linux"
+        } else {
+            "win"
+        };
         dirs.push(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../third_party/pdfium")
-                .join(format!("win-{arch}"))
-                .join("bin"),
+                .join(format!("{platform}-{arch}"))
+                .join(if cfg!(target_os = "linux") {
+                    "lib"
+                } else {
+                    "bin"
+                }),
         );
     }
     dirs

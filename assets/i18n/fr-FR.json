@@ -1411,5 +1411,9 @@
   "measure.panel.scale": "Échelle de la page",
   "measure.panel.drawing": "Tracé",
   "measure.panel.saved": "Données enregistrées",
-  "measure.finish_draft_first": "Terminez ou annulez la mesure avant de changer de panneau."
+  "measure.finish_draft_first": "Terminez ou annulez la mesure avant de changer de panneau.",
+  "updates.download_linux": "T?l?charger la mise ? jour",
+  "updates.linux_install": "T?l?chargez le paquet Ubuntu .deb depuis la page de la version, puis installez-le avec votre gestionnaire de paquets.",
+  "platform.windows_only": "Cette fonction est actuellement disponible uniquement sous Windows.",
+  "platform.signature_session_only": "Vous pouvez dessiner ou importer des signatures pour cette session. La biblioth?que chiffr?e de signatures est disponible uniquement sous Windows."
 }

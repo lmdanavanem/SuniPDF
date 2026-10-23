@@ -9,6 +9,7 @@ Older `.en.md` addresses remain compatibility links.
 | Guide | Français | Contents |
 |---|---|---|
 | [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Opening, editing and saving PDFs |
+| [Ubuntu installation](UBUNTU.md) | [FR](UBUNTU.fr.md) | Ubuntu amd64 package, local OCR, settings, updates and platform limits |
 | [Reader controls and tools](READER_WORKSPACE.md) | [FR](READER_WORKSPACE.fr.md) | Bottom page/zoom controls, searchable tool families and the measurement side panel; [qualified 0.50.0 scope](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) |
 | [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) | [FR](KEYBOARD_SHORTCUTS.fr.md) | Navigation and commands |
 | [Measurements](MEASUREMENTS.md) | [FR](MEASUREMENTS.fr.md) | Calibration, drawing, saved records and individual measurement editing |
@@ -46,6 +47,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
+- [0.51 release](RELEASE_0.51.0.md) · [FR](RELEASE_0.51.0.fr.md): Ubuntu amd64 package and platform adaptations; qualification is tracked on its release page.
 - [0.50 release](RELEASE_0.50.0.md) · [FR](RELEASE_0.50.0.fr.md): reader controls and organized tools within documented bounds and [publication evidence](qa/RELEASE_0.50.0.json).
 - [0.49 release](RELEASE_0.49.0.md) · [FR](RELEASE_0.49.0.fr.md): adding/removing saved vertices with explicit selection within documented bounds and [publication evidence](qa/RELEASE_0.49.0.json).
 - [0.48 release](RELEASE_0.48.0.md) · [FR](RELEASE_0.48.0.fr.md): editing saved measurement vertices within documented bounds and [publication evidence](qa/RELEASE_0.48.0.json).
