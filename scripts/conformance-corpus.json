@@ -1,0 +1,173 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/veraPDF/veraPDF-corpus",
+  "revision": "377728596647e40edf16003d68d620773ce96ec5",
+  "attribution": "veraPDF Consortium, veraPDF test corpus",
+  "license": "CC-BY-4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "licenseSource": "https://github.com/veraPDF/veraPDF-corpus/blob/377728596647e40edf16003d68d620773ce96ec5/README.md",
+  "validator": {
+    "version": "1.30.3",
+    "url": "https://software.verapdf.org/releases/1.30/verapdf-greenfield-1.30.3-installer.zip",
+    "bytes": 32971125,
+    "sha256": "b512bf24945503a33fc10738ecffc1f2dccaaf8593a448e94ee9ac86a9559a59"
+  },
+  "files": [
+    {
+      "id": "a1b-font-metrics-pass",
+      "path": "PDF_A-1b/6.3 Fonts/6.3.6 Font metrics/veraPDF test suite 6-3-6-t01-pass-a.pdf",
+      "bytes": 29813,
+      "sha256": "410a63018a27141d889be77f33de1d29c89f49cac21c54d43a6ae3f4994ef0eb",
+      "profile": "1b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.3.6",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a1b-font-metrics-fail",
+      "path": "PDF_A-1b/6.3 Fonts/6.3.6 Font metrics/veraPDF test suite 6-3-6-t01-fail-a.pdf",
+      "bytes": 3631,
+      "sha256": "9bcf1136a53ebef60ade9466f40d7d882cf971928f231404f6858d4e5c944825",
+      "profile": "1b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.3.6",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "a1b-form-xobject-pass",
+      "path": "PDF_A-1b/6.2 Graphics/6.2.5 Form XObjects/veraPDF test suite 6-2-5-t02-pass-a.pdf",
+      "bytes": 9709,
+      "sha256": "8dae69927d926b816b8b91534926107d5c6cd79cb44278e557fa2cf4892d474c",
+      "profile": "1b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.2.5",
+        "testNumber": "2"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a1b-form-xobject-fail",
+      "path": "PDF_A-1b/6.2 Graphics/6.2.5 Form XObjects/veraPDF test suite 6-2-5-t02-fail-a.pdf",
+      "bytes": 9572,
+      "sha256": "43bd28a5d68265fa5f5c6b0bcf313e445497f41d03f286e9cbb5b45c80e2a57e",
+      "profile": "1b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.2.5",
+        "testNumber": "2"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "a2b-subset-font-pass",
+      "path": "PDF_A-2b/6.2 Graphics/6.2.11 Fonts/6.2.11.4 Embedding/6.2.11.4.2 Subset embedding/veraPDF test suite 6-2-11-4-2-t01-pass-a.pdf",
+      "bytes": 9807,
+      "sha256": "049a3231486ea79c7eb73a8a05e1351e4d80b67a8a3d189b018661859b815106",
+      "profile": "2b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.2.11.4.2",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a2b-subset-font-fail",
+      "path": "PDF_A-2b/6.2 Graphics/6.2.11 Fonts/6.2.11.4 Embedding/6.2.11.4.2 Subset embedding/veraPDF test suite 6-2-11-4-2-t01-fail-a.pdf",
+      "bytes": 9811,
+      "sha256": "dc8facf79ba51157a27fa67b7abd669bb0691e1b421a01e68a6e09ce1ab23a2c",
+      "profile": "2b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.2.11.4.2",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "a2b-interactive-form-pass",
+      "path": "PDF_A-2b/6.4 Interactive forms/6.4.1 General/veraPDF test suite 6-4-1-t02-pass-a.pdf",
+      "bytes": 5418,
+      "sha256": "e6b83a07001c5b2a04de3cec3536733fb8250ffe561aef557bf0bfa820b5dc82",
+      "profile": "2b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.4.1",
+        "testNumber": "2"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a2b-interactive-form-fail",
+      "path": "PDF_A-2b/6.4 Interactive forms/6.4.1 General/veraPDF test suite 6-4-1-t02-fail-a.pdf",
+      "bytes": 5412,
+      "sha256": "50b95da72adbdb41b23183fc5f8358ee0c0d0f24f179300d29d205869d2acbaa",
+      "profile": "2b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.4.1",
+        "testNumber": "2"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "ua1-form-label-pass",
+      "path": "PDF_UA-1/7.18 Annotations/7.18.4 Forms/7.18.4-t01-pass-a.pdf",
+      "bytes": 29426,
+      "sha256": "eebd601e070cfa18b46837436149157036e44420d07e6c575120c5d22a2148c6",
+      "profile": "ua1",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "7.18.4",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "ua1-form-label-fail",
+      "path": "PDF_UA-1/7.18 Annotations/7.18.4 Forms/7.18.4-t01-fail-a.pdf",
+      "bytes": 29401,
+      "sha256": "0a043392dea3f1f05f436b84a3ed5bc4557f9da608517999a87ac086e8c33179",
+      "profile": "ua1",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "7.18.4",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "ua1-table-tags-pass",
+      "path": "PDF_UA-1/7.5 Tables/7.5-t01-pass-a.pdf",
+      "bytes": 37174,
+      "sha256": "d91d6aeb4203b6852a20aebbb2d1399f72ad5527e7056a2577168a2fde60eb4f",
+      "profile": "ua1",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "7.5",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "ua1-table-tags-fail",
+      "path": "PDF_UA-1/7.5 Tables/7.5-t01-fail-a.pdf",
+      "bytes": 35332,
+      "sha256": "54d49f7289d91b120fce690e59dc97f2ed7a3cadc09a2d4eef94ccc42f1da928",
+      "profile": "ua1",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "7.5",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    }
+  ]
+}
