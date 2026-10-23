@@ -91,7 +91,7 @@ fn text_pixel_evidence_rejects_blank_and_low_contrast_headings() {
             readable_text_pixels(&pixels, [32, 4], rect, foreground, background),
             0
         );
-        for pixel in pixels.chunks_exact_mut(4).take(20) {
+        for pixel in pixels.as_chunks_mut::<4>().0.iter_mut().take(20) {
             pixel.copy_from_slice(&foreground.to_array());
         }
         assert_eq!(

@@ -215,13 +215,15 @@ pub(crate) fn assert_visible_text_contrast(output: &egui::FullOutput, labels: &[
         clip: egui::Rect,
         label: &str,
         colors: &mut Vec<egui::Color32>,
+        bounds: &mut Vec<(egui::Rect, egui::Rect)>,
     ) {
         match shape {
-            egui::Shape::Text(text)
-                if text.galley.text() == label
-                    && clip
-                        .contains_rect(egui::Rect::from_min_size(text.pos, text.galley.size())) =>
-            {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                let rect = egui::Rect::from_min_size(text.pos, text.galley.size());
+                bounds.push((rect, clip));
+                if !clip.contains_rect(rect) {
+                    return;
+                }
                 for section in &text.galley.job.sections {
                     colors.push(text.override_text_color.unwrap_or({
                         if section.format.color == egui::Color32::PLACEHOLDER {
@@ -234,7 +236,7 @@ pub(crate) fn assert_visible_text_contrast(output: &egui::FullOutput, labels: &[
             }
             egui::Shape::Vec(shapes) => {
                 for shape in shapes {
-                    collect(shape, clip, label, colors);
+                    collect(shape, clip, label, colors, bounds);
                 }
             }
             _ => {}
@@ -243,12 +245,19 @@ pub(crate) fn assert_visible_text_contrast(output: &egui::FullOutput, labels: &[
     let palette = theme::palette(dark);
     for label in labels {
         let mut colors = Vec::new();
+        let mut bounds = Vec::new();
         for shape in &output.shapes {
-            collect(&shape.shape, shape.clip_rect, label, &mut colors);
+            collect(
+                &shape.shape,
+                shape.clip_rect,
+                label,
+                &mut colors,
+                &mut bounds,
+            );
         }
         assert!(
             !colors.is_empty(),
-            "fully visible table label missing: {label}, dark={dark}"
+            "fully visible table label missing: {label}, dark={dark}, text/clip bounds={bounds:?}"
         );
         for color in colors {
             for background in [palette.surface, palette.hover] {

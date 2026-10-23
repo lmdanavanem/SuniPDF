@@ -1105,7 +1105,7 @@ pub(crate) mod tests {
                     }
                     let output = output.unwrap();
                     let contrast_keys = if editing {
-                        vec!["quantity.title", "quantity.edit"]
+                        vec!["quantity.title"]
                     } else {
                         vec![
                             "quantity.title",
@@ -1164,6 +1164,35 @@ pub(crate) mod tests {
                             }),
                             "full table label must remain visible outside the canvas: {language}, {label}, editing={editing}; \
                      canvas={canvas:?}, text/clip bounds={bounds:?}"
+                        );
+                    }
+                    if editing {
+                        // The compact form scrolls independently of its fixed
+                        // actions. Check its headings with enough bounded room,
+                        // without assuming they stay on screen during scrolling.
+                        let editor_ctx = egui::Context::default();
+                        crate::theme::apply(&editor_ctx, dark);
+                        app.settings.tables.height = 360.0;
+                        let mut editor_output = None;
+                        for _ in 0..4 {
+                            let mut frame = editor_ctx.run_ui(
+                                egui::RawInput {
+                                    screen_rect: Some(Rect::from_min_size(
+                                        Pos2::ZERO,
+                                        egui::vec2(1600.0, 1100.0),
+                                    )),
+                                    ..Default::default()
+                                },
+                                |ui| app.quantity_table_dock(&editor_ctx, ui),
+                            );
+                            frame.textures_delta.clear();
+                            editor_output = Some(frame);
+                        }
+                        crate::workspace_table::assert_visible_text_contrast(
+                            &editor_output.unwrap(),
+                            &["quantity.title", "quantity.edit", "quantity.custom"]
+                                .map(|key| tr(app.lang(), key)),
+                            dark,
                         );
                     }
                 }
