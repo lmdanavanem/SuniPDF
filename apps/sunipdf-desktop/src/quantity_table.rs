@@ -578,26 +578,27 @@ impl SuniApp {
                                 draw_summary(ui, summary, lang);
                             });
                         }
-                        ui.menu_button(tr(lang, "quantity.column_filter"), |ui| {
+                        ui.menu_button(tr(lang, "quantity.custom"), |ui| {
                             ui.add(
                                 egui::TextEdit::singleline(&mut state.column_filter)
                                     .hint_text(tr(lang, "quantity.column_filter"))
                                     .char_limit(128),
                             );
-                        });
-                        ui.menu_button(tr(lang, "quantity.formulas"), |ui| {
-                            ui.add_enabled_ui(idle, |ui| {
-                                egui::ScrollArea::vertical()
-                                    .max_height(360.0)
-                                    .auto_shrink([false, false])
-                                    .show(ui, |ui| {
-                                        changed |= draw_formulas(
-                                            ui,
-                                            &mut state.options,
-                                            &mut state.formula_draft,
-                                            lang,
-                                        );
-                                    });
+                            ui.separator();
+                            ui.menu_button(tr(lang, "quantity.formulas"), |ui| {
+                                ui.add_enabled_ui(idle, |ui| {
+                                    egui::ScrollArea::vertical()
+                                        .max_height(360.0)
+                                        .auto_shrink([false, false])
+                                        .show(ui, |ui| {
+                                            changed |= draw_formulas(
+                                                ui,
+                                                &mut state.options,
+                                                &mut state.formula_draft,
+                                                lang,
+                                            );
+                                        });
+                                });
                             });
                         });
                         if ui
@@ -1406,6 +1407,7 @@ pub(crate) mod tests {
                             tr(app.lang(), "workspace.table.dock"),
                             tr(app.lang(), "workspace.table.float"),
                             tr(app.lang(), "quantity.close"),
+                            tr(app.lang(), "quantity.custom"),
                             contents.as_str(),
                         ]
                     };

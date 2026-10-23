@@ -68,7 +68,7 @@ Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Leng
 
 Choose a **Custom column** to sort typed quantity fields: numbers sort numerically, dates chronologically and text/choices lexically. Missing values and blank text stay last in both directions; equal values use physical page/index. The annotation register has the same selector for its separate text fields, which remain lexically sorted.
 
-For a calculated report column, open **Formula columns**, enter a name and an expression such as
+For a calculated report column, open **Custom columns → Formula columns**, enter a name and an expression such as
 `quantity * (1 + [Waste %] / 100)`, select the exact source quantity unit and result precision, then choose
 **Add and preview**. `[Waste %]` must be a typed Number field. Up to eight report columns can use decimal constants,
 `+ - * /`, parentheses, `quantity` and named numeric fields. Numeric fields are dimensionless; incompatible units,

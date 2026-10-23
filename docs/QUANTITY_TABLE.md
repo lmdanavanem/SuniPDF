@@ -35,7 +35,7 @@ For each priced row, the quantity is converted to the explicit price unit and qu
 
 ## Report formula columns
 
-Open **Formula columns**, enter a unique column name and expression, select the required quantity unit and `0`–`6` result decimal places, then choose **Add and preview**. Up to eight columns can be active. Formula configuration stays in the current tab and does not modify PDF fields, quantities or prices. Under **Reuse formula configuration**, **Copy configuration** copies its JSON; paste an array and choose **Load configuration** to reuse it. Keep a copy for another tab or session.
+Open **Custom columns → Formula columns**, enter a unique column name and expression, select the required quantity unit and `0`–`6` result decimal places, then choose **Add and preview**. Up to eight columns can be active. Formula configuration stays in the current tab and does not modify PDF fields, quantities or prices. Under **Reuse formula configuration**, **Copy configuration** copies its JSON; paste an array and choose **Load configuration** to reuse it. Keep a copy for another tab or session.
 
 Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quantity` and exact case-sensitive numeric field references such as `[Waste %]`. Only typed **Number** fields participate; register text fields and other formula results are not inputs. For example, `quantity * (1 + [Waste %] / 100)` applies a dimensionless allowance to each row's actual quantity.
 
