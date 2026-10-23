@@ -970,6 +970,8 @@ pub(crate) mod tests {
                         Event::MouseWheel {
                             unit: egui::MouseWheelUnit::Point,
                             delta: egui::vec2(0.0, if attempt < 10 { -150.0 } else { 150.0 }),
+                            phase: egui::TouchPhase::Move,
+                            source: egui::MouseWheelSource::Wheel,
                             modifiers: Modifiers::NONE,
                         },
                     ],

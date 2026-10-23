@@ -12,10 +12,14 @@ Create a named region after calibrating its reference inside that region, then p
 
 Region metadata is a bounded `SuniPDFMeasurementViewports` page record in PDF user space, with page bounds and decoded-content digest. It follows page rotation and eligible page operations. Changed content/bounds, unknown records and malformed metadata are refused rather than overwritten. Metadata stripping, sanitization and redaction remove this private page record. These checks are not comprehensive document authentication: confirm the drawing revision yourself.
 
+The content guard includes reachable page resources such as Form XObject streams and matrices. New saved page defaults use version 2; resource-dependent legacy version-1 defaults require explicit recalibration or removal. If a supported region record becomes stale, explicitly clear the supported regions and recreate them. The reset captures the document state and refuses a later change; it does not remove measurements or their independent scales. Unknown/malformed records cannot obtain a reset target.
+
+Content and resource traversal each have a 32 MiB aggregate limit, with an 8 MiB limit per stream. The resource guard also limits traversal to 50,000 nodes and 64 levels, rejects cycles, and resolves at most 64 inherited page parents. Files beyond these bounds require another workflow; a missing guard is never accepted as a valid saved scale.
+
 ## Recalibrate a selected batch
 
 1. Confirm the intended reference scale. Open batch recalibration and choose the physical page range.
-2. Read the selected pages. Choose the expected saved measurements and whether to replace page defaults. Angles have no length scale and are excluded.
+2. Read the selected pages. The desktop batch replaces their page defaults; choose whether to include all their supported saved measurements. Angles have no length scale and are excluded. The CLI also supports explicit subsets of saved records and independently choosing whether to replace each page default.
 3. Preview the before/after values. Each measurement retains its own display unit, precision, geometry, identity, replies and entered quantity fields; areas scale by the square of the linear ratio.
 4. Apply once. All selected records are checked against the current document before one replacement. A stale document, invalid later page, protected/unsupported annotation or signed PDF refuses the operation. No earlier page is left partly recalibrated.
 5. Use one **Undo** to restore the full batch, or save the PDF to retain it. Named region scales are unchanged by a page/measurement batch.
@@ -33,6 +37,7 @@ Search and annotation inventory advance one page at a time and expose progress/c
 ```text
 sunipdf-cli measurement-viewports input.pdf --page 1
 sunipdf-cli set-measurement-viewports input.pdf --page 1 --expected current-regions.json --regions next-regions.json --out regions.pdf
+sunipdf-cli clear-measurement-viewports input.pdf --page 1 --out cleared-regions.pdf
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json --out recalibrated.pdf
 sunipdf-cli measurement-snap input.pdf --page 1 --point "210,320" --tolerance 5

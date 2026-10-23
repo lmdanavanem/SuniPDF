@@ -129,6 +129,28 @@ fn region_and_batch_cli_require_explicit_expected_state_and_preserve_source() {
             .unwrap(),
     );
     assert!(!wrong.exists());
+    let original_regions = std::fs::read(&with_regions).unwrap();
+    let cleared = dir.path().join("cleared.pdf");
+    let cleared_result = success(
+        cli("clear-measurement-viewports", &with_regions)
+            .args(["--page", "1", "--out"])
+            .arg(&cleared)
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(cleared_result["existing_measurements_changed"], false);
+    let cleared_regions = success(cli("measurement-viewports", &cleared).output().unwrap());
+    assert_eq!(cleared_regions["regions"], json!([]));
+    let cleared_measurements = success(cli("measurements", &cleared).output().unwrap());
+    assert_eq!(cleared_measurements["pages"], reread["pages"]);
+    failure(
+        cli("clear-measurement-viewports", &with_regions)
+            .args(["--page", "1", "--out"])
+            .arg(&cleared)
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(std::fs::read(&with_regions).unwrap(), original_regions);
     assert_eq!(std::fs::read(&measured).unwrap(), original);
 }
 

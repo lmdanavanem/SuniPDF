@@ -16,10 +16,12 @@ Statut : version candidate. La qualification native est requise avant publicatio
 
 ## Limite de qualification
 
-Les nouveaux cas automatisés utilisent des PDF synthétiques à dimensions connues et le corpus de régression public/sous licence conservé. Ils couvrent calculs, rognage/rotation, transformations imbriquées, découpes incompatibles, enregistrements attendus, réouverture, refus atomiques, Annuler et chiffrement. Il s'agit du périmètre produit P1 implémenté en 0.60 ; les résultats de la source finale et preuves des paquets doivent être enregistrés séparément avant publication.
+Les nouveaux cas automatisés utilisent des PDF synthétiques à dimensions connues et le corpus de régression public/sous licence conservé. Ils couvrent calculs, rognage/rotation, transformations imbriquées, découpes incompatibles, enregistrements attendus, réouverture, refus atomiques, Annuler et chiffrement. Il s'agit du périmètre produit P1 implémenté en 0.60 ; les résultats propres à la source et les preuves des paquets sont enregistrés séparément.
 
 Les plans privés de projets réels sont reportés à la demande du propriétaire. Justesse topographique, pointage/impression physiques, lecteurs d'écran, matériel ARM64 natif, interopérabilité complète entre lecteurs, authenticité des mises à jour et autres [critères 1.0](RELEASE_1.0_CRITERIA.fr.md) restent ouverts. Le corpus synthétique ne clôture pas ces validations. Aucun objectif de temps d'image ou de filtrage n'est annoncé comme atteint sans mesure enregistrée.
 
 Un lot est limité à 512 pages, 4096 mesures choisies et un document de 128 Mio ; une page à 64 zones. L'accrochage utilise les véritables extrémités des courbes et les intersections de segments droits ; intersections courbes et découpes non convexes/courbes incompatibles sont exclues. Les voisinages trop denses peuvent refuser l'accrochage. Une échelle de page/zone ne recalcule jamais silencieusement les annotations. Dessin dimensionné, volumes, déductions et reconnaissance automatique restent des lots distincts.
 
 Les paquets Windows restent non signés ; ARM64 est compilé en croisé. Ubuntu 22.04/24.04 amd64 conserve ses [limites fonctionnelles documentées](UBUNTU.fr.md). La mise à jour de Projects reste reportée.
+
+Les nouvelles échelles de page utilisent la garde version 2 incluant les ressources. Une ancienne échelle version 1 sur une page dépendant de ressources exige recalibration ou retrait explicite : son ancienne empreinte ne permettait pas d'établir si une ressource avait changé. Les zones périmées reconnues peuvent être retirées sous contrôle de l'état capturé, puis recréées ; les données inconnues ou malformées restent préservées. La CLI fournit `clear-measurement-viewports` vers une nouvelle copie.

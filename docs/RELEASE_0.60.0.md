@@ -16,10 +16,12 @@ Status: release candidate. Native qualification is required before publication.
 
 ## Qualification boundary
 
-The new automated cases use synthetic PDFs with known dimensions and the retained, licensed/public regression corpus. They cover numeric geometry, crop/rotation, nested transforms, unsupported clips, expected records, reopen, atomic refusal, Undo and encryption. This is the implemented 0.60 P1 product scope; release-source test results and package evidence must be recorded separately before publication.
+The new automated cases use synthetic PDFs with known dimensions and the retained, licensed/public regression corpus. They cover numeric geometry, crop/rotation, nested transforms, unsupported clips, expected records, reopen, atomic refusal, Undo and encryption. This is the implemented 0.60 P1 product scope; source-specific test results and package evidence are recorded separately.
 
 Private real-project plans are deferred at the owner's request. Survey accuracy, physical pointing/printing, screen readers, native ARM64 hardware, complete independent-reader interoperability, update authenticity and the remaining [1.0 criteria](RELEASE_1.0_CRITERIA.md) remain open. A synthetic corpus does not close those gates. No frame-time or annotation-filter latency target is claimed without a recorded benchmark.
 
 The batch is bounded to 512 pages, 4096 selected measurements and a 128 MiB document. A page supports at most 64 regions. Snapping contributes real curve endpoints and straight-segment intersections; curved intersections and unsupported non-convex/curved clipping are excluded. Dense neighborhoods may decline snapping. Region/page defaults do not silently recalculate saved annotations. Dimensioned drawing, volumes, deductions and automatic symbol recognition remain separate backlog work.
 
 Windows packages remain unsigned; Windows ARM64 is cross-built. Ubuntu 22.04/24.04 amd64 retains the [documented Linux feature limits](UBUNTU.md). Projects updates remain deferred.
+
+New saved page scales use the resource-aware version-2 guard. A legacy version-1 scale on a page with resource dependencies requires explicit recalibration or removal, because its old digest could not establish whether a resource changed. Supported stale region records can be cleared with a captured-state guard, then recreated; unknown or malformed metadata remains preserved. The CLI exposes this through `clear-measurement-viewports` into a new copy.

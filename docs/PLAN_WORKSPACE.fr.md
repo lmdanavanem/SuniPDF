@@ -12,10 +12,14 @@ Pour créer une zone nommée, calibrez sa référence à l'intérieur de la zone
 
 Le champ de page borné `SuniPDFMeasurementViewports` conserve les coordonnées utilisateur PDF, limites de page et empreinte du contenu décodé. Il suit la rotation et les opérations compatibles. Contenu/limites modifiés, données inconnues ou malformées sont refusés plutôt qu'écrasés. Suppression des métadonnées, assainissement et caviardage retirent ce champ privé. Ces contrôles n'authentifient pas toutes les révisions : vérifiez le plan vous-même.
 
+La garde inclut les ressources accessibles de la page, notamment les flux et matrices des Form XObjects. Les nouvelles échelles de page utilisent la version 2 ; les anciennes échelles version 1 dépendant de ressources exigent recalibration ou retrait explicite. Une zone périmée reconnue peut être retirée explicitement puis recréée. Le retrait capture l'état du document et refuse un changement ultérieur ; les mesures et leurs échelles propres restent intactes. Les données inconnues/malformées ne peuvent pas produire une cible de retrait.
+
+Le parcours du contenu et celui des ressources disposent chacun d'une limite cumulée de 32 Mio, avec 8 Mio par flux. La garde des ressources limite aussi le parcours à 50 000 nœuds et 64 niveaux, refuse les cycles et résout au plus 64 parents de page hérités. Un fichier dépassant ces bornes nécessite un autre parcours ; une garde absente n'est jamais assimilée à une échelle enregistrée valide.
+
 ## Recalibrer un lot choisi
 
 1. Confirmez l'échelle de référence voulue. Ouvrez le recalcul par lots et choisissez la plage de pages physiques.
-2. Lisez les pages sélectionnées. Choisissez les mesures attendues et le remplacement éventuel des échelles de page. Les angles sont exclus car ils n'ont pas d'échelle de longueur.
+2. Lisez les pages sélectionnées. Le lot de l'application remplace leurs échelles de page ; choisissez d'inclure ou non toutes leurs mesures enregistrées compatibles. Les angles sont exclus car ils n'ont pas d'échelle de longueur. La CLI permet aussi de choisir un sous-ensemble explicite de mesures et de remplacer indépendamment chaque échelle de page.
 3. Comparez les valeurs avant/après. Chaque mesure conserve unité, précision, géométrie, identité, réponses et champs de quantités ; les surfaces suivent le carré du rapport linéaire.
 4. Appliquez une seule fois. Les enregistrements sont contrôlés avant un remplacement unique. Document modifié, page ultérieure invalide, annotation protégée/incompatible ou PDF signé entraînent un refus sans recalcul partiel des pages précédentes.
 5. Un seul **Annuler** restaure le lot complet ; enregistrez le PDF pour conserver le résultat. Les échelles des zones nommées restent inchangées.
@@ -33,6 +37,7 @@ Recherche et inventaire progressent page par page avec progression/annulation ; 
 ```text
 sunipdf-cli measurement-viewports input.pdf --page 1
 sunipdf-cli set-measurement-viewports input.pdf --page 1 --expected current-regions.json --regions next-regions.json --out regions.pdf
+sunipdf-cli clear-measurement-viewports input.pdf --page 1 --out cleared-regions.pdf
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json --out recalibrated.pdf
 sunipdf-cli measurement-snap input.pdf --page 1 --point "210,320" --tolerance 5

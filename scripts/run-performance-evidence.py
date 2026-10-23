@@ -95,7 +95,12 @@ def run() -> None:
         log = ROOT / "target/workspace-tests.log"
         if log.stat().st_size > 8 * 1024 * 1024:
             raise ValueError("Workspace log exceeds its size bound")
-        relative = executable_from_log(log.read_text(encoding="utf-8", errors="replace"), os.name == "nt")
+        workspace_log = log.read_bytes()
+        if len(workspace_log) > 8 * 1024 * 1024:
+            raise ValueError("Workspace log exceeds its size bound")
+        (directory / "workspace-tests.log").write_bytes(workspace_log)
+        report["workspaceLogSha256"] = hashlib.sha256(workspace_log).hexdigest()
+        relative = executable_from_log(workspace_log.decode("utf-8", errors="replace"), os.name == "nt")
         executable = ROOT / relative
         if executable.is_symlink() or executable.resolve().parent != (ROOT / "target/debug/deps").resolve():
             raise ValueError("Desktop test executable escapes its qualified directory")
