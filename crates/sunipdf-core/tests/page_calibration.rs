@@ -293,7 +293,7 @@ fn malformed_or_future_metadata_is_never_silently_used_replaced_or_removed() {
             let raw = dict.get(KEY).unwrap().as_str().unwrap();
             let mut value: serde_json::Value = serde_json::from_slice(raw).unwrap();
             match change {
-                "version" => value["version"] = 2.into(),
+                "version" => value["version"] = 3.into(),
                 "unit" => value["unit"] = "unknown".into(),
                 "zero" => value["known_distance"] = 0.into(),
                 "points" => value["points"] = serde_json::json!([[40, 40], [40, 40]]),
@@ -337,6 +337,120 @@ fn malformed_or_future_metadata_is_never_silently_used_replaced_or_removed() {
         doc.page_calibration(2),
         Err(EngineError::PageOutOfRange(2))
     ));
+}
+
+#[test]
+fn resource_only_form_edits_invalidate_page_and_region_scales_and_legacy_scales_are_recoverable() {
+    use lopdf::{dictionary, Dictionary, Object, Stream};
+    use sunipdf_core::measurement::MeasurementViewport;
+    let engine = engine();
+    let input = changed_pdf(SOURCE, |pdf| {
+        let form = pdf.add_object(Stream::new(
+            dictionary! {
+                "Type" => "XObject", "Subtype" => "Form",
+                "BBox" => vec![0.into(),0.into(),300.into(),300.into()],
+                "Matrix" => vec![1.into(),0.into(),0.into(),1.into(),0.into(),0.into()],
+                "Resources" => Dictionary::new(),
+            },
+            b"0 0 0 RG 2 w 40 80 m 140 80 l S".to_vec(),
+        ));
+        let contents = pdf.add_object(Stream::new(Dictionary::new(), b"/Fm0 Do".to_vec()));
+        let page = pdf.get_pages()[&1];
+        let dict = pdf.get_dictionary_mut(page).unwrap();
+        dict.set(
+            "Resources",
+            dictionary! {"XObject" => dictionary! {"Fm0" => form}},
+        );
+        dict.set("Contents", contents);
+    });
+    let mut doc = engine
+        .open_bytes(input, None, Path::new("form-resources.pdf"))
+        .unwrap();
+    doc.set_page_calibration(0, Some(&scale(10.0))).unwrap();
+    let region = MeasurementViewport {
+        id: "detail".into(),
+        name: "Detail".into(),
+        bounds: PointRect {
+            left: 20.0,
+            bottom: 20.0,
+            right: 200.0,
+            top: 200.0,
+        },
+        calibration: scale(20.0),
+    };
+    doc.set_measurement_viewports(0, &[], std::slice::from_ref(&region))
+        .unwrap();
+    let saved = doc.snapshot().unwrap();
+    let reopened = engine
+        .open_bytes(saved.clone(), None, Path::new("saved.pdf"))
+        .unwrap();
+    assert_eq!(reopened.page_calibration(0).unwrap(), Some(scale(10.0)));
+    assert_eq!(reopened.measurement_viewports(0).unwrap(), vec![region]);
+    for change in ["stream", "matrix"] {
+        let bytes = changed_pdf(&saved, |pdf| {
+            let page = pdf.get_pages()[&1];
+            let page = pdf.get_dictionary(page).unwrap();
+            let resources = pdf
+                .dereference(page.get(b"Resources").unwrap())
+                .unwrap()
+                .1
+                .as_dict()
+                .unwrap();
+            let xobjects = pdf
+                .dereference(resources.get(b"XObject").unwrap())
+                .unwrap()
+                .1
+                .as_dict()
+                .unwrap();
+            let form = xobjects.get(b"Fm0").unwrap().as_reference().unwrap();
+            let stream = pdf.get_object_mut(form).unwrap().as_stream_mut().unwrap();
+            if change == "stream" {
+                stream.dict.remove(b"Filter");
+                stream.dict.remove(b"DecodeParms");
+                stream.content = b"0 0 0 RG 2 w 40 80 m 240 80 l S".to_vec();
+            } else {
+                stream.dict.set(
+                    "Matrix",
+                    vec![2.into(), 0.into(), 0.into(), 2.into(), 0.into(), 0.into()],
+                );
+            }
+        });
+        let mut changed = engine
+            .open_bytes(bytes, None, Path::new("changed-form.pdf"))
+            .unwrap();
+        assert!(changed.page_calibration(0).is_err(), "{change}");
+        assert!(changed.measurement_viewports(0).is_err(), "{change}");
+        let reset = changed.measurement_viewport_reset_target(0).unwrap();
+        changed.clear_measurement_viewports(&reset).unwrap();
+        assert!(changed.measurement_viewports(0).unwrap().is_empty());
+        assert!(changed.page_calibration(0).is_err());
+    }
+    let legacy = changed_pdf(&saved, |pdf| {
+        let page = pdf.get_pages()[&1];
+        let dict = pdf.get_dictionary_mut(page).unwrap();
+        let mut record: serde_json::Value =
+            serde_json::from_slice(dict.get(KEY).unwrap().as_str().unwrap()).unwrap();
+        assert_eq!(record["version"], 2);
+        record["version"] = 1.into();
+        dict.set(KEY, Object::string_literal(record.to_string()));
+    });
+    for replace in [false, true] {
+        let mut legacy = engine
+            .open_bytes(legacy.clone(), None, Path::new("legacy-scale.pdf"))
+            .unwrap();
+        assert!(legacy
+            .page_calibration(0)
+            .unwrap_err()
+            .to_string()
+            .contains("recalibrate or remove"));
+        if replace {
+            legacy.set_page_calibration(0, Some(&scale(30.0))).unwrap();
+            assert_eq!(legacy.page_calibration(0).unwrap(), Some(scale(30.0)));
+        } else {
+            legacy.set_page_calibration(0, None).unwrap();
+            assert_eq!(legacy.page_calibration(0).unwrap(), None);
+        }
+    }
 }
 
 #[test]

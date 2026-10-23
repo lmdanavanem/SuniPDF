@@ -5,6 +5,12 @@
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
+## 0.60.0 : périmètre candidat implémenté
+
+La 0.60 ajoute la disposition et les vues du registre en cache, la recherche et l'inventaire coopératifs page par page, les tables ancrables, l'accrochage vectoriel, la saisie pieds/pouces, les zones d'échelles indépendantes et le recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
+
+[Périmètre 0.60](RELEASE_0.60.0.fr.md).
+
 ## 0.51.0 : paquet Ubuntu (Latest stable)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.

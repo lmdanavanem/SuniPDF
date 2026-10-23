@@ -935,6 +935,7 @@ impl SuniApp {
                                             changed |= ui
                                                 .add(
                                                     egui::DragValue::new(&mut draft.known_distance)
+                                                .custom_parser(|text| sunipdf_core::measurement::parse_measurement_distance(text, draft.measure_unit).ok())
                                                         .range(0.0..=1e9)
                                                         .speed(0.1),
                                                 )
@@ -1008,6 +1009,7 @@ impl SuniApp {
                                     changed |= ui
                                         .add(
                                             egui::DragValue::new(&mut draft.known_distance)
+                                                .custom_parser(|text| sunipdf_core::measurement::parse_measurement_distance(text, draft.measure_unit).ok())
                                                 .range(0.0..=1e9)
                                                 .speed(0.1),
                                         )

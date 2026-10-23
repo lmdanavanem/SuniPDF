@@ -9,7 +9,10 @@ use crate::{
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use sunipdf_core::{
-    measurement::{MeasurementKind, MeasurementRecord, PageCalibration},
+    measurement::{
+        MeasurementKind, MeasurementRecord, MeasurementViewport, PageCalibration,
+        VectorSnapGeometry,
+    },
     Command, EngineError,
 };
 use sunipdf_i18n::{tr, tr_args};
@@ -21,6 +24,9 @@ const MAX_PENDING_PAGES: usize = 4;
 pub(crate) struct MeasurementPageData {
     pub calibration: Result<Option<PageCalibration>, String>,
     pub records: Result<Arc<[MeasurementRecord]>, String>,
+    pub viewports: Result<Arc<[MeasurementViewport]>, String>,
+    pub viewport_reset_target: Option<sunipdf_core::measurement::MeasurementViewportResetTarget>,
+    pub snap_geometry: Result<Arc<VectorSnapGeometry>, String>,
     pub can_modify: bool,
     pub can_annotate: bool,
     labels: Arc<[String]>,
@@ -56,6 +62,9 @@ impl MeasurementPageData {
         Self {
             calibration,
             records: records.map(Arc::from),
+            viewports: Ok(Arc::from([])),
+            viewport_reset_target: None,
+            snap_geometry: Ok(Arc::new(VectorSnapGeometry::default())),
             can_modify,
             can_annotate: can_modify,
             labels: labels.into(),
@@ -95,6 +104,10 @@ impl SavedMeasurements {
 
     pub(crate) fn dialog_open(&self) -> bool {
         self.inspector.is_some() || self.applying.is_some()
+    }
+
+    pub(crate) fn page_data(&self, page: usize) -> Option<&MeasurementPageData> {
+        self.pages.get(&page)
     }
 
     pub(crate) fn calibration(&self, page: usize) -> Option<&PageCalibration> {
@@ -173,9 +186,15 @@ impl SuniApp {
         let data = match result {
             Ok(data) => data,
             Err(error) => {
-                MeasurementPageData::new(Err(error.to_string()), Err(error.to_string()), false)
+                let mut data =
+                    MeasurementPageData::new(Err(error.to_string()), Err(error.to_string()), false);
+                data.viewports = Err(error.to_string());
+                data.snap_geometry = Err(error.to_string());
+                data
             }
         };
+        self.annotate.measure.scales_ui.accept_page(page, &data);
+        let saved = &mut self.annotate.measure.saved;
         // A late read populates only the PDF cache; a newer local calibration remains authoritative.
         saved.pages.insert(page, data);
         while saved.pages.len() > MAX_CACHED_PAGES {
@@ -196,6 +215,7 @@ impl SuniApp {
     }
 
     pub(crate) fn measurement_scale_changed(&mut self) {
+        self.measurement_advanced_scale_changed();
         if let Some((page, remove)) = self.annotate.measure.saved.applying.take() {
             if !remove {
                 self.annotate.measure.saved_scale_applied(page);
@@ -205,6 +225,7 @@ impl SuniApp {
     }
 
     pub(crate) fn measurement_scale_failed(&mut self, error: &EngineError) {
+        self.measurement_advanced_scale_failed(error);
         let saved = &mut self.annotate.measure.saved;
         if saved.applying.take().is_some() {
             saved.error = Some(error.to_string());

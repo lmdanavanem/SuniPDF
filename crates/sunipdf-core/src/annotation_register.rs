@@ -102,7 +102,7 @@ pub struct RegisterRow {
     pub count_group: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct RegisterFilter {
     pub query: String,
     pub page: Option<usize>,
@@ -156,6 +156,8 @@ impl RegisterSort {
 
 #[derive(Debug, Clone, Default)]
 pub struct AnnotationRegister {
+    /// Hash of this collection's exact serialized snapshot, not a canonical document identity.
+    /// Unchanged documents may serialize with different trailer IDs on a subsequent collection.
     pub source_sha256: String,
     pub page_count: usize,
     pub rows: Vec<RegisterRow>,
@@ -188,13 +190,27 @@ impl AnnotationRegister {
         sort: RegisterSort,
         descending: bool,
     ) -> Vec<&RegisterRow> {
+        self.select_indices(filter, sort, descending)
+            .into_iter()
+            .map(|index| &self.rows[index])
+            .collect()
+    }
+
+    /// Stable row offsets suitable for caching without copying annotation contents.
+    pub fn select_indices(
+        &self,
+        filter: &RegisterFilter,
+        sort: RegisterSort,
+        descending: bool,
+    ) -> Vec<usize> {
         let query = filter.query.to_lowercase();
         let exact =
             |wanted: &str, actual: Option<&str>| wanted.is_empty() || actual == Some(wanted);
         let mut rows: Vec<_> = self
             .rows
             .iter()
-            .filter(|r| {
+            .enumerate()
+            .filter(|(_, r)| {
                 (filter.include_replies || !r.is_reply)
                     && filter.page.is_none_or(|p| p == r.page)
                     && exact(&filter.author, r.author.as_deref())
@@ -227,8 +243,10 @@ impl AnnotationRegister {
                             k.to_lowercase().contains(&query) || v.to_lowercase().contains(&query)
                         }))
             })
+            .map(|(index, _)| index)
             .collect();
         rows.sort_by(|a, b| {
+            let (a, b) = (&self.rows[*a], &self.rows[*b]);
             let order = match sort {
                 RegisterSort::Page => std::cmp::Ordering::Equal,
                 RegisterSort::Author => a.author.cmp(&b.author),
@@ -273,7 +291,9 @@ impl AnnotationRegister {
 
     /// Every value is quoted; dangerous spreadsheet prefixes are escaped even after whitespace/BOM.
     pub fn csv(&self, filter: &RegisterFilter, sort: RegisterSort, descending: bool) -> String {
-        let mut output = String::from("source_sha256,page,index,annotation_id,kind,author,modified,review_status,business_status,discipline,subject,contents,count_group,quantity,rect,custom_fields,is_reply,hidden,locked\r\n");
+        let mut output = String::from(
+            "source_sha256,page,index,annotation_id,kind,author,modified,review_status,business_status,discipline,subject,contents,count_group,quantity,rect,custom_fields,is_reply,hidden,locked\r\n",
+        );
         for r in self.select(filter, sort, descending) {
             let cells = [
                 Some(self.source_sha256.clone()),
@@ -423,12 +443,26 @@ impl Document<'_> {
         if self.page_count() > 1000 {
             return Err(bad());
         }
+        let mut reader = self.annotation_register_reader()?;
+        while !reader.read_next(self)? {}
+        reader.finish()
+    }
+
+    /// Starts a bounded snapshot reader. Call `read_next` between foreground tasks on the
+    /// same engine thread and discard it whenever the document changes.
+    pub fn annotation_register_reader(&self) -> Result<RegisterReader<'static>, EngineError> {
+        if !self.properties().can_copy {
+            return Err(EngineError::SecurityRestricted);
+        }
+        if self.page_count() > 1000 {
+            return Err(bad());
+        }
         let bytes = self.snapshot()?;
         if bytes.len() > 128 * 1024 * 1024 {
             return Err(bad());
         }
         let pdf = security::load(&bytes, self.password())?;
-        self.annotation_register_from_pdf(bytes, &pdf)
+        RegisterReader::new(bytes, std::borrow::Cow::Owned(pdf), self.page_count())
     }
 
     pub(crate) fn annotation_register_from_pdf(
@@ -436,192 +470,10 @@ impl Document<'_> {
         bytes: Vec<u8>,
         pdf: &lopdf::Document,
     ) -> Result<AnnotationRegister, EngineError> {
-        if self.page_count() > 1000 {
-            return Err(bad());
-        }
-        if bytes.len() > 128 * 1024 * 1024 {
-            return Err(bad());
-        }
-        let source_sha256 = digest(&bytes);
-        let mut rows = Vec::new();
-        let mut budget = 0;
-        let mut names = HashMap::<String, usize>::new();
-        let pages = pdf.get_pages();
-        if pages.len() != self.page_count()
-            || pages.keys().copied().ne(1..=self.page_count() as u32)
-        {
-            return Err(bad());
-        }
-        for (page_no, page_id) in pages {
-            let page = page_no as usize;
-            let geo = self.page_geometry(page - 1)?;
-            let page_dict = pdf.get_dictionary(page_id).map_err(lopdf_err)?;
-            let entries = match page_dict.get(b"Annots") {
-                Err(_) => continue,
-                Ok(raw) => pdf
-                    .dereference(raw)
-                    .and_then(|(_, v)| v.as_array())
-                    .map_err(lopdf_err)?,
-            };
-            if entries.len() > 4096 || rows.len() + entries.len() > MAX_ROWS {
-                return Err(bad());
-            }
-            let by_id: HashMap<_, _> = entries
-                .iter()
-                .enumerate()
-                .filter_map(|(i, e)| e.as_reference().ok().map(|id| (id, i)))
-                .collect();
-            let start = rows.len();
-            let mut states = Vec::new();
-            for (index, entry) in entries.iter().enumerate() {
-                let (_, obj) = pdf.dereference(entry).map_err(lopdf_err)?;
-                let dict = obj.as_dict().map_err(lopdf_err)?;
-                pdf.dereference(dict.get(b"Subtype").map_err(lopdf_err)?)
-                    .and_then(|(_, v)| v.as_name())
-                    .map_err(lopdf_err)?;
-                let kind = text(pdf, dict, b"Subtype", &mut budget)?.ok_or_else(bad)?;
-                let annotation_id = text(pdf, dict, b"NM", &mut budget)?;
-                if let Some(id) = &annotation_id {
-                    *names.entry(id.clone()).or_default() += 1;
-                }
-                let fields: Option<StoredFields> = stored(dict, b"SuniPDFRegister", &mut budget)?;
-                let fields = match fields {
-                    Some(v) if v.version == 1 => {
-                        v.fields.validate()?;
-                        v.fields
-                    }
-                    Some(_) => return Err(bad()),
-                    None => RegisterFields::default(),
-                };
-                let rect = match dict.get(b"Rect") {
-                    Err(_) => None,
-                    Ok(raw) => {
-                        let values = pdf
-                            .dereference(raw)
-                            .and_then(|(_, v)| v.as_array())
-                            .map_err(lopdf_err)?;
-                        if values.len() != 4 {
-                            return Err(bad());
-                        }
-                        let mut v = [0.0; 4];
-                        for (out, raw) in v.iter_mut().zip(values) {
-                            *out = pdf
-                                .dereference(raw)
-                                .and_then(|(_, v)| v.as_float())
-                                .map_err(lopdf_err)?;
-                        }
-                        if v.iter().any(|n| !n.is_finite()) {
-                            return Err(bad());
-                        }
-                        let r = geo.rect_to_display(PointRect {
-                            left: v[0],
-                            bottom: v[1],
-                            right: v[2],
-                            top: v[3],
-                        });
-                        Some([r.left, r.bottom, r.right, r.top])
-                    }
-                };
-                let parent = match dict.get(b"IRT") {
-                    Err(_) => None,
-                    Ok(raw) => {
-                        let id = raw.as_reference().map_err(lopdf_err)?;
-                        by_id.get(&id).copied()
-                    }
-                };
-                let is_reply = dict.has(b"IRT");
-                let count: Option<StoredCount> = stored(dict, b"SuniPDFCount", &mut budget)?;
-                let count_group = match count {
-                    None => None,
-                    Some(v) => {
-                        validate_count_group(&v.group)?;
-                        pdf.dereference(dict.get(b"NM").map_err(lopdf_err)?)
-                            .and_then(|(_, v)| v.as_str())
-                            .map_err(lopdf_err)?;
-                        if v.version != 1
-                            || kind != "Stamp"
-                            || is_reply
-                            || annotation_id
-                                .as_ref()
-                                .is_none_or(|id| !id.starts_with("SuniPDF-") || !short(id, 128))
-                            || rect.is_none_or(|r| {
-                                !(8.0..=72.01).contains(&(r[2] - r[0]))
-                                    || !(8.0..=72.01).contains(&(r[3] - r[1]))
-                            })
-                        {
-                            return Err(bad());
-                        }
-                        Some(v.group)
-                    }
-                };
-                let model = text(pdf, dict, b"StateModel", &mut budget)?;
-                let state = text(pdf, dict, b"State", &mut budget)?;
-                if model.as_deref() == Some("Review") {
-                    states.push((index, state.clone()));
-                }
-                let flags = match dict.get(b"F") {
-                    Err(_) => 0,
-                    Ok(v) => pdf
-                        .dereference(v)
-                        .and_then(|(_, v)| v.as_i64())
-                        .map_err(lopdf_err)?,
-                };
-                rows.push(RegisterRow {
-                    page,
-                    index,
-                    annotation_id,
-                    kind,
-                    author: text(pdf, dict, b"T", &mut budget)?,
-                    modified: text(pdf, dict, b"M", &mut budget)?,
-                    contents: text(pdf, dict, b"Contents", &mut budget)?,
-                    subject: text(pdf, dict, b"Subj", &mut budget)?,
-                    rect,
-                    parent,
-                    is_reply,
-                    hidden: flags & (1 | 2 | 32) != 0,
-                    locked: flags & (64 | 128 | 512) != 0,
-                    review_status: if model.as_deref() == Some("Review") {
-                        state
-                    } else {
-                        None
-                    },
-                    fields,
-                    count_group,
-                });
-            }
-            // Bound hostile reply cycles/depth before deriving the last standard Review state.
-            for index in 0..entries.len() {
-                let mut cursor = Some(index);
-                let mut seen = HashSet::new();
-                while let Some(i) = cursor {
-                    if !seen.insert(i) || seen.len() > 64 {
-                        return Err(bad());
-                    }
-                    cursor = rows[start + i].parent;
-                }
-            }
-            for (index, state) in states {
-                let mut cursor = rows[start + index].parent;
-                while let Some(i) = cursor {
-                    rows[start + i].review_status = state.clone();
-                    cursor = rows[start + i].parent;
-                }
-            }
-        }
-        if rows.iter().any(|r| {
-            r.count_group.is_some()
-                && r.annotation_id
-                    .as_ref()
-                    .is_none_or(|id| names.get(id) != Some(&1))
-        }) {
-            return Err(bad());
-        }
-        Ok(AnnotationRegister {
-            source_sha256,
-            page_count: self.page_count(),
-            rows,
-            source_snapshot: Arc::new(bytes),
-        })
+        let mut reader =
+            RegisterReader::new(bytes, std::borrow::Cow::Borrowed(pdf), self.page_count())?;
+        while !reader.read_next(self)? {}
+        reader.finish()
     }
 
     /// The snapshot hash and identity prevent applying an edit to shifted indices or another tab.
@@ -694,6 +546,260 @@ impl Document<'_> {
             );
             touch(&mut dict);
             store_annot(pdf, page, slot, dict)
+        })
+    }
+}
+
+/// Snapshot-owned parser whose individual steps read a single page. No PDFium handle is moved
+/// between threads. Partial rows are never exposed as a complete register.
+pub struct RegisterReader<'a> {
+    pdf: std::borrow::Cow<'a, lopdf::Document>,
+    bytes: Arc<Vec<u8>>,
+    source_sha256: String,
+    page_count: usize,
+    pages: std::collections::VecDeque<(u32, lopdf::ObjectId)>,
+    rows: Vec<RegisterRow>,
+    budget: usize,
+    names: HashMap<String, usize>,
+    failed: bool,
+}
+
+impl<'a> RegisterReader<'a> {
+    fn new(
+        bytes: Vec<u8>,
+        pdf: std::borrow::Cow<'a, lopdf::Document>,
+        page_count: usize,
+    ) -> Result<Self, EngineError> {
+        if page_count > 1000 || bytes.len() > 128 * 1024 * 1024 {
+            return Err(bad());
+        }
+        let pages = pdf.get_pages();
+        if pages.len() != page_count || pages.keys().copied().ne(1..=page_count as u32) {
+            return Err(bad());
+        }
+        Ok(Self {
+            source_sha256: digest(&bytes),
+            bytes: Arc::new(bytes),
+            pdf,
+            page_count,
+            pages: pages.into_iter().collect(),
+            rows: Vec::new(),
+            budget: 0,
+            names: HashMap::new(),
+            failed: false,
+        })
+    }
+
+    pub fn progress(&self) -> (usize, usize) {
+        (self.page_count - self.pages.len(), self.page_count)
+    }
+
+    pub fn read_next(&mut self, doc: &Document<'_>) -> Result<bool, EngineError> {
+        if self.failed {
+            return Err(bad());
+        }
+        let result = self.read_page(doc);
+        self.failed = result.is_err();
+        result
+    }
+
+    fn read_page(&mut self, doc: &Document<'_>) -> Result<bool, EngineError> {
+        if doc.page_count() != self.page_count {
+            return Err(bad());
+        }
+        let Some((page_no, page_id)) = self.pages.pop_front() else {
+            return Ok(true);
+        };
+        let Self {
+            pdf,
+            rows,
+            budget,
+            names,
+            ..
+        } = self;
+        let page = page_no as usize;
+        let geo = doc.page_geometry(page - 1)?;
+        let page_dict = pdf.get_dictionary(page_id).map_err(lopdf_err)?;
+        let entries = match page_dict.get(b"Annots") {
+            Err(_) => return Ok(self.pages.is_empty()),
+            Ok(raw) => pdf
+                .dereference(raw)
+                .and_then(|(_, v)| v.as_array())
+                .map_err(lopdf_err)?,
+        };
+        if entries.len() > 4096 || rows.len() + entries.len() > MAX_ROWS {
+            return Err(bad());
+        }
+        let by_id: HashMap<_, _> = entries
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| e.as_reference().ok().map(|id| (id, i)))
+            .collect();
+        let start = rows.len();
+        let mut states = Vec::new();
+        for (index, entry) in entries.iter().enumerate() {
+            let (_, obj) = pdf.dereference(entry).map_err(lopdf_err)?;
+            let dict = obj.as_dict().map_err(lopdf_err)?;
+            pdf.dereference(dict.get(b"Subtype").map_err(lopdf_err)?)
+                .and_then(|(_, v)| v.as_name())
+                .map_err(lopdf_err)?;
+            let kind = text(pdf, dict, b"Subtype", budget)?.ok_or_else(bad)?;
+            let annotation_id = text(pdf, dict, b"NM", budget)?;
+            if let Some(id) = &annotation_id {
+                *names.entry(id.clone()).or_default() += 1;
+            }
+            let fields: Option<StoredFields> = stored(dict, b"SuniPDFRegister", budget)?;
+            let fields = match fields {
+                Some(v) if v.version == 1 => {
+                    v.fields.validate()?;
+                    v.fields
+                }
+                Some(_) => return Err(bad()),
+                None => RegisterFields::default(),
+            };
+            let rect = match dict.get(b"Rect") {
+                Err(_) => None,
+                Ok(raw) => {
+                    let values = pdf
+                        .dereference(raw)
+                        .and_then(|(_, v)| v.as_array())
+                        .map_err(lopdf_err)?;
+                    if values.len() != 4 {
+                        return Err(bad());
+                    }
+                    let mut v = [0.0; 4];
+                    for (out, raw) in v.iter_mut().zip(values) {
+                        *out = pdf
+                            .dereference(raw)
+                            .and_then(|(_, v)| v.as_float())
+                            .map_err(lopdf_err)?;
+                    }
+                    if v.iter().any(|n| !n.is_finite()) {
+                        return Err(bad());
+                    }
+                    let r = geo.rect_to_display(PointRect {
+                        left: v[0],
+                        bottom: v[1],
+                        right: v[2],
+                        top: v[3],
+                    });
+                    Some([r.left, r.bottom, r.right, r.top])
+                }
+            };
+            let parent = match dict.get(b"IRT") {
+                Err(_) => None,
+                Ok(raw) => {
+                    let id = raw.as_reference().map_err(lopdf_err)?;
+                    by_id.get(&id).copied()
+                }
+            };
+            let is_reply = dict.has(b"IRT");
+            let count: Option<StoredCount> = stored(dict, b"SuniPDFCount", budget)?;
+            let count_group = match count {
+                None => None,
+                Some(v) => {
+                    validate_count_group(&v.group)?;
+                    pdf.dereference(dict.get(b"NM").map_err(lopdf_err)?)
+                        .and_then(|(_, v)| v.as_str())
+                        .map_err(lopdf_err)?;
+                    if v.version != 1
+                        || kind != "Stamp"
+                        || is_reply
+                        || annotation_id
+                            .as_ref()
+                            .is_none_or(|id| !id.starts_with("SuniPDF-") || !short(id, 128))
+                        || rect.is_none_or(|r| {
+                            !(8.0..=72.01).contains(&(r[2] - r[0]))
+                                || !(8.0..=72.01).contains(&(r[3] - r[1]))
+                        })
+                    {
+                        return Err(bad());
+                    }
+                    Some(v.group)
+                }
+            };
+            let model = text(pdf, dict, b"StateModel", budget)?;
+            let state = text(pdf, dict, b"State", budget)?;
+            if model.as_deref() == Some("Review") {
+                states.push((index, state.clone()));
+            }
+            let flags = match dict.get(b"F") {
+                Err(_) => 0,
+                Ok(v) => pdf
+                    .dereference(v)
+                    .and_then(|(_, v)| v.as_i64())
+                    .map_err(lopdf_err)?,
+            };
+            rows.push(RegisterRow {
+                page,
+                index,
+                annotation_id,
+                kind,
+                author: text(pdf, dict, b"T", budget)?,
+                modified: text(pdf, dict, b"M", budget)?,
+                contents: text(pdf, dict, b"Contents", budget)?,
+                subject: text(pdf, dict, b"Subj", budget)?,
+                rect,
+                parent,
+                is_reply,
+                hidden: flags & (1 | 2 | 32) != 0,
+                locked: flags & (64 | 128 | 512) != 0,
+                review_status: if model.as_deref() == Some("Review") {
+                    state
+                } else {
+                    None
+                },
+                fields,
+                count_group,
+            });
+        }
+        // Bound hostile reply cycles/depth before deriving the last standard Review state.
+        for index in 0..entries.len() {
+            let mut cursor = Some(index);
+            let mut seen = HashSet::new();
+            while let Some(i) = cursor {
+                if !seen.insert(i) || seen.len() > 64 {
+                    return Err(bad());
+                }
+                cursor = rows[start + i].parent;
+            }
+        }
+        for (index, state) in states {
+            let mut cursor = rows[start + index].parent;
+            while let Some(i) = cursor {
+                rows[start + i].review_status = state.clone();
+                cursor = rows[start + i].parent;
+            }
+        }
+
+        Ok(self.pages.is_empty())
+    }
+
+    pub fn finish(self) -> Result<AnnotationRegister, EngineError> {
+        if self.failed || !self.pages.is_empty() {
+            return Err(bad());
+        }
+        let Self {
+            source_sha256,
+            page_count,
+            rows,
+            names,
+            bytes,
+            ..
+        } = self;
+        if rows.iter().any(|r| {
+            r.count_group.is_some()
+                && r.annotation_id
+                    .as_ref()
+                    .is_none_or(|id| names.get(id) != Some(&1))
+        }) {
+            return Err(bad());
+        }
+        Ok(AnnotationRegister {
+            source_sha256,
+            page_count,
+            rows,
+            source_snapshot: bytes,
         })
     }
 }

@@ -44,6 +44,7 @@ pub struct Settings {
     pub office_profile: String,
     pub shortcuts: crate::shortcuts::Bindings,
     pub stamp_presets: crate::stamp_presets::StampPresets,
+    pub tables: crate::workspace_table::Preferences,
 }
 
 impl Default for Settings {
@@ -62,6 +63,7 @@ impl Default for Settings {
             office_profile: "standard".into(),
             shortcuts: Default::default(),
             stamp_presets: Default::default(),
+            tables: Default::default(),
         }
     }
 }

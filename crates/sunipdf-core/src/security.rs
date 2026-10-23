@@ -642,6 +642,7 @@ pub(crate) fn strip_metadata_in(doc: &mut lopdf::Document) {
         dict.remove(b"Metadata");
         dict.remove(b"PieceInfo");
         dict.remove(b"SuniPDFPageCalibration");
+        dict.remove(b"SuniPDFMeasurementViewports");
     }
 }
 

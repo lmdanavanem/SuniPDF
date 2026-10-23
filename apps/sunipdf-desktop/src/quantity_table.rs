@@ -33,6 +33,7 @@ pub struct QuantityState {
     column_filter: String,
     summary: Option<QuantitySummary>,
     offset: usize,
+    followed: Option<(usize, usize)>,
     page_filter: usize,
     error: Option<String>,
     message: Option<String>,
@@ -40,6 +41,9 @@ pub struct QuantityState {
 }
 
 impl QuantityState {
+    pub(crate) fn blocks_document(&self) -> bool {
+        self.edit.is_some() || self.exporting.is_some()
+    }
     pub(crate) fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         self.pending = None;
@@ -233,8 +237,11 @@ fn typed_text(value: &TypedValue) -> &str {
     }
 }
 fn short_label(ui: &mut egui::Ui, text: &str) {
-    ui.label(text.chars().take(60).collect::<String>())
-        .on_hover_text(text);
+    ui.add_sized(
+        [170.0, 20.0],
+        egui::Label::new(text.chars().take(60).collect::<String>()).truncate(),
+    )
+    .on_hover_text(text);
 }
 
 impl SuniApp {
@@ -246,6 +253,7 @@ impl SuniApp {
         self.annotate.quantities.edit = None;
         self.annotate.quantities.epoch = Some(self.view.epoch);
         self.annotate.quantities.open = true;
+        self.annotate.register.open = false;
     }
     pub(crate) fn validate_quantity_context(&mut self) {
         let state = &mut self.annotate.quantities;
@@ -335,11 +343,24 @@ impl SuniApp {
         });
     }
     pub(crate) fn quantity_table_dialog(&mut self, ctx: &egui::Context) {
+        if self.settings.tables.placement == crate::workspace_table::Placement::Floating {
+            self.quantity_table_ui(ctx, None);
+        }
+    }
+
+    pub(crate) fn quantity_table_dock(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.settings.tables.placement == crate::workspace_table::Placement::Bottom {
+            self.quantity_table_ui(ctx, Some(ui));
+        }
+    }
+
+    fn quantity_table_ui(&mut self, ctx: &egui::Context, host: Option<&mut egui::Ui>) {
         if !self.annotate.quantities.open {
             return;
         }
         self.validate_quantity_context();
         let lang = self.lang();
+        let text_color = crate::theme::palette(self.settings.dark_theme).text;
         let epoch = self.view.epoch;
         let mut state = std::mem::take(&mut self.annotate.quantities);
         if state.report.is_none() && state.pending.is_none() && state.error.is_none() {
@@ -356,10 +377,21 @@ impl SuniApp {
         let can_close =
             state.exporting.is_none() && state.edit.as_ref().is_none_or(|d| !d.applying);
         let can_export = can_refresh && report.as_ref().is_some_and(|r| r.can_export());
+        let editing = state.edit.as_ref().map(|edit| (edit.applying, edit.epoch));
         let (mut close, mut refresh, mut apply, mut cancel, mut export) =
             (false, false, false, false, None);
-        dialog::show(
+        let mut navigate = None;
+        let selection = self
+            .annotate
+            .adv
+            .selected
+            .as_ref()
+            .map(|(page, detail)| (*page + 1, detail.index));
+        let layout_changed = crate::workspace_table::show(
             ctx,
+            host,
+            &mut self.settings.tables,
+            lang,
             dialog::Spec::new(
                 "quantity-table",
                 tr(lang, "quantity.title"),
@@ -380,112 +412,100 @@ impl SuniApp {
                     ui.label(tr(lang, "quantity.loading"));
                 }
                 if let Some(edit) = &mut state.edit {
-                    ui.heading(tr(lang, "quantity.edit"));
+                    // A form wraps within the viewport even after a wide grid has
+                    // been scrolled. Its actions remain in the fixed footer.
+                    ui.set_max_width(ui.clip_rect().width());
+                    ui.heading(egui::RichText::new(tr(lang, "quantity.edit")).color(text_color));
                     draw_editor(ui, edit, lang);
-                    ui.horizontal(|ui| {
-                        apply = ui
-                            .add_enabled(
-                                idle && !edit.applying && edit.epoch == epoch,
-                                egui::Button::new(tr(lang, "quantity.apply")),
-                            )
-                            .clicked();
-                        cancel = ui
-                            .add_enabled(
-                                !edit.applying,
-                                egui::Button::new(tr(lang, "quantity.cancel")),
-                            )
-                            .clicked();
-                    });
                 } else if let Some(report) = &report {
                     let mut changed = false;
-                    ui.add_enabled_ui(idle, |ui| {
-                        egui::Grid::new("quantity-filters")
-                            .num_columns(4)
-                            .show(ui, |ui| {
-                                for (i, (key, value)) in [
-                                    ("register.search", &mut state.options.filter.query),
-                                    ("register.kind", &mut state.options.filter.kind),
-                                    ("register.discipline", &mut state.options.filter.discipline),
-                                    (
-                                        "register.business_status",
-                                        &mut state.options.filter.business_status,
-                                    ),
-                                    (
-                                        "register.count_group",
-                                        &mut state.options.filter.count_group,
-                                    ),
-                                    ("register.author", &mut state.options.filter.author),
-                                ]
-                                .into_iter()
-                                .enumerate()
-                                {
-                                    ui.label(tr(lang, key));
+                    ui.horizontal_wrapped(|ui| {
+                        ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
+                            ui.add_enabled_ui(idle, |ui| {
+                                egui::Grid::new("quantity-filters")
+                                    .num_columns(4)
+                                    .show(ui, |ui| {
+                                        for (i, (key, value)) in [
+                                            ("register.search", &mut state.options.filter.query),
+                                            ("register.kind", &mut state.options.filter.kind),
+                                            (
+                                                "register.discipline",
+                                                &mut state.options.filter.discipline,
+                                            ),
+                                            (
+                                                "register.business_status",
+                                                &mut state.options.filter.business_status,
+                                            ),
+                                            (
+                                                "register.count_group",
+                                                &mut state.options.filter.count_group,
+                                            ),
+                                            ("register.author", &mut state.options.filter.author),
+                                        ]
+                                        .into_iter()
+                                        .enumerate()
+                                        {
+                                            ui.label(tr(lang, key));
+                                            changed |= ui
+                                                .add(
+                                                    egui::TextEdit::singleline(value)
+                                                        .char_limit(512)
+                                                        .desired_width(150.0),
+                                                )
+                                                .changed();
+                                            if i % 2 == 1 {
+                                                ui.end_row();
+                                            }
+                                        }
+                                    });
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.label(tr(lang, "register.page_filter"));
                                     changed |= ui
                                         .add(
-                                            egui::TextEdit::singleline(value)
-                                                .char_limit(512)
-                                                .desired_width(150.0),
+                                            egui::DragValue::new(&mut state.page_filter)
+                                                .range(0..=report.page_count()),
                                         )
                                         .changed();
-                                    if i % 2 == 1 {
-                                        ui.end_row();
-                                    }
-                                }
-                            });
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(tr(lang, "register.page_filter"));
-                            changed |= ui
-                                .add(
-                                    egui::DragValue::new(&mut state.page_filter)
-                                        .range(0..=report.page_count()),
-                                )
-                                .changed();
-                            state.options.filter.page =
-                                (state.page_filter > 0).then_some(state.page_filter);
-                            let previous = state.options.group_by;
-                            ui.label(tr(lang, "quantity.group"));
-                            egui::ComboBox::from_id_salt("quantity-groups")
-                                .selected_text(tr(
-                                    lang,
-                                    &format!("quantity.group.{}", state.options.group_by.id()),
-                                ))
-                                .show_ui(ui, |ui| {
-                                    for group in QuantityGrouping::ALL {
-                                        ui.selectable_value(
-                                            &mut state.options.group_by,
-                                            group,
-                                            tr(lang, &format!("quantity.group.{}", group.id())),
-                                        );
-                                    }
+                                    state.options.filter.page =
+                                        (state.page_filter > 0).then_some(state.page_filter);
+                                    let previous = state.options.group_by;
+                                    ui.label(tr(lang, "quantity.group"));
+                                    egui::ComboBox::from_id_salt("quantity-groups")
+                                        .selected_text(tr(
+                                            lang,
+                                            &format!(
+                                                "quantity.group.{}",
+                                                state.options.group_by.id()
+                                            ),
+                                        ))
+                                        .show_ui(ui, |ui| {
+                                            for group in QuantityGrouping::ALL {
+                                                ui.selectable_value(
+                                                    &mut state.options.group_by,
+                                                    group,
+                                                    tr(
+                                                        lang,
+                                                        &format!("quantity.group.{}", group.id()),
+                                                    ),
+                                                );
+                                            }
+                                        });
+                                    changed |= previous != state.options.group_by;
                                 });
-                            changed |= previous != state.options.group_by;
+                            });
                         });
-                    });
-                    if changed {
-                        state.refresh_selection();
-                    }
-                    if let Some(summary) = &state.summary {
-                        draw_summary(ui, summary, lang);
-                    }
-                    if !report.can_export() {
-                        ui.label(tr(lang, "quantity.no_export"));
-                    }
-                    ui.add(
-                        egui::TextEdit::singleline(&mut state.column_filter)
-                            .hint_text(tr(lang, "quantity.column_filter"))
-                            .char_limit(128),
-                    );
-                    let filter = state.column_filter.to_lowercase();
-                    let columns: Vec<_> = state
-                        .columns
-                        .iter()
-                        .filter(|name| name.to_lowercase().contains(&filter))
-                        .take(16)
-                        .collect();
-                    if state.columns.len() > 16 {
-                        ui.small(tr(lang, "quantity.more_columns"));
-                    }
-                    ui.horizontal(|ui| {
+                        if let Some(summary) = &state.summary {
+                            ui.menu_button(tr(lang, "workspace.table.summary"), |ui| {
+                                draw_summary(ui, summary, lang);
+                            });
+                        }
+                        ui.menu_button(tr(lang, "quantity.column_filter"), |ui| {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut state.column_filter)
+                                    .hint_text(tr(lang, "quantity.column_filter"))
+                                    .char_limit(128),
+                            );
+                        });
                         if ui
                             .add_enabled(
                                 state.offset > 0,
@@ -515,108 +535,160 @@ impl SuniApp {
                             state.offset += 50;
                         }
                     });
-                    egui::ScrollArea::horizontal()
-                        .id_salt("quantity-table-scroll")
-                        .show(ui, |ui| {
-                            egui::Grid::new("quantity-rows")
-                                .striped(true)
-                                .show(ui, |ui| {
-                                    for key in [
-                                        "register.page",
-                                        "quantity.source",
-                                        "register.kind",
-                                        "register.contents",
-                                        "quantity.quantity",
-                                        "quantity.unit",
-                                        "quantity.price",
-                                        "quantity.cost",
-                                    ] {
-                                        ui.strong(tr(lang, key));
+                    if changed {
+                        state.refresh_selection();
+                    }
+                    if !report.can_export() {
+                        ui.small(tr(lang, "quantity.no_export"));
+                    }
+                    let filter = state.column_filter.to_lowercase();
+                    let columns: Vec<_> = state
+                        .columns
+                        .iter()
+                        .filter(|name| name.to_lowercase().contains(&filter))
+                        .take(16)
+                        .collect();
+                    if state.columns.len() > 16 {
+                        ui.small(tr(lang, "quantity.more_columns"));
+                    }
+                    if selection != state.followed {
+                        state.followed = selection;
+                        if let Some(position) = state.selected.iter().position(|index| {
+                            selection
+                                == Some((
+                                    report.rows()[*index].register.page,
+                                    report.rows()[*index].register.index,
+                                ))
+                        }) {
+                            state.offset = position / 50 * 50;
+                        }
+                    }
+                    ui.scope(|ui| {
+                        egui::Grid::new("quantity-rows")
+                            .striped(true)
+                            .show(ui, |ui| {
+                                for key in [
+                                    "register.page",
+                                    "quantity.source",
+                                    "register.kind",
+                                    "register.contents",
+                                    "quantity.quantity",
+                                    "quantity.unit",
+                                    "quantity.price",
+                                    "quantity.cost",
+                                ] {
+                                    ui.strong(egui::RichText::new(tr(lang, key)).color(text_color));
+                                }
+                                for name in &columns {
+                                    ui.strong(egui::RichText::new(name.as_str()).color(text_color));
+                                }
+                                ui.strong(
+                                    egui::RichText::new(tr(lang, "register.actions"))
+                                        .color(text_color),
+                                );
+                                ui.end_row();
+                                for index in state.selected.iter().skip(state.offset).take(50) {
+                                    let row = &report.rows()[*index];
+                                    if ui
+                                        .add_enabled(
+                                            idle && row.register.rect.is_some(),
+                                            egui::Button::selectable(
+                                                selection
+                                                    == Some((
+                                                        row.register.page,
+                                                        row.register.index,
+                                                    )),
+                                                row.register.page.to_string(),
+                                            ),
+                                        )
+                                        .on_hover_text(tr(lang, "register.view"))
+                                        .clicked()
+                                    {
+                                        navigate = Some(row.register.clone());
                                     }
+                                    ui.label(row.register.index.to_string());
+                                    short_label(ui, &row.register.kind);
+                                    short_label(
+                                        ui,
+                                        row.register
+                                            .contents
+                                            .as_deref()
+                                            .unwrap_or(tr(lang, "quantity.missing")),
+                                    );
+                                    ui.label(
+                                        row.quantity
+                                            .as_ref()
+                                            .map(|q| q.value.to_string())
+                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
+                                    );
+                                    ui.label(row.quantity.as_ref().map_or("—", |q| q.unit.id()));
+                                    ui.label(
+                                        row.fields
+                                            .unit_price
+                                            .as_ref()
+                                            .map(|p| {
+                                                format!(
+                                                    "{} {} / {}",
+                                                    p.amount.as_str(),
+                                                    p.currency,
+                                                    p.per_unit.id()
+                                                )
+                                            })
+                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
+                                    );
+                                    ui.label(
+                                        row.line_total
+                                            .as_ref()
+                                            .map(|cost| {
+                                                format!("{} {}", cost.amount, cost.currency)
+                                            })
+                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
+                                    );
                                     for name in &columns {
-                                        ui.strong(name.as_str());
-                                    }
-                                    ui.strong(tr(lang, "register.actions"));
-                                    ui.end_row();
-                                    for index in state.selected.iter().skip(state.offset).take(50) {
-                                        let row = &report.rows()[*index];
-                                        ui.label(row.register.page.to_string());
-                                        ui.label(row.register.index.to_string());
-                                        short_label(ui, &row.register.kind);
                                         short_label(
                                             ui,
-                                            row.register
-                                                .contents
-                                                .as_deref()
+                                            row.fields
+                                                .custom
+                                                .get(*name)
+                                                .map(typed_text)
                                                 .unwrap_or(tr(lang, "quantity.missing")),
                                         );
-                                        ui.label(
-                                            row.quantity
-                                                .as_ref()
-                                                .map(|q| q.value.to_string())
-                                                .unwrap_or_else(|| {
-                                                    tr(lang, "quantity.missing").into()
-                                                }),
-                                        );
-                                        ui.label(
-                                            row.quantity.as_ref().map_or("—", |q| q.unit.id()),
-                                        );
-                                        ui.label(
-                                            row.fields
-                                                .unit_price
-                                                .as_ref()
-                                                .map(|p| {
-                                                    format!(
-                                                        "{} {} / {}",
-                                                        p.amount.as_str(),
-                                                        p.currency,
-                                                        p.per_unit.id()
-                                                    )
-                                                })
-                                                .unwrap_or_else(|| {
-                                                    tr(lang, "quantity.missing").into()
-                                                }),
-                                        );
-                                        ui.label(
-                                            row.line_total
-                                                .as_ref()
-                                                .map(|cost| {
-                                                    format!("{} {}", cost.amount, cost.currency)
-                                                })
-                                                .unwrap_or_else(|| {
-                                                    tr(lang, "quantity.missing").into()
-                                                }),
-                                        );
-                                        for name in &columns {
-                                            short_label(
-                                                ui,
-                                                row.fields
-                                                    .custom
-                                                    .get(*name)
-                                                    .map(typed_text)
-                                                    .unwrap_or(tr(lang, "quantity.missing")),
-                                            );
-                                        }
-                                        if ui
-                                            .add_enabled(
-                                                idle && row.editable,
-                                                egui::Button::new(tr(lang, "quantity.edit")),
-                                            )
-                                            .on_disabled_hover_text(tr(lang, "quantity.readonly"))
-                                            .clicked()
-                                        {
-                                            match RowDraft::new(report, row, epoch) {
-                                                Ok(draft) => state.edit = Some(draft),
-                                                Err(error) => state.error = Some(error.to_string()),
-                                            }
-                                        }
-                                        ui.end_row();
                                     }
-                                });
-                        });
+                                    if ui
+                                        .add_enabled(
+                                            idle && row.editable,
+                                            egui::Button::new(tr(lang, "quantity.edit")),
+                                        )
+                                        .on_disabled_hover_text(tr(lang, "quantity.readonly"))
+                                        .clicked()
+                                    {
+                                        match RowDraft::new(report, row, epoch) {
+                                            Ok(draft) => state.edit = Some(draft),
+                                            Err(error) => state.error = Some(error.to_string()),
+                                        }
+                                    }
+                                    ui.end_row();
+                                }
+                            });
+                    });
                 }
             },
             |ui| {
+                if let Some((applying, draft_epoch)) = editing {
+                    apply = ui
+                        .add_enabled(
+                            idle && !applying && draft_epoch == epoch,
+                            egui::Button::new(tr(lang, "quantity.apply")),
+                        )
+                        .clicked();
+                    cancel = ui
+                        .add_enabled(!applying, egui::Button::new(tr(lang, "quantity.cancel")))
+                        .clicked();
+                    close = can_close
+                        && ui
+                            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+                    return;
+                }
                 refresh = ui
                     .add_enabled(can_refresh, egui::Button::new(tr(lang, "quantity.refresh")))
                     .clicked();
@@ -640,6 +712,12 @@ impl SuniApp {
                         }));
             },
         );
+        if layout_changed {
+            self.persist_settings();
+        }
+        if let Some(row) = navigate {
+            self.follow_table_annotation(&row);
+        }
         if apply {
             if let Some(edit) = &mut state.edit {
                 match edit.fields() {
@@ -681,6 +759,7 @@ impl SuniApp {
 }
 
 fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
+    let text_color = crate::theme::palette(ui.visuals().dark_mode).text;
     ui.label(tr(lang, "quantity.edit_help"));
     ui.add_enabled_ui(!draft.applying, |ui| {
         ui.horizontal_wrapped(|ui| {
@@ -710,7 +789,7 @@ fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
             ui.label(tr(lang, "quantity.rounding"));
             ui.add(egui::DragValue::new(&mut draft.rounding).range(0..=4));
         });
-        ui.heading(tr(lang, "quantity.custom"));
+        ui.heading(egui::RichText::new(tr(lang, "quantity.custom")).color(text_color));
         ui.small(tr(lang, "quantity.blank_custom"));
         let mut remove = None;
         for (index, field) in draft.custom.iter_mut().enumerate() {
@@ -775,6 +854,7 @@ fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
 }
 
 fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
+    let text_color = crate::theme::palette(ui.visuals().dark_mode).text;
     ui.label(format!(
         "{}: {} · {}: {}",
         tr(lang, "register.matches"),
@@ -782,7 +862,7 @@ fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
         tr(lang, "quantity.missing"),
         summary.unquantified_rows
     ));
-    egui::CollapsingHeader::new(tr(lang, "quantity.totals"))
+    egui::CollapsingHeader::new(egui::RichText::new(tr(lang, "quantity.totals")).color(text_color))
         .default_open(true)
         .show(ui, |ui| {
             for group in summary.groups.iter().take(30) {
@@ -843,7 +923,13 @@ pub(crate) mod tests {
                     ..Default::default()
                 },
                 |ui| {
-                    app.measurement_bar(&self.ctx, ui);
+                    app.quantity_table_dock(&self.ctx, ui);
+                    egui::Panel::left("quantity-test-measurements")
+                        .exact_size(280.0)
+                        .show(ui, |ui| {
+                            egui::ScrollArea::vertical()
+                                .show(ui, |ui| app.measurement_bar(&self.ctx, ui));
+                        });
                     app.quantity_table_dialog(&self.ctx);
                 },
             );
@@ -861,14 +947,51 @@ pub(crate) mod tests {
                 }
             }
             self.frame(app, vec![]);
-            let output = self.frame(app, vec![]);
             let label = tr(app.lang(), key);
-            let point = output
-                .shapes
-                .iter()
-                .rev()
-                .find_map(|s| find(&s.shape, label))
-                .unwrap_or_else(|| panic!("visible quantity control {key}"));
+            let mut point = None;
+            let mut candidate_bounds = Vec::new();
+            for attempt in 0..20 {
+                let output = self.frame(app, vec![]);
+                candidate_bounds = output
+                    .shapes
+                    .iter()
+                    .rev()
+                    .filter_map(|shape| {
+                        find(&shape.shape, label).map(|point| (point, shape.clip_rect))
+                    })
+                    .collect();
+                point = candidate_bounds
+                    .iter()
+                    .find_map(|(point, clip)| clip.contains(*point).then_some(*point));
+                if point.is_some() {
+                    break;
+                }
+                let at = if app.annotate.quantities.open {
+                    Pos2::new(800.0, 990.0)
+                } else {
+                    Pos2::new(140.0, 600.0)
+                };
+                self.frame(
+                    app,
+                    vec![
+                        Event::PointerMoved(at),
+                        Event::MouseWheel {
+                            unit: egui::MouseWheelUnit::Point,
+                            delta: egui::vec2(0.0, if attempt < 10 { -150.0 } else { 150.0 }),
+                            phase: egui::TouchPhase::Move,
+                            source: egui::MouseWheelSource::Wheel,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            let point = point.unwrap_or_else(|| {
+                panic!(
+                    "visible quantity control {key}; language={}, editing={}, candidates={candidate_bounds:?}",
+                    app.settings.language,
+                    app.annotate.quantities.edit.is_some()
+                )
+            });
             self.time += 0.6;
             for pressed in [true, false] {
                 self.frame(
@@ -908,8 +1031,181 @@ pub(crate) mod tests {
         assert!(!dir.path().join("refused.csv").exists());
     }
 
+    fn verify_compact_table(table: &QuantityTable) {
+        fn text_rects(shape: &egui::Shape, label: &str, rects: &mut Vec<Rect>) {
+            match shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    rects.push(Rect::from_min_size(text.pos, text.galley.size()));
+                }
+                egui::Shape::Vec(shapes) => {
+                    for shape in shapes {
+                        text_rects(shape, label, rects);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for language in ["en-US", "fr-FR"] {
+            for dark in [false, true] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                app.settings.language = language.into();
+                app.settings.dark_theme = dark;
+                app.open_quantity_table();
+                let ctx = egui::Context::default();
+                crate::theme::apply(&ctx, dark);
+                let input = egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(720.0, 480.0))),
+                    ..Default::default()
+                };
+                for editing in [false, true] {
+                    if editing {
+                        let mut draft =
+                            RowDraft::new(table, &table.rows()[0], app.view.epoch).unwrap();
+                        draft.custom = (0..16)
+                            .map(|index| CustomDraft {
+                                name: format!("Field {index}"),
+                                kind: FieldKind::Text,
+                                value: "Long form fixture".into(),
+                                choices: String::new(),
+                            })
+                            .collect();
+                        draft.error = Some(
+                        "The selected annotation changed; review this draft before applying it."
+                            .into(),
+                    );
+                        app.annotate.quantities.edit = Some(draft);
+                    }
+                    let mut canvas = Rect::NOTHING;
+                    let mut output = None;
+                    for _ in 0..6 {
+                        let mut frame = ctx.run_ui(input.clone(), |ui| {
+                            egui::Panel::top("compact-reader-top")
+                                .exact_size(95.0)
+                                .frame(egui::Frame::NONE)
+                                .show(ui, |_| {});
+                            egui::Panel::bottom("compact-reader-bottom")
+                                .exact_size(79.0)
+                                .frame(egui::Frame::NONE)
+                                .show(ui, |_| {});
+                            egui::Panel::right("compact-reader-rail")
+                                .exact_size(48.0)
+                                .frame(egui::Frame::NONE)
+                                .show(ui, |_| {});
+                            app.quantity_table_dock(&ctx, ui);
+                            egui::CentralPanel::no_frame().show(ui, |ui| {
+                                canvas = ui.max_rect();
+                                ui.painter().rect_filled(canvas, 0.0, egui::Color32::GRAY);
+                            });
+                        });
+                        frame.textures_delta.clear();
+                        output = Some(frame);
+                        if let Some((epoch, generation)) = app.annotate.quantities.pending {
+                            app.on_quantity_table(epoch, generation, Ok(table.clone()));
+                        }
+                    }
+                    let output = output.unwrap();
+                    let contrast_keys = if editing {
+                        vec!["quantity.title"]
+                    } else {
+                        vec![
+                            "quantity.title",
+                            "register.page",
+                            "quantity.source",
+                            "register.kind",
+                            "register.contents",
+                        ]
+                    };
+                    crate::workspace_table::assert_visible_text_contrast(
+                        &output,
+                        &contrast_keys
+                            .iter()
+                            .map(|key| tr(app.lang(), key))
+                            .collect::<Vec<_>>(),
+                        dark,
+                    );
+                    assert!(
+                        canvas.height() >= 150.0,
+                        "reader canvas retained: {canvas:?}"
+                    );
+                    let contents = table.rows()[0]
+                        .register
+                        .contents
+                        .as_deref()
+                        .unwrap_or(tr(app.lang(), "quantity.missing"))
+                        .chars()
+                        .take(60)
+                        .collect::<String>();
+                    let labels = if editing {
+                        vec![
+                            tr(app.lang(), "quantity.apply"),
+                            tr(app.lang(), "quantity.cancel"),
+                        ]
+                    } else {
+                        vec![
+                            tr(app.lang(), "quantity.title"),
+                            tr(app.lang(), "workspace.table.dock"),
+                            tr(app.lang(), "workspace.table.float"),
+                            tr(app.lang(), "quantity.close"),
+                            contents.as_str(),
+                        ]
+                    };
+                    for label in labels {
+                        let mut bounds = Vec::new();
+                        for shape in &output.shapes {
+                            let mut rects = Vec::new();
+                            text_rects(&shape.shape, label, &mut rects);
+                            bounds.extend(rects.into_iter().map(|rect| (rect, shape.clip_rect)));
+                        }
+                        assert!(
+                            bounds.iter().any(|(rect, clip)| {
+                                clip.contains_rect(*rect)
+                                    && rect.top() >= canvas.bottom()
+                                    && rect.bottom() <= 401.0
+                            }),
+                            "full table label must remain visible outside the canvas: {language}, {label}, editing={editing}; \
+                     canvas={canvas:?}, text/clip bounds={bounds:?}"
+                        );
+                    }
+                    if editing {
+                        // The compact form scrolls independently of its fixed
+                        // actions. Check its headings with enough bounded room,
+                        // without assuming they stay on screen during scrolling.
+                        let editor_ctx = egui::Context::default();
+                        crate::theme::apply(&editor_ctx, dark);
+                        app.settings.tables.height = 360.0;
+                        let mut editor_output = None;
+                        for _ in 0..4 {
+                            let mut frame = editor_ctx.run_ui(
+                                egui::RawInput {
+                                    screen_rect: Some(Rect::from_min_size(
+                                        Pos2::ZERO,
+                                        egui::vec2(1600.0, 1100.0),
+                                    )),
+                                    ..Default::default()
+                                },
+                                |ui| app.quantity_table_dock(&editor_ctx, ui),
+                            );
+                            frame.textures_delta.clear();
+                            editor_output = Some(frame);
+                        }
+                        crate::workspace_table::assert_visible_text_contrast(
+                            &editor_output.unwrap(),
+                            &["quantity.title", "quantity.edit", "quantity.custom"]
+                                .map(|key| tr(app.lang(), key)),
+                            dark,
+                        );
+                    }
+                }
+                assert!(requests
+                    .try_iter()
+                    .all(|request| !matches!(request, Request::Edit(_))));
+            }
+        }
+    }
+
     pub(crate) fn verify_controls(table: &QuantityTable) {
         assert!(table.rows().len() >= 2);
+        verify_compact_table(table);
         for language in ["en-US", "fr-FR"] {
             let (mut app, requests, responses) = crate::app::tests::test_app();
             app.settings.language = language.into();
@@ -927,8 +1223,12 @@ pub(crate) mod tests {
             app.on_quantity_table(epoch, generation.wrapping_sub(1), Ok(table.clone()));
             assert!(app.annotate.quantities.report.is_none());
             app.on_quantity_table(epoch, generation, Ok(table.clone()));
-            assert!(app.navigation_blocked());
-            assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
+            assert!(!app.navigation_blocked());
+            assert!(!app.ink_blocks_command(sunipdf_core::Command::ZoomIn));
+            app.zoom = crate::app::Zoom::Fixed(1.0);
+            app.execute(&controls.ctx, sunipdf_core::Command::ZoomIn);
+            assert_eq!(app.zoom, crate::app::Zoom::Fixed(1.25));
+            assert!(app.annotate.quantities.open, "reading keeps the table open");
             let active = app.annotate.quantities.report.as_ref().unwrap().clone();
             controls.frame(&mut app, vec![]);
             assert!(Arc::ptr_eq(
@@ -941,6 +1241,14 @@ pub(crate) mod tests {
             app.annotate.quantities.options.filter.page = None;
             app.annotate.quantities.refresh_selection();
             controls.click(&mut app, "quantity.edit");
+            assert!(app.navigation_blocked());
+            assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
+            let zoom = app.zoom;
+            app.execute(&controls.ctx, sunipdf_core::Command::ZoomIn);
+            assert_eq!(
+                app.zoom, zoom,
+                "a pending field draft keeps document guards"
+            );
             let draft = app.annotate.quantities.edit.as_mut().unwrap();
             draft.price = "0".into();
             draft.currency = "CHF".into();
@@ -971,6 +1279,7 @@ pub(crate) mod tests {
             draft.custom.pop();
             controls.click(&mut app, "quantity.cancel");
             assert!(app.annotate.quantities.edit.is_none());
+            assert!(!app.navigation_blocked());
             assert!(!requests.try_iter().any(|r| matches!(r, Request::Edit(_))));
             controls.click(&mut app, "quantity.edit");
             let draft = app.annotate.quantities.edit.as_mut().unwrap();
@@ -999,6 +1308,11 @@ pub(crate) mod tests {
             controls.click(&mut app, "quantity.cancel");
             let directory = tempfile::tempdir().unwrap();
             app.export_quantity_path(directory.path().join("quantities.csv"), true);
+            assert!(app.navigation_blocked());
+            assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
+            let zoom = app.zoom;
+            app.execute(&controls.ctx, sunipdf_core::Command::ZoomIn);
+            assert_eq!(app.zoom, zoom, "an accepted export keeps document guards");
             let export = requests
                 .try_iter()
                 .find_map(|r| match r {
@@ -1019,6 +1333,7 @@ pub(crate) mod tests {
             controls.click(&mut app, "quantity.close");
             assert!(app.annotate.quantities.open, "wait for the accepted export");
             app.on_quantity_exported(export.0, export.1, Ok(()));
+            assert!(!app.navigation_blocked());
             controls.click(&mut app, "quantity.close");
             assert!(!app.annotate.quantities.open);
             app.on_quantity_table(epoch, generation, Ok(table.clone()));

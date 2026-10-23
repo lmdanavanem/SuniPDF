@@ -30,6 +30,88 @@ fn sha256(bytes: &[u8]) -> String {
         .collect()
 }
 
+fn relative_luminance(rgb: [u8; 3]) -> f64 {
+    let channel = |value: u8| {
+        let value = f64::from(value) / 255.0;
+        if value <= 0.04045 {
+            value / 12.92
+        } else {
+            ((value + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])
+}
+
+fn readable_text_pixels(
+    pixels: &[u8],
+    size: [u32; 2],
+    rect: Rect,
+    foreground: egui::Color32,
+    background: egui::Color32,
+) -> usize {
+    let [width, height] = size;
+    let rect = rect.intersect(Rect::from_min_size(
+        egui::Pos2::ZERO,
+        vec2(width as f32, height as f32),
+    ));
+    let background = relative_luminance([background.r(), background.g(), background.b()]);
+    let foreground = [foreground.r(), foreground.g(), foreground.b()];
+    let mut readable = 0;
+    for y in rect.top().ceil().max(0.0) as u32..rect.bottom().floor().max(0.0) as u32 {
+        for x in rect.left().ceil().max(0.0) as u32..rect.right().floor().max(0.0) as u32 {
+            let offset = ((y * width + x) * 4) as usize;
+            let rgb = [pixels[offset], pixels[offset + 1], pixels[offset + 2]];
+            // Match actual text ink, excluding borders, selection fills and background pixels.
+            if rgb
+                .iter()
+                .zip(foreground)
+                .any(|(&actual, expected)| actual.abs_diff(expected) > 64)
+            {
+                continue;
+            }
+            let luminance = relative_luminance(rgb);
+            let contrast = (luminance.max(background) + 0.05) / (luminance.min(background) + 0.05);
+            if contrast >= 4.5 {
+                readable += 1;
+            }
+        }
+    }
+    readable
+}
+
+#[test]
+fn text_pixel_evidence_rejects_blank_and_low_contrast_headings() {
+    let rect = Rect::from_min_size(egui::Pos2::ZERO, vec2(32.0, 4.0));
+    for (foreground, background) in [
+        (egui::Color32::BLACK, egui::Color32::WHITE),
+        (egui::Color32::WHITE, egui::Color32::BLACK),
+    ] {
+        let mut pixels = background.to_array().repeat(128);
+        assert_eq!(
+            readable_text_pixels(&pixels, [32, 4], rect, foreground, background),
+            0
+        );
+        for pixel in pixels.as_chunks_mut::<4>().0.iter_mut().take(20) {
+            pixel.copy_from_slice(&foreground.to_array());
+        }
+        assert_eq!(
+            readable_text_pixels(&pixels, [32, 4], rect, foreground, background),
+            20
+        );
+    }
+    let pixels = egui::Color32::from_gray(220).to_array().repeat(128);
+    assert_eq!(
+        readable_text_pixels(
+            &pixels,
+            [32, 4],
+            rect,
+            egui::Color32::from_gray(220),
+            egui::Color32::WHITE
+        ),
+        0
+    );
+}
+
 fn wait_future<T>(stage: &str, future: impl Future<Output = T>) -> EvidenceResult<T> {
     let mut future = std::pin::pin!(future);
     let mut context = std::task::Context::from_waker(std::task::Waker::noop());
@@ -53,6 +135,13 @@ struct Scene {
     height: u32,
     measurements: bool,
     zoom: Zoom,
+    table: Option<TableKind>,
+}
+
+#[derive(Clone, Copy)]
+enum TableKind {
+    Register,
+    Quantities,
 }
 
 /// Respond to the real view's read requests using the fixture document.
@@ -111,6 +200,14 @@ fn fulfill_requests(
                     document.properties().can_modify,
                 );
                 data.can_annotate = document.properties().can_annotate;
+                data.viewports = document
+                    .measurement_viewports(page)
+                    .map(Arc::from)
+                    .map_err(|e| e.to_string());
+                data.snap_geometry = document
+                    .vector_snap_geometry(page)
+                    .map(Arc::new)
+                    .map_err(|e| e.to_string());
                 Response::MeasurementPage {
                     page,
                     epoch,
@@ -134,11 +231,21 @@ fn fulfill_requests(
             Request::FormInfo => Response::FormInfo(document.form_info()),
             Request::Bookmarks => Response::Bookmarks(document.bookmarks()),
             Request::Properties => Response::Properties(document.properties()),
+            Request::AnnotationRegister { epoch, generation } => Response::AnnotationRegister {
+                epoch,
+                generation,
+                result: document.annotation_register(),
+            },
+            Request::QuantityTable { epoch, generation } => Response::QuantityTable {
+                epoch,
+                generation,
+                result: document.quantity_table(),
+            },
             Request::FinishMutation | Request::SetRecovery(_) => continue,
             _ => {
                 return Err(
                     "Reader UI requested an unexpected operation during read-only evidence".into(),
-                )
+                );
             }
         };
         responses.send(response)?;
@@ -274,7 +381,7 @@ fn capture_scene(
     app.settings.dark_theme = scene.dark;
     app.settings.set_language(scene.language);
     app.settings.autosave = false;
-    app.settings.show_thumbnails = !scene.measurements;
+    app.settings.show_thumbnails = !scene.measurements && scene.table.is_none();
     app.show_tools = scene.measurements;
     app.settings.show_tools = scene.measurements;
     let mut info = document.info().clone();
@@ -298,6 +405,16 @@ fn capture_scene(
     if scene.measurements {
         app.execute(&context, Command::HubMeasure);
     }
+    if let Some(table) = scene.table {
+        app.settings.tables.placement = crate::workspace_table::Placement::Bottom;
+        app.execute(
+            &context,
+            match table {
+                TableKind::Register => Command::AnnotationRegister,
+                TableKind::Quantities => Command::QuantityTable,
+            },
+        );
+    }
     let mut renderer = egui_wgpu::Renderer::new(
         device,
         wgpu::TextureFormat::Rgba8Unorm,
@@ -306,6 +423,7 @@ fn capture_scene(
     let mut tiles = Vec::new();
     let mut final_frame = None;
     let mut pending_texture_frees = Vec::new();
+    let mut frame_states = Vec::with_capacity(12);
     for index in 0..12 {
         // Earlier frames are not painted; their deferred frees are safe before
         // building the next frame. Keep the final frame's textures until readback.
@@ -331,11 +449,79 @@ fn capture_scene(
         }
         pending_texture_frees.extend(frame.textures_delta.free.drain());
         fulfill_requests(document, &requests, &responses, &mut tiles)?;
+        frame_states.push(json!({
+            "frame": index, "rendering": app.view.is_rendering(), "epoch": app.view.epoch,
+            "effectiveZoom": app.effective_zoom, "tableHeight": app.settings.tables.height,
+        }));
         final_frame = Some(frame);
     }
+    let frame = final_frame.ok_or("Missing application UI frame")?;
+    // Persist the actual failed scene too: structural checks below must not hide the frame
+    // needed to distinguish a product layout regression from an evidence expectation error.
+    let pixel_result = readback(
+        device,
+        queue,
+        &mut renderer,
+        &context,
+        frame.clone(),
+        [scene.width, scene.height],
+    );
+    for id in pending_texture_frees {
+        renderer.free_texture(&id);
+    }
+    let pixels = pixel_result?;
+    let png_name = format!("{}.png", scene.name);
+    let png = output.join(&png_name);
+    image::save_buffer(
+        &png,
+        &pixels,
+        scene.width,
+        scene.height,
+        image::ColorType::Rgba8,
+    )?;
+    let tree = frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .ok_or("Missing application accessibility tree")?;
+    require(
+        tree.nodes.len() <= 10_000,
+        "Reader UI accessibility tree exceeds its evidence bound",
+    )?;
+    let app_error = app
+        .error
+        .map(|error| error.chars().take(512).collect::<String>());
+    std::fs::write(
+        output.join(format!("{}-accessibility.json", scene.name)),
+        serde_json::to_vec_pretty(&json!({
+            "scene": scene.name,
+            "settleState": {
+                "rendering": app.view.is_rendering(), "appError": app_error,
+                "documentOpen": app.document.is_some(), "unsavedChanges": app.has_unsaved_changes(),
+                "tileRequests": tiles.len(), "frames": frame_states,
+            },
+            "nodes": tree.nodes.iter().map(|(_, node)| json!({
+                "role": format!("{:?}", node.role()), "label": node.label(), "value": node.value(),
+                "bounds": node.bounds().map(|rect| [rect.x0, rect.y0, rect.x1, rect.y1]),
+            })).collect::<Vec<_>>(),
+            "paintedText": frame.shapes.iter().filter_map(|shape| match &shape.shape {
+                egui::Shape::Text(text) => Some(json!({
+                    "text": text.galley.text(),
+                    "bounds": [text.pos.x, text.pos.y, text.pos.x + text.galley.size().x, text.pos.y + text.galley.size().y],
+                    "clip": [shape.clip_rect.min.x, shape.clip_rect.min.y, shape.clip_rect.max.x, shape.clip_rect.max.y],
+                })),
+                _ => None,
+            }).collect::<Vec<_>>()
+        }))?,
+    )?;
     require(
         !app.view.is_rendering() && app.error.is_none(),
-        "Reader UI fixture did not settle without errors",
+        &format!(
+            "{}: reader fixture did not settle; rendering={}, document_open={}, app_error={app_error:?}; see scene PNG and settleState",
+            scene.name,
+            app.view.is_rendering(),
+            app.document.is_some()
+        ),
     )?;
     require(
         !app.has_unsaved_changes(),
@@ -345,12 +531,6 @@ fn capture_scene(
         !tiles.is_empty(),
         "Actual document view did not request PDF tiles",
     )?;
-    let frame = final_frame.ok_or("Missing application UI frame")?;
-    let tree = frame
-        .platform_output
-        .accesskit_update
-        .as_ref()
-        .ok_or("Missing application accessibility tree")?;
     let viewport = Rect::from_min_size(
         pos2(0.0, 0.0),
         vec2(scene.width as f32, scene.height as f32),
@@ -362,6 +542,91 @@ fn capture_scene(
                 .iter()
                 .any(|(_, node)| node.label() == Some(label)),
             "Expected reader control is absent from the real UI",
+        )?;
+    }
+    let table_name = scene.table.map(|table| match table {
+        TableKind::Register => "annotations",
+        TableKind::Quantities => "quantities",
+    });
+    let mut table_text_contrast = Vec::new();
+    if let Some(table) = scene.table {
+        let (title, close) = match table {
+            TableKind::Register => ("register.title", "register.close"),
+            TableKind::Quantities => ("quantity.title", "quantity.close"),
+        };
+        let title = tr(scene.language, title);
+        // egui exposes static Role::Label text through value(), while actionable controls use
+        // label(). Verify both accessibility and visible paint for the non-interactive title.
+        require(
+            tree.nodes.iter().any(|(_, node)| node.value() == Some(title) || node.label() == Some(title))
+                && frame.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Text(text)
+                    if text.galley.text() == title && Rect::from_min_size(text.pos, text.galley.size())
+                        .intersect(shape.clip_rect).intersect(viewport).is_positive())),
+            &format!("{}: docked table title {title:?} is not accessible and visible", scene.name),
+        )?;
+        let palette = crate::theme::palette(scene.dark);
+        for (part, label) in [
+            ("title", title),
+            ("firstColumnHeader", tr(scene.language, "register.page")),
+        ] {
+            let rect = frame
+                .shapes
+                .iter()
+                .find_map(|shape| match &shape.shape {
+                    egui::Shape::Text(text) if text.galley.text() == label => Some(
+                        Rect::from_min_size(text.pos, text.galley.size())
+                            .intersect(shape.clip_rect)
+                            .intersect(viewport),
+                    ),
+                    _ => None,
+                })
+                .ok_or_else(|| {
+                    format!("{}: missing docked table {part} paint bounds", scene.name)
+                })?;
+            let ink = readable_text_pixels(
+                &pixels,
+                [scene.width, scene.height],
+                rect,
+                palette.text,
+                palette.surface,
+            );
+            require(
+                ink >= 20,
+                &format!(
+                    "{}: docked table {part} ({label:?}) has only {ink} readable text pixels; need20 at contrast>=4.5:1 against its surface",
+                    scene.name
+                ),
+            )?;
+            table_text_contrast
+                .push(json!({"part": part, "readablePixels": ink, "minimumContrast": 4.5}));
+        }
+        for key in ["workspace.table.dock", "workspace.table.float", close] {
+            let label = tr(scene.language, key);
+            require(
+                tree.nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(label)),
+                &format!(
+                    "{}: docked table control {key} ({label:?}) is missing; see the scene accessibility JSON",
+                    scene.name
+                ),
+            )?;
+        }
+        require(
+            frame.shapes.iter().any(|shape| {
+                matches!(&shape.shape, egui::Shape::Text(text)
+                if matches!(text.galley.text(), "Fixture equipment" | "Count: Fixture equipment")
+                && Rect::from_min_size(text.pos, text.galley.size()).intersect(shape.clip_rect)
+                    .intersect(viewport).is_positive())
+            }),
+            &format!(
+                "{}: the docked table does not show its actual fixture count row; see scene PNG and accessibility/paint bounds",
+                scene.name
+            ),
+        )?;
+        require(
+            !app.dialog_open(),
+            "Docked table incorrectly blocks document interactions",
         )?;
     }
     let tile_ids: Vec<_> = tiles
@@ -419,18 +684,6 @@ fn capture_scene(
         .iter()
         .map(|rect| [rect.min.x, rect.min.y, rect.max.x, rect.max.y])
         .collect();
-    let pixel_result = readback(
-        device,
-        queue,
-        &mut renderer,
-        &context,
-        frame,
-        [scene.width, scene.height],
-    );
-    for id in pending_texture_frees {
-        renderer.free_texture(&id);
-    }
-    let pixels = pixel_result?;
     let mut blue_ink = 0_u64;
     for y in visible.top().ceil() as u32..visible.bottom().floor() as u32 {
         for x in visible.left().ceil() as u32..visible.right().floor() as u32 {
@@ -451,18 +704,11 @@ fn capture_scene(
         blue_ink > 20,
         "PDFium fixture ink is missing from the actual UI pixel readback",
     )?;
-    let png_name = format!("{}.png", scene.name);
-    let png = output.join(&png_name);
-    image::save_buffer(
-        &png,
-        &pixels,
-        scene.width,
-        scene.height,
-        image::ColorType::Rgba8,
-    )?;
     Ok(json!({
         "name": scene.name, "language": scene.language.code(), "darkTheme": scene.dark,
         "outputPixels": [scene.width, scene.height], "measurementToolsOpen": scene.measurements,
+        "dockedTable": table_name, "dockedTableControlsAndRowVerified": scene.table.is_some(),
+        "dockedTableTextContrast": table_text_contrast,
         "effectiveZoom": app.effective_zoom, "actualApplicationRenderUi": true,
         "fixtureNavigation": fixture_destination.map(|(x_pt, y_from_top_pt)| json!({
             "pageIndex": 0, "coordinateOrigin": "page-top-left", "unit": "PDF points",
@@ -514,6 +760,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             height: 780,
             measurements: true,
             zoom: Zoom::FitPage,
+            table: None,
         },
         Scene {
             name: "reader-fr-light-720-zoom149",
@@ -523,6 +770,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             height: 480,
             measurements: true,
             zoom: Zoom::Fixed(1.49),
+            table: None,
         },
         Scene {
             name: "reader-en-light-pages",
@@ -532,11 +780,63 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             height: 780,
             measurements: false,
             zoom: Zoom::FitPage,
+            table: None,
         },
     ];
     let mut results = Vec::new();
     for scene in scenes {
         results.push(capture_scene(&device, &queue, &document, scene, output)?);
+    }
+    // Prepare actual editable records in memory; never alter the checked-in fixture file.
+    let mut table_document = engine.open_bytes(std::fs::read(&fixture)?, None, &fixture)?;
+    table_document.add_count_marker(
+        0,
+        (200.0, 100.0),
+        18.0,
+        "Fixture equipment",
+        Some("Fixture reviewer"),
+    )?;
+    table_document.add_measurement_annotation(
+        0,
+        &sunipdf_core::measurement::Measurement {
+            kind: sunipdf_core::measurement::MeasurementKind::Length,
+            points: vec![(40.0, 80.0), (140.0, 80.0)],
+            calibration: [(40.0, 40.0), (140.0, 40.0)],
+            known_distance: 10.0,
+            unit: sunipdf_core::measurement::MeasurementUnit::Metres,
+            precision: 2,
+        },
+        None,
+    )?;
+    for scene in [
+        Scene {
+            name: "reader-en-dark-docked-register",
+            language: Language::English,
+            dark: true,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: Some(TableKind::Register),
+        },
+        Scene {
+            name: "reader-fr-light-720-docked-quantities",
+            language: Language::French,
+            dark: false,
+            width: 720,
+            height: 480,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: Some(TableKind::Quantities),
+        },
+    ] {
+        results.push(capture_scene(
+            &device,
+            &queue,
+            &table_document,
+            scene,
+            output,
+        )?);
     }
     require(
         sha256(&std::fs::read(&fixture)?) == fixture_sha,
@@ -549,6 +849,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
         "adapter": { "name": info.name, "backend": format!("{:?}", info.backend), "deviceType": format!("{:?}", info.device_type) },
         "fixture": "crates/sunipdf-core/tests/fixtures/two-pages.pdf", "fixtureSha256": fixture_sha,
         "fixtureUnchanged": true, "scenes": results
+        , "tableFixture": { "source": "same two-page fixture, prepared only in memory", "countGroup": "Fixture equipment", "count": 1, "lengthMetres": 10 }
     }))
 }
 
@@ -579,5 +880,5 @@ fn reader_ui_dx12_warp_evidence() {
     if let Err(error) = result {
         panic!("Reader UI evidence failed: {error}");
     }
-    eprintln!("Reader UI offscreen evidence PASS: 3 actual application scenes");
+    eprintln!("Reader UI offscreen evidence PASS: 5 actual application scenes");
 }

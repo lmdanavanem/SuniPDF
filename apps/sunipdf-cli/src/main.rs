@@ -6,6 +6,7 @@ mod calibration_cmd;
 mod feature_cmd;
 mod library_cmd;
 mod measurement_cmd;
+mod measurement_workspace_cmd;
 mod overlay_cmd;
 mod password_input;
 mod quantity_cmd;
@@ -66,6 +67,16 @@ enum Command {
     RemovePageCalibration(calibration_cmd::RemoveArgs),
     /// Edit one expected measurement in a new PDF copy, preserving its annotation identity.
     EditMeasurement(measurement_cmd::EditArgs),
+    /// Read named calibrated measurement regions on a page.
+    MeasurementViewports(measurement_workspace_cmd::ViewportsArgs),
+    /// Replace an exact expected region set in a new PDF copy.
+    SetMeasurementViewports(measurement_workspace_cmd::SetViewportsArgs),
+    /// Explicitly clear supported measurement regions, including stale scales, in a new copy.
+    ClearMeasurementViewports(calibration_cmd::RemoveArgs),
+    /// Preview or atomically apply explicit multi-page measurement recalibration.
+    RecalibrateMeasurements(measurement_workspace_cmd::RecalibrateArgs),
+    /// Find a real vector endpoint or straight-segment intersection near a displayed point.
+    MeasurementSnap(measurement_workspace_cmd::SnapArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -1599,6 +1610,17 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::SetPageCalibration(args) => calibration_cmd::set(&engine, args),
         Command::RemovePageCalibration(args) => calibration_cmd::remove(&engine, args),
         Command::EditMeasurement(args) => measurement_cmd::edit(&engine, args),
+        Command::MeasurementViewports(args) => measurement_workspace_cmd::viewports(&engine, args),
+        Command::SetMeasurementViewports(args) => {
+            measurement_workspace_cmd::set_viewports(&engine, args)
+        }
+        Command::ClearMeasurementViewports(args) => {
+            measurement_workspace_cmd::clear_viewports(&engine, args)
+        }
+        Command::RecalibrateMeasurements(args) => {
+            measurement_workspace_cmd::recalibrate(&engine, args)
+        }
+        Command::MeasurementSnap(args) => measurement_workspace_cmd::snap(&engine, args),
         Command::Measure {
             file,
             kind,
@@ -2953,6 +2975,9 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::SetPageCalibration(args) => Some(&args.out),
         Command::RemovePageCalibration(args) => Some(&args.out),
         Command::EditMeasurement(args) => Some(&args.out),
+        Command::SetMeasurementViewports(args) => Some(&args.out),
+        Command::ClearMeasurementViewports(args) => Some(&args.out),
+        Command::RecalibrateMeasurements(args) => args.out.as_deref(),
         Command::Merge { out, .. }
         | Command::BookmarkAdd { out, .. }
         | Command::BookmarkRename { out, .. }

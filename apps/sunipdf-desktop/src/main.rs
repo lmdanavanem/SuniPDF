@@ -23,6 +23,7 @@ mod measure_integration_tests;
 mod measure_tools;
 mod measurement_geometry;
 mod measurement_saved;
+mod measurement_scales_ui;
 mod objects;
 mod ocr;
 mod office;
@@ -52,6 +53,7 @@ mod updater;
 mod view;
 mod worker;
 mod workspace;
+mod workspace_table;
 
 fn main() -> eframe::Result<()> {
     initialize_dll_search().map_err(|error| eframe::Error::AppCreation(Box::new(error)))?;

@@ -1,7 +1,7 @@
 # Real Windows Installer regression on a disposable, elevated Windows runner.
 param(
     [Parameter(Mandatory)] [string]$MsiPath,
-    [ValidateSet('0.8.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0')] [string]$BaselineVersion = '0.8.0'
+    [ValidateSet('0.8.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0')] [string]$BaselineVersion = '0.8.0'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'MSI regression is restricted to disposable GitHub Actions runners.' }
@@ -59,6 +59,7 @@ $baselines = @{
     '0.48.0' = @{ hash='1E05715982DDA4BEFBAE931DF3F75303D308AB4F915D61D241108F51EA793F9F'; language='1033'; productCode='{777CE116-0687-4AFF-B549-19F728CBA552}' }
     '0.49.0' = @{ hash='451ED450F8B9190A2B9C8D8894888497A8C18088245389537FF4EB57B3269FFF'; language='1033'; productCode='{B964C043-DFCC-4869-BC20-2EBA5C67BCFA}' }
     '0.50.0' = @{ hash='911530221C107CB2295E44F5F4C43172C85F5FCED3E8F8AC619888DE304F4E1B'; language='1033'; productCode='{7CB85285-5FDE-42FC-B05C-8191C870E0B0}' }
+    '0.51.0' = @{ hash='B8DCC8050A6150EF95BA5C2B3955EA851768BFD42B38238D95B158ED5A469553'; language='1033'; productCode='{5947080C-425F-4E55-9D79-DB903B4FC844}' }
 }
 $baseline = $baselines[$BaselineVersion]
 $oldName = "SuniPDF-$BaselineVersion-win-x64.msi"

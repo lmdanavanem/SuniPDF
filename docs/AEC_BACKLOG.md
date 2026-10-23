@@ -4,6 +4,10 @@
 
 SuniPDF is a free, open-source local application for PDF plans, measurements and review, licensed under MIT OR Apache-2.0. This backlog defines planned capabilities and acceptance criteria; statuses distinguish partial implementation from qualified functionality.
 
+## 0.60: implemented plan-workspace scope
+
+The 0.60 implementation adds cached layouts/register views, responsive page reads, docked tables, vector snapping, feet/inches entry, independent scale regions and atomic batch recalibration. AEC-001/002/003/004/008/026 remain partially qualified; AEC-027/028/029 make the performance and workspace scope explicit. Private real-project qualification is deferred at the owner's request. Earlier sections below describe their original release, not current missing features. [0.60](RELEASE_0.60.0.md).
+
 ## Reader controls and organized tools — 0.50.0
 
 Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales. This reorganizes existing reading and tool workflows without adding measurement types. AEC-002 and AEC-003 remain partial; vector snapping, batch recalculation, multiple-scale viewports and real-plan qualification remain open. Offscreen UI checks cover only their recorded layouts and interactions. Native-window presentation, physical devices, screen readers and native ARM64 remain unqualified. Packages remain unsigned; full 1.0 acceptance remains open. [Evidence](qa/RELEASE_0.50.0.json).

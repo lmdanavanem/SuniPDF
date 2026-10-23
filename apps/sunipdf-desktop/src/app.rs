@@ -61,6 +61,9 @@ impl FindState {
     pub fn reset_in_flight(&mut self) {
         self.in_flight = false;
         self.searched = None;
+        self.progress = None;
+        self.error = None;
+        self.generation = self.generation.wrapping_add(1);
     }
 }
 
@@ -73,6 +76,8 @@ pub struct FindState {
     searched: Option<(String, bool)>,
     generation: u64,
     in_flight: bool,
+    progress: Option<(usize, usize)>,
+    error: Option<String>,
     matches: Vec<sunipdf_core::TextMatch>,
     current: usize,
     focus_requested: bool,
@@ -248,6 +253,8 @@ impl SuniApp {
                 searched: None,
                 generation: 0,
                 in_flight: false,
+                progress: None,
+                error: None,
                 matches: Vec::new(),
                 current: 0,
                 focus_requested: false,
@@ -947,6 +954,21 @@ impl SuniApp {
                     generation,
                     result,
                 } => self.on_annotation_register(epoch, generation, result),
+                Response::AnnotationRegisterProgress {
+                    epoch,
+                    generation,
+                    done,
+                    total,
+                } => {
+                    self.on_annotation_register_progress(epoch, generation, done, total);
+                }
+                Response::RecalibrationPreview {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_recalibration_preview(epoch, generation, result);
+                }
                 Response::MeasurementPage {
                     page,
                     epoch,
@@ -1118,9 +1140,28 @@ impl SuniApp {
                 } => {
                     if generation == self.find.generation {
                         self.find.in_flight = false;
+                        self.find.progress = None;
+                        self.find.error = None;
                         self.find.matches = matches;
                         self.find.current = 0;
                         self.go_to_match(0);
+                    }
+                }
+                Response::SearchProgress {
+                    generation,
+                    done,
+                    total,
+                } => {
+                    if generation == self.find.generation && self.find.in_flight {
+                        self.find.progress = Some((done, total));
+                    }
+                }
+                Response::SearchFailed { generation, error } => {
+                    if generation == self.find.generation {
+                        self.find.in_flight = false;
+                        self.find.progress = None;
+                        self.find.matches.clear();
+                        self.find.error = Some(error.to_string());
                     }
                 }
                 Response::MutationFinished => self.worker.finish_mutation(),
@@ -1313,8 +1354,9 @@ impl SuniApp {
             || self.review.busy
             || self.overlay.busy
             || self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
             || self.annotate.measure.is_active_draft()
-            || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.blocks_document())
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.processing.busy
@@ -1333,8 +1375,9 @@ impl SuniApp {
             || self.review.busy
             || self.overlay.busy
             || self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
             || self.annotate.measure.is_active_draft()
-            || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.blocks_document())
             || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.ink_draft_active()
@@ -1656,7 +1699,8 @@ impl SuniApp {
             || self.review.open
             || self.overlay.open
             || self.annotate.measure.saved.dialog_open()
-            || (self.annotate.register.dialog_open() || self.annotate.quantities.open)
+            || self.annotate.measure.scales_ui.dialog_open()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.blocks_document())
             || self.review.busy
             || self.overlay.busy
             || self.processing.open
@@ -2476,8 +2520,9 @@ impl SuniApp {
         let has_icons = self.has_icons;
         let mut step: isize = 0;
         let mut close = false;
-        ui.horizontal(|ui| {
-            ui.label("🔍");
+        let mut cancel = false;
+        ui.horizontal_wrapped(|ui| {
+            ui.label(tr(lang, "find.title"));
             let field = ui.add(
                 egui::TextEdit::singleline(&mut self.find.query)
                     .hint_text(tr(lang, "find.placeholder"))
@@ -2514,6 +2559,12 @@ impl SuniApp {
             if self.find.in_flight {
                 ui.spinner();
                 ui.label(tr(lang, "find.searching"));
+                if let Some((done, total)) = self.find.progress {
+                    ui.label(format!("{done} / {total}"));
+                }
+                cancel = ui.button(tr(lang, "find.cancel")).clicked();
+            } else if let Some(error) = &self.find.error {
+                ui.colored_label(theme::palette(ui.visuals().dark_mode).error, error);
             } else if self.find.searched.is_some() {
                 if has_matches {
                     ui.label(tr_args(
@@ -2545,6 +2596,10 @@ impl SuniApp {
             self.close_find();
             return;
         }
+        if cancel {
+            self.cancel_search();
+            return;
+        }
         // Échap d'une boîte de dialogue ou de la palette (dessinées après) ne ferme pas la recherche.
         if !self.dialog_open() && !self.palette.open && ui.input(|i| i.key_pressed(Key::Escape)) {
             self.close_find();
@@ -2559,26 +2614,40 @@ impl SuniApp {
     }
 
     pub fn close_find(&mut self) {
+        self.cancel_search();
         self.find.open = false;
         self.find.matches.clear();
         self.find.searched = None;
         self.find.in_flight = false;
     }
 
+    fn cancel_search(&mut self) {
+        if self.find.in_flight {
+            self.worker.send(Request::CancelSearch {
+                generation: self.find.generation,
+            });
+        }
+        self.find.generation = self.find.generation.wrapping_add(1);
+        self.find.in_flight = false;
+        self.find.progress = None;
+        self.find.error = None;
+    }
+
     fn request_search_if_needed(&mut self) {
         let wanted = (self.find.query.clone(), self.find.match_case);
-        if self.find.in_flight
-            || self.find.searched.as_ref() == Some(&wanted)
-            || self.document.is_none()
-        {
+        if self.find.searched.as_ref() == Some(&wanted) || self.document.is_none() {
             return;
         }
         if wanted.0.trim().is_empty() {
+            self.cancel_search();
             self.find.matches.clear();
             self.find.searched = Some(wanted);
             return;
         }
-        self.find.generation += 1;
+        self.find.generation = self.find.generation.wrapping_add(1);
+        self.find.error = None;
+        self.find.progress = None;
+        self.find.matches.clear();
         self.find.in_flight = true;
         self.find.searched = Some(wanted.clone());
         self.worker.send(Request::Search {
@@ -3098,6 +3167,10 @@ impl SuniApp {
                     .exact_size(48.0)
                     .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
                     .show(ui, |ui| self.right_rail(&ctx, ui));
+                if !self.organize.active {
+                    self.annotation_register_dock(&ctx, ui);
+                    self.quantity_table_dock(&ctx, ui);
+                }
             }
             let context_panel = self.context_panel();
             let reserved_width = if self.navigation_panel().is_some() {
@@ -3258,6 +3331,7 @@ impl SuniApp {
         self.rich_annotation_dialog(&ctx);
         self.annotation_library_dialog(&ctx);
         self.saved_measurements_dialog(&ctx);
+        self.measurement_scale_dialogs(&ctx);
         self.annotation_register_dialog(&ctx);
         self.quantity_table_dialog(&ctx);
         self.count_marker_dialog(&ctx);
@@ -3437,6 +3511,89 @@ pub(crate) mod tests {
             }],
             form: sunipdf_core::FormKind::AcroForm,
         }
+    }
+
+    #[test]
+    fn find_supersedes_work_and_ignores_late_cancelled_responses() {
+        let (mut app, requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.find.open = true;
+        app.find.query = "first".into();
+        app.request_search_if_needed();
+        let first = app.find.generation;
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Search { generation, query, .. } if generation == first && query == "first")
+        );
+        app.find.query = "second".into();
+        app.request_search_if_needed();
+        let second = app.find.generation;
+        assert_ne!(first, second);
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Search { generation, query, .. } if generation == second && query == "second")
+        );
+        responses
+            .send(Response::SearchFailed {
+                generation: first,
+                error: EngineError::Other("obsolete".into()),
+            })
+            .unwrap();
+        responses
+            .send(Response::SearchProgress {
+                generation: second,
+                done: 2,
+                total: 20,
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(app.find.in_flight && app.find.error.is_none());
+        assert_eq!(app.find.progress, Some((2, 20)));
+        app.cancel_search();
+        assert!(
+            matches!(requests.recv().unwrap(), Request::CancelSearch { generation } if generation == second)
+        );
+        responses
+            .send(Response::SearchFailed {
+                generation: second,
+                error: EngineError::Other("late".into()),
+            })
+            .unwrap();
+        responses
+            .send(Response::SearchProgress {
+                generation: second,
+                done: 10,
+                total: 20,
+            })
+            .unwrap();
+        responses
+            .send(Response::SearchResults {
+                generation: second,
+                matches: vec![],
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(!app.find.in_flight && app.find.error.is_none() && app.find.progress.is_none());
+        app.request_search_if_needed();
+        assert!(
+            requests.try_recv().is_err(),
+            "cancel does not restart the same query"
+        );
+        app.find.query.clear();
+        app.request_search_if_needed();
+        assert!(
+            requests.try_recv().is_err(),
+            "empty query does not start work"
+        );
+        app.find.query = "new search".into();
+        app.request_search_if_needed();
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Search { query, .. } if query == "new search")
+        );
+        app.close_find();
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::CancelSearch { .. }
+        ));
+        assert!(!app.find.open && !app.find.in_flight);
     }
 
     #[test]

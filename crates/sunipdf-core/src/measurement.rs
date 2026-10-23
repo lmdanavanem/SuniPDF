@@ -12,6 +12,12 @@ use lopdf::{Dictionary, Object, Stream};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
+pub use crate::measurement_batch::{RecalibrationChange, RecalibrationPlan, RecalibrationRequest};
+pub use crate::measurement_distance::parse_measurement_distance;
+pub use crate::measurement_snap::{SnapKind, SnapPoint, VectorSnapGeometry};
+pub use crate::measurement_viewports::{
+    select_viewport, MeasurementViewport, MeasurementViewportResetTarget,
+};
 pub use crate::page_calibration::PageCalibration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,7 +160,7 @@ fn stale() -> EngineError {
     EngineError::Other("measurement changed; refresh it before editing".into())
 }
 
-fn bounded_text(
+pub(crate) fn bounded_text(
     pdf: &lopdf::Document,
     dict: &Dictionary,
     key: &[u8],
@@ -174,10 +180,27 @@ fn bounded_text(
 }
 
 /// Editing is deliberately narrower than reading: retain unknown records without rewriting them.
-fn check_editable(
+pub(crate) fn check_editable(
     pdf: &lopdf::Document,
     page: lopdf::ObjectId,
     record: &MeasurementRecord,
+) -> Result<(), EngineError> {
+    check_editable_inner(pdf, page, record, true)
+}
+
+pub(crate) fn check_editable_local(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    record: &MeasurementRecord,
+) -> Result<(), EngineError> {
+    check_editable_inner(pdf, page, record, false)
+}
+
+fn check_editable_inner(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    record: &MeasurementRecord,
+    check_identity: bool,
 ) -> Result<(), EngineError> {
     let (_, dict) = load_annot(pdf, page, record.index)?;
     if dict.get(b"Subtype").and_then(Object::as_name).ok() != Some(b"Stamp".as_slice())
@@ -254,6 +277,9 @@ fn check_editable(
         })
     {
         return Err(bad());
+    }
+    if !check_identity {
+        return Ok(());
     }
     // Shared annotation objects, shared Annots arrays and duplicate identities cannot be edited
     // without risking an unrelated page. Count occurrences, including direct dictionaries.
@@ -432,7 +458,7 @@ impl Measurement {
     }
 }
 
-fn annotation_components(
+pub(crate) fn annotation_components(
     geo: &PageGeometry,
     measurement: &Measurement,
     author: Option<&str>,

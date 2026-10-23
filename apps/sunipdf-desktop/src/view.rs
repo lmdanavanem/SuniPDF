@@ -115,6 +115,85 @@ pub struct ViewState {
     pub follow_thumb: bool,
     /// (décalage, hauteur) du panneau des miniatures à l'image précédente.
     pub thumb_view: Option<(f32, f32)>,
+    geometry: GeometryCache,
+}
+
+/// Document geometry is immutable between epochs. Scrolling changes neither page sizes nor
+/// layout; retain them by reference instead of scanning and allocating for every frame.
+#[derive(Default)]
+struct GeometryCache {
+    source: Option<(u64, usize, ViewRotation)>,
+    sizes: Arc<[PageSize]>,
+    display: Arc<[PageSize]>,
+    zoom: Option<(ZoomKey, (f32, bool))>,
+    layout: Option<(LayoutKey, Arc<Layout>)>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+struct ZoomKey {
+    zoom: Zoom,
+    mode: ViewMode,
+    current: usize,
+    avail: Vec2,
+    ppp: f32,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+struct LayoutKey {
+    first: usize,
+    count: usize,
+    scale: f32,
+    avail: Vec2,
+    mode: ViewMode,
+    rotation: ViewRotation,
+}
+
+impl GeometryCache {
+    fn pages(&mut self, epoch: u64, pages: &[PageSize], rotation: ViewRotation) -> Arc<[PageSize]> {
+        let key = (epoch, pages.len(), rotation);
+        if self.source != Some(key) {
+            self.sizes = Arc::from(pages);
+            self.display = pages.iter().map(|size| rotation.size(*size)).collect();
+            self.source = Some(key);
+            self.zoom = None;
+            self.layout = None;
+        }
+        self.sizes.clone()
+    }
+
+    fn zoom(&mut self, mut key: ZoomKey) -> (f32, bool) {
+        // Continuous layouts deliberately use the largest page, independent of navigation.
+        if key.mode != ViewMode::Single {
+            key.current = 0;
+        }
+        if let Some((previous, value)) = self.zoom {
+            if previous == key {
+                return value;
+            }
+        }
+        let wanted = effective_zoom(key.zoom, key.mode, &self.display, key.current, key.avail);
+        let value = clamp_zoom(wanted, &self.display, key.ppp, key.mode);
+        self.zoom = Some((key, value));
+        value
+    }
+
+    fn layout(&mut self, key: LayoutKey) -> Arc<Layout> {
+        if let Some((previous, layout)) = &self.layout {
+            if *previous == key {
+                return layout.clone();
+            }
+        }
+        let layout = Arc::new(Layout::for_rotation(
+            &self.sizes[key.first..key.first + key.count],
+            key.first,
+            key.scale,
+            key.avail,
+            key.mode,
+            key.rotation,
+        ));
+        self.layout = Some((key, layout.clone()));
+        layout
+    }
 }
 
 impl ViewState {
@@ -143,12 +222,14 @@ impl ViewState {
             hover_page: None,
             follow_thumb: false,
             thumb_view: None,
+            geometry: GeometryCache::default(),
         }
     }
 
     /// Le moteur a vidé sa liste (`invalidate`) : tout est à redemander.
     pub fn bump_epoch(&mut self) {
         self.epoch += 1;
+        self.geometry = GeometryCache::default();
         self.sent.clear();
         self.failed.clear();
     }
@@ -958,7 +1039,11 @@ impl SuniApp {
             self.status_msg = Some(tr(self.lang(), "reading.rotation_reset").to_string());
         }
         let Some(doc) = &self.document else { return };
-        let sizes = doc.info.page_sizes.clone();
+        let sizes = self.view.geometry.pages(
+            self.view.epoch,
+            &doc.info.page_sizes,
+            self.view.reading.rotation,
+        );
         let count = sizes.len();
         if count == 0 {
             return;
@@ -967,7 +1052,6 @@ impl SuniApp {
         let name = file_name(&doc.info.path);
         let mode = self.view.mode;
         let rotation = self.view.reading.rotation;
-        let display_sizes: Vec<_> = sizes.iter().map(|s| rotation.size(*s)).collect();
         let window = match mode {
             ViewMode::Continuous | ViewMode::TwoPage | ViewMode::Book => 0..count,
             ViewMode::Single => current..current + 1,
@@ -984,8 +1068,13 @@ impl SuniApp {
 
         // 1. Zoom (molette ancrée sur le pointeur), plafonné.
         self.apply_wheel_zoom(ctx);
-        let wanted = effective_zoom(self.zoom, mode, &display_sizes, current, avail);
-        let (z, limited) = clamp_zoom(wanted, &display_sizes, ppp, mode);
+        let (z, limited) = self.view.geometry.zoom(ZoomKey {
+            zoom: self.zoom,
+            mode,
+            current,
+            avail,
+            ppp,
+        });
         if limited && matches!(self.zoom, Zoom::Fixed(_)) {
             self.zoom = Zoom::Fixed(z);
             self.status_msg = Some(tr(self.lang(), "status.zoom_limit").to_string());
@@ -1002,14 +1091,14 @@ impl SuniApp {
         let scale = scale_milli as f32 / 1000.0;
 
         // 2. Mise en page, 3. décalage imposé (requête, ancre de zoom) seulement cette image.
-        let layout = Layout::for_rotation(
-            &sizes[window.clone()],
-            window.start,
-            k,
+        let layout = self.view.geometry.layout(LayoutKey {
+            first: window.start,
+            count: window.len(),
+            scale: k,
             avail,
             mode,
             rotation,
-        );
+        });
         let forced = self.resolve_scroll(&layout, &sizes[window.clone()], avail, k);
         let pinned = self.pinned_pages();
 
@@ -3239,5 +3328,140 @@ mod tests {
                 start.elapsed() / 100
             );
         }
+    }
+
+    #[test]
+    fn geometry_cache_reuses_scroll_frames_and_invalidates_each_layout_input() {
+        let pages = vec![letter(); 5000];
+        let mut cache = GeometryCache::default();
+        let original = cache.pages(3, &pages, ViewRotation::Upright);
+        let key = LayoutKey {
+            first: 0,
+            count: pages.len(),
+            scale: 1.0,
+            avail: vec2(1000.0, 800.0),
+            mode: ViewMode::Continuous,
+            rotation: ViewRotation::Upright,
+        };
+        let layout = cache.layout(key);
+        for scroll in 0..1000 {
+            assert!(Arc::ptr_eq(
+                &original,
+                &cache.pages(3, &pages, ViewRotation::Upright)
+            ));
+            let current = cache.layout(key);
+            assert!(Arc::ptr_eq(&layout, &current));
+            let top = scroll as f32 * 300.0;
+            assert_eq!(
+                current.visible(top, top + 800.0),
+                layout.visible(top, top + 800.0)
+            );
+        }
+        for changed in [
+            LayoutKey { scale: 2.0, ..key },
+            LayoutKey {
+                avail: vec2(700.0, 600.0),
+                ..key
+            },
+            LayoutKey {
+                mode: ViewMode::Book,
+                ..key
+            },
+            LayoutKey {
+                first: 100,
+                count: 1,
+                mode: ViewMode::Single,
+                ..key
+            },
+        ] {
+            let actual = cache.layout(changed);
+            assert!(!Arc::ptr_eq(&layout, &actual));
+            let expected = Layout::for_rotation(
+                &pages[changed.first..changed.first + changed.count],
+                changed.first,
+                changed.scale,
+                changed.avail,
+                changed.mode,
+                changed.rotation,
+            );
+            assert_eq!(actual.content, expected.content);
+            assert_eq!(
+                actual.page_rect(changed.first),
+                expected.page_rect(changed.first)
+            );
+        }
+        let replaced = cache.pages(4, &pages, ViewRotation::Upright);
+        assert!(
+            !Arc::ptr_eq(&original, &replaced),
+            "same length does not identify the document"
+        );
+        assert!(cache.layout.is_none());
+    }
+
+    #[test]
+    fn cached_fit_and_clamp_match_uncached_results_for_modes_rotations_and_dpi() {
+        let pages = [letter(), landscape(), letter()];
+        let mut cache = GeometryCache::default();
+        for rotation in [
+            ViewRotation::Upright,
+            ViewRotation::Clockwise,
+            ViewRotation::UpsideDown,
+            ViewRotation::Counterclockwise,
+        ] {
+            cache.pages(1, &pages, rotation);
+            for mode in [
+                ViewMode::Single,
+                ViewMode::Continuous,
+                ViewMode::TwoPage,
+                ViewMode::Book,
+            ] {
+                for zoom in [Zoom::FitPage, Zoom::FitWidth, Zoom::Fixed(32.0)] {
+                    for current in 0..pages.len() {
+                        let key = ZoomKey {
+                            zoom,
+                            mode,
+                            current,
+                            avail: vec2(900.0, 700.0),
+                            ppp: 1.5,
+                        };
+                        let wanted = effective_zoom(zoom, mode, &cache.display, current, key.avail);
+                        assert_eq!(
+                            cache.zoom(key),
+                            clamp_zoom(wanted, &cache.display, key.ppp, mode)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// CI measurement, without machine-dependent timing assertions.
+    #[test]
+    #[ignore]
+    fn performance_cached_layout_5000_pages() {
+        let pages = vec![letter(); 5000];
+        let mut cache = GeometryCache::default();
+        cache.pages(1, &pages, ViewRotation::Upright);
+        let key = LayoutKey {
+            first: 0,
+            count: pages.len(),
+            scale: 1.0,
+            avail: vec2(1000.0, 800.0),
+            mode: ViewMode::Continuous,
+            rotation: ViewRotation::Upright,
+        };
+        cache.layout(key);
+        let mut times = Vec::new();
+        for i in 0..1000 {
+            let start = std::time::Instant::now();
+            let layout = cache.layout(key);
+            std::hint::black_box(layout.visible(i as f32 * 300.0, i as f32 * 300.0 + 800.0));
+            times.push(start.elapsed());
+        }
+        times.sort();
+        println!(
+            "cached_layout pages=5000 samples=1000 p95_us={}",
+            times[949].as_micros()
+        );
     }
 }
