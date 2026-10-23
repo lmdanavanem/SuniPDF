@@ -1,6 +1,5 @@
-//! Polices : Segoe UI (texte) et Segoe Fluent Icons / MDL2 (icônes), chargées depuis
-//! `C:\Windows\Fonts` à l'exécution. Absentes → polices egui par défaut, icônes remplacées
-//! par leur libellé textuel. Aucune police n'est embarquée dans le binaire.
+//! Windows system typography with a bundled, MIT-licensed portable icon fallback.
+//! The portable font maps the same application codepoints to Fluent System Icons.
 
 use egui::{FontData, FontDefinitions, FontFamily, RichText};
 use std::sync::Arc;
@@ -102,7 +101,7 @@ pub mod glyph {
     pub const SELECT_ANNOT: &str = "\u{E7C9}";
 }
 
-/// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.
+/// Install system typography when available and always provide the application's icon family.
 pub fn install(ctx: &egui::Context) -> bool {
     let mut fonts = FontDefinitions::default();
     let windir = std::env::var_os("WINDIR").map(std::path::PathBuf::from);
@@ -135,17 +134,17 @@ pub fn install(ctx: &egui::Context) -> bool {
         .families
         .insert(FontFamily::Name(SEMIBOLD.into()), semibold);
     let icons = load("SegoeIcons.ttf").or_else(|| load("segmdl2.ttf"));
-    let has_icons = icons.is_some();
-    if let Some(bytes) = icons {
-        fonts
-            .font_data
-            .insert("SegoeIcons".into(), Arc::new(FontData::from_owned(bytes)));
-        fonts
-            .families
-            .insert(FontFamily::Name(ICONS.into()), vec!["SegoeIcons".into()]);
-    }
+    let icon_data = icons.map(FontData::from_owned).unwrap_or_else(|| {
+        FontData::from_static(include_bytes!("../../../assets/fonts/SuniPDF-Icons.ttf"))
+    });
+    fonts
+        .font_data
+        .insert("SuniPDFIcons".into(), Arc::new(icon_data));
+    fonts
+        .families
+        .insert(FontFamily::Name(ICONS.into()), vec!["SuniPDFIcons".into()]);
     ctx.set_fonts(fonts);
-    has_icons
+    true
 }
 
 /// Icône de taille `size`, ou `fallback` (texte) si la police d'icônes manque.

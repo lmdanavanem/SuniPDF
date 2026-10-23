@@ -8,3 +8,6 @@ assets/licenses/microsoft-build-tools-*.docx binary
 crates/sunipdf-core/tests/fixtures/fonts/*.ttf binary
 crates/sunipdf-core/tests/fixtures/fonts/*.otf binary
 crates/sunipdf-core/tests/fixtures/fonts/*.txt -text whitespace=-trailing-space,-blank-at-eof
+assets/fonts/*.ttf binary
+assets/fonts/*.json -text
+assets/fonts/*.txt -text whitespace=-trailing-space,-blank-at-eof

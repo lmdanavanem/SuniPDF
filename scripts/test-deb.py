@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import pwd
 import re
 import shutil
 import subprocess
@@ -27,6 +26,23 @@ def command(arguments, timeout=120, **kwargs):
     if result.returncode:
         raise RuntimeError(f"Command failed ({result.returncode}): {arguments}\n{result.stdout[-4000:]}\n{result.stderr[-4000:]}")
     return result.stdout.strip()
+
+
+def blue_fixture_mask(pixels):
+    """Keep only the fixture's saturated blue ink, as black on white for OCR."""
+    mask = bytes(0 if b > 180 and r < 70 and g < 70 else 255 for r, g, b in pixels)
+    return mask, mask.count(0)
+
+
+def fixture_text_is_visible(blue_pixels, displayed):
+    return blue_pixels > 2000 and re.search(r"\bSuniPDF\s+page\s+[1Il]\b", displayed, re.I) is not None
+
+
+def distribution_identity():
+    os_release = Path("/etc/os-release").read_text()
+    distro = dict(line.split("=", 1) for line in os_release.splitlines() if "=" in line)
+    return {"distro": {"id": distro["ID"].strip('"'), "version_id": distro["VERSION_ID"].strip('"')},
+            "osRelease": os_release}
 
 
 def verify_installed_inventory():
@@ -104,6 +120,7 @@ def gui(evidence, source):
             deadline = time.monotonic() + 75
             success = False
             screenshot = evidence / "native-reader.png"
+            masked_screenshot = evidence / "native-reader-blue-mask.png"
             while time.monotonic() < deadline:
                 if app.poll() is not None:
                     raise AssertionError("Installed desktop exited before rendering a PDF")
@@ -113,11 +130,12 @@ def gui(evidence, source):
                     continue
                 command(["import", "-window", "root", screenshot], timeout=15)
                 with Image.open(screenshot) as image:
-                    blue = sum(1 for r, g, b in image.convert("RGB").getdata() if b > 180 and r < 70 and g < 70)
-                displayed = command(["tesseract", screenshot, "stdout", "-l", "eng", "--psm", 11], timeout=30)
+                    pixels, blue = blue_fixture_mask(image.convert("RGB").getdata())
+                    Image.frombytes("L", image.size, pixels).save(masked_screenshot)
+                displayed = command(["tesseract", masked_screenshot, "stdout", "-l", "eng", "--psm", 11], timeout=30)
                 (evidence / "native-reader-text.txt").write_text(displayed + "\n")
-                if blue > 2000 and re.search(r"SuniPDF\s+page\s+[1Il]", displayed, re.I):
-                    (evidence / "native-reader-proof.json").write_text(json.dumps({"privatePdfiumLoaded": True, "blueFixturePixels": blue, "visiblePdfText": "SuniPDF page 1", "renderer": "glow", "screenshotSha256": sha(screenshot)}, indent=2) + "\n")
+                if fixture_text_is_visible(blue, displayed):
+                    (evidence / "native-reader-proof.json").write_text(json.dumps({"privatePdfiumLoaded": True, "blueFixturePixels": blue, "visiblePdfText": "SuniPDF page 1", "renderer": "glow", "screenshotSha256": sha(screenshot), "ocrMaskSha256": sha(masked_screenshot), "ocrMask": "saturated-blue-pixels-only"}, indent=2) + "\n")
                     success = True
                     break
             assert success, "Native screenshot did not contain the fixture's PDF text and blue rectangle"
@@ -136,13 +154,17 @@ def gui(evidence, source):
             manager.wait(timeout=10)
 
 
-def lifecycle(package, evidence):
+def lifecycle(package, evidence, identity):
     if sys.platform != "linux" or os.geteuid() != 0:
         raise ValueError("Lifecycle validation runs as root in a disposable Ubuntu container")
+    import pwd
+    identity.update(distribution_identity())
     package = package.resolve(strict=True)
+    identity["deb"] = {"name": package.name, "sha256": sha(package)}
     expected, filename = package.with_suffix(".deb.sha256").read_text().strip().split("  ", 1)
     assert filename == package.name and sha(package) == expected
     version = command(["dpkg-deb", "--field", package, "Version"])
+    identity["version"] = version
     assert command(["dpkg-deb", "--field", package, "Package"]) == "sunipdf"
     assert command(["dpkg-deb", "--field", package, "Architecture"]) == "amd64"
     evidence.mkdir(parents=True, exist_ok=True)
@@ -179,17 +201,14 @@ def lifecycle(package, evidence):
     assert verify_installed_inventory() == payload_count
     assert all(path.is_file() and sha(path) == value for path, value in protected.items())
     assert "SuniPDF page 1" in command(["runuser", "-u", ACCOUNT, "--", *environment, CLI, "text", runtime_proof["source"], "--page", 1])
-    os_release = Path("/etc/os-release").read_text()
-    distro = dict(line.split("=", 1) for line in os_release.splitlines() if "=" in line)
     screenshots = [{"file": path.name, "sha256": sha(path)} for path in sorted(evidence.glob("*.png"))]
-    report = {"schema": 1, "status": "passed", "exitCode": 0, "version": version, "sourceSha": source_sha,
-              "distro": {"id": distro["ID"].strip('"'), "version_id": distro["VERSION_ID"].strip('"')},
-              "deb": {"name": package.name, "sha256": sha(package)}, "screenshots": screenshots,
+    report = {"schema": 1, "status": "passed", "exitCode": 0, **identity, "sourceSha": source_sha,
+              "screenshots": screenshots,
               "checks": {"install": True, "cli": True, "pdf_render_save_reopen": True,
                          "ocr_en": True, "ocr_fr": True, "native_gui_pdf_visible": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",
-              "installedPayloadFiles": payload_count, "osRelease": os_release, "elfDependencies": elf,
+              "installedPayloadFiles": payload_count, "elfDependencies": elf,
               "normalUserExecution": True, "runtimeCases": runtime_proof["cases"]}
     (evidence / "test-deb.json").write_text(json.dumps(report, indent=2) + "\n")
 
@@ -201,6 +220,7 @@ if __name__ == "__main__":
     parser.add_argument("--runtime", action="store_true")
     parser.add_argument("--version")
     args = parser.parse_args()
+    identity = {"version": args.version, "sourceSha": os.environ.get("GITHUB_SHA")}
     try:
         if args.runtime:
             if not args.version:
@@ -209,13 +229,12 @@ if __name__ == "__main__":
         else:
             if not args.deb:
                 parser.error("--deb is required")
-            lifecycle(args.deb, args.evidence.resolve())
+            lifecycle(args.deb, args.evidence.resolve(), identity)
     except Exception as error:
         args.evidence.mkdir(parents=True, exist_ok=True)
         (args.evidence / "failure.txt").write_text(str(error) + "\n")
         if not args.runtime:
-            failure = {"schema": 1, "status": "failed", "exitCode": 1, "version": args.version,
-                       "sourceSha": os.environ.get("GITHUB_SHA"), "error": str(error),
+            failure = {"schema": 1, "status": "failed", "exitCode": 1, **identity, "error": str(error),
                        "screenshots": [{"file": path.name, "sha256": sha(path)} for path in sorted(args.evidence.glob("*.png"))]}
             (args.evidence / "test-deb.json").write_text(json.dumps(failure, indent=2) + "\n")
         raise

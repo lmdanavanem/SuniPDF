@@ -5,6 +5,7 @@
 This build adds an Ubuntu amd64 `.deb` alongside the Windows packages. Published files and exact-source qualification are tracked on the [0.51.0 release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0).
 
 - Linux desktop backends, application-menu entry, PDF file association and installed CLI.
+- Bundled open-source interface icons keep toolbar controls readable without Windows fonts.
 - Private PDFium library with pinned checksums; local English/French OCR through Ubuntu packages.
 - Linux font discovery, case-sensitive recent paths, XDG preferences and recovery protected against concurrent instances.
 - Linux update notifications point to the Ubuntu download. Installation uses the system package manager.

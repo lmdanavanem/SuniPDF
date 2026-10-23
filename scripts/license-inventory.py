@@ -207,6 +207,7 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
     notices = stage / LINUX_DOC / 'licenses'
     notices.mkdir(parents=True, exist_ok=True)
     components = []
+    icon_font = portable_icon_inventory(root, stage, texts, LINUX_DOC + '/licenses')
 
     def include(source, filename, component):
         destination = notices / filename
@@ -262,7 +263,7 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
         'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()),
         'coverage': 'All locked source license terms, Linux normal/build membership, bundled PDFium and fonts; system dependencies are installed by apt, not bundled',
         'rustPackages': packages, 'nativeAndPackagingComponents': components,
-        'embeddedFontSources': font_inventory(metadata),
+        'embeddedFontSources': font_inventory(metadata) + [icon_font],
         'systemDependencies': [{'name': name, 'bundled': False, 'noticePath': '/usr/share/doc/' + name + '/copyright'} for name in ('tesseract-ocr', 'tesseract-ocr-eng', 'tesseract-ocr-fra')],
         'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())],
         'payloadFiles': linux_payload(stage),
@@ -468,11 +469,29 @@ def font_inventory(metadata):
     return fonts
 
 
+def portable_icon_inventory(root, stage, texts, relative_notices='licenses'):
+    subprocess.check_output([sys.executable, str(root / 'scripts/prepare-icon-font.py')], text=True)
+    directory = root / 'assets/fonts'
+    entry = read_json(directory / 'icon-provenance.json')
+    notices = stage / relative_notices
+    notices.mkdir(parents=True, exist_ok=True)
+    for name in ('FluentSystemIcons-MIT.txt', 'icon-provenance.json', 'icon-map.json'):
+        (notices / name).write_bytes((directory / name).read_bytes())
+    license_path = notices / entry['licenseFile']
+    content = legal_text(license_path)
+    text_id = digest(content.encode('utf-8'))
+    source = license_path.relative_to(stage).as_posix()
+    texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(source)
+    return dict(entry, scope='Portable desktop toolbar icon font embedded in every desktop binary',
+                texts=[{'textSha256': text_id, 'source': source}],
+                provenance=(notices / 'icon-provenance.json').relative_to(stage).as_posix())
+
+
 def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version, cargo_version):
     packages, texts = rust_inventory(root, metadata, target_metadata)
     components = bundled_inventory(root, stage, arch, texts)
     components.extend(toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_version))
-    fonts = font_inventory(metadata)
+    fonts = font_inventory(metadata) + [portable_icon_inventory(root, stage, texts)]
     fixture_root = root / 'crates/sunipdf-core/tests/fixtures/fonts'
     test_fonts = []
     for filename, evidence in sorted(read_json(fixture_root / 'source-provenance.json').items()):
@@ -554,6 +573,17 @@ def record_wix(stage, provenance):
 
 
 class InventoryTests(unittest.TestCase):
+    def test_portable_icon_font_covers_all_application_icons_and_ships_full_terms(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            texts = {}
+            entry = portable_icon_inventory(root, stage, texts)
+            self.assertEqual(entry['license'], 'MIT')
+            self.assertEqual(digest((stage / 'licenses/FluentSystemIcons-MIT.txt').read_bytes()), entry['licenseSha256'])
+            self.assertEqual(len(read_json(stage / 'licenses/icon-map.json')['mapping']), 80)
+            self.assertIn(entry['texts'][0]['textSha256'], texts)
+
     def test_linux_inventory_detects_changed_or_added_installed_payload(self):
         with tempfile.TemporaryDirectory() as directory:
             stage = Path(directory)

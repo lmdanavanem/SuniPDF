@@ -20,9 +20,33 @@ def load(filename):
 
 fetch = load("fetch-pdfium-linux.py")
 package = load("package-deb.py")
+installed = load("test-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_native_fixture_mask_excludes_dark_ui_text_and_non_blue_pixels(self):
+        pixels = [(0, 0, 255), (30, 40, 220), (0, 0, 0), (40, 50, 60),
+                  (255, 255, 255), (255, 0, 0), (70, 0, 255), (0, 70, 255), (0, 0, 180)]
+        mask, blue = installed.blue_fixture_mask(pixels)
+        self.assertEqual(mask, bytes([0, 0] + [255] * 7))
+        self.assertEqual(blue, 2)
+        self.assertEqual(installed.blue_fixture_mask([(0, 0, 0)] * 3000), (bytes([255]) * 3000, 0))
+
+    def test_native_fixture_requires_both_blue_area_and_correct_pdf_text(self):
+        self.assertTrue(installed.fixture_text_is_visible(2001, "SuniPDF page 1"))
+        for count, text in [(0, "SuniPDF page 1"), (2000, "SuniPDF page 1"),
+                            (3000, "SuniPDF"), (3000, "SuniPDF page 2"),
+                            (3000, "SuniPDF page 10"), (3000, "")]:
+            with self.subTest(count=count, text=text):
+                self.assertFalse(installed.fixture_text_is_visible(count, text))
+
+    def test_distribution_identity_preserves_diagnostics(self):
+        content = 'NAME="Ubuntu"\nID=ubuntu\nVERSION_ID="24.04"\n'
+        with patch.object(Path, "read_text", return_value=content):
+            identity = installed.distribution_identity()
+        self.assertEqual(identity["distro"], {"id": "ubuntu", "version_id": "24.04"})
+        self.assertEqual(identity["osRelease"], content)
+
     def test_documentation_preserves_license_and_limits_pdfium_exceptions(self):
         with tempfile.TemporaryDirectory() as directory:
             stage = Path(directory)

@@ -137,6 +137,16 @@ jobs:
               python3 /workspace/scripts/test-deb.py --deb /workspace/dist/SuniPDF-*-linux-amd64.deb --evidence /evidence
               dpkg-query -W > /evidence/installed-system-packages.txt
             '
+      - name: Restore runner ownership of validation evidence
+        if: always()
+        run: |
+          evidence="$RUNNER_TEMP/linux-evidence"
+          if [ -e "$evidence" ] || [ -L "$evidence" ]; then
+            test -d "$evidence"
+            test ! -L "$evidence"
+            test "$(realpath -- "$evidence")" = "$(realpath -- "$RUNNER_TEMP")/linux-evidence"
+            sudo chown --recursive -P --no-dereference --preserve-root -- "$(id -u):$(id -g)" "$evidence"
+          fi
       - name: Upload installation and native UI evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

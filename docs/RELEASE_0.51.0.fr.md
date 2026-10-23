@@ -5,6 +5,7 @@
 Cette version ajoute un `.deb` Ubuntu amd64 aux paquets Windows. Les fichiers publiés et la validation de leur source exacte sont suivis sur la [page 0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0).
 
 - Interface Linux, entrée dans le menu des applications, association PDF et CLI installé.
+- Icônes d'interface libres intégrées pour garder des commandes lisibles sans les polices Windows.
 - Bibliothèque PDFium privée avec empreintes épinglées ; OCR local français/anglais via les paquets Ubuntu.
 - Recherche de polices Linux, chemins récents sensibles à la casse, préférences XDG et récupération protégée entre instances.
 - Notifications de mise à jour vers le téléchargement Ubuntu. L'installation utilise le gestionnaire de paquets du système.
