@@ -122,6 +122,18 @@ jobs:
                 fi
               done
               apt-get install -y --no-install-recommends python3 python3-pil xvfb xauth dbus-x11 openbox imagemagick xdotool wmctrl qpdf desktop-file-utils fonts-dejavu-core ca-certificates
+              cat /etc/dpkg/dpkg.cfg.d/* > /evidence/dpkg-image-policy.txt
+              # Minimal container images exclude documentation that desktop installations retain.
+              printf "%s\n" \
+                "path-include=/usr/share/doc/sunipdf" \
+                "path-include=/usr/share/doc/sunipdf/*" \
+                "path-include=/usr/share/man/man1" \
+                "path-include=/usr/share/man/man1/sunipdf.1.gz" \
+                "path-include=/usr/share/man/man1/sunipdf-cli.1.gz" \
+                "path-include=/usr/share/lintian" \
+                "path-include=/usr/share/lintian/overrides" \
+                "path-include=/usr/share/lintian/overrides/sunipdf" \
+                > /etc/dpkg/dpkg.cfg.d/zz-sunipdf-validation
               python3 /workspace/scripts/test-deb.py --deb /workspace/dist/SuniPDF-*-linux-amd64.deb --evidence /evidence
               dpkg-query -W > /evidence/installed-system-packages.txt
             '
