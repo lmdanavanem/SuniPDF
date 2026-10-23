@@ -6,7 +6,10 @@ use crate::{
     dialog::{self, Spec},
     worker::{EditOp, Request},
 };
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 use sunipdf_core::{
     annotation_register::{
         self as core, AnnotationRegister, RegisterFields, RegisterFilter, RegisterSort,
@@ -33,6 +36,7 @@ pub struct RegisterState {
     error: Option<String>,
     edit: Option<FieldDraft>,
     selection: SelectionCache,
+    sort_columns: BTreeSet<String>,
     progress: Option<(usize, usize)>,
 }
 
@@ -99,6 +103,7 @@ impl Default for RegisterState {
             error: None,
             edit: None,
             selection: SelectionCache::default(),
+            sort_columns: BTreeSet::new(),
             progress: None,
         }
     }
@@ -111,6 +116,7 @@ impl RegisterState {
     pub fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
         self.report = None;
+        self.sort_columns.clear();
         self.pending = None;
         self.progress = None;
         self.selection = SelectionCache::default();
@@ -175,6 +181,11 @@ impl SuniApp {
         state.progress = None;
         match result {
             Ok(report) => {
+                state.sort_columns = report
+                    .rows
+                    .iter()
+                    .flat_map(|row| row.fields.custom.keys().cloned())
+                    .collect();
                 state.report = Some(Arc::new(report));
                 state.error = None;
             }
@@ -428,6 +439,14 @@ impl SuniApp {
                                         }
                                     });
                                 ui.checkbox(&mut state.descending, tr(lang, "register.descending"));
+                                if crate::quantity_table::custom_sort(
+                                    ui,
+                                    lang,
+                                    &mut state.filter.custom_sort,
+                                    &state.sort_columns,
+                                ) {
+                                    state.offset = 0;
+                                }
                             });
                         });
 
@@ -480,13 +499,19 @@ impl SuniApp {
                                     "review_status",
                                     "business_status",
                                     "discipline",
-                                    "actions",
                                 ] {
                                     ui.strong(
                                         egui::RichText::new(tr(lang, &format!("register.{key}")))
                                             .color(text_color),
                                     );
                                 }
+                                if let Some(name) = &state.filter.custom_sort {
+                                    ui.strong(egui::RichText::new(name).color(text_color));
+                                }
+                                ui.strong(
+                                    egui::RichText::new(tr(lang, "register.actions"))
+                                        .color(text_color),
+                                );
                                 ui.end_row();
                                 for index in rows.iter().skip(state.offset).take(50) {
                                     let row = &report.rows[*index];
@@ -520,6 +545,19 @@ impl SuniApp {
                                             egui::Label::new(display).truncate(),
                                         )
                                         .on_hover_text(text);
+                                    }
+                                    if let Some(name) = &state.filter.custom_sort {
+                                        let value = row
+                                            .fields
+                                            .custom
+                                            .get(name)
+                                            .map(String::as_str)
+                                            .unwrap_or(tr(lang, "quantity.missing"));
+                                        ui.add_sized(
+                                            [160.0, 20.0],
+                                            egui::Label::new(value).truncate(),
+                                        )
+                                        .on_hover_text(value);
                                     }
                                     ui.horizontal(|ui| {
                                         if ui
@@ -767,11 +805,55 @@ mod tests {
         assert!(!Arc::ptr_eq(&original, &selected));
         let resorted = cache.get(&report, &filter, RegisterSort::Page, false);
         assert!(resorted.rows.windows(2).all(|pair| pair[0] < pair[1]));
+        filter.custom_sort = Some("Room".into());
+        let custom_sorted = cache.get(&report, &filter, RegisterSort::Page, false);
+        assert!(!Arc::ptr_eq(&resorted, &custom_sorted));
+        assert!(Arc::ptr_eq(
+            &custom_sorted,
+            &cache.get(&report, &filter, RegisterSort::Page, false)
+        ));
         let mut changed = (*report).clone();
         changed.rows.clear();
         let changed = Arc::new(changed);
         let refreshed = cache.get(&changed, &filter, RegisterSort::Page, false);
         assert!(refreshed.rows.is_empty() && refreshed.totals.is_empty());
+    }
+
+    #[test]
+    fn custom_sort_columns_follow_only_accepted_report_revisions() {
+        let (mut app, _, _) = crate::app::tests::test_app();
+        let epoch = app.view.epoch;
+        let mut report = (*large_register()).clone();
+        report.rows.truncate(2);
+        report.rows[0]
+            .fields
+            .custom
+            .insert("Room".into(), "A".into());
+        app.annotate.register.pending = Some((epoch, 7));
+        app.on_annotation_register(epoch, 6, Ok(report.clone()));
+        assert!(app.annotate.register.sort_columns.is_empty());
+        app.on_annotation_register(epoch, 7, Ok(report.clone()));
+        assert_eq!(
+            app.annotate.register.sort_columns,
+            BTreeSet::from(["Room".into()])
+        );
+        app.annotate.register.filter.query = "no matching annotation".into();
+        assert_eq!(app.annotate.register.sort_columns.len(), 1);
+        app.annotate.register.invalidate();
+        assert!(app.annotate.register.sort_columns.is_empty());
+        app.on_annotation_register(epoch, 7, Ok(report.clone()));
+        assert!(app.annotate.register.sort_columns.is_empty());
+        report.rows[0].fields.custom.clear();
+        report.rows[1]
+            .fields
+            .custom
+            .insert("Cost".into(), "2".into());
+        app.annotate.register.pending = Some((epoch, 8));
+        app.on_annotation_register(epoch, 8, Ok(report));
+        assert_eq!(
+            app.annotate.register.sort_columns,
+            BTreeSet::from(["Cost".into()])
+        );
     }
 
     #[test]

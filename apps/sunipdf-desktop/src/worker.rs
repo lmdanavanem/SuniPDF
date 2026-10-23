@@ -703,6 +703,20 @@ pub enum Request {
         page: usize,
         detailed: bool,
     },
+    LibraryCaptureCandidates {
+        page: usize,
+        epoch: u64,
+        generation: u64,
+    },
+    CaptureLibraryEntry {
+        page: usize,
+        selections: Vec<sunipdf_core::annotation_library::LibraryCaptureSelection>,
+        id: String,
+        name: String,
+        provenance: sunipdf_core::annotation_library::LibraryProvenance,
+        epoch: u64,
+        generation: u64,
+    },
     QuantityTable {
         epoch: u64,
         generation: u64,
@@ -947,6 +961,16 @@ pub enum Response {
         page: usize,
         list: Vec<AnnotationInfo>,
         details: Option<Vec<AnnotDetail>>,
+    },
+    LibraryCaptureCandidates {
+        epoch: u64,
+        generation: u64,
+        result: Result<Vec<sunipdf_core::annotation_library::LibraryCaptureCandidate>, EngineError>,
+    },
+    LibraryEntryCaptured {
+        epoch: u64,
+        generation: u64,
+        result: Result<sunipdf_core::annotation_library::LibraryEntry, EngineError>,
     },
     QuantityTable {
         epoch: u64,
@@ -3034,6 +3058,38 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         data
                     }),
             },
+            Request::LibraryCaptureCandidates {
+                page,
+                epoch,
+                generation,
+            } => Response::LibraryCaptureCandidates {
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| doc.library_capture_candidates(page)),
+            },
+            Request::CaptureLibraryEntry {
+                page,
+                selections,
+                id,
+                name,
+                provenance,
+                epoch,
+                generation,
+            } => Response::LibraryEntryCaptured {
+                epoch,
+                generation,
+                result: state
+                    .document
+                    .as_ref()
+                    .ok_or_else(|| EngineError::Other("no document".into()))
+                    .and_then(|doc| {
+                        doc.capture_library_entry(page, &selections, id, name, provenance)
+                    }),
+            },
             Request::QuantityTable { epoch, generation } => Response::QuantityTable {
                 epoch,
                 generation,
@@ -3753,6 +3809,55 @@ mod tests {
             .iter()
             .all(|detail| detail.name.is_some() && detail.parent.is_none()));
         assert_ne!(added[0].name, added[1].name);
+        worker.send(Request::LibraryCaptureCandidates {
+            page: 0,
+            epoch: 92,
+            generation: 20,
+        });
+        let candidates = match next_response(worker) {
+            Response::LibraryCaptureCandidates {
+                epoch: 92,
+                generation: 20,
+                result: Ok(candidates),
+            } => candidates,
+            _ => panic!("library capture inventory"),
+        };
+        let square = candidates
+            .iter()
+            .find(|row| row.subtype == "Square")
+            .unwrap();
+        let selections = vec![sunipdf_core::annotation_library::LibraryCaptureSelection {
+            index: square.index,
+            fingerprint: square.fingerprint.clone().unwrap(),
+        }];
+        let capture = || {
+            worker.send(Request::CaptureLibraryEntry {
+                page: 0,
+                selections: selections.clone(),
+                id: "captured-square".into(),
+                name: "Captured square".into(),
+                provenance: sunipdf_core::annotation_library::LibraryProvenance {
+                    source: Some("Test drawing".into()),
+                    ..Default::default()
+                },
+                epoch: 92,
+                generation: 21,
+            });
+            next_response(worker)
+        };
+        assert!(matches!(
+            capture(),
+            Response::LibraryEntryCaptured {
+                epoch: 92,
+                generation: 21,
+                result: Ok(ref entry),
+            } if entry.primitives.len() == 1
+        ));
+        assert_eq!(
+            details(),
+            after,
+            "capture is read-only and preserves history"
+        );
         worker.send(Request::Undo);
         assert!(matches!(
             next_response(worker),
@@ -3763,6 +3868,10 @@ mod tests {
             })
         ));
         assert_eq!(details(), before, "one Undo removes the complete group");
+        assert!(matches!(
+            capture(),
+            Response::LibraryEntryCaptured { result: Err(_), .. }
+        ));
         worker.send(Request::Redo);
         assert!(matches!(
             next_response(worker),

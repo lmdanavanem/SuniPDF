@@ -1,7 +1,8 @@
 # Quantity tables
-[0.46 scope and qualification](RELEASE_0.46.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
 
-Available in [0.46.0](RELEASE_0.46.0.md). [Evidence](qa/RELEASE_0.46.0.json).
+[0.61 candidate scope](RELEASE_0.61.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
+
+Pricing and typed fields shipped in [0.46.0](RELEASE_0.46.0.md). [That release's evidence](qa/RELEASE_0.46.0.json) does not qualify the new custom sorting and report formulas.
 
 ## Open and filter the table
 
@@ -10,6 +11,8 @@ Open a PDF, then choose **Quantity table** from **All tools**, from the measurem
 The rows show physical page, annotation index, type, contents, quantity, unit, unit price, line cost and available custom columns. Pages start at 1; annotation indices start at 0. An explicit count marker contributes `1 each`. A saved length, polyline, perimeter or area contributes its measured value and unit. An angle is shown in `deg` but is not added or priced. Ordinary annotations have no inferred quantity.
 
 Filter by search text, annotation type, discipline, business status, count group, author or physical page. Page `0` means all pages in the desktop filter. **Subtotal groups** offers **No grouping**, **Count group**, **Discipline** and **Business status**. Subtotals cover all matching rows, including those beyond the current 50-row page. **Previous 50** and **Next 50** navigate table pages; **Filter column names** changes which custom columns are shown without changing row selection or totals. **Refresh** rereads the current document after an edit has been applied or cancelled.
+
+Use **Custom column** to sort by a typed field. Numbers sort numerically, ISO dates chronologically, and text/choice values lexically with case preserved. Missing values and blank text stay last in both directions; ties use physical page and annotation index. Choose **Built-in order** to return to the ordinary sort. This is separate from the annotation register's custom text fields, which sort as text. Docked or floating tables can stay open while following a row to its annotation.
 
 ## Edit price and custom fields
 
@@ -30,6 +33,38 @@ For each priced row, the quantity is converted to the explicit price unit and qu
 
 **Filtered subtotals** reports missing prices and partial cost coverage. A monetary subtotal is complete only when every row in that quantity group contributes to that same currency/precision subtotal. Consequently, mixed currencies can produce partial subtotals even when every row has a price. Ordinary unquantified rows and angles are excluded from additive totals and counted in `unquantified_rows`. The screen shows at most 30 subtotal groups; the export contains the complete filtered summary. Apply filters to inspect additional groups.
 
+## Report formula columns
+
+Open **Formula columns**, enter a unique column name and expression, select the required quantity unit and `0`–`6` result decimal places, then choose **Add and preview**. Up to eight columns can be active. Formula configuration stays in the current tab and does not modify PDF fields, quantities or prices. Under **Reuse formula configuration**, **Copy configuration** copies its JSON; paste an array and choose **Load configuration** to reuse it. Keep a copy for another tab or session.
+
+Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quantity` and exact case-sensitive numeric field references such as `[Waste %]`. Only typed **Number** fields participate; register text fields and other formula results are not inputs. For example, `quantity * (1 + [Waste %] / 100)` applies a dimensionless allowance to each row's actual quantity.
+
+- `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
+- Numeric fields and constants are dimensionless. Addition/subtraction require matching units. Multiplication permits at most one quantity operand; division by a scalar retains the quantity unit, while equal-unit division produces a dimensionless result. Squared/cubed units and inverse units are not inferred.
+- Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
+- Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. Formula columns do not add new subtotals or change quantity/cost totals.
+
+Each expression is limited to 512 UTF-8 bytes, 128 tokens and 32 parser nesting levels. Names are unique and at most 64 bytes. Calls, assignments, scripts, external references and arbitrary spreadsheet formulas are refused. Invalid configuration preserves the currently active formulas.
+
+Save this configuration as UTF-8 `formulas.json`; the source rows must have a numeric `Waste %` field and quantities in metres:
+
+```json
+[
+  {
+    "name": "Length with allowance",
+    "expression": "quantity * (1 + [Waste %] / 100)",
+    "quantity_unit": "m",
+    "rounding_decimals": 3
+  }
+]
+```
+
+```powershell
+sunipdf-cli quantity-table plan.pdf --sort-custom "Waste %" --formulas formulas.json --out calculated.json
+```
+
+For a scalar-only expression such as `[Allowance] * 2`, `quantity_unit` can be `null` in JSON. Formula definitions are a separate report configuration, not a new type accepted by `set-quantity-fields`.
+
 ## Export and source checks
 
 Choose **Export CSV** or **Export JSON** and a new filename. Export includes all matching rows, not just the visible page or columns. Copying permission is required for file export and CLI JSON output. On-screen inspection can remain available when export is prohibited. Annotation permission controls editing separately.
@@ -38,9 +73,11 @@ The export contains a `source_sha256` for the document snapshot, filter/sort/gro
 
 JSON uses schema `sunipdf-quantity-table`, version `1`, with `rows` and `summary`. `complete: true` describes successful bounded table construction; individual monetary totals still have their own `complete` coverage flags. CSV includes `row`, `quantity_subtotal`, `cost_subtotal` and `metadata` records, typed custom-column data and spreadsheet-formula neutralization for text cells. Keep the metadata record when processing the export elsewhere.
 
+Formula exports also include definitions, arithmetic policy and `formula_evaluation_complete`, which is false if any matching row has a formula error. JSON `formula_rows` identifies each source page/index and gives each cell's `value`, `unit` and `error`; failed values are `null`. CSV adds value/unit/error columns for each formula, with the same completeness flag in metadata. A complete table inventory does not imply complete formula evaluation.
+
 ## CLI and typed JSON
 
-The commands are `quantity-table`, `set-quantity-fields` and `clear-quantity-fields`. A report without `--out` returns JSON on stdout; CSV requires `--out`. Reports accept the register's filters, `--sort`, `--descending` and `--include-replies`, plus `--group-by none|count_group|discipline|business_status`. `--page` is a positive physical page number in the CLI.
+The commands are `quantity-table`, `set-quantity-fields` and `clear-quantity-fields`. A report without `--out` returns JSON on stdout; CSV requires `--out`. Reports accept the register's filters, `--sort`, `--sort-custom NAME`, `--descending` and `--include-replies`, plus `--group-by none|count_group|discipline|business_status` and `--formulas FILE`. A custom sort overrides the built-in sort. `--page` is a positive physical page number in the CLI.
 
 Save this complete field replacement as UTF-8 `fields.json`:
 
@@ -92,4 +129,4 @@ The document register is bounded to 1,000 pages, 128 MiB snapshots, 10,000 annot
 
 Decimal inputs allow at most six fractional digits and absolute values up to one trillion; unit prices are nonnegative. The quantity converted for pricing must also fit the supported finite, nonnegative range up to one trillion. Excessive values are refused rather than silently truncated.
 
-AEC-007 remains partial: no arbitrary formulas, currency exchange, tax calculations, cross-document totals, automatic symbol recognition or full estimating workflow. Verify the plan revision and calibration separately before using its quantities.
+AEC-007 remains partial: report arithmetic does not provide formula-derived subtotals, unit-bearing custom fields, currency exchange, a tax engine, cross-document totals, automatic symbol recognition or a full estimating workflow. Verify the plan revision and calibration separately before using its quantities.

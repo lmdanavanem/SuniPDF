@@ -230,6 +230,95 @@ fn quantity_fields_round_trip_clear_and_preserve_price_basis_after_measurement_u
 }
 
 #[test]
+fn custom_sort_and_formula_reports_reuse_configuration_without_modifying_the_pdf() {
+    let directory = tempfile::tempdir().unwrap();
+    let (source, expected, input) = seed(directory.path());
+    let priced = directory.path().join("formula-source.pdf");
+    success(set(&source, &expected, &input, &priced).output().unwrap());
+    let before = std::fs::read(&priced).unwrap();
+    let configuration = directory.path().join("formulas.json");
+    write_json(
+        &configuration,
+        &json!([
+            {"name":"Allowance quantity","expression":"quantity * [Allowance]","quantity_unit":"m","rounding_decimals":2},
+            {"name":"Missing input","expression":"[Absent] + 1","quantity_unit":null,"rounding_decimals":2}
+        ]),
+    );
+    for descending in [false, true] {
+        let mut command = cli("quantity-table", &priced);
+        command
+            .args(["--sort-custom", "Allowance", "--formulas"])
+            .arg(&configuration);
+        if descending {
+            command.arg("--descending");
+        }
+        let result = success(command.output().unwrap());
+        assert_eq!(result["filter"]["custom_sort"], "Allowance");
+        assert_eq!(result["rows"][0]["register"]["index"], 1);
+        assert_eq!(
+            result["formula_rows"][0]["values"]["Allowance quantity"]["value"],
+            "12.50"
+        );
+        assert_eq!(
+            result["formula_rows"][0]["values"]["Allowance quantity"]["unit"],
+            "m"
+        );
+        assert_eq!(
+            result["formula_rows"][0]["values"]["Missing input"]["error"],
+            "missing_field"
+        );
+        assert!(result["formula_rows"][0]["values"]["Missing input"]["value"].is_null());
+        assert_eq!(
+            result["formula_rows"][1]["values"]["Allowance quantity"]["error"],
+            "unit_mismatch"
+        );
+        assert_eq!(
+            result["formulas"][0]["expression"],
+            "quantity * [Allowance]"
+        );
+    }
+    let csv_path = directory.path().join("formula-report.csv");
+    success(
+        cli("quantity-table", &priced)
+            .args(["--sort-custom", "Allowance", "--formulas"])
+            .arg(&configuration)
+            .args(["--format", "csv", "--out"])
+            .arg(&csv_path)
+            .output()
+            .unwrap(),
+    );
+    let csv = std::fs::read_to_string(&csv_path).unwrap();
+    assert!(csv.contains("formula:Allowance quantity:value"));
+    assert!(csv.contains("12.50"));
+    assert!(csv.contains("unit_mismatch"));
+    assert!(csv.contains("missing_field"));
+    let invalid_out = directory.path().join("invalid-formula.csv");
+    write_json(
+        &configuration,
+        &json!([{"name":"Rejected","expression":"exec(1)","quantity_unit":null,"rounding_decimals":2}]),
+    );
+    failure(
+        cli("quantity-table", &priced)
+            .arg("--formulas")
+            .arg(&configuration)
+            .args(["--format", "csv", "--out"])
+            .arg(&invalid_out)
+            .output()
+            .unwrap(),
+    );
+    assert!(!invalid_out.exists());
+    let register = success(
+        cli("annotation-register", &priced)
+            .args(["--sort-custom", "No such column", "--descending"])
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(register["filter"]["custom_sort"], "No such column");
+    assert_eq!(register["rows"][0]["index"], 0);
+    assert_eq!(std::fs::read(&priced).unwrap(), before);
+}
+
+#[test]
 fn table_exports_real_filters_source_identity_csv_formula_guards_and_never_overwrites() {
     let directory = tempfile::tempdir().unwrap();
     let (source, expected, input) = seed(directory.path());

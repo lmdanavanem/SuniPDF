@@ -12,8 +12,9 @@ use std::{
 };
 use sunipdf_core::{
     quantity_table::{
-        DecimalValue, QuantityFields, QuantityGrouping, QuantityOptions, QuantityRow,
-        QuantitySummary, QuantityTable, QuantityTarget, QuantityUnit, TypedValue, UnitPrice,
+        DecimalValue, FormulaColumn, FormulaValue, QuantityFields, QuantityGrouping,
+        QuantityOptions, QuantityRow, QuantitySummary, QuantityTable, QuantityTarget, QuantityUnit,
+        TypedValue, UnitPrice,
     },
     EngineError,
 };
@@ -30,6 +31,7 @@ pub struct QuantityState {
     options: QuantityOptions,
     selected: Vec<usize>,
     columns: Vec<String>,
+    sort_columns: BTreeSet<String>,
     column_filter: String,
     summary: Option<QuantitySummary>,
     offset: usize,
@@ -38,6 +40,29 @@ pub struct QuantityState {
     error: Option<String>,
     message: Option<String>,
     edit: Option<RowDraft>,
+    formula_draft: FormulaDraft,
+    computed: BTreeMap<(usize, usize), Vec<FormulaValue>>,
+}
+
+struct FormulaDraft {
+    name: String,
+    expression: String,
+    quantity_unit: QuantityUnit,
+    rounding: u8,
+    json: String,
+    error: Option<String>,
+}
+impl Default for FormulaDraft {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            expression: String::new(),
+            quantity_unit: QuantityUnit::Each,
+            rounding: 2,
+            json: String::new(),
+            error: None,
+        }
+    }
 }
 
 impl QuantityState {
@@ -51,6 +76,8 @@ impl QuantityState {
         self.summary = None;
         self.selected.clear();
         self.columns.clear();
+        self.sort_columns.clear();
+        self.computed.clear();
         self.error = None;
         if self.edit.as_ref().is_some_and(|draft| draft.applying) {
             self.edit = None;
@@ -82,6 +109,13 @@ impl QuantityState {
         }
         self.columns = columns.into_iter().collect();
         self.offset = 0;
+        match report.formula_values(&self.options) {
+            Ok(computed) => self.computed = computed,
+            Err(error) => {
+                self.computed.clear();
+                self.error = Some(error.to_string());
+            }
+        }
         match report.summary(&self.options) {
             Ok(summary) => self.summary = Some(summary),
             Err(error) => {
@@ -278,6 +312,11 @@ impl SuniApp {
         state.pending = None;
         match result {
             Ok(table) => {
+                state.sort_columns = table
+                    .rows()
+                    .iter()
+                    .flat_map(|row| row.fields.custom.keys().cloned())
+                    .collect();
                 state.report = Some(Arc::new(table));
                 state.error = None;
                 state.refresh_selection();
@@ -492,6 +531,42 @@ impl SuniApp {
                                         });
                                     changed |= previous != state.options.group_by;
                                 });
+                                ui.horizontal_wrapped(|ui| {
+                                    ui.label(tr(lang, "quantity.sort"));
+                                    egui::ComboBox::from_id_salt("quantity-sort")
+                                        .selected_text(tr(
+                                            lang,
+                                            &format!("register.{}", state.options.sort.id()),
+                                        ))
+                                        .show_ui(ui, |ui| {
+                                            for sort in
+                                                sunipdf_core::annotation_register::RegisterSort::ALL
+                                            {
+                                                changed |= ui
+                                                    .selectable_value(
+                                                        &mut state.options.sort,
+                                                        sort,
+                                                        tr(
+                                                            lang,
+                                                            &format!("register.{}", sort.id()),
+                                                        ),
+                                                    )
+                                                    .changed();
+                                            }
+                                        });
+                                    changed |= custom_sort(
+                                        ui,
+                                        lang,
+                                        &mut state.options.filter.custom_sort,
+                                        &state.sort_columns,
+                                    );
+                                    changed |= ui
+                                        .checkbox(
+                                            &mut state.options.descending,
+                                            tr(lang, "register.descending"),
+                                        )
+                                        .changed();
+                                });
                             });
                         });
                         if let Some(summary) = &state.summary {
@@ -505,6 +580,21 @@ impl SuniApp {
                                     .hint_text(tr(lang, "quantity.column_filter"))
                                     .char_limit(128),
                             );
+                        });
+                        ui.menu_button(tr(lang, "quantity.formulas"), |ui| {
+                            ui.add_enabled_ui(idle, |ui| {
+                                egui::ScrollArea::vertical()
+                                    .max_height(360.0)
+                                    .auto_shrink([false, false])
+                                    .show(ui, |ui| {
+                                        changed |= draw_formulas(
+                                            ui,
+                                            &mut state.options,
+                                            &mut state.formula_draft,
+                                            lang,
+                                        );
+                                    });
+                            });
                         });
                         if ui
                             .add_enabled(
@@ -582,6 +672,10 @@ impl SuniApp {
                                 for name in &columns {
                                     ui.strong(egui::RichText::new(name.as_str()).color(text_color));
                                 }
+                                for column in &state.options.formulas {
+                                    ui.strong(egui::RichText::new(&column.name).color(text_color))
+                                        .on_hover_text(&column.expression);
+                                }
                                 ui.strong(
                                     egui::RichText::new(tr(lang, "register.actions"))
                                         .color(text_color),
@@ -653,6 +747,37 @@ impl SuniApp {
                                                 .map(typed_text)
                                                 .unwrap_or(tr(lang, "quantity.missing")),
                                         );
+                                    }
+                                    if let Some(values) =
+                                        state.computed.get(&(row.register.page, row.register.index))
+                                    {
+                                        for value in values {
+                                            if let Some(error) = value.error {
+                                                ui.colored_label(
+                                                    egui::Color32::YELLOW,
+                                                    tr(
+                                                        lang,
+                                                        &format!(
+                                                            "quantity.formula_error.{}",
+                                                            error.id()
+                                                        ),
+                                                    ),
+                                                );
+                                            } else {
+                                                ui.label(format!(
+                                                    "{} {}",
+                                                    value
+                                                        .value
+                                                        .as_deref()
+                                                        .unwrap_or(tr(lang, "quantity.missing")),
+                                                    value.unit.map_or("", |unit| unit.id())
+                                                ));
+                                            }
+                                        }
+                                    } else {
+                                        for _ in &state.options.formulas {
+                                            ui.label(tr(lang, "quantity.missing"));
+                                        }
                                     }
                                     if ui
                                         .add_enabled(
@@ -756,6 +881,137 @@ impl SuniApp {
             }
         }
     }
+}
+
+pub(crate) fn custom_sort(
+    ui: &mut egui::Ui,
+    lang: Language,
+    selected: &mut Option<String>,
+    names: &BTreeSet<String>,
+) -> bool {
+    let mut changed = false;
+    ui.label(tr(lang, "quantity.sort_custom"));
+    egui::ComboBox::from_id_salt("custom-column-sort")
+        .selected_text(
+            selected
+                .as_deref()
+                .unwrap_or(tr(lang, "quantity.sort_builtin")),
+        )
+        .show_ui(ui, |ui| {
+            changed |= ui
+                .selectable_value(selected, None, tr(lang, "quantity.sort_builtin"))
+                .changed();
+            for name in names {
+                changed |= ui
+                    .selectable_value(selected, Some(name.clone()), name)
+                    .changed();
+            }
+        });
+    changed
+}
+
+fn draw_formulas(
+    ui: &mut egui::Ui,
+    options: &mut QuantityOptions,
+    draft: &mut FormulaDraft,
+    lang: Language,
+) -> bool {
+    let mut changed = false;
+    ui.set_max_width(540.0);
+    ui.label(tr(lang, "quantity.formula_help"));
+    let mut remove = None;
+    for (index, column) in options.formulas.iter().enumerate() {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(format!("{} = {}", column.name, column.expression));
+            if ui
+                .small_button(tr(lang, "quantity.remove_column"))
+                .clicked()
+            {
+                remove = Some(index);
+            }
+        });
+    }
+    if let Some(index) = remove {
+        options.formulas.remove(index);
+        changed = true;
+    }
+    ui.separator();
+    ui.label(tr(lang, "quantity.column_name"));
+    ui.add(
+        egui::TextEdit::singleline(&mut draft.name)
+            .char_limit(64)
+            .desired_width(340.0),
+    );
+    ui.label(tr(lang, "quantity.formula_expression"));
+    ui.add(
+        egui::TextEdit::singleline(&mut draft.expression)
+            .char_limit(512)
+            .desired_width(340.0),
+    );
+    ui.horizontal_wrapped(|ui| {
+        ui.label(tr(lang, "quantity.formula_unit"));
+        egui::ComboBox::from_id_salt("formula-unit")
+            .selected_text(draft.quantity_unit.id())
+            .show_ui(ui, |ui| {
+                for unit in QuantityUnit::ALL {
+                    ui.selectable_value(&mut draft.quantity_unit, unit, unit.id());
+                }
+            });
+        ui.label(tr(lang, "quantity.formula_rounding"));
+        ui.add(egui::DragValue::new(&mut draft.rounding).range(0..=6));
+    });
+    if ui
+        .add_enabled(
+            options.formulas.len() < 8,
+            egui::Button::new(tr(lang, "quantity.formula_add")),
+        )
+        .clicked()
+    {
+        let mut candidate = options.clone();
+        candidate.formulas.push(FormulaColumn {
+            name: draft.name.trim().into(),
+            expression: draft.expression.trim().into(),
+            quantity_unit: Some(draft.quantity_unit),
+            rounding_decimals: draft.rounding,
+        });
+        match candidate.validate_formulas() {
+            Ok(()) => {
+                options.formulas = candidate.formulas;
+                draft.error = None;
+                changed = true;
+            }
+            Err(error) => draft.error = Some(error.to_string()),
+        }
+    }
+    ui.collapsing(tr(lang, "quantity.formula_config"), |ui| {
+        ui.label(tr(lang, "quantity.formula_config_help"));
+        ui.add(
+            egui::TextEdit::multiline(&mut draft.json)
+                .char_limit(16384)
+                .desired_rows(4)
+                .desired_width(500.0),
+        );
+        ui.horizontal_wrapped(|ui| {
+            if ui.button(tr(lang, "quantity.formula_copy")).clicked() {
+                draft.json = serde_json::to_string_pretty(&options.formulas).unwrap_or_default();
+                ui.ctx().copy_text(draft.json.clone());
+            }
+            if ui.button(tr(lang, "quantity.formula_load")).clicked() {
+                match QuantityOptions::formulas_from_json(draft.json.as_bytes()) {
+                    Ok(formulas) => {
+                        options.formulas = formulas;
+                        draft.error = None;
+                        changed = true;
+                    }
+                    Err(error) => draft.error = Some(error.to_string()),
+                }
+            }
+        });
+    });
+    if let Some(error) = &draft.error {
+        ui.colored_label(egui::Color32::RED, error);
+    }
+    changed
 }
 
 fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
@@ -1236,8 +1492,13 @@ pub(crate) mod tests {
                 app.annotate.quantities.report.as_ref().unwrap()
             ));
             app.annotate.quantities.options.filter.page = Some(99);
+            let available_sort_columns = app.annotate.quantities.sort_columns.clone();
             app.annotate.quantities.refresh_selection();
             assert!(app.annotate.quantities.selected.is_empty());
+            assert_eq!(
+                app.annotate.quantities.sort_columns, available_sort_columns,
+                "custom sort options stay available when filters hide all rows"
+            );
             app.annotate.quantities.options.filter.page = None;
             app.annotate.quantities.refresh_selection();
             controls.click(&mut app, "quantity.edit");
@@ -1307,6 +1568,20 @@ pub(crate) mod tests {
             assert!(draft.error.is_some());
             controls.click(&mut app, "quantity.cancel");
             let directory = tempfile::tempdir().unwrap();
+            app.annotate.quantities.options.formulas = vec![FormulaColumn {
+                name: "Preview".into(),
+                expression: "1 + 2".into(),
+                quantity_unit: None,
+                rounding_decimals: 2,
+            }];
+            app.annotate.quantities.refresh_selection();
+            assert!(!app.annotate.quantities.computed.is_empty());
+            assert!(app
+                .annotate
+                .quantities
+                .computed
+                .values()
+                .all(|values| values[0].value.as_deref() == Some("3.00")));
             app.export_quantity_path(directory.path().join("quantities.csv"), true);
             assert!(app.navigation_blocked());
             assert!(app.ink_blocks_command(sunipdf_core::Command::Undo));
@@ -1321,10 +1596,12 @@ pub(crate) mod tests {
                         generation,
                         table: sent,
                         csv,
+                        options,
                         ..
                     } => {
                         assert!(csv);
                         assert_eq!(sent.source_sha256(), table.source_sha256());
+                        assert_eq!(options.formulas[0].expression, "1 + 2");
                         Some((epoch, generation))
                     }
                     _ => None,
@@ -1336,6 +1613,12 @@ pub(crate) mod tests {
             assert!(!app.navigation_blocked());
             controls.click(&mut app, "quantity.close");
             assert!(!app.annotate.quantities.open);
+            assert!(
+                app.annotate.quantities.computed.is_empty(),
+                "closed snapshots discard computed values"
+            );
+            assert!(app.annotate.quantities.sort_columns.is_empty());
+            app.annotate.quantities.options.formulas.clear();
             app.on_quantity_table(epoch, generation, Ok(table.clone()));
             assert!(app.annotate.quantities.report.is_none());
             app.open_quantity_table();

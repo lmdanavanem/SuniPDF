@@ -120,6 +120,26 @@ fn quantity_table_roundtrip_targets_units_legacy_fields_permissions_and_atomicit
         .as_ref()
         .is_some_and(|q| q.unit == QuantityUnit::Each && q.value == 1.0)));
     let unchanged = doc.snapshot().unwrap();
+    let formula_options = QuantityOptions {
+        formulas: vec![FormulaColumn {
+            name: "With waste".into(),
+            expression: "quantity * 1.1".into(),
+            quantity_unit: Some(QuantityUnit::Metres),
+            rounding_decimals: 2,
+        }],
+        ..Default::default()
+    };
+    let calculated = doc
+        .export_quantity_table(&priced, &formula_options)
+        .unwrap();
+    let result = calculated.json["formula_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["index"] == index && row["page"] == 1)
+        .unwrap();
+    assert_eq!(result["values"]["With waste"]["value"], "11.00");
+    equal_pdf(&unchanged, &doc.snapshot().unwrap(), None);
     assert!(doc.set_quantity_fields(&target, &fields()).is_err());
     assert!(doc
         .export_quantity_table(&table, &QuantityOptions::default())
@@ -147,6 +167,11 @@ fn quantity_table_roundtrip_targets_units_legacy_fields_permissions_and_atomicit
     converted.known_distance *= 100.0;
     doc.update_measurement_annotation(&target, &converted)
         .unwrap();
+    assert!(
+        doc.export_quantity_table(&priced, &formula_options)
+            .is_err(),
+        "formula export must reject its stale source snapshot"
+    );
     let converted = doc.quantity_table().unwrap();
     let row = converted
         .rows()

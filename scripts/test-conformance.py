@@ -135,7 +135,10 @@ def qualify(args):
         report_path.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
 
     try:
-        for name, executable, arguments in [('verapdf', args.verapdf, ['--version']), ('qpdf', args.qpdf, ['--version']), ('poppler', args.pdftoppm, ['-v']), ('sunipdf', args.cli, ['--version'])]:
+        import PIL
+        report['tools']['python'] = {'version': sys.version}
+        report['tools']['pillow'] = {'version': PIL.__version__}
+        for name, executable, arguments in [('verapdf', args.verapdf, ['--version']), ('qpdf', args.qpdf, ['--version']), ('poppler', args.pdftoppm, ['-v']), ('sunipdf', args.cli, ['--version']), ('java', 'java', ['-version'])]:
             executable = Path(shutil.which(str(executable)) or executable).resolve()
             if not executable.is_file():
                 raise ValueError('Required executable is missing: ' + name)
@@ -213,7 +216,7 @@ def qualify(args):
                 case['errors'].append(str(error))
             case['status'] = 'failed' if case['errors'] or any(s['errors'] for s in case['stages']) else 'passed'
             save()
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, ImportError) as error:
         report['errors'].append(str(error))
     report['status'] = 'passed' if not report['errors'] and len(report['cases']) == len(value['files']) and all(c['status'] == 'passed' for c in report['cases']) else 'failed'
     save()
@@ -231,6 +234,17 @@ def syntax(pdf, path, executable):
 
 
 class ReportTests(unittest.TestCase):
+    def test_blank_displaced_and_wrong_geometry_rasters_fail(self):
+        from PIL import Image, ImageDraw
+        first = Image.new('RGB', (80, 80), 'white')
+        ImageDraw.Draw(first).rectangle((10, 10, 25, 30), fill='black')
+        self.assertEqual(appearance(first, first)['coverageWithinTwoPixels'], 1)
+        shifted = Image.new('RGB', first.size, 'white')
+        ImageDraw.Draw(shifted).rectangle((50, 50, 65, 70), fill='black')
+        for changed in (Image.new('RGB', first.size, 'white'), shifted, Image.new('RGB', (90, 80), 'black')):
+            with self.assertRaises(ValueError):
+                appearance(first, changed)
+
     def test_process_timeout_and_output_bounds(self):
         with tempfile.TemporaryDirectory() as folder:
             directory = Path(folder)

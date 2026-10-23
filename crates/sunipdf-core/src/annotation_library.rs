@@ -691,6 +691,579 @@ pub struct LibraryPlacement {
     pub scale: f32,
 }
 
+/// A page annotation that may be copied into a portable group. Unavailable rows are retained.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LibraryCaptureCandidate {
+    pub index: usize,
+    pub subtype: String,
+    pub fingerprint: Option<String>,
+    pub refusal: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LibraryCaptureSelection {
+    pub index: usize,
+    pub fingerprint: String,
+}
+
+fn capture_object(
+    pdf: &lopdf::Document,
+    object: &lopdf::Object,
+    depth: usize,
+    budget: &mut usize,
+) -> Result<serde_json::Value, EngineError> {
+    let mut limits = CaptureBudget {
+        nodes: *budget,
+        bytes: 2 * 1024 * 1024,
+    };
+    let result = capture_object_bounded(pdf, object, depth, &mut limits);
+    *budget = limits.nodes;
+    result
+}
+
+struct CaptureBudget {
+    nodes: usize,
+    bytes: usize,
+}
+impl CaptureBudget {
+    fn node(&mut self) -> Result<(), EngineError> {
+        self.nodes = self
+            .nodes
+            .checked_sub(1)
+            .ok_or_else(|| invalid("annotation appearance exceeds capture limits"))?;
+        Ok(())
+    }
+    fn bytes(&mut self, count: usize) -> Result<(), EngineError> {
+        self.bytes = self
+            .bytes
+            .checked_sub(count)
+            .ok_or_else(|| invalid("annotation appearance exceeds capture byte limits"))?;
+        Ok(())
+    }
+}
+
+fn capture_dictionary(
+    pdf: &lopdf::Document,
+    dict: &lopdf::Dictionary,
+    depth: usize,
+    budget: &mut CaptureBudget,
+    stream: bool,
+) -> Result<serde_json::Value, EngineError> {
+    if depth > 16 || dict.len() > 256 {
+        return Err(invalid("annotation dictionary exceeds capture limits"));
+    }
+    let mut values = serde_json::Map::new();
+    for (key, value) in dict.iter() {
+        if key.len() > 128 {
+            return Err(invalid("annotation key exceeds capture limits"));
+        }
+        budget.bytes(key.len())?;
+        if stream && matches!(key.as_slice(), b"Length" | b"Filter" | b"DecodeParms") {
+            continue;
+        }
+        let key = std::str::from_utf8(key).map_err(|_| invalid("unsupported annotation key"))?;
+        values.insert(
+            key.to_owned(),
+            capture_object_bounded(pdf, value, depth + 1, budget)?,
+        );
+    }
+    Ok(serde_json::Value::Object(values))
+}
+
+fn capture_object_bounded<'a>(
+    pdf: &'a lopdf::Document,
+    mut object: &'a lopdf::Object,
+    depth: usize,
+    budget: &mut CaptureBudget,
+) -> Result<serde_json::Value, EngineError> {
+    use lopdf::Object;
+    if depth > 16 {
+        return Err(invalid("annotation appearance exceeds capture limits"));
+    }
+    budget.node()?;
+    let mut references = 0;
+    while let Object::Reference(id) = object {
+        references += 1;
+        if references > 16 {
+            return Err(invalid("annotation reference chain exceeds capture limits"));
+        }
+        budget.node()?;
+        object = pdf
+            .objects
+            .get(id)
+            .ok_or_else(|| invalid("missing annotation appearance reference"))?;
+    }
+    Ok(match object {
+        Object::Null => serde_json::Value::Null,
+        Object::Boolean(v) => serde_json::json!(v),
+        Object::Integer(v) => serde_json::json!(*v as f64),
+        Object::Real(v) if v.is_finite() => serde_json::json!(*v as f64),
+        Object::Name(v) if v.len() <= 256 => {
+            budget.bytes(v.len())?;
+            serde_json::json!({"name": v})
+        }
+        Object::String(v, _) if v.len() <= 8192 => {
+            budget.bytes(v.len())?;
+            serde_json::json!({"string": v})
+        }
+        Object::Array(values) if values.len() <= 1024 => serde_json::Value::Array(
+            values
+                .iter()
+                .map(|value| capture_object_bounded(pdf, value, depth + 1, budget))
+                .collect::<Result<_, _>>()?,
+        ),
+        Object::Dictionary(dict) => capture_dictionary(pdf, dict, depth, budget, false)?,
+        Object::Stream(stream) => {
+            // Charge every traversal, including repeated references, before cloning or decoding.
+            budget.bytes(stream.content.len())?;
+            let dictionary = capture_dictionary(pdf, &stream.dict, depth + 1, budget, true)?;
+            let content = if stream.dict.has(b"Filter") {
+                let filter = stream
+                    .dict
+                    .get(b"Filter")
+                    .map_err(crate::security::lopdf_err)?;
+                let valid_filter =
+                    |value: &Object| matches!(value, Object::Name(name) if name.len() <= 256);
+                if !valid_filter(filter)
+                    && !matches!(filter, Object::Array(filters) if filters.len() <= 8 && filters.iter().all(valid_filter))
+                {
+                    return Err(invalid("unsupported annotation stream filters"));
+                }
+                // Filter and predictor metadata is bounded even though it is omitted from canonical content.
+                capture_object_bounded(pdf, filter, depth + 1, budget)?;
+                if let Ok(params) = stream.dict.get(b"DecodeParms") {
+                    capture_object_bounded(pdf, params, depth + 1, budget)?;
+                }
+                stream
+                    .decompressed_content_with_limit(budget.bytes)
+                    .map_err(crate::security::lopdf_err)?
+            } else {
+                stream.content.clone()
+            };
+            if stream.dict.has(b"Filter") {
+                budget.bytes(content.len())?;
+            }
+            serde_json::json!({"dictionary": dictionary, "content": digest_hex(&content)})
+        }
+        _ => return Err(invalid("unsupported annotation appearance value")),
+    })
+}
+
+fn capture_primitive(
+    pdf: &lopdf::Document,
+    dict: &lopdf::Dictionary,
+    geo: &crate::geometry::PageGeometry,
+) -> Result<(LibraryPrimitive, String), EngineError> {
+    use lopdf::Object;
+    let unsupported = || {
+        invalid("only unmodified native shapes, lines, polygons and clouds can be captured; text, images, replies and custom appearances are not supported")
+    };
+    let field = |key: &[u8]| -> Result<&Object, EngineError> {
+        pdf.dereference(dict.get(key).map_err(|_| unsupported())?)
+            .map(|(_, value)| value)
+            .map_err(crate::security::lopdf_err)
+    };
+    let numbers = |object: &Object| -> Result<Vec<f32>, EngineError> {
+        let (_, object) = pdf
+            .dereference(object)
+            .map_err(crate::security::lopdf_err)?;
+        let values = object.as_array().map_err(|_| unsupported())?;
+        if values.len() > 1024 {
+            return Err(unsupported());
+        }
+        values
+            .iter()
+            .map(|value| {
+                let (_, value) = pdf.dereference(value).map_err(crate::security::lopdf_err)?;
+                value
+                    .as_float()
+                    .ok()
+                    .filter(|n| n.is_finite())
+                    .ok_or_else(unsupported)
+            })
+            .collect()
+    };
+    let color = |key: &[u8]| -> Result<Option<[u8; 3]>, EngineError> {
+        if !dict.has(key) {
+            return Ok(None);
+        }
+        let values = numbers(field(key)?)?;
+        let [r, g, b] = values.as_slice() else {
+            return Err(unsupported());
+        };
+        if values.iter().any(|n| !(0.0..=1.0).contains(n)) {
+            return Err(unsupported());
+        }
+        Ok(Some([
+            (*r * 255.0).round() as u8,
+            (*g * 255.0).round() as u8,
+            (*b * 255.0).round() as u8,
+        ]))
+    };
+    if !crate::annot_write::text_of(pdf, dict, b"NM")
+        .is_some_and(|name| name.starts_with(crate::annot_write::NAME_PREFIX))
+        || field(b"F")?.as_i64().ok() != Some(4)
+        || dict.iter().any(|(key, _)| {
+            !matches!(
+                key.as_slice(),
+                b"Type"
+                    | b"Subtype"
+                    | b"Rect"
+                    | b"F"
+                    | b"NM"
+                    | b"M"
+                    | b"CreationDate"
+                    | b"T"
+                    | b"P"
+                    | b"AP"
+                    | b"C"
+                    | b"IC"
+                    | b"CA"
+                    | b"BS"
+                    | b"L"
+                    | b"LE"
+                    | b"Vertices"
+                    | b"BE"
+                    | b"IT"
+                    | b"SuniPDFRich"
+            )
+        })
+    {
+        return Err(unsupported());
+    }
+    let subtype = field(b"Subtype")?.as_name().map_err(|_| unsupported())?;
+    let rect_values = numbers(field(b"Rect")?)?;
+    let [left, bottom, right, top] = rect_values.as_slice() else {
+        return Err(unsupported());
+    };
+    let rect = geo.rect_to_display(PointRect {
+        left: *left,
+        bottom: *bottom,
+        right: *right,
+        top: *top,
+    });
+    let (w, h) = (rect.right - rect.left, rect.top - rect.bottom);
+    let page_size = geo.display_size();
+    if !finite(w, 0.1, 10000.0)
+        || !finite(h, 0.1, 10000.0)
+        || rect.left < 0.0
+        || rect.bottom < 0.0
+        || rect.right > page_size.0
+        || rect.top > page_size.1
+    {
+        return Err(unsupported());
+    }
+    let border = field(b"BS")?.as_dict().map_err(|_| unsupported())?;
+    let width = border
+        .get(b"W")
+        .and_then(Object::as_float)
+        .map_err(|_| unsupported())?;
+    let dash = if border.has(b"D") {
+        numbers(border.get(b"D").map_err(|_| unsupported())?)?
+    } else {
+        Vec::new()
+    };
+    let expected_border = crate::annot_write::border_style(width, &dash);
+    if capture_object(pdf, &Object::Dictionary(border.clone()), 0, &mut 128)?
+        != capture_object(pdf, &expected_border, 0, &mut 128)?
+    {
+        return Err(unsupported());
+    }
+    let style = LibraryStyle {
+        rgb: color(b"C")?.ok_or_else(unsupported)?,
+        fill_rgb: color(b"IC")?,
+        width_pt: width,
+        opacity: field(b"CA")?.as_float().map_err(|_| unsupported())?,
+        dash_pattern: dash,
+    };
+    style.validate()?;
+    let placed = style.placed(1.0);
+    let expected_bounds = |points: &[(f32, f32)], margin: f32| -> bool {
+        let bounds = points.iter().fold(
+            [
+                f32::INFINITY,
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+                f32::NEG_INFINITY,
+            ],
+            |bounds, point| {
+                [
+                    bounds[0].min(point.0),
+                    bounds[1].min(point.1),
+                    bounds[2].max(point.0),
+                    bounds[3].max(point.1),
+                ]
+            },
+        );
+        [rect.left, rect.bottom, rect.right, rect.top]
+            .into_iter()
+            .zip([
+                bounds[0] - margin,
+                bounds[1] - margin,
+                bounds[2] + margin,
+                bounds[3] + margin,
+            ])
+            .all(|(a, b)| (a - b).abs() < 0.002)
+    };
+    let local = |point: (f32, f32)| (point.0 - rect.left, point.1 - rect.bottom);
+    let (primitive, appearance) = match subtype {
+        b"Square" | b"Circle" => {
+            if dict.has(b"BE") || dict.has(b"IT") || dict.has(b"SuniPDFRich") {
+                return Err(unsupported());
+            }
+            let shape = if subtype == b"Square" {
+                LibraryShape::Square
+            } else {
+                LibraryShape::Circle
+            };
+            let appearance = if subtype == b"Square" {
+                crate::appearance::square_ap(w, h, &placed)
+            } else {
+                crate::appearance::circle_ap(w, h, &placed)
+            };
+            (
+                LibraryPrimitive::Shape {
+                    shape,
+                    rect: [rect.left, rect.bottom, rect.right, rect.top],
+                    style,
+                },
+                appearance,
+            )
+        }
+        b"Line" => {
+            if style.fill_rgb.is_some()
+                || dict.has(b"BE")
+                || dict.has(b"IT")
+                || dict.has(b"SuniPDFRich")
+            {
+                return Err(unsupported());
+            }
+            let line = numbers(field(b"L")?)?;
+            let [x1, y1, x2, y2] = line.as_slice() else {
+                return Err(unsupported());
+            };
+            let ends = field(b"LE")?.as_array().map_err(|_| unsupported())?;
+            if ends.len() != 2 || ends[0].as_name().ok() != Some(b"None".as_slice()) {
+                return Err(unsupported());
+            }
+            let arrow = match ends[1].as_name().map_err(|_| unsupported())? {
+                b"None" => false,
+                b"OpenArrow" => true,
+                _ => return Err(unsupported()),
+            };
+            let p1 = geo.to_display(*x1, *y1);
+            let p2 = geo.to_display(*x2, *y2);
+            let margin = placed.width_pt / 2.0
+                + 1.0
+                + if arrow {
+                    crate::appearance::arrow_head(placed.width_pt)
+                } else {
+                    0.0
+                };
+            if !expected_bounds(&[p1, p2], margin) {
+                return Err(unsupported());
+            }
+            (
+                LibraryPrimitive::Shape {
+                    shape: if arrow {
+                        LibraryShape::Arrow
+                    } else {
+                        LibraryShape::Line
+                    },
+                    rect: [p1.0, p1.1, p2.0, p2.1],
+                    style,
+                },
+                crate::appearance::line_ap(w, h, local(p1), local(p2), arrow, &placed),
+            )
+        }
+        b"Polygon" | b"PolyLine" => {
+            if field(b"SuniPDFRich")?.as_name().ok() != Some(subtype) {
+                return Err(unsupported());
+            }
+            let cloud = dict.has(b"BE");
+            if cloud {
+                if subtype != b"Polygon"
+                    || field(b"IT")?.as_name().ok() != Some(b"PolygonCloud".as_slice())
+                    || capture_object(pdf, field(b"BE")?, 0, &mut 64)?
+                        != capture_object(
+                            pdf,
+                            &Object::Dictionary(lopdf::dictionary! {"S" => "C", "I" => 2}),
+                            0,
+                            &mut 64,
+                        )?
+                {
+                    return Err(unsupported());
+                }
+            } else if dict.has(b"IT") {
+                return Err(unsupported());
+            }
+            let values = numbers(field(b"Vertices")?)?;
+            if !values.len().is_multiple_of(2) {
+                return Err(unsupported());
+            }
+            let points: Vec<_> = values
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|p| geo.to_display(p[0], p[1]))
+                .collect();
+            let closed = subtype == b"Polygon";
+            let primitive = LibraryPrimitive::Vertices {
+                vertex_kind: if cloud {
+                    LibraryVertexKind::Cloud
+                } else if closed {
+                    LibraryVertexKind::Polygon
+                } else {
+                    LibraryVertexKind::Polyline
+                },
+                points: points.clone(),
+                style,
+            };
+            primitive.validate()?;
+            let margin = placed.width_pt / 2.0 + if cloud { 4.5 } else { 0.5 };
+            if !expected_bounds(&points, margin)
+                || points
+                    .iter()
+                    .zip(points.iter().cycle().skip(1))
+                    .take(points.len() - usize::from(!closed))
+                    .map(|(a, b)| (a.0 - b.0).hypot(a.1 - b.1))
+                    .sum::<f32>()
+                    > 50_000.0
+            {
+                return Err(unsupported());
+            }
+            let appearance = crate::appearance::vertices_ap(
+                w,
+                h,
+                &points.iter().map(|p| local(*p)).collect::<Vec<_>>(),
+                closed,
+                cloud,
+                &placed,
+            );
+            (primitive, appearance)
+        }
+        _ => return Err(unsupported()),
+    };
+    primitive.validate()?;
+    let ap = field(b"AP")?.as_dict().map_err(|_| unsupported())?;
+    if ap.len() != 1 {
+        return Err(unsupported());
+    }
+    let source = ap.get(b"N").map_err(|_| unsupported())?;
+    let expected = Object::Stream(crate::annot_write::ap_stream(&appearance, geo));
+    if capture_object(pdf, source, 0, &mut 4096)? != capture_object(pdf, &expected, 0, &mut 4096)? {
+        return Err(unsupported());
+    }
+    let mut fingerprint = dict.clone();
+    fingerprint.remove(b"P");
+    let fingerprint = capture_object(pdf, &Object::Dictionary(fingerprint), 0, &mut 8192)?;
+    Ok((
+        primitive,
+        digest_hex(&serde_json::to_vec(&fingerprint).map_err(|_| unsupported())?),
+    ))
+}
+
+impl Document<'_> {
+    fn capture_source(
+        &self,
+        page: usize,
+    ) -> Result<
+        (
+            lopdf::Document,
+            lopdf::ObjectId,
+            crate::geometry::PageGeometry,
+        ),
+        EngineError,
+    > {
+        if !self.properties().can_copy {
+            return Err(EngineError::SecurityRestricted);
+        }
+        let geometry = self.page_geometry(page)?;
+        let bytes = self.snapshot()?;
+        if bytes.len() > 128 * 1024 * 1024 {
+            return Err(invalid("capture supports documents up to 128 MiB"));
+        }
+        let pdf = crate::security::load(&bytes, self.password())?;
+        let id = *pdf
+            .get_pages()
+            .get(&(page as u32 + 1))
+            .ok_or_else(|| invalid("page is unavailable"))?;
+        Ok((pdf, id, geometry))
+    }
+
+    pub fn library_capture_candidates(
+        &self,
+        page: usize,
+    ) -> Result<Vec<LibraryCaptureCandidate>, EngineError> {
+        let (mut pdf, page_id, geo) = self.capture_source(page)?;
+        let count = crate::annot_write::annots_mut(&mut pdf, page_id)?.len();
+        if count > 512 {
+            return Err(invalid(
+                "capture selection is limited to pages with 512 annotations",
+            ));
+        }
+        (0..count)
+            .map(|index| {
+                let (_, dict) = crate::annot_write::load_annot(&pdf, page_id, index)?;
+                let subtype = dict
+                    .get(b"Subtype")
+                    .and_then(lopdf::Object::as_name)
+                    .map(|value| String::from_utf8_lossy(value).into_owned())
+                    .unwrap_or_default();
+                let result = capture_primitive(&pdf, &dict, &geo);
+                Ok(LibraryCaptureCandidate {
+                    index,
+                    subtype,
+                    fingerprint: result.as_ref().ok().map(|(_, hash)| hash.clone()),
+                    refusal: result.err().map(|error| error.to_string()),
+                })
+            })
+            .collect()
+    }
+
+    /// Copies selected supported annotations without modifying the source or importing PDF objects.
+    pub fn capture_library_entry(
+        &self,
+        page: usize,
+        selections: &[LibraryCaptureSelection],
+        id: String,
+        name: String,
+        provenance: LibraryProvenance,
+    ) -> Result<LibraryEntry, EngineError> {
+        if selections.is_empty() || selections.len() > MAX_GROUP_PRIMITIVES {
+            return Err(invalid("select 1–16 annotations"));
+        }
+        if provenance
+            .source
+            .as_deref()
+            .is_none_or(|value| value.trim().is_empty())
+        {
+            return Err(invalid("declare a source for captured annotations"));
+        }
+        let (pdf, page_id, geo) = self.capture_source(page)?;
+        let mut seen = HashSet::new();
+        let mut primitives = Vec::new();
+        for selected in selections {
+            if !seen.insert(selected.index) {
+                return Err(invalid("duplicate annotation selection"));
+            }
+            let (_, dict) = crate::annot_write::load_annot(&pdf, page_id, selected.index)?;
+            let (primitive, fingerprint) = capture_primitive(&pdf, &dict, &geo)?;
+            if fingerprint != selected.fingerprint {
+                return Err(invalid("source annotation changed; refresh the selection"));
+            }
+            primitives.push(primitive);
+        }
+        LibraryEntry {
+            id,
+            name,
+            provenance,
+            primitives,
+        }
+        .normalized()
+    }
+}
+
 impl Document<'_> {
     /// Places a complete flat group atomically. The caller saves the resulting PDF separately.
     pub fn place_library_entry(
@@ -843,6 +1416,129 @@ impl Document<'_> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn capture_budget_rejects_large_names_keys_and_repeated_reference_payloads() {
+        use lopdf::{Dictionary, Object, Stream};
+        let mut pdf = lopdf::Document::with_version("1.7");
+        assert!(capture_object(&pdf, &Object::Name(vec![b'N'; 257]), 0, &mut 4096).is_err());
+        let mut dict = Dictionary::new();
+        dict.set(vec![b'K'; 129], 1);
+        assert!(capture_object(&pdf, &Object::Dictionary(dict), 0, &mut 4096).is_err());
+        let text = pdf.add_object(Object::string_literal(vec![b'x'; 8192]));
+        let repeated = Object::Array(vec![Object::Reference(text); 300]);
+        assert!(capture_object(&pdf, &repeated, 0, &mut 4096).is_err());
+        let mut compressed = Stream::new(Dictionary::new(), vec![b' '; 1024 * 1024]);
+        compressed.compress().unwrap();
+        let stream = pdf.add_object(compressed);
+        assert!(capture_object(&pdf, &Object::Reference(stream), 0, &mut 4096).is_ok());
+        assert!(capture_object(
+            &pdf,
+            &Object::Array(vec![Object::Reference(stream); 3]),
+            0,
+            &mut 4096
+        )
+        .is_err());
+        let raw = pdf.add_object(Stream::new(Dictionary::new(), vec![b'x'; 600 * 1024]));
+        assert!(capture_object(
+            &pdf,
+            &Object::Array(vec![Object::Reference(raw); 4]),
+            0,
+            &mut 4096
+        )
+        .is_err());
+        let cycle = pdf.new_object_id();
+        pdf.objects.insert(cycle, Object::Reference(cycle));
+        assert!(capture_object(&pdf, &Object::Reference(cycle), 0, &mut 4096).is_err());
+    }
+
+    #[test]
+    fn capture_budget_keeps_compressed_and_plain_native_content_canonical() {
+        use lopdf::{dictionary, Object, Stream};
+        let pdf = lopdf::Document::with_version("1.7");
+        let stream = Stream::new(
+            dictionary! {"Type" => "XObject", "Subtype" => "Form"},
+            b"q 1 0 0 RG 0 0 20 20 re S Q\n".repeat(20),
+        );
+        let mut compressed = stream.clone();
+        compressed.compress().unwrap();
+        assert!(compressed.dict.has(b"Filter"));
+        assert_eq!(
+            capture_object(&pdf, &Object::Stream(stream), 0, &mut 4096).unwrap(),
+            capture_object(&pdf, &Object::Stream(compressed), 0, &mut 4096).unwrap()
+        );
+    }
+
+    #[test]
+    fn saved_capture_refuses_malformed_vertices_and_custom_appearances() {
+        use lopdf::{dictionary, Object};
+        let geo = crate::geometry::PageGeometry {
+            bbox: PointRect {
+                left: 100.0,
+                bottom: 50.0,
+                right: 500.0,
+                top: 650.0,
+            },
+            rotation: crate::Rotation::R90,
+        };
+        let rect = PointRect {
+            left: 40.0,
+            bottom: 60.0,
+            right: 140.0,
+            top: 110.0,
+        };
+        let style = AnnotStyle {
+            rgb: (20, 60, 100),
+            fill_rgb: Some((190, 230, 250)),
+            width_pt: 1.5,
+            opacity: 0.75,
+            dash_pattern: vec![4.0, 2.0],
+        };
+        let mut pdf = lopdf::Document::with_version("1.7");
+        let mut annotation = crate::annot_write::base_annotation("Square", None).unwrap();
+        annotation.set("Rect", crate::annot_write::rect_obj(geo.rect_to_user(rect)));
+        annotation.set("C", crate::annot_write::rgb_obj(style.rgb));
+        annotation.set("IC", crate::annot_write::rgb_obj(style.fill_rgb.unwrap()));
+        annotation.set(
+            "BS",
+            crate::annot_write::border_style(style.width_pt, &style.dash_pattern),
+        );
+        annotation.set("CA", style.opacity);
+        let stream =
+            crate::annot_write::ap_stream(&crate::appearance::square_ap(100.0, 50.0, &style), &geo);
+        let appearance_id = pdf.add_object(stream);
+        annotation.set("AP", dictionary! {"N" => appearance_id});
+        let (captured, _) = capture_primitive(&pdf, &annotation, &geo).unwrap();
+        assert_eq!(
+            captured,
+            LibraryPrimitive::Shape {
+                shape: LibraryShape::Square,
+                rect: [40.0, 60.0, 140.0, 110.0],
+                style: LibraryStyle::from(&style)
+            }
+        );
+        pdf.get_object_mut(appearance_id)
+            .unwrap()
+            .as_stream_mut()
+            .unwrap()
+            .content
+            .extend_from_slice(b" q Q");
+        assert!(capture_primitive(&pdf, &annotation, &geo).is_err());
+        annotation.set("Subtype", Object::Name(b"Polygon".to_vec()));
+        annotation.set("SuniPDFRich", Object::Name(b"Polygon".to_vec()));
+        annotation.set("Vertices", Object::Array(vec![]));
+        assert!(capture_primitive(&pdf, &annotation, &geo).is_err());
+        annotation.set(
+            "Vertices",
+            crate::annot_write::nums(&[150.0, 100.0, 150.0, 100.0, 200.0, 150.0]),
+        );
+        assert!(capture_primitive(&pdf, &annotation, &geo).is_err());
+        annotation.set(
+            "A",
+            dictionary! {"S" => "JavaScript", "JS" => Object::string_literal("void(0)")},
+        );
+        assert!(capture_primitive(&pdf, &annotation, &geo).is_err());
+    }
 
     fn entry() -> LibraryEntry {
         LibraryEntry {

@@ -106,6 +106,81 @@ fn annotations(bytes: &[u8], password: Option<&str>, page: u32) -> Vec<lopdf::Di
 }
 
 #[test]
+fn capture_saved_annotations_requires_provenance_and_matching_fingerprints() {
+    let directory = tempfile::tempdir().unwrap();
+    let library = seed(directory.path());
+    let source = directory.path().join("source.pdf");
+    success(place(&library, &fixture(), &source).output().unwrap());
+    let before = std::fs::read(&source).unwrap();
+    let inventory = success(
+        cli("capture-candidates")
+            .arg(&source)
+            .args(["--page", "1"])
+            .output()
+            .unwrap(),
+    );
+    let rows = inventory["annotations"].as_array().unwrap();
+    assert_eq!(rows.len(), 2);
+    assert!(rows[0]["fingerprint"].as_str().is_some());
+    assert!(rows[1]["fingerprint"].is_null() && rows[1]["refusal"].as_str().is_some());
+    let token = format!("0:{}", rows[0]["fingerprint"].as_str().unwrap());
+    let output = directory.path().join("captured.json");
+    let capture = |out: &Path, selection: &str| {
+        let mut command = cli("capture");
+        command
+            .arg(&source)
+            .args([
+                "--page",
+                "1",
+                "--annotation",
+                selection,
+                "--id",
+                "captured",
+                "--name",
+                "Captured square",
+                "--source",
+                "Owned source",
+                "--out",
+            ])
+            .arg(out);
+        command
+    };
+    let result = success(capture(&output, &token).output().unwrap());
+    assert_eq!(result["count"], 1);
+    assert_eq!(result["original_unchanged"], true);
+    let captured: Value = serde_json::from_slice(&std::fs::read(&output).unwrap()).unwrap();
+    assert_eq!(
+        captured["entries"][0]["primitives"][0]["rect"],
+        json!([0.0, 0.0, 80.0, 40.0])
+    );
+    assert_eq!(
+        captured["entries"][0]["provenance"]["source"],
+        "Owned source"
+    );
+    let refused = directory.path().join("refused.json");
+    failure(
+        capture(&refused, &format!("0:{}", "0".repeat(64)))
+            .output()
+            .unwrap(),
+    );
+    assert!(!refused.exists());
+    failure(
+        capture(&refused, &token)
+            .args(["--annotation", &format!("1:{}", "0".repeat(64))])
+            .output()
+            .unwrap(),
+    );
+    assert!(!refused.exists());
+    failure(
+        capture(&output, &token)
+            .arg("--overwrite")
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(std::fs::read(&source).unwrap(), before);
+}
+
+#[test]
 fn libraries_round_trip_groups_select_export_and_remove_without_overwriting_any_input() {
     let directory = tempfile::tempdir().unwrap();
     let entry = directory.path().join("entry.json");

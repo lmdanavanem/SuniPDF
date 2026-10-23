@@ -58,10 +58,25 @@ pub struct RegisterArgs {
     pub include_replies: bool,
     #[arg(long,default_value="page",value_parser=["page","author","modified","kind","review_status","business_status","discipline","count_group"])]
     pub sort: String,
+    /// Sort by a custom column instead; text in the register, typed values in quantity-table.
+    /// Missing values remain last in both directions, tied values use physical page/index.
+    #[arg(long, value_parser = custom_sort_name)]
+    pub sort_custom: Option<String>,
     #[arg(long)]
     pub descending: bool,
     #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
     pub password: Option<String>,
+}
+
+fn custom_sort_name(value: &str) -> Result<String, String> {
+    if value.is_empty()
+        || value.trim() != value
+        || value.len() > 64
+        || value.chars().any(char::is_control)
+    {
+        return Err("custom sort requires a column name of 1 to 64 UTF-8 bytes".into());
+    }
+    Ok(value.to_owned())
 }
 
 #[derive(Args)]
@@ -133,6 +148,7 @@ pub fn register(engine: &Engine, args: RegisterArgs) -> Result<serde_json::Value
         kind: args.kind,
         count_group: args.count_group,
         include_replies: args.include_replies,
+        custom_sort: args.sort_custom,
     };
     let sort = RegisterSort::ALL
         .into_iter()
