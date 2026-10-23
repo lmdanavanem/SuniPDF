@@ -8,7 +8,7 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
-## 0.44–0.50: local plan workflow deliveries
+## 0.44–0.51: local plan workflow deliveries
 
 | Version | Scope | Current state |
 |---|---|---|
@@ -19,12 +19,19 @@ Partial corpus/mutation work does not close native, interoperability, authentici
 | 0.48 | Editing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.48.0](RELEASE_0.48.0.md). |
 | 0.49 | Adding and removing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.49.0](RELEASE_0.49.0.md). |
 | 0.50 | Reader controls and organized tools | Slice delivered within its bounds; full acceptance criteria remain open. [0.50.0](RELEASE_0.50.0.md). |
+| 0.51 | Ubuntu amd64 package | Published within platform limits. [0.51.0](RELEASE_0.51.0.md). |
 
 The 0.44 desktop editor changes reference distance, unit and precision while keeping vertices/reference points fixed. The CLI can replace explicit geometry using an expected record; both paths preserve annotation identity and reject stale or unsupported targets. Final-source qualification and limits: [Evidence](qa/RELEASE_0.44.0.json). [0.44 scope and preliminary audit](RELEASE_0.44.0.md) · [Measurement guide](MEASUREMENTS.md).
 
 This sequence delivers bounded increments. Existing vertex editing is included in 0.48, and insertion/removal with explicit vertex selection in 0.49; vector snapping, batch recalculation, multiple-scale viewports, real-plan accuracy and full 1.0 criteria remain open. AEC-001/002/003/004/026 remain partial. Historical evidence below stays attached to its original release.
 
-## 0.50.0: reader controls and organized tools (stable Latest)
+## 0.51.0: Ubuntu desktop package (stable Latest)
+
+[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
+
+[Installation and limits](UBUNTU.md) · [Release notes](RELEASE_0.51.0.md) · [Evidence](qa/RELEASE_0.51.0.json).
+
+## 0.50.0: reader controls and organized tools (published; Latest at the time)
 
 [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
 

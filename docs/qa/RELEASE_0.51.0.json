@@ -1,0 +1,270 @@
+{
+  "version": "0.51.0",
+  "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+  "tag": "v0.51.0",
+  "release_id": 421338732,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0",
+  "published_at": "2026-10-23T01:24:39Z",
+  "verified_at": "2026-10-23T01:24:46.3731491Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "workflows": [
+    {
+      "name": "ci",
+      "run": 39879765536,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39879765536",
+      "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+      "conclusion": "success"
+    },
+    {
+      "name": "linux",
+      "run": 39879765566,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39879765566",
+      "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+      "conclusion": "success"
+    },
+    {
+      "name": "release",
+      "run": 39879777012,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39879777012",
+      "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+      "conclusion": "success"
+    },
+    {
+      "name": "codeql",
+      "run": 39879764800,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39879764800",
+      "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+      "conclusion": "success"
+    }
+  ],
+  "qualification": {
+    "tests": {
+      "passed": 781,
+      "failed": 0,
+      "ignored": 12,
+      "suites": 76
+    },
+    "portable": {
+      "guards": 4,
+      "scenarios": 43,
+      "upgrades": 39
+    },
+    "msi": {
+      "logs": 185,
+      "baselines": 37
+    },
+    "i18n": 1417,
+    "open_code_scanning_alerts": 0,
+    "linux_tests": {
+      "passed": 763,
+      "failed": 0,
+      "ignored": 7,
+      "suites": 76
+    },
+    "release_linux_tests": {
+      "passed": 763,
+      "failed": 0,
+      "ignored": 7,
+      "suites": 76
+    }
+  },
+  "assets": [
+    {
+      "id": 667606195,
+      "name": "SuniPDF-0.51.0-linux-amd64.deb",
+      "size": 17302204,
+      "sha256": "e815ace93df325334e0cb958ab148114633ad07e3b102737e689757b098a69d4",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-linux-amd64.deb"
+    },
+    {
+      "id": 667606192,
+      "name": "SuniPDF-0.51.0-linux-amd64.deb.sha256",
+      "size": 97,
+      "sha256": "e0f5e329ae137546cc1bfe3c10d7a3396949618039125bb29d93977f036c71f1",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-linux-amd64.deb.sha256"
+    },
+    {
+      "id": 667606193,
+      "name": "SuniPDF-0.51.0-win-arm64-portable.zip",
+      "size": 27597163,
+      "sha256": "ee742ad169a01b995f70b7e82ff217c21b63a2a13cc6a2f2b64c4906468cb61b",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-win-arm64-portable.zip"
+    },
+    {
+      "id": 667606198,
+      "name": "SuniPDF-0.51.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "90b6cc7977d0f7c139b01d6e00e263386e47d7f06a8d2c3c530afc7ed0a8efc3",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-win-arm64-portable.zip.sha256"
+    },
+    {
+      "id": 667606202,
+      "name": "SuniPDF-0.51.0-win-x64-portable.zip",
+      "size": 29351547,
+      "sha256": "6c5309970a1f959d0c9a90621d3c59da49b7b666875bf4c30b79c5265abe3cb0",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-win-x64-portable.zip"
+    },
+    {
+      "id": 667606197,
+      "name": "SuniPDF-0.51.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "27c408796f6689fdd3ef3838547f260082864b009f22a5730278420002119582",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-win-x64-portable.zip.sha256"
+    },
+    {
+      "id": 667606196,
+      "name": "SuniPDF-0.51.0-win-x64.msi",
+      "size": 27246592,
+      "sha256": "b8dcc8050a6150ef95ba5c2b3955ea851768bfd42b38238d95b158ed5a469553",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-win-x64.msi"
+    },
+    {
+      "id": 667606199,
+      "name": "SuniPDF-0.51.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "cd631f4f1f45d4cb246121496ae44a51aa4f363008189dfa8bb485b986a4dbf2",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-win-x64.msi.sha256"
+    }
+  ],
+  "linux": {
+    "scope": "Ubuntu 22.04 and 24.04 clean containers; actual installed package under a normal user; native GUI with Xvfb and software Glow. Remove and reinstall the same candidate; no previous-version Linux upgrade or physical GPU qualification.",
+    "validation": [
+      {
+        "ubuntu": "22.04",
+        "artifact_id": 12470269434,
+        "artifact_name": "linux-validation-ubuntu-22.04",
+        "run_id": 39879777012,
+        "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+        "archive_sha256": "11551b8d23ca713c1272660c6d803a2343894741b24e99a06140235821e20fd6",
+        "deb_sha256": "e815ace93df325334e0cb958ab148114633ad07e3b102737e689757b098a69d4",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "exitCode": 0,
+          "version": "0.51.0",
+          "sourceSha": "f046c51df5d2caa31d4fa8710edd48471b241809",
+          "distro": {
+            "id": "ubuntu",
+            "version_id": "22.04"
+          },
+          "deb": {
+            "name": "SuniPDF-0.51.0-linux-amd64.deb",
+            "sha256": "e815ace93df325334e0cb958ab148114633ad07e3b102737e689757b098a69d4"
+          },
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a"
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787"
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "5113c7d7d078bbbb34608a18f36bbbf5e469f10c5aa6de234e92ffa1a4df426e"
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "49e6b914db1d4d362efdd5d7a4a003d1e189e80c7cb45a5c3bc24363cbf178df"
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b"
+            }
+          ],
+          "checks": {
+            "install": true,
+            "cli": true,
+            "pdf_render_save_reopen": true,
+            "ocr_en": true,
+            "ocr_fr": true,
+            "native_gui_pdf_visible": true,
+            "reinstall": true,
+            "uninstall": true,
+            "user_data_preserved": true
+          },
+          "normalUserExecution": true,
+          "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged"
+        }
+      },
+      {
+        "ubuntu": "24.04",
+        "artifact_id": 12471186111,
+        "artifact_name": "linux-validation-ubuntu-24.04",
+        "run_id": 39879777012,
+        "source": "f046c51df5d2caa31d4fa8710edd48471b241809",
+        "archive_sha256": "92d0e8473d274ed105cef06d2b293964f78ebab75b847a84562fcefc08ee8822",
+        "deb_sha256": "e815ace93df325334e0cb958ab148114633ad07e3b102737e689757b098a69d4",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "exitCode": 0,
+          "version": "0.51.0",
+          "sourceSha": "f046c51df5d2caa31d4fa8710edd48471b241809",
+          "distro": {
+            "id": "ubuntu",
+            "version_id": "24.04"
+          },
+          "deb": {
+            "name": "SuniPDF-0.51.0-linux-amd64.deb",
+            "sha256": "e815ace93df325334e0cb958ab148114633ad07e3b102737e689757b098a69d4"
+          },
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a"
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787"
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "5113c7d7d078bbbb34608a18f36bbbf5e469f10c5aa6de234e92ffa1a4df426e"
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "5377d51a9b284bd738b19aee17fa0b0ef9a49d7f93ec9543387dc0eaaf73b9e7"
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b"
+            }
+          ],
+          "checks": {
+            "install": true,
+            "cli": true,
+            "pdf_render_save_reopen": true,
+            "ocr_en": true,
+            "ocr_fr": true,
+            "native_gui_pdf_visible": true,
+            "reinstall": true,
+            "uninstall": true,
+            "user_data_preserved": true
+          },
+          "normalUserExecution": true,
+          "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged"
+        }
+      }
+    ]
+  },
+  "public_windows_cli": {
+    "reason": "Public Windows CLI scenarios were not rerun locally for this Linux release. Exact-source Windows CI and installed Linux package checks provide runtime coverage.",
+    "executed": false
+  },
+  "limitations": "Ubuntu qualification uses clean 22.04/24.04 containers, a normal user, Xvfb and software Glow. It covers the installed package, visible PDF rendering, save/reopen, English/French OCR and removal/reinstallation of the same candidate; it does not establish a previous-version Linux upgrade or physical-device qualification. Linux ARM64 is outside this release. Native printing, certificate signing/trust verification, protected Office import and the persistent encrypted visual-signature library remain Windows-only. Session visual signatures and PDF-to-Office exports remain available. Windows packages remain unsigned; Windows ARM64 is cross-built without native execution. Projects updates remain deferred."
+}

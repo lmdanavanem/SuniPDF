@@ -1,5 +1,9 @@
 # Revue Code Scanning — 2026-10-17
 
+## Complément 0.51.0 — 23 octobre 2026
+
+Les alertes #195 et #196 ont été revues individuellement sur la [source `527c91f`](https://github.com/lmdanavanem/SuniPDF/blob/527c91f1e82a6832f4e1ae55610a4caf67dc12c9/crates/sunipdf-core/tests/certificates.rs#L228-L239), puis classées `used in tests` par `lmdanavanem`. Ces entrées synthétiques appartiennent uniquement à un test d’intégration non-Windows : le fournisseur indisponible refuse l’identité avant tout import ou toute signature. Aucun secret de production ni identifiant par défaut identifié. Les tests et les requêtes restent actifs, sans exclusion. Le [relevé des décisions](qa/CODE_SCANNING_0.51.0.json) conserve les horodatages et commentaires exacts de classement.
+
 ## Complément 0.31.0
 
 Quatre nouvelles alertes #178–181 concernent uniquement des mots de passe de PDF synthétiques dans des cibles de tests Cargo. Revue individuelle sous `lmdanavanem`, classées « used in tests » ; aucun secret de production confirmé. Aucune exclusion ; CodeQL Rust/Python/Actions réussit sur la source publiée sans alerte ouverte. [CSV](qa/CODE_SCANNING_0.31.0.csv) · [QA](qa/RELEASE_0.31.0.json).

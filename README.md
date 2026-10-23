@@ -20,11 +20,23 @@
 ## Why SuniPDF
 
 - **Your PDFs stay on your computer.** No account or telemetry; all PDF processing stays local. Update checks contact GitHub for release information and can be disabled.
-- **Native Windows application.** Rust, egui and PDFium, distributed as a portable ZIP or MSI installer.
+- **Native Windows and Ubuntu application.** Rust, egui and PDFium; Windows portable ZIP/MSI or Ubuntu amd64 DEB.
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
-## 0.50.0: reader controls and organized tools (stable Latest)
+## 0.51.0: Ubuntu desktop package (stable Latest)
+
+[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
+
+[Download Ubuntu amd64](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.51.0/SuniPDF-0.51.0-linux-amd64.deb)
+
+```bash
+sudo apt install ./SuniPDF-0.51.0-linux-amd64.deb
+```
+
+[Installation and limits](docs/UBUNTU.md) · [Release notes](docs/RELEASE_0.51.0.md) · [Evidence](docs/qa/RELEASE_0.51.0.json).
+
+## 0.50.0: reader controls and organized tools (published; Latest at the time)
 
 [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
 

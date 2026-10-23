@@ -3,9 +3,15 @@
 [English](CHANGELOG.md)
 
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions sont des tags `vX.Y.Z` ;
-`release.yml` construit et publie les artefacts (ZIP portable x64/ARM64, MSI x64) sur la page Releases GitHub.
+`release.yml` construit et publie les artefacts (ZIP portable Windows x64/ARM64, MSI x64, DEB Ubuntu amd64) sur la page Releases GitHub.
 
 ## [Non publié]
+
+## [0.51.0] - 2026-10-23
+
+Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
+
+[Notes de version](docs/RELEASE_0.51.0.fr.md) · [Preuves](docs/qa/RELEASE_0.51.0.json).
 
 ## [0.50.0] - 2026-10-22
 

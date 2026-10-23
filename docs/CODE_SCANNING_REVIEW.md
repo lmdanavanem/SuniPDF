@@ -1,5 +1,9 @@
 # Code Scanning review — 2026-10-17
 
+## 0.51.0 review — 23 October 2026
+
+Alerts #195 and #196 were individually reviewed against [source `527c91f`](https://github.com/lmdanavanem/SuniPDF/blob/527c91f1e82a6832f4e1ae55610a4caf67dc12c9/crates/sunipdf-core/tests/certificates.rs#L228-L239) and dismissed as `used in tests` by `lmdanavanem`. The synthetic inputs belong only to a non-Windows integration test: the unavailable provider rejects the identity before any import or signing. No production secret or application default was identified. Tests and queries remain enabled without exclusions. The [decision record](qa/CODE_SCANNING_0.51.0.json) preserves the exact dismissal timestamps and comments.
+
 ## 0.31.0 follow-up
 
 Four new findings #178–181 are fixed credentials for synthetic PDFs in Cargo integration-test targets only. Individually reviewed under `lmdanavanem` and dismissed as used in tests; no production secret confirmed. No exclusions; CodeQL Rust/Python/Actions passed on the published source with zero open alerts. [CSV](qa/CODE_SCANNING_0.31.0.csv) · [QA](qa/RELEASE_0.31.0.json).
