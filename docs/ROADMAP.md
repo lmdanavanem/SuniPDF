@@ -3,7 +3,9 @@
 Updated for [0.60.0](RELEASE_0.60.0.md), published on 2026-10-23.
 This page is the current work list. Release history belongs in the
 [changelog](../CHANGELOG.md) and [status archive](archive/PROJECT_STATUS_PRE_0.60.md).
-No future release date or version is committed here.
+The [0.61.0 candidate](RELEASE_0.61.0.md) adds custom-field sorting, saved shape-group capture,
+quantity report formulas and an independent conformance gate. Qualification is in progress;
+these additions are not yet published as stable.
 
 ## Delivered foundation
 
@@ -39,6 +41,12 @@ not only an implementation or a successful build.
 | P1 | Independent interoperability | Record exact reader versions and outcomes for encrypted PDFs, XMP, forms, replies/statuses, ink, FreeText, shapes, redaction and signatures. Structural qpdf checks alone do not establish appearance or trust. |
 | P1 | PDF/A and PDF/UA qualification | Select supported profiles, retain independent validator reports and complete applicable human accessibility checks. Preserving identification metadata is not conformance validation. |
 
+The [new conformance gate](CONFORMANCE.md) pins 12 licensed positive/negative fixtures and
+veraPDF 1.30.3 for PDF/A-1b, PDF/A-2b and PDF/UA-1. It checks original and rewritten files
+and compares PDFium/Poppler appearances. This is bounded automated coverage; the independent
+reader and conformance gates above remain partial until the recorded outcomes and applicable
+human accessibility checks are complete.
+
 Private real-project plan qualification is **deferred at the owner's request**.
 Known synthetic geometry and retained licensed/public PDFs remain the automated baseline;
 they do not establish survey accuracy or customer-document compatibility.
@@ -51,8 +59,8 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 
 | Area | Remaining extension | Required behavior |
 |---|---|---|
-| Register and libraries | Complete custom-field sorting, supported annotation-group capture and reuse | Keep stable identities, bounds and explicit import refusals; preserve original annotations. |
-| Quantity calculations | Formula columns, unit-price calculations and spreadsheet refresh | Bounded non-executable expressions, explicit units/currency/rounding and exports tied to the source revision. |
+| Register and libraries | Qualify the 0.61 custom sorting and saved-group capture; broaden capture only for reproducible appearances | Native shape-group capture retains relative geometry and supported styles. Foreign, text/image/stamp and extra-semantic records remain explicitly refused. |
+| Quantity calculations | Qualify report formulas; add formula subtotals, unit-bearing custom fields and spreadsheet refresh | The 0.61 candidate supplies bounded non-executable expressions, exact quantity units, rounding and explicit errors. Existing prices/currencies remain separate; no implicit conversion or stale export. |
 | Dimensioned drawing | Draw supported shapes from real dimensions | Use the existing scale regions and snapping; show the selected scale and retain editable geometry. |
 | Area and volume | Depth, deducted areas and retained holes | Unit-safe calculations; reject degenerate or self-intersecting geometry and retain all inputs. |
 | Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |

@@ -1,0 +1,183 @@
+{
+  "schema": 1,
+  "upstream": "https://github.com/veraPDF/veraPDF-corpus",
+  "revision": "377728596647e40edf16003d68d620773ce96ec5",
+  "attribution": "veraPDF Consortium, veraPDF test corpus",
+  "license": "CC-BY-4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "licenseSource": "https://github.com/veraPDF/veraPDF-corpus/blob/377728596647e40edf16003d68d620773ce96ec5/README.md",
+  "validator": {
+    "version": "1.30.3",
+    "url": "https://software.verapdf.org/releases/1.30/verapdf-greenfield-1.30.3-installer.zip",
+    "bytes": 32971125,
+    "sha256": "b512bf24945503a33fc10738ecffc1f2dccaaf8593a448e94ee9ac86a9559a59"
+  },
+  "files": [
+    {
+      "id": "a1b-composite-font-pass",
+      "path": "PDF_A-1b/6.3 Fonts/6.3.3.1 General/veraPDF test suite 6-3-3-1-t01-pass-a.pdf",
+      "bytes": 12379,
+      "sha256": "a5e13a5f58b7a779cecdaa119cfa92250f94d05ab918d55a347524433017bb5b",
+      "profile": "1b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.3.3.1",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a1b-composite-font-fail",
+      "path": "PDF_A-1b/6.3 Fonts/6.3.3.1 General/veraPDF test suite 6-3-3-1-t01-fail-a.pdf",
+      "bytes": 12368,
+      "sha256": "236d45b0394f11039bb7e41bf2c0687497ad96851719a97b0f633c45951e870c",
+      "profile": "1b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.3.3.1",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "a1b-form-xobject-pass",
+      "path": "PDF_A-1b/6.2 Graphics/6.2.5 Form XObjects/veraPDF test suite 6-2-5-t02-pass-a.pdf",
+      "bytes": 9709,
+      "sha256": "8dae69927d926b816b8b91534926107d5c6cd79cb44278e557fa2cf4892d474c",
+      "profile": "1b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.2.5",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a1b-form-xobject-fail",
+      "path": "PDF_A-1b/6.2 Graphics/6.2.5 Form XObjects/veraPDF test suite 6-2-5-t02-fail-a.pdf",
+      "bytes": 9572,
+      "sha256": "43bd28a5d68265fa5f5c6b0bcf313e445497f41d03f286e9cbb5b45c80e2a57e",
+      "profile": "1b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.2.5",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "a2b-subset-font-pass",
+      "path": "PDF_A-2b/6.2 Graphics/6.2.11 Fonts/6.2.11.4 Embedding/6.2.11.4.2 Subset embedding/veraPDF test suite 6-2-11-4-2-t01-pass-a.pdf",
+      "bytes": 9807,
+      "sha256": "049a3231486ea79c7eb73a8a05e1351e4d80b67a8a3d189b018661859b815106",
+      "profile": "2b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.2.11.4.2",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a2b-subset-font-fail",
+      "path": "PDF_A-2b/6.2 Graphics/6.2.11 Fonts/6.2.11.4 Embedding/6.2.11.4.2 Subset embedding/veraPDF test suite 6-2-11-4-2-t01-fail-a.pdf",
+      "bytes": 9811,
+      "sha256": "dc8facf79ba51157a27fa67b7abd669bb0691e1b421a01e68a6e09ce1ab23a2c",
+      "profile": "2b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.2.11.4.2",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail"
+    },
+    {
+      "id": "a2b-interactive-form-pass",
+      "path": "PDF_A-2b/6.4 Interactive forms/6.4.1 General/veraPDF test suite 6-4-1-t02-pass-a.pdf",
+      "bytes": 5418,
+      "sha256": "e6b83a07001c5b2a04de3cec3536733fb8250ffe561aef557bf0bfa820b5dc82",
+      "profile": "2b",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "6.4.1",
+        "testNumber": "3"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "a2b-interactive-form-fail",
+      "path": "PDF_A-2b/6.4 Interactive forms/6.4.1 General/veraPDF test suite 6-4-1-t02-fail-a.pdf",
+      "bytes": 5412,
+      "sha256": "50b95da72adbdb41b23183fc5f8358ee0c0d0f24f179300d29d205869d2acbaa",
+      "profile": "2b",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "6.4.1",
+        "testNumber": "3"
+      },
+      "upstreamIntent": "atomic fail",
+      "rasterThreshold": 240,
+      "rasterReason": "The invalid NeedAppearances fixture has only a light-gray widget border (minimum luminance 192 in both independent readers)."
+    },
+    {
+      "id": "ua1-tagged-form-pass",
+      "path": "PDF_UA-1/7.18 Annotations/7.18.1 General/7.18.1-t01-pass-b.pdf",
+      "bytes": 34935,
+      "sha256": "263b50c6aa6c448306428cdd45b01b8fe99657fbe0535fdf9c5aace1e7589dbf",
+      "profile": "ua1",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "7.18.1",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "ua1-form-label-fail",
+      "path": "PDF_UA-1/7.18 Annotations/7.18.4 Forms/7.18.4-t01-fail-a.pdf",
+      "bytes": 29401,
+      "sha256": "0a043392dea3f1f05f436b84a3ed5bc4557f9da608517999a87ac086e8c33179",
+      "profile": "ua1",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "7.18.4",
+        "testNumber": "1"
+      },
+      "upstreamIntent": "atomic fail",
+      "expectedQpdfWarnings": [
+        "part 8 is empty but nshared_total > nshared_first_page",
+        "first shared object offset mismatch: hint table = 1741; computed = 1557",
+        "incorrect offset in outlines table: hint table = 2327; computed = 2143"
+      ]
+    },
+    {
+      "id": "ua1-language-tags-pass",
+      "path": "PDF_UA-1/7.2 Text/7.2-t02-pass-a.pdf",
+      "bytes": 60259,
+      "sha256": "d23e975cd682506ff027f16a56ae00e19abbfce47083881def90c003bc1da000",
+      "profile": "ua1",
+      "expectedCompliant": true,
+      "rule": {
+        "clause": "7.2",
+        "testNumber": "2"
+      },
+      "upstreamIntent": "atomic pass"
+    },
+    {
+      "id": "ua1-language-tags-fail",
+      "path": "PDF_UA-1/7.2 Text/7.2-t02-fail-a.pdf",
+      "bytes": 31123,
+      "sha256": "13b1bb2783599efec203a9080a4233d71c6e45d9f2a8403fdaa7e61049f37500",
+      "profile": "ua1",
+      "expectedCompliant": false,
+      "rule": {
+        "clause": "7.2",
+        "testNumber": "2"
+      },
+      "upstreamIntent": "atomic fail",
+      "expectedQpdfWarnings": [
+        "reported number of objects (38) is not one plus the highest object number (36)"
+      ]
+    }
+  ]
+}

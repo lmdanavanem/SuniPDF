@@ -1,7 +1,8 @@
 # Manual plan counts and annotation register
+
 [Measurements](MEASUREMENTS.md) · [AEC backlog](AEC_BACKLOG.md)
 
-The local 0.41.0 slice adds persistent manual counts and an all-page markup register. These tools run offline and remain free and open source.
+Persistent manual counts and the all-page annotation register run offline. [0.61](RELEASE_0.61.0.md) adds explicit custom-field sorting alongside the existing built-in orders.
 
 ## Count items on a plan
 
@@ -20,9 +21,10 @@ Only supported manual SuniPDF markers are counted. Generic imported stamps and p
 
 - Search ignores case and includes custom text keys/values. Named filters require exact text. The date filter searches the original PDF date, for example `D:202610`.
 - Sort by page, author, date, type, PDF Review state, business status, discipline or count group, ascending/descending. Dates sort lexically in PDF syntax, without timezone normalization.
-- **View on page** closes the table, navigates to the rectangle and selects the actual annotation in the comments panel. Unknown rectangles have no navigation action.
+- Choose a field under **Custom column** to sort by its text value. Sorting is lexical and case-sensitive: text `10` precedes `2`. Missing values and blank text stay last in either direction; equal values use physical page/index as a stable tie-break. Choose **Built-in order** to return to the ordinary sort. The selected custom field is shown as a table column.
+- **View on page** navigates to the rectangle and selects the actual annotation. The docked or floating table can stay open. Unknown rectangles have no navigation action.
 - **Edit fields** replaces business status, discipline and up to 16 custom text fields, entered one `KEY=VALUE` per line. Blank optional fields are cleared; duplicate keys are refused. Count markers also expose their group. Changes have one Undo step.
-- Business statuses such as `Ready for site` do not replace standard PDF Review states such as `Accepted`. Custom fields are text; formulas are not evaluated. Typed columns and custom-key sorting remain AEC-004/007 work.
+- Business statuses such as `Ready for site` do not replace standard PDF Review states such as `Accepted`. Register custom fields remain text. Use the separate [quantity table](QUANTITY_TABLE.md) for typed number/date/choice columns, typed sorting and report formula columns.
 
 The table displays 50 rows at a time; exports include **every matching row**. Refresh reloads the current snapshot. An edit checks snapshot revision and annotation identity to prevent shifted-index or stale-target mistakes. Failed edits preserve the draft and add no successful Undo step.
 
@@ -38,11 +40,12 @@ Existing output files and originals are never replaced, even after a system over
 sunipdf-cli count plan.pdf --group Lights --point 120,90 --page 1 --size 18 --out counted.pdf
 sunipdf-cli annotation-register counted.pdf --count-group Lights
 sunipdf-cli annotation-register counted.pdf --query A101 --sort author --descending --out register.json
+sunipdf-cli annotation-register counted.pdf --sort-custom Room --descending --out room-register.json
 sunipdf-cli annotation-register counted.pdf --format csv --out register.csv
 sunipdf-cli annotation-fields counted.pdf --page 1 --index 0 --count-group Sockets --business-status "Ready for site" --discipline Electrical --field Room=A101 --out reviewed.pdf
 ```
 
-Pages are physical and one-based; `--index` is zero-based in `/Annots`, as returned by the register. `annotation-fields` replaces register fields and clears omitted optional fields. CSV requires `--out`; JSON also supports stdout. Existing password environment/stdin flags work on all three commands.
+Pages are physical and one-based; `--index` is zero-based in `/Annots`, as returned by the register. `--sort-custom NAME` overrides the built-in `--sort` for this report; exports retain the selection as `filter.custom_sort`. `annotation-fields` replaces register fields and clears omitted optional fields. CSV requires `--out`; JSON also supports stdout. Existing password environment/stdin flags work on all three commands.
 
 ## Bounds and evidence
 

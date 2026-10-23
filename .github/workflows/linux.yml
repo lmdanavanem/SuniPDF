@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: linux-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
     name: Build Ubuntu 22.04 amd64
@@ -100,6 +104,58 @@ jobs:
             dist/SuniPDF-*-linux-amd64.deb
             dist/SuniPDF-*-linux-amd64.deb.sha256
           if-no-files-found: error
+
+  conformance:
+    name: PDF conformance and independent reader
+    needs: build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: sunipdf-linux-amd64
+          path: dist
+      - name: Install independent validation tools
+        run: |
+          cat > "$RUNNER_TEMP/sunipdf-conformance.list" <<'EOF'
+          deb https://archive.ubuntu.com/ubuntu jammy main universe
+          deb https://archive.ubuntu.com/ubuntu jammy-updates main universe
+          deb https://security.ubuntu.com/ubuntu jammy-security main universe
+          EOF
+          apt_options=(-o "Dir::Etc::sourcelist=$RUNNER_TEMP/sunipdf-conformance.list" -o 'Dir::Etc::sourceparts=-' -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          sudo apt-get "${apt_options[@]}" update
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends openjdk-17-jre-headless python3 python3-pil qpdf poppler-utils
+      - name: Verify and unpack the exact application package
+        run: |
+          packages=(dist/SuniPDF-*-linux-amd64.deb)
+          test "${#packages[@]}" -eq 1
+          (cd dist && sha256sum --check SuniPDF-*-linux-amd64.deb.sha256)
+          dpkg-deb --extract "${packages[0]}" "$RUNNER_TEMP/conformance-package"
+      - name: Corpus and report boundary regressions
+        run: |
+          python3 scripts/fetch-conformance.py --self-test
+          python3 scripts/test-conformance.py --self-test
+      - name: Fetch pinned licensed corpus and independent validator
+        run: python3 scripts/fetch-conformance.py --out target/conformance-corpus --install-verapdf target/qa-tools/verapdf
+      - name: Validate source and rewritten PDFs
+        run: |
+          python3 scripts/test-conformance.py \
+            --cli "$RUNNER_TEMP/conformance-package/usr/lib/sunipdf/sunipdf-cli" \
+            --corpus target/conformance-corpus \
+            --verapdf target/qa-tools/verapdf/verapdf \
+            --qpdf qpdf --pdftoppm pdftoppm \
+            --out target/conformance-evidence
+      - name: Retain conformance and interoperability evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: conformance-and-reader-evidence
+          path: |
+            target/conformance-evidence/
+            target/qa-tools/verapdf/provenance.json
+            target/conformance-corpus/provenance.json
+          if-no-files-found: warn
 
   validate:
     name: Install and run on Ubuntu ${{ matrix.ubuntu }}

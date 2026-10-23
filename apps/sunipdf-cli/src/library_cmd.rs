@@ -4,7 +4,8 @@ use serde_json::Value;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use sunipdf_core::annotation_library::{
-    AnnotationLibrary, LibraryEntry, LibraryPlacement, MAX_LIBRARY_BYTES, MAX_LIBRARY_ENTRIES,
+    AnnotationLibrary, LibraryCaptureSelection, LibraryEntry, LibraryPlacement, LibraryProvenance,
+    MAX_LIBRARY_BYTES, MAX_LIBRARY_ENTRIES,
 };
 use sunipdf_core::{Engine, EngineError};
 
@@ -18,6 +19,38 @@ pub struct LibraryArgs {
 pub enum LibraryCommand {
     /// Validate and inspect a self-contained annotation library without opening a PDF.
     Inspect { file: PathBuf },
+    /// List supported saved page annotations and fingerprints for explicit group capture.
+    CaptureCandidates {
+        file: PathBuf,
+        #[arg(long, value_parser = positive_page)]
+        page: usize,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Capture supported saved annotations into a new portable library without changing the PDF.
+    Capture {
+        file: PathBuf,
+        #[arg(long, value_parser = positive_page)]
+        page: usize,
+        /// Repeat zero-based index:fingerprint values returned by capture-candidates (1–16).
+        #[arg(long, required = true, value_parser = capture_selection)]
+        annotation: Vec<LibraryCaptureSelection>,
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        name: String,
+        /// Explicit provenance; no document path or author is copied automatically.
+        #[arg(long)]
+        source: String,
+        #[arg(long)]
+        credit: Option<String>,
+        #[arg(long)]
+        license: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add one validated template or group JSON entry to a new library copy.
     Add {
         /// Existing library; omit to create the first library.
@@ -77,8 +110,9 @@ pub enum LibraryCommand {
 impl LibraryArgs {
     pub fn output_path(&self) -> Option<&Path> {
         match &self.command {
-            LibraryCommand::Inspect { .. } => None,
+            LibraryCommand::Inspect { .. } | LibraryCommand::CaptureCandidates { .. } => None,
             LibraryCommand::Add { out, .. }
+            | LibraryCommand::Capture { out, .. }
             | LibraryCommand::Remove { out, .. }
             | LibraryCommand::Export { out, .. }
             | LibraryCommand::Place { out, .. } => Some(out),
@@ -87,10 +121,32 @@ impl LibraryArgs {
 
     pub fn password(&mut self) -> Option<&mut Option<String>> {
         match &mut self.command {
-            LibraryCommand::Place { password, .. } => Some(password),
+            LibraryCommand::Place { password, .. }
+            | LibraryCommand::CaptureCandidates { password, .. }
+            | LibraryCommand::Capture { password, .. } => Some(password),
             _ => None,
         }
     }
+}
+
+fn capture_selection(value: &str) -> Result<LibraryCaptureSelection, String> {
+    let (index, fingerprint) = value
+        .split_once(':')
+        .ok_or_else(|| "annotation must be index:fingerprint from capture-candidates".to_owned())?;
+    let index = index
+        .parse::<usize>()
+        .map_err(|_| "annotation index must be zero-based".to_owned())?;
+    if fingerprint.len() != 64
+        || !fingerprint
+            .bytes()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+    {
+        return Err("annotation fingerprint must be 64 lowercase hexadecimal characters".into());
+    }
+    Ok(LibraryCaptureSelection {
+        index,
+        fingerprint: fingerprint.into(),
+    })
 }
 
 fn positive_page(value: &str) -> Result<usize, String> {
@@ -163,6 +219,53 @@ pub fn run(args: &LibraryArgs) -> Result<Value, EngineError> {
         ensure_new(out)?;
     }
     match &args.command {
+        LibraryCommand::CaptureCandidates {
+            file,
+            page,
+            password,
+        } => {
+            let engine = Engine::new()?;
+            let document = engine.open(file, password.as_deref())?;
+            let selected_page = crate::page_index(*page, document.page_count())?;
+            let candidates = document.library_capture_candidates(selected_page)?;
+            Ok(
+                serde_json::json!({"page": page, "index_base": 0, "annotations": candidates, "original_unchanged": true}),
+            )
+        }
+        LibraryCommand::Capture {
+            file,
+            page,
+            annotation,
+            id,
+            name,
+            source,
+            credit,
+            license,
+            out,
+            password,
+        } => {
+            let engine = Engine::new()?;
+            let document = engine.open(file, password.as_deref())?;
+            let selected_page = crate::page_index(*page, document.page_count())?;
+            let entry = document.capture_library_entry(
+                selected_page,
+                annotation,
+                id.clone(),
+                name.clone(),
+                LibraryProvenance {
+                    author: credit.clone(),
+                    source: Some(source.clone()),
+                    license: license.clone(),
+                },
+            )?;
+            let count = entry.primitives.len();
+            let mut library = AnnotationLibrary::default();
+            library.insert(entry)?;
+            write_library(out, &library)?;
+            Ok(
+                serde_json::json!({"out": out, "page": page, "entry_id": id, "count": count, "original_unchanged": true}),
+            )
+        }
         LibraryCommand::Inspect { file } => {
             let library = read_library(file)?;
             serde_json::from_slice(&library.to_json()?)

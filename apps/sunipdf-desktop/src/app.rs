@@ -939,6 +939,16 @@ impl SuniApp {
                         None => {}
                     }
                 }
+                Response::LibraryCaptureCandidates {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_library_capture_candidates(epoch, generation, result),
+                Response::LibraryEntryCaptured {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_library_entry_captured(epoch, generation, result),
                 Response::QuantityTable {
                     epoch,
                     generation,

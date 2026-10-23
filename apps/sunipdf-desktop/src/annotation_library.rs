@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use sunipdf_core::annotation_library::{
-    AnnotationLibrary, LibraryEntry, LibraryPlacement, LibraryProvenance,
+    AnnotationLibrary, LibraryCaptureCandidate, LibraryCaptureSelection, LibraryEntry,
+    LibraryPlacement, LibraryProvenance, MAX_GROUP_PRIMITIVES,
 };
 use sunipdf_core::EngineError;
 use sunipdf_i18n::tr;
@@ -40,6 +41,20 @@ struct GroupDraft {
     members: Vec<(LibraryEntry, f32, f32)>,
 }
 
+struct CaptureDraft {
+    epoch: u64,
+    generation: u64,
+    page: usize,
+    pending: bool,
+    saving: bool,
+    candidates: Vec<LibraryCaptureCandidate>,
+    selected: BTreeSet<usize>,
+    name: String,
+    source: String,
+    license: String,
+    credit: String,
+}
+
 #[derive(Default)]
 pub(crate) struct LibraryState {
     pub(crate) open: bool,
@@ -55,6 +70,8 @@ pub(crate) struct LibraryState {
     message: Option<String>,
     deleting: bool,
     group: Option<GroupDraft>,
+    capture: Option<CaptureDraft>,
+    capture_generation: u64,
 }
 
 impl LibraryState {
@@ -239,6 +256,158 @@ impl SuniApp {
         self.library.add(entry)
     }
 
+    fn start_library_capture(&mut self) {
+        let Some(page) = self.document.as_ref().map(|doc| doc.page) else {
+            return;
+        };
+        if self.worker.has_pending_mutations()
+            || self
+                .docinfo
+                .properties
+                .as_ref()
+                .is_some_and(|properties| !properties.can_copy)
+        {
+            return;
+        }
+        self.library.capture_generation = self.library.capture_generation.wrapping_add(1);
+        let generation = self.library.capture_generation;
+        let epoch = self.view.epoch;
+        self.library.error = None;
+        self.library.group = None;
+        self.library.capture = Some(CaptureDraft {
+            epoch,
+            generation,
+            page,
+            pending: true,
+            saving: false,
+            candidates: Vec::new(),
+            selected: BTreeSet::new(),
+            name: String::new(),
+            source: String::new(),
+            license: String::new(),
+            credit: String::new(),
+        });
+        self.worker
+            .send(crate::worker::Request::LibraryCaptureCandidates {
+                page,
+                epoch,
+                generation,
+            });
+    }
+
+    fn capture_context_matches(&self, epoch: u64, generation: u64) -> bool {
+        self.library.open
+            && epoch == self.view.epoch
+            && self.library.capture.as_ref().is_some_and(|draft| {
+                draft.epoch == epoch
+                    && draft.generation == generation
+                    && self
+                        .document
+                        .as_ref()
+                        .is_some_and(|doc| doc.page == draft.page)
+            })
+            && !self.worker.has_pending_mutations()
+    }
+
+    pub(crate) fn on_library_capture_candidates(
+        &mut self,
+        epoch: u64,
+        generation: u64,
+        result: Result<Vec<LibraryCaptureCandidate>, EngineError>,
+    ) {
+        if !self.capture_context_matches(epoch, generation) {
+            return;
+        }
+        let draft = self.library.capture.as_mut().unwrap();
+        if !draft.pending || draft.saving {
+            return;
+        }
+        draft.pending = false;
+        match result {
+            Ok(candidates) => draft.candidates = candidates,
+            Err(error) => self.library.error = Some(error.to_string()),
+        }
+    }
+
+    fn save_library_capture(&mut self) {
+        let Some(draft) = self.library.capture.as_ref() else {
+            return;
+        };
+        if !self.capture_context_matches(draft.epoch, draft.generation)
+            || draft.pending
+            || draft.name.trim().is_empty()
+            || draft.source.trim().is_empty()
+            || draft.selected.is_empty()
+            || draft.selected.len() > MAX_GROUP_PRIMITIVES
+        {
+            return;
+        }
+        let draft = self.library.capture.as_mut().unwrap();
+        let selections: Vec<_> = draft
+            .candidates
+            .iter()
+            .filter(|row| draft.selected.contains(&row.index))
+            .filter_map(|row| {
+                row.fingerprint
+                    .as_ref()
+                    .map(|fingerprint| LibraryCaptureSelection {
+                        index: row.index,
+                        fingerprint: fingerprint.clone(),
+                    })
+            })
+            .collect();
+        if selections.len() != draft.selected.len() {
+            return;
+        }
+        let optional = |value: &str| (!value.trim().is_empty()).then(|| value.trim().to_owned());
+        draft.pending = true;
+        draft.saving = true;
+        self.worker
+            .send(crate::worker::Request::CaptureLibraryEntry {
+                page: draft.page,
+                selections,
+                id: new_entry_id(),
+                name: draft.name.trim().into(),
+                provenance: LibraryProvenance {
+                    author: optional(&draft.credit),
+                    source: optional(&draft.source),
+                    license: optional(&draft.license),
+                },
+                epoch: draft.epoch,
+                generation: draft.generation,
+            });
+    }
+
+    pub(crate) fn on_library_entry_captured(
+        &mut self,
+        epoch: u64,
+        generation: u64,
+        result: Result<LibraryEntry, EngineError>,
+    ) {
+        if !self.capture_context_matches(epoch, generation)
+            || !self
+                .library
+                .capture
+                .as_ref()
+                .is_some_and(|draft| draft.pending && draft.saving)
+        {
+            return;
+        }
+        let result = result.and_then(|entry| self.library.add(entry));
+        match result {
+            Ok(()) => {
+                self.library.capture = None;
+                self.library.message = Some(self.t("library.saved").into());
+            }
+            Err(error) => {
+                let draft = self.library.capture.as_mut().unwrap();
+                draft.pending = false;
+                draft.saving = false;
+                self.library.error = Some(error.to_string());
+            }
+        }
+    }
+
     pub(crate) fn annotation_library_dialog(&mut self, ctx: &egui::Context) {
         if !self.library.open {
             return;
@@ -247,7 +416,14 @@ impl SuniApp {
         let can_place = self.document.is_some()
             && matches!(self.engine, crate::app::EngineState::Ready)
             && !self.worker.has_pending_mutations();
+        let can_capture = can_place
+            && self
+                .docinfo
+                .properties
+                .as_ref()
+                .is_none_or(|properties| properties.can_copy);
         let state = &mut self.library;
+        let (mut capture, mut capture_save, mut capture_cancel) = (false, false, false);
         let (
             mut close,
             mut create,
@@ -296,7 +472,77 @@ impl SuniApp {
                         )
                         .clicked();
                     reload = ui.button(tr(lang, "library.reload")).clicked();
+                    capture = ui
+                        .add_enabled(
+                            can_capture && state.capture.is_none(),
+                            egui::Button::new(tr(lang, "library.capture_page")),
+                        )
+                        .clicked();
                 });
+                if let Some(draft) = &mut state.capture {
+                    ui.separator();
+                    ui.heading(tr(lang, "library.capture_page"));
+                    ui.label(tr(lang, "library.capture_help"));
+                    ui.label(format!(
+                        "{} {}",
+                        tr(lang, "library.capture_source_page"),
+                        draft.page + 1
+                    ));
+                    if draft.pending {
+                        ui.spinner();
+                    }
+                    ui.add_enabled_ui(!draft.pending, |ui| {
+                        egui::ScrollArea::vertical()
+                            .id_salt("library-capture-rows")
+                            .max_height(180.0)
+                            .show(ui, |ui| {
+                                for row in &draft.candidates {
+                                    let mut selected = draft.selected.contains(&row.index);
+                                    let enabled = row.fingerprint.is_some()
+                                        && (selected
+                                            || draft.selected.len() < MAX_GROUP_PRIMITIVES);
+                                    let response = ui.add_enabled(
+                                        enabled,
+                                        egui::Checkbox::new(
+                                            &mut selected,
+                                            format!("{} · {}", row.index + 1, row.subtype),
+                                        ),
+                                    );
+                                    if response.changed() {
+                                        if selected {
+                                            draft.selected.insert(row.index);
+                                        } else {
+                                            draft.selected.remove(&row.index);
+                                        }
+                                    }
+                                    if let Some(reason) = &row.refusal {
+                                        response.on_hover_text(reason);
+                                    }
+                                }
+                            });
+                        for (key, value) in [
+                            ("library.name", &mut draft.name),
+                            ("library.source", &mut draft.source),
+                            ("library.license", &mut draft.license),
+                            ("library.credit", &mut draft.credit),
+                        ] {
+                            ui.horizontal(|ui| {
+                                ui.label(tr(lang, key));
+                                ui.add(egui::TextEdit::singleline(value).char_limit(1024));
+                            });
+                        }
+                        capture_save = ui
+                            .add_enabled(
+                                !draft.name.trim().is_empty()
+                                    && !draft.source.trim().is_empty()
+                                    && !draft.selected.is_empty(),
+                                egui::Button::new(tr(lang, "library.capture_save")),
+                            )
+                            .clicked();
+                    });
+                    capture_cancel = ui.button(tr(lang, "library.cancel")).clicked();
+                    ui.separator();
+                }
                 ui.add(
                     egui::TextEdit::singleline(&mut state.filter)
                         .hint_text(tr(lang, "library.filter"))
@@ -425,7 +671,17 @@ impl SuniApp {
             self.library.open = false;
             self.library.group = None;
             self.library.deleting = false;
+            self.library.capture = None;
             return;
+        }
+        if capture {
+            self.start_library_capture();
+        }
+        if capture_save {
+            self.save_library_capture();
+        }
+        if capture_cancel {
+            self.library.capture = None;
         }
         let result = if reload {
             self.library.reload()
@@ -476,6 +732,7 @@ impl SuniApp {
             }
         }
         if create {
+            self.library.capture = None;
             self.library.open = false;
             self.annotate.adv.selected = None;
             self.open_rich_annotations(ctx);
@@ -486,6 +743,7 @@ impl SuniApp {
     }
 
     fn start_library_placement(&mut self, entry: LibraryEntry) {
+        self.library.capture = None;
         self.library.open = false;
         if !self.ink_can_start() {
             self.library.open = true;
@@ -524,6 +782,16 @@ impl SuniApp {
     }
 
     pub(crate) fn validate_library_context(&mut self, ctx: &egui::Context) {
+        if self.library.capture.as_ref().is_some_and(|draft| {
+            draft.epoch != self.view.epoch
+                || self
+                    .document
+                    .as_ref()
+                    .is_none_or(|doc| doc.page != draft.page)
+        }) {
+            self.library.capture = None;
+            self.library.error = Some(self.t("library.stale").into());
+        }
         if self
             .library
             .placing
@@ -864,6 +1132,103 @@ pub(crate) mod tests {
             assert!(!app.navigation_blocked());
             assert!(requests.try_recv().is_err());
         }
+    }
+
+    #[test]
+    fn capture_requires_explicit_selection_and_discards_changed_tab_responses() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let directory = storage(&mut app);
+        let mut controls = Controls::new();
+        controls.click(&mut app, "library.short");
+        controls.click(&mut app, "library.capture_page");
+        let (epoch, generation) = match requests.recv().unwrap() {
+            Request::LibraryCaptureCandidates {
+                page: 0,
+                epoch,
+                generation,
+            } => (epoch, generation),
+            _ => panic!("capture requests a read-only inventory"),
+        };
+        let candidates = vec![
+            LibraryCaptureCandidate {
+                index: 0,
+                subtype: "Square".into(),
+                fingerprint: Some("a".repeat(64)),
+                refusal: None,
+            },
+            LibraryCaptureCandidate {
+                index: 1,
+                subtype: "FreeText".into(),
+                fingerprint: None,
+                refusal: Some("Unsupported appearance".into()),
+            },
+        ];
+        app.on_library_capture_candidates(epoch, generation, Ok(candidates.clone()));
+        assert!(app.library.capture.as_ref().unwrap().selected.is_empty());
+        app.save_library_capture();
+        assert!(requests.try_recv().is_err());
+        controls.click_text(&mut app, "1 · Square");
+        let draft = app.library.capture.as_mut().unwrap();
+        draft.name = "Captured plan symbols".into();
+        draft.source = "Owned source".into();
+        controls.click(&mut app, "library.capture_save");
+        match requests.recv().unwrap() {
+            Request::CaptureLibraryEntry {
+                selections,
+                provenance,
+                epoch: sent_epoch,
+                generation: sent_generation,
+                ..
+            } => {
+                assert_eq!((sent_epoch, sent_generation), (epoch, generation));
+                assert_eq!(selections.len(), 1);
+                assert_eq!(selections[0].index, 0);
+                assert_eq!(provenance.source.as_deref(), Some("Owned source"));
+            }
+            _ => panic!("capture must never edit the PDF"),
+        }
+        app.view.epoch = app.view.epoch.wrapping_add(1);
+        app.on_library_entry_captured(epoch, generation, Ok(entry("old", "Old tab")));
+        assert!(app.library.data.entries().is_empty());
+        assert!(!directory.path().join("annotations.json").exists());
+        app.validate_library_context(&controls.ctx);
+        assert!(app.library.capture.is_none());
+        app.start_library_capture();
+        let (current_epoch, current_generation) = match requests.recv().unwrap() {
+            Request::LibraryCaptureCandidates {
+                epoch, generation, ..
+            } => (epoch, generation),
+            _ => panic!("new inventory required"),
+        };
+        app.on_library_capture_candidates(epoch, generation, Ok(candidates.clone()));
+        assert!(app.library.capture.as_ref().unwrap().pending);
+        app.on_library_capture_candidates(current_epoch, current_generation, Ok(candidates));
+        let draft = app.library.capture.as_mut().unwrap();
+        draft.selected.insert(0);
+        draft.name = "New group".into();
+        draft.source = "Owned source".into();
+        app.save_library_capture();
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::CaptureLibraryEntry { .. }
+        ));
+        app.on_library_entry_captured(
+            current_epoch,
+            current_generation,
+            Ok(entry("new", "New group")),
+        );
+        assert!(app.library.capture.is_none());
+        assert_eq!(app.library.data.entries().len(), 1);
+        assert_eq!(
+            AnnotationLibrary::from_json(
+                &std::fs::read(directory.path().join("annotations.json")).unwrap()
+            )
+            .unwrap()
+            .entries()[0]
+                .id,
+            "new"
+        );
+        assert!(requests.try_recv().is_err());
     }
 
     #[test]

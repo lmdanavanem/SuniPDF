@@ -16,6 +16,9 @@ pub struct TableArgs {
     /// Group totals without combining incompatible units or converting currencies.
     #[arg(long, default_value="none", value_parser=["none", "count_group", "discipline", "business_status"])]
     pub group_by: String,
+    /// JSON array of up to eight report-only formula definitions. No scripts or implicit unit conversion.
+    #[arg(long)]
+    pub formulas: Option<PathBuf>,
 }
 
 #[derive(Args)]
@@ -101,6 +104,7 @@ pub fn table(engine: &Engine, args: TableArgs) -> Result<Value, EngineError> {
             kind: args_report.kind,
             count_group: args_report.count_group,
             include_replies: args_report.include_replies,
+            custom_sort: args_report.sort_custom,
         },
         sort: RegisterSort::ALL
             .into_iter()
@@ -111,6 +115,12 @@ pub fn table(engine: &Engine, args: TableArgs) -> Result<Value, EngineError> {
             .into_iter()
             .find(|group| group.id() == args.group_by)
             .ok_or(EngineError::InvalidFormat)?,
+        formulas: args
+            .formulas
+            .as_ref()
+            .map(|path| QuantityOptions::formulas_from_json(&read_json(path)?))
+            .transpose()?
+            .unwrap_or_default(),
     };
     let table = document.quantity_table()?;
     // The core read API is also used for on-screen display; only its export API authorizes output.

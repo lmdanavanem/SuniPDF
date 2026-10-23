@@ -38,6 +38,15 @@ checks and the [roadmap](ROADMAP.md) for planned work.
 - Render and thumbnail caches are bounded, but native memory and driver allocations are additional.
   CI model benchmarks do not establish complete frame latency or performance on physical devices.
 
+## Candidate additions
+
+The [0.61 candidate](RELEASE_0.61.0.md) is awaiting qualification/publication. Its report formulas
+accept dimensionless numeric fields and quantities with an exact declared unit. They do not
+change stored prices, subtotals or PDF metadata; missing inputs and calculation errors remain
+explicit. Saved-group capture accepts reproducible native shape appearances only; foreign,
+text/image/stamp, reply and extra-semantic records are refused atomically. Broader formulas
+and annotation capture remain planned.
+
 ## Editing, annotations and forms
 
 - Complex shaping, bidirectional paragraph editing, variable/CFF2/color fonts and arbitrary

@@ -245,12 +245,45 @@ impl Document<'_> {
 pub fn optimize(input: &[u8], password: Option<&str>) -> Result<Vec<u8>, EngineError> {
     // `security::load` / `save` : un document protégé le reste après optimisation.
     let mut doc = crate::security::load(input, password)?;
+    preserve_xml_metadata_compression(&mut doc);
     doc.compress();
     doc.delete_zero_length_streams();
     doc.prune_objects();
     doc.renumber_objects();
     let out = crate::security::save(doc)?;
     Ok(out)
+}
+
+fn preserve_xml_metadata_compression(doc: &mut lopdf::Document) {
+    // PDF/A-1 forbids a Filter on catalog metadata. Preserve all Metadata/XML
+    // streams conservatively, without trusting an XMP conformance declaration.
+    // Existing filters and bytes remain untouched; this is not a repair pass.
+    let metadata_ids: Vec<_> = doc
+        .objects
+        .iter()
+        .filter_map(|(id, object)| {
+            let stream = object.as_stream().ok()?;
+            let is_metadata = stream
+                .dict
+                .get_deref(b"Type", doc)
+                .and_then(lopdf::Object::as_name)
+                .is_ok_and(|name| name == b"Metadata");
+            let is_xml = stream
+                .dict
+                .get_deref(b"Subtype", doc)
+                .and_then(lopdf::Object::as_name)
+                .is_ok_and(|name| name == b"XML");
+            (is_metadata || is_xml).then_some(*id)
+        })
+        .collect();
+    for id in metadata_ids {
+        if let Ok(stream) = doc
+            .get_object_mut(id)
+            .and_then(lopdf::Object::as_stream_mut)
+        {
+            stream.allows_compression = false;
+        }
+    }
 }
 
 /// Optimise `input` vers `output` (écriture atomique) et renvoie les tailles.
@@ -275,6 +308,137 @@ pub fn optimize_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use lopdf::{dictionary, Object, Stream};
+
+    fn optimization_metadata_fixture(compressed_metadata: bool) -> (Vec<u8>, Vec<u8>, Vec<u8>) {
+        let mut doc = lopdf::Document::with_version("1.4");
+        doc.reference_table.cross_reference_type = lopdf::xref::XrefType::CrossReferenceTable;
+        let pages = doc.new_object_id();
+        let content = b"q 0 0 10 10 re f Q\n".repeat(512);
+        let contents = doc.add_object(Stream::new(dictionary! {}, content.clone()));
+        let xml = format!(
+            "<x:xmpmeta xmlns:x='adobe:ns:meta/'><rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'><rdf:Description xmlns:pdfaid='http://www.aiim.org/pdfa/ns/id/' pdfaid:part='1' pdfaid:conformance='B'/></rdf:RDF>{}</x:xmpmeta>",
+            " ".repeat(4096)
+        )
+        .into_bytes();
+        let indirect_type = doc.add_object(Object::Name(b"Metadata".to_vec()));
+        let indirect_subtype = doc.add_object(Object::Name(b"XML".to_vec()));
+        let mut metadata_ids = Vec::new();
+        for dict in [
+            dictionary! { "Type" => "Metadata", "Subtype" => "XML" },
+            dictionary! { "Type" => "Metadata" },
+            dictionary! { "Subtype" => "XML" },
+            dictionary! { "Type" => indirect_type, "Subtype" => indirect_subtype },
+        ] {
+            let mut stream = Stream::new(dict, xml.clone());
+            if compressed_metadata {
+                stream.compress().unwrap();
+                assert!(stream.dict.has(b"Filter"));
+            }
+            metadata_ids.push(doc.add_object(stream));
+        }
+        let page = doc.add_object(dictionary! {
+            "Type" => "Page", "Parent" => pages,
+            "MediaBox" => vec![0.into(), 0.into(), 100.into(), 100.into()],
+            "Resources" => dictionary! {}, "Contents" => contents,
+            "Metadata" => metadata_ids[1],
+        });
+        doc.objects.insert(
+            pages,
+            Object::Dictionary(dictionary! {
+                "Type" => "Pages", "Count" => 1, "Kids" => vec![page.into()],
+            }),
+        );
+        let root = doc.add_object(dictionary! {
+            "Type" => "Catalog", "Pages" => pages, "Metadata" => metadata_ids[0],
+            "TestMetadata" => metadata_ids.into_iter().map(Object::Reference).collect::<Vec<_>>(),
+        });
+        doc.trailer.set("Root", root);
+        let mut bytes = Vec::new();
+        doc.save_to(&mut bytes).unwrap();
+        (bytes, xml, content)
+    }
+
+    #[test]
+    fn optimize_preserves_xml_metadata_without_filters_and_compresses_page_content() {
+        let (source, xml, content) = optimization_metadata_fixture(false);
+        let original = source.clone();
+        let output = optimize(&source, None).unwrap();
+        assert_eq!(source, original);
+        assert!(output.len() < source.len());
+        let doc = lopdf::Document::load_mem(&output).unwrap();
+        let catalog = doc.catalog().unwrap();
+        for reference in catalog.get(b"TestMetadata").unwrap().as_array().unwrap() {
+            let stream = doc.dereference(reference).unwrap().1.as_stream().unwrap();
+            assert!(!stream.dict.has(b"Filter"));
+            assert_eq!(stream.content, xml);
+        }
+        let page = doc
+            .get_dictionary(*doc.get_pages().get(&1).unwrap())
+            .unwrap();
+        let stream = page
+            .get_deref(b"Contents", &doc)
+            .unwrap()
+            .as_stream()
+            .unwrap();
+        assert_eq!(
+            stream.dict.get(b"Filter").unwrap().as_name().unwrap(),
+            b"FlateDecode"
+        );
+        assert_eq!(
+            stream
+                .decompressed_content_with_limit(content.len())
+                .unwrap(),
+            content
+        );
+    }
+
+    #[test]
+    fn optimize_keeps_existing_metadata_filters_and_does_not_claim_to_repair_them() {
+        let (source, xml, _) = optimization_metadata_fixture(true);
+        let before = lopdf::Document::load_mem(&source).unwrap();
+        let previous = before
+            .catalog()
+            .unwrap()
+            .get_deref(b"Metadata", &before)
+            .unwrap()
+            .as_stream()
+            .unwrap();
+        let output = optimize(&source, None).unwrap();
+        let after = lopdf::Document::load_mem(&output).unwrap();
+        let metadata = after
+            .catalog()
+            .unwrap()
+            .get_deref(b"Metadata", &after)
+            .unwrap()
+            .as_stream()
+            .unwrap();
+        assert_eq!(
+            metadata.dict.get(b"Filter").unwrap(),
+            previous.dict.get(b"Filter").unwrap()
+        );
+        assert_eq!(metadata.content, previous.content);
+        assert_eq!(
+            metadata.decompressed_content_with_limit(xml.len()).unwrap(),
+            xml
+        );
+    }
+
+    #[test]
+    fn optimize_file_preserves_source_and_reuses_bytes_when_no_smaller_output_exists() {
+        let (source, _, _) = optimization_metadata_fixture(false);
+        let stable = optimize(&source, None).unwrap();
+        assert_eq!(optimize(&stable, None).unwrap(), stable);
+        let dir = tempfile::tempdir().unwrap();
+        let input = dir.path().join("source.pdf");
+        let output = dir.path().join("optimized.pdf");
+        std::fs::write(&input, &stable).unwrap();
+        let result = optimize_file(&input, &output, None).unwrap();
+        assert_eq!(result.before, stable.len() as u64);
+        assert_eq!(result.after, result.before);
+        assert_eq!(std::fs::read(&input).unwrap(), stable);
+        assert_eq!(std::fs::read(&output).unwrap(), stable);
+    }
 
     /// Chaque orientation envoie les coins de l'image brute (unité) sur ceux de la boîte affichée.
     #[test]

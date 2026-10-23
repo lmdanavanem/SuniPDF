@@ -1,6 +1,6 @@
 # SuniPDF feature matrix
 
-Current scope: **0.60.0**. Features below are implemented within the stated limits.
+Current development scope: **0.61.0 candidate**. Features below are implemented within the stated limits.
 [Project status](PROJECT_STATUS.md) records executed checks; implementation does not imply qualification on every document,
 physical device or third-party reader. Planned work is tracked in the [roadmap](ROADMAP.md).
 
@@ -29,10 +29,11 @@ physical device or third-party reader. Planned work is tracked in the [roadmap](
 | Vector snapping | Eligible endpoints and straight-line intersections with crop, rotation, transforms and supported convex clips; scans, text/image bounds and unsupported clips do not supply points |
 | Individual edits | Change a saved scale/unit/precision; move vertices, add/remove eligible vertices, select coincident points by index; Preview/Apply and one Undo preserve identity, replies and quantity fields |
 | Batch recalibration | Preview selected page defaults and supported saved measurements, then apply atomically with one Undo; up to 512 pages, 4,096 records and 128 MiB per document; signed or stale inputs refused |
-| Counts and register | Persistent count markers, groups, review status, discipline and custom fields; filtering, sorting, navigation and guarded CSV/JSON export |
-| Quantity tables | Actual count/measurement quantities, typed fields and explicit prices; compatible-unit totals keep currencies and rounding groups separate; missing values stay distinct from zero |
+| Counts and register | Persistent count markers, groups, review status, discipline and custom text fields; built-in or lexical custom-field sorting, missing values last, navigation and guarded CSV/JSON export |
+| Quantity tables | Actual count/measurement quantities, typed fields, numeric/date/text/choice sorting and explicit prices; quantity totals retain their units, monetary totals keep currencies and rounding groups separate; missing values stay distinct from zero |
+| Report formulas | Up to eight tab-local arithmetic columns using decimal constants, numeric fields and an exact-unit quantity; six-decimal checked arithmetic, explicit cell errors and JSON configuration reuse; no formula subtotals or PDF field mutation |
 | Table workspace | Docked or floating tables with saved placement/height, row-to-annotation navigation and cached filtering/sorting/totals |
-| Annotation library | Local templates and flat groups of up to 16 supported primitives; rendered placement preview, one Undo and bounded self-contained JSON import/export; measurements and review threads excluded |
+| Annotation library | Local templates and flat groups of up to 16 primitives; capture supported saved native shapes/lines/polygons/clouds with declared provenance and exact appearance checks; placement preview, fresh identities, one Undo and bounded JSON import/export; arbitrary/text/image/stamp capture, measurements and review threads excluded |
 | Comparison | Local text/geometry comparison and two-page magenta/cyan overlays; manual or two-point alignment and new PNG/JSON exports; automatic registration and change outlines remain open |
 | Multi-file search | Literal text search across explicitly selected local PDFs, page excerpts/navigation, per-file failures and cancellation; partial results remain explicit |
 

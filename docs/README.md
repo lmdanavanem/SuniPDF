@@ -30,10 +30,12 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 - [Roadmap](ROADMAP.md): current priorities.
 - [Plan-workflow backlog](AEC_BACKLOG.md) and [CSV](AEC_BACKLOG.csv): detailed feature tracking.
 - [1.0 release criteria](RELEASE_1.0_CRITERIA.md): remaining acceptance gates.
+- [Conformance and independent readers](CONFORMANCE.md): pinned corpus, validator profiles and appearance checks.
 - [Project status](PROJECT_STATUS.md): verified results and outstanding qualification.
 
 ## Releases and history
 
+- [0.61.0 candidate notes](RELEASE_0.61.0.md): implemented changes awaiting qualification/publication.
 - [0.60.0 release notes](RELEASE_0.60.0.md) and [qualification evidence](qa/RELEASE_0.60.0.json).
 - [Changelog](../CHANGELOG.md): changes by version and links to earlier release documents.
 - [GitHub Releases](https://github.com/lmdanavanem/SuniPDF/releases): downloadable packages and checksums.

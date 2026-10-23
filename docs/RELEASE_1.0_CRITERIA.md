@@ -15,6 +15,12 @@ signature, XFA or PDF-conformance support.
 | ARM64 support | Run the actual public package on real Windows ARM64 and record OS/device/results | Cross-compilation and PE inspection only; keep runtime support experimental until qualified |
 | PDF/A and PDF/UA claims | Name supported profiles, retain independent validator reports, and perform applicable human accessibility checks | Metadata preservation is not conformance validation; no universal PDF/A/PDF/UA claim |
 
+The [0.61 candidate](RELEASE_0.61.0.md) adds 12 pinned veraPDF fixtures, explicit PDF/A-1b,
+PDF/A-2b and PDF/UA-1 validation, positive/negative controls and PDFium/Poppler appearance
+comparisons. The [conformance protocol](CONFORMANCE.md) defines exact operations and limits;
+actual remote results are pending. These checks expand automated evidence without closing
+human accessibility, physical-device or universal interoperability requirements.
+
 For every gate, an unsupported or unavailable result must stay explicit. A partial report, a successful
 build, an ignored test or a signed test fixture must not close an unverified acceptance criterion.
 

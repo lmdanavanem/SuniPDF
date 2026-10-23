@@ -114,6 +114,8 @@ pub struct RegisterFilter {
     pub kind: String,
     pub count_group: String,
     pub include_replies: bool,
+    /// Optional custom text field overriding the built-in sort; missing values stay last.
+    pub custom_sort: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -247,6 +249,20 @@ impl AnnotationRegister {
             .collect();
         rows.sort_by(|a, b| {
             let (a, b) = (&self.rows[*a], &self.rows[*b]);
+            if let Some(name) = &filter.custom_sort {
+                return custom_order(
+                    a.fields
+                        .custom
+                        .get(name)
+                        .filter(|value| !value.trim().is_empty()),
+                    b.fields
+                        .custom
+                        .get(name)
+                        .filter(|value| !value.trim().is_empty()),
+                    descending,
+                )
+                .then_with(|| (a.page, a.index).cmp(&(b.page, b.index)));
+            }
             let order = match sort {
                 RegisterSort::Page => std::cmp::Ordering::Equal,
                 RegisterSort::Author => a.author.cmp(&b.author),
@@ -327,6 +343,26 @@ impl AnnotationRegister {
             output.push_str("\r\n");
         }
         output
+    }
+}
+
+/// Missing values remain last in either direction; callers append a stable identity tie-break.
+pub(crate) fn custom_order<T: Ord>(
+    a: Option<T>,
+    b: Option<T>,
+    descending: bool,
+) -> std::cmp::Ordering {
+    match (a, b) {
+        (Some(a), Some(b)) => {
+            if descending {
+                b.cmp(&a)
+            } else {
+                a.cmp(&b)
+            }
+        }
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => std::cmp::Ordering::Equal,
     }
 }
 

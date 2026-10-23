@@ -1,4 +1,9 @@
-//! Snapshot-bound quantities and user-declared prices; no formulas or currency conversion.
+//! Snapshot-bound quantities, user-declared prices and bounded report-only expressions.
+
+#[path = "quantity_formula.rs"]
+mod formula;
+pub use formula::{FormulaColumn, FormulaError, FormulaValue};
+pub type FormulaValues = BTreeMap<(usize, usize), Vec<FormulaValue>>;
 
 use crate::annot_write::{load_annot, store_annot, touch};
 use crate::annotation_register::{
@@ -244,6 +249,15 @@ pub enum TypedValue {
     Choice { value: String, options: Vec<String> },
 }
 impl TypedValue {
+    fn sort_key(&self) -> Option<(u8, i128, &str)> {
+        Some(match self {
+            Self::Number { value } => (0, value.units().ok()?, ""),
+            Self::Date { value } => (1, 0, value.as_str()),
+            Self::Text { value } if !value.trim().is_empty() => (2, 0, value.as_str()),
+            Self::Text { .. } => return None,
+            Self::Choice { value, .. } => (3, 0, value.as_str()),
+        })
+    }
     fn schema(&self) -> Value {
         match self {
             Self::Text { .. } => json!({"type":"text"}),
@@ -493,6 +507,38 @@ pub struct QuantityOptions {
     pub sort: RegisterSort,
     pub descending: bool,
     pub group_by: QuantityGrouping,
+    /// Read-only report configuration, never stored as executable PDF metadata.
+    pub formulas: Vec<FormulaColumn>,
+}
+
+impl QuantityOptions {
+    fn compiled_formulas(&self) -> Result<Vec<formula::CompiledFormula>, EngineError> {
+        let mut names = std::collections::HashSet::new();
+        if self.formulas.len() > 8 {
+            return Err(bad("at most eight formula columns"));
+        }
+        self.formulas
+            .iter()
+            .map(|column| {
+                if !names.insert(&column.name) {
+                    return Err(bad("duplicate formula column name"));
+                }
+                column.compile()
+            })
+            .collect()
+    }
+    pub fn validate_formulas(&self) -> Result<(), EngineError> {
+        self.compiled_formulas().map(|_| ())
+    }
+    pub fn formulas_from_json(bytes: &[u8]) -> Result<Vec<FormulaColumn>, EngineError> {
+        let formulas = parse_json(bytes)?;
+        let options = Self {
+            formulas,
+            ..Self::default()
+        };
+        options.validate_formulas()?;
+        Ok(options.formulas)
+    }
 }
 #[derive(Debug, Clone, Serialize)]
 pub struct CostSubtotal {
@@ -584,7 +630,8 @@ impl QuantityTable {
             .collect();
         let mut filter = options.filter.clone();
         filter.query.clear();
-        self.register
+        let mut rows: Vec<_> = self
+            .register
             .select(&filter, options.sort, options.descending)
             .into_iter()
             .filter_map(|r| by_key.get(&(r.page, r.index)).copied())
@@ -596,7 +643,20 @@ impl QuantityTable {
                             || value.display().to_lowercase().contains(&query)
                     })
             })
-            .collect()
+            .collect();
+        if let Some(name) = &options.filter.custom_sort {
+            rows.sort_by(|a, b| {
+                annotation_register::custom_order(
+                    a.fields.custom.get(name).and_then(TypedValue::sort_key),
+                    b.fields.custom.get(name).and_then(TypedValue::sort_key),
+                    options.descending,
+                )
+                .then_with(|| {
+                    (a.register.page, a.register.index).cmp(&(b.register.page, b.register.index))
+                })
+            });
+        }
+        rows
     }
     pub fn summary(&self, options: &QuantityOptions) -> Result<QuantitySummary, EngineError> {
         let rows = self.select(options);
@@ -673,13 +733,50 @@ impl QuantityTable {
             groups,
         })
     }
+    /// Computes once per report/filter revision; result rows keep their source identities.
+    pub fn formula_values(&self, options: &QuantityOptions) -> Result<FormulaValues, EngineError> {
+        let compiled = options.compiled_formulas()?;
+        if compiled.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+        Ok(self
+            .select(options)
+            .into_iter()
+            .map(|row| {
+                (
+                    (row.register.page, row.register.index),
+                    compiled
+                        .iter()
+                        .map(|formula| formula.evaluate(row))
+                        .collect(),
+                )
+            })
+            .collect())
+    }
     pub fn json(&self, options: &QuantityOptions) -> Result<Value, EngineError> {
         if !self.can_export {
             return Err(EngineError::SecurityRestricted);
         }
         let rows = self.select(options);
+        let compiled = options.compiled_formulas()?;
+        let formula_rows: Vec<_> = rows
+            .iter()
+            .filter(|_| !compiled.is_empty())
+            .map(|row| {
+                json!({
+                    "page":row.register.page, "index":row.register.index,
+                    "values":options.formulas.iter().zip(&compiled).map(|(column, compiled)|
+                        (column.name.clone(), compiled.evaluate(row))).collect::<BTreeMap<_, _>>()
+                })
+            })
+            .collect();
+        let formula_complete = formula_rows.iter().all(|row| {
+            row["values"]
+                .as_object()
+                .is_some_and(|values| values.values().all(|value| value["error"].is_null()))
+        });
         Ok(
-            json!({"schema":"sunipdf-quantity-table","version":1,"complete":true,"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":self.summary(options)?}),
+            json!({"schema":"sunipdf-quantity-table","version":1,"complete":true,"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":self.summary(options)?,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows}),
         )
     }
     pub fn csv(&self, options: &QuantityOptions) -> Result<String, EngineError> {
@@ -687,6 +784,7 @@ impl QuantityTable {
             return Err(EngineError::SecurityRestricted);
         }
         let rows = self.select(options);
+        let compiled = options.compiled_formulas()?;
         let keys: std::collections::BTreeSet<_> = rows
             .iter()
             .flat_map(|r| r.fields.custom.keys().cloned())
@@ -722,6 +820,13 @@ impl QuantityTable {
             header.push(format!("custom:{key}:type"));
             header.push(format!("custom:{key}:value"));
         }
+        for column in &options.formulas {
+            header.extend([
+                format!("formula:{}:value", column.name),
+                format!("formula:{}:unit", column.name),
+                format!("formula:{}:error", column.name),
+            ]);
+        }
         let width = header.len();
         let line = |mut values: Vec<String>| {
             values.resize(width, String::new());
@@ -733,6 +838,7 @@ impl QuantityTable {
                 + "\r\n"
         };
         let mut out = line(header);
+        let mut formula_complete = true;
         for row in rows {
             let r = &row.register;
             let p = row.fields.unit_price.as_ref();
@@ -773,6 +879,21 @@ impl QuantityTable {
                     values.extend([String::new(), String::new()]);
                 }
             }
+            for compiled in &compiled {
+                let value = compiled.evaluate(row);
+                formula_complete &= value.error.is_none();
+                values.extend([
+                    value.value.unwrap_or_default(),
+                    value
+                        .unit
+                        .map(|unit| unit.id().to_owned())
+                        .unwrap_or_default(),
+                    value
+                        .error
+                        .map(|error| error.id().to_owned())
+                        .unwrap_or_default(),
+                ]);
+            }
             out.push_str(&line(values));
         }
         for group in self.summary(options)?.groups {
@@ -803,7 +924,7 @@ impl QuantityTable {
         let mut metadata = vec![String::new(); 22];
         metadata[0] = "metadata".into();
         metadata[1] = self.source_sha256().into();
-        metadata[21]=json!({"version":1,"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only"}).to_string();
+        metadata[21]=json!({"version":1,"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_evaluation_complete":formula_complete}).to_string();
         out.push_str(&line(metadata));
         Ok(out)
     }
@@ -1216,6 +1337,326 @@ mod tests {
             line_total,
             editable: true,
         }
+    }
+
+    fn test_table(rows: Vec<QuantityRow>) -> QuantityTable {
+        QuantityTable {
+            register: AnnotationRegister {
+                source_sha256: "revision-a".into(),
+                page_count: 1,
+                rows: rows.iter().map(|row| row.register.clone()).collect(),
+                source_snapshot: Arc::new(Vec::new()),
+            },
+            rows,
+            can_export: true,
+            metadata_bytes: 0,
+            metadata_sizes: HashMap::new(),
+        }
+    }
+    fn formula(expression: &str) -> FormulaColumn {
+        FormulaColumn {
+            name: "Result".into(),
+            expression: expression.into(),
+            quantity_unit: Some(QuantityUnit::Metres),
+            rounding_decimals: 2,
+        }
+    }
+
+    #[test]
+    fn custom_numeric_sort_is_numeric_stable_and_missing_last_in_both_directions() {
+        let mut rows: Vec<_> = (0..6)
+            .map(|index| row(index, QuantityUnit::Each, 1.0, None))
+            .collect();
+        for (row, number) in rows.iter_mut().zip([
+            Some("10"),
+            Some("2"),
+            None,
+            Some("-1"),
+            Some("2.00"),
+            Some("0"),
+        ]) {
+            if let Some(number) = number {
+                row.fields.custom.insert(
+                    "Amount".into(),
+                    TypedValue::Number {
+                        value: DecimalValue::parse(number).unwrap(),
+                    },
+                );
+            }
+        }
+        let table = test_table(rows);
+        let mut options = QuantityOptions::default();
+        options.filter.custom_sort = Some("Amount".into());
+        let indices = |options: &QuantityOptions| {
+            table
+                .select(options)
+                .iter()
+                .map(|row| row.register.index)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(indices(&options), [3, 5, 1, 4, 0, 2]);
+        options.descending = true;
+        assert_eq!(indices(&options), [0, 1, 4, 5, 3, 2]);
+        options.filter.custom_sort = Some("Absent".into());
+        assert_eq!(indices(&options), [0, 1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn formulas_use_decimal_arithmetic_and_preserve_quantity_units() {
+        let mut source = row(0, QuantityUnit::Metres, 12.0, None);
+        source.fields.custom.insert(
+            "Waste %".into(),
+            TypedValue::Number {
+                value: DecimalValue::parse("10").unwrap(),
+            },
+        );
+        let value = formula("quantity * (1 + [Waste %] / 100)")
+            .evaluate(&source)
+            .unwrap();
+        assert_eq!(value.value.as_deref(), Some("13.20"));
+        assert_eq!(value.unit, Some(QuantityUnit::Metres));
+        assert_eq!(value.error, None);
+        for (expression, expected) in [
+            ("0.1 + 0.2", "0.30"),
+            ("-1.005", "-1.01"),
+            ("1 / 3", "0.33"),
+            ("quantity / quantity", "1.00"),
+        ] {
+            let value = formula(expression).evaluate(&source).unwrap();
+            assert_eq!(value.value.as_deref(), Some(expected), "{expression}");
+            assert_eq!(value.unit, None);
+        }
+        let mut fixed = formula("1 / 6");
+        fixed.rounding_decimals = 6;
+        assert_eq!(
+            fixed.evaluate(&source).unwrap().value.as_deref(),
+            Some("0.166667")
+        );
+    }
+
+    #[test]
+    fn custom_text_date_and_invalid_number_order_is_deterministic() {
+        let mut rows: Vec<_> = (0..5)
+            .map(|index| row(index, QuantityUnit::Each, 1.0, None))
+            .collect();
+        for (row, value) in rows
+            .iter_mut()
+            .zip([Some("B"), Some("A"), None, Some(" "), Some("A")])
+        {
+            if let Some(value) = value {
+                row.register
+                    .fields
+                    .custom
+                    .insert("Room".into(), value.into());
+                row.fields.custom.insert(
+                    "Room".into(),
+                    TypedValue::Text {
+                        value: value.into(),
+                    },
+                );
+            }
+        }
+        let mut table = test_table(rows);
+        let mut options = QuantityOptions::default();
+        options.filter.custom_sort = Some("Room".into());
+        for (descending, expected) in [(false, vec![1, 4, 0, 2, 3]), (true, vec![0, 1, 4, 2, 3])] {
+            options.descending = descending;
+            assert_eq!(
+                table
+                    .select(&options)
+                    .iter()
+                    .map(|row| row.register.index)
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            assert_eq!(
+                table
+                    .register
+                    .select(&options.filter, RegisterSort::Page, descending)
+                    .iter()
+                    .map(|row| row.index)
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            assert_eq!(
+                table
+                    .register
+                    .json(&options.filter, RegisterSort::Page, descending)["rows"][0]["index"],
+                expected[0]
+            );
+        }
+        for (row, value) in table.rows.iter_mut().zip([
+            "2028-02-29",
+            "2027-12-31",
+            "2028-01-01",
+            "2028-03-01",
+            "2028-01-01",
+        ]) {
+            row.fields.custom.insert(
+                "Date".into(),
+                TypedValue::Date {
+                    value: value.into(),
+                },
+            );
+        }
+        options.filter.custom_sort = Some("Date".into());
+        options.descending = false;
+        assert_eq!(
+            table
+                .select(&options)
+                .iter()
+                .map(|row| row.register.index)
+                .collect::<Vec<_>>(),
+            [1, 2, 4, 0, 3]
+        );
+        table.rows[0].fields.custom.insert(
+            "Number".into(),
+            TypedValue::Number {
+                value: DecimalValue("invalid".into()),
+            },
+        );
+        table.rows[1].fields.custom.insert(
+            "Number".into(),
+            TypedValue::Number {
+                value: DecimalValue::parse("0").unwrap(),
+            },
+        );
+        options.filter.custom_sort = Some("Number".into());
+        for descending in [false, true] {
+            options.descending = descending;
+            assert_eq!(
+                table.select(&options)[0].register.index,
+                1,
+                "invalid numbers must never become zero"
+            );
+        }
+    }
+
+    #[test]
+    fn formula_errors_are_explicit_and_never_substitute_zero() {
+        let mut source = row(0, QuantityUnit::Metres, 2.0, None);
+        source
+            .fields
+            .custom
+            .insert("Text".into(), TypedValue::Text { value: "3".into() });
+        for (expression, error) in [
+            ("[Absent]", FormulaError::MissingField),
+            ("[Text]", FormulaError::NonNumericField),
+            ("1/0", FormulaError::DivisionByZero),
+            ("quantity + 1", FormulaError::UnitMismatch),
+            ("quantity * quantity", FormulaError::UnitMismatch),
+            ("1 / quantity", FormulaError::UnitMismatch),
+            ("1000000000000 * 2", FormulaError::Overflow),
+        ] {
+            let value = formula(expression).evaluate(&source).unwrap();
+            assert_eq!(value.error, Some(error), "{expression}");
+            assert!(value.value.is_none());
+        }
+        source.quantity.as_mut().unwrap().unit = QuantityUnit::Centimetres;
+        assert_eq!(
+            formula("quantity").evaluate(&source).unwrap().error,
+            Some(FormulaError::UnitMismatch)
+        );
+        source.quantity = None;
+        assert_eq!(
+            formula("quantity").evaluate(&source).unwrap().error,
+            Some(FormulaError::MissingQuantity)
+        );
+    }
+
+    #[test]
+    fn formula_grammar_and_configuration_reject_code_excessive_depth_and_duplicate_names() {
+        for expression in [
+            "=1+1",
+            "sum(1)",
+            "open('/file')",
+            "quantity.name",
+            "1;2",
+            "1e3",
+            "1.0000001",
+            "1 +",
+            "[]",
+            "[x",
+            "1 2",
+            "(1",
+        ] {
+            assert!(formula(expression).validate().is_err(), "{expression}");
+        }
+        assert!(formula(&format!("{}1{}", "(".repeat(40), ")".repeat(40)))
+            .validate()
+            .is_err());
+        assert!(formula(&["1"; 70].join("+")).validate().is_err());
+        assert!(formula(&"1".repeat(513)).validate().is_err());
+        let mut no_unit = formula("quantity");
+        no_unit.quantity_unit = None;
+        assert!(no_unit.validate().is_err());
+        let mut options = QuantityOptions {
+            formulas: vec![formula("1"), formula("2")],
+            ..Default::default()
+        };
+        assert!(options.validate_formulas().is_err());
+        options.formulas = (0..9)
+            .map(|index| {
+                let mut f = formula("1");
+                f.name = index.to_string();
+                f
+            })
+            .collect();
+        assert!(options.validate_formulas().is_err());
+        assert!(QuantityOptions::formulas_from_json(br#"[{"name":"Bad","expression":"1","quantity_unit":null,"rounding_decimals":2,"script":"x"}]"#).is_err());
+        let config = vec![formula("quantity * 2")];
+        assert_eq!(
+            QuantityOptions::formulas_from_json(&serde_json::to_vec(&config).unwrap()).unwrap(),
+            config
+        );
+    }
+
+    #[test]
+    fn formula_exports_keep_definitions_source_rows_errors_and_spreadsheet_escaping() {
+        let table = test_table(vec![
+            row(0, QuantityUnit::Metres, 2.0, None),
+            row(1, QuantityUnit::Each, 1.0, None),
+        ]);
+        let mut column = formula("quantity * 1.1");
+        column.name = "=Result".into();
+        let options = QuantityOptions {
+            formulas: vec![column],
+            ..Default::default()
+        };
+        let json = table.json(&options).unwrap();
+        assert_eq!(json["source_sha256"], "revision-a");
+        assert_eq!(json["formula_evaluation_complete"], false);
+        assert_eq!(json["formulas"][0]["expression"], "quantity * 1.1");
+        assert_eq!(
+            json["formula_rows"][0]["values"]["=Result"]["value"],
+            "2.20"
+        );
+        assert_eq!(
+            json["formula_rows"][1]["values"]["=Result"]["error"],
+            "unit_mismatch"
+        );
+        assert!(json["formula_rows"][1]["values"]["=Result"]["value"].is_null());
+        assert_eq!(json["rows"][0]["quantity"]["value"], 2.0);
+        let csv = table.csv(&options).unwrap();
+        assert!(csv.contains("formula:=Result:value"));
+        assert!(csv.contains("unit_mismatch"));
+        assert!(csv.contains("2.20"));
+        let before = table.formula_values(&options).unwrap();
+        let changed = test_table(vec![row(0, QuantityUnit::Metres, 3.0, None)]);
+        assert_ne!(
+            before[&(1, 0)],
+            changed.formula_values(&options).unwrap()[&(1, 0)]
+        );
+        let mut denied = table;
+        denied.can_export = false;
+        assert!(matches!(
+            denied.json(&options),
+            Err(EngineError::SecurityRestricted)
+        ));
+        assert!(matches!(
+            denied.csv(&options),
+            Err(EngineError::SecurityRestricted)
+        ));
     }
 
     #[test]

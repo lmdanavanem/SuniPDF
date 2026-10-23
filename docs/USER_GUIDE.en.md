@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers [0.60.0](RELEASE_0.60.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
+This guide covers the [0.61.0 candidate](RELEASE_0.61.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
 
 Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
 
@@ -66,6 +66,19 @@ Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Leng
 3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; finish or cancel the field editor before using Undo/Redo, and save the PDF to retain the fields.
 4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
 
+Choose a **Custom column** to sort typed quantity fields: numbers sort numerically, dates chronologically and text/choices lexically. Missing values and blank text stay last in both directions; equal values use physical page/index. The annotation register has the same selector for its separate text fields, which remain lexically sorted.
+
+For a calculated report column, open **Custom columns → Formula columns**, enter a name and an expression such as
+`quantity * (1 + [Waste %] / 100)`, select the exact source quantity unit and result precision, then choose
+**Add and preview**. `[Waste %]` must be a typed Number field. Up to eight report columns can use decimal constants,
+`+ - * /`, parentheses, `quantity` and named numeric fields. Numeric fields are dimensionless; incompatible units,
+missing inputs, division by zero and overflow are shown as errors, never zero. Results use six decimal places per
+arithmetic operation and then the chosen `0`–`6` places, rounding half away from zero.
+
+These formulas do not change the PDF, prices or existing subtotals. Configuration stays in the current tab;
+use **Reuse formula configuration → Copy configuration** to keep its JSON, or paste it and choose **Load configuration**
+in another tab. Exports include definitions, calculated values and explicit errors/completeness information.
+
 [Full instructions, limits and CLI](QUANTITY_TABLE.md).
 
 ## Reuse local annotation templates
@@ -74,8 +87,15 @@ Open **Tools → Review & measure → Annotation library**. Its local file is se
 
 Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
 Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
-blank means unknown. Saving a template does not insert it in the PDF. Capture supports text with standard
+blank means unknown. Saving a template does not insert it in the PDF. New-draft templates support text with standard
 fonts, polygons/polylines, revision clouds, predefined stamps and PNG image stamps.
+
+To reuse annotations already saved on the current page, choose **Capture from current page**. Select 1–16 supported
+native shapes, lines/arrows, polygons, polylines or clouds, enter a name and declare the source, then choose
+**Save selected annotations as a group**. Relative geometry and supported styles are retained; the originals stay
+unchanged. Unsupported rows remain visible but disabled. Copying permission is required; changed documents or
+stale selections must be refreshed. Existing text, images/stamps, foreign/custom appearances and review threads
+are excluded from this path; new-draft templates retain the types listed above.
 
 Choose **Place on page**, set the scale and click the PDF. Inspect the rendered preview; adjust **Origin X (pt)**,
 **Origin Y (pt)** or **Scale** if needed, then request **Preview** again. Choose **Apply to object** to create the
