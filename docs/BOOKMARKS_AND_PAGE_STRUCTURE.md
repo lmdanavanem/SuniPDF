@@ -26,4 +26,4 @@ bookmark-move INPUT.pdf --index 2 [--parent 1] --position 1 --out NEW.pdf
 bookmark-delete INPUT.pdf --index 1 --out NEW.pdf
 ```
 
-All authoring commands accept `--password` for encrypted input and preserve its encryption in the output. Modify permission is required. [French notice](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md).
+All authoring commands accept `--password` for encrypted input and preserve its encryption in the output. Modify permission is required. [French notice](BOOKMARKS_AND_PAGE_STRUCTURE.md).

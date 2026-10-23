@@ -1,7 +1,5 @@
 # SuniPDF 0.30.1
 
-[Français](RELEASE_0.30.1.fr.md)
-
 This security patch strengthens document cleanup, protection changes, certificate verification and
 command-line automation. Publication and executed validation are recorded in [Project status](PROJECT_STATUS.md).
 

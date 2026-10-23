@@ -1,6 +1,5 @@
 # Annotation libraries
-
-[Français](ANNOTATION_LIBRARY.fr.md) · [0.45 scope and qualification status](RELEASE_0.45.0.md)
+[0.45 scope and qualification status](RELEASE_0.45.0.md)
 
 ## Desktop
 

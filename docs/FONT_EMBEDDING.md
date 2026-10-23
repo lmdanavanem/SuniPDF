@@ -1,6 +1,6 @@
 # Embedded font formats and subsets
 
-[Version française](FONT_EMBEDDING.fr.md)
+[Version française](FONT_EMBEDDING.md)
 
 Added text uses a selected installed face, not a filename extension as proof of
 compatibility. Static TrueType outlines in TTF/OTF and explicitly selected TTC/OTC

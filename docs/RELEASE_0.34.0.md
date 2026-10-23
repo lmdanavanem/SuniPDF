@@ -1,7 +1,5 @@
 # SuniPDF 0.34.0
 
-[Français](RELEASE_0.34.0.fr.md)
-
 ## Changes
 
 - Inspect the saved PDF from the Properties dialog or the new `inspect` JSON command. Seven bounded

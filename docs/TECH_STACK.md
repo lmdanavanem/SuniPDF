@@ -1,7 +1,5 @@
 # Tech Stack
 
-[Français](TECH_STACK.fr.md)
-
 Versions and enabled features follow `Cargo.toml`, `Cargo.lock` and the pinned download scripts.
 The table describes the current source; release qualification is recorded in [Project status](PROJECT_STATUS.md).
 

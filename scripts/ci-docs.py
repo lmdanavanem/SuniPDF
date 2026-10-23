@@ -18,9 +18,8 @@ import tempfile
 
 
 ROOT_DOCS = frozenset({
-    'README.md', 'README.fr.md', 'CHANGELOG.md', 'CHANGELOG.en.md',
-    'CHANGELOG.fr.md', 'CONTRIBUTING.md', 'CONTRIBUTING.fr.md',
-    'CODE_OF_CONDUCT.md', 'CODE_OF_CONDUCT.fr.md', 'SECURITY.md', 'SECURITY.fr.md',
+    'README.md', 'CHANGELOG.md', 'CONTRIBUTING.md',
+    'CODE_OF_CONDUCT.md', 'SECURITY.md',
 })
 EXCLUDED_PARTS = frozenset({
     'test', 'tests', 'fixture', 'fixtures', 'corpus', 'corpora',

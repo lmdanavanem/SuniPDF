@@ -1,7 +1,5 @@
 # SuniPDF Architecture
 
-[Français](ARCHITECTURE.fr.md)
-
 The module boundaries and principles below describe the current implementation. Versioned sections
 record earlier deliveries; current release qualification belongs in [Project status](PROJECT_STATUS.md).
 

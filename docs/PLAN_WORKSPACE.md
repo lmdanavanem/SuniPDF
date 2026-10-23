@@ -1,6 +1,5 @@
 # Plan workspace: precise scales, batches and responsive tables
-
-[Français](PLAN_WORKSPACE.fr.md) · [0.60 release scope](RELEASE_0.60.0.md) · [Measurements](MEASUREMENTS.md)
+[0.60 release scope](RELEASE_0.60.0.md) · [Measurements](MEASUREMENTS.md)
 
 ## Scales and vector snapping
 

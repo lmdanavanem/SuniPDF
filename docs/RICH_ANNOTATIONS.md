@@ -1,7 +1,5 @@
 # Rich annotations
 
-[Français](RICH_ANNOTATIONS.fr.md)
-
 Use **Rich annotations** to create native-font FreeText, polygons, polylines, clouds, standard stamps or file attachments. Enter vertices as one `x,y` pair per line in displayed page coordinates. The original on-page FreeText editor also opens this dialog through **Embedded fonts, bold, italic and CJK** without losing the current text or rectangle.
 
 **Preview** renders the actual PDF appearance. **Apply** commits that prepared appearance as one Undo step. Changing a field requires another preview. A document change invalidates the candidate; errors preserve the draft. The prepared candidate keeps its font resources even if the selected font file changes after Preview.

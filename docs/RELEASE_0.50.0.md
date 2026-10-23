@@ -1,6 +1,5 @@
 # SuniPDF 0.50.0 — reader controls and organized tools
-
-[Français](RELEASE_0.50.0.fr.md) · [Reader and tools guide](READER_WORKSPACE.md)
+[Reader and tools guide](READER_WORKSPACE.md)
 
 Status: published as stable Latest [0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0), source `fb5f66b30ae30506dcd53f31ed03a5377260eb20`, on 2026-10-22. [Previous release](RELEASE_0.49.0.md).
 

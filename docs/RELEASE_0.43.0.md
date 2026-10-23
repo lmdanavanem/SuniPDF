@@ -1,6 +1,5 @@
 # SuniPDF 0.43.0 — saved page scales and measurement inspection
-
-[Français](RELEASE_0.43.0.fr.md) · [Measurement guide](MEASUREMENTS.md)
+[Measurement guide](MEASUREMENTS.md)
 
 Status: published as stable Latest [0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0), source `965fb6494be0d200d3ac4f4eac895aa28e3a7632`.
 

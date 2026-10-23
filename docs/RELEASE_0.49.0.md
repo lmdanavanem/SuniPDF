@@ -1,6 +1,5 @@
 # SuniPDF 0.49.0 — add and remove saved measurement vertices
-
-[Français](RELEASE_0.49.0.fr.md) · [Geometry editing guide](MEASUREMENT_GEOMETRY.md)
+[Geometry editing guide](MEASUREMENT_GEOMETRY.md)
 
 Status: published as stable Latest [0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0), source `a95774d56c3b9ce02a9743431a5d0c2b079b330e`, on 2026-10-22. [Previous release](RELEASE_0.48.0.md).
 

@@ -1,11 +1,11 @@
 # Changelog
 
-[Français](CHANGELOG.fr.md)
-
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds and publishes the artefacts (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB) on the GitHub Releases page.
 
 ## [Unreleased]
+
+- Maintain one English documentation set, consolidate current priorities in the roadmap and archive earlier project-status records. Future packages include the English user guide; application translations and OCR remain available in English and French.
 
 ## [0.60.0] - 2026-10-23
 
@@ -819,7 +819,6 @@ AcroForm forms (the "fill" half), AES-256 encryption and normalized passwords, d
 
 Backlog wave 1, delivered in slices with independent review: "All tools" hub, advanced content editing,
 continuous view, then fixes from the adversarial review and hardened distribution.
-
 
 ### Added (continuous view, SUNI-012b)
 - **Continuous scrolling**: all pages stacked in a single scroll area (default mode); **Single Page** remains

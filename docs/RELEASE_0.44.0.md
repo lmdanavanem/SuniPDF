@@ -1,6 +1,5 @@
 # SuniPDF 0.44.0 — editing saved measurements
-
-[Français](RELEASE_0.44.0.fr.md) · [Measurement guide](MEASUREMENTS.md)
+[Measurement guide](MEASUREMENTS.md)
 
 Status: published as stable Latest [0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0), source `7e95078127beb81b90a9eac32e6fde0fd8e9bf50`. The preceding release and its evidence remain [0.43.0](RELEASE_0.43.0.md) · [0.43.0 evidence](qa/RELEASE_0.43.0.json).
 

@@ -1,7 +1,5 @@
 # Accessibility: actual state
 
-[Français](ACCESSIBILITY.fr.md)
-
 SuniPDF exposes its interface to assistive technologies through AccessKit (egui). This document describes what is
 named and keyboard-testable, and what is not. **Manual verification with Windows Narrator: NOT
 DONE** (no test session with a screen reader has been run on this machine).

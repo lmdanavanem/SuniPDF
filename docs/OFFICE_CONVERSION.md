@@ -41,4 +41,4 @@ Run the test with `SUNIPDF_REAL_CORPUS` set to the verified corpus directory and
 
 Sources: [LibreOffice command-line parameters](https://help.libreoffice.org/latest/en-US/text/shared/guide/start_parameters.html), [PDF filter options](https://help.libreoffice.org/latest/en-GB/text/shared/guide/pdf_params.html?DbPAR=C&System=WIN), [security configuration schema](https://github.com/LibreOffice/core/blob/master/officecfg/registry/schema/org/openoffice/Office/Common.xcs), [proxy configuration schema](https://github.com/LibreOffice/core/blob/master/officecfg/registry/schema/org/openoffice/Inet.xcs), [pinned corpus and licensing](../scripts/regression-corpus.json).
 
-[French notice](OFFICE_CONVERSION.fr.md).
+[French notice](OFFICE_CONVERSION.md).

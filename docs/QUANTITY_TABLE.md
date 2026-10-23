@@ -1,6 +1,5 @@
 # Quantity tables
-
-[Français](QUANTITY_TABLE.fr.md) · [0.46 scope and qualification](RELEASE_0.46.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
+[0.46 scope and qualification](RELEASE_0.46.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
 
 Available in [0.46.0](RELEASE_0.46.0.md). [Evidence](qa/RELEASE_0.46.0.json).
 
@@ -19,7 +18,7 @@ Filter by search text, annotation type, discipline, business status, count group
 3. Under **Custom columns**, choose **Add custom column** and provide its name, type and value. Supported types are **Text**, **Number**, **Date (YYYY-MM-DD)** and **Choice**. For a choice, enter the permitted options one per line and enter one of them as the value. A column name must use the same type and choice options everywhere in the PDF. Existing register text fields remain separate from these typed fields.
 4. Choose **Apply fields** to commit the row, or **Cancel edit** to discard the draft. **Remove column** removes that value only when the row is applied. An empty text value remains supplied; removing the column makes it absent. Invalid values or a stale target keep the PDF unchanged and preserve the draft for correction or cancellation.
 
-Each successful row edit is one Undo step. Close the table before using the application's **Undo** or **Redo**, then reopen it to inspect the restored values. Save the PDF to retain the fields after reopening. These edits do not change measured vertices, calibration, annotation identity or linked comments. A price cannot be attached to an ordinary annotation without a supported quantity or to an angle; typed custom values can be attached to eligible ordinary annotations.
+Each successful row edit is one Undo step. Finish or cancel the row editor before using **Undo** or **Redo**. The read-only docked or floating table can stay open; refresh it to inspect restored values. Save the PDF to retain the fields after reopening. These edits do not change measured vertices, calibration, annotation identity or linked comments. A price cannot be attached to an ordinary annotation without a supported quantity or to an angle; typed custom values can be attached to eligible ordinary annotations.
 
 ## Quantities, costs and missing values
 

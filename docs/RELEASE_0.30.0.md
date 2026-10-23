@@ -1,7 +1,5 @@
 # SuniPDF 0.30.0
 
-[Français](RELEASE_0.30.0.fr.md)
-
 This version covers five Bugs and fourteen P2 Roadmap items. Supported inputs and limits are described
 below; executed validation and public download evidence are recorded in [Project status](PROJECT_STATUS.md).
 

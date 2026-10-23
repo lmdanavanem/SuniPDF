@@ -1,6 +1,5 @@
 # SuniPDF 0.45.0 — reusable annotation libraries
-
-[Français](RELEASE_0.45.0.fr.md) · [Library guide](ANNOTATION_LIBRARY.md)
+[Library guide](ANNOTATION_LIBRARY.md)
 
 Status: published as stable Latest [0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0), source `51f07a6b27733e4bbfd46bcbc45bc2a82d4886c8`, on 2026-10-22. [Previous release](RELEASE_0.44.0.md).
 

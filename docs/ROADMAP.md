@@ -1,585 +1,113 @@
-# SuniPDF roadmap
+# Roadmap
 
-[Français](ROADMAP.fr.md)
+Updated for [0.60.0](RELEASE_0.60.0.md), published on 2026-10-23.
+This page is the current work list. Release history belongs in the
+[changelog](../CHANGELOG.md) and [status archive](archive/PROJECT_STATUS_PRE_0.60.md).
+No future release date or version is committed here.
 
-This roadmap separates delivered features and future work.
-Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATUS.md).
+## Delivered foundation
 
-The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
-Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
+SuniPDF provides local PDF reading, editing, annotations, forms, OCR, page operations,
+measurements, quantities, annotation libraries and revision overlays. See the
+[feature matrix](FEATURE_MATRIX.md) for supported operations and platform differences.
 
-## 0.60.0: plan workspace (stable Latest)
+The 0.60 plan-workspace implementation is delivered:
 
-[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — 0.60 adds cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, eligible vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
+- Eligible vector endpoints and straight-line intersections with visible snapping.
+- Feet/inches entry and named regions with independent calibrated scales.
+- Batch recalibration with before/after preview, atomic application and one Undo.
+- Cached page layouts and register results, virtualized tables and adjustable docking.
+- Page-by-page search and annotation inventory with progress and cancellation.
 
-[Workflow and limits](PLAN_WORKSPACE.md) · [Release notes](RELEASE_0.60.0.md) · [Evidence](qa/RELEASE_0.60.0.json).
+These features retain the bounds in [Plan workspace](PLAN_WORKSPACE.md).
+Their automated qualification does not close the separate hardware, accessibility,
+interoperability or private-plan checks below.
 
-## 0.44–0.51: local plan workflow deliveries
+## P1: qualification and release reliability
 
-| Version | Scope | Current state |
+These are the remaining release-readiness priorities. They need recorded evidence,
+not only an implementation or a successful build.
+
+| Priority | Work | Acceptance |
 |---|---|---|
-| 0.44 | Edit one saved measurement; correct calibration defaults, scale reset, inspector allocations, copying permissions, resize handling and stale/external targets. | Published; [Evidence](qa/RELEASE_0.44.0.json). |
-| 0.45 | Local annotation libraries | Slice delivered within its bounds; full acceptance criteria remain open. [0.45.0](RELEASE_0.45.0.md). |
-| 0.46 | Quantity tables and typed fields | Slice delivered within its bounds; full acceptance criteria remain open. [0.46.0](RELEASE_0.46.0.md). |
-| 0.47 | Aligned revision overlays | Slice delivered within its bounds; full acceptance criteria remain open. [0.47.0](RELEASE_0.47.0.md). |
-| 0.48 | Editing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.48.0](RELEASE_0.48.0.md). |
-| 0.49 | Adding and removing saved measurement vertices | Slice delivered within its bounds; full acceptance criteria remain open. [0.49.0](RELEASE_0.49.0.md). |
-| 0.50 | Reader controls and organized tools | Slice delivered within its bounds; full acceptance criteria remain open. [0.50.0](RELEASE_0.50.0.md). |
-| 0.51 | Ubuntu amd64 package | Published within platform limits. [0.51.0](RELEASE_0.51.0.md). |
-
-The 0.44 desktop editor changes reference distance, unit and precision while keeping vertices/reference points fixed. The CLI can replace explicit geometry using an expected record; both paths preserve annotation identity and reject stale or unsupported targets. Final-source qualification and limits: [Evidence](qa/RELEASE_0.44.0.json). [0.44 scope and preliminary audit](RELEASE_0.44.0.md) · [Measurement guide](MEASUREMENTS.md).
-
-This sequence delivers bounded increments. Existing-vertex editing arrived in 0.48 and insertion/removal in 0.49. The 0.60 implementation adds vector snapping, explicit batch recalibration and multiple-scale regions. Real-project accuracy and the full 1.0 criteria remain open; private project-plan qualification is explicitly deferred. Historical evidence below stays attached to its original release.
-
-## 0.51.0: Ubuntu desktop package (published; Latest at the time)
-
-[0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
-
-[Installation and limits](UBUNTU.md) · [Release notes](RELEASE_0.51.0.md) · [Evidence](qa/RELEASE_0.51.0.json).
-
-## 0.50.0: reader controls and organized tools (published; Latest at the time)
-
-[0.50.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.50.0) — Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
-
-[Guide and limits](READER_WORKSPACE.md) · [Release notes](RELEASE_0.50.0.md) · [Evidence](qa/RELEASE_0.50.0.json).
-
-## 0.49.0: adding and removing saved measurement vertices (published; Latest at the time)
-
-[0.49.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0) — Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
-
-[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.49.0.md) · [Evidence](qa/RELEASE_0.49.0.json).
-
-## 0.48.0: editing saved measurement vertices (published; Latest at the time)
-
-[0.48.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.48.0) — Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
-
-[Guide and limits](MEASUREMENT_GEOMETRY.md) · [Release notes](RELEASE_0.48.0.md) · [Evidence](qa/RELEASE_0.48.0.json).
-
-## 0.47.0: aligned revision overlays (published; Latest at the time)
-
-[0.47.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.47.0) — Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals.
-
-[Guide and limits](REVISION_OVERLAY.md) · [Release notes](RELEASE_0.47.0.md) · [Evidence](qa/RELEASE_0.47.0.json).
-
-## 0.46.0: quantity tables and typed fields (published; Latest at the time)
-
-[0.46.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0) — Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
-
-[Guide and limits](QUANTITY_TABLE.md) · [Release notes](RELEASE_0.46.0.md) · [Evidence](qa/RELEASE_0.46.0.json).
-
-## 0.45.0: local annotation libraries (published; Latest at the time)
-
-[0.45.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.45.0) — Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
-
-[Guide and limits](ANNOTATION_LIBRARY.md) · [Release notes](RELEASE_0.45.0.md) · [Evidence](qa/RELEASE_0.45.0.json).
-
-## 0.44.0: editing saved measurements (published; Latest at the time)
-
-[0.44.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.44.0) — Edit one saved measurement's reference distance, unit and precision through Preview and Apply; the CLI also supports explicit geometry replacement with an expected record. Identity, replies, page defaults and other measurements are preserved. Temporary scales can be cleared, the inspector shares cached records, exports enforce copying permission and incompatible measured-page resizing is refused.
-
-[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.44.0.md) · [Evidence](qa/RELEASE_0.44.0.json).
-
-## 0.43.0: saved page scales and measurement inspection (published; Latest at the time)
-
-[0.43.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.43.0) — Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
-
-[Guide and limits](MEASUREMENTS.md) · [Release notes](RELEASE_0.43.0.md) · [Evidence](qa/RELEASE_0.43.0.json).
-
-## 0.42.0: on-page measurement tools (published; Latest at the time)
-
-[0.42.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0) under `lmdanavanem`, source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
-
-Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches. [Guide and limits](MEASUREMENTS.md).
-
-Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696093211) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696104747) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/39696092839). 662 tests passed, 10 default ignored. 1224 EN/FR keys. 34 portable scenarios. 28 MSI baselines / 140 logs. No open Code Scanning alerts. Six unauthenticated public downloads and dist copies verified by SHA256; four packaged CLI calls check version, help, creating a 10 m length and reopening without changing the original.
-
-Saved annotations retain their own scale. Shared persistent scales, editing saved vertices, vector snapping, multi-scale viewports and global recalculation remain open. Packages are unsigned; ARM64 is cross-built only. Native/hardware qualification and 1.0 gates remain open; Projects updates stay deferred. [Evidence](qa/RELEASE_0.42.0.json).
-
-## 0.41.0: manual plan counts and annotation registers (published; Latest at the time)
-
-[0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
-
-Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities. [Usage and limits](MARKUP_REGISTER.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681919685) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39681938796) passed: **643 tests, zero failures**, 10 default ignored, **1198 EN/FR keys**, **33 portable scenarios**, **27 MSI baselines/135 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **100 cases, 339 CLI calls and 14 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included. 6 fixture-password findings were reviewed and dismissed as 'used in tests' under `lmdanavanem`; code scanning remains enabled.
-
-Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **27,323,650-byte** x64 ZIP without installing it on the workstation.
-
-Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.41.0.json).
-
-## 0.40.0: calibrated measurements and image stamps (published; Latest at the time)
-
-[0.40.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) under `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
-
-Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. The local feature backlog prioritises plan workflows. [Usage and limits](MEASUREMENTS.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661526853) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39661547803) passed: **637 tests, zero failures**, 10 default ignored, **1163 EN/FR keys**, **32 portable scenarios**, **26 MSI baselines/130 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **80 cases, 256 CLI calls and 10 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included.
-
-Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **27,121,645-byte** x64 ZIP without installing it on the workstation.
-
-Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.40.0.json).
-
-## 0.39.0: reusable decoration presets (published; Latest at the time)
-
-[0.39.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.39.0) under `lmdanavanem`, source `24e3dcd0978fd74fb63d1c43aa8e668f5774fe04`.
-
-Named local presets for text/image watermarks, page numbers and six-zone headers/footers. Choose to load a draft, save under a unique name or delete explicitly. Atomic writes preserve active preferences on failure; malformed preset entries do not reset other valid settings. Page scope stays explicit and image files remain path references. Published 0.38.0 packages join migration regression. Office version probes run headlessly with a cancellable 30-second cold-start bound; conversion and security guards remain enforced. [Usage and limits](PAGE_DECORATIONS.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39404372880) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39404384844) passed: **628 tests, zero failures**, 10 default ignored, **1149 EN/FR keys**, **31 portable scenarios**, **25 MSI baselines/125 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **42 cases, 148 CLI calls and 2 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included.
-
-Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,879,736-byte** x64 ZIP without installing it on the workstation.
-
-Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.39.0.json).
-
-## 0.38.0: six-zone headers and footers (published; Latest at the time)
-
-[0.38.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.38.0) under `lmdanavanem`, source `82a231fe6e423023030e099780d9a55aeebac72f`.
-
-Six header/footer zones through Page numbers and the headers-footers CLI command. Absolute page/count placeholders, margins, size and selected pages respect displayed rotation/crop coordinates. Overflow is refused atomically; allowed encryption and copy-only CLI guards remain. Published 0.37.0 packages join migration regression. [Usage and limits](PAGE_DECORATIONS.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39395347423) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39395359394) passed: **623 tests, zero failures**, 10 default ignored, **1143 EN/FR keys**, **30 portable scenarios**, **24 MSI baselines/120 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **42 cases, 148 CLI calls and 2 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included.
-
-Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,823,494-byte** x64 ZIP without installing it on the workstation.
-
-Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.38.0.json).
-
-## 0.37.0: image watermarks (published; Latest at the time)
-
-[0.37.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.37.0) under `lmdanavanem`, source `e206f6b8d7e7fe61101005ad86e1d26c40a8e448`.
-
-Image watermarks in Pages and the CLI: transparency, proportional width, angle, seven positions and margins. Rotated/cropped pages fit on both axes. Atomic selected-page edits, one desktop Undo and copy-only CLI output preserve allowed encryption. Published 0.36.0 packages join upgrade baselines. [Usage and limits](PAGE_DECORATIONS.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39387964703) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39387976826) passed: **618 tests, zero failures**, 10 default ignored, **1134 EN/FR keys**, **29 portable scenarios**, **23 MSI baselines/115 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Page decorations passed **24 cases, 113 CLI calls and 1 qpdf check(s)**. Independent readers, corpus, software rendering, Office, mutation and security gates remain included. Two fixture-password findings were reviewed and dismissed as “used in tests” under `lmdanavanem`; code scanning remains enabled.
-
-Six public files and `dist/` copies verified by SHA256; page decorations, **20 image cases**, **14 PDF-inspection cases** and retained suites were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,806,746-byte** x64 ZIP without installing it on the workstation.
-
-Native Windows interaction, keyboard layouts and Narrator remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request; no fresh synchronization is claimed. [Evidence](qa/RELEASE_0.37.0.json).
-
-## 0.36.0: configurable keyboard shortcuts (published; Latest at the time)
-
-[0.36.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) under `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
-
-Configurable keyboard shortcuts in Help and the palette: filter, assign, conflict refusal, disable and restore. Cancellable drafts, atomic preferences and consistent labels. Text input and reserved keys are preserved; published 0.35.0 packages join upgrade baselines. [Usage and bounds](KEYBOARD_SHORTCUTS.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39355377383) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39355387902) passed: **613 tests, zero failures**, 10 default ignored, **1128 EN/FR keys**, **28 portable scenarios**, **22 MSI baselines/110 logs**. Seven new headless egui tests cover shortcuts, conflicts, focus, display, cancellation and preference compatibility. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent readers, fonts, DX12 software rendering, corpus, mutation and Office gates remain included.
-
-Six public files and `dist/` copies verified by SHA256; **20 image cases** and **14 PDF-inspection cases**, plus retained suites, were rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,788,530-byte** x64 ZIP without installing it on the workstation.
-
-Native Windows keyboard layouts and Narrator remain unqualified. Explorer remains separate; only commands in the existing shortcut table can be customized. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request, with no fresh synchronization claimed. [Evidence](qa/RELEASE_0.36.0.json).
-
-## 0.35.0: visual signature preparation (published; Latest at the time)
-
-[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
-
-Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines. [Usage and bounds](VISUAL_SIGNATURE_PREPARATION.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347959736) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39347970752) passed: **606 tests, zero failures**, 10 default ignored, **1114 EN/FR keys**, **20 image cases**, **14 PDF-inspection cases**, **27 portable scenarios**, **21 MSI baselines/105 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent readers, fonts, DX12 software rendering, PDF, mutation and Office gates remain included.
-
-Six public files and `dist/` copies verified by SHA256; image and inspection suites were also rerun on the downloaded CLI. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,752,605-byte** x64 ZIP without installing it on the workstation.
-
-Visual signatures provide no identity proof; cleanup may remove faint ink and needs preview review. Native pointer/tablet/Narrator interaction and customer photos remain unqualified. Packages remain unsigned, ARM64 is cross-built only and 1.0 criteria stay open. Projects edits remain deferred at the owner’s request, with no fresh synchronization claimed. [Evidence](qa/RELEASE_0.35.0.json).
-
-## 0.34.0: saved PDF inspection (published; Latest at the time)
-
-[0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
-
-Inspect the saved PDF from Properties and the `inspect` JSON command: seven declaration categories, source SHA256, explicit partial results, encrypted input and stale-reply refusal. The saved-revision guard hashes disk bytes in chunks. [Usage and bounds](PDF_INSPECTION.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39342371499) and [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/39342385646) passed: **600 tests, zero failures**, 10 default ignored, **1108 EN/FR keys**, **14 packaged inspection cases**, **26 portable scenarios**, **20 MSI baselines/100 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. Existing qpdf, independent-reader, PDF-corpus, mutation and Office gates remain included.
-
-Six public files and `dist/` copies verified by SHA256. The preserved 0.32.0 harness, with its unchanged updater module verified, downloaded and checked the **26,741,242-byte** x64 ZIP without installation on the workstation.
-
-Structural inventory without a safety verdict or signature/PDF/A/PDF/UA validation. Packages remain unsigned; native/hardware qualification and 1.0 criteria remain open. Projects edits stay deferred at the owner’s request, with no new synchronization claimed. [Evidence](qa/RELEASE_0.34.0.json).
-
-## 0.33.0: 1.0 preparation and PDF compatibility (published; Latest at the time)
-
-Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.33.0) under `lmdanavanem`, release `417802490`, immutable source `c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb`.
-
-Preserve imported PDF 2.0 bookmarks containing tabs/line breaks while retaining strict new-title validation. Integrate egui/eframe 0.37 together and fix Back/Forward position after destination zoom changes. Add seven pinned licensed PDF Association examples, 64 bounded PDF/CMS mutations, executable guard controls and command measurements. The public 0.32.0 becomes an additional upgrade baseline. [1.0 criteria](RELEASE_1.0_CRITERIA.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39332569906) and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39332607929) passed: **592 tests**, zero failures, 10 default ignored, **1092 EN/FR keys**; 84 qpdf corpus checks and 9 independent feature outputs, 4 font cases, DX12 software rendering, 14 Office round trips, four NIST documents/744 pages; **7 PDF 2.0 examples/8 pages/21 qpdf checks**, **64 mutations and 2 guard controls**, **25 portable scenarios**, **19 MSI baselines/95 logs**. The packaged CLI additionally passed the 7-example/21-qpdf suite, 11 object-order scenarios/3 qpdf checks, 11 local-review and 8 security scenarios. CodeQL Rust/Python/Actions passed with zero open alerts.
-
-Six public files and `dist/` copies verified by SHA256. The preserved 0.32.0 test harness, with its unchanged updater module verified by hash, downloaded and verified the **26,726,762-byte x64 ZIP in 1.65 s**, without installation.
-
-Project edits are deferred at the owner’s explicit request. The public readback shows **43 items, 25 Done, 18 Todo**; both P1 tasks have documented partial progress, with no claimed closure or status change.
-
-Windows packages remain unsigned with no independent publication key. Teaching examples and deterministic mutations do not replace a customer/hostile corpus, coverage-guided fuzzing or hardware measurements. ARM64 remains experimental; native interactions, named third-party readers and PDF/A/PDF/UA conformance remain open. [Evidence](qa/RELEASE_0.33.0.json).
-
-## 0.32.0: object ordering (published; Latest at the time)
-
-Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) under `lmdanavanem`, release `417623635`, immutable source `8c492db35f1712648d5472593146077230befb7c`.
-
-Drag one object or the selected group in the Objects panel, with an insertion line, page-cache/context guards, Escape and one Undo step. New `reorder-objects` JSON command shares the explicit final destination, relative order, permission, atomic-save and password safeguards. [Scope and usage](OBJECT_ORDER.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306550382) and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39306651110) passed: **588 tests**, zero failures, 9 default ignored; **1092 EN/FR keys**, 84 qpdf corpus checks + 9 independent feature cases, 4 font-reader cases, DX12 software rendering, 14 Office round trips, 4 licensed PDFs/744 pages, **24 portable scenarios**, **18 MSI baselines/90 logs**. CodeQL Rust/Python/Actions passed with zero open alerts. The packaged CLI passed **11 object-order scenarios and 3 additional qpdf checks**, plus 11 retained local-review and 8 security scenarios.
-
-Six public files and `dist/` copies verified by SHA256. The freshly built harness from this source downloaded and verified the **27,119,935-byte x64 ZIP in 1.75 s**, without installation. Projects: **43 items, 25 Done, 18 Todo, zero In Progress**; the P3 Suggestion is delivered, original criteria preserved, description read back after a server reload and all three saved filters verified.
-
-Windows packages remain unsigned; no independent publication key is available. Hardware, native/manual flows and reader interoperability remain separate qualification; no PDF/A/PDF/UA/LTV certification. [Evidence](qa/RELEASE_0.32.0.json).
-
-## 0.31.0: local comparison and multi-document search (published; Latest at the time)
-
-Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) under `lmdanavanem`, release `417463135`, immutable source `362c7f3979533000e454769e48a8cfbd4084dc0d`.
-
-Local comparison of two saved PDFs (text, geometry and previews), explicit physical alignment and stale-preview refusal. Literal search across selected files, excerpts/page navigation, progress, cancellation and explicit partial results. New `compare` and `search-files` JSON commands; EN/FR interface. [Scope and limits](LOCAL_REVIEW.md).
-
-[Main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39280498112) and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39280650040) passed: **582 tests**, zero failures, 9 default ignored; **1091 EN/FR keys**, 84 qpdf corpus checks + 9 independent feature cases, 4 font-reader cases, DX12 software rendering, 14 Office round trips, 4 licensed PDFs/744 pages, **23 portable scenarios**, **17 MSI baselines/85 logs**. CodeQL Rust/Python/Actions passed with zero open alerts after individual review of four synthetic test credentials.
-
-Six public files and `dist/` copies verified by SHA256; eleven local-review and eight security scenarios passed with the packaged CLI. The freshly built harness from this source downloaded and verified the **27,090,504-byte x64 ZIP in 1.71 s**, without installation. Projects: **43 items, 24 Done, 19 Todo, zero In Progress**; both P2 Suggestions are delivered, their criteria retained and all three filters read back.
-
-Windows packages remain unsigned; no independent publication key is available. ARM64 hardware and manual flows remain separate qualification. Bounded comparison does not establish PDF identity or conformance. [Evidence](qa/RELEASE_0.31.0.json).
-
-## 0.30.1: security patch (published; Latest at the time)
-
-Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.1) under `lmdanavanem`, release `417149160`, immutable source `697a963c756b316e1eb1e678298886bc08521da1`.
-
-XFA/Screen and accessibility-text cleanup, owner authorization before reprotection, stronger signature verification, environment/stdin PDF passwords and hardened Office/runtime inputs. Unresolved P1 Roadmap items and Suggestions remain deferred. [Details](RELEASE_0.30.1.md).
-
-[Release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39235567730) and [main CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/39234732417) passed on this source: **575 tests**, zero failures, 9 default ignored; **1060 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature cases**, **4 font-reader cases**, DX12 software rendering, **14 Office round trips**, 4 licensed PDFs/744 pages, **22 portable scenarios**, **16 MSI baselines/80 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
-
-The six public files and `dist/` copies match the inspected packages and SHA256 digests. Eight security scenarios also pass with the packaged CLI. The production updater verified the **27,029,229-byte** x64 ZIP in **1.21 s**, without installation on this host, using the previously built harness and unchanged updater module.
-
-Updates still depend on GitHub HTTPS and same-channel SHA256: no independent publication key is available. Windows packages remain unsigned; ARM64 hardware and manual flows remain separate qualification. [Evidence and limits](qa/RELEASE_0.30.1.json).
-
-## 0.30.0: editing, document safety and local conversion (published; Latest at the time)
-
-Published (Latest at the time) as [0.30.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.30.0) under `lmdanavanem`, release `415568680`, immutable source `4db31c0ee62cfae9d65239edf1eac93db147841e`. The five Bugs and fourteen Roadmap P2 items ship within their [documented supported limits](RELEASE_0.30.0.md). P1 Roadmap items and Suggestions remain deferred.
-
-The [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/39000390231) and [MAIN CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38999673471) passed on this source: **551 tests**, zero failures, 9 default ignored; **1047 EN/FR keys**, **84 qpdf corpus checks** plus **9 independent feature outputs**, **4 MuPDF font cases**, DX12 software WARP, **14 Office round trips**, 4 licensed PDFs/744 pages, **21 portable scenarios**, **15 MSI baselines/75 transaction logs**. CodeQL Rust, Python and Actions passed with zero open alerts.
-
-Six public assets match the inspected packages and SHA256 digests byte for byte. The production updater verified the 26,978,019-byte x64 ZIP in 2.55 seconds without installing on this host, using the previously built test harness with an unchanged updater module. Project readback: **42 unique items, 20 Todo, 0 In Progress, 22 Done**, three saved filters and zero unsaved changes. [Evidence and limits](PROJECT_STATUS.md).
-
-Packages remain unsigned. ARM64 is cross-built and packaged, without execution on ARM64 hardware. Physical printers, Narrator, manual updater interaction and physical GPU/window behavior still need qualification; WARP proves software offscreen rendering only. Unsupported inputs remain refused. PDF/A metadata preservation does not certify PDF/A or PDF/UA conformance.
-
-## 0.21.1: document preservation (published; Latest at the time)
-
-The two P1 fixes ship in [0.21.1](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.21.1): refuse unsupported text without losing the correct
-draft, and preserve non-widget annotations without usable appearances when flattening. 476 tests,
-84 qpdf checks, 20 portable scenarios and 14 MSI baselines passed; six public files and the live updater
-were verified. See [Project status](PROJECT_STATUS.md).
-
-The planned 0.30.0 batch after 0.21.1 is now published; current counts and remaining P1 work are recorded above.
-
-## Delivered baseline: 0.9.0
-
-The seven requested features are delivered: autosave/recovery, Windows printing, richer text selection,
-two-page/Book view, text/checkbox form-field creation, offline English/French OCR, and CMS/PFX digital signatures.
-English is the default language; French remains available. All 14 tools have working commands.
-See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for the exact scope and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for limits.
-
-## 0.9.1: reliability and distribution
-
-[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.9.1) under `lmdanavanem`;
-executed validation and package evidence are tracked in `PROJECT_STATUS.md`:
-
-- Preserve PDF/A identification and unrelated XMP properties when editing metadata; reject malformed XML and DTDs.
-  Preserving identification does not certify PDF/A conformance.
-- Write the explicit AES-256 encryption key length required by strict readers, including after re-encryption.
-- Add pinned qpdf structural checks for synthetic fixtures and generated output to CI.
-  This is independent structural QA, not coverage of a real-world or hostile PDF corpus.
-- Seven real portable update/failure/rollback scenarios to 0.9.1 and a real MSI installation/upgrade/transactional rollback,
-  downgrade rejection and uninstall regression passed on disposable Windows runners, preserving user data.
-- Use .NET SHA256 hashing in the helper for Windows PowerShell 5 hosts without Get-FileHash and report restart failures.
-- Derive the Windows icon from the dedicated, retouched author-provided asset (`assets/icon/sunipdf-source.png`).
-
-Workspace checks (322 tests), independent qpdf checks (22 PDFs/three malformed inputs), portable helper checks and
-the disposable-runner MSI regression passed. All six public assets were downloaded and matched the verified
-payloads/checksums. Interactive updater UX and real hardware remain separate checks.
-
-## 0.10.0: requested P1/P2 lot published
-
-[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.10.0) under `lmdanavanem`.
-
-| Area | Included scope |
-|---|---|
-| P1 data safety and corpus | Atomic temporary-file replacement, interrupted/full-disk/failure regressions, killed partial-save child and four pinned public NIST documents |
-| P2 compression | Image resampling/JPEG quality, before/after size, progress/cancel, source-preserving new copies and conservative unsupported-image handling |
-| P2 reading | View-only rotation, full screen, bounded per-tab navigation history and upright editing |
-| P2 forms | Radio/combo/list creation, XFDF export, bounded JSON/XFDF/FDF values import, grouped Apply/Discard and keyboard widgets |
-| P2 editing | Mouse crop preview and grouped rotation/resizing with one undo |
-| P2 batches | Sequential compression/offline OCR, bounded inputs, cancellation, per-file errors and no overwriting |
-
-The 362 workspace tests, 31 independent synthetic qpdf checks, four public NIST documents (744 pages), eight portable
-update/failure/rollback cases and two MSI baselines passed. Final CI and all six public assets passed verification,
-including packaged CLI/OCR, icons, MSI payloads and the live updater. Evidence is recorded in `PROJECT_STATUS.md`.
-Hardware, native interactive flows, Narrator, third-party readers and broader customer/hostile corpus coverage remain independent work.
-
-## 0.11.0: navigation, forms and protected copies (published)
-
-Implemented and locally validated: read-only page labels with exact unique-label navigation and `#N` physical
-indices; named destinations and `/XYZ`, `/Fit`, nonzero `/FitH` for links/bookmarks; same-page and zoom-aware history;
-form-read errors that preserve inputs and require an explicit retry. `/FitH` zero/null and other fit modes fall back
-to page navigation. Also implemented for 0.11.0: free text in existing editable drop-downs through the panel/on-page
-editor, and extraction/split copies retaining source encryption/passwords/permissions with same-source-path refusal.
-The existing permission policy is unchanged; editable drop-down authoring was outside the 0.11.0 scope.
-
-[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.11.0) under `lmdanavanem`; Latest at the time.
-
-The expanded 0.11.0 source passed 390 workspace tests (zero failed, seven default ignored), formatting/Clippy with
-`-D warnings`, 858 matching EN/FR keys, 44 qpdf checks across 42 distinct PDFs and four real NIST documents
-(744 pages; 91.59 seconds, peak child memory 329,347,072 bytes). [Final Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860176578) and
-[same-source ARM64 build](https://github.com/lmdanavanem/SuniPDF/actions/runs/38860179447/job/116840434621) passed, as did nine real portable scenarios from
-0.8.2/0.8.3/0.9.0/0.9.1/0.10.0, three MSI baselines (0.8.0/0.9.1/0.10.0) and all six staged asset checks. Packaged
-checks include owner-opened AES-128/256 copies, decoded content/qpdf, page labels, metadata, OCR, forms and compression.
-Immutable release source: `0b7a22b2cf293c2908e8e6c6107c3f89bde01862`. All six unauthenticated public downloads match API/sidecar/staged hashes; enhanced checks passed again on public
-binaries. The production live updater verified the 19,687,375-byte Latest x64 ZIP without installation. Evidence
-and remaining limits are recorded in `PROJECT_STATUS.md`; published 0.10.0 source/packages remain unchanged.
-
-## 0.12.0: editable field creation and radio exports (published; Latest at the time)
-
-Create editable drop-downs from Prepare a form or `add-form-field --kind combo --editable`, with predefined choices
-still required. Radio `/Opt` export values are separated from widget appearance states for filling and JSON/XFDF/FDF
-interchange; CLI information adds `widgets[].export_value`. Malformed or duplicate mappings keep the affected
-field read-only; no-`/Opt` radios retain state-name values (D100–D101).
-
-[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.12.0) under `lmdanavanem` (Latest at the time), release
-`414674886`, source `3de5bbb7e9065afb38bfb1fe79a154c53b3602c9`. The 398 workspace tests (zero failed, seven default
-ignored), formatting/Clippy, 859 EN/FR keys, 48 qpdf checks and four NIST/NBS documents (744 pages; 59.68 seconds)
-passed. [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697688), the
-[same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38866697728/job/116861070878), ten portable
-scenarios and four MSI baselines passed. All six staged/public files and enhanced binary checks passed; verified
-files are in `dist/`. The production updater verified the 19,699,323-byte Latest x64 ZIP without installation.
-Executed evidence and hardware/interoperability limits are recorded in `PROJECT_STATUS.md`.
-
-## 0.13.0: visual signature improvements (published; Latest at the time)
-
-Typed name/initials use an explicit native preview and the existing font/image/library paths. Current/all/selected
-pages share fitted display-space geometry; multi-page placement is atomic, cancellable between targets and one
-undo. CLI `add-image --pages` is additive; legacy `--page` behaviour remains compatible (D102–D103).
-[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.13.0) under `lmdanavanem` (Latest at the time), release
-`414763678`, source `b09259f7bd3b8602f7d2c290d5fd89d50dda5710`. Local validation passed: 410 workspace tests,
-formatting/Clippy, 870 EN/FR keys, 53 qpdf checks and four licensed documents (744 pages; 76.40 seconds locally).
-Windows CI, same-source ARM64 compilation, eleven portable scenarios, five MSI baselines and all six staged/public
-files with enhanced binary checks passed. Verified copies are in `dist/`; the production updater verified the
-19,730,578-byte Latest x64 ZIP without installation. Evidence and hardware/reader limits: `PROJECT_STATUS.md`.
-
-## 0.14.0: page-label authoring (published; Latest at the time)
-
-Apply six navigation-label styles over an inclusive physical range through Pages/Organize and two CLI commands;
-preserve labels outside the range, reject malformed existing trees before mutation, and reset all label rules
-without claiming secure erasure. Printed numbers remain unchanged; structural operations do not semantically
-rebase the ranges. Geometry-preserving label/content Undo/Redo retains navigation (D104–D105).
-[Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.14.0) under `lmdanavanem` (Latest at the time), release
-`414812776`, source `af532888804c196aabe216b8f6a2980c3d1e9e2d`. Validation passed: 420 workspace tests,
-formatting/Clippy, 890 EN/FR keys, 63 qpdf checks and four licensed documents (744 pages; 53.91 seconds locally).
-Windows CI, same-source ARM64 compilation, twelve portable scenarios, six MSI baselines and six staged/public
-files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified the
-19,785,200-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
-
-## 0.15.0: editing existing link targets (published milestone)
-
-Reuse the annotation link dialog and protected writer to change an existing destination through Edit target,
-double-click or CLI `set-link-target`. Safe web/mail URI or physical-page Fit replaces all previous target/action
-fields, keeping the link's area/style/comments/replies and unrelated document data. Existing detailed/named views
-are explicitly replaced by whole-page Fit; unknown targets never default silently to page 1. ReadOnly/Locked/
-LockedContents and malformed flags are refused; one undo preserves geometry/navigation and stale dialogs close
-on document changes (D106). [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.15.0) under
-`lmdanavanem` (Latest at the time), release `414866395`, source `952f8699cac451e7c3004b6d816105d52e41f249`. Validation passed: 429 workspace
-tests, formatting/Clippy, 894 EN/FR keys, 68 qpdf checks and four licensed documents (744 pages; 48.891 seconds
-locally). Windows CI, same-source ARM64 compilation, thirteen portable scenarios, seven MSI baselines and six
-staged/public files with enhanced checks passed. Verified copies are in `dist/`; the production updater verified
-the 19,803,226-byte Latest x64 ZIP without installation. Executed evidence and remaining limits: `PROJECT_STATUS.md`.
-
-## 0.16.0: dashed shape annotations (published milestone)
-
-Dashed rectangle/ellipse/line/arrow annotations reuse the existing toolbar, CLI and appearance writer. UI and
-`annotate --dashed` choose `[6,3]` points; actual custom patterns remain through ordinary edits unless explicitly
-toggled. Solid defaults, continuous fill and solid arrowheads stay unchanged. Unsupported types, malformed
-SuniPDF border styles and excessive regeneration work are refused (D107). No dependency or command is added;
-the CLI remains at 53 commands. [Published](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.16.0)
-under `lmdanavanem` (Latest at the time), release `414934190`, source `6cd7843734f3924e87033d8b05539d493ccbcb95`. Local validation,
-Windows CI and same-source ARM64 compilation passed: 439 tests, 895 EN/FR keys, 73 qpdf checks, four licensed
-documents/744 pages (53.542 seconds locally), fourteen portable cases and eight MSI baselines. Six staged/public
-files and enhanced checks passed; verified copies are in `dist/`. The production updater verified the
-19,821,719-byte x64 ZIP without installation. Evidence and remaining limits are in `PROJECT_STATUS.md`.
-
-## 0.17.0: image conversion reliability (published; Latest at the time)
-
-Complete direct JPEG embedding for EXIF orientations 5 and 7, so all eight orientations avoid image decoding/
-recompression. Preflight non-JPEG inputs against a cumulative 512 MiB raster-data estimate:
-`sum(max(decoder.total_bytes(), width × height × 4))`, with checked arithmetic, finite/positive physical geometry
-and repeated loading checks for simple file changes (D108). Quality/transparency and existing UI/CLI/API remain.
-The estimate is not a native/process RSS ceiling or compressed-JPEG limit. No dependency or command
-is added. Budget excess/overflow has a localized `image_batch_too_large` error; invalid geometry retains `other`.
-Local validation passed: 445 workspace tests, formatting/Clippy, 896 EN/FR keys, 74 qpdf checks and four licensed
-documents/744 pages (48.187 seconds; peak child memory 330,264,576 bytes), the update-helper self-test and
-independent debug conversion gate. Source `5785de282e126fb4666b28fb83340d0e9c6e9acf` passed Windows CI,
-same-source ARM64 compilation, fifteen portable cases, nine MSI baselines and 45 MSI logs; CI corpus took
-45.791 seconds with peak child memory 321,413,120 bytes. [Published (Latest at the time)](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.17.0)
-under `lmdanavanem`, release `415074108`, with six files. All staged/public files and enhanced conversion checks
-passed; verified copies are in `dist/`. The production updater verified the 19,825,743-byte x64 ZIP without
-installation. Evidence and remaining limits belong in `PROJECT_STATUS.md`.
-
-## 0.18.0: grouped freehand drawing and literal CLI help (published)
-
-Group freehand strokes on one page into one annotation and one Undo step through **Finish drawing** /
-**Cancel drawing**. Worker failure retains the draft for retry; conflicting save/close/document/tool actions
-wait until Finish/Cancel. Reuse existing AddInk, point simplification, display geometry and protection (D109).
-At most 64 strokes and 4,000 points per stroke. Drafts stay in memory until Finish and are absent from crash
-recovery. No idle auto-commit or eraser. `stamp` / `page-numbers` help preserves literal `{n}` / `{total}`
-through the existing clap help template (A16). No new dependency or CLI command; 53 commands remain.
-
-[Published as stable Latest at the time](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.18.0) under `lmdanavanem`, release `415140702`,
-source `7e52de82244faf9a020ed3ed233176775c007e97`. Local gates passed: 452 workspace tests (zero failed, seven default ignored),
-formatting/Clippy with warnings denied, 907 matching EN/FR keys, 75 qpdf checks and the update-helper self-test.
-Four licensed NIST/NBS documents (744 pages) passed in 50.796 seconds, sampled peak child memory
-329,445,376 bytes; all sources stayed unchanged. Six new headless UI tests, the extended native-worker
-grouped Undo/Redo/failure regression and the CLI help regression passed.
-[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082734) and the [same-source ARM64 job](https://github.com/lmdanavanem/SuniPDF/actions/runs/38926082934/job/117057854520) passed,
-with sixteen portable cases, ten MSI baselines and 50 verified MSI logs. The CI corpus took 44.494 seconds,
-sampled peak child memory 320,299,008 bytes. All six staged/public files, API digests/sidecars and enhanced
-package checks passed: five grouped-Ink readbacks (plain/AES-128/AES-256 with both passwords), four literal-help
-checks and existing conversion, forms, labels, links, dashes, compression, OCR and MSI payload checks.
-Verified copies are in `dist/`; the production updater verified the 19,834,488-byte Latest x64 ZIP without
-installing it on the host. Executed evidence and remaining limits are in `PROJECT_STATUS.md`.
-
-## 0.19.0: mouse placement of existing form types (published; Latest at the time)
-
-Add **Draw on page** to the current numeric form builder, preserving text/checkbox/radio/drop-down/list-box
-types, names, choices and flags. Draw a finite rectangle clamped to one page, at least 4 pt wide/high, then
-review the reopened numeric dialog and explicitly **Create Field**. Drawing itself does not mutate the PDF;
-the existing worker edit supplies one Undo step, validation and encryption (D110/A38).
-
-Crosshair/preview, widget exclusion and stale document/tab/tool guards are included. Numeric creation,
-core/CLI APIs and 53 commands remain unchanged; no dependency or field type is added. Implementation and local tests
-passed, along with formatting/Clippy; CI/upgrade, staged/public package and production updater checks passed. **0.19.0 was stable Latest at publication**. Actual evidence belongs in
-`PROJECT_STATUS.md`. Existing-field geometry editing, XFA creation and native hardware checks remain separate.
-
-## 0.20.0: on-page FreeText creation and editing (published; Latest at the time)
-
-The implemented 0.20.0 lot creates and edits FreeText annotations directly on the page (D111/A39).
-Click or draw the existing box, type in an anchored multiline editor and use explicit **Add** / **Save** /
-**Cancel** with the existing size, colour, background and border controls. The existing AddFreeText /
-UpdateFreeText worker operations keep validation, protection and one Undo step; no new dependency,
-annotation type or CLI command is added (53 commands remain).
-
-The draft stays bound to its original page. Zoom remains available; conflicting navigation waits for
-confirmation/cancellation. Document revision/tab/tool/workspace changes cancel stale editing. Pending
-open/save/mutations and concurrent drafts are guarded; validation or worker failure retains typed text
-for retry. Helvetica WinAnsi appearance and downward wrap growth remain unchanged. The editor draft
-exists only in memory until confirmation and has no crash recovery.
-
-Implementation and independent review passed. Local workspace: 468 passed tests, zero failures, seven
-default ignored; formatting, all-target Clippy with warnings denied and 912 matching EN/FR keys passed.
-The 75-check qpdf gate, four-document/744-page real corpus and update-helper self-test passed. Windows CI,
-18 portable cases, 12 MSI baselines/60 logs, same-source ARM64, all six staged/public files and the production
-updater passed. **0.20.0 was published as stable Latest at the time**; [Project status](PROJECT_STATUS.md) records the executed evidence.
-
-## 0.21.0: Code Scanning remediation (published; Latest at the time)
-
-Explicit native signer-certificate null checks and malformed-CMS regression; release root
-`contents: read` with `contents: write` restricted to Publish (D112). XML 1.0 readers use `ParserConfig`,
-retain bounds and reject DTD events; UTF-8/UTF-16 XMP/XFDF regressions passed. Deterministic fixtures
-and complete scanning coverage are preserved.
-
-471 tests, zero failures, seven default ignored; formatting/Clippy, 912 EN/FR keys, 75 qpdf checks,
-four-document/744-page corpus and helper passed. CI, 19 portable cases (15 upgrades/four guards), 13 MSI
-baselines/65 logs, same-source ARM64, six staged/public files, `dist/` copies and production updater verified.
-CodeQL fixed #3 and #119; zero alerts remain open. All 115 criticals were individually dismissed with
-evidence by `lmdanavanem`: 114 `used in tests`, #13 `false positive`. No folder or query is excluded.
-
-The [GitHub project](https://github.com/users/lmdanavanem/projects/1) contains 42 prioritised drafts: Bugs (8), Roadmap (23), Suggestions (11),
-with saved category filters. At 0.21.0 publication the security item was Done; current implementation
-status for the other items is tracked in PROJECT_STATUS.md.
-See [Code Scanning review](CODE_SCANNING_REVIEW.md)
-and [Project status](PROJECT_STATUS.md). The 53 CLI commands are unchanged.
-
-## Phase 0–1: planning and foundations — delivered
-
-Rust workspace, PDFium, typed errors, opening/navigation/zoom/close, passwords, drag and drop, FR/EN localisation,
-persisted settings, light/dark themes, command registry and Windows resources are in place.
-Historical milestones and decisions remain in `DECISIONS.md` and `PROJECT_STATUS.md`.
-
-## Phase 2: reading and core PDF operations — largely delivered
-
-Delivered: tabs, bounded render/thumbnail caches, continuous/two-page/Book views, logical cross-page selection,
-search, bookmarks, merge/split/extract/rotate/reorder, atomic save, undo/redo and main annotations.
-
-Delivered in 0.10.0: view-only rotation, full-screen reading and bounded per-tab navigation history.
-Delivered in 0.11.0: page-label reading and precise internal navigation. Authoring/reset and navigation-preserving
-Undo/Redo were delivered in 0.14.0. 0.30.0 adds semantic label rebasing, bookmark authoring and
-bounded preservation of destinations, fields, layers and attachments across page operations; see
-[supported structure](BOOKMARKS_AND_PAGE_STRUCTURE.md). Runtime and documented independent-reader gates passed.
-Intended reading order for complex untagged columns remains separate work; qpdf alone cannot prove appearance.
-
-## Phase 3: professional editing — partially delivered
-
-Delivered: editable text/images and shapes, object transformations, grouped move and clipboard, system TrueType
-fonts, stamps/watermarks/numbering, threaded comments, metadata, visual signatures, AcroForm filling/flattening,
-text/checkbox creation and autosave/recovery.
-
-Delivered in 0.10.0: grouped rotation/resizing, mouse crop preview, radio/combo/list creation, strict value-only
-FDF/XFDF interchange and keyboard page widgets.
-Delivered in 0.12.0: editable drop-down creation and radio `/Opt` export mapping with conservative read-only safeguards.
-Delivered in 0.13.0: typed visual signatures and atomic current/all/selected-page placement.
-Delivered in 0.15.0: existing-link target replacement, preserving its area/appearance/comments.
-Delivered in 0.16.0: dashed borders for the four existing shape annotations, with custom-pattern preservation.
-Delivered in 0.18.0: grouped desktop ink with explicit Finish/Cancel and guarded transitions (D109).
-0.30.0 adds [font subsets and selected static TrueType/CFF1 collection faces](FONT_EMBEDDING.md),
-bounded paragraph preview/reflow, explicit editable object paste, stable rotation pivots, image-opacity readback,
-annotation-aware page scaling, [rich annotations](RICH_ANNOTATIONS.md) and precise destination authoring.
-Release-source regression gates passed. Variable/CFF2/color fonts, general shaping/bidirectional paragraph editing, arbitrary
-editable XObjects and full rich-text span editing remain unsupported; unsupported inputs are refused.
-Acceptance: rendering, saving and reopening covered for each added operation, with applicable accessibility checks.
-
-## Phase 4: conversion and OCR — partially delivered
-
-Delivered: images ↔ PDF, PDF → text/PNG, lossless optimisation, CLI batches and bundled local English/French OCR.
-
-Delivered in 0.17.0: all eight JPEG EXIF orientations embedded directly and cumulative raster-data estimates;
-measured native/process memory limits remain separate work (D108).
-
-0.30.0 adds [local Office conversion and saved Standard/Print profiles](OFFICE_CONVERSION.md):
-installed supported LibreOffice only, simple editable DOCX text, literal-string XLSX grids and raster PPTX pages.
-Converter absence is explicit; the app does not install it. Complex editable exports are refused rather than
-promised layout fidelity. Real-converter/corpus gates passed; arbitrary Office layout reconstruction
-and a general workflow designer remain future work. Compression/OCR batch UI was delivered in 0.10.0.
-
-## Phase 5: security and productivity — partially delivered
-
-Delivered: AES-128/256 and permissions, owner-authorised protection removal, metadata cleanup, irreversible redaction,
-CMS integrity verification and incremental PFX/P12 signed copies, JSON CLI and automation commands.
-
-0.31.0 implements bounded local comparison and search across selected saved files; [scope](LOCAL_REVIEW.md).
-0.36.0 adds [configurable command shortcuts](KEYBOARD_SHORTCUTS.md). Explorer integration and native keyboard/Narrator qualification stay open.
-0.30.0 adds [Windows chain/revocation and RFC3161 timestamp verification, plus per-user DPAPI
-signature storage](SIGNATURE_SECURITY.md), and [redaction preview, persistent marks, bounded text splitting
-and hidden-data sanitization](REDACTION.md). Release-source regression gates passed. Network retrieval needs explicit consent
-for each verification; offline/unknown is never trusted. Embedded DSS is unverified evidence, not archival LTV.
-AATL/EUTL, PKCS#11, qualified-signature assessment and timestamp creation remain unsupported. PDF signing time
-is still a signer declaration. other PDF readers interoperability is a separate, unverified property.
-Executable/MSI code signing needs an appropriate supplied identity.
-
-## Phase 6: quality and distribution — ongoing
-
-Delivered baseline: x64 portable/MSI and ARM64 portable releases, SHA256 files, startup update notifications with
-explicit installation, FR/EN guides, third-party notices and GitHub build workflows.
-
-Delivered in 0.10.0: four pinned public NIST samples and interrupted/full-disk/failed-save scenarios.
-0.30.0 adds an offline license inventory and optional GPU compatibility changes; release gates passed. OpenGL remains the default. Remaining: customer/hostile/large corpus expansion, fuzzing,
-published benchmarks with hardware, ongoing license-inventory maintenance, Narrator and third-party reader checks,
-interactive installed/portable update flows, physical printers and real ARM64/OpenGL execution.
-Automated MSI regression covers its scripted scenario only; packaged cross-compilation is not ARM64 runtime validation.
-
-The historical [Code Scanning review](CODE_SCANNING_REVIEW.md) examined 117 alerts, including 115 critical
-findings, without confirming a production secret. Remediation/triage and explicit workflow permissions were
-included in the published 0.21.x work; executed closure evidence is in [Project status](PROJECT_STATUS.md).
-This historical result does not establish the scan status of 0.30.0.
-
-## Local plan workflows
-
-Follow the [local feature backlog](AEC_BACKLOG.md) for calibrated measurements, quantities, registers, reusable annotation libraries and drawing revisions.
-
-## Work beyond 0.43.0
-
-Local AEC priorities: vector snapping, explicit batch recalculation, multiple-scale viewports, remaining library scope and real-plan coverage. The 24 cards retain their acceptance criteria; partial cards remain open.
-
-1. Run native updater/save flows, Narrator, printers, ARM64 and third-party readers on the appropriate equipment.
-2. Extend real-corpus coverage and performance measurements; public NIST samples do not establish universal compatibility.
-3. Keep the remaining P1 Roadmap items and Suggestions open: dedicated PDF/A/PDF/UA validation, broader corpus/fuzzing/
-   hardware measurement and integrations need their own accepted scope. Extend editing, Office fidelity and
-   archival trust only beyond the explicit limits of this release.
-
-
-
-No future release date or version is committed by this backlog.
+| P1 | Independent update authenticity | Sign release metadata and bind exact packages to an embedded public key; reject tampering, expiry and invalid versions; document key custody and rotation. No production key is configured yet. |
+| P1 | Windows publisher identity | Sign and timestamp distributed EXE/MSI payloads using a production code-signing certificate, then verify the downloaded files. The certificate remains unavailable. |
+| P1 | Native installation and interaction | Exercise installed-MSI and portable updates, unsaved-document prompts, cancellation, rollback, save/recovery dialogs and DPI behavior on physical devices. Keep scripted coverage separate. |
+| P1 | Accessibility and input | Check keyboard-only operation, focus, Narrator, forms, measurement tools and tables in the real application. Qualify touch pinch, pen/tablet interaction and native pointer behavior separately. |
+| P1 | Physical platform coverage | Run the actual ARM64 package on Windows ARM64; verify physical printers and default OpenGL presentation. Qualify optional wgpu and Ubuntu desktop/GPU combinations separately. |
+| P1 | Broader document safety | Extend pinned licensed samples with complex forms, tagged/OCR/Type3 content, damaged and large PDFs; record rendering, save/reopen, source preservation and native memory. Add coverage-guided fuzzing beyond the bounded mutation smoke tests. |
+| P1 | Independent interoperability | Record exact reader versions and outcomes for encrypted PDFs, XMP, forms, replies/statuses, ink, FreeText, shapes, redaction and signatures. Structural qpdf checks alone do not establish appearance or trust. |
+| P1 | PDF/A and PDF/UA qualification | Select supported profiles, retain independent validator reports and complete applicable human accessibility checks. Preserving identification metadata is not conformance validation. |
+
+Private real-project plan qualification is **deferred at the owner's request**.
+Known synthetic geometry and retained licensed/public PDFs remain the automated baseline;
+they do not establish survey accuracy or customer-document compatibility.
+The complete [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md) remain open until evidenced.
+
+## P2: plan workflow extensions
+
+The [detailed plan backlog](AEC_BACKLOG.md) retains stable capability IDs and acceptance
+criteria. Existing features are foundations for these extensions, not unimplemented work.
+
+| Area | Remaining extension | Required behavior |
+|---|---|---|
+| Register and libraries | Complete custom-field sorting, supported annotation-group capture and reuse | Keep stable identities, bounds and explicit import refusals; preserve original annotations. |
+| Quantity calculations | Formula columns, unit-price calculations and spreadsheet refresh | Bounded non-executable expressions, explicit units/currency/rounding and exports tied to the source revision. |
+| Dimensioned drawing | Draw supported shapes from real dimensions | Use the existing scale regions and snapping; show the selected scale and retain editable geometry. |
+| Area and volume | Depth, deducted areas and retained holes | Unit-safe calculations; reject degenerate or self-intersecting geometry and retain all inputs. |
+| Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |
+| Visual recognition | Symbol search and boundary-based region proposals | Bounded work, candidate previews, explicit tolerance and user confirmation before creating counts or measurements. |
+| Revisions | Reviewed change outlines and broader alignment workflows | Distinguish drawing changes from rendering noise and retain original/revised identities. |
+| Plan sets | Indexed sheets, batch replacement and cross-document links | Preview matches; retain previous files; report missing, duplicate or ambiguous references and refuse unsafe transfers. |
+| Reports | Legends, quantity summaries and issue reports | Generate from actual filtered annotations and document revisions, with no invented or stale totals. |
+
+Named scale regions, batch recalibration, vector snapping, manual counts, saved-geometry
+editing, typed quantity fields, local libraries and aligned overlays are already available.
+Each broader backlog card stays partial until its remaining acceptance criteria are met.
+
+## P2: editing, reading and conversion
+
+- **Text and fonts:** extend complex shaping, bidirectional paragraphs, variable/CFF2/color
+  fonts and arbitrary editable Form XObjects only with verified render/save/reopen behavior.
+  Unsupported inputs must preserve the PDF instead of silently substituting fonts or flattening.
+- **Annotations:** assess rich-text spans and foreign rich-text appearances; broaden independent
+  reader round trips. Retain the existing uniform-style FreeText, grouped ink and shape tools.
+- **Reading order:** improve selection and copying for complex untagged columns; PDFium's
+  logical character order does not establish the author's intended reading order.
+- **Reader interaction:** evaluate animated navigation and touch interaction after native tests.
+- **Visual signatures:** evaluate pen pressure and broaden image-cleanup fixtures. Keep preview
+  review because faint ink or textured backgrounds can be misclassified.
+- **Office conversion:** extend editable layout fidelity only for explicitly supported inputs
+  and an available local converter. General layout reconstruction remains future work.
+- **Compression and redaction:** expand large, hostile and licensed-document coverage, including
+  native memory measurements and visual checks of raster fallback output.
+- **Desktop integration:** assess Explorer integration under a separate implementation and
+  installation scope, preserving the user's file associations.
+
+## P2: measured performance and maintenance
+
+- Record opening, scrolling, rendering, searching, table interaction and editing on named
+  physical devices, including memory, representative file sizes and complete frame latency.
+- Profile heavy pages before batching adjacent tile renders through a shared loaded page.
+  Consider adjustable memory caps only when measurements show a practical need.
+- Reduce full-document annotation write/reload work without weakening Undo, permissions,
+  encrypted-document preservation, stale-state checks or atomic failure behavior.
+- Reduce duplicate CI work only when reused results and packages retain exact source,
+  dependency and toolchain provenance. Preserve independent package qualification.
+- Keep dependency/license inventories, security scans, source links and upgrade baselines
+  current; retain observable failures and the original document in every new operation.
+
+## Later or separately scoped
+
+Archival signature validation and timestamp creation, further certificate integrations,
+open CAD/BIM exchange, 3D content, assisted multi-plan matching and confined local automation
+need their own design, compatible dependencies and qualification corpus.
+A general workflow designer and optional human-readable CLI localization remain lower priority.
+
+## Delivery rule
+
+For each selected lot: define supported inputs and limits, implement and test failure paths,
+qualify the frozen source and downloaded packages, then update the feature matrix, release
+notes and [current evidence](PROJECT_STATUS.md). Do not close a card because a related
+feature shipped. GitHub Projects updates remain deferred; repository documentation is the
+current record until those tables are synchronized.

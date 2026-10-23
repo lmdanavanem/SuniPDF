@@ -1,6 +1,5 @@
 # SuniPDF 0.42.0 — measurements directly on the page
-
-[Français](RELEASE_0.42.0.fr.md) · [Measurement guide](MEASUREMENTS.md)
+[Measurement guide](MEASUREMENTS.md)
 
 Status: published as stable Latest [0.42.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.42.0), source `96ad768b24813e19c01de2881d3cb53c5b2fdc6c`.
 

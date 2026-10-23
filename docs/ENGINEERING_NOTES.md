@@ -1,7 +1,5 @@
 # Engineering Notes (read before modifying the code)
 
-[Français](ENGINEERING_NOTES.fr.md)
-
 This document gathers what you need to know to ship a vertical slice without breaking the repository:
 commands, guard rails, code patterns and pitfalls already encountered. It complements `CONTRIBUTING.md` and
 `docs/ARCHITECTURE.md`.
@@ -58,7 +56,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-i18n.ps1
 2. `apps/sunipdf-desktop/src/shell.rs`: arm in `command_icon` (glyph from `icons.rs` + text fallback).
    `apps/sunipdf-desktop/src/workspace.rs`: place the command in the group of **its tool** (`TABLE`,
    a single tool per command; colour and bar follow from it) or, for a system command, in
-   `SYSTEM_COMMANDS` of the `every_registry_command_has_a_home` test. Full contract: `docs/NEXT_TASKS.md`.
+   `SYSTEM_COMMANDS` of the `every_registry_command_has_a_home` test. Full contract: `docs/ROADMAP.md`.
 3. `apps/sunipdf-desktop/src/app.rs`: arm in `execute`, shortcut in `handle_input`
    (`key(Modifiers::…, Key::…, Command::…)`). Single-letter shortcuts are ignored when an input
    field or a dialog has the keyboard.
@@ -204,6 +202,6 @@ cards) shifts its controls: note the coordinates on a capture A before replaying
 Real end-to-end code (engine, engine thread, interface, CLI if relevant), command reachable
 from the tools panel and the palette, fr and en i18n keys, integration test that verifies the result
 (text re-read, rendered pixels, file reopened), error cases handled, screenshot looked at,
-documentation up to date (`PROJECT_STATUS.md`, `FEATURE_MATRIX.md`, `CHANGELOG.md` "Non publié" (Unreleased) section,
+documentation up to date (`PROJECT_STATUS.md`, `FEATURE_MATRIX.md`, `CHANGELOG.md` "Unreleased" section,
 fr and en user guides, `KNOWN_ISSUES.md` for the limits), the four guard rails green.
 What is not done stays in the roadmap, with the reason.

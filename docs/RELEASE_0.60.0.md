@@ -1,6 +1,5 @@
 # SuniPDF 0.60.0 — Plan workspace and calibrated measurement workflow
-
-[Français](RELEASE_0.60.0.fr.md) · [Workflow and limits](PLAN_WORKSPACE.md)
+[Workflow and limits](PLAN_WORKSPACE.md)
 
 [0.60.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) on 2026-10-23, under `lmdanavanem`.
 

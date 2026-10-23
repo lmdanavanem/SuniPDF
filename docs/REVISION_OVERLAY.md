@@ -1,6 +1,5 @@
 # Revision overlays
-
-[Français](REVISION_OVERLAY.fr.md) · [0.47 scope and qualification status](RELEASE_0.47.0.md)
+[0.47 scope and qualification status](RELEASE_0.47.0.md)
 
 Available in [0.47.0](RELEASE_0.47.0.md). [Evidence](qa/RELEASE_0.47.0.json).
 

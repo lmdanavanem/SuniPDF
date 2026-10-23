@@ -1,7 +1,5 @@
 # Inspect a saved PDF
 
-[Français](PDF_INSPECTION.fr.md)
-
 Open **File → Properties** (`Ctrl+D`), expand **Inspect saved PDF**, then choose **Inspect**.
 Save document edits first. The report refers to the exact saved revision whose SHA256 is displayed.
 If the file on disk changes, reload it before inspecting again. Metadata drafts in the Properties
