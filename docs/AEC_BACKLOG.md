@@ -8,6 +8,13 @@ This is the detailed capability backlog for the free, open-source local applicat
 
 Cached page layouts and register views, cooperative search and inventories, docked tables, eligible vector snapping, feet/inches input, named scale regions and atomic batch recalibration are available within the [plan workspace limits](PLAN_WORKSPACE.md). [Qualification records](qa/RELEASE_0.60.0.json) cover the exact published source. Private real-project plans remain deferred; physical devices, accessibility and complete interoperability stay open.
 
+## Implemented for the 0.61 candidate
+
+Custom text/typed-field sorting, bounded capture of saved native shape groups and quantity report
+formulas are implemented. The expanded conformance corpus adds independent validator and reader
+checks. [Candidate notes](RELEASE_0.61.0.md) describe supported inputs and refusals; remote
+qualification and publication remain pending. Full cards retain their broader acceptance gates.
+
 ## Capabilities and acceptance
 
 P1 covers foundations and qualification; P2 extends plan workflows; P3 requires a separate integration or research effort. The [1.0 gates](RELEASE_1.0_CRITERIA.md) apply independently.
