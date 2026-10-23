@@ -6,11 +6,11 @@ SuniPDF's conformance gate tests a bounded, licensed set of original and rewritt
 
 The additional corpus contains 12 unmodified fixtures from the [veraPDF test corpus](https://github.com/veraPDF/veraPDF-corpus/tree/377728596647e40edf16003d68d620773ce96ec5), attributed to the veraPDF Consortium and licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The [manifest](../scripts/conformance-corpus.json) pins the upstream revision, original paths, byte counts, SHA-256 digests, profiles and intended negative rules. Downloads include an attribution file. Derived PDFs are kept separately in the evidence directory and identified by operation.
 
-| Profile | Positive and negative pairs |
+| Profile | Positive and negative fixture categories |
 | --- | --- |
 | PDF/A-1b | Composite fonts; form XObjects |
 | PDF/A-2b | Subset font embedding; interactive forms |
-| PDF/UA-1 | Form structure; language tags |
+| PDF/UA-1 | Tagged form widgets and invalid form structure; language tags |
 
 These are atomic upstream test files, not a representative collection of production documents. An upstream `pass` filename describes the intended rule test; the gate independently requires the whole selected machine-validation profile to pass. An unexpected baseline outcome is a failed gate and must be investigated. The existing public PDF and large-plan regression suites remain separate and continue to run.
 

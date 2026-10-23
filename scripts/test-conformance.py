@@ -71,6 +71,8 @@ def parse_report(data, pdf, profile, expected, rule=None):
     if len(reports) != 1 or totals is None or totals.get('failedJobs') != '0' or (totals.text or '').strip() != '1':
         raise ValueError('Missing or failed validation report')
     report = reports[0]
+    if report.get('jobEndStatus') != 'normal':
+        raise ValueError('Validator job did not finish normally')
     if report.get('profileName') != PROFILES[profile] or report.get('isCompliant') not in ('true', 'false'):
         raise ValueError('Unexpected validator profile or missing conformance outcome')
     compliant = report.get('isCompliant') == 'true'
@@ -309,7 +311,7 @@ class ReportTests(unittest.TestCase):
         flag = str(compliant).lower()
         failed = str(int(not compliant))
         rule = '' if compliant else '<rule status="failed" clause="7.5" testNumber="1"/>'
-        return ('<report><buildInformation><releaseDetails version="1.30.3"/></buildInformation><jobs><job><item size="3"><name>' + escape(str(pdf)) + '</name></item><validationReport profileName="PDF/UA-1 validation profile" isCompliant="' + flag + '"><details passedRules="10" passedChecks="20" failedRules="' + failed + '" failedChecks="' + failed + '">' + rule + '</details></validationReport></job></jobs><batchSummary totalJobs="1" failedToParse="0" encrypted="0" outOfMemory="0" veraExceptions="0"><validationReports compliant="' + str(int(compliant)) + '" nonCompliant="' + failed + '" failedJobs="0">1</validationReports></batchSummary></report>').encode()
+        return ('<report><buildInformation><releaseDetails version="1.30.3"/></buildInformation><jobs><job><item size="3"><name>' + escape(str(pdf)) + '</name></item><validationReport jobEndStatus="normal" profileName="PDF/UA-1 validation profile" isCompliant="' + flag + '"><details passedRules="10" passedChecks="20" failedRules="' + failed + '" failedChecks="' + failed + '">' + rule + '</details></validationReport></job></jobs><batchSummary totalJobs="1" failedToParse="0" encrypted="0" outOfMemory="0" veraExceptions="0"><validationReports compliant="' + str(int(compliant)) + '" nonCompliant="' + failed + '" failedJobs="0">1</validationReports></batchSummary></report>').encode()
 
     def test_complete_positive_and_expected_negative(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -323,7 +325,7 @@ class ReportTests(unittest.TestCase):
             pdf = Path(folder) / 'test.pdf'
             pdf.write_bytes(b'pdf')
             data = self.report(pdf)
-            for old, new in [(b'PDF/UA-1', b'PDF/A-1b'), (b'test.pdf', b'other.pdf'), (b'1.30.3', b'1.20.0'), (b'totalJobs="1"', b'totalJobs="2"'), (b'failedToParse="0"', b'failedToParse="1"'), (b'failedJobs="0"', b'failedJobs="1"'), (b'isCompliant="true"', b'isCompliant="false"'), (b'passedRules="10"', b'passedRules="0"')]:
+            for old, new in [(b'PDF/UA-1', b'PDF/A-1b'), (b'test.pdf', b'other.pdf'), (b'1.30.3', b'1.20.0'), (b'totalJobs="1"', b'totalJobs="2"'), (b'failedToParse="0"', b'failedToParse="1"'), (b'failedJobs="0"', b'failedJobs="1"'), (b'jobEndStatus="normal"', b'jobEndStatus="error"'), (b'isCompliant="true"', b'isCompliant="false"'), (b'passedRules="10"', b'passedRules="0"')]:
                 with self.subTest(old=old), self.assertRaises(ValueError):
                     parse_report(data.replace(old, new), pdf, 'ua1', True)
             with self.assertRaises(ValueError):

@@ -120,14 +120,14 @@
       "rasterReason": "The invalid NeedAppearances fixture has only a light-gray widget border (minimum luminance 192 in both independent readers)."
     },
     {
-      "id": "ua1-form-label-pass",
-      "path": "PDF_UA-1/7.18 Annotations/7.18.4 Forms/7.18.4-t01-pass-a.pdf",
-      "bytes": 29426,
-      "sha256": "eebd601e070cfa18b46837436149157036e44420d07e6c575120c5d22a2148c6",
+      "id": "ua1-tagged-form-pass",
+      "path": "PDF_UA-1/7.18 Annotations/7.18.1 General/7.18.1-t01-pass-b.pdf",
+      "bytes": 34935,
+      "sha256": "263b50c6aa6c448306428cdd45b01b8fe99657fbe0535fdf9c5aace1e7589dbf",
       "profile": "ua1",
       "expectedCompliant": true,
       "rule": {
-        "clause": "7.18.4",
+        "clause": "7.18.1",
         "testNumber": "1"
       },
       "upstreamIntent": "atomic pass"
