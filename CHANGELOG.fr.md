@@ -7,11 +7,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Les versions 
 
 ## [Non publié]
 
-## [0.60.0] - version candidate
+## [0.60.0] - 2026-10-23
 
 La 0.60 ajoute la disposition et les vues du registre en cache, la recherche et l'inventaire coopératifs page par page, les tables ancrables, l'accrochage vectoriel, la saisie pieds/pouces, les zones d'échelles indépendantes et le recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
 
-[Périmètre 0.60](docs/RELEASE_0.60.0.fr.md).
+[Notes de version](docs/RELEASE_0.60.0.fr.md) · [Preuves](docs/qa/RELEASE_0.60.0.json).
 
 ## [0.51.0] - 2026-10-23
 

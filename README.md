@@ -24,13 +24,15 @@
 - **English by default, French available.** Change the interface language without restarting; existing language preferences are preserved.
 - **Clear limits.** Unfinished features stay in the [roadmap](docs/ROADMAP.md).
 
-## 0.60.0: plan workspace (release candidate)
+## 0.60.0: plan workspace (stable Latest)
 
-0.60 implements cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
+[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — 0.60 adds cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, eligible vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
 
-[0.60 scope](docs/RELEASE_0.60.0.md).
+Downloads : [Windows x64 ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-x64-portable.zip) · [Windows x64 MSI](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-x64.msi) · [Windows ARM64 ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-arm64-portable.zip) · [Ubuntu amd64 DEB](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-linux-amd64.deb).
 
-## 0.51.0: Ubuntu desktop package (stable Latest)
+[Workflow and limits](docs/PLAN_WORKSPACE.md) · [Release notes](docs/RELEASE_0.60.0.md) · [Evidence](docs/qa/RELEASE_0.60.0.json).
+
+## 0.51.0: Ubuntu desktop package (published; Latest at the time)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
 

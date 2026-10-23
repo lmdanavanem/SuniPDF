@@ -8,11 +8,11 @@ Executed checks and release evidence belong in [PROJECT_STATUS.md](PROJECT_STATU
 The accepted preparation track toward 1.0 has [explicit acceptance criteria](RELEASE_1.0_CRITERIA.md).
 Partial corpus/mutation work does not close native, interoperability, authenticity or conformance P1 gates.
 
-## 0.60: P1 plan-workspace scope
+## 0.60.0: plan workspace (stable Latest)
 
-0.60 implements cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
+[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — 0.60 adds cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, eligible vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
 
-[0.60 scope and limits](RELEASE_0.60.0.md).
+[Workflow and limits](PLAN_WORKSPACE.md) · [Release notes](RELEASE_0.60.0.md) · [Evidence](qa/RELEASE_0.60.0.json).
 
 ## 0.44–0.51: local plan workflow deliveries
 
@@ -31,7 +31,7 @@ The 0.44 desktop editor changes reference distance, unit and precision while kee
 
 This sequence delivers bounded increments. Existing-vertex editing arrived in 0.48 and insertion/removal in 0.49. The 0.60 implementation adds vector snapping, explicit batch recalibration and multiple-scale regions. Real-project accuracy and the full 1.0 criteria remain open; private project-plan qualification is explicitly deferred. Historical evidence below stays attached to its original release.
 
-## 0.51.0: Ubuntu desktop package (stable Latest)
+## 0.51.0: Ubuntu desktop package (published; Latest at the time)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
 

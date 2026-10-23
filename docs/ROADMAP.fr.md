@@ -9,11 +9,11 @@ La préparation acceptée de la 1.0 dispose de [critères explicites](RELEASE_1.
 Les contrôles partiels du corpus et des mutations ne clôturent pas les P1 natifs, d’interopérabilité,
 d’authenticité ou de conformité.
 
-## 0.60 : lot P1 de travail sur plans
+## 0.60.0 : espace des plans (Latest stable)
 
-La 0.60 ajoute la disposition et les vues du registre en cache, la recherche et l'inventaire coopératifs page par page, les tables ancrables, l'accrochage vectoriel, la saisie pieds/pouces, les zones d'échelles indépendantes et le recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
+[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — La 0.60 ajoute disposition et vues du registre en cache, recherche/inventaire coopératifs page par page, tables ancrables, accrochage vectoriel compatible, saisie pieds/pouces, zones d'échelles indépendantes et recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
 
-[Périmètre et limites 0.60](RELEASE_0.60.0.fr.md).
+[Parcours et limites](PLAN_WORKSPACE.fr.md) · [Notes de version](RELEASE_0.60.0.fr.md) · [Preuves](qa/RELEASE_0.60.0.json).
 
 ## 0.44–0.51 : fonctions locales pour les plans, séquence prévue
 
@@ -32,7 +32,7 @@ L'éditeur 0.44 modifie distance de référence, unité et précision en conserv
 
 Cette séquence apporte des incréments bornés. Modification des sommets en 0.48, ajout/suppression en 0.49 ; la 0.60 ajoute accrochage vectoriel, recalcul explicite par lots et zones multi-échelles. La justesse sur projets réels et les critères 1.0 restent ouverts ; la qualification sur plans privés est explicitement reportée. Les preuves historiques restent attachées à leur version d'origine.
 
-## 0.51.0 : paquet Ubuntu (Latest stable)
+## 0.51.0 : paquet Ubuntu (publiée ; Latest à cette date)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
 

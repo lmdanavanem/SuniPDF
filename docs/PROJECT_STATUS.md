@@ -1,17 +1,30 @@
-# Project status - updated 2026-10-23 (0.51.0 published stable Latest)
+# Project status - updated 2026-10-23 (0.60.0 published stable Latest)
 
 [Français](PROJECT_STATUS.fr.md)
 
 Rule: a ticked box = code present **and** command executed with an observed result on the named host or CI runner
 (Windows 11 Pro 26300, Rust 1.99.0, target `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.60.0: implemented candidate scope
+## 0.60.0: plan workspace (stable Latest)
 
-0.60 implements cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
+[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — 0.60 adds cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, eligible vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
 
-[0.60 scope](RELEASE_0.60.0.md).
+Source `90691d0bca160a9bfc22752dc2cf4269c5e7b1e4`, PR [#33](https://github.com/lmdanavanem/SuniPDF/pull/33). Exact source passed: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668) · [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004268835). Windows: 827 passed, 0 failed, 14 ignored. Linux main: 808 passed, 0 failed, 9 ignored; Linux package build: 808 passed, 0 failed, 9 ignored. 1469 EN/FR keys. 44 portable scenarios; 38 MSI baselines / 190 logs. Eight anonymous public downloads verified by SHA256. No open Code Scanning alerts.
 
-## 0.51.0: Ubuntu desktop package (stable Latest)
+| Run | Operation | Workload | Samples | Observed p95 (µs) |
+|---|---|---|---:|---:|
+| [Windows main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668) | Cached layout | 5000 pages | 1000 | 0 |
+| [Windows main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668) | Register filtering | 10000 annotations | 100 | 12534 |
+| [Linux main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704) | Cached layout | 5000 pages | 1000 | 0 |
+| [Linux main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704) | Register filtering | 10000 annotations | 100 | 10608 |
+| [Linux release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990) | Cached layout | 5000 pages | 1000 | 0 |
+| [Linux release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990) | Register filtering | 10000 annotations | 100 | 6399 |
+
+Measurements cover bounded operations on known synthetic geometry and the retained licensed/public corpus. Private real-project plans remain deferred at the owner's request. Performance p95 values below measure cached model operations in debug test binaries on CI runners; complete UI frame time, physical hardware and a universal speed target are not established. A recorded 0 µs means the measured duration is below the 1 µs reporting precision, not zero duration: integer microsecond conversion truncates the fraction. No median is recorded. Native UI evidence uses actual PDFium tiles with offscreen DX12 WARP on Windows and installed Ubuntu packages with Xvfb/software Glow. Ubuntu 22.04/24.04 checks cover removal/reinstallation of the same candidate, not previous-version upgrades. Windows packages remain unsigned; Windows ARM64 is cross-built without native execution. Physical printing, accessibility, full interoperability, update authenticity and remaining 1.0 gates stay open. Projects updates remain deferred.
+
+[Workflow and limits](PLAN_WORKSPACE.md) · [Release notes](RELEASE_0.60.0.md) · [Evidence](qa/RELEASE_0.60.0.json).
+
+## 0.51.0: Ubuntu desktop package (published; Latest at the time)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
 

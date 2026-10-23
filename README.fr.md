@@ -27,13 +27,15 @@ Licence MIT ou Apache-2.0, au choix.
   tampons, conversions, protection, ligne de commande scriptable.
 - **Honnête** : ce qui n'est pas fini reste dans la feuille de route (`docs/ROADMAP.fr.md`), jamais annoncé comme terminé.
 
-## 0.60.0 : espace des plans (version candidate)
+## 0.60.0 : espace des plans (Latest stable)
 
-La 0.60 ajoute la disposition et les vues du registre en cache, la recherche et l'inventaire coopératifs page par page, les tables ancrables, l'accrochage vectoriel, la saisie pieds/pouces, les zones d'échelles indépendantes et le recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
+[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — La 0.60 ajoute disposition et vues du registre en cache, recherche/inventaire coopératifs page par page, tables ancrables, accrochage vectoriel compatible, saisie pieds/pouces, zones d'échelles indépendantes et recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
 
-[Périmètre 0.60](docs/RELEASE_0.60.0.fr.md).
+Téléchargements : [Windows x64 ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-x64-portable.zip) · [Windows x64 MSI](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-x64.msi) · [Windows ARM64 ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-arm64-portable.zip) · [Ubuntu amd64 DEB](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-linux-amd64.deb).
 
-## 0.51.0 : paquet Ubuntu (Latest stable)
+[Parcours et limites](docs/PLAN_WORKSPACE.fr.md) · [Notes de version](docs/RELEASE_0.60.0.fr.md) · [Preuves](docs/qa/RELEASE_0.60.0.json).
+
+## 0.51.0 : paquet Ubuntu (publiée ; Latest à cette date)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
 

@@ -48,9 +48,9 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Planning
 
-- [0.60 release scope](RELEASE_0.60.0.md) · [FR](RELEASE_0.60.0.fr.md): candidate implementation, explicit qualification limits and deferred private project-plan validation.
+- [0.60 release](RELEASE_0.60.0.md) · [FR](RELEASE_0.60.0.fr.md): published stable Latest; calibrated plan workflow, docked tables and bounded performance evidence within [verified scope](qa/RELEASE_0.60.0.json). Private project-plan qualification remains deferred.
 
-- [0.51 release](RELEASE_0.51.0.md) · [FR](RELEASE_0.51.0.fr.md): published stable Latest; Ubuntu 22.04/24.04 amd64 package and retained Windows packages, within [verified scope](qa/RELEASE_0.51.0.json).
+- [0.51 release](RELEASE_0.51.0.md) · [FR](RELEASE_0.51.0.fr.md): published; Latest at the time; Ubuntu 22.04/24.04 amd64 package and retained Windows packages, within [verified scope](qa/RELEASE_0.51.0.json).
 - [0.50 release](RELEASE_0.50.0.md) · [FR](RELEASE_0.50.0.fr.md): reader controls and organized tools within documented bounds and [publication evidence](qa/RELEASE_0.50.0.json).
 - [0.49 release](RELEASE_0.49.0.md) · [FR](RELEASE_0.49.0.fr.md): adding/removing saved vertices with explicit selection within documented bounds and [publication evidence](qa/RELEASE_0.49.0.json).
 - [0.48 release](RELEASE_0.48.0.md) · [FR](RELEASE_0.48.0.fr.md): editing saved measurement vertices within documented bounds and [publication evidence](qa/RELEASE_0.48.0.json).

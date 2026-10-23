@@ -1,17 +1,30 @@
-# État du projet - 2026-10-23 (0.51.0 publiée en Latest stable)
+# État du projet - 2026-10-23 (0.60.0 publiée en Latest stable)
 
 [English](PROJECT_STATUS.md)
 
 Règle : une case cochée = code présent **et** commande exécutée avec résultat observé sur le poste ou runner CI nommé
 (Windows 11 Pro 26300, Rust 1.99.0, cible `x86_64-pc-windows-msvc`, PDFium 7881).
 
-## 0.60.0 : périmètre candidat implémenté
+## 0.60.0 : espace des plans (Latest stable)
 
-La 0.60 ajoute la disposition et les vues du registre en cache, la recherche et l'inventaire coopératifs page par page, les tables ancrables, l'accrochage vectoriel, la saisie pieds/pouces, les zones d'échelles indépendantes et le recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
+[0.60.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) — La 0.60 ajoute disposition et vues du registre en cache, recherche/inventaire coopératifs page par page, tables ancrables, accrochage vectoriel compatible, saisie pieds/pouces, zones d'échelles indépendantes et recalcul atomique avec aperçu et Annuler. La qualification sur plans privés réels est reportée à la demande du propriétaire ; les autres validations 1.0 restent ouvertes.
 
-[Périmètre 0.60](RELEASE_0.60.0.fr.md).
+Source `90691d0bca160a9bfc22752dc2cf4269c5e7b1e4`, PR [#33](https://github.com/lmdanavanem/SuniPDF/pull/33). Source exacte validée : [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668) · [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004268835). Windows : 827 tests réussis, 0 échec, 14 ignorés. Linux main : 808 réussis, 0 échec, 9 ignorés ; paquet Linux : 808 réussis, 0 échec, 9 ignorés. 1469 clés EN/FR. 44 scénarios portables ; 38 références MSI / 190 journaux. Huit fichiers téléchargés publiquement sans authentification et vérifiés par SHA256. Aucune alerte Code Scanning ouverte.
 
-## 0.51.0 : paquet Ubuntu (Latest stable)
+| Exécution | Opération | Charge | Échantillons | p95 observé (µs) |
+|---|---|---|---:|---:|
+| [Windows main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668) | Disposition en cache | 5000 pages | 1000 | 0 |
+| [Windows main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668) | Filtrage du registre | 10000 annotations | 100 | 12534 |
+| [Linux main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704) | Disposition en cache | 5000 pages | 1000 | 0 |
+| [Linux main](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704) | Filtrage du registre | 10000 annotations | 100 | 10608 |
+| [Linux release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990) | Disposition en cache | 5000 pages | 1000 | 0 |
+| [Linux release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990) | Filtrage du registre | 10000 annotations | 100 | 6399 |
+
+Les contrôles portent sur des opérations bornées, une géométrie synthétique connue et le corpus public/sous licence conservé. Les plans privés réels restent reportés à la demande du propriétaire. Les p95 ci-dessous mesurent des opérations de modèle en cache dans des binaires de test debug sur les runners CI ; ni le temps complet d'une image, ni le matériel physique, ni un objectif universel de vitesse ne sont établis. Une valeur enregistrée à 0 µs signifie une durée mesurée inférieure à la précision de restitution de 1 µs, et non une durée nulle : la conversion en microsecondes entières tronque la fraction. Aucune médiane n'est enregistrée. Les preuves d'interface utilisent de vraies tuiles PDFium avec DX12 WARP hors écran sous Windows et les paquets Ubuntu installés avec Xvfb/Glow logiciel. Ubuntu 22.04/24.04 couvre la suppression/réinstallation du même candidat, pas une migration depuis une ancienne version. Les paquets Windows restent non signés ; ARM64 est compilé sans exécution native. Impression physique, accessibilité, interopérabilité complète, authenticité des mises à jour et autres validations 1.0 restent ouvertes. Projects reste reporté.
+
+[Parcours et limites](PLAN_WORKSPACE.fr.md) · [Notes de version](RELEASE_0.60.0.fr.md) · [Preuves](qa/RELEASE_0.60.0.json).
+
+## 0.51.0 : paquet Ubuntu (publiée ; Latest à cette date)
 
 [0.51.0](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.51.0) — Installez SuniPDF sur Ubuntu 22.04 ou 24.04 amd64 avec le nouveau paquet Debian : interface de bureau, CLI, PDFium privé, OCR local français/anglais et entrée dans le menu des applications. Les paramètres Linux suivent les dossiers XDG ; les chemins récents conservent la casse et les sessions de récupération utilisent un verrou entre processus. Les notifications de mise à jour ouvrent le téléchargement Ubuntu ; l’installation utilise le gestionnaire de paquets. Les paquets Windows restent disponibles.
 
