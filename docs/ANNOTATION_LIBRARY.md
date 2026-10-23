@@ -1,6 +1,6 @@
 # Annotation libraries
 
-[0.61 candidate scope](RELEASE_0.61.0.md) · [User guide](USER_GUIDE.en.md)
+[0.61 release scope](RELEASE_0.61.0.md) · [User guide](USER_GUIDE.en.md)
 
 ## Desktop
 

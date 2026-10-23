@@ -18,15 +18,15 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.60.0
+## Download 0.61.0
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.60.0/SuniPDF-0.60.0-linux-amd64.deb) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-linux-amd64.deb) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) · [Qualification evidence](docs/qa/RELEASE_0.60.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.61.0) · [Qualification evidence](docs/qa/RELEASE_0.61.0.json)
 
 Packages are unsigned. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -34,7 +34,7 @@ See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUE
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.60.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.61.0-linux-amd64.deb`.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
@@ -56,15 +56,16 @@ offering installation; Ubuntu opens the release download for installation throug
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.60.0
+## New in 0.61.0
 
-Cached page layouts and register results reduce repeated work. Search and annotation inventory advance page by page with
-progress and cancellation. Tables can stay beside your work in a floating window or dock below the PDF.
+Sort custom register fields and typed quantity fields, reuse supported saved shape annotations as portable groups,
+and calculate report formulas with explicit units, rounding and visible errors. Reuse formula configuration JSON
+and export results tied to the source document.
 
-Plan tools add feet/inches entry, named independent scale regions, eligible vector endpoints/intersections, and batch
-recalibration with preview and one Undo step. Overlapping regions require an explicit scale choice.
+Independent PDF/A/PDF/UA fixtures and PDFium/Poppler checks cover specified files and operations. Lossless
+optimization preserves the existing compression state of XML metadata, fixing a PDF/A-1 regression found by this corpus.
 
-[Plan workspace guide](docs/PLAN_WORKSPACE.md) · [Full release notes](docs/RELEASE_0.60.0.md)
+[Release notes](docs/RELEASE_0.61.0.md) · [Qualification scope](docs/CONFORMANCE.md)
 
 ## Documentation and development
 

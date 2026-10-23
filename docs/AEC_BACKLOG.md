@@ -1,6 +1,6 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.60.0.md)
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.61.0.md)
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
@@ -8,12 +8,12 @@ This is the detailed capability backlog for the free, open-source local applicat
 
 Cached page layouts and register views, cooperative search and inventories, docked tables, eligible vector snapping, feet/inches input, named scale regions and atomic batch recalibration are available within the [plan workspace limits](PLAN_WORKSPACE.md). [Qualification records](qa/RELEASE_0.60.0.json) cover the exact published source. Private real-project plans remain deferred; physical devices, accessibility and complete interoperability stay open.
 
-## Implemented for the 0.61 candidate
+## Delivered in 0.61
 
-Custom text/typed-field sorting, bounded capture of saved native shape groups and quantity report
-formulas are implemented. The expanded conformance corpus adds independent validator and reader
-checks. [Candidate notes](RELEASE_0.61.0.md) describe supported inputs and refusals; remote
-qualification and publication remain pending. Full cards retain their broader acceptance gates.
+Custom-field sorting, supported saved native shape groups and bounded report formulas are available.
+[Release notes](RELEASE_0.61.0.md) describe supported inputs and refusals. Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.61.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans.
+
+Full cards retain their broader acceptance gates; no entire P1/P2 category is closed.
 
 ## Capabilities and acceptance
 

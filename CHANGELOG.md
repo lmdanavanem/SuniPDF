@@ -5,17 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-## [0.61.0] - release candidate
+## [0.61.0] - 2026-10-23
 
 - Sort register custom text fields and typed quantity fields, keeping missing values last.
 - Capture supported saved shape annotations as reusable groups with explicit source attribution, bounded appearance checks and unchanged originals.
 - Calculate bounded quantity report formulas with explicit units, rounding and per-cell errors; reuse JSON configurations and export source-bound CSV/JSON results.
-- Add pinned PDF/A-1b, PDF/A-2b and PDF/UA-1 positive/negative fixtures with independent veraPDF and Poppler checks. Qualification and publication remain pending.
+- Add pinned PDF/A-1b, PDF/A-2b and PDF/UA-1 positive/negative fixtures with independent veraPDF and Poppler checks. Validation applies to the recorded files and operations.
 - Preserve the compression state of XML metadata during lossless optimization, fixing the PDF/A-1 regression exposed by the independent corpus.
 
-[Candidate notes](docs/RELEASE_0.61.0.md) · [Conformance gate](docs/CONFORMANCE.md).
+[Release notes](docs/RELEASE_0.61.0.md) · [Evidence](docs/qa/RELEASE_0.61.0.json) · [Conformance gate](docs/CONFORMANCE.md).
 
-- Maintain one English documentation set, consolidate current priorities in the roadmap and archive earlier project-status records. Future packages include the English user guide; application translations and OCR remain available in English and French.
+- Maintain one English documentation set, consolidate current priorities in the roadmap and archive earlier project-status records. Packages include the English user guide; application translations and OCR remain available in English and French.
 
 ## [0.60.0] - 2026-10-23
 

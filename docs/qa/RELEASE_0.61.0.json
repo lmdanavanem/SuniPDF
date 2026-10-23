@@ -1,0 +1,721 @@
+{
+  "version": "0.61.0",
+  "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+  "tag": "v0.61.0",
+  "release_id": 422306835,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.61.0",
+  "published_at": "2026-10-23T21:35:30Z",
+  "verified_at": "2026-10-23T21:35:37.9415098Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "workflows": [
+    {
+      "name": "ci",
+      "run": 40023757049,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40023757049",
+      "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "conclusion": "success"
+    },
+    {
+      "name": "linux",
+      "run": 40023757101,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40023757101",
+      "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "conclusion": "success"
+    },
+    {
+      "name": "release",
+      "run": 40023771482,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40023771482",
+      "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "conclusion": "success"
+    },
+    {
+      "name": "codeql",
+      "run": 40023756761,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40023756761",
+      "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "conclusion": "success"
+    }
+  ],
+  "qualification": {
+    "tests": {
+      "passed": 844,
+      "failed": 0,
+      "ignored": 14,
+      "suites": 78
+    },
+    "portable": {
+      "guards": 4,
+      "scenarios": 45,
+      "upgrades": 41
+    },
+    "msi": {
+      "logs": 195,
+      "baselines": 39
+    },
+    "i18n": 1492,
+    "open_code_scanning_alerts": 0,
+    "linux_tests": {
+      "passed": 825,
+      "failed": 0,
+      "ignored": 9,
+      "suites": 78
+    },
+    "release_linux_tests": {
+      "passed": 825,
+      "failed": 0,
+      "ignored": 9,
+      "suites": 78
+    }
+  },
+  "assets": [
+    {
+      "id": 670472061,
+      "name": "SuniPDF-0.61.0-linux-amd64.deb",
+      "size": 17588564,
+      "sha256": "6b3a98424438e881a9147d768e53e1f8aa4ff55274a31b28c606cdb17edca679",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-linux-amd64.deb"
+    },
+    {
+      "id": 670472060,
+      "name": "SuniPDF-0.61.0-linux-amd64.deb.sha256",
+      "size": 97,
+      "sha256": "b7e92234b0bf115c0f395b2a151027ad16b19114d77959c06deec40230c633ce",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-linux-amd64.deb.sha256"
+    },
+    {
+      "id": 670472062,
+      "name": "SuniPDF-0.61.0-win-arm64-portable.zip",
+      "size": 27966611,
+      "sha256": "40da783bd053b67728ba5522c58018ebb15fcdf0e39e6f225a69a94817adc704",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-arm64-portable.zip"
+    },
+    {
+      "id": 670472058,
+      "name": "SuniPDF-0.61.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "f16cecece7d0717fed429d12d00e872294ffd982d4fd3fd2a725e2ee26a89f5e",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-arm64-portable.zip.sha256"
+    },
+    {
+      "id": 670472057,
+      "name": "SuniPDF-0.61.0-win-x64-portable.zip",
+      "size": 29747117,
+      "sha256": "18ab226a680784d8eb1019df01290f52e2b0f763b21dd95921811a5f27fc4242",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-x64-portable.zip"
+    },
+    {
+      "id": 670472056,
+      "name": "SuniPDF-0.61.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "5f26fd70bf3850984c7a05a7820e10977a24775a7e661fb4930a5a834dc84e9b",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-x64-portable.zip.sha256"
+    },
+    {
+      "id": 670472059,
+      "name": "SuniPDF-0.61.0-win-x64.msi",
+      "size": 27680768,
+      "sha256": "fbae1ed7dd913617f0f0dbed3ba3a2de48f1bc4a0ee57d254737fa80a4948139",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-x64.msi"
+    },
+    {
+      "id": 670472053,
+      "name": "SuniPDF-0.61.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "7631634057876d93c3bdb1dffdda063e4bdc49805f4920b3c6380bdca117b8ef",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.61.0/SuniPDF-0.61.0-win-x64.msi.sha256"
+    }
+  ],
+  "linux": {
+    "scope": "Ubuntu 22.04 and 24.04 clean containers; actual installed package under a normal user; native GUI with Xvfb and software Glow. Remove and reinstall the same candidate; no previous-version Linux upgrade or physical GPU qualification.",
+    "validation": [
+      {
+        "ubuntu": "22.04",
+        "artifact_id": 12532785106,
+        "artifact_name": "linux-validation-ubuntu-22.04",
+        "run_id": 40023771482,
+        "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+        "archive_sha256": "c2a1b1c9cbd9d2e5b70027b1bca2cb7caff97277e94927af4e7db0f41985257e",
+        "deb_sha256": "6b3a98424438e881a9147d768e53e1f8aa4ff55274a31b28c606cdb17edca679",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "exitCode": 0,
+          "version": "0.61.0",
+          "sourceSha": "11cd879a4379d3cb757b0255dabc951087b42264",
+          "distro": {
+            "id": "ubuntu",
+            "version_id": "22.04"
+          },
+          "deb": {
+            "name": "SuniPDF-0.61.0-linux-amd64.deb",
+            "sha256": "6b3a98424438e881a9147d768e53e1f8aa4ff55274a31b28c606cdb17edca679"
+          },
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a"
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787"
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "5113c7d7d078bbbb34608a18f36bbbf5e469f10c5aa6de234e92ffa1a4df426e"
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "49e6b914db1d4d362efdd5d7a4a003d1e189e80c7cb45a5c3bc24363cbf178df"
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b"
+            }
+          ],
+          "checks": {
+            "install": true,
+            "cli": true,
+            "pdf_render_save_reopen": true,
+            "ocr_en": true,
+            "ocr_fr": true,
+            "native_gui_pdf_visible": true,
+            "reinstall": true,
+            "uninstall": true,
+            "user_data_preserved": true
+          },
+          "normalUserExecution": true,
+          "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged"
+        }
+      },
+      {
+        "ubuntu": "24.04",
+        "artifact_id": 12531303988,
+        "artifact_name": "linux-validation-ubuntu-24.04",
+        "run_id": 40023771482,
+        "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+        "archive_sha256": "d2e7421c2f1e6a34a38af1374f1204bdb41cbf68a49ee56767f840568eccd990",
+        "deb_sha256": "6b3a98424438e881a9147d768e53e1f8aa4ff55274a31b28c606cdb17edca679",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "exitCode": 0,
+          "version": "0.61.0",
+          "sourceSha": "11cd879a4379d3cb757b0255dabc951087b42264",
+          "distro": {
+            "id": "ubuntu",
+            "version_id": "24.04"
+          },
+          "deb": {
+            "name": "SuniPDF-0.61.0-linux-amd64.deb",
+            "sha256": "6b3a98424438e881a9147d768e53e1f8aa4ff55274a31b28c606cdb17edca679"
+          },
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a"
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787"
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "5113c7d7d078bbbb34608a18f36bbbf5e469f10c5aa6de234e92ffa1a4df426e"
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "5377d51a9b284bd738b19aee17fa0b0ef9a49d7f93ec9543387dc0eaaf73b9e7"
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b"
+            }
+          ],
+          "checks": {
+            "install": true,
+            "cli": true,
+            "pdf_render_save_reopen": true,
+            "ocr_en": true,
+            "ocr_fr": true,
+            "native_gui_pdf_visible": true,
+            "reinstall": true,
+            "uninstall": true,
+            "user_data_preserved": true
+          },
+          "normalUserExecution": true,
+          "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged"
+        }
+      }
+    ]
+  },
+  "reader_ui": {
+    "artifact_id": 12531952178,
+    "artifact_name": "reader-ui-evidence",
+    "run_id": 40023757049,
+    "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+    "report_sha256": "487b380d73a42303f4a2b082af9de71daa18af222ea089207aeca0bae3d2bcc2",
+    "artifact_sha256": "3f025a0cad1d54fc19c4213295c8f3529eb275965d11bbb7e8a249f70264a013",
+    "report": {
+      "adapter": {
+        "backend": "Dx12",
+        "deviceType": "Cpu",
+        "name": "Microsoft Basic Render Driver"
+      },
+      "fixture": "crates/sunipdf-core/tests/fixtures/two-pages.pdf",
+      "fixtureSha256": "dd186d076a8bddd7d9ba3c034dbe460fde91a9f201e4ab00fe4197d8a614da5c",
+      "fixtureUnchanged": true,
+      "qualification": "Actual application UI and PDFium document tiles, rendered offscreen with DX12 WARP. Native window presentation and physical GPU interaction are not covered.",
+      "scenes": [
+        {
+          "actualApplicationRenderUi": true,
+          "actualPdfiumTiles": 4,
+          "darkTheme": true,
+          "dockedTable": null,
+          "dockedTableControlsAndRowVerified": false,
+          "dockedTableTextContrast": [],
+          "effectiveZoom": 0.5359848737716675,
+          "fixtureNavigation": null,
+          "language": "en-US",
+          "measurementToolsOpen": true,
+          "name": "reader-en-dark-measurements",
+          "outputPixels": [
+            1280,
+            780
+          ],
+          "pdfFixtureBlueInkPixels": 15881,
+          "png": "reader-en-dark-measurements.png",
+          "pngSha256": "8cf237d8bea39b8965273d5e2def8dd56f8e366d7d0f4810f2b931488684ddcb",
+          "readerLabelsVerified": true,
+          "rgbaSha256": "9a592816adba78d1dd17fbfad817fc554aabe8de7c4be9ce67ea0193184205d7",
+          "visiblePdfRegions": [
+            [
+              367.0,
+              118.0,
+              804.3636474609375,
+              684.0000610351562
+            ],
+            [
+              303.0,
+              696.0,
+              869.0,
+              700.0
+            ]
+          ],
+          "zoom149SingleLineVerified": false
+        },
+        {
+          "actualApplicationRenderUi": true,
+          "actualPdfiumTiles": 2,
+          "darkTheme": false,
+          "dockedTable": null,
+          "dockedTableControlsAndRowVerified": false,
+          "dockedTableTextContrast": [],
+          "effectiveZoom": 1.4900000095367432,
+          "fixtureNavigation": {
+            "coordinateOrigin": "page-top-left",
+            "destination": [
+              48.0,
+              96.0
+            ],
+            "method": "ScrollRequest::Destination",
+            "pageIndex": 0,
+            "unit": "PDF points"
+          },
+          "language": "fr-FR",
+          "measurementToolsOpen": true,
+          "name": "reader-fr-light-720-zoom149",
+          "outputPixels": [
+            720,
+            480
+          ],
+          "pdfFixtureBlueInkPixels": 33272,
+          "png": "reader-fr-light-720-zoom149.png",
+          "pngSha256": "6e8448d88f92961f6f0346a9cd73d8b3677618af399f43ff53f601800b8bb764",
+          "readerLabelsVerified": true,
+          "rgbaSha256": "5a3075d7aaeb5602f8495929498a629c77d27dbbaa88f4845fa09365a7197e80",
+          "visiblePdfRegions": [
+            [
+              169.75,
+              102.0,
+              389.75,
+              400.0
+            ]
+          ],
+          "zoom149SingleLineVerified": true
+        },
+        {
+          "actualApplicationRenderUi": true,
+          "actualPdfiumTiles": 4,
+          "darkTheme": false,
+          "dockedTable": null,
+          "dockedTableControlsAndRowVerified": false,
+          "dockedTableTextContrast": [],
+          "effectiveZoom": 0.5359848737716675,
+          "fixtureNavigation": null,
+          "language": "en-US",
+          "measurementToolsOpen": false,
+          "name": "reader-en-light-pages",
+          "outputPixels": [
+            1280,
+            780
+          ],
+          "pdfFixtureBlueInkPixels": 15881,
+          "png": "reader-en-light-pages.png",
+          "pngSha256": "dc2deb191a19f1fe928c12ecc1334b099319f01f223bf9d218f4d322fbdea229",
+          "readerLabelsVerified": true,
+          "rgbaSha256": "0e3132b48842bbf9cb4923492ef7b004edd89a84b9061e1d6c18e64311283e7d",
+          "visiblePdfRegions": [
+            [
+              517.0,
+              118.0,
+              954.3637084960938,
+              684.0000610351562
+            ],
+            [
+              453.0,
+              696.0,
+              1019.0,
+              700.0
+            ]
+          ],
+          "zoom149SingleLineVerified": false
+        },
+        {
+          "actualApplicationRenderUi": true,
+          "actualPdfiumTiles": 4,
+          "darkTheme": true,
+          "dockedTable": "annotations",
+          "dockedTableControlsAndRowVerified": true,
+          "dockedTableTextContrast": [
+            {
+              "minimumContrast": 4.5,
+              "part": "title",
+              "readablePixels": 335
+            },
+            {
+              "minimumContrast": 4.5,
+              "part": "firstColumnHeader",
+              "readablePixels": 226
+            }
+          ],
+          "effectiveZoom": 0.2708333432674408,
+          "fixtureNavigation": null,
+          "language": "en-US",
+          "measurementToolsOpen": false,
+          "name": "reader-en-dark-docked-register",
+          "outputPixels": [
+            1280,
+            780
+          ],
+          "pdfFixtureBlueInkPixels": 3890,
+          "png": "reader-en-dark-docked-register.png",
+          "pngSha256": "9b71e2fb40573266b8ec410b18f2ec80ee2706550dde7369520828064b8eb66f",
+          "readerLabelsVerified": true,
+          "rgbaSha256": "1c12e014ca9314c89a3907178770245cf3d70652f9c8faa6269e01636e206b1c",
+          "visiblePdfRegions": [
+            [
+              506.0,
+              118.0,
+              727.0,
+              404.0000305175781
+            ],
+            [
+              473.0,
+              416.0,
+              759.0,
+              420.0
+            ]
+          ],
+          "zoom149SingleLineVerified": false
+        },
+        {
+          "actualApplicationRenderUi": true,
+          "actualPdfiumTiles": 4,
+          "darkTheme": false,
+          "dockedTable": "quantities",
+          "dockedTableControlsAndRowVerified": true,
+          "dockedTableTextContrast": [
+            {
+              "minimumContrast": 4.5,
+              "part": "title",
+              "readablePixels": 232
+            },
+            {
+              "minimumContrast": 4.5,
+              "part": "firstColumnHeader",
+              "readablePixels": 116
+            }
+          ],
+          "effectiveZoom": 0.11372514069080353,
+          "fixtureNavigation": null,
+          "language": "fr-FR",
+          "measurementToolsOpen": false,
+          "name": "reader-fr-light-720-docked-quantities",
+          "outputPixels": [
+            720,
+            480
+          ],
+          "pdfFixtureBlueInkPixels": 713,
+          "png": "reader-fr-light-720-docked-quantities.png",
+          "pngSha256": "ae6029e514c361bc09316576db3442fc3c89e94825be83f0d9502d27ef8106c1",
+          "readerLabelsVerified": true,
+          "rgbaSha256": "6d78da79be6661d6fb9b8e7dcce205c7c75187a960baef7b607a4dec2c1cbcfe",
+          "visiblePdfRegions": [
+            [
+              290.0,
+              118.0,
+              382.7997131347656,
+              238.09375
+            ],
+            [
+              276.0,
+              250.0,
+              396.09375,
+              254.09375
+            ]
+          ],
+          "zoom149SingleLineVerified": false
+        }
+      ],
+      "schema": 1,
+      "sourceSha": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "status": "passed",
+      "tableFixture": {
+        "count": 1,
+        "countGroup": "Fixture equipment",
+        "lengthMetres": 10,
+        "source": "same two-page fixture, prepared only in memory"
+      },
+      "version": "0.61.0"
+    }
+  },
+  "performance": {
+    "scope": "Bounded cached layout and register filtering on CI runners; debug test profile, no complete-frame latency or physical-hardware claim.",
+    "median_recorded": false,
+    "evidence": [
+      {
+        "artifact_name": "performance-windows-x64",
+        "run_id": 40023757049,
+        "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+        "report_sha256": "0fa42e80331c099a2671742fe30ff957005d9f09d7605fa29baac0eeb58437a8",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "sourceSha": "11cd879a4379d3cb757b0255dabc951087b42264",
+          "runnerOS": "Windows",
+          "runnerArchitecture": "X64",
+          "profile": "debug-unit-tests",
+          "measurements": [
+            {
+              "test": "view::tests::performance_cached_layout_5000_pages",
+              "metric": "cached_layout",
+              "pages": 5000,
+              "samples": 1000,
+              "p95_us": 0,
+              "elapsedSeconds": 0.063
+            },
+            {
+              "test": "annotation_register::tests::performance_register_filter_10000_annotations",
+              "metric": "register_filter",
+              "rows": 10000,
+              "samples": 100,
+              "p95_us": 7097,
+              "elapsedSeconds": 0.765
+            }
+          ],
+          "qualification": "Bounded model operations measured on the CI runner; excludes complete UI frame time, GPU rendering and physical hardware qualification.",
+          "workspaceLogSha256": "71791f576154ee02b64059b7248b18dc22690cb664161f571a06d4464e1a1a3c",
+          "executableSha256": "a82d95adb2ff8f236a1742ec068f92e78bdb9d25f3be36ccadc036fc17464eae",
+          "version": "0.61.0"
+        },
+        "workspace_tests": {
+          "passed": 844,
+          "failed": 0,
+          "ignored": 14,
+          "suites": 78
+        },
+        "measurement_log_sha256": {
+          "register_filter.log": "d0dc8dc6abc86248ff0e352a46e81e50f195c84378aea4b4dd5fde6452f93a82",
+          "cached_layout.log": "9ec76b6e8e47690cb509bd6c80e97417bd8e725bb2e2c2c749668acfd75a82b9"
+        },
+        "artifact_id": 12532206473,
+        "artifact_sha256": "6439540c210193dc54d9f3b8675ac47057f8e2852328c9f54a8597fd5fabca3d"
+      },
+      {
+        "artifact_name": "performance-linux-amd64",
+        "run_id": 40023757101,
+        "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+        "report_sha256": "b879513f9d5ebf6e5da7f462de9d5bf7c3435c53f51b45797a13b9a33c1b8548",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "sourceSha": "11cd879a4379d3cb757b0255dabc951087b42264",
+          "runnerOS": "Linux",
+          "runnerArchitecture": "X64",
+          "profile": "debug-unit-tests",
+          "measurements": [
+            {
+              "test": "view::tests::performance_cached_layout_5000_pages",
+              "metric": "cached_layout",
+              "pages": 5000,
+              "samples": 1000,
+              "p95_us": 0,
+              "elapsedSeconds": 0.005
+            },
+            {
+              "test": "annotation_register::tests::performance_register_filter_10000_annotations",
+              "metric": "register_filter",
+              "rows": 10000,
+              "samples": 100,
+              "p95_us": 8624,
+              "elapsedSeconds": 0.816
+            }
+          ],
+          "qualification": "Bounded model operations measured on the CI runner; excludes complete UI frame time, GPU rendering and physical hardware qualification.",
+          "workspaceLogSha256": "f64929083252b830339bd4458fb022e813c7d1079397ec9870413f8c2a685424",
+          "executableSha256": "e68de2a582fca31be4835f406154ce0fdbe1dcc439ccdea4efcd11879fdbe8d8",
+          "version": "0.61.0"
+        },
+        "workspace_tests": {
+          "passed": 825,
+          "failed": 0,
+          "ignored": 9,
+          "suites": 78
+        },
+        "measurement_log_sha256": {
+          "register_filter.log": "6b7dc6e20c1a7368adab932467102959c44f76a7896ebd8c9487352688204935",
+          "cached_layout.log": "bf3e2c46a562e2129cf058038893ab23343c380d9a902b70015610cbab7e32bb"
+        },
+        "artifact_id": 12532291283,
+        "artifact_sha256": "d86269454dfd6dbdf51f15ddc0fd995820bcba4a6400ccddc11c167c5da276d3"
+      },
+      {
+        "artifact_name": "performance-linux-amd64",
+        "run_id": 40023771482,
+        "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+        "report_sha256": "a189379be17444b5ee2832c6495c1f5ab397fdaa59527a5b51e5dcdeb654a396",
+        "report": {
+          "schema": 1,
+          "status": "passed",
+          "sourceSha": "11cd879a4379d3cb757b0255dabc951087b42264",
+          "runnerOS": "Linux",
+          "runnerArchitecture": "X64",
+          "profile": "debug-unit-tests",
+          "measurements": [
+            {
+              "test": "view::tests::performance_cached_layout_5000_pages",
+              "metric": "cached_layout",
+              "pages": 5000,
+              "samples": 1000,
+              "p95_us": 0,
+              "elapsedSeconds": 0.003
+            },
+            {
+              "test": "annotation_register::tests::performance_register_filter_10000_annotations",
+              "metric": "register_filter",
+              "rows": 10000,
+              "samples": 100,
+              "p95_us": 6326,
+              "elapsedSeconds": 0.616
+            }
+          ],
+          "qualification": "Bounded model operations measured on the CI runner; excludes complete UI frame time, GPU rendering and physical hardware qualification.",
+          "workspaceLogSha256": "b2ddba28d19115057e2e7d94d00653ffa7724035bc7033210bee9e6ba6fb0f2e",
+          "executableSha256": "e68de2a582fca31be4835f406154ce0fdbe1dcc439ccdea4efcd11879fdbe8d8",
+          "version": "0.61.0"
+        },
+        "workspace_tests": {
+          "passed": 825,
+          "failed": 0,
+          "ignored": 9,
+          "suites": 78
+        },
+        "measurement_log_sha256": {
+          "register_filter.log": "7f0119fcdf2357183983eaec0b624cdaeca88a17d7e4f535e8530849a4bae362",
+          "cached_layout.log": "bf3e2c46a562e2129cf058038893ab23343c380d9a902b70015610cbab7e32bb"
+        },
+        "artifact_id": 12532016686,
+        "artifact_sha256": "6c96095d06b95279d1f1d00be772e5917fb8443e95b547f98656dcb0123cca5a"
+      }
+    ]
+  },
+  "public_windows_cli": {
+    "executed": false,
+    "reason": "No public packaged CLI was executed locally. Exact-source Windows CI and installed Linux package checks provide runtime coverage."
+  },
+  "private_project_plan_qualification": {
+    "status": "deferred",
+    "reason": "Deferred at the owner's request; synthetic qualification does not establish real-project survey accuracy."
+  },
+  "limitations": "Bounded synthetic/licensed corpus and specified operations only. Private real-project plans remain deferred. No universal PDF/A, PDF/UA, accessibility or survey-accuracy claim. Performance records cover cached model operations in debug CI binaries, not complete frame latency or physical devices. Windows remains unsigned; ARM64 has no native runtime qualification. Ubuntu uses Xvfb/software Glow and same-version reinstall tests. Physical printing, native interaction, human accessibility and independent update authenticity remain open. Projects synchronization remains deferred.",
+  "conformance": [
+    {
+      "run": 40023757101,
+      "run_attempt": 1,
+      "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "artifact_id": 12531933258,
+      "archive_sha256": "8cf54127a503cc6deff14f175a629572772e30e24d3a73205950546466a364b1",
+      "result": {
+        "status": "passed",
+        "cases": 12,
+        "stages": 42,
+        "profiles": [
+          "1b",
+          "2b",
+          "ua1"
+        ],
+        "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+        "qpdf_negative_warning_cases": [
+          "ua1-form-label-fail",
+          "ua1-language-tags-fail"
+        ],
+        "cli_sha256": "cb31b20087c25963e5901ab678ef9aa43abfc82021303c6a56984cfdb4606d6e",
+        "packaged_cli_hash_verified": false,
+        "scope": "Specified fixtures, rewrite operations and first-page appearance; no universal PDF/A or PDF/UA conformance or human accessibility claim.",
+        "archive_sha256": "8cf54127a503cc6deff14f175a629572772e30e24d3a73205950546466a364b1",
+        "report_sha256": "cb6935e132a3c6fe4e6279f208d013ae1b3143309e84f97454d77e37b5269386"
+      }
+    },
+    {
+      "run": 40023771482,
+      "run_attempt": 1,
+      "source": "11cd879a4379d3cb757b0255dabc951087b42264",
+      "artifact_id": 12531913288,
+      "archive_sha256": "56875e414c6f451d30dda8bde4378b89b6f9cc79b3ab11ce76662e251718e6e0",
+      "result": {
+        "status": "passed",
+        "cases": 12,
+        "stages": 42,
+        "profiles": [
+          "1b",
+          "2b",
+          "ua1"
+        ],
+        "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+        "qpdf_negative_warning_cases": [
+          "ua1-form-label-fail",
+          "ua1-language-tags-fail"
+        ],
+        "cli_sha256": "cb31b20087c25963e5901ab678ef9aa43abfc82021303c6a56984cfdb4606d6e",
+        "packaged_cli_hash_verified": true,
+        "scope": "Specified fixtures, rewrite operations and first-page appearance; no universal PDF/A or PDF/UA conformance or human accessibility claim.",
+        "archive_sha256": "56875e414c6f451d30dda8bde4378b89b6f9cc79b3ab11ce76662e251718e6e0",
+        "report_sha256": "506988ed2247d5e966e027d6881f04986b390291050836e9a0f8f88ccefc69a3"
+      }
+    }
+  ]
+}
