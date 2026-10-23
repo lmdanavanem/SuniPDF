@@ -1,6 +1,6 @@
 # Known limitations
 
-Current scope: [SuniPDF 0.60.0](RELEASE_0.60.0.md). This page lists supported boundaries
+Current scope: [SuniPDF 0.61.0](RELEASE_0.61.0.md). This page lists supported boundaries
 and remaining qualification gaps. See [project status](PROJECT_STATUS.md) for executed
 checks and the [roadmap](ROADMAP.md) for planned work.
 
@@ -38,9 +38,9 @@ checks and the [roadmap](ROADMAP.md) for planned work.
 - Render and thumbnail caches are bounded, but native memory and driver allocations are additional.
   CI model benchmarks do not establish complete frame latency or performance on physical devices.
 
-## Candidate additions
+## Formula and saved-group limits
 
-The [0.61 candidate](RELEASE_0.61.0.md) is awaiting qualification/publication. Its report formulas
+The [0.61 release](RELEASE_0.61.0.md) adds bounded report formulas. They
 accept dimensionless numeric fields and quantities with an exact declared unit. They do not
 change stored prices, subtotals or PDF metadata; missing inputs and calculation errors remain
 explicit. Saved-group capture accepts reproducible native shape appearances only; foreign,
@@ -94,8 +94,9 @@ and annotation capture remain planned.
   PKCS#11 are unsupported. See [signature security](SIGNATURE_SECURITY.md).
 - PDF permissions are application controls, not DRM. Saved-file inspection is bounded inventory,
   not exhaustive payload analysis or proof of authenticity.
-- Preserving PDF/A identification metadata does not validate PDF/A or PDF/UA conformance.
-  Independent validators, applicable human checks and broader reader interoperability remain open.
+- Preserving PDF/A identification metadata does not establish conformance. Recorded veraPDF
+  and PDFium/Poppler checks cover specified fixtures and operations only. Human accessibility
+  and broader reader interoperability remain open; no PDF/A converter or PDF/UA tagging editor is supplied.
 
 ## OCR, conversion and batches
 

@@ -1,7 +1,6 @@
 # SuniPDF 0.61.0
 
-Status: **release candidate; qualification and publication pending**. This page describes implemented scope,
-not successful test execution. [Project status](PROJECT_STATUS.md) records verified results when available.
+Status: **stable Latest**, published on 2026-10-23. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.61.0) · [Qualification evidence](qa/RELEASE_0.61.0.json).
 
 ## Custom-field sorting
 
@@ -47,7 +46,7 @@ is not repaired, and this change makes no claim of automatic PDF/A conversion.
 
 Regression additions cover typed sorting, formula arithmetic/error/export behavior, supported saved-group
 roundtrips on rotated/cropped pages, stale selections, copy restrictions and source preservation.
-Remote CI and corpus results must be verified before publication; no passing counts are claimed here.
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.61.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans.
 
 The corpus/conformance work uses independent validators and reader checks for supported workflows.
 Any recorded PDF/A or PDF/UA result applies to the tested file and operation, not universal application

@@ -1,18 +1,18 @@
 # Quantity tables
 
-[0.61 candidate scope](RELEASE_0.61.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
+[0.61 release scope](RELEASE_0.61.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
 
 Pricing and typed fields shipped in [0.46.0](RELEASE_0.46.0.md). [That release's evidence](qa/RELEASE_0.46.0.json) does not qualify the new custom sorting and report formulas.
 
 ## Open and filter the table
 
-Open a PDF, then choose **Quantity table** from **All tools**, from the measurement controls, or inside the annotation register. Finish or cancel another active draft first. Reading the table leaves the PDF unchanged.
+Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel's **Saved data** section, or inside the annotation register. Finish or cancel another active draft first. Reading the table leaves the PDF unchanged.
 
 The rows show physical page, annotation index, type, contents, quantity, unit, unit price, line cost and available custom columns. Pages start at 1; annotation indices start at 0. An explicit count marker contributes `1 each`. A saved length, polyline, perimeter or area contributes its measured value and unit. An angle is shown in `deg` but is not added or priced. Ordinary annotations have no inferred quantity.
 
 Filter by search text, annotation type, discipline, business status, count group, author or physical page. Page `0` means all pages in the desktop filter. **Subtotal groups** offers **No grouping**, **Count group**, **Discipline** and **Business status**. Subtotals cover all matching rows, including those beyond the current 50-row page. **Previous 50** and **Next 50** navigate table pages; **Filter column names** changes which custom columns are shown without changing row selection or totals. **Refresh** rereads the current document after an edit has been applied or cancelled.
 
-Use **Custom column** to sort by a typed field. Numbers sort numerically, ISO dates chronologically, and text/choice values lexically with case preserved. Missing values and blank text stay last in both directions; ties use physical page and annotation index. Choose **Built-in order** to return to the ordinary sort. This is separate from the annotation register's custom text fields, which sort as text. Docked or floating tables can stay open while following a row to its annotation.
+Open **Filters → Custom column** to sort by a typed field. Numbers sort numerically, ISO dates chronologically, and text/choice values lexically with case preserved. Missing values and blank text stay last in both directions; ties use physical page and annotation index. Choose **Built-in order** to return to the ordinary sort. This is separate from the annotation register's custom text fields, which sort as text. Docked or floating tables can stay open while following a row to its annotation.
 
 ## Edit price and custom fields
 

@@ -1,85 +1,46 @@
 # Project status
 
-**0.60.0 is published as stable Latest.** Publication and anonymous download verification
-were recorded on 2026-10-23. See the [release](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0),
-[release notes](RELEASE_0.60.0.md) and [machine-readable evidence](qa/RELEASE_0.60.0.json).
+**0.61.0 is published as stable Latest**, verified on 2026-10-23.
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.61.0) · [Release notes](RELEASE_0.61.0.md) · [Machine-readable evidence](qa/RELEASE_0.61.0.json).
 
-Source: `90691d0bca160a9bfc22752dc2cf4269c5e7b1e4`, merged through
-[PR #33](https://github.com/lmdanavanem/SuniPDF/pull/33), tag `v0.60.0`.
-The evidence below applies to that source and its packages, not to later documentation edits.
+Source `11cd879a4379d3cb757b0255dabc951087b42264`, merged through [PR #35](https://github.com/lmdanavanem/SuniPDF/pull/35), tag `v0.61.0`.
+These results apply to that source and its exact packages, not later documentation edits.
 
-## Delivered in 0.60
+## Delivered scope
 
-- Eligible vector endpoint/intersection snapping and feet/inches input.
-- Named page regions with independent scales and explicit overlap handling.
-- Selected-page/measurement recalibration with preview, atomic application and Undo.
-- Cached page layouts and register results, virtualized tables and adjustable docking.
-- Cooperative page-by-page search and annotation inventory with progress/cancellation.
+- Custom-field sorting in the register and typed sorting in quantity tables, with stable ties and missing values last.
+- Capture of supported saved native shapes into source-attributed, reusable annotation groups.
+- Bounded report formulas, explicit unit/error handling and reusable configuration with source-bound CSV/JSON.
+- Independent conformance/reader checks and preservation of the existing compression state of XML metadata during optimization.
 
-The [plan-workspace guide](PLAN_WORKSPACE.md) defines supported geometry, stale-data guards,
-resource bounds and CLI usage. Existing local PDF workflows remain in the
-[feature matrix](FEATURE_MATRIX.md).
+## Observed qualification
 
-## Qualification on the release source
-
-| Check | Observed result |
+| Check | Result |
 |---|---|
-| Windows workspace | 827 passed, 0 failed, 14 ignored, 78 suites |
-| Linux main workspace | 808 passed, 0 failed, 9 ignored, 78 suites |
-| Linux package-build workspace | 808 passed, 0 failed, 9 ignored, 78 suites |
-| Application translations | 1469 matching English/French keys |
-| Portable updater | 44 scenarios: 40 upgrades and 4 guards |
-| MSI upgrades | 38 baselines and 190 verified logs |
+| Windows workspace | 844 passed, 0 failed, 14 ignored |
+| Linux main workspace | 825 passed, 0 failed, 9 ignored |
+| Linux package-build workspace | 825 passed, 0 failed, 9 ignored |
+| Interface translations | 1492 matching English/French keys |
+| Portable updater | 45 scenarios: 41 upgrades and 4 guards |
+| MSI lifecycle | 39 baselines / 195 verified logs |
+| Conformance corpus | 12 fixtures / 42 stages in each main and release run |
+| Public downloads | Eight anonymous downloads verified against qualified SHA256 values |
 | Code Scanning | No open alerts at qualification |
-| Public downloads | Eight anonymously downloaded files verified by SHA256 |
 
-Successful exact-source workflows:
-[Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269668),
-[Linux CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004269704),
-[release packaging](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004284990),
-[CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/40004268835).
-Ignored tests are not counted as passed qualification.
+Exact-source workflows: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/40023757049) · [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/40023757101) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40023771482) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/40023756761). Ignored tests are not passed qualification.
+The JSON evidence retains actual UI/performance records and Ubuntu 22.04/24.04 package checks.
+UI uses offscreen DX12 WARP on Windows and Xvfb/software Glow on Ubuntu; same-version Ubuntu
+removal/reinstallation does not establish previous-version upgrade behavior.
 
-## Packages and UI evidence
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.61.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans.
 
-The published files are the Windows x64 portable ZIP and MSI, Windows ARM64 portable ZIP,
-Ubuntu amd64 DEB, and their four SHA256 sidecars. Exact sizes, hashes and URLs are recorded
-in the [release evidence](qa/RELEASE_0.60.0.json).
+## Remaining work
 
-Windows UI qualification rendered five actual application/PDFium scenes through offscreen
-DX12 WARP, including the register at 1280 x 780 and quantity table at 720 x 480.
-It does not establish native window presentation or physical GPU/input behavior.
+Bounded synthetic/licensed corpus and specified operations only. Private real-project plans remain deferred. No universal PDF/A, PDF/UA, accessibility or survey-accuracy claim. Performance records cover cached model operations in debug CI binaries, not complete frame latency or physical devices. Windows remains unsigned; ARM64 has no native runtime qualification. Ubuntu uses Xvfb/software Glow and same-version reinstall tests. Physical printing, native interaction, human accessibility and independent update authenticity remain open. Projects synchronization remains deferred.
 
-Ubuntu 22.04/24.04 checks installed the actual candidate under a normal user with Xvfb/software
-Glow, exercised rendering, save/reopen and English/French OCR, then removed/reinstalled that
-same candidate. They do not establish previous-version Linux upgrades or physical desktop support.
+Formula subtotals, unit-bearing fields, broader annotation capture and geometric area/volume tools
+remain in the [roadmap](ROADMAP.md). Whole backlog cards and [1.0 gates](RELEASE_1.0_CRITERIA.md)
+stay open until their full acceptance criteria are met. See [known limits](KNOWN_ISSUES.md).
 
-## Recorded performance
-
-These are bounded model operations in debug test binaries on CI runners.
-
-| Operation | Workload / samples | Windows p95 | Linux main p95 | Linux release p95 |
-|---|---|---:|---:|---:|
-| Cached layout | 5000 pages / 1000 samples | <1 us | <1 us | <1 us |
-| Register filtering | 10000 annotations / 100 samples | 12534 us | 10608 us | 6399 us |
-
-The stored layout value is 0 integer microseconds because conversion truncates sub-microsecond
-durations; this does not mean zero elapsed time. No median was recorded. Complete UI frame time,
-rendering latency, native memory and performance on physical devices remain separate measurements.
-
-## What remains open
-
-- Private real-project plan qualification is deferred at the owner's request. Automated checks
-  use known synthetic geometry and the retained licensed/public corpus, without a survey-accuracy claim.
-- Windows packages remain unsigned; no independent publication key is configured for updates.
-- Windows ARM64 is cross-built without native execution. Physical printers, native GPU/window
-  behavior, accessibility and interactive installation/update flows remain unqualified.
-- Broader hostile/large-file coverage, independent-reader interoperability, PDF/A/PDF/UA
-  conformance and archival signature trust require their own evidence.
-- The remaining [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md) stay open.
-  GitHub Projects updates remain deferred.
-
-The [roadmap](ROADMAP.md) contains current work, and [known limitations](KNOWN_ISSUES.md)
-describe current product boundaries. Historical release-by-release implementation and test
-records are preserved in the [pre-0.60 archive](archive/PROJECT_STATUS_PRE_0.60.md);
-their old "Latest", "pending" and "not done" statements are not current status.
+[0.60 evidence](qa/RELEASE_0.60.0.json) and [earlier project history](archive/PROJECT_STATUS_PRE_0.60.md)
+are preserved; their old status statements are historical.

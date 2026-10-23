@@ -3,7 +3,7 @@
 SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers the [0.61.0 candidate](RELEASE_0.61.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
+This guide covers the [0.61.0 release](RELEASE_0.61.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
 
 Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
 
@@ -66,7 +66,7 @@ Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Leng
 3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; finish or cancel the field editor before using Undo/Redo, and save the PDF to retain the fields.
 4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
 
-Choose a **Custom column** to sort typed quantity fields: numbers sort numerically, dates chronologically and text/choices lexically. Missing values and blank text stay last in both directions; equal values use physical page/index. The annotation register has the same selector for its separate text fields, which remain lexically sorted.
+Open **Filters → Custom column** to sort typed quantity fields: numbers sort numerically, dates chronologically and text/choices lexically. Missing values and blank text stay last in both directions; equal values use physical page/index. The annotation register has the same selector for its separate text fields, which remain lexically sorted.
 
 For a calculated report column, open **Custom columns → Formula columns**, enter a name and an expression such as
 `quantity * (1 + [Waste %] / 100)`, select the exact source quantity unit and result precision, then choose

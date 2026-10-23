@@ -1,15 +1,15 @@
 # SuniPDF on Ubuntu
 [User guide](USER_GUIDE.en.md)
 
-The Ubuntu package targets **Ubuntu 22.04 and 24.04, amd64 (x86_64)**. It installs the desktop application and `sunipdf-cli`. Linux ARM64 is not included in this package. See the [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.60.0) for available downloads and qualification results.
+The Ubuntu package targets **Ubuntu 22.04 and 24.04, amd64 (x86_64)**. It installs the desktop application and `sunipdf-cli`. Linux ARM64 is not included in this package. See the [release page](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.61.0) for available downloads and qualification results.
 
 ## Install
 
-Download `SuniPDF-0.60.0-linux-amd64.deb` and its `.sha256` file from the release page. In the download directory:
+Download `SuniPDF-0.61.0-linux-amd64.deb` and its `.sha256` file from the release page. In the download directory:
 
 ```sh
-sha256sum --check SuniPDF-0.60.0-linux-amd64.deb.sha256
-sudo apt install ./SuniPDF-0.60.0-linux-amd64.deb
+sha256sum --check SuniPDF-0.61.0-linux-amd64.deb.sha256
+sudo apt install ./SuniPDF-0.61.0-linux-amd64.deb
 ```
 
 APT installs the declared system dependencies. An Internet connection may be needed for this installation. PDF editing and OCR run locally afterwards.

@@ -1,6 +1,6 @@
 # SuniPDF feature matrix
 
-Current development scope: **0.61.0 candidate**. Features below are implemented within the stated limits.
+Current release scope: **0.61.0**. Features below are implemented within the stated limits.
 [Project status](PROJECT_STATUS.md) records executed checks; implementation does not imply qualification on every document,
 physical device or third-party reader. Planned work is tracked in the [roadmap](ROADMAP.md).
 

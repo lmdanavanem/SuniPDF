@@ -6,7 +6,7 @@ Persistent manual counts and the all-page annotation register run offline. [0.61
 
 ## Count items on a plan
 
-1. Open **Comment → Manual count…**, enter an equipment/type group and a marker size of 8–72 PDF points, then choose **Start counting**.
+1. Open **Tools → Review & measure → Add comments**, choose **Manual count…**, enter an equipment/type group and a marker size of 8–72 PDF points, then choose **Start counting**.
 2. Click each item’s centre. Each click creates one real PDF Stamp annotation, drawn as a blue circle and cross. The entire marker must fit inside the displayed page. A drag of more than two points does not place a marker.
 3. Use **Select annotation** to move a marker, or delete it from the comments panel. Undo/Redo restores these changes.
 4. Open **Annotation register** to inspect group totals. **Edit fields** can regroup a marker without changing its identity, appearance or position. Regrouping has one Undo step.
@@ -17,11 +17,11 @@ Only supported manual SuniPDF markers are counted. Generic imported stamps and p
 
 ## Review all annotations
 
-**Comment → Annotation register** reads all pages on the document worker. Columns include page/index, type, author, PDF modification date, PDF Review state, business status, discipline, count group and comment. Enable **Include replies and review states** to include child records.
+**Menu → View → Annotation register** reads all pages on the document worker. Columns include page/index, type, author, PDF modification date, PDF Review state, business status, discipline, count group and comment. Enable **Include replies and review states** to include child records.
 
 - Search ignores case and includes custom text keys/values. Named filters require exact text. The date filter searches the original PDF date, for example `D:202610`.
 - Sort by page, author, date, type, PDF Review state, business status, discipline or count group, ascending/descending. Dates sort lexically in PDF syntax, without timezone normalization.
-- Choose a field under **Custom column** to sort by its text value. Sorting is lexical and case-sensitive: text `10` precedes `2`. Missing values and blank text stay last in either direction; equal values use physical page/index as a stable tie-break. Choose **Built-in order** to return to the ordinary sort. The selected custom field is shown as a table column.
+- Choose a field under **Filters → Custom column** to sort by its text value. Sorting is lexical and case-sensitive: text `10` precedes `2`. Missing values and blank text stay last in either direction; equal values use physical page/index as a stable tie-break. Choose **Built-in order** to return to the ordinary sort. The selected custom field is shown as a table column.
 - **View on page** navigates to the rectangle and selects the actual annotation. The docked or floating table can stay open. Unknown rectangles have no navigation action.
 - **Edit fields** replaces business status, discipline and up to 16 custom text fields, entered one `KEY=VALUE` per line. Blank optional fields are cleared; duplicate keys are refused. Count markers also expose their group. Changes have one Undo step.
 - Business statuses such as `Ready for site` do not replace standard PDF Review states such as `Accepted`. Register custom fields remain text. Use the separate [quantity table](QUANTITY_TABLE.md) for typed number/date/choice columns, typed sorting and report formula columns.
