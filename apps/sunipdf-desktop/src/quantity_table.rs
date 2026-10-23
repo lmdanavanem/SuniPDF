@@ -572,121 +572,111 @@ impl SuniApp {
                             state.offset = position / 50 * 50;
                         }
                     }
-                    egui::ScrollArea::horizontal()
-                        .id_salt("quantity-table-scroll")
-                        .show(ui, |ui| {
-                            egui::Grid::new("quantity-rows")
-                                .striped(true)
-                                .show(ui, |ui| {
-                                    for key in [
-                                        "register.page",
-                                        "quantity.source",
-                                        "register.kind",
-                                        "register.contents",
-                                        "quantity.quantity",
-                                        "quantity.unit",
-                                        "quantity.price",
-                                        "quantity.cost",
-                                    ] {
-                                        ui.strong(tr(lang, key));
+                    ui.scope(|ui| {
+                        egui::Grid::new("quantity-rows")
+                            .striped(true)
+                            .show(ui, |ui| {
+                                for key in [
+                                    "register.page",
+                                    "quantity.source",
+                                    "register.kind",
+                                    "register.contents",
+                                    "quantity.quantity",
+                                    "quantity.unit",
+                                    "quantity.price",
+                                    "quantity.cost",
+                                ] {
+                                    ui.strong(tr(lang, key));
+                                }
+                                for name in &columns {
+                                    ui.strong(name.as_str());
+                                }
+                                ui.strong(tr(lang, "register.actions"));
+                                ui.end_row();
+                                for index in state.selected.iter().skip(state.offset).take(50) {
+                                    let row = &report.rows()[*index];
+                                    if ui
+                                        .add_enabled(
+                                            idle && row.register.rect.is_some(),
+                                            egui::Button::selectable(
+                                                selection
+                                                    == Some((
+                                                        row.register.page,
+                                                        row.register.index,
+                                                    )),
+                                                row.register.page.to_string(),
+                                            ),
+                                        )
+                                        .on_hover_text(tr(lang, "register.view"))
+                                        .clicked()
+                                    {
+                                        navigate = Some(row.register.clone());
                                     }
+                                    ui.label(row.register.index.to_string());
+                                    short_label(ui, &row.register.kind);
+                                    short_label(
+                                        ui,
+                                        row.register
+                                            .contents
+                                            .as_deref()
+                                            .unwrap_or(tr(lang, "quantity.missing")),
+                                    );
+                                    ui.label(
+                                        row.quantity
+                                            .as_ref()
+                                            .map(|q| q.value.to_string())
+                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
+                                    );
+                                    ui.label(row.quantity.as_ref().map_or("—", |q| q.unit.id()));
+                                    ui.label(
+                                        row.fields
+                                            .unit_price
+                                            .as_ref()
+                                            .map(|p| {
+                                                format!(
+                                                    "{} {} / {}",
+                                                    p.amount.as_str(),
+                                                    p.currency,
+                                                    p.per_unit.id()
+                                                )
+                                            })
+                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
+                                    );
+                                    ui.label(
+                                        row.line_total
+                                            .as_ref()
+                                            .map(|cost| {
+                                                format!("{} {}", cost.amount, cost.currency)
+                                            })
+                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
+                                    );
                                     for name in &columns {
-                                        ui.strong(name.as_str());
-                                    }
-                                    ui.strong(tr(lang, "register.actions"));
-                                    ui.end_row();
-                                    for index in state.selected.iter().skip(state.offset).take(50) {
-                                        let row = &report.rows()[*index];
-                                        if ui
-                                            .add_enabled(
-                                                idle && row.register.rect.is_some(),
-                                                egui::Button::selectable(
-                                                    selection
-                                                        == Some((
-                                                            row.register.page,
-                                                            row.register.index,
-                                                        )),
-                                                    row.register.page.to_string(),
-                                                ),
-                                            )
-                                            .on_hover_text(tr(lang, "register.view"))
-                                            .clicked()
-                                        {
-                                            navigate = Some(row.register.clone());
-                                        }
-                                        ui.label(row.register.index.to_string());
-                                        short_label(ui, &row.register.kind);
                                         short_label(
                                             ui,
-                                            row.register
-                                                .contents
-                                                .as_deref()
+                                            row.fields
+                                                .custom
+                                                .get(*name)
+                                                .map(typed_text)
                                                 .unwrap_or(tr(lang, "quantity.missing")),
                                         );
-                                        ui.label(
-                                            row.quantity
-                                                .as_ref()
-                                                .map(|q| q.value.to_string())
-                                                .unwrap_or_else(|| {
-                                                    tr(lang, "quantity.missing").into()
-                                                }),
-                                        );
-                                        ui.label(
-                                            row.quantity.as_ref().map_or("—", |q| q.unit.id()),
-                                        );
-                                        ui.label(
-                                            row.fields
-                                                .unit_price
-                                                .as_ref()
-                                                .map(|p| {
-                                                    format!(
-                                                        "{} {} / {}",
-                                                        p.amount.as_str(),
-                                                        p.currency,
-                                                        p.per_unit.id()
-                                                    )
-                                                })
-                                                .unwrap_or_else(|| {
-                                                    tr(lang, "quantity.missing").into()
-                                                }),
-                                        );
-                                        ui.label(
-                                            row.line_total
-                                                .as_ref()
-                                                .map(|cost| {
-                                                    format!("{} {}", cost.amount, cost.currency)
-                                                })
-                                                .unwrap_or_else(|| {
-                                                    tr(lang, "quantity.missing").into()
-                                                }),
-                                        );
-                                        for name in &columns {
-                                            short_label(
-                                                ui,
-                                                row.fields
-                                                    .custom
-                                                    .get(*name)
-                                                    .map(typed_text)
-                                                    .unwrap_or(tr(lang, "quantity.missing")),
-                                            );
-                                        }
-                                        if ui
-                                            .add_enabled(
-                                                idle && row.editable,
-                                                egui::Button::new(tr(lang, "quantity.edit")),
-                                            )
-                                            .on_disabled_hover_text(tr(lang, "quantity.readonly"))
-                                            .clicked()
-                                        {
-                                            match RowDraft::new(report, row, epoch) {
-                                                Ok(draft) => state.edit = Some(draft),
-                                                Err(error) => state.error = Some(error.to_string()),
-                                            }
-                                        }
-                                        ui.end_row();
                                     }
-                                });
-                        });
+                                    if ui
+                                        .add_enabled(
+                                            idle && row.editable,
+                                            egui::Button::new(tr(lang, "quantity.edit")),
+                                        )
+                                        .on_disabled_hover_text(tr(lang, "quantity.readonly"))
+                                        .clicked()
+                                    {
+                                        match RowDraft::new(report, row, epoch) {
+                                            Ok(draft) => state.edit = Some(draft),
+                                            Err(error) => state.error = Some(error.to_string()),
+                                        }
+                                    }
+                                    ui.end_row();
+                                }
+                            });
+                    });
                 }
             },
             |ui| {
@@ -1017,8 +1007,101 @@ pub(crate) mod tests {
         assert!(!dir.path().join("refused.csv").exists());
     }
 
+    fn verify_compact_table(table: &QuantityTable) {
+        fn text_rects(shape: &egui::Shape, label: &str, rects: &mut Vec<Rect>) {
+            match shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    rects.push(Rect::from_min_size(text.pos, text.galley.size()));
+                }
+                egui::Shape::Vec(shapes) => {
+                    for shape in shapes {
+                        text_rects(shape, label, rects);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            app.settings.dark_theme = false;
+            app.open_quantity_table();
+            let ctx = egui::Context::default();
+            crate::theme::apply(&ctx, false);
+            let input = egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(720.0, 480.0))),
+                ..Default::default()
+            };
+            let mut canvas = Rect::NOTHING;
+            let mut output = None;
+            for _ in 0..6 {
+                let mut frame = ctx.run_ui(input.clone(), |ui| {
+                    egui::Panel::top("compact-reader-top")
+                        .exact_size(95.0)
+                        .frame(egui::Frame::NONE)
+                        .show(ui, |_| {});
+                    egui::Panel::bottom("compact-reader-bottom")
+                        .exact_size(79.0)
+                        .frame(egui::Frame::NONE)
+                        .show(ui, |_| {});
+                    egui::Panel::right("compact-reader-rail")
+                        .exact_size(48.0)
+                        .frame(egui::Frame::NONE)
+                        .show(ui, |_| {});
+                    app.quantity_table_dock(&ctx, ui);
+                    egui::CentralPanel::no_frame().show(ui, |ui| {
+                        canvas = ui.max_rect();
+                        ui.painter().rect_filled(canvas, 0.0, egui::Color32::GRAY);
+                    });
+                });
+                frame.textures_delta.clear();
+                output = Some(frame);
+                if let Some((epoch, generation)) = app.annotate.quantities.pending {
+                    app.on_quantity_table(epoch, generation, Ok(table.clone()));
+                }
+            }
+            let output = output.unwrap();
+            assert!(
+                canvas.height() >= 150.0,
+                "reader canvas retained: {canvas:?}"
+            );
+            let contents = table.rows()[0]
+                .register
+                .contents
+                .as_deref()
+                .unwrap_or(tr(app.lang(), "quantity.missing"))
+                .chars()
+                .take(60)
+                .collect::<String>();
+            for label in [
+                tr(app.lang(), "quantity.title"),
+                tr(app.lang(), "workspace.table.dock"),
+                tr(app.lang(), "workspace.table.float"),
+                tr(app.lang(), "quantity.close"),
+                contents.as_str(),
+            ] {
+                assert!(
+                    output.shapes.iter().any(|shape| {
+                        let mut rects = Vec::new();
+                        text_rects(&shape.shape, label, &mut rects);
+                        rects.into_iter().any(|rect| {
+                            shape.clip_rect.contains_rect(rect)
+                                && rect.top() >= canvas.bottom()
+                                && rect.bottom() <= 401.0
+                        })
+                    }),
+                    "full table label must remain visible outside the canvas: {language}, {label}"
+                );
+            }
+            assert!(requests
+                .try_iter()
+                .all(|request| !matches!(request, Request::Edit(_))));
+        }
+    }
+
     pub(crate) fn verify_controls(table: &QuantityTable) {
         assert!(table.rows().len() >= 2);
+        verify_compact_table(table);
         for language in ["en-US", "fr-FR"] {
             let (mut app, requests, responses) = crate::app::tests::test_app();
             app.settings.language = language.into();

@@ -107,7 +107,12 @@ pub(crate) fn show(
     );
     let popup_open = egui::Popup::is_any_open(ctx);
     let content = |ui: &mut egui::Ui| {
-        ui.spacing_mut().item_spacing.y = 4.0;
+        let compact = ui.available_height() < 210.0;
+        ui.spacing_mut().item_spacing.y = if compact { 2.0 } else { 4.0 };
+        if compact {
+            ui.spacing_mut().button_padding = egui::vec2(8.0, 2.0);
+            ui.spacing_mut().interact_size.y = 22.0;
+        }
         ui.horizontal_wrapped(|ui| {
             ui.strong(&spec.title);
             ui.add_space(12.0);
@@ -123,15 +128,17 @@ pub(crate) fn show(
             );
         });
         ui.separator();
-        let footer_height = if ui.available_width() < 600.0 {
-            52.0
+        let footer_rows = if ui.available_width() < 500.0 {
+            2.0
         } else {
-            30.0
+            1.0
         };
-        let body_height = (ui.available_height() - footer_height).max(40.0);
+        let footer_height = ui.spacing().interact_size.y * footer_rows + 12.0;
+        let body_height = (ui.available_height() - footer_height).max(0.0);
         egui::ScrollArea::both()
             .id_salt((spec.id, "body"))
             .auto_shrink([false, false])
+            .min_scrolled_height(0.0)
             .max_height(body_height)
             .show(ui, body);
         if popup_open {
@@ -149,7 +156,7 @@ pub(crate) fn show(
                 .resizable(true)
                 .default_size(height)
                 .size_range(120.0..=maximum)
-                .frame(egui::Frame::new().fill(p.surface).inner_margin(8))
+                .frame(egui::Frame::new().fill(p.surface).inner_margin(6))
                 .show(ui, content);
             if !ctx.input(|i| i.pointer.any_down()) {
                 prefs.height = response.response.rect.height().round();

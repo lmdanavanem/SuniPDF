@@ -419,7 +419,16 @@ fn capture_scene(
             "scene": scene.name,
             "nodes": tree.nodes.iter().map(|(_, node)| json!({
                 "role": format!("{:?}", node.role()), "label": node.label(), "value": node.value(),
-            })).collect::<Vec<_>>()
+                "bounds": node.bounds().map(|rect| [rect.x0, rect.y0, rect.x1, rect.y1]),
+            })).collect::<Vec<_>>(),
+            "paintedText": frame.shapes.iter().filter_map(|shape| match &shape.shape {
+                egui::Shape::Text(text) => Some(json!({
+                    "text": text.galley.text(),
+                    "bounds": [text.pos.x, text.pos.y, text.pos.x + text.galley.size().x, text.pos.y + text.galley.size().y],
+                    "clip": [shape.clip_rect.min.x, shape.clip_rect.min.y, shape.clip_rect.max.x, shape.clip_rect.max.y],
+                })),
+                _ => None,
+            }).collect::<Vec<_>>()
         }))?,
     )?;
     let viewport = Rect::from_min_size(
@@ -473,7 +482,10 @@ fn capture_scene(
                 && Rect::from_min_size(text.pos, text.galley.size()).intersect(shape.clip_rect)
                     .intersect(viewport).is_positive())
             }),
-            "The docked table does not show its actual fixture count row",
+            &format!(
+                "{}: the docked table does not show its actual fixture count row; see scene PNG and accessibility/paint bounds",
+                scene.name
+            ),
         )?;
         require(
             !app.dialog_open(),

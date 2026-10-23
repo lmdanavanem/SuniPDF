@@ -465,109 +465,107 @@ impl SuniApp {
                             state.offset += 50;
                         }
                     });
-                    egui::ScrollArea::horizontal()
-                        .id_salt("register-table-scroll")
-                        .show(ui, |ui| {
-                            egui::Grid::new("register-table")
-                                .striped(true)
-                                .show(ui, |ui| {
-                                    for key in [
-                                        "page",
-                                        "kind",
-                                        "contents",
-                                        "count_group",
-                                        "author",
-                                        "modified",
-                                        "review_status",
-                                        "business_status",
-                                        "discipline",
-                                        "actions",
-                                    ] {
-                                        ui.strong(tr(lang, &format!("register.{key}")));
+                    ui.scope(|ui| {
+                        egui::Grid::new("register-table")
+                            .striped(true)
+                            .show(ui, |ui| {
+                                for key in [
+                                    "page",
+                                    "kind",
+                                    "contents",
+                                    "count_group",
+                                    "author",
+                                    "modified",
+                                    "review_status",
+                                    "business_status",
+                                    "discipline",
+                                    "actions",
+                                ] {
+                                    ui.strong(tr(lang, &format!("register.{key}")));
+                                }
+                                ui.end_row();
+                                for index in rows.iter().skip(state.offset).take(50) {
+                                    let row = &report.rows[*index];
+                                    if ui
+                                        .add_enabled(
+                                            row_actions_enabled && row.rect.is_some(),
+                                            egui::Button::selectable(
+                                                selection == Some((row.page, row.index)),
+                                                format!("{} / {}", row.page, row.index),
+                                            ),
+                                        )
+                                        .on_hover_text(tr(lang, "register.view"))
+                                        .clicked()
+                                    {
+                                        navigate = Some(row.clone());
                                     }
-                                    ui.end_row();
-                                    for index in rows.iter().skip(state.offset).take(50) {
-                                        let row = &report.rows[*index];
+                                    ui.label(&row.kind);
+                                    for text in [
+                                        row.contents.as_deref(),
+                                        row.count_group.as_deref(),
+                                        row.author.as_deref(),
+                                        row.modified.as_deref(),
+                                        row.review_status.as_deref(),
+                                        row.fields.business_status.as_deref(),
+                                        row.fields.discipline.as_deref(),
+                                    ] {
+                                        let text = text.unwrap_or("—");
+                                        let display: String = text.chars().take(70).collect();
+                                        ui.add_sized(
+                                            [160.0, 20.0],
+                                            egui::Label::new(display).truncate(),
+                                        )
+                                        .on_hover_text(text);
+                                    }
+                                    ui.horizontal(|ui| {
                                         if ui
                                             .add_enabled(
                                                 row_actions_enabled && row.rect.is_some(),
-                                                egui::Button::selectable(
-                                                    selection == Some((row.page, row.index)),
-                                                    format!("{} / {}", row.page, row.index),
-                                                ),
+                                                egui::Button::new(tr(lang, "register.view")),
                                             )
-                                            .on_hover_text(tr(lang, "register.view"))
                                             .clicked()
                                         {
                                             navigate = Some(row.clone());
                                         }
-                                        ui.label(&row.kind);
-                                        for text in [
-                                            row.contents.as_deref(),
-                                            row.count_group.as_deref(),
-                                            row.author.as_deref(),
-                                            row.modified.as_deref(),
-                                            row.review_status.as_deref(),
-                                            row.fields.business_status.as_deref(),
-                                            row.fields.discipline.as_deref(),
-                                        ] {
-                                            let text = text.unwrap_or("—");
-                                            let display: String = text.chars().take(70).collect();
-                                            ui.add_sized(
-                                                [160.0, 20.0],
-                                                egui::Label::new(display).truncate(),
+                                        if ui
+                                            .add_enabled(
+                                                row_actions_enabled
+                                                    && !row.locked
+                                                    && row.kind != "Widget"
+                                                    && !row.is_reply,
+                                                egui::Button::new(tr(lang, "register.fields")),
                                             )
-                                            .on_hover_text(text);
+                                            .clicked()
+                                        {
+                                            state.edit = Some(FieldDraft {
+                                                target: report.target(row),
+                                                business_status: row
+                                                    .fields
+                                                    .business_status
+                                                    .clone()
+                                                    .unwrap_or_default(),
+                                                discipline: row
+                                                    .fields
+                                                    .discipline
+                                                    .clone()
+                                                    .unwrap_or_default(),
+                                                custom: row
+                                                    .fields
+                                                    .custom
+                                                    .iter()
+                                                    .map(|(k, v)| format!("{k}={v}"))
+                                                    .collect::<Vec<_>>()
+                                                    .join("\n"),
+                                                count_group: row.count_group.clone(),
+                                                applying: false,
+                                                error: None,
+                                            });
                                         }
-                                        ui.horizontal(|ui| {
-                                            if ui
-                                                .add_enabled(
-                                                    row_actions_enabled && row.rect.is_some(),
-                                                    egui::Button::new(tr(lang, "register.view")),
-                                                )
-                                                .clicked()
-                                            {
-                                                navigate = Some(row.clone());
-                                            }
-                                            if ui
-                                                .add_enabled(
-                                                    row_actions_enabled
-                                                        && !row.locked
-                                                        && row.kind != "Widget"
-                                                        && !row.is_reply,
-                                                    egui::Button::new(tr(lang, "register.fields")),
-                                                )
-                                                .clicked()
-                                            {
-                                                state.edit = Some(FieldDraft {
-                                                    target: report.target(row),
-                                                    business_status: row
-                                                        .fields
-                                                        .business_status
-                                                        .clone()
-                                                        .unwrap_or_default(),
-                                                    discipline: row
-                                                        .fields
-                                                        .discipline
-                                                        .clone()
-                                                        .unwrap_or_default(),
-                                                    custom: row
-                                                        .fields
-                                                        .custom
-                                                        .iter()
-                                                        .map(|(k, v)| format!("{k}={v}"))
-                                                        .collect::<Vec<_>>()
-                                                        .join("\n"),
-                                                    count_group: row.count_group.clone(),
-                                                    applying: false,
-                                                    error: None,
-                                                });
-                                            }
-                                        });
-                                        ui.end_row();
-                                    }
-                                });
-                        });
+                                    });
+                                    ui.end_row();
+                                }
+                            });
+                    });
                 }
                 if let Some(edit) = &mut state.edit {
                     ui.separator();
