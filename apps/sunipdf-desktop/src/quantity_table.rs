@@ -1080,17 +1080,20 @@ pub(crate) mod tests {
                 tr(app.lang(), "quantity.close"),
                 contents.as_str(),
             ] {
+                let mut bounds = Vec::new();
+                for shape in &output.shapes {
+                    let mut rects = Vec::new();
+                    text_rects(&shape.shape, label, &mut rects);
+                    bounds.extend(rects.into_iter().map(|rect| (rect, shape.clip_rect)));
+                }
                 assert!(
-                    output.shapes.iter().any(|shape| {
-                        let mut rects = Vec::new();
-                        text_rects(&shape.shape, label, &mut rects);
-                        rects.into_iter().any(|rect| {
-                            shape.clip_rect.contains_rect(rect)
-                                && rect.top() >= canvas.bottom()
-                                && rect.bottom() <= 401.0
-                        })
+                    bounds.iter().any(|(rect, clip)| {
+                        clip.contains_rect(*rect)
+                            && rect.top() >= canvas.bottom()
+                            && rect.bottom() <= 401.0
                     }),
-                    "full table label must remain visible outside the canvas: {language}, {label}"
+                    "full table label must remain visible outside the canvas: {language}, {label}; \
+                     canvas={canvas:?}, text/clip bounds={bounds:?}"
                 );
             }
             assert!(requests

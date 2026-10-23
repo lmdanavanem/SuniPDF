@@ -341,6 +341,7 @@ fn capture_scene(
     let mut tiles = Vec::new();
     let mut final_frame = None;
     let mut pending_texture_frees = Vec::new();
+    let mut frame_states = Vec::with_capacity(12);
     for index in 0..12 {
         // Earlier frames are not painted; their deferred frees are safe before
         // building the next frame. Keep the final frame's textures until readback.
@@ -366,20 +367,12 @@ fn capture_scene(
         }
         pending_texture_frees.extend(frame.textures_delta.free.drain());
         fulfill_requests(document, &requests, &responses, &mut tiles)?;
+        frame_states.push(json!({
+            "frame": index, "rendering": app.view.is_rendering(), "epoch": app.view.epoch,
+            "effectiveZoom": app.effective_zoom, "tableHeight": app.settings.tables.height,
+        }));
         final_frame = Some(frame);
     }
-    require(
-        !app.view.is_rendering() && app.error.is_none(),
-        "Reader UI fixture did not settle without errors",
-    )?;
-    require(
-        !app.has_unsaved_changes(),
-        "Read-only UI evidence unexpectedly changed the document",
-    )?;
-    require(
-        !tiles.is_empty(),
-        "Actual document view did not request PDF tiles",
-    )?;
     let frame = final_frame.ok_or("Missing application UI frame")?;
     // Persist the actual failed scene too: structural checks below must not hide the frame
     // needed to distinguish a product layout regression from an evidence expectation error.
@@ -413,10 +406,19 @@ fn capture_scene(
         tree.nodes.len() <= 10_000,
         "Reader UI accessibility tree exceeds its evidence bound",
     )?;
+    let app_error = app
+        .error
+        .as_deref()
+        .map(|error| error.chars().take(512).collect::<String>());
     std::fs::write(
         output.join(format!("{}-accessibility.json", scene.name)),
         serde_json::to_vec_pretty(&json!({
             "scene": scene.name,
+            "settleState": {
+                "rendering": app.view.is_rendering(), "appError": app_error,
+                "documentOpen": app.document.is_some(), "unsavedChanges": app.has_unsaved_changes(),
+                "tileRequests": tiles.len(), "frames": frame_states,
+            },
             "nodes": tree.nodes.iter().map(|(_, node)| json!({
                 "role": format!("{:?}", node.role()), "label": node.label(), "value": node.value(),
                 "bounds": node.bounds().map(|rect| [rect.x0, rect.y0, rect.x1, rect.y1]),
@@ -430,6 +432,23 @@ fn capture_scene(
                 _ => None,
             }).collect::<Vec<_>>()
         }))?,
+    )?;
+    require(
+        !app.view.is_rendering() && app.error.is_none(),
+        &format!(
+            "{}: reader fixture did not settle; rendering={}, document_open={}, app_error={app_error:?}; see scene PNG and settleState",
+            scene.name,
+            app.view.is_rendering(),
+            app.document.is_some()
+        ),
+    )?;
+    require(
+        !app.has_unsaved_changes(),
+        "Read-only UI evidence unexpectedly changed the document",
+    )?;
+    require(
+        !tiles.is_empty(),
+        "Actual document view did not request PDF tiles",
     )?;
     let viewport = Rect::from_min_size(
         pos2(0.0, 0.0),

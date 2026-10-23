@@ -127,18 +127,26 @@ pub(crate) fn show(
                 tr(lang, "workspace.table.float"),
             );
         });
-        ui.separator();
+        let separator_height = if compact { 2.0 } else { 6.0 };
+        ui.add(egui::Separator::default().spacing(separator_height));
         let footer_rows = if ui.available_width() < 500.0 {
             2.0
         } else {
             1.0
         };
-        let footer_height = ui.spacing().interact_size.y * footer_rows + 12.0;
+        // Include the spacing after the scroll area and separator, and between
+        // wrapped footer rows. Leave the remaining height to real table rows.
+        let footer_height = ui.spacing().interact_size.y * footer_rows
+            + separator_height
+            + ui.spacing().item_spacing.y * (footer_rows + 2.0);
         let body_height = (ui.available_height() - footer_height).max(0.0);
+        let body_width = ui.available_width();
         egui::ScrollArea::both()
             .id_salt((spec.id, "body"))
             .auto_shrink([false, false])
+            .min_scrolled_width(0.0)
             .min_scrolled_height(0.0)
+            .max_width(body_width)
             .max_height(body_height)
             .show(ui, body);
         if popup_open {
@@ -146,7 +154,7 @@ pub(crate) fn show(
                 i.consume_key(egui::Modifiers::NONE, egui::Key::Escape);
             });
         }
-        ui.separator();
+        ui.add(egui::Separator::default().spacing(separator_height));
         ui.horizontal_wrapped(footer);
     };
     match (placement, host) {
@@ -156,7 +164,11 @@ pub(crate) fn show(
                 .resizable(true)
                 .default_size(height)
                 .size_range(120.0..=maximum)
-                .frame(egui::Frame::new().fill(p.surface).inner_margin(6))
+                .frame(
+                    egui::Frame::new()
+                        .fill(p.surface)
+                        .inner_margin(egui::Margin::symmetric(6, 4)),
+                )
                 .show(ui, content);
             if !ctx.input(|i| i.pointer.any_down()) {
                 prefs.height = response.response.rect.height().round();
