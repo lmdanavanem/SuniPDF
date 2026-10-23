@@ -376,6 +376,7 @@ impl SuniApp {
         let can_close =
             state.exporting.is_none() && state.edit.as_ref().is_none_or(|d| !d.applying);
         let can_export = can_refresh && report.as_ref().is_some_and(|r| r.can_export());
+        let editing = state.edit.as_ref().map(|edit| (edit.applying, edit.epoch));
         let (mut close, mut refresh, mut apply, mut cancel, mut export) =
             (false, false, false, false, None);
         let mut navigate = None;
@@ -410,22 +411,11 @@ impl SuniApp {
                     ui.label(tr(lang, "quantity.loading"));
                 }
                 if let Some(edit) = &mut state.edit {
+                    // A form wraps within the viewport even after a wide grid has
+                    // been scrolled. Its actions remain in the fixed footer.
+                    ui.set_max_width(ui.clip_rect().width());
                     ui.heading(tr(lang, "quantity.edit"));
                     draw_editor(ui, edit, lang);
-                    ui.horizontal(|ui| {
-                        apply = ui
-                            .add_enabled(
-                                idle && !edit.applying && edit.epoch == epoch,
-                                egui::Button::new(tr(lang, "quantity.apply")),
-                            )
-                            .clicked();
-                        cancel = ui
-                            .add_enabled(
-                                !edit.applying,
-                                egui::Button::new(tr(lang, "quantity.cancel")),
-                            )
-                            .clicked();
-                    });
                 } else if let Some(report) = &report {
                     let mut changed = false;
                     ui.horizontal_wrapped(|ui| {
@@ -680,6 +670,21 @@ impl SuniApp {
                 }
             },
             |ui| {
+                if let Some((applying, draft_epoch)) = editing {
+                    apply = ui
+                        .add_enabled(
+                            idle && !applying && draft_epoch == epoch,
+                            egui::Button::new(tr(lang, "quantity.apply")),
+                        )
+                        .clicked();
+                    cancel = ui
+                        .add_enabled(!applying, egui::Button::new(tr(lang, "quantity.cancel")))
+                        .clicked();
+                    close = can_close
+                        && ui
+                            .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+                    return;
+                }
                 refresh = ui
                     .add_enabled(can_refresh, egui::Button::new(tr(lang, "quantity.refresh")))
                     .clicked();
@@ -938,13 +943,20 @@ pub(crate) mod tests {
             self.frame(app, vec![]);
             let label = tr(app.lang(), key);
             let mut point = None;
+            let mut candidate_bounds = Vec::new();
             for attempt in 0..20 {
                 let output = self.frame(app, vec![]);
-                point = output
+                candidate_bounds = output
                     .shapes
                     .iter()
                     .rev()
-                    .find_map(|s| find(&s.shape, label).filter(|p| s.clip_rect.contains(*p)));
+                    .filter_map(|shape| {
+                        find(&shape.shape, label).map(|point| (point, shape.clip_rect))
+                    })
+                    .collect();
+                point = candidate_bounds
+                    .iter()
+                    .find_map(|(point, clip)| clip.contains(*point).then_some(*point));
                 if point.is_some() {
                     break;
                 }
@@ -967,7 +979,13 @@ pub(crate) mod tests {
                     ],
                 );
             }
-            let point = point.unwrap_or_else(|| panic!("visible quantity control {key}"));
+            let point = point.unwrap_or_else(|| {
+                panic!(
+                    "visible quantity control {key}; language={}, editing={}, candidates={candidate_bounds:?}",
+                    app.settings.language,
+                    app.annotate.quantities.edit.is_some()
+                )
+            });
             self.time += 0.6;
             for pressed in [true, false] {
                 self.frame(
@@ -1032,69 +1050,95 @@ pub(crate) mod tests {
                 screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(720.0, 480.0))),
                 ..Default::default()
             };
-            let mut canvas = Rect::NOTHING;
-            let mut output = None;
-            for _ in 0..6 {
-                let mut frame = ctx.run_ui(input.clone(), |ui| {
-                    egui::Panel::top("compact-reader-top")
-                        .exact_size(95.0)
-                        .frame(egui::Frame::NONE)
-                        .show(ui, |_| {});
-                    egui::Panel::bottom("compact-reader-bottom")
-                        .exact_size(79.0)
-                        .frame(egui::Frame::NONE)
-                        .show(ui, |_| {});
-                    egui::Panel::right("compact-reader-rail")
-                        .exact_size(48.0)
-                        .frame(egui::Frame::NONE)
-                        .show(ui, |_| {});
-                    app.quantity_table_dock(&ctx, ui);
-                    egui::CentralPanel::no_frame().show(ui, |ui| {
-                        canvas = ui.max_rect();
-                        ui.painter().rect_filled(canvas, 0.0, egui::Color32::GRAY);
+            for editing in [false, true] {
+                if editing {
+                    let mut draft = RowDraft::new(table, &table.rows()[0], app.view.epoch).unwrap();
+                    draft.custom = (0..16)
+                        .map(|index| CustomDraft {
+                            name: format!("Field {index}"),
+                            kind: FieldKind::Text,
+                            value: "Long form fixture".into(),
+                            choices: String::new(),
+                        })
+                        .collect();
+                    draft.error = Some(
+                        "The selected annotation changed; review this draft before applying it."
+                            .into(),
+                    );
+                    app.annotate.quantities.edit = Some(draft);
+                }
+                let mut canvas = Rect::NOTHING;
+                let mut output = None;
+                for _ in 0..6 {
+                    let mut frame = ctx.run_ui(input.clone(), |ui| {
+                        egui::Panel::top("compact-reader-top")
+                            .exact_size(95.0)
+                            .frame(egui::Frame::NONE)
+                            .show(ui, |_| {});
+                        egui::Panel::bottom("compact-reader-bottom")
+                            .exact_size(79.0)
+                            .frame(egui::Frame::NONE)
+                            .show(ui, |_| {});
+                        egui::Panel::right("compact-reader-rail")
+                            .exact_size(48.0)
+                            .frame(egui::Frame::NONE)
+                            .show(ui, |_| {});
+                        app.quantity_table_dock(&ctx, ui);
+                        egui::CentralPanel::no_frame().show(ui, |ui| {
+                            canvas = ui.max_rect();
+                            ui.painter().rect_filled(canvas, 0.0, egui::Color32::GRAY);
+                        });
                     });
-                });
-                frame.textures_delta.clear();
-                output = Some(frame);
-                if let Some((epoch, generation)) = app.annotate.quantities.pending {
-                    app.on_quantity_table(epoch, generation, Ok(table.clone()));
+                    frame.textures_delta.clear();
+                    output = Some(frame);
+                    if let Some((epoch, generation)) = app.annotate.quantities.pending {
+                        app.on_quantity_table(epoch, generation, Ok(table.clone()));
+                    }
                 }
-            }
-            let output = output.unwrap();
-            assert!(
-                canvas.height() >= 150.0,
-                "reader canvas retained: {canvas:?}"
-            );
-            let contents = table.rows()[0]
-                .register
-                .contents
-                .as_deref()
-                .unwrap_or(tr(app.lang(), "quantity.missing"))
-                .chars()
-                .take(60)
-                .collect::<String>();
-            for label in [
-                tr(app.lang(), "quantity.title"),
-                tr(app.lang(), "workspace.table.dock"),
-                tr(app.lang(), "workspace.table.float"),
-                tr(app.lang(), "quantity.close"),
-                contents.as_str(),
-            ] {
-                let mut bounds = Vec::new();
-                for shape in &output.shapes {
-                    let mut rects = Vec::new();
-                    text_rects(&shape.shape, label, &mut rects);
-                    bounds.extend(rects.into_iter().map(|rect| (rect, shape.clip_rect)));
-                }
+                let output = output.unwrap();
                 assert!(
-                    bounds.iter().any(|(rect, clip)| {
-                        clip.contains_rect(*rect)
-                            && rect.top() >= canvas.bottom()
-                            && rect.bottom() <= 401.0
-                    }),
-                    "full table label must remain visible outside the canvas: {language}, {label}; \
-                     canvas={canvas:?}, text/clip bounds={bounds:?}"
+                    canvas.height() >= 150.0,
+                    "reader canvas retained: {canvas:?}"
                 );
+                let contents = table.rows()[0]
+                    .register
+                    .contents
+                    .as_deref()
+                    .unwrap_or(tr(app.lang(), "quantity.missing"))
+                    .chars()
+                    .take(60)
+                    .collect::<String>();
+                let labels = if editing {
+                    vec![
+                        tr(app.lang(), "quantity.apply"),
+                        tr(app.lang(), "quantity.cancel"),
+                    ]
+                } else {
+                    vec![
+                        tr(app.lang(), "quantity.title"),
+                        tr(app.lang(), "workspace.table.dock"),
+                        tr(app.lang(), "workspace.table.float"),
+                        tr(app.lang(), "quantity.close"),
+                        contents.as_str(),
+                    ]
+                };
+                for label in labels {
+                    let mut bounds = Vec::new();
+                    for shape in &output.shapes {
+                        let mut rects = Vec::new();
+                        text_rects(&shape.shape, label, &mut rects);
+                        bounds.extend(rects.into_iter().map(|rect| (rect, shape.clip_rect)));
+                    }
+                    assert!(
+                        bounds.iter().any(|(rect, clip)| {
+                            clip.contains_rect(*rect)
+                                && rect.top() >= canvas.bottom()
+                                && rect.bottom() <= 401.0
+                        }),
+                        "full table label must remain visible outside the canvas: {language}, {label}, editing={editing}; \
+                     canvas={canvas:?}, text/clip bounds={bounds:?}"
+                    );
+                }
             }
             assert!(requests
                 .try_iter()

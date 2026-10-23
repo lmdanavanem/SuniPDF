@@ -408,7 +408,6 @@ fn capture_scene(
     )?;
     let app_error = app
         .error
-        .as_deref()
         .map(|error| error.chars().take(512).collect::<String>());
     std::fs::write(
         output.join(format!("{}-accessibility.json", scene.name)),
