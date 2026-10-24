@@ -5,13 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.73.0] - 2026-10-24
+
 - Review links across up to 16 indexed source PDFs with explicit per-source destinations, output names and occurrence confirmations.
 - Preflight every batch output, create new copies sequentially and retain completed-file receipts after cancellation or partial failure.
 - Add batch inspection, previews and publication to the CLI while preserving single-source commands.
 - Replace Linux fallback window buttons with round, accessible controls for minimizing, maximizing/restoring and guarded closing; retain native move and resize gestures.
 - Correct the welcome and About descriptions to include Linux.
 
-Further work remains in the [roadmap](docs/ROADMAP.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0). Source `ecb292f23cf360a2330879ddb6e5ceb4fa59024b`.
+Windows: 1,159 passed, 15 ignored; Linux: 1,140 passed, 10 ignored; zero failures. 9,827 assertions across 668 recorded commands in twelve downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.73.0.json).
+Native Ubuntu/X11 window controls passed. Native plan-link interaction and broader interoperability
+remain open; AEC-017 is **In progress**. [Release scope](docs/RELEASE_0.73.0.md).
 
 ## [0.72.0] - 2026-10-24
 
