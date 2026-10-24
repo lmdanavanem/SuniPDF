@@ -4,6 +4,18 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## Added in 0.73.0
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Multi-source plan links | Explicit per-source pages, destinations and confirmations; source/destination previews; all-output preflight; sequential new-copy saves and retained partial receipts |
+| Batch safety | Up to 16 sources, 128 pages and 4,096 detected references; per-file atomicity; original indexed destinations retained; existing files never overwritten |
+| Linux window controls | Round vector buttons with 40-pixel logical targets, native minimize/maximize/restore/move/resize and guarded close; title double-click independent of earlier button clicks |
+
+Published stable with [qualification evidence](qa/RELEASE_0.73.0.json). AEC-017 remains **In progress**.
+Window controls passed native interaction and image review on Ubuntu 22.04 and 24.04 under X11/Openbox/Xvfb with software rendering in the light theme. Dark-theme appearance, Wayland, physical GPUs and Windows interaction were not exercised. This does not qualify the plan-link interface's native workflow.
+[Workflow and limits](PLAN_LINKS.md) · [Release scope](RELEASE_0.73.0.md).
+
 ## Added in 0.72.0
 
 | Area | Implemented behavior and limits |
@@ -63,7 +75,7 @@ See [reports](ISSUE_REPORTS.md) and [workbooks](QUANTITY_WORKBOOKS.md) for sourc
 
 | Area | Implemented behavior and limits |
 |---|---|
-| Plan links | Exact indexed sheet identifiers in existing searchable text; explicit destination review, relative PDF links and new-copy output. The 0.73 candidate adds up to 16 sources, 128 pages and 4,096 occurrences per batch with per-file receipts; package/native/interoperability qualification remains separate |
+| Plan links | Exact indexed sheet identifiers in existing searchable text; explicit destination review, relative PDF links and new-copy output. Published 0.73 adds up to 16 sources, 128 pages and 4,096 occurrences per batch with per-file receipts; native plan-link interaction and broader interoperability remain open |
 | Revision outlines | One old/new page pair; manual or two-point alignment; classified raster proposals and individual confirmation; at most 1,536 pixels on the longest side, 512 proposals and 64 selected decisions; no claim of full drawing equivalence |
 | Rooms and zones | Up to 64 named rectangular zones per page and eight hierarchy levels; full-bounds assignment and shared register/quantity filters; boundary, overlap, unknown and stale records remain explicit; no area inference or scale changes |
 | Compact tables | Active zone filters in Filters, with coverage and quantity summaries under Totals |

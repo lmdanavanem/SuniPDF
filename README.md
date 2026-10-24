@@ -18,17 +18,17 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.72.0
+## Download 0.73.0
 
-SuniPDF 0.72.0 is the latest stable release, verified 2026-10-24T15:11:57.923546Z.
+SuniPDF 0.73.0 is the latest stable release, verified 2026-10-24T17:32:54.306206Z.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-linux-amd64.deb) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-linux-amd64.deb) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0) · [qualification evidence](docs/qa/RELEASE_0.72.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0) · [qualification evidence](docs/qa/RELEASE_0.73.0.json)
 
 Packages are unsigned. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -36,7 +36,7 @@ See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUE
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.72.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.73.0-linux-amd64.deb`.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
@@ -58,23 +58,18 @@ offering installation; Ubuntu opens the release download for installation throug
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.72.0
+## New in 0.73.0
 
-- Open **Tools → Review & measure → Region fill**, pick an interior point and add manual closure segments where needed.
-- Inspect the detected outer boundary and holes, then preview an area using a saved page scale, named region or confirmed temporary reference.
-- Review the boundary, deductions and scale before creating one editable area measurement. One Undo removes it; save the PDF to retain it.
+- Review links across several indexed PDFs using **Tools → Review & measure → Plan links → Link multiple PDFs…**.
+- Confirm destinations and previews for each source, then save new copies with per-file progress and retained partial results.
+- Use clearer round Linux window controls, larger click targets and guarded closing. Native Ubuntu/X11 interaction was tested.
 
-Only complete, closed results can be applied. Raster resolution and threshold affect the geometry;
-printed text and hatching can create deductions. Leakage, ambiguity and limits remain explicit refusals.
-[Region fill workflow and limits](docs/REGION_FILL.md).
+Windows: 1,159 passed, 15 ignored; Linux: 1,140 passed, 10 ignored; zero failures. 9,827 assertions across 668 recorded commands in twelve downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.73.0.json).
+Native plan-link interaction and broader interoperability remain open; AEC-017 is **In progress**.
+[Plan-link workflow](docs/PLAN_LINKS.md) · [Release notes](docs/RELEASE_0.73.0.md) · [Project status](docs/PROJECT_STATUS.md).
 
-Windows: 1,135 passed, zero failed, 15 ignored; Linux: 1,116 passed, zero failed, 10 ignored. 8,432 assertions across 590 recorded commands in eleven downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.72.0.json).
-Native interaction and broader drawing qualification remain open; AEC-012 is **In progress**.
-[Release notes](docs/RELEASE_0.72.0.md) and [project status](docs/PROJECT_STATUS.md) retain the qualification limits.
-
-Earlier additions include [Find symbols in 0.71](docs/VISUAL_SEARCH.md)
-([release scope](docs/RELEASE_0.71.0.md)), [unit-bearing quantity fields in 0.70](docs/RELEASE_0.70.0.md)
-and [reports and workbook refresh in 0.69](docs/RELEASE_0.69.0.md).
+Earlier additions include [region fill](docs/REGION_FILL.md), [Find symbols](docs/VISUAL_SEARCH.md),
+[quantity units](docs/RELEASE_0.70.0.md) and [reports and workbook refresh](docs/RELEASE_0.69.0.md).
 
 ## Documentation and development
 

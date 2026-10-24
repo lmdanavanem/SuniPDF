@@ -1,0 +1,2965 @@
+{
+  "schema": 1,
+  "kind": "published-release-qualification-summary",
+  "version": "0.73.0",
+  "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+  "release_id": 422857302,
+  "tag": "v0.73.0",
+  "published_at": "2026-10-24T17:30:04Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0",
+  "verified_at": "2026-10-24T17:32:54.306206Z",
+  "public_verification": {
+    "complete": true,
+    "mode": "anonymous public downloads",
+    "report_sha256": "1a22ef83f54b5b3ebbd555f0770428a1b3ea6c2f0a550dbeb0e61f4fe0c208f1",
+    "tag_source_verified": true,
+    "sidecars_verified": true,
+    "assets_downloaded": 8
+  },
+  "workflows": [
+    {
+      "name": "ci",
+      "run": 40113402153,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402153",
+      "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+      "conclusion": "success",
+      "status": "completed"
+    },
+    {
+      "name": "linux",
+      "run": 40113402204,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204",
+      "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+      "conclusion": "success",
+      "status": "completed"
+    },
+    {
+      "name": "release",
+      "run": 40113416651,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651",
+      "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+      "conclusion": "success",
+      "status": "completed"
+    },
+    {
+      "name": "codeql",
+      "run": 40113402451,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402451",
+      "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+      "conclusion": "success",
+      "status": "completed"
+    }
+  ],
+  "qualification": {
+    "windows": {
+      "passed": 1159,
+      "failed": 0,
+      "ignored": 15,
+      "suites": 103
+    },
+    "linux": {
+      "passed": 1140,
+      "failed": 0,
+      "ignored": 10,
+      "suites": 103
+    },
+    "release_linux": {
+      "passed": 1140,
+      "failed": 0,
+      "ignored": 10,
+      "suites": 103
+    },
+    "i18n": 1969,
+    "portable": {
+      "upgrades": 50,
+      "guards": 4,
+      "scenarios": 54
+    },
+    "msi": {
+      "baselines": 48,
+      "logs": 240
+    },
+    "open_code_scanning_alerts": 0
+  },
+  "check_runs": [
+    {
+      "name": "publish",
+      "id": 120936448076,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120936448076"
+    },
+    {
+      "name": "Install and run on Ubuntu 24.04",
+      "id": 120932158044,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204/job/120932158044"
+    },
+    {
+      "name": "Install and run on Ubuntu 22.04",
+      "id": 120932158011,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204/job/120932158011"
+    },
+    {
+      "name": "PDF conformance and independent reader",
+      "id": 120932157999,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204/job/120932157999"
+    },
+    {
+      "name": "linux / PDF conformance and independent reader",
+      "id": 120931966520,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120931966520"
+    },
+    {
+      "name": "linux / Install and run on Ubuntu 24.04",
+      "id": 120931966507,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120931966507"
+    },
+    {
+      "name": "linux / Install and run on Ubuntu 22.04",
+      "id": 120931966493,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120931966493"
+    },
+    {
+      "name": "linux / Build Ubuntu 22.04 amd64",
+      "id": 120929693221,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120929693221"
+    },
+    {
+      "name": "Build Ubuntu 22.04 amd64",
+      "id": 120929665654,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204/job/120929665654"
+    },
+    {
+      "name": "linux / Classify and validate documentation",
+      "id": 120929662439,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120929662439"
+    },
+    {
+      "name": "build (arm64)",
+      "id": 120929662119,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120929662119"
+    },
+    {
+      "name": "build (x64)",
+      "id": 120929661976,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651/job/120929661976"
+    },
+    {
+      "name": "Analyze (python)",
+      "id": 120929624906,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402451/job/120929624906"
+    },
+    {
+      "name": "Analyze (actions)",
+      "id": 120929624869,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402451/job/120929624869"
+    },
+    {
+      "name": "Analyze (rust)",
+      "id": 120929624670,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402451/job/120929624670"
+    },
+    {
+      "name": "windows",
+      "id": 120929621294,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402153/job/120929621294"
+    },
+    {
+      "name": "Classify and validate documentation",
+      "id": 120929621253,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204/job/120929621253"
+    }
+  ],
+  "assets": [
+    {
+      "id": 672854171,
+      "name": "SuniPDF-0.73.0-linux-amd64.deb",
+      "size": 22616312,
+      "sha256": "91a535e7092656b7a39786ac879d514f41d9ea0f80ba375f08743a9a938523a6",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-linux-amd64.deb"
+    },
+    {
+      "id": 672854167,
+      "name": "SuniPDF-0.73.0-linux-amd64.deb.sha256",
+      "size": 97,
+      "sha256": "054b7867df5cd6057c6d88c9c2fab5af1314c68d4750231bd72ee378c3d20898",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-linux-amd64.deb.sha256"
+    },
+    {
+      "id": 672854172,
+      "name": "SuniPDF-0.73.0-win-arm64-portable.zip",
+      "size": 34411425,
+      "sha256": "4358d72ecbcf60135f7dd01b1e99b8fdc9d92f636ce7fcb33ef05750304dd6d1",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-arm64-portable.zip"
+    },
+    {
+      "id": 672854168,
+      "name": "SuniPDF-0.73.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "b9e668ea23acaf130447f56382824f9df62936030bca0f5451622e8ace802a69",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-arm64-portable.zip.sha256"
+    },
+    {
+      "id": 672854169,
+      "name": "SuniPDF-0.73.0-win-x64-portable.zip",
+      "size": 36415946,
+      "sha256": "92ef12184039d2600052814db6592efb7b29deef558924154520d3bab8d99ce5",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64-portable.zip"
+    },
+    {
+      "id": 672854170,
+      "name": "SuniPDF-0.73.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "3722b96f8ae4d5276bdc8ac88d8f5f08072e6eda5fe3050ca6224c1138d49553",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64-portable.zip.sha256"
+    },
+    {
+      "id": 672854166,
+      "name": "SuniPDF-0.73.0-win-x64.msi",
+      "size": 34234368,
+      "sha256": "cf7904af2e4fc4137f81f577ed5aaf42ac9c336f41c560a3cdae3f62feae0c54",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64.msi"
+    },
+    {
+      "id": 672854165,
+      "name": "SuniPDF-0.73.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "128cdb918fb5c182db57296aee360ece3ccd33c9a7819a68d951182d76f90892",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64.msi.sha256"
+    }
+  ],
+  "public_windows_runtime": {
+    "status": "passed",
+    "package_unchanged": true,
+    "totals": {
+      "recorded_commands": 668,
+      "current_sunipdf_cli": 566,
+      "qpdf": 96,
+      "validation_helpers": 2,
+      "legacy_sunipdf_cli": 4
+    },
+    "assertions": 9827,
+    "report_sha256": "77a021efd3813547e9884944f8849c1e30a4c745dc9d8076d85f0bb21eb4198b",
+    "public_unauthenticated": true,
+    "scope": "Twelve corpora using the verified Windows x64 portable package and adjacent bundled runtime. Recorded commands exclude subprocesses internal to the Python/PowerShell validators. The workbook helper binds its PDFium setting to the verified package directory. The units corpus also uses the separately pinned published 0.69 package for old-reader controls; current and legacy CLI counts are distinct. Development, draft and public checks are separate repetitions, not additive coverage.",
+    "corpora": [
+      {
+        "name": "provenance_quantity",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 48,
+          "current_sunipdf_cli": 37,
+          "qpdf": 9,
+          "validation_helpers": 2,
+          "legacy_sunipdf_cli": 0
+        },
+        "assertions": 288,
+        "report_sha256": "bc7aede618ecbfef381a45ae1cd7dcbcac2d86979d86345029fd8ea653f33a51"
+      },
+      {
+        "name": "plans_forms_volumes",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 20,
+          "current_sunipdf_cli": 18,
+          "qpdf": 2,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 680,
+        "report_sha256": "c11a037cca0e045d988745c0350308e1b32f9ebea7832b23d2da6dc0b1027c86"
+      },
+      {
+        "name": "revision_transfer",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 14,
+          "current_sunipdf_cli": 13,
+          "qpdf": 1,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 94,
+        "report_sha256": "f6e3a033a0477be15be8877ad9e7511aec4617794e52ed4611d0887bea79148d"
+      },
+      {
+        "name": "plan_links",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 30,
+          "current_sunipdf_cli": 26,
+          "qpdf": 4,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 329,
+        "report_sha256": "24a351d34c1194e2a6995117f29b3a6e22cf5d6cab38fd7a5c201743e1eda9af"
+      },
+      {
+        "name": "revision_outlines",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 49,
+          "qpdf": 15,
+          "current_sunipdf_cli": 34,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 542,
+        "report_sha256": "1aec60bf82c7ed31fedf891fc9d8c3b97cfcd6daf6d7491e57d5328326d4c5e6"
+      },
+      {
+        "name": "plan_zones",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 77,
+          "current_sunipdf_cli": 68,
+          "qpdf": 9,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1670,
+        "report_sha256": "7b4ffe0dfac60d9888e8641f2ab886db4fdd1535e738546d7baa7e27000e1e69"
+      },
+      {
+        "name": "issue_reports",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 46,
+          "current_sunipdf_cli": 41,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 664,
+        "report_sha256": "f20f9990ac09771a0149f61d3dec4dad0b8c496a7e5db4fe2094e0936eb69c40"
+      },
+      {
+        "name": "quantity_workbooks",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 42,
+          "current_sunipdf_cli": 42,
+          "legacy_sunipdf_cli": 0,
+          "qpdf": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 760,
+        "report_sha256": "e6d1091d72fbcd36aa8e62af80b17285509192a6e06cd57dc88b84491ee74442"
+      },
+      {
+        "name": "quantity_units",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 96,
+          "current_sunipdf_cli": 71,
+          "qpdf": 21,
+          "legacy_sunipdf_cli": 4,
+          "validation_helpers": 0
+        },
+        "assertions": 1992,
+        "report_sha256": "fa65d9fbcfd9e84a3a62ba972aaf81a436579ba8e19f832159928e15d20d2ddc"
+      },
+      {
+        "name": "visual_search",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 71,
+          "current_sunipdf_cli": 68,
+          "qpdf": 3,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 390,
+        "report_sha256": "5ed1924dd15666d80141a49479f0e845d9e711ebcca8d084a543682a0b81821a"
+      },
+      {
+        "name": "boundary_fill",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 97,
+          "current_sunipdf_cli": 92,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1023,
+        "report_sha256": "4b017565186b91628bd7f12555382117789db228bf7acf4bcdd27f06779b9ba8"
+      },
+      {
+        "name": "batch_links",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 78,
+          "current_sunipdf_cli": 56,
+          "qpdf": 22,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1395,
+        "report_sha256": "c63636a7775293d73bd4394a1da8486432e727ad3be45db50436308b7bc6edbb"
+      }
+    ]
+  },
+  "draft_windows_runtime": {
+    "status": "passed",
+    "package_unchanged": true,
+    "totals": {
+      "recorded_commands": 668,
+      "current_sunipdf_cli": 566,
+      "qpdf": 96,
+      "validation_helpers": 2,
+      "legacy_sunipdf_cli": 4
+    },
+    "assertions": 9827,
+    "report_sha256": "742cbcec0c66526dea25c2573ba5f0bbf6b23c759382f0411f9303bf7f90da27",
+    "public_unauthenticated": false,
+    "scope": "Twelve corpora using the verified Windows x64 portable package and adjacent bundled runtime. Recorded commands exclude subprocesses internal to the Python/PowerShell validators. The workbook helper binds its PDFium setting to the verified package directory. The units corpus also uses the separately pinned published 0.69 package for old-reader controls; current and legacy CLI counts are distinct. Development, draft and public checks are separate repetitions, not additive coverage.",
+    "corpora": [
+      {
+        "name": "provenance_quantity",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 48,
+          "current_sunipdf_cli": 37,
+          "qpdf": 9,
+          "validation_helpers": 2,
+          "legacy_sunipdf_cli": 0
+        },
+        "assertions": 288,
+        "report_sha256": "f912d15cb0ffcbae4256a61ea2b8be8d16c54add483f86b730d811034bbd8f87"
+      },
+      {
+        "name": "plans_forms_volumes",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 20,
+          "current_sunipdf_cli": 18,
+          "qpdf": 2,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 680,
+        "report_sha256": "87a1eb38243121b90d02729fa94487c1bba0ae0d97300f5f88245cb4b35b73b5"
+      },
+      {
+        "name": "revision_transfer",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 14,
+          "current_sunipdf_cli": 13,
+          "qpdf": 1,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 94,
+        "report_sha256": "e2a00e69ebc861d4f8f38cbd62ceab9ca7116ae850faede380b5b55d3ad15264"
+      },
+      {
+        "name": "plan_links",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 30,
+          "current_sunipdf_cli": 26,
+          "qpdf": 4,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 329,
+        "report_sha256": "33c749c186f6156171599378af72955053e1574afc7827307b2ef1dc67c6d209"
+      },
+      {
+        "name": "revision_outlines",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 49,
+          "qpdf": 15,
+          "current_sunipdf_cli": 34,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 542,
+        "report_sha256": "6e4d3f9560b4e63c895954ae0020fdf1d86ff35b2eaa1cedc4cfcb39d8b32afb"
+      },
+      {
+        "name": "plan_zones",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 77,
+          "current_sunipdf_cli": 68,
+          "qpdf": 9,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1670,
+        "report_sha256": "7e0e75d78052417aed25e61a99d602ccfd45418d7be576ba576ad68e1a0a1070"
+      },
+      {
+        "name": "issue_reports",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 46,
+          "current_sunipdf_cli": 41,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 664,
+        "report_sha256": "c45717b0531b0cc2e62f94c7f401aed970bebfb9c190f22527fa44b74c715d0f"
+      },
+      {
+        "name": "quantity_workbooks",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 42,
+          "current_sunipdf_cli": 42,
+          "legacy_sunipdf_cli": 0,
+          "qpdf": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 760,
+        "report_sha256": "3da8402c1669bef05d754468339ff6cc4148aecaf9516b43c76b341fe0e5aaa0"
+      },
+      {
+        "name": "quantity_units",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 96,
+          "current_sunipdf_cli": 71,
+          "qpdf": 21,
+          "legacy_sunipdf_cli": 4,
+          "validation_helpers": 0
+        },
+        "assertions": 1992,
+        "report_sha256": "02c5ea2a12b610b21c05e9f71e4274c83167929e3fbc5a7ff9a4b4fbf57c1331"
+      },
+      {
+        "name": "visual_search",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 71,
+          "current_sunipdf_cli": 68,
+          "qpdf": 3,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 390,
+        "report_sha256": "bcbdfdec4b13c1043b51077c9838cc2b0b277eaf5ba6f8cdc0e65fbcfc88c22a"
+      },
+      {
+        "name": "boundary_fill",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 97,
+          "current_sunipdf_cli": 92,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1023,
+        "report_sha256": "a7c6f523e3adc7d428e152a707eb35fefb6bf8cdd977610b96c5d39892e24bf2"
+      },
+      {
+        "name": "batch_links",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 78,
+          "current_sunipdf_cli": 56,
+          "qpdf": 22,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1395,
+        "report_sha256": "0c66f420820e094400f0f6e6a3fa9f84f6a5040575623e00e002301807d97c82"
+      }
+    ]
+  },
+  "local_retention": {
+    "status": "passed",
+    "assets": 8,
+    "all_asset_hashes_match_public_downloads": true,
+    "report_sha256": "990de792c077d5075bfd66337efffffaf275129836a101f0dcf9dc3c3ed7859d",
+    "scope": "Byte-for-byte retained copies of the eight release assets; no additional runtime coverage."
+  },
+  "pdf_visual_review": {
+    "status": "passed",
+    "scale": 1.5,
+    "cli_sha256": "04800a492b70bdc40b5d9cc5f5241d224489d1bee8068788242427e50015efdf",
+    "native_tested": false,
+    "reviewed_at": "2026-10-24T17:27:02.792781+00:00",
+    "scope": "Seven pages rendered by the exact downloaded 0.73.0 CLI. The changed technical appendix was visually inspected in this session; six other pages are byte-identical to previously inspected 0.72 images, with their observations retained after identity verification. Seven rendering commands are outside the twelve-corpus counts. No native desktop interaction.",
+    "observations": [
+      "The current technical appendix is legible; long provenance hashes and calculation settings wrap within the page margins, with clear separation from the footer.",
+      "Six byte-identical pages retain the reviewed complete/partial summaries, CJK and Latin text, supported legend styles, unit-bearing fields and formula results. The prior inspection and exact image identities are retained explicitly."
+    ],
+    "report_sha256": "e01f40616966d2cc24b01238e6573720edc11a8e772bcefcda41089e886690c8",
+    "pages_reviewed": 7,
+    "images": [
+      {
+        "pdf": "counts-complete.pdf",
+        "image": "summary.png",
+        "page": 1,
+        "pdf_sha256": "d2f7b4c81a35bb0d95f2765d12379be7fcb88967ce6c39e2b16197143d6629c3",
+        "image_sha256": "78aa76d6d17f9bc06afc386debb25e94f36132706432c421643a3868dd0b1d05"
+      },
+      {
+        "pdf": "all-formulas.pdf",
+        "image": "partial-summary.png",
+        "page": 1,
+        "pdf_sha256": "6a00d303b94aff3deb9d36ae15d132e356050208de94df18be7d29da697f069e",
+        "image_sha256": "86fca4b33e9172951dfbf2b8fa4282706523f1d27bef97ae3454813e3e23f78a"
+      },
+      {
+        "pdf": "counts-complete.pdf",
+        "image": "appendix.png",
+        "page": 4,
+        "pdf_sha256": "d2f7b4c81a35bb0d95f2765d12379be7fcb88967ce6c39e2b16197143d6629c3",
+        "image_sha256": "894024aecc30a9131edd99521ad8ae2fc727d99064c4a3df27b9813308aa3f86"
+      },
+      {
+        "pdf": "cjk.pdf",
+        "image": "cjk.png",
+        "page": 1,
+        "pdf_sha256": "6860078ee070d8a7a0060817cf417e1c9f69cad213c6d2d96fa4b2d66292f8bc",
+        "image_sha256": "c08fe97d82c854018d06045e63b65bfd1fb5843745a77b60e351a93842afae97"
+      },
+      {
+        "pdf": "all-formulas.pdf",
+        "image": "legend.png",
+        "page": 2,
+        "pdf_sha256": "6a00d303b94aff3deb9d36ae15d132e356050208de94df18be7d29da697f069e",
+        "image_sha256": "89a22c2b0505eee071e0c08edbdf09201e7ea4e8a6e87c82c1e326f17b7090c6"
+      },
+      {
+        "pdf": "report.pdf",
+        "image": "unit-summary.png",
+        "page": 1,
+        "pdf_sha256": "3f1233debbe520319f7c98309f74199e506ec4b8aa535ede0a6959280a764c63",
+        "image_sha256": "52eb173ffb040fd64136d5fd5bf224d73abfc2e7de85f8a812a4d21f8fb1ed5e"
+      },
+      {
+        "pdf": "report.pdf",
+        "image": "unit-fields.png",
+        "page": 3,
+        "pdf_sha256": "3f1233debbe520319f7c98309f74199e506ec4b8aa535ede0a6959280a764c63",
+        "image_sha256": "5e64258a5a32114e53326c127a939022c061aab5218179942fee1a7d79a1bf53"
+      }
+    ]
+  },
+  "development": {
+    "source_tree_matches_release": true,
+    "product_fingerprint": "643441277b8fe70363b2f00b198e7669f2a55de87cd14ceffcd77005eb97e908",
+    "pipeline_report_sha256": "cd5fc5dada40a1cf176eff572f0bde44fd55bb277d98ce870734ee0701cf17b9",
+    "suite": {
+      "passed": 1159,
+      "failed": 0,
+      "ignored": 15,
+      "suites": 103
+    },
+    "stages": [
+      {
+        "stage": "fmt",
+        "exit_code": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "stage": "clippy",
+        "exit_code": 0,
+        "sha256": "4ec8c7a2eef75c5d5984213234cbf1b021a2a906c7cdabd63395ca905f58ea01"
+      },
+      {
+        "stage": "workspace-tests",
+        "exit_code": 0,
+        "sha256": "de0e66f3f586712d8eaeedf1c2b5590dbe840522e7409e532fd32b3a3b4a3345"
+      },
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "sha256": "3ad960ce0ceba8fffb7c0164d6cc999a27c981a30d7e85c5a99f51924d422cff"
+      }
+    ],
+    "profile": {
+      "dev_debug": 0,
+      "test_debug": 0,
+      "jobs": 1,
+      "incremental": "Cargo dev/test default; no override"
+    },
+    "binaries": [
+      {
+        "file": "sunipdf.exe",
+        "sha256": "c3da047efbeb574719bbaa5521ec6d3937a5282218460fa31102bf80b33cefac",
+        "bytes": 55330816
+      },
+      {
+        "file": "sunipdf-cli.exe",
+        "sha256": "ca4264819cfaab581cdc95273ff7382833e00a831c2a259c988f62820e1c8e9d",
+        "bytes": 25449984
+      }
+    ],
+    "native_tested": false,
+    "scope": "Frozen development source. Separate from downloaded-package qualification; counts are not additive."
+  },
+  "native_plan_workflows": {
+    "status": "not-tested",
+    "scope": "Combined 0.73 interactive Windows workflows and native spreadsheet acceptance remain pending because the local application-control connection was unavailable. Offscreen reader scenes, automated Ubuntu X11 window interactions and rendered report pages do not establish this Windows acceptance."
+  },
+  "github_projects": {
+    "status": "not-verified",
+    "synchronized": false
+  },
+  "private_project_plan_qualification": {
+    "status": "deferred",
+    "reason": "Deferred at the owner request; synthetic evidence does not establish real-project survey accuracy."
+  },
+  "limitations": [
+    "Windows packages unsigned; ARM64 built without physical-hardware execution.",
+    "Development, draft and public corpus passes are repeated checks, not additive coverage.",
+    "Recorded commands exclude subprocesses internal to the two validation helpers.",
+    "Visual PDF review covers only the specified rendered pages, not native desktop interaction.",
+    "No universal PDF/A/PDF/UA, complete OOXML schema, physical printing, human accessibility or survey-accuracy claim.",
+    "Batch links are qualified on the retained synthetic sources and explicit selections. Each output is atomic per file; cross-file rollback and injected concurrent failures are not qualified.",
+    "Boundary fill is qualified on frozen synthetic raster geometry only. Resolution and threshold are explicit; open, ambiguous or excessive contours are refused. No physical measurement accuracy or native interaction is claimed.",
+    "Visual search accuracy is measured on controlled same-scale synthetic fixtures only; arbitrary symbol classes, angles and scale invariance are not qualified.",
+    "The 2-degree case is characterization only and is reported separately from required accuracy gates.",
+    "Native window controls are qualified only in the retained Ubuntu 22.04/24.04 X11/Openbox/Xvfb runs with software rendering; this does not qualify Wayland, physical GPUs or Windows interaction."
+  ],
+  "symbol_visual_review": {
+    "status": "passed",
+    "native_tested": false,
+    "source_fingerprint": "643441277b8fe70363b2f00b198e7669f2a55de87cd14ceffcd77005eb97e908",
+    "qualification_sha256": "bcbdfdec4b13c1043b51077c9838cc2b0b277eaf5ba6f8cdc0e65fbcfc88c22a",
+    "cli_sha256": "04800a492b70bdc40b5d9cc5f5241d224489d1bee8068788242427e50015efdf",
+    "pdfium_sha256": "79d4676b656cfb1abcea88f9ade3b4b0826c5200382db5f4ec72a636c598c118",
+    "package_sha256": "92ef12184039d2600052814db6592efb7b29deef558924154520d3bab8d99ce5",
+    "reviewed_at": "2026-10-24T17:27:02.667127+00:00",
+    "scope": "Visual inspection of 3 specified package-generated synthetic symbol diagnostic images; native desktop interaction and general real-plan qualification are outside this review.",
+    "observations": [
+      "The displayed asymmetric templates and quarter-turns are distinct; expected and detected windows align on the synthetic vector, raster and noisy examples.",
+      "The cropped and rotated page-two comparison aligns the six shown matches. The mirrored distractor and empty square remain excluded.",
+      "The saved-page panels place count markers at explicitly selected centers; the partial acknowledged result contains its single accepted marker. This is inspection of three diagnostic images, not every generated image or native search interaction."
+    ],
+    "report_sha256": "953e140d1f0d6dd86ff6c6b0310a7f29298d89a263a9ae096b611258fdcee806",
+    "generation_manifest_sha256": "8b2592e6b2224cbdff3f0f0ca2dd398b5f83b54c8e35d512b49dbd1293d31724",
+    "images_reviewed": 3,
+    "images": [
+      {
+        "image": "crop-and-page-rotation-p2-comparison.png",
+        "sha256": "29877a865e69364ca60a26116ead44c21357042cb0b020dc76920aa97f770883"
+      },
+      {
+        "image": "template-windows.png",
+        "sha256": "9e34bffa4036aca796e1aa0695c0919608c51b97b46643267ebfbbffe0c3bcfe"
+      },
+      {
+        "image": "contact-sheet.png",
+        "sha256": "95c4f1353d035ddd78aca52ea043482e7451b3779c2479fa2350dfba7aa49082"
+      }
+    ]
+  },
+  "boundary_visual_review": {
+    "status": "passed",
+    "native_tested": false,
+    "physical_accuracy_claim": false,
+    "source_fingerprint": "643441277b8fe70363b2f00b198e7669f2a55de87cd14ceffcd77005eb97e908",
+    "qualification_sha256": "a7c6f523e3adc7d428e152a707eb35fefb6bf8cdd977610b96c5d39892e24bf2",
+    "cli_sha256": "04800a492b70bdc40b5d9cc5f5241d224489d1bee8068788242427e50015efdf",
+    "pdfium_sha256": "79d4676b656cfb1abcea88f9ade3b4b0826c5200382db5f4ec72a636c598c118",
+    "package_sha256": "92ef12184039d2600052814db6592efb7b29deef558924154520d3bab8d99ce5",
+    "reviewed_at": "2026-10-24T17:27:02.735519+00:00",
+    "scope": "Visual inspection of 5 specified package-generated synthetic boundary diagnostic images; native desktop interaction and general real-plan qualification are outside this review.",
+    "observations": [
+      "The independent two-hole comparison aligns the measured contour with the outer room edge and both enclosed holes.",
+      "The raw saved PDF and CLI preview retain both holes and the readable 2.9952 m2 label. The preview preserves the visible geometry.",
+      "The cropped quarter-turn comparison retains the rotated outer contour and both holes; the manual door closure closes the displayed bottom gap without leaking outside the room.",
+      "Five specified diagnostic images were inspected. This does not establish physical accuracy, native interaction or broader private-plan interoperability."
+    ],
+    "report_sha256": "758539e857594b801a44d6ede6431231528fea6f3c057bf5e976173746b071be",
+    "generation_manifest_sha256": "cde410b7bf999eeb2f25c92ecc207a76f2790c4bd4f9a2cb5c074cbae1fa96e2",
+    "images_reviewed": 5,
+    "images": [
+      {
+        "image": "two-holes-comparison.png",
+        "sha256": "f6e0af9e1b38f71274aeaafdb2f5b34b165080212779e6c06bc03e62ca023c8f"
+      },
+      {
+        "image": "manual-door-closure-comparison.png",
+        "sha256": "d89121560d7a90ad2e48fa37b75a2ab7cebefa908cf48b7a619c21dd0f649094"
+      },
+      {
+        "image": "crop-rotation-90-comparison.png",
+        "sha256": "1b35d3b446d24f7739176d08ea245ee619f5ce29e8fcb497483f3e425b85eaa9"
+      },
+      {
+        "image": "two-holes-saved-raw.png",
+        "sha256": "6b49a3425f8116f025ce2abbebbdbdf40b56760f2f56afc04b81b43dc472baac"
+      },
+      {
+        "image": "two-holes-preview.png",
+        "sha256": "6b08eae8532c30e5ffb5162be2d9e244141b8fdf26de041b9cfb8b851651e26c"
+      }
+    ]
+  },
+  "batch_visual_review": {
+    "status": "passed",
+    "native_tested": false,
+    "physical_accuracy_claim": false,
+    "source_fingerprint": "643441277b8fe70363b2f00b198e7669f2a55de87cd14ceffcd77005eb97e908",
+    "qualification_sha256": "0c66f420820e094400f0f6e6a3fa9f84f6a5040575623e00e002301807d97c82",
+    "cli_sha256": "04800a492b70bdc40b5d9cc5f5241d224489d1bee8068788242427e50015efdf",
+    "pdfium_sha256": "79d4676b656cfb1abcea88f9ade3b4b0826c5200382db5f4ec72a636c598c118",
+    "package_sha256": "92ef12184039d2600052814db6592efb7b29deef558924154520d3bab8d99ce5",
+    "reviewed_at": "2026-10-24T17:27:02.594451+00:00",
+    "scope": "Visual inspection of 11 specified package-generated synthetic batch diagnostic images; native desktop interaction and general real-plan qualification are outside this review.",
+    "observations": [
+      "All four raw saved-page images preserve the visible identifiers, page borders and existing comment symbols. No new clipping or displaced page content is visible.",
+      "The first source comparison marks the two exact M-205 references and X-900; XM-205X and the same-source M-101 remain excluded. The cropped and rotated M-206 rectangle follows the visible text.",
+      "The second and third source comparisons mark M-101 and M-205 at their correct locations. The source preview retains the rotated M-206 page; the destination preview displays X-900.",
+      "The contact sheet agrees with the individually inspected raw pages, comparisons and CLI previews. Link destinations and output safety are covered separately by the recorded structural corpus."
+    ],
+    "report_sha256": "e54ad652c6790337631954e5eb5d0ae65b3d2ca134ba617a95ee17f1c5019dfd",
+    "generation_manifest_sha256": "75244ca913dcb0e8edd3335214bada84bebde3947e374c7387e697057045cb11",
+    "images_reviewed": 11,
+    "images": [
+      {
+        "image": "alpha-p1-saved-raw.png",
+        "sha256": "7bb146bedaaaf059cc4ce0e1dd0775207daa5f779d9707b2a00e9536f0ee4c7c"
+      },
+      {
+        "image": "alpha-p1-comparison.png",
+        "sha256": "a0f26f13e90de1ee4f4b298b4a8c72363f2cf6b48b3f9cf734b78d687133df3f"
+      },
+      {
+        "image": "alpha-p2-saved-raw.png",
+        "sha256": "3a1a937f5706630da96f21207960de903df4b919efd22c1fc376bd7d0d9036fb"
+      },
+      {
+        "image": "alpha-p2-comparison.png",
+        "sha256": "d4404df273f71e9ef4bb95b7be04db1d2cb91bad5ab55f3f549ee5cb7c584e55"
+      },
+      {
+        "image": "beta-p1-saved-raw.png",
+        "sha256": "ad0696722a5ef73cee91457a0e93b5ee76f856ebdbbc4da50d57186c0b13f1b0"
+      },
+      {
+        "image": "beta-p1-comparison.png",
+        "sha256": "32120d8b66e8127ffad97fdb2d5a3ff938b2d5c23038de9c04347a80ed67b74e"
+      },
+      {
+        "image": "gamma-p1-saved-raw.png",
+        "sha256": "74bee79ffe4e0ca7828a82a7b1db74cfcd1b38c80f0c029fdcc588f3290776d6"
+      },
+      {
+        "image": "gamma-p1-comparison.png",
+        "sha256": "47e2792285c4f9a7cf308e05f7c47c954d6311e4fde45da6e53d42e0b84943d8"
+      },
+      {
+        "image": "preview-source.png",
+        "sha256": "b32ea24df87221b1da010d99ff5b73b972e035cc213e1d3478b06255ba87b774"
+      },
+      {
+        "image": "preview-destination.png",
+        "sha256": "77db8cb8f86e2e7195d1595a4497eda45bc7fcbd17fdc863175f077053e90216"
+      },
+      {
+        "image": "contact-sheet.png",
+        "sha256": "49ac367e489c98ad327407fd5b0ccd5f80f31d368c4734bfc800db784d01e5a6"
+      }
+    ]
+  },
+  "batch_links_metrics": {
+    "commands": 78,
+    "assertions": 1395,
+    "current_cli_commands": 56,
+    "qpdf_commands": 22,
+    "executed_suites": 54,
+    "saved_outputs": 22,
+    "all_originals_unchanged": true,
+    "destinations_are_verified_originals": true,
+    "report_sha256": "c63636a7775293d73bd4394a1da8486432e727ad3be45db50436308b7bc6edbb",
+    "guard_report_sha256": "f762e339d54e10687b71adf9c9fa81237e8ccb7bf76a4ba219aaa6df6eae87a6",
+    "source_fingerprint": "643441277b8fe70363b2f00b198e7669f2a55de87cd14ceffcd77005eb97e908",
+    "native_tested": false,
+    "scope": "Retained synthetic reviewed multi-source batches; independent original destinations and 22 saved PDFs verified. Per-file atomicity only."
+  },
+  "ubuntu_native_review": {
+    "status": "passed",
+    "version": "0.73.0",
+    "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+    "reviewed_at": "2026-10-24T17:08:32.344855+00:00",
+    "scope": "Final Ubuntu X11/Openbox/Xvfb light-theme software-rendered window controls.",
+    "wayland_tested": false,
+    "physical_gpu_tested": false,
+    "windows_tested": false,
+    "report_sha256": "fd90c72bd583cfaf69f0230f3162c22f005148c12aa5f87c5edbf2ef1f52d834",
+    "reviews": [
+      {
+        "ubuntu": "22.04",
+        "run_id": 40113416651,
+        "artifact_id": 12567722867,
+        "artifact_sha256": "607d23daac596f41331079c4e9f8a095fac5b741a608c4375f5400d3a11f3a3c",
+        "native_controls_sha256": "6c8a2b256a898a6ce86c34eab5c901e4ab43f9f6935f631c714aad78c57c8646",
+        "observations": "All five final-release captures are byte-identical to the five corresponding PR captures visually inspected in this session. Round minimize/maximize/close symbols are clear, spaced and aligned; the close hover is red with a white cross. The maximized view shows the restore symbol and preserves the document and tool layout. The unsaved-close dialog is legible, shows the modified-document marker and offers Cancel, Do not Save and Save without clipped controls. No blocking visual finding in these light-theme X11 captures; dark appearance, Wayland and physical GPU behavior are not qualified.",
+        "images": [
+          {
+            "file": "native-window-controls.png",
+            "sha256": "ed8c6a016cd049dea5c6c113b0fcfd0469578c235e85027ca08c910f669189b2"
+          },
+          {
+            "file": "native-window-controls-detail.png",
+            "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf"
+          },
+          {
+            "file": "native-window-close-hover.png",
+            "sha256": "6dcb371287515b7da4a0fbc4e540c2ae9114795d955c33062d898c38212c13ea"
+          },
+          {
+            "file": "native-window-maximized.png",
+            "sha256": "2ff7c1c400c4bf3e7f31ffdeb604ab88fdd28c7e88408299b4212054fe97868d"
+          },
+          {
+            "file": "native-window-unsaved-close.png",
+            "sha256": "a5fbbfcf7b21ff0bbfe64443110c0729a87dff5165aa6872491ab5059ac8be33"
+          }
+        ]
+      },
+      {
+        "ubuntu": "24.04",
+        "run_id": 40113416651,
+        "artifact_id": 12567956780,
+        "artifact_sha256": "e1b9f8f82afb5c0a8e9e67e263bc1d109aaf2bd9c00c8eddd270876ebf807858",
+        "native_controls_sha256": "31884ff85a6d176db9fe003d9c04b4fc81045f6c5e02ee736d0fc12d14d0c538",
+        "observations": "All five final-release captures are byte-identical to the five corresponding PR captures visually inspected in this session. Round minimize/maximize/close symbols are clear, spaced and aligned; the close hover is red with a white cross. The maximized view shows the restore symbol and preserves the document and tool layout. The unsaved-close dialog is legible, shows the modified-document marker and offers Cancel, Do not Save and Save without clipped controls. No blocking visual finding in these light-theme X11 captures; dark appearance, Wayland and physical GPU behavior are not qualified.",
+        "images": [
+          {
+            "file": "native-window-controls.png",
+            "sha256": "050d2a7e8dc9de444fee9246c28f288bb695cdbf1bc9228001bf6cb35a6c544e"
+          },
+          {
+            "file": "native-window-controls-detail.png",
+            "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf"
+          },
+          {
+            "file": "native-window-close-hover.png",
+            "sha256": "99223bae3dcc5d45aca38a81808be96f836027eee6171c4121677c857db5dde1"
+          },
+          {
+            "file": "native-window-maximized.png",
+            "sha256": "0bcba234f537d98b67453f6712ce6b70ee3b17716a5b67028ef66871704f0cde"
+          },
+          {
+            "file": "native-window-unsaved-close.png",
+            "sha256": "44c690a46c3b08e60f9783e51d5519b55a2f686691c017b595ee3c662ea286ca"
+          }
+        ]
+      }
+    ]
+  },
+  "boundary_fill_metrics": [
+    {
+      "case": "rectangle-scale-0.25",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "rectangle-scale-0.5",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "rectangle-scale-1",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "rectangle-scale-2",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "one-hole",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 31232.0,
+        "expected_area_points2": 31232.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "two-holes",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "l-room",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 22016.0,
+        "expected_area_points2": 22016.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "open-door-leak",
+      "category": "required",
+      "status": "leaked",
+      "complete": false
+    },
+    {
+      "case": "manual-door-closure",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "blank-leak",
+      "category": "required",
+      "status": "leaked",
+      "complete": false
+    },
+    {
+      "case": "seed-on-wall",
+      "category": "required",
+      "status": "seed_blocked",
+      "complete": false
+    },
+    {
+      "case": "one-pixel-wall",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "thin-wall-high-resolution",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "subpixel-wall-characterization",
+      "category": "characterization",
+      "status": "leaked",
+      "complete": false
+    },
+    {
+      "case": "crop-rotation-0",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-90",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-180",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-270",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "too-many-holes",
+      "category": "required",
+      "status": "complexity_limit",
+      "complete": false
+    },
+    {
+      "case": "diagonal-contact",
+      "category": "required",
+      "status": "topology_rejected",
+      "complete": false
+    },
+    {
+      "case": "rectangle-scale-1-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "two-holes-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-90-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "resource-max-work",
+      "category": "required",
+      "status": "work_limit",
+      "complete": false
+    },
+    {
+      "case": "resource-max-pixels",
+      "category": "required",
+      "status": "pixel_limit",
+      "complete": false
+    },
+    {
+      "case": "resource-max-frontier",
+      "category": "required",
+      "status": "frontier_limit",
+      "complete": false
+    },
+    {
+      "case": "resource-max-edges",
+      "category": "required",
+      "status": "edge_limit",
+      "complete": false
+    },
+    {
+      "case": "encrypted-editable",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "encrypted-editable-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "saved-page-scale",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "saved-page-scale-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    }
+  ],
+  "visual_search_metrics": [
+    {
+      "case": "clean-vectors",
+      "category": "required",
+      "expected": 16,
+      "observed": 16,
+      "true_positives": 16,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "crop-and-page-rotation",
+      "category": "required",
+      "expected": 12,
+      "observed": 12,
+      "true_positives": 12,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "clean-raster",
+      "category": "required",
+      "expected": 16,
+      "observed": 16,
+      "true_positives": 16,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "noise-raster",
+      "category": "required",
+      "expected": 16,
+      "observed": 16,
+      "true_positives": 16,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "distort-raster",
+      "category": "characterization",
+      "expected": 16,
+      "observed": 5,
+      "true_positives": 5,
+      "false_positives": 0,
+      "false_negatives": 11,
+      "precision": 1.0,
+      "recall": 0.3125,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "dense-candidate-limit",
+      "category": "required",
+      "expected": 30,
+      "observed": 30,
+      "true_positives": 30,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "page-edges",
+      "category": "required",
+      "expected": 5,
+      "observed": 5,
+      "true_positives": 5,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "zero-rotation-only",
+      "category": "required",
+      "expected": 10,
+      "observed": 10,
+      "true_positives": 10,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    }
+  ],
+  "linux": {
+    "scope": "Ubuntu 22.04 and 24.04 clean containers; installed package under a normal user; Xvfb/software rendering; same-version remove and reinstall, not physical GPU qualification.",
+    "validation": [
+      {
+        "ubuntu": "24.04",
+        "run_id": 40113416651,
+        "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+        "artifact_id": 12567956780,
+        "artifact_sha256": "e1b9f8f82afb5c0a8e9e67e263bc1d109aaf2bd9c00c8eddd270876ebf807858",
+        "deb_sha256": "91a535e7092656b7a39786ac879d514f41d9ea0f80ba375f08743a9a938523a6",
+        "report_sha256": "18f2ae9fa32780c3f10d72df66dea2704dca9a446615705f3448b12ef2d535f9",
+        "native_controls": {
+          "status": "passed",
+          "scope": "Installed Ubuntu candidate under a normal user; X11/Openbox/Xvfb software rendering only.",
+          "wayland_tested": false,
+          "physical_gpu_tested": false,
+          "runtime_cases": [
+            "installed-cli-opens-and-extracts-text",
+            "installed-cli-loads-private-pdfium-and-renders-fixture",
+            "save-reopen-reordered-pages-and-independent-qpdf",
+            "offline-ocr-eng-saved-searchable-layer",
+            "offline-ocr-fra-saved-searchable-layer",
+            "native-window-minimize-maximize-restore-drag-resize",
+            "native-window-close-preserves-unsaved-work",
+            "native-window-close-clean-exit",
+            "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+          ],
+          "runtime_sha256": "272b51befb6634c44d011bc42b5125a5cc1a3eb84f8f423a1204f08f39fdc2ef",
+          "native_controls_sha256": "31884ff85a6d176db9fe003d9c04b4fc81045f6c5e02ee736d0fc12d14d0c538",
+          "native_reader_sha256": "f1b07354974ec851b200d69fd1936544374c82aa2787d3a84cb8acd0b6e68bee",
+          "unsaved_dialog_text_sha256": "cdb8ed2c49ae6d47246a1caf6937df22d4460f9b8e5a165a28115ee7d3c773c3",
+          "observations": [
+            {
+              "check": "close-hover-visible",
+              "redPixels": 628,
+              "screenshot": "native-window-close-hover.png"
+            },
+            {
+              "check": "minimize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN"
+            },
+            {
+              "check": "maximize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ",
+              "geometry": {
+                "x": 0,
+                "y": 0,
+                "width": 1400,
+                "height": 1000
+              }
+            },
+            {
+              "check": "restore-button",
+              "state": "_NET_WM_STATE(ATOM) =",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-double-click-maximize-and-restore",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-drag",
+              "before": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "corner-resize",
+              "before": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1200,
+                "height": 730
+              }
+            },
+            {
+              "check": "close-keeps-unsaved-document-open",
+              "screenshot": "native-window-unsaved-close.png",
+              "processRunning": true
+            },
+            {
+              "check": "close-button-clean-exit",
+              "exitCode": 0
+            }
+          ],
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "c5f18e23bcb72719dbb2644d8d82823c97680a0300b5d1cdc6af56366b2d8329",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "904826dfb4d73b30bd17fbbb96587d665fed053bd03eefb03ecd33e7dbf9a5e2",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-close-hover.png",
+              "sha256": "99223bae3dcc5d45aca38a81808be96f836027eee6171c4121677c857db5dde1",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-controls-detail.png",
+              "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf",
+              "width": 144,
+              "height": 52
+            },
+            {
+              "file": "native-window-controls.png",
+              "sha256": "050d2a7e8dc9de444fee9246c28f288bb695cdbf1bc9228001bf6cb35a6c544e",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-maximized.png",
+              "sha256": "0bcba234f537d98b67453f6712ce6b70ee3b17716a5b67028ef66871704f0cde",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-unsaved-close.png",
+              "sha256": "44c690a46c3b08e60f9783e51d5519b55a2f686691c017b595ee3c662ea286ca",
+              "width": 1200,
+              "height": 730
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b",
+              "width": 612,
+              "height": 792
+            }
+          ]
+        },
+        "status": "passed",
+        "checks": {
+          "install": true,
+          "cli": true,
+          "pdf_render_save_reopen": true,
+          "ocr_en": true,
+          "ocr_fr": true,
+          "native_gui_pdf_visible": true,
+          "native_x11_window_controls": true,
+          "native_close_unsaved_guard": true,
+          "reinstall": true,
+          "uninstall": true,
+          "user_data_preserved": true
+        },
+        "normal_user_execution": true,
+        "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged"
+      },
+      {
+        "ubuntu": "22.04",
+        "run_id": 40113416651,
+        "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+        "artifact_id": 12567722867,
+        "artifact_sha256": "607d23daac596f41331079c4e9f8a095fac5b741a608c4375f5400d3a11f3a3c",
+        "deb_sha256": "91a535e7092656b7a39786ac879d514f41d9ea0f80ba375f08743a9a938523a6",
+        "report_sha256": "7ee879c63b8d4b537a532433c98d10e6a7bb55470e3c3e9eb67e8526e461b8f5",
+        "native_controls": {
+          "status": "passed",
+          "scope": "Installed Ubuntu candidate under a normal user; X11/Openbox/Xvfb software rendering only.",
+          "wayland_tested": false,
+          "physical_gpu_tested": false,
+          "runtime_cases": [
+            "installed-cli-opens-and-extracts-text",
+            "installed-cli-loads-private-pdfium-and-renders-fixture",
+            "save-reopen-reordered-pages-and-independent-qpdf",
+            "offline-ocr-eng-saved-searchable-layer",
+            "offline-ocr-fra-saved-searchable-layer",
+            "native-window-minimize-maximize-restore-drag-resize",
+            "native-window-close-preserves-unsaved-work",
+            "native-window-close-clean-exit",
+            "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+          ],
+          "runtime_sha256": "4ed3da5fdaffe12ed162d9fd3039e2d00bc61a61109da90f0169eaac388e8d47",
+          "native_controls_sha256": "6c8a2b256a898a6ce86c34eab5c901e4ab43f9f6935f631c714aad78c57c8646",
+          "native_reader_sha256": "3894bec7801362e452373e334388946eff21c35f068c8c951fabd5e9f36a63ea",
+          "unsaved_dialog_text_sha256": "716b9a833f33f5e4b13ed27dd77fe4834880cfe678596955e26c16e758e919ac",
+          "observations": [
+            {
+              "check": "close-hover-visible",
+              "redPixels": 628,
+              "screenshot": "native-window-close-hover.png"
+            },
+            {
+              "check": "minimize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN"
+            },
+            {
+              "check": "maximize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ",
+              "geometry": {
+                "x": 0,
+                "y": 0,
+                "width": 1400,
+                "height": 1000
+              }
+            },
+            {
+              "check": "restore-button",
+              "state": "_NET_WM_STATE(ATOM) =",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-double-click-maximize-and-restore",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-drag",
+              "before": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "corner-resize",
+              "before": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1200,
+                "height": 730
+              }
+            },
+            {
+              "check": "close-keeps-unsaved-document-open",
+              "screenshot": "native-window-unsaved-close.png",
+              "processRunning": true
+            },
+            {
+              "check": "close-button-clean-exit",
+              "exitCode": 0
+            }
+          ],
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "c5f18e23bcb72719dbb2644d8d82823c97680a0300b5d1cdc6af56366b2d8329",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "58f0e8539217e7ab0614b1fb76922622536290d0b1c42a496a19a6b9a825b251",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-close-hover.png",
+              "sha256": "6dcb371287515b7da4a0fbc4e540c2ae9114795d955c33062d898c38212c13ea",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-controls-detail.png",
+              "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf",
+              "width": 144,
+              "height": 52
+            },
+            {
+              "file": "native-window-controls.png",
+              "sha256": "ed8c6a016cd049dea5c6c113b0fcfd0469578c235e85027ca08c910f669189b2",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-maximized.png",
+              "sha256": "2ff7c1c400c4bf3e7f31ffdeb604ab88fdd28c7e88408299b4212054fe97868d",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-unsaved-close.png",
+              "sha256": "a5fbbfcf7b21ff0bbfe64443110c0729a87dff5165aa6872491ab5059ac8be33",
+              "width": 1200,
+              "height": 730
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b",
+              "width": 612,
+              "height": 792
+            }
+          ]
+        },
+        "status": "passed",
+        "checks": {
+          "install": true,
+          "cli": true,
+          "pdf_render_save_reopen": true,
+          "ocr_en": true,
+          "ocr_fr": true,
+          "native_gui_pdf_visible": true,
+          "native_x11_window_controls": true,
+          "native_close_unsaved_guard": true,
+          "reinstall": true,
+          "uninstall": true,
+          "user_data_preserved": true
+        },
+        "normal_user_execution": true,
+        "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged"
+      }
+    ],
+    "all_native_validations": [
+      {
+        "ubuntu": "22.04",
+        "role": "linux",
+        "run_id": 40113402204,
+        "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+        "artifact_id": 12568110272,
+        "artifact_sha256": "f7293a9c9848e8f87f5d7ce34a3f86be9694cbed2c6a677b4a0ce3cad29f49b9",
+        "report_sha256": "9a4105a65c46b568abe287fed539dd962a3cd8e80e2bc28eff316a654f8dfe32",
+        "native_controls": {
+          "status": "passed",
+          "scope": "Installed Ubuntu candidate under a normal user; X11/Openbox/Xvfb software rendering only.",
+          "wayland_tested": false,
+          "physical_gpu_tested": false,
+          "runtime_cases": [
+            "installed-cli-opens-and-extracts-text",
+            "installed-cli-loads-private-pdfium-and-renders-fixture",
+            "save-reopen-reordered-pages-and-independent-qpdf",
+            "offline-ocr-eng-saved-searchable-layer",
+            "offline-ocr-fra-saved-searchable-layer",
+            "native-window-minimize-maximize-restore-drag-resize",
+            "native-window-close-preserves-unsaved-work",
+            "native-window-close-clean-exit",
+            "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+          ],
+          "runtime_sha256": "a037df8e3e21d8150ccaefa1fe300465989eeeb41e3744272c6bb17e909951c5",
+          "native_controls_sha256": "6c8a2b256a898a6ce86c34eab5c901e4ab43f9f6935f631c714aad78c57c8646",
+          "native_reader_sha256": "3894bec7801362e452373e334388946eff21c35f068c8c951fabd5e9f36a63ea",
+          "unsaved_dialog_text_sha256": "716b9a833f33f5e4b13ed27dd77fe4834880cfe678596955e26c16e758e919ac",
+          "observations": [
+            {
+              "check": "close-hover-visible",
+              "redPixels": 628,
+              "screenshot": "native-window-close-hover.png"
+            },
+            {
+              "check": "minimize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN"
+            },
+            {
+              "check": "maximize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ",
+              "geometry": {
+                "x": 0,
+                "y": 0,
+                "width": 1400,
+                "height": 1000
+              }
+            },
+            {
+              "check": "restore-button",
+              "state": "_NET_WM_STATE(ATOM) =",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-double-click-maximize-and-restore",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-drag",
+              "before": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "corner-resize",
+              "before": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1200,
+                "height": 730
+              }
+            },
+            {
+              "check": "close-keeps-unsaved-document-open",
+              "screenshot": "native-window-unsaved-close.png",
+              "processRunning": true
+            },
+            {
+              "check": "close-button-clean-exit",
+              "exitCode": 0
+            }
+          ],
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "c5f18e23bcb72719dbb2644d8d82823c97680a0300b5d1cdc6af56366b2d8329",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "58f0e8539217e7ab0614b1fb76922622536290d0b1c42a496a19a6b9a825b251",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-close-hover.png",
+              "sha256": "6dcb371287515b7da4a0fbc4e540c2ae9114795d955c33062d898c38212c13ea",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-controls-detail.png",
+              "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf",
+              "width": 144,
+              "height": 52
+            },
+            {
+              "file": "native-window-controls.png",
+              "sha256": "ed8c6a016cd049dea5c6c113b0fcfd0469578c235e85027ca08c910f669189b2",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-maximized.png",
+              "sha256": "2ff7c1c400c4bf3e7f31ffdeb604ab88fdd28c7e88408299b4212054fe97868d",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-unsaved-close.png",
+              "sha256": "a5fbbfcf7b21ff0bbfe64443110c0729a87dff5165aa6872491ab5059ac8be33",
+              "width": 1200,
+              "height": 730
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b",
+              "width": 612,
+              "height": 792
+            }
+          ]
+        }
+      },
+      {
+        "ubuntu": "24.04",
+        "role": "linux",
+        "run_id": 40113402204,
+        "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+        "artifact_id": 12568016615,
+        "artifact_sha256": "e6f12298d714f1f90ced3a9bc709241ecafbd02bfff60b7de18ffdaf1fc33ca3",
+        "report_sha256": "c1f82d2d8e24cedeae5b39839f60aaa34b6e2dadd07c3e7ed863a1e3a3f2a7e2",
+        "native_controls": {
+          "status": "passed",
+          "scope": "Installed Ubuntu candidate under a normal user; X11/Openbox/Xvfb software rendering only.",
+          "wayland_tested": false,
+          "physical_gpu_tested": false,
+          "runtime_cases": [
+            "installed-cli-opens-and-extracts-text",
+            "installed-cli-loads-private-pdfium-and-renders-fixture",
+            "save-reopen-reordered-pages-and-independent-qpdf",
+            "offline-ocr-eng-saved-searchable-layer",
+            "offline-ocr-fra-saved-searchable-layer",
+            "native-window-minimize-maximize-restore-drag-resize",
+            "native-window-close-preserves-unsaved-work",
+            "native-window-close-clean-exit",
+            "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+          ],
+          "runtime_sha256": "272b51befb6634c44d011bc42b5125a5cc1a3eb84f8f423a1204f08f39fdc2ef",
+          "native_controls_sha256": "31884ff85a6d176db9fe003d9c04b4fc81045f6c5e02ee736d0fc12d14d0c538",
+          "native_reader_sha256": "f1b07354974ec851b200d69fd1936544374c82aa2787d3a84cb8acd0b6e68bee",
+          "unsaved_dialog_text_sha256": "cdb8ed2c49ae6d47246a1caf6937df22d4460f9b8e5a165a28115ee7d3c773c3",
+          "observations": [
+            {
+              "check": "close-hover-visible",
+              "redPixels": 628,
+              "screenshot": "native-window-close-hover.png"
+            },
+            {
+              "check": "minimize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN"
+            },
+            {
+              "check": "maximize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ",
+              "geometry": {
+                "x": 0,
+                "y": 0,
+                "width": 1400,
+                "height": 1000
+              }
+            },
+            {
+              "check": "restore-button",
+              "state": "_NET_WM_STATE(ATOM) =",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-double-click-maximize-and-restore",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-drag",
+              "before": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "corner-resize",
+              "before": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1200,
+                "height": 730
+              }
+            },
+            {
+              "check": "close-keeps-unsaved-document-open",
+              "screenshot": "native-window-unsaved-close.png",
+              "processRunning": true
+            },
+            {
+              "check": "close-button-clean-exit",
+              "exitCode": 0
+            }
+          ],
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "c5f18e23bcb72719dbb2644d8d82823c97680a0300b5d1cdc6af56366b2d8329",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "904826dfb4d73b30bd17fbbb96587d665fed053bd03eefb03ecd33e7dbf9a5e2",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-close-hover.png",
+              "sha256": "99223bae3dcc5d45aca38a81808be96f836027eee6171c4121677c857db5dde1",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-controls-detail.png",
+              "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf",
+              "width": 144,
+              "height": 52
+            },
+            {
+              "file": "native-window-controls.png",
+              "sha256": "050d2a7e8dc9de444fee9246c28f288bb695cdbf1bc9228001bf6cb35a6c544e",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-maximized.png",
+              "sha256": "0bcba234f537d98b67453f6712ce6b70ee3b17716a5b67028ef66871704f0cde",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-unsaved-close.png",
+              "sha256": "44c690a46c3b08e60f9783e51d5519b55a2f686691c017b595ee3c662ea286ca",
+              "width": 1200,
+              "height": 730
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b",
+              "width": 612,
+              "height": 792
+            }
+          ]
+        }
+      },
+      {
+        "ubuntu": "24.04",
+        "role": "release",
+        "run_id": 40113416651,
+        "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+        "artifact_id": 12567956780,
+        "artifact_sha256": "e1b9f8f82afb5c0a8e9e67e263bc1d109aaf2bd9c00c8eddd270876ebf807858",
+        "report_sha256": "18f2ae9fa32780c3f10d72df66dea2704dca9a446615705f3448b12ef2d535f9",
+        "native_controls": {
+          "status": "passed",
+          "scope": "Installed Ubuntu candidate under a normal user; X11/Openbox/Xvfb software rendering only.",
+          "wayland_tested": false,
+          "physical_gpu_tested": false,
+          "runtime_cases": [
+            "installed-cli-opens-and-extracts-text",
+            "installed-cli-loads-private-pdfium-and-renders-fixture",
+            "save-reopen-reordered-pages-and-independent-qpdf",
+            "offline-ocr-eng-saved-searchable-layer",
+            "offline-ocr-fra-saved-searchable-layer",
+            "native-window-minimize-maximize-restore-drag-resize",
+            "native-window-close-preserves-unsaved-work",
+            "native-window-close-clean-exit",
+            "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+          ],
+          "runtime_sha256": "272b51befb6634c44d011bc42b5125a5cc1a3eb84f8f423a1204f08f39fdc2ef",
+          "native_controls_sha256": "31884ff85a6d176db9fe003d9c04b4fc81045f6c5e02ee736d0fc12d14d0c538",
+          "native_reader_sha256": "f1b07354974ec851b200d69fd1936544374c82aa2787d3a84cb8acd0b6e68bee",
+          "unsaved_dialog_text_sha256": "cdb8ed2c49ae6d47246a1caf6937df22d4460f9b8e5a165a28115ee7d3c773c3",
+          "observations": [
+            {
+              "check": "close-hover-visible",
+              "redPixels": 628,
+              "screenshot": "native-window-close-hover.png"
+            },
+            {
+              "check": "minimize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN"
+            },
+            {
+              "check": "maximize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ",
+              "geometry": {
+                "x": 0,
+                "y": 0,
+                "width": 1400,
+                "height": 1000
+              }
+            },
+            {
+              "check": "restore-button",
+              "state": "_NET_WM_STATE(ATOM) =",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-double-click-maximize-and-restore",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-drag",
+              "before": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "corner-resize",
+              "before": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1200,
+                "height": 730
+              }
+            },
+            {
+              "check": "close-keeps-unsaved-document-open",
+              "screenshot": "native-window-unsaved-close.png",
+              "processRunning": true
+            },
+            {
+              "check": "close-button-clean-exit",
+              "exitCode": 0
+            }
+          ],
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "c5f18e23bcb72719dbb2644d8d82823c97680a0300b5d1cdc6af56366b2d8329",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "904826dfb4d73b30bd17fbbb96587d665fed053bd03eefb03ecd33e7dbf9a5e2",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-close-hover.png",
+              "sha256": "99223bae3dcc5d45aca38a81808be96f836027eee6171c4121677c857db5dde1",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-controls-detail.png",
+              "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf",
+              "width": 144,
+              "height": 52
+            },
+            {
+              "file": "native-window-controls.png",
+              "sha256": "050d2a7e8dc9de444fee9246c28f288bb695cdbf1bc9228001bf6cb35a6c544e",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-maximized.png",
+              "sha256": "0bcba234f537d98b67453f6712ce6b70ee3b17716a5b67028ef66871704f0cde",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-unsaved-close.png",
+              "sha256": "44c690a46c3b08e60f9783e51d5519b55a2f686691c017b595ee3c662ea286ca",
+              "width": 1200,
+              "height": 730
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b",
+              "width": 612,
+              "height": 792
+            }
+          ]
+        }
+      },
+      {
+        "ubuntu": "22.04",
+        "role": "release",
+        "run_id": 40113416651,
+        "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+        "artifact_id": 12567722867,
+        "artifact_sha256": "607d23daac596f41331079c4e9f8a095fac5b741a608c4375f5400d3a11f3a3c",
+        "report_sha256": "7ee879c63b8d4b537a532433c98d10e6a7bb55470e3c3e9eb67e8526e461b8f5",
+        "native_controls": {
+          "status": "passed",
+          "scope": "Installed Ubuntu candidate under a normal user; X11/Openbox/Xvfb software rendering only.",
+          "wayland_tested": false,
+          "physical_gpu_tested": false,
+          "runtime_cases": [
+            "installed-cli-opens-and-extracts-text",
+            "installed-cli-loads-private-pdfium-and-renders-fixture",
+            "save-reopen-reordered-pages-and-independent-qpdf",
+            "offline-ocr-eng-saved-searchable-layer",
+            "offline-ocr-fra-saved-searchable-layer",
+            "native-window-minimize-maximize-restore-drag-resize",
+            "native-window-close-preserves-unsaved-work",
+            "native-window-close-clean-exit",
+            "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+          ],
+          "runtime_sha256": "4ed3da5fdaffe12ed162d9fd3039e2d00bc61a61109da90f0169eaac388e8d47",
+          "native_controls_sha256": "6c8a2b256a898a6ce86c34eab5c901e4ab43f9f6935f631c714aad78c57c8646",
+          "native_reader_sha256": "3894bec7801362e452373e334388946eff21c35f068c8c951fabd5e9f36a63ea",
+          "unsaved_dialog_text_sha256": "716b9a833f33f5e4b13ed27dd77fe4834880cfe678596955e26c16e758e919ac",
+          "observations": [
+            {
+              "check": "close-hover-visible",
+              "redPixels": 628,
+              "screenshot": "native-window-close-hover.png"
+            },
+            {
+              "check": "minimize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN"
+            },
+            {
+              "check": "maximize-button",
+              "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_MAXIMIZED_HORZ",
+              "geometry": {
+                "x": 0,
+                "y": 0,
+                "width": 1400,
+                "height": 1000
+              }
+            },
+            {
+              "check": "restore-button",
+              "state": "_NET_WM_STATE(ATOM) =",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-double-click-maximize-and-restore",
+              "geometry": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "title-drag",
+              "before": {
+                "x": 60,
+                "y": 110,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              }
+            },
+            {
+              "check": "corner-resize",
+              "before": {
+                "x": 90,
+                "y": 134,
+                "width": 1280,
+                "height": 780
+              },
+              "after": {
+                "x": 90,
+                "y": 134,
+                "width": 1200,
+                "height": 730
+              }
+            },
+            {
+              "check": "close-keeps-unsaved-document-open",
+              "screenshot": "native-window-unsaved-close.png",
+              "processRunning": true
+            },
+            {
+              "check": "close-button-clean-exit",
+              "exitCode": 0
+            }
+          ],
+          "screenshots": [
+            {
+              "file": "eng-scan.png",
+              "sha256": "801accca87c119f110a755352db019f50ed950dd23a8f1ce1d7115c3461fff0a",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "fra-scan.png",
+              "sha256": "4e976103aea1641dcd7fc5a4138e43ec1f14b5af42bbba777afb71ef9ecee787",
+              "width": 1600,
+              "height": 400
+            },
+            {
+              "file": "native-reader-blue-mask.png",
+              "sha256": "c5f18e23bcb72719dbb2644d8d82823c97680a0300b5d1cdc6af56366b2d8329",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-reader.png",
+              "sha256": "58f0e8539217e7ab0614b1fb76922622536290d0b1c42a496a19a6b9a825b251",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-close-hover.png",
+              "sha256": "6dcb371287515b7da4a0fbc4e540c2ae9114795d955c33062d898c38212c13ea",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-controls-detail.png",
+              "sha256": "2eedc51536ca52f32c31bddcc06e7e5c11c26c841c5140042197ae2160bdbecf",
+              "width": 144,
+              "height": 52
+            },
+            {
+              "file": "native-window-controls.png",
+              "sha256": "ed8c6a016cd049dea5c6c113b0fcfd0469578c235e85027ca08c910f669189b2",
+              "width": 1280,
+              "height": 780
+            },
+            {
+              "file": "native-window-maximized.png",
+              "sha256": "2ff7c1c400c4bf3e7f31ffdeb604ab88fdd28c7e88408299b4212054fe97868d",
+              "width": 1400,
+              "height": 1000
+            },
+            {
+              "file": "native-window-unsaved-close.png",
+              "sha256": "a5fbbfcf7b21ff0bbfe64443110c0729a87dff5165aa6872491ab5059ac8be33",
+              "width": 1200,
+              "height": 730
+            },
+            {
+              "file": "page-1.png",
+              "sha256": "86c3e4c4bd39be71b88c6f243164a8f851951723d0c4e088e05bee408d9c397b",
+              "width": 612,
+              "height": 792
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "reader_ui": {
+    "artifact_id": 12567767300,
+    "run_id": 40113402153,
+    "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+    "artifact_sha256": "400b343962c62d7e4a6e7a479bea7a4b8f059ae6ac0aa86a4de776238ec144aa",
+    "report_sha256": "0c12d528d56292f5222fe6e806b798b50dffa04b2ab3120b6c3adee14b517e45"
+  },
+  "conformance": [
+    {
+      "run": 40113402204,
+      "run_attempt": 1,
+      "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+      "artifact_id": 12568145824,
+      "archive_sha256": "4ebb9abb345a73d6f5fce226d73ebf54a7ca06a1de30038c4597b0d0fe24b2ff",
+      "result": {
+        "status": "passed",
+        "cases": 12,
+        "stages": 42,
+        "profiles": [
+          "1b",
+          "2b",
+          "ua1"
+        ],
+        "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+        "qpdf_negative_warning_cases": [
+          "ua1-form-label-fail",
+          "ua1-language-tags-fail"
+        ],
+        "cli_sha256": "e04d90790be48b8ce7522981d40382e2c6afb8885c1d7bc8206fba734a9881f3",
+        "packaged_cli_hash_verified": false,
+        "scope": "Machine validation of the specified profiles and first-page appearance; human PDF/UA semantics remain unqualified.",
+        "archive_sha256": "4ebb9abb345a73d6f5fce226d73ebf54a7ca06a1de30038c4597b0d0fe24b2ff",
+        "report_sha256": "bbfd3ad122739c36dae9f31bb3f2931c608dc17a39e407aa7923c411d64c4341"
+      }
+    },
+    {
+      "run": 40113416651,
+      "run_attempt": 1,
+      "source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+      "artifact_id": 12567249785,
+      "archive_sha256": "1c7dc16fbd0d135a1e157794a7df67f7e65a73c5083bea5dd82b870c5dc1dfbd",
+      "result": {
+        "status": "passed",
+        "cases": 12,
+        "stages": 42,
+        "profiles": [
+          "1b",
+          "2b",
+          "ua1"
+        ],
+        "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+        "qpdf_negative_warning_cases": [
+          "ua1-form-label-fail",
+          "ua1-language-tags-fail"
+        ],
+        "cli_sha256": "e04d90790be48b8ce7522981d40382e2c6afb8885c1d7bc8206fba734a9881f3",
+        "packaged_cli_hash_verified": false,
+        "scope": "Machine validation of the specified profiles and first-page appearance; human PDF/UA semantics remain unqualified.",
+        "archive_sha256": "1c7dc16fbd0d135a1e157794a7df67f7e65a73c5083bea5dd82b870c5dc1dfbd",
+        "report_sha256": "1a183452390ee980bcab89bbfb46a24ee11762cab9915e785d99afda807a6495"
+      }
+    }
+  ],
+  "upgrade_baseline": {
+    "version": "0.73.0",
+    "msi_product_code": "{8679D75B-5D82-471F-96BF-B62C77D892F7}",
+    "msi_language": "1033",
+    "msi_sha256": "cf7904af2e4fc4137f81f577ed5aaf42ac9c336f41c560a3cdae3f62feae0c54",
+    "portable_x64_sha256": "92ef12184039d2600052814db6592efb7b29deef558924154520d3bab8d99ce5"
+  },
+  "code_scanning_review": {
+    "schema": 1,
+    "reviewed_pull_request": 53,
+    "reviewed_source": "f019c6ef756252e2e4b13f86474e92d2af558061",
+    "merged_source": "ecb292f23cf360a2330879ddb6e5ceb4fa59024b",
+    "qualified_tree": "566fe9328645e1b072f18bb08b74a07930a11211",
+    "merged_tree": "566fe9328645e1b072f18bb08b74a07930a11211",
+    "source_tree_identical": true,
+    "open_alerts_at_review_readback": 0,
+    "initial_pr_aggregate": "failure",
+    "final_pr_aggregate": "success",
+    "rules_changed": false,
+    "rules_disabled": false,
+    "alerts": [
+      {
+        "number": 235,
+        "url": "https://github.com/lmdanavanem/SuniPDF/security/code-scanning/235",
+        "rule": "rust/cleartext-logging",
+        "classification": "false positive",
+        "reviewer": "lmdanavanem",
+        "reason": "False flow: pages.rs:573 returns Result<()>; edit_pdf returns annotation indices. batch.rs:604 is Vec<PlanLinkBatchFilePlan>::remove(0), not logging. Records contain ID/path/count/pages, no credentials or custom Drop. Reviewed f019c6e by two source audits.",
+        "path": "crates/sunipdf-core/src/plan_links/batch.rs",
+        "line": 604,
+        "decision_response_sha256": "f5448aa0528c79fb1ee9f3426323bf56348ab2cbbabb7d3e495068c113705ba5"
+      },
+      {
+        "number": 236,
+        "url": "https://github.com/lmdanavanem/SuniPDF/security/code-scanning/236",
+        "rule": "rust/hard-coded-cryptographic-value",
+        "classification": "used in tests",
+        "reviewer": "lmdanavanem",
+        "reason": "Test-only reader password in plan_links_batch.rs:512, protected_batch_preserves_encryption_and_requires_all_passwords_and_permissions. Encrypts a generated temporary PDF to verify credentials and permissions; not a production/default secret. Reviewed f019c6e.",
+        "path": "crates/sunipdf-core/tests/plan_links_batch.rs",
+        "line": 512,
+        "decision_response_sha256": "fc38852d17101ef8156e1b0ef528e92b538975f69439a8d6371ec251cd053026"
+      },
+      {
+        "number": 237,
+        "url": "https://github.com/lmdanavanem/SuniPDF/security/code-scanning/237",
+        "rule": "rust/hard-coded-cryptographic-value",
+        "classification": "used in tests",
+        "reviewer": "lmdanavanem",
+        "reason": "Test-only owner password in plan_links_batch.rs:513, protected_batch_preserves_encryption_and_requires_all_passwords_and_permissions. Encrypts a generated temporary PDF to verify credentials and permissions; not a production/default secret. Reviewed f019c6e.",
+        "path": "crates/sunipdf-core/tests/plan_links_batch.rs",
+        "line": 513,
+        "decision_response_sha256": "7eafb70464ad420f3e0d468e628c2528ebb350e6b8326d819a7aa5abc82bfdd1"
+      }
+    ],
+    "evidence_sha256": {
+      "sarif": "14253680851a37e1c87bcfe11c4cbd96a93020a5b6cabd2fd4875f3f7bc7796e",
+      "expanded_flows": "b85d916d3b75a3283ebbfe665125c973ca703c108170009d3d2e18fd22a296d3",
+      "initial_aggregate": "007b126a057c1b2ba14189c844bf8ca3e21c4cef1f14f667d880fba3aa653c4a",
+      "decisions_readback": "1e6e4131f41362d1f8fd284020d92bab2f982d334f064758ebf6f5759735d420",
+      "merge_tree_readback": "08ecbb373bbbf3b6801ecaefb17a28205f613e978899000cf54d402ec6f8e514"
+    },
+    "scope": "Three new PR alerts reviewed individually: two synthetic test credentials and one non-logging vector-operation false positive. This classification is distinct from the final release-source open-alert check.",
+    "review_manifest_sha256": "5f1cc5677f45cc07071f2f296521fa78816336c373b240bea414da5b8203f822"
+  }
+}
