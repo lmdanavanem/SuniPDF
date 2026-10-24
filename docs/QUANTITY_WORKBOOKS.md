@@ -1,12 +1,13 @@
 # Quantity workbooks
 
-The 0.69 development work adds local XLSX quantity snapshots and reviewed refreshes.
+The 0.69 candidate adds local XLSX quantity snapshots and reviewed refreshes.
 Qualification is in progress; this guide does not describe a published package.
+See [release qualification](RELEASE_0.69.0.md).
 
 ## Create a snapshot
 
-Open the quantity table and choose its spreadsheet action, or find **Quantity
-workbooks** in the command palette. The snapshot uses the table's filters, sorting,
+Open the quantity table, choose **Reports and spreadsheets**, then **Spreadsheet…**.
+You can also find **Quantity workbooks** in the command palette. The snapshot uses the table's filters, sorting,
 grouping and formulas. Review the selected rows, totals, units, coverage warnings
 and source identity before exporting a new XLSX file.
 

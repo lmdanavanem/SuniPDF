@@ -1,13 +1,14 @@
 # Issue and quantity reports
 
-The 0.68 development work adds reports derived from the current annotation register
-and quantity table. Qualification is in progress; this page does not describe a
-published package.
+The 0.69 candidate adds reports derived from the current annotation register and
+quantity table. Qualification is in progress; this page does not describe a
+published package. See [release qualification](RELEASE_0.69.0.md).
 
 ## Review before export
 
-Choose **Create report…** in the annotation register or quantity table, or find
-**Issue and quantity reports** in the command palette. The register entry retains
+Choose **Create report…** in the annotation register, or **Reports and spreadsheets**
+then **Create report…** in the quantity table. You can also find **Issue and quantity
+reports** in the command palette. The register entry retains
 the register's current search, filters and row order, including its text custom-field
 sorting. It does not add rows that match only a typed quantity field. The quantity
 table entry retains that table's typed-field search and sorting, grouping and formulas.
@@ -20,6 +21,15 @@ rows, their order and calculated totals remain consistent across PDF, CSV and JS
 The preview displays the generated PDF, including its page breaks, before export.
 Changing the document or report settings invalidates the prepared report. External
 source-file changes are checked when previewing or exporting, without a file watcher.
+
+The PDF starts with a readable report summary: the selected annotations, calculated
+quantities, costs and missing values. Units and currencies keep separate totals.
+Issue groups, style legends and annotation details follow. A technical appendix on
+separate pages retains the full source identities and calculation settings.
+
+Location coverage for the source scope is distinguished from the filtered selection.
+Its counts can include annotations excluded by other filters; they are not a
+percentage of the selected rows.
 
 Legend entries identify the selected annotations and their actual supported styles.
 Unrecognized appearances remain explicit instead of receiving an invented symbol.

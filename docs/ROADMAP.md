@@ -1,8 +1,9 @@
 # Roadmap
 
-Updated 2026-10-24 for [0.64.0](RELEASE_0.64.0.md), published as stable Latest.
-[Evidence](qa/RELEASE_0.64.0.json) records exact source, package and public-download checks.
-Full backlog cards remain open until their stated acceptance criteria are evidenced.
+Updated 2026-10-24. Published [0.67.0](RELEASE_0.67.0.md) combines plan links, revision outlines and
+named zones. [Qualification evidence](qa/RELEASE_0.67.0.json) separates exact-source CI, package checks
+and the remaining native-interaction limits.
+Full backlog cards stay open until their stated acceptance criteria are evidenced.
 
 ## Delivered in 0.64.0
 
@@ -26,11 +27,16 @@ AEC-009 remains Done for its stated geometry and calculation criteria. [0.62](RE
 dimensioned rectangles, formula subtotals and explicit historical-measurement recalibration.
 An earlier bounded benchmark found a 23 ms optimization/output regression; investigate it without weakening atomic writes.
 
-## Work in progress after 0.64
+## Combined 0.67 qualification
 
-AEC-017 reviewed cross-document links, AEC-014 reviewed revision outlines and AEC-010 named zones
-are development work planned for a combined 0.67 release. Source, native and package gates must precede
-delivery claims; these increments remain In progress and are not included in the current downloads.
+AEC-017 adds reviewed links from one indexed source PDF; broader multi-source batch processing remains
+open. AEC-014 adds classified raster-difference proposals and editable reviewed outlines. AEC-010 adds
+named hierarchical rectangular zones and shared annotation/quantity assignment with explicit unresolved
+coverage. All three cards remain **In progress**; native interaction with these combined workflows is untested.
+
+The development candidate passed 1,045 tests and three independent corpora totaling 156 processes /
+2,541 assertions (128 SuniPDF CLI plus 28 qpdf). These counts do not describe a public-runtime run.
+See [Project status](PROJECT_STATUS.md) for the separate source, package and native evidence boundaries.
 
 ## Delivered foundation
 
@@ -84,10 +90,10 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Quantity calculations | Add unit-bearing custom fields and spreadsheet refresh | Published formula subtotals sum rounded results with separate unit/precision totals and explicit error coverage. Existing prices/currencies remain separate; no implicit conversion or stale export. |
 | Dimensioned drawing | Extend supported geometry | Published rectangles use real width/height, an explicit anchor and local/page/region/automatic scale. Preview, Undo/Redo and save/reopen retain editable polygon geometry. Permanent constraints, other analytic shapes and independent X/Y scales remain extensions. |
 | Area and volume | Extend independent qualification of the delivered workflow | Polygon deductions and constant-depth quantities are delivered in 0.63. Editable external-reader interoperability and physical accuracy remain separate. |
-| Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |
+| Rooms and zones | Complete qualification and broaden explicit region support | The 0.67 release provides named rectangular hierarchies and shared assignments; retain explicit overlap, boundary, unknown and stale coverage. Qualify native interaction and broader plan interoperability. |
 | Visual recognition | Symbol search and boundary-based region proposals | Bounded work, candidate previews, explicit tolerance and user confirmation before creating counts or measurements. |
-| Revisions | Reviewed change outlines and broader alignment workflows | Distinguish drawing changes from rendering noise and retain original/revised identities. |
-| Plan sets | Broader reviewed revision replacement and links | Grouped/searchable navigation and manifest persistence are delivered. Supported annotation transfer requires explicit review; broader batches and cross-document links retain separate acceptance criteria. |
+| Revisions | Complete reviewed-outline qualification and broaden alignment | The 0.67 release classifies raster proposals for one explicit page pair; preserve review decisions and original/revised identity. Broader comparison and native qualification remain separate. |
+| Plan sets | Broader reviewed revision replacement and link batches | Grouped/searchable navigation is delivered. The 0.67 release links one indexed source PDF after review; multi-source batches and broader replacement retain separate acceptance criteria. |
 | Reports | Legends, quantity summaries and issue reports | Generate from actual filtered annotations and document revisions, with no invented or stale totals. |
 
 Named scale regions, batch recalibration, vector snapping, manual counts, saved-geometry
@@ -115,6 +121,13 @@ Each broader backlog card stays partial until its remaining acceptance criteria 
 
 ## P2: measured performance and maintenance
 
+A paired development-build benchmark compared 0.64 with 0.67 on six whole-CLI-process workloads,
+with one warmup and five measured repetitions per case. Median times increased by 0.5% for document
+information, 5.0% for dense-page rendering, 2.6% for search, 4.0% for the 1,500-row register and 3.4%
+for 300 quantities with eight formulas. Optimization/output decreased by 0.8%. These bounded
+measurements establish no overall speed improvement, GUI responsiveness result or release-package
+performance claim. Rendering and table costs need further profiling without weakening source checks.
+
 - Record opening, scrolling, rendering, searching, table interaction and editing on named
   physical devices, including memory, representative file sizes and complete frame latency.
 - Isolate PDF processing and atomic output/synchronization costs behind the local optimization/output regression; retain collision and source-preservation guarantees.
@@ -141,4 +154,4 @@ qualify the frozen source and downloaded packages, then update the feature matri
 notes and [current evidence](PROJECT_STATUS.md). Do not close a card because a related
 feature shipped. [GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized on
 2026-10-24: five existing P1 cards updated and 27 AEC cards added. The preserved views contain 51 Roadmap,
-8 Bugs and 11 Suggestions cards. Partial criteria remain open; later 0.64/0.65 work is identified as candidate work, separately from published 0.63.
+8 Bugs and 11 Suggestions cards. That is a historical synchronization record, not a fresh readback for 0.67. Partial criteria remain open; later release work must be reconciled against the actual board before claiming it is synchronized.

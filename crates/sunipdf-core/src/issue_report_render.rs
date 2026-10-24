@@ -15,19 +15,73 @@ const NOTO: &[u8] = include_bytes!("../tests/fixtures/fonts/NotoSansJP-Regular.o
 const WIDTH: f32 = 595.0;
 const HEIGHT: f32 = 842.0;
 const MARGIN: f32 = 42.0;
-const BODY: f32 = 9.0;
+const BODY: f32 = 10.0;
+
+#[derive(Clone, Copy)]
+enum TextStyle {
+    Title,
+    Section,
+    Item,
+    Body,
+    Muted,
+    Warning,
+}
+impl TextStyle {
+    fn size(self) -> f32 {
+        match self {
+            Self::Title => 21.0,
+            Self::Section => 13.0,
+            Self::Item => 11.0,
+            Self::Muted => 9.0,
+            Self::Body | Self::Warning => BODY,
+        }
+    }
+    fn height(self) -> f32 {
+        self.size() + 4.5
+    }
+    fn gap(self) -> f32 {
+        match self {
+            Self::Title => 0.0,
+            Self::Section => 13.0,
+            Self::Item => 7.0,
+            _ => 2.0,
+        }
+    }
+    fn keep_with_next(self) -> bool {
+        matches!(self, Self::Title | Self::Section | Self::Item)
+    }
+    fn color(self) -> PdfColor {
+        match self {
+            Self::Title | Self::Section | Self::Item => PdfColor::new(30, 58, 85, 255),
+            Self::Muted => PdfColor::new(82, 94, 108, 255),
+            Self::Warning => PdfColor::new(139, 60, 18, 255),
+            Self::Body => PdfColor::new(26, 31, 38, 255),
+        }
+    }
+}
 
 struct Block {
     text: String,
-    heading: bool,
+    style: TextStyle,
     indent: usize,
     sample: Option<(String, LegendStyle)>,
+    break_before: bool,
 }
 struct Line {
     text: String,
-    heading: bool,
+    style: TextStyle,
     indent: usize,
     sample: Option<(String, LegendStyle)>,
+    space_before: f32,
+}
+impl Line {
+    fn height(&self) -> f32 {
+        if self.sample.is_some() {
+            38.0
+        } else {
+            self.style.height()
+        }
+    }
 }
 
 fn visible(value: &str) -> String {
@@ -43,11 +97,24 @@ fn visible(value: &str) -> String {
         .collect()
 }
 fn push(blocks: &mut Vec<Block>, text: String, heading: bool, indent: usize) {
-    blocks.push(Block {
+    styled(
+        blocks,
         text,
-        heading,
+        if heading {
+            TextStyle::Section
+        } else {
+            TextStyle::Muted
+        },
+        indent,
+    );
+}
+fn styled(blocks: &mut Vec<Block>, text: String, style: TextStyle, indent: usize) {
+    blocks.push(Block {
+        text: visible(&text),
+        style,
         indent,
         sample: None,
+        break_before: false,
     });
 }
 fn flatten(
@@ -136,45 +203,619 @@ fn flatten(
     Ok(())
 }
 
+fn value_text(value: &Value) -> String {
+    if value.is_null() {
+        "Not available".into()
+    } else {
+        visible(&display(value))
+    }
+}
+
+fn label(value: &Value) -> String {
+    match value.as_str() {
+        Some("geometry_unknown") => "Unknown geometry".into(),
+        Some("legacy_unverified") => "Legacy measurement, unverified".into(),
+        Some("missing_field") => "Missing field".into(),
+        Some("non_numeric_field") => "Field is not numeric".into(),
+        Some("missing_quantity") => "Missing quantity".into(),
+        Some("unverified_quantity") => "Unverified quantity".into(),
+        Some("unit_mismatch") => "Incompatible units".into(),
+        Some("division_by_zero") => "Division by zero".into(),
+        Some(text) => {
+            let mut chars = text.chars();
+            chars.next().map_or_else(String::new, |first| {
+                first.to_uppercase().collect::<String>() + &chars.as_str().replace('_', " ")
+            })
+        }
+        None => "Not set".into(),
+    }
+}
+
+fn unit(value: &Value) -> String {
+    match value.as_str() {
+        Some("mm2") => "mm²",
+        Some("cm2") => "cm²",
+        Some("m2") => "m²",
+        Some("in2") => "in²",
+        Some("ft2") => "ft²",
+        Some("mm3") => "mm³",
+        Some("cm3") => "cm³",
+        Some("m3") => "m³",
+        Some("in3") => "in³",
+        Some("ft3") => "ft³",
+        Some("deg") => "degrees",
+        Some(text) => text,
+        None => "dimensionless",
+    }
+    .into()
+}
+
+fn body(output: &mut Vec<Block>, text: impl Into<String>) {
+    styled(output, text.into(), TextStyle::Body, 0);
+}
+fn section(output: &mut Vec<Block>, text: &str) {
+    styled(output, text.into(), TextStyle::Section, 0);
+}
+fn item(output: &mut Vec<Block>, text: impl Into<String>) {
+    styled(output, text.into(), TextStyle::Item, 0);
+}
+fn note(output: &mut Vec<Block>, text: impl Into<String>) {
+    styled(output, text.into(), TextStyle::Muted, 0);
+}
+fn entries(value: &Value) -> &[Value] {
+    value.as_array().map_or(&[], Vec::as_slice)
+}
+fn named(value: &Value, fallback: &str) -> String {
+    value
+        .as_str()
+        .filter(|v| !v.is_empty())
+        .map_or_else(|| fallback.into(), visible)
+}
+fn quantity(value: &Value) -> String {
+    if value.is_null() {
+        "Not available; excluded from quantity totals".into()
+    } else {
+        format!("{} {}", value_text(&value["value"]), unit(&value["unit"]))
+    }
+}
+fn money(value: &Value) -> String {
+    format!(
+        "{} {} ({} decimal places)",
+        value_text(&value["amount"]),
+        value_text(&value["currency"]),
+        value_text(&value["rounding_decimals"])
+    )
+}
+fn identities(members: &[crate::issue_report::ReportRowIdentity]) -> String {
+    members
+        .iter()
+        .map(|member| {
+            format!(
+                "page {}, index {}{}",
+                member.page,
+                member.index,
+                member
+                    .annotation_id
+                    .as_ref()
+                    .map_or(String::new(), |id| format!(" / {}", visible(id)))
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn summary(output: &mut Vec<Block>, model: &IssueReportModel, rows: &[Value]) {
+    let summary = &model.quantities["summary"];
+    section(output, "Report summary");
+    body(
+        output,
+        format!(
+            "{} selected annotations | {} with quantities | {} without quantities",
+            rows.len(),
+            value_text(&summary["quantity_rows"]),
+            value_text(&summary["unquantified_rows"])
+        ),
+    );
+    let priced = rows
+        .iter()
+        .filter(|row| !row["line_total"].is_null())
+        .count();
+    let eligible = rows
+        .iter()
+        .filter(|row| !row["quantity"].is_null() && row["quantity"]["unit"].as_str() != Some("deg"))
+        .count();
+    body(output, format!("Cost coverage: {priced} of {eligible} additive quantity annotations priced. Missing prices are not zero."));
+    let mut locations = BTreeMap::<String, usize>::new();
+    for row in rows {
+        *locations
+            .entry(label(&row["register"]["zone"]["status"]))
+            .or_default() += 1;
+    }
+    body(
+        output,
+        if rows.is_empty() {
+            "Selected annotation locations: no annotations selected.".into()
+        } else {
+            format!(
+                "Selected annotation locations: {}.",
+                locations
+                    .iter()
+                    .map(|(name, count)| format!("{name}: {count}"))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            )
+        },
+    );
+    body(
+        output,
+        format!(
+            "Measurement and calculation checks: {}.",
+            if model.complete {
+                "no unresolved checks in the report scope"
+            } else {
+                "incomplete; review the warnings below"
+            }
+        ),
+    );
+    note(output, format!("Additive quantities: {} | Angles (not summed): {} | Unverified measurements: {} (legacy: {}; stale: {})",
+        value_text(&summary["additive_quantity_rows"]), value_text(&summary["angular_rows"]),
+        value_text(&summary["unverified_measurement_rows"]), value_text(&summary["legacy_measurement_rows"]),
+        value_text(&summary["stale_measurement_rows"])));
+    for warning in &model.warnings {
+        styled(
+            output,
+            format!("Attention: {warning}"),
+            TextStyle::Warning,
+            0,
+        );
+    }
+    section(output, "Quantity and cost totals");
+    note(output, "Subtotals retain their own group, unit, currency and rounding. Partial costs include priced annotations only.");
+    if entries(&summary["groups"]).is_empty() {
+        body(
+            output,
+            "No additive quantities are available for this selection.",
+        );
+    }
+    for group in entries(&summary["groups"]) {
+        item(
+            output,
+            format!(
+                "{} | {} {}",
+                named(&group["group"], "All selected annotations"),
+                value_text(&group["quantity"]),
+                unit(&group["unit"])
+            ),
+        );
+        body(
+            output,
+            format!(
+                "{} contributing annotations | {} priced | {} missing prices",
+                value_text(&group["rows"]),
+                value_text(&group["priced_rows"]),
+                value_text(&group["missing_prices"])
+            ),
+        );
+        for cost in entries(&group["costs"]) {
+            body(
+                output,
+                format!(
+                    "Cost: {} | {} priced annotations | {}",
+                    money(&cost["total"]),
+                    value_text(&cost["priced_rows"]),
+                    if cost["complete"] == true {
+                        "complete within this subtotal"
+                    } else {
+                        "partial subtotal"
+                    }
+                ),
+            );
+        }
+        if entries(&group["costs"]).is_empty() {
+            body(output, "Cost: not available; no priced subtotal.");
+        }
+    }
+    if !entries(&summary["formula_groups"]).is_empty() {
+        section(output, "Calculated totals");
+        for group in entries(&summary["formula_groups"]) {
+            item(
+                output,
+                format!(
+                    "{} | {}",
+                    value_text(&group["formula_name"]),
+                    named(&group["group"], "All selected annotations")
+                ),
+            );
+            body(
+                output,
+                format!(
+                    "{} of {} annotations contributed | {} errors | {}",
+                    value_text(&group["contributing_rows"]),
+                    value_text(&group["matched_rows"]),
+                    value_text(&group["error_rows"]),
+                    if group["complete"] == true {
+                        "complete calculation"
+                    } else {
+                        "partial calculation"
+                    }
+                ),
+            );
+            for total in entries(&group["totals"]) {
+                body(
+                    output,
+                    format!(
+                        "Total: {} {} ({} decimal places; {} annotations)",
+                        value_text(&total["amount"]),
+                        unit(&total["unit"]),
+                        value_text(&total["rounding_decimals"]),
+                        value_text(&total["contributing_rows"])
+                    ),
+                );
+            }
+            if entries(&group["totals"]).is_empty() {
+                body(output, "Total: not available; no successful calculation.");
+            }
+            if let Some(errors) = group["errors"].as_object() {
+                for (error, count) in errors {
+                    body(
+                        output,
+                        format!(
+                            "{}: {} annotations",
+                            label(&Value::String(error.clone())),
+                            value_text(count)
+                        ),
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn annotation(output: &mut Vec<Block>, row: &Value, formulas: Option<&&Value>) {
+    let register = &row["register"];
+    item(
+        output,
+        format!(
+            "Page {} | Annotation {} | {}",
+            value_text(&register["page"]),
+            value_text(&register["index"]),
+            value_text(&register["kind"])
+        ),
+    );
+    body(
+        output,
+        format!("Subject: {}", named(&register["subject"], "Not set")),
+    );
+    body(
+        output,
+        format!("Comment: {}", named(&register["contents"], "Not set")),
+    );
+    body(
+        output,
+        format!(
+            "Status: {} | Review: {} | Discipline: {}",
+            named(&register["fields"]["business_status"], "Not set"),
+            named(&register["review_status"], "Not set"),
+            named(&register["fields"]["discipline"], "Not set")
+        ),
+    );
+    body(
+        output,
+        format!(
+            "Author: {} | Modified: {}",
+            named(&register["author"], "Not set"),
+            named(&register["modified"], "Not set")
+        ),
+    );
+    let zone = &register["zone"];
+    let path = entries(&zone["path"])
+        .iter()
+        .map(|part| {
+            format!(
+                "{} [{}]",
+                value_text(&part["name"]),
+                value_text(&part["id"])
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" / ");
+    body(
+        output,
+        format!(
+            "Location: {}{}",
+            label(&zone["status"]),
+            if path.is_empty() {
+                String::new()
+            } else {
+                format!(" | {path}")
+            }
+        ),
+    );
+    if !zone["zone_id"].is_null() {
+        note(
+            output,
+            format!("Assigned zone ID: {}", value_text(&zone["zone_id"])),
+        );
+    }
+    if !entries(&zone["candidates"]).is_empty() {
+        note(
+            output,
+            format!(
+                "Candidate zone IDs: {}",
+                entries(&zone["candidates"])
+                    .iter()
+                    .map(value_text)
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            ),
+        );
+    }
+    body(output, format!("Quantity: {}", quantity(&row["quantity"])));
+    if !row["measurement_validity"].is_null() {
+        body(
+            output,
+            format!(
+                "Measurement verification: {}",
+                label(&row["measurement_validity"])
+            ),
+        );
+    }
+    if !row["historical_quantity"].is_null() {
+        body(
+            output,
+            format!(
+                "Historical quantity (excluded from totals): {}",
+                quantity(&row["historical_quantity"])
+            ),
+        );
+    }
+    let price = &row["fields"]["unit_price"];
+    if price.is_null() {
+        body(output, "Unit price: not set.");
+    } else {
+        body(
+            output,
+            format!(
+                "Unit price: {} {} per {} ({} decimal places)",
+                value_text(&price["amount"]),
+                value_text(&price["currency"]),
+                unit(&price["per_unit"]),
+                value_text(&price["rounding_decimals"])
+            ),
+        );
+    }
+    body(
+        output,
+        if row["line_total"].is_null() {
+            "Line cost: not available; excluded from cost totals.".into()
+        } else {
+            format!("Line cost: {}", money(&row["line_total"]))
+        },
+    );
+    if let Some(custom) = register["fields"]["custom"].as_object() {
+        for (name, value) in custom {
+            body(output, format!("{}: {}", visible(name), value_text(value)));
+        }
+    }
+    if let Some(custom) = row["fields"]["custom"].as_object() {
+        for (name, value) in custom {
+            body(
+                output,
+                format!(
+                    "{} ({}): {}",
+                    visible(name),
+                    label(&value["type"]),
+                    value_text(&value["value"])
+                ),
+            );
+            if let Some(options) = value["options"].as_array() {
+                note(
+                    output,
+                    format!(
+                        "Available choices: {}",
+                        options
+                            .iter()
+                            .map(value_text)
+                            .collect::<Vec<_>>()
+                            .join("; ")
+                    ),
+                );
+            }
+        }
+    }
+    if let Some(values) = formulas.and_then(|v| v.as_object()) {
+        for (name, value) in values {
+            body(
+                output,
+                if !value["error"].is_null() {
+                    format!(
+                        "{}: not available ({})",
+                        visible(name),
+                        label(&value["error"])
+                    )
+                } else {
+                    format!(
+                        "{}: {} {}",
+                        visible(name),
+                        value_text(&value["value"]),
+                        unit(&value["unit"])
+                    )
+                },
+            );
+        }
+    }
+    note(
+        output,
+        format!(
+            "Annotation ID: {} | Count group: {}",
+            named(&register["annotation_id"], "Not set"),
+            named(&register["count_group"], "Not set")
+        ),
+    );
+    note(
+        output,
+        format!(
+            "Reply: {} | Parent index: {} | Hidden: {} | Locked: {} | Editable: {}",
+            value_text(&register["is_reply"]),
+            named_number(&register["parent"]),
+            value_text(&register["hidden"]),
+            value_text(&register["locked"]),
+            value_text(&row["editable"])
+        ),
+    );
+    note(
+        output,
+        format!(
+            "Bounds in displayed page points: {}",
+            if register["rect"].is_null() {
+                "Unknown".into()
+            } else {
+                entries(&register["rect"])
+                    .iter()
+                    .map(value_text)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }
+        ),
+    );
+}
+
+fn named_number(value: &Value) -> String {
+    if value.is_null() {
+        "Not set".into()
+    } else {
+        value_text(value)
+    }
+}
+
 fn blocks(model: &IssueReportModel, cancel: &AtomicBool) -> Result<Vec<Block>, EngineError> {
     let mut output = Vec::new();
-    push(&mut output, model.title.clone(), true, 0);
-    push(
-        &mut output,
-        format!("Selection source: {}", model.selection.id()),
-        false,
-        0,
-    );
-    push(
+    styled(&mut output, model.title.clone(), TextStyle::Title, 0);
+    note(
         &mut output,
         format!(
-            "Coverage: {} | {} selected annotations",
-            if model.complete {
-                "complete"
+            "Source: {} | {}",
+            model
+                .provenance
+                .saved_file_name
+                .as_deref()
+                .unwrap_or("Current document snapshot"),
+            if model.selection.id() == "register" {
+                "Annotation register selection"
             } else {
-                "incomplete; see warnings"
-            },
-            model.quantities["rows"].as_array().map_or(0, Vec::len)
+                "Quantity table selection"
+            }
         ),
-        false,
-        0,
     );
-    push(&mut output, "Report provenance".into(), true, 0);
+    let rows = entries(&model.quantities["rows"]);
+    summary(&mut output, model, rows);
+    section(&mut output, "Issue groups");
+    if model.issue_groups.is_empty() {
+        body(&mut output, "No annotations match the selected filter.");
+    }
+    for group in &model.issue_groups {
+        cancelled(cancel)?;
+        item(
+            &mut output,
+            format!(
+                "{} annotations | Status: {} | Review: {} | Discipline: {}",
+                group.count,
+                group.business_status.as_deref().unwrap_or("Not set"),
+                group.review_status.as_deref().unwrap_or("Not set"),
+                group.discipline.as_deref().unwrap_or("Not set")
+            ),
+        );
+        note(
+            &mut output,
+            format!("Members: {}", identities(&group.members)),
+        );
+    }
+    if model.legend_included {
+        section(&mut output, "Legend of selected annotations");
+        note(&mut output, "Samples show supported style declarations stored in the PDF at 1:5. Unknown appearances are not reconstructed.");
+        if model.legend.is_empty() {
+            body(&mut output, "No legend entries match the selected filter.");
+        }
+        for entry in &model.legend {
+            cancelled(cancel)?;
+            item(
+                &mut output,
+                format!(
+                    "{} | {} | {} annotations{}",
+                    entry.id,
+                    entry.kind,
+                    entry.count,
+                    entry
+                        .count_group
+                        .as_ref()
+                        .map_or(String::new(), |group| format!(" | {group}"))
+                ),
+            );
+            if let Some(style) = &entry.style {
+                output.push(Block {
+                    text: "Declared style sample (1:5)".into(),
+                    style: TextStyle::Body,
+                    indent: 8,
+                    sample: Some((entry.kind.clone(), style.clone())),
+                    break_before: false,
+                });
+                note(&mut output, format!("Stroke RGB: {:?} | Fill RGB: {} | Width: {} pt | Opacity: {} | Dash: {:?} | Arrow: {}",
+                    style.stroke_rgb, style.fill_rgb.map_or("None".into(), |color| format!("{color:?}")), style.width_pt,
+                    style.opacity, style.dash_pattern, style.arrow));
+            }
+            body(
+                &mut output,
+                format!(
+                    "Appearance: {}{}",
+                    label(&Value::String(entry.style_status.into())),
+                    entry
+                        .reason
+                        .as_ref()
+                        .map_or(String::new(), |reason| format!("; {reason}"))
+                ),
+            );
+            note(
+                &mut output,
+                format!("Members: {}", identities(&entry.members)),
+            );
+        }
+    }
+    section(&mut output, "Annotation details");
+    let formulas = entries(&model.quantities["formula_rows"])
+        .iter()
+        .map(|value| {
+            (
+                (value["page"].as_u64(), value["index"].as_u64()),
+                &value["values"],
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    if rows.is_empty() {
+        body(&mut output, "No annotations match the selected filter.");
+    }
+    for row in rows {
+        cancelled(cancel)?;
+        annotation(
+            &mut output,
+            row,
+            formulas.get(&(
+                row["register"]["page"].as_u64(),
+                row["register"]["index"].as_u64(),
+            )),
+        );
+    }
+    section(&mut output, "Technical appendix");
+    output.last_mut().expect("appendix heading").break_before = true;
+    note(&mut output, "Audit information and exact calculation settings for this report. These settings do not change the source document.");
+    section(&mut output, "Report provenance");
     flatten(
         &mut output,
         "",
         &serde_json::to_value(&model.provenance).expect("provenance"),
         0,
     )?;
-    for warning in &model.warnings {
-        push(&mut output, format!("Warning: {warning}"), false, 0);
-    }
-    push(
-        &mut output,
-        "Selection and calculation settings".into(),
-        true,
-        0,
-    );
+    section(&mut output, "Selection and calculation settings");
+    note(&mut output, "Zone coverage below describes the source page/reply scope before the remaining annotation filters. It is not the coverage count of the selected annotations.");
     let mut options = model.quantities.clone();
     for key in ["rows", "summary", "formula_rows"] {
         options
@@ -183,98 +824,15 @@ fn blocks(model: &IssueReportModel, cancel: &AtomicBool) -> Result<Vec<Block>, E
             .remove(key);
     }
     flatten(&mut output, "", &options, 0)?;
-    push(&mut output, "Quantity and cost summary".into(), true, 0);
-    flatten(&mut output, "", &model.quantities["summary"], 0)?;
-    push(&mut output, "Issue groups".into(), true, 0);
-    if model.issue_groups.is_empty() {
-        push(
-            &mut output,
-            "No annotations match the selected filter.".into(),
-            false,
-            0,
-        );
-    }
-    for group in &model.issue_groups {
-        cancelled(cancel)?;
-        flatten(
-            &mut output,
-            "Group",
-            &serde_json::to_value(group).expect("group"),
-            0,
-        )?;
-    }
-    if model.legend_included {
-        push(
-            &mut output,
-            "Legend of selected annotations".into(),
-            true,
-            0,
-        );
-        push(&mut output,"Styles below are the supported declarations stored in the PDF. Unknown appearances are not reconstructed.".into(),false,0);
-        if model.legend.is_empty() {
-            push(
-                &mut output,
-                "No legend entries match the selected filter.".into(),
-                false,
-                0,
-            );
-        }
-        for entry in &model.legend {
-            cancelled(cancel)?;
-            if let Some(style) = &entry.style {
-                output.push(Block {
-                    text: format!(
-                        "{} / {} / {} annotations / declared style sample at 1:5",
-                        entry.id, entry.kind, entry.count
-                    ),
-                    heading: false,
-                    indent: 8,
-                    sample: Some((entry.kind.clone(), style.clone())),
-                });
-            }
-            flatten(
-                &mut output,
-                &entry.id,
-                &serde_json::to_value(entry).expect("legend"),
-                0,
-            )?;
-        }
-    }
-    push(&mut output, "Annotation details".into(), true, 0);
-    let formulas = model.quantities["formula_rows"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|value| {
-            (
-                (value["page"].as_u64(), value["index"].as_u64()),
-                &value["values"],
-            )
-        })
-        .collect::<BTreeMap<_, _>>();
-    if let Some(rows) = model.quantities["rows"].as_array() {
-        for row in rows {
-            cancelled(cancel)?;
-            push(
-                &mut output,
-                format!(
-                    "Page {} / annotation {} / {}",
-                    row["register"]["page"],
-                    row["register"]["index"],
-                    visible(&display(&row["register"]["kind"]))
-                ),
-                true,
-                0,
-            );
-            flatten(&mut output, "", row, 0)?;
-            if let Some(values) = formulas.get(&(
-                row["register"]["page"].as_u64(),
-                row["register"]["index"].as_u64(),
-            )) {
-                flatten(&mut output, "Calculated fields", values, 0)?;
-            }
-        }
-    }
+    note(
+        &mut output,
+        format!(
+            "Report format: {} / version {} | Legend included: {} | Checks complete: {}",
+            model.schema, model.version, model.legend_included, model.complete
+        ),
+    );
+    note(&mut output, format!("Summary reconciliation: {} matched annotations; {} excluded from additive quantities (including angles).",
+        value_text(&model.quantities["summary"]["matched_rows"]), value_text(&model.quantities["summary"]["excluded_quantity_rows"])));
     let bytes = output.iter().try_fold(0usize, |n, b| {
         n.checked_add(b.text.len())
             .ok_or_else(|| invalid("report text overflow"))
@@ -396,8 +954,7 @@ pub(crate) fn render(
             PdfPoints::new(BODY),
         )?)?;
     }
-    let mut pages = vec![Vec::<Line>::new()];
-    let mut used = 0.0;
+    let mut laid_out = Vec::<Vec<Line>>::with_capacity(blocks.len());
     {
         let mut probe = pdf.pages().get(0)?;
         for (index, block) in blocks.iter().enumerate() {
@@ -408,9 +965,10 @@ pub(crate) fn render(
                 total: blocks.len(),
             });
             // Measure at the body font size and scale the available width for headings.
-            let size = if block.heading { 13.0 } else { BODY };
+            let size = block.style.size();
             let indent = block.indent.min(8);
             let width = (WIDTH - 2.0 * MARGIN - indent as f32 * 9.0) * BODY / size;
+            let mut lines = Vec::new();
             for (part, text) in wrapped(&mut probe, &block.text, width, cancel)?
                 .into_iter()
                 .enumerate()
@@ -420,28 +978,69 @@ pub(crate) fn render(
                 } else {
                     None
                 };
-                let height = if sample.is_some() {
-                    38.0
-                } else if block.heading {
-                    22.0
-                } else {
-                    13.0
-                };
-                if used + height > HEIGHT - 2.0 * MARGIN - 28.0 {
-                    pages.push(Vec::new());
-                    used = 0.0;
-                    if pages.len() > MAX_REPORT_PAGES {
-                        return Err(invalid("PDF exceeds 250 pages; narrow the filter"));
-                    }
-                }
-                pages.last_mut().expect("page").push(Line {
+                lines.push(Line {
                     text,
-                    heading: block.heading,
+                    style: block.style,
                     indent,
                     sample,
+                    space_before: if part == 0 { block.style.gap() } else { 0.0 },
                 });
-                used += height;
             }
+            laid_out.push(lines);
+        }
+    }
+    let mut pages = vec![Vec::<Line>::new()];
+    let mut used = 0.0;
+    let available = HEIGHT - 2.0 * MARGIN - 28.0;
+    for index in 0..laid_out.len() {
+        cancelled(cancel)?;
+        let full_height = |lines: &[Line]| {
+            lines
+                .iter()
+                .map(|line| line.height() + line.space_before)
+                .sum::<f32>()
+        };
+        let height = full_height(&laid_out[index]);
+        // Keep short paragraphs intact, and keep a heading chain with readable content.
+        let mut required = if height <= 140.0 || blocks[index].style.keep_with_next() {
+            height
+        } else {
+            laid_out[index][0].height() + laid_out[index][0].space_before
+        };
+        if blocks[index].style.keep_with_next() {
+            for next in index + 1..laid_out.len() {
+                if blocks[next].break_before {
+                    break;
+                }
+                let next_height = full_height(&laid_out[next]);
+                required += if next_height <= 140.0 || blocks[next].style.keep_with_next() {
+                    next_height
+                } else {
+                    laid_out[next][0].height() + laid_out[next][0].space_before
+                };
+                if !blocks[next].style.keep_with_next() {
+                    break;
+                }
+            }
+        }
+        if used > 0.0 && (blocks[index].break_before || used + required > available) {
+            pages.push(Vec::new());
+            used = 0.0;
+        }
+        for mut line in std::mem::take(&mut laid_out[index]) {
+            if used == 0.0 {
+                line.space_before = 0.0;
+            }
+            if used + line.space_before + line.height() > available {
+                pages.push(Vec::new());
+                used = 0.0;
+                line.space_before = 0.0;
+            }
+            if pages.len() > MAX_REPORT_PAGES {
+                return Err(invalid("PDF exceeds 250 pages; narrow the filter"));
+            }
+            used += line.space_before + line.height();
+            pages.last_mut().expect("page").push(line);
         }
     }
     pdf.pages().get(0)?.delete()?;
@@ -459,18 +1058,15 @@ pub(crate) fn render(
                 PdfPoints::new(WIDTH),
                 PdfPoints::new(HEIGHT),
             ))?;
-        let mut y = HEIGHT - MARGIN - 13.0;
+        let mut y = HEIGHT - MARGIN - 21.0;
         for line in lines {
             cancelled(cancel)?;
+            y -= line.space_before;
             if !line.text.trim().is_empty() {
-                let size = if line.heading { 13.0 } else { BODY };
+                let size = line.style.size();
                 let mut object =
                     PdfPageTextObject::new(&pdf, &line.text, token, PdfPoints::new(size))?;
-                object.set_fill_color(if line.heading {
-                    PdfColor::new(30, 58, 85, 255)
-                } else {
-                    PdfColor::new(26, 31, 38, 255)
-                })?;
+                object.set_fill_color(line.style.color())?;
                 object.translate(
                     PdfPoints::new(MARGIN + line.indent as f32 * 9.0),
                     PdfPoints::new(y),
@@ -489,13 +1085,7 @@ pub(crate) fn render(
             if let Some((kind, style)) = &line.sample {
                 samples.push((index, y - 10.0, kind.clone(), style.clone()));
             }
-            y -= if line.sample.is_some() {
-                38.0
-            } else if line.heading {
-                22.0
-            } else {
-                13.0
-            };
+            y -= line.height();
         }
         let mut footer = PdfPageTextObject::new(
             &pdf,

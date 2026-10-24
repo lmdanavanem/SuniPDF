@@ -1,73 +1,98 @@
 # Project status
 
-**0.64.0 is published as stable Latest, with source, package and public-download verification complete.**
-Updated 2026-10-24. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.64.0) ·
-[Evidence](qa/RELEASE_0.64.0.json) · [Release scope](RELEASE_0.64.0.md).
+**0.67.0 is published as stable Latest.**
+Updated 2026-10-24. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.67.0) ·
+[Release scope](RELEASE_0.67.0.md) · [Qualification evidence](qa/RELEASE_0.67.0.json).
 
-## Qualification
+## Combined 0.67 scope
 
-Release `422528678` was published at `2026-10-24T05:42:14Z` from
-`71854ef09886c94519775c345de1b45078c9d706` through [PR #41](https://github.com/lmdanavanem/SuniPDF/pull/41).
-Its tree matches the qualified local source. The local suite recorded 994 passed, 0 failed and 15 ignored
-results across 88 suites; formatting, Clippy and desktop/CLI builds passed. The local transfer CLI recorded
-14 commands / 94 independent assertions.
+Source `b920a600e9c53c3a265246c385a58b77d5a7b42e` was merged through
+[PR #43](https://github.com/lmdanavanem/SuniPDF/pull/43). Its tree matches the qualified development source.
+The increment combines reviewed plan links, revision outlines and named rooms/zones.
 
-The exact release source passed all four workflows. Windows recorded 994 passed tests
-and 15 ignored results; Linux recorded 974 passed and 10 ignored per run,
-with no failures. All 1,670 English/French keys matched. Portable upgrades covered
-44 baselines and 4 guards (48 scenarios); MSI lifecycle checks covered
-42 baselines and 210 logs. Ubuntu 22.04/24.04 installation and the pinned conformance corpus passed.
+The frozen Windows development candidate passed formatting, strict Clippy and both builds, with
+1,045 tests passed, no failures and 15 ignored across 94 suites. Both language catalogs contain 1,789 keys.
 
-Eight public assets and checksum sidecars were downloaded anonymously and verified against GitHub digests.
-The downloaded Windows CLI passed 82 process commands and 1,062 assertions with its bundled runtime.
-Its three corpora cover provenance/quantities, plans/forms/volumes and revision transfer. Packaged files,
-test helpers and protected inputs remained unchanged. The DEB's embedded CLI matched both conformance runs;
-that additional payload inspection executed no program. See [machine-readable evidence](qa/RELEASE_0.64.0.json).
+| Independent development corpus | SuniPDF CLI processes | qpdf processes | Total processes | Assertions |
+|---|---:|---:|---:|---:|
+| Plan links | 26 | 4 | 30 | 329 |
+| Revision outlines | 34 | 15 | 49 | 542 |
+| Rooms and zones | 68 | 9 | 77 | 1,670 |
+| Total | 128 | 28 | 156 | 2,541 |
 
-The final development build also passed native English/light and French/dark workflows: natural sorting,
-filtering, grouping, physical-page navigation, explicit matches, both destination previews, four transferred
-annotations over two pages, Save new copy and reopening. Ambiguous/unmatched sheets remained explicit;
-closing a candidate wrote no output, and changing a scratch destination after preview refused save.
-Independent inspection of the saved native output passed 27 assertions with qpdf and pypdf.
+Process totals include qpdf; they are not all SuniPDF CLI invocations. These development results are
+separate from downloaded-package checks and are not added to a later public-runtime total.
 
-These native checks used a development build with an explicitly supplied PDFium runtime. They do not
-establish distributed-GUI execution or local installer qualification. Dirty-tab guards, cancellation races
-and two-anchor alignment retain automated/CLI evidence; they were not repeated in the native run.
-Detailed engine refusals can remain English inside the French interface.
+## Published package qualification
 
-Code scanning has zero open alerts after individual review of two test-only credentials and one false-positive
-PDF identity digest. The original failed aggregate checks are retained in history; scanners remain enabled.
+Exact-source CI, release, Linux and CodeQL workflows passed. Windows recorded 1,045 passed,
+no failures and 15 ignored across 94 suites; Linux recorded 1,026 passed, no failures and 10 ignored
+across 94 suites. The two language catalogs contain 1,789 keys. All 17 checks passed, including the
+15 required checks, with no open code-scanning alerts at qualification time.
 
-## Delivered scope and tracking
+Portable upgrade qualification covered 45 baselines plus four guards. MSI qualification covered
+43 baselines / 215 logs. The exact DEB was installed and checked on Ubuntu 22.04 and 24.04.
+These automated installation results retain the physical-device and native-interaction limits below.
 
-- [Plan sets](PLAN_SETS.md): separate indexed PDFs, stable sheet identities, metadata, confined references,
-  fingerprints, explicit refresh/relink, persistent manifest copies, filtering, grouping, natural sorting and
-  guarded physical-page navigation. AEC-015 is **Done for these stated criteria**; replacement and links are separate cards.
-- [Reviewed annotation transfer](REVISION_TRANSFER.md): explicit revision/page matching, supported native shapes,
-  bounded alignment, destination previews and atomic fresh-copy publication. AEC-016 remains **In progress**
-  for its broader batch scope; excluded semantic records are not silently transferred.
-- [Volumes](MEASUREMENT_VOLUMES.md) and [FDF](FORM_DATA.md) retain their published 0.63 capabilities and limits.
-  AEC-009 remains Done for polygon deductions and constant physical depth.
+All eight public assets were downloaded anonymously and their SHA256 values verified. The downloaded
+Windows x64 package passed six runtime corpora: 238 recorded commands / 3,603 assertions. That total
+consists of 196 SuniPDF CLI, 40 qpdf and two Python/PowerShell validator invocations; it excludes
+subprocesses internal to those two validators. The package remained unchanged and Latest was
+rechecked before and after execution. Draft and public passes cover the same corpora; neither they
+nor the development-corpus totals are added together.
 
-AEC-017 reviewed cross-document links, AEC-014 reviewed revision outlines and AEC-010 named zones
-are development work planned for a combined 0.67 release after qualification. They remain In progress
-and are not included in the 0.64 downloads. The
-[GitHub project](https://github.com/users/lmdanavanem/projects/1), [backlog](AEC_BACKLOG.md) and
-[roadmap](ROADMAP.md) retain broader acceptance criteria; no whole P1/P2 category is closed.
+## Native and performance limits
 
-## Earlier evidence
+Native interaction with the new 0.67 plan-link, revision-outline and zone workflows has **not been
+tested**: the local application-control channel was unavailable. Earlier 0.65 plan-link and 0.66
+revision-outline development checks are historical results for their own binaries; they do not
+qualify these workflows in 0.67. Offscreen UI tests, CLI outputs, source inspection and Ubuntu
+container reader smoke tests do not replace this missing interactive check.
 
-[0.63](RELEASE_0.63.0.md) retains its 963-test local qualification, 68-command / 968-assertion downloaded CLI
-run and separate native plan/FDF/volume evidence. [0.62](RELEASE_0.62.0.md), [0.61](RELEASE_0.61.0.md),
+A paired development-build benchmark compared 0.64 with 0.67 on six whole-CLI-process workloads,
+with one warmup and five measured repetitions per case. Median times increased by 0.5% for document
+information, 5.0% for dense-page rendering, 2.6% for search, 4.0% for the 1,500-row register and 3.4%
+for 300 quantities with eight formulas. Optimization/output decreased by 0.8%. These bounded
+measurements establish no overall speed improvement, GUI responsiveness result or release-package
+performance claim. Rendering and table costs need further profiling without weakening source checks.
+
+## Capability tracking
+
+- [Plan links](PLAN_LINKS.md): one indexed source PDF, up to 32 selected pages and 512 exact searchable
+  references, explicit destination review, guarded relative paths and new-copy output. AEC-017 remains
+  In progress for broader batch processing and remaining qualification.
+- [Revision outlines](REVISION_OUTLINES.md): one explicit old/new page pair, manual or two-point
+  alignment, classified raster proposals and individually reviewed editable outlines. Uncertain,
+  noise-only, filtered and unmapped regions remain explicit. AEC-014 remains In progress.
+- [Rooms and zones](PLAN_ZONES.md): up to 64 rectangular zones per page, eight hierarchy levels,
+  full-bounds annotation assignment and shared quantity/register coverage. No inferred room areas or
+  measurement recalibration. AEC-010 remains In progress.
+- AEC-015 remains Done for indexed plan-set navigation; AEC-009 remains Done for polygon deductions
+  and constant physical depth. AEC-016 retains its broader batch-transfer criteria.
+
+The [GitHub project](https://github.com/users/lmdanavanem/projects/1), [backlog](AEC_BACKLOG.md) and
+[roadmap](ROADMAP.md) retain complete acceptance criteria separately from implemented increments.
+
+## Historical 0.64 qualification
+
+[0.64 release evidence](qa/RELEASE_0.64.0.json) records its own source, four workflows and eight verified
+public assets. Windows recorded 994 passed / 15 ignored; Linux recorded 974 passed / 10 ignored per run.
+The downloaded Windows CLI passed 82 processes / 1,062 assertions. Portable upgrades covered 44
+baselines plus four guards; MSI covered 42 baselines / 210 logs. Its separate native development-build
+plan navigation and transfer checks, including 27 independent saved-output assertions, remain scoped
+to that release. None of those historical counts is a result for 0.67.
+
+[0.63](RELEASE_0.63.0.md), [0.62](RELEASE_0.62.0.md), [0.61](RELEASE_0.61.0.md),
 [0.60](RELEASE_0.60.0.md) and [earlier status history](archive/PROJECT_STATUS_PRE_0.60.md) remain available.
-An earlier bounded benchmark found a 23 ms optimization/output regression; no general UI performance gain is claimed.
 
 ## Remaining gates
 
-Windows packages remain unsigned. Physical ARM64, printers, production code signing, independent
-update authenticity, human accessibility and private-project plans remain unqualified. Ubuntu checks use
-containers and software rendering. Specified synthetic/licensed corpus results do not establish universal
-PDF/A, PDF/UA, external-reader compatibility or survey accuracy. Ignored tests are not passed checks;
-separate runs and earlier failures are not added to the final counts.
+The three related backlog cards remain **In progress**. AEC-017 retains broader multi-source batch
+scope; AEC-014 and AEC-010 retain the remaining native and interoperability qualification. No complete
+P1/P2 category is closed. Packages remain unsigned. ARM64 execution, physical printers, human
+accessibility and private project plans remain unqualified. Container/software-rendering checks do not
+establish physical desktop/GPU coverage. Synthetic and licensed corpus results do not establish
+universal interoperability, survey accuracy or PDF/A/PDF/UA compliance. Ignored tests are not passed
+checks. English is the default interface; detailed engine refusals may remain English in French mode.
 
 See [known issues](KNOWN_ISSUES.md) and [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).

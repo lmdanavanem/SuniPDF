@@ -211,12 +211,37 @@ fn one_model_keeps_selected_rows_prices_formulas_and_all_three_formats_identical
         .unwrap()
         .has(b"ReportFontLicence"));
     assert_eq!(report.page_count(), prepared.page_count());
-    assert!(report.page_count() > 1);
-    let text = (0..report.page_count())
+    let pages = (0..report.page_count())
         .map(|p| report.page_text(p).unwrap())
-        .collect::<String>();
+        .collect::<Vec<_>>();
+    assert!(pages[0].contains("Report summary"));
+    assert!(pages[0].contains("12.50 CHF"));
+    assert!(pages[0].contains("Cost coverage: 1 of 2"));
+    assert!(pages[0].contains("Missing prices are not zero"));
+    assert!(pages[0].contains("Unassigned: 2"));
+    assert!(!pages[0].contains("snapshot_hash_kind"));
+    assert!(!pages[0].contains("formula_arithmetic"));
+    let appendix = pages
+        .iter()
+        .position(|page| page.contains("Technical appendix"))
+        .unwrap();
+    assert!(
+        appendix > 0,
+        "Technical provenance must start after the report content"
+    );
+    assert!(pages[appendix]
+        .trim_start()
+        .starts_with("Technical appendix"));
+    let text = pages.concat();
+    assert!(text.find("Annotation details").unwrap() < text.find("Technical appendix").unwrap());
     assert!(text.contains("Électricité Ω"));
     assert!(text.contains("12.50"));
+    assert!(text.contains("partial subtotal"));
+    assert!(text.contains("Line cost: not available"));
+    assert!(text
+        .split_whitespace()
+        .collect::<String>()
+        .contains(&prepared.model().provenance.snapshot_sha256));
     assert!(text.contains("SuniPDF-count-0"));
     assert!(text.contains("SuniPDF-count-1"));
     assert!(!text.contains("SuniPDF-shape-real"));
@@ -526,11 +551,25 @@ fn original_unicode_fonts_are_embedded_and_unsupported_shaping_is_explicit() {
         "Saved report lost its exact Unicode title: {text:?}"
     );
     assert!(
-        text.contains("Report provenance"),
-        "Legend insertion lost existing report text"
+        text.contains("Report summary"),
+        "The summary must remain selectable on the first page"
+    );
+    assert!(!text.contains("snapshot_hash_kind"));
+    let pages = (0..report.page_count())
+        .map(|page| report.page_text(page).unwrap())
+        .collect::<Vec<_>>();
+    assert!(pages
+        .iter()
+        .skip(1)
+        .any(|page| page.contains("Technical appendix")));
+    assert!(
+        pages.iter().any(
+            |page| page.contains("Declared style sample (1:5)") && page.contains("Appearance:")
+        ),
+        "The real style sample must retain its text and appearance description"
     );
     // A content array can itself be indirect, but its members must be streams.
-    // The first-page legend must not wrap an existing array inside another array.
+    // Legend insertion must not wrap an existing array inside another array.
     let saved = Pdf::load(&out).unwrap();
     for page_id in saved.get_pages().values() {
         let contents = saved
@@ -566,6 +605,177 @@ fn original_unicode_fonts_are_embedded_and_unsupported_shaping_is_explicit() {
     assert!(doc
         .prepare_issue_report(&table, &options, None, &cancel, |_| {})
         .is_err());
+}
+
+#[test]
+fn readable_totals_preserve_currency_precision_errors_and_selected_coverage() {
+    let engine = engine();
+    let cancel = AtomicBool::new(false);
+    let mut doc = engine
+        .open_bytes(fixture(4), None, Path::new("pricing.pdf"))
+        .unwrap();
+    for (index, amount, currency, decimals) in [
+        (0, "0", "CHF", 2),
+        (1, "3.25", "EUR", 2),
+        (2, "2", "CHF", 3),
+    ] {
+        let table = doc.quantity_table().unwrap();
+        let target = table.target(&table.rows()[index]).unwrap();
+        doc.set_quantity_fields(
+            &target,
+            &QuantityFields {
+                unit_price: Some(UnitPrice {
+                    amount: DecimalValue::parse(amount).unwrap(),
+                    currency: currency.into(),
+                    per_unit: QuantityUnit::Each,
+                    rounding_decimals: decimals,
+                }),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+    let table = doc.quantity_table().unwrap();
+    let mut options = IssueReportOptions::default();
+    options.quantities.filter.kind = "Stamp".into();
+    options.quantities.formulas = sunipdf_core::quantity_table::QuantityOptions::formulas_from_json(
+        br#"[{"name":"Zero allowance","expression":"0","quantity_unit":null,"rounding_decimals":2},{"name":"Unavailable allowance","expression":"[Missing]","quantity_unit":null,"rounding_decimals":2}]"#
+    ).unwrap();
+    let prepared = doc
+        .prepare_issue_report(&table, &options, None, &cancel, |_| {})
+        .unwrap();
+    assert_eq!(
+        prepared.model().quantities["zone_coverage"]["counts"]["unassigned"],
+        5
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("totals.pdf");
+    doc.publish_issue_report(&prepared, IssueReportFormat::Pdf, &path, &cancel)
+        .unwrap();
+    let report = engine.open(&path, None).unwrap();
+    let pages = (0..report.page_count())
+        .map(|page| report.page_text(page).unwrap())
+        .collect::<Vec<_>>();
+    let text = pages
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(pages[0].contains("Cost coverage: 3 of 4"));
+    assert!(pages[0].contains("Unassigned: 4"));
+    assert!(!pages[0].contains("Unassigned: 5"));
+    assert!(text.contains("0.00 CHF (2 decimal places)"));
+    assert!(text.contains("3.25 EUR (2 decimal places)"));
+    assert!(text.contains("EUR per each (2 decimal places)"));
+    assert!(text.contains("2.000 CHF (3 decimal places)"));
+    assert!(text.contains("Total: 0.00 dimensionless"));
+    assert!(text.contains("Total: not available; no successful calculation"));
+    assert!(text.contains("Missing field: 4 annotations"));
+    assert!(text.contains("Unavailable allowance: not available (Missing field)"));
+    assert!(text.contains("source page/reply scope before the remaining annotation filters"));
+    for index in 0..4 {
+        assert!(text.contains(&format!("SuniPDF-count-{index}")));
+    }
+    assert!(!text.contains("SuniPDF-shape-real"));
+}
+
+#[test]
+fn long_cjk_comments_continue_without_losing_selected_text_or_heading_context() {
+    let engine = engine();
+    let cancel = AtomicBool::new(false);
+    let mut source = Pdf::load_mem(&fixture(1)).unwrap();
+    let page = source.get_pages()[&1];
+    let annotation = source
+        .get_dictionary(page)
+        .unwrap()
+        .get(b"Annots")
+        .unwrap()
+        .as_array()
+        .unwrap()[0]
+        .as_reference()
+        .unwrap();
+    let comment = (0..90)
+        .map(|index| format!("SEG{index:03} 検査対象配管と設備の確認を行います。 "))
+        .collect::<String>();
+    source
+        .get_dictionary_mut(annotation)
+        .unwrap()
+        .set("Contents", lopdf::text_string(&comment));
+    let mut bytes = Vec::new();
+    source.save_to(&mut bytes).unwrap();
+    let doc = engine
+        .open_bytes(bytes, None, Path::new("long.pdf"))
+        .unwrap();
+    let mut options = IssueReportOptions {
+        title: "検査報告".into(),
+        ..Default::default()
+    };
+    options.quantities.filter.kind = "Stamp".into();
+    let prepared = doc
+        .prepare_issue_report(
+            &doc.quantity_table().unwrap(),
+            &options,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("long.pdf");
+    doc.publish_issue_report(&prepared, IssueReportFormat::Pdf, &path, &cancel)
+        .unwrap();
+    let report = engine.open(&path, None).unwrap();
+    let pages = (0..report.page_count())
+        .map(|page| {
+            report
+                .page_text(page)
+                .unwrap()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .collect::<Vec<_>>();
+    let compact = pages
+        .iter()
+        .enumerate()
+        .map(|(index, page)| {
+            page.split_whitespace()
+                .collect::<String>()
+                .replace(&format!("SuniPDF|Page{}/{}", index + 1, pages.len()), "")
+        })
+        .collect::<String>();
+    assert!(
+        compact.contains(&comment.split_whitespace().collect::<String>()),
+        "All comment characters must survive wrapping and page boundaries in their original order"
+    );
+    let first_comment_page = pages
+        .iter()
+        .position(|page| page.contains("SEG000"))
+        .unwrap();
+    let last_comment_page = pages
+        .iter()
+        .position(|page| page.contains("SEG089"))
+        .unwrap();
+    assert!(
+        first_comment_page < last_comment_page,
+        "Long comments must flow onto subsequent pages"
+    );
+    let annotation_page = pages
+        .iter()
+        .find(|page| page.contains("Page 1 | Annotation 0 | Stamp"))
+        .unwrap();
+    assert!(
+        annotation_page.contains("Subject: Not set"),
+        "The annotation heading must stay with its first detail"
+    );
+    assert!(pages[0].contains("Report summary"));
+    assert!(
+        pages
+            .iter()
+            .position(|page| page.contains("Technical appendix"))
+            .unwrap()
+            > last_comment_page
+    );
 }
 
 #[test]
