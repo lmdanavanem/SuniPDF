@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Validate the installed .deb in a clean Ubuntu container, including its native UI."""
 import argparse
+import csv
 import hashlib
+import io
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -140,7 +143,11 @@ def gui(evidence, source):
                     break
             assert success, "Native screenshot did not contain the fixture's PDF text and blue rectangle"
             window = command(["xdotool", "search", "--onlyvisible", "--pid", app.pid]).splitlines()[-1]
-            return window_controls(app, window, evidence)
+            themes = theme_settings(app, window, evidence)
+            controls = window_controls(app, window, evidence)
+            app = subprocess.Popen(["/usr/bin/sunipdf", str(source)], stdout=log, stderr=subprocess.STDOUT)
+            restart_theme(app, evidence)
+            return themes + controls + ["native-theme-persists-after-restart"]
         finally:
             if app.poll() is None:
                 app.terminate()
@@ -151,6 +158,168 @@ def gui(evidence, source):
                     app.wait()
             manager.terminate()
             manager.wait(timeout=10)
+
+
+def theme_label_center(tsv, label, image_size):
+    """Find one visible label in real OCR output; reject ambiguous/outside targets."""
+    groups = {}
+    for row in csv.DictReader(io.StringIO(tsv), delimiter="\t"):
+        if row.get("level") != "5" or not row.get("text", "").strip():
+            continue
+        key = tuple(row.get(name) for name in ("page_num", "block_num", "par_num", "line_num"))
+        groups.setdefault(key, []).append(row)
+    wanted = label.casefold().split()
+    found = []
+    for rows in groups.values():
+        words = [row["text"].strip(".,:;[]()").casefold() for row in rows]
+        if wanted in (["light"], ["dark"], ["system"]) and not all(
+                word in {"light", "dark", "system"} for word in words):
+            # Color choices may share one OCR line. Their explanatory sentence
+            # also contains light/dark and must never become a click target.
+            continue
+        for start in range(len(words) - len(wanted) + 1):
+            if words[start:start + len(wanted)] != wanted:
+                continue
+            match = rows[start:start + len(wanted)]
+            left = min(int(row["left"]) for row in match)
+            top = min(int(row["top"]) for row in match)
+            right = max(int(row["left"]) + int(row["width"]) for row in match)
+            bottom = max(int(row["top"]) + int(row["height"]) for row in match)
+            if not (0 <= left < right <= image_size[0] and 0 <= top < bottom <= image_size[1]):
+                raise AssertionError("Theme label escaped the captured window")
+            found.append(((left + right) // 2, (top + bottom) // 2))
+    if len(found) != 1:
+        raise AssertionError(f"Expected one visible theme label {label!r}, found {len(found)}")
+    return found[0]
+
+
+def theme_settings(app, window, evidence):
+    """Exercise the installed UI, save real choices, then retain Glass dark for restart."""
+    from PIL import Image
+    settings_path = HOME / ".config/sunipdf/settings.json"
+    records = []
+
+    def wait_for(description, predicate):
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            assert app.poll() is None, "Desktop exited during " + description
+            result = predicate()
+            if result:
+                return result
+            time.sleep(0.2)
+        raise AssertionError("Theme settings timed out: " + description)
+
+    def stored():
+        try:
+            return json.loads(settings_path.read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def capture(name):
+        path = evidence / (name + ".png")
+        command(["import", "-window", window, path], timeout=15)
+        return path
+
+    def click_label(label):
+        path = capture("native-theme-target")
+        tsv = command(["tesseract", path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=30)
+        with Image.open(path) as image:
+            x, y = theme_label_center(tsv, label, image.size)
+        command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
+
+    def require_choice(style, mode, reduced):
+        def matches():
+            value = stored()
+            return (value.get("theme_style") == style and value.get("theme_mode") == mode
+                    and value.get("reduce_transparency") is reduced)
+        wait_for(f"persist {style}/{mode}/reduced={reduced}", matches)
+        time.sleep(0.3)
+
+    def record(name, dark):
+        path = capture(name)
+        with Image.open(path) as image:
+            sample = image.convert("RGB").crop((image.width // 2, 16, image.width // 2 + 8, 24))
+            brightness = sum(sum(pixel) / 3 for pixel in sample.getdata()) / 64
+        # The modal scrim also covers the title strip; its lighter appearance
+        # remains distinctly brighter than the dark material after compositing.
+        assert (brightness < 80 if dark else brightness > 100), (name, brightness)
+        records.append({"scene": name, "dark": dark, "titleBarBrightness": brightness,
+                        "pngSha256": sha(path), "settingsSha256": sha(settings_path)})
+
+    command(["xdotool", "windowactivate", "--sync", window, "key", "--clearmodifiers", "ctrl+k"])
+    time.sleep(0.3)
+    command(["xdotool", "type", "--clearmodifiers", "--delay", 45, "Theme settings"])
+    command(["xdotool", "key", "--clearmodifiers", "Return"])
+    time.sleep(0.5)
+    click_label("Liquid Glass")
+    require_choice("liquid_glass", "light", False)
+    record("native-theme-glass-light", False)
+    click_label("Dark")
+    require_choice("liquid_glass", "dark", False)
+    record("native-theme-glass-dark", True)
+    click_label("Reduce transparency")
+    require_choice("liquid_glass", "dark", True)
+    record("native-theme-glass-dark-reduced", True)
+    click_label("System")
+    wait_for("persist system mode", lambda: stored().get("theme_mode") == "system")
+    click_label("Light")
+    require_choice("liquid_glass", "light", True)
+    click_label("Classic")
+    require_choice("classic", "light", True)
+    record("native-theme-classic-light", False)
+    click_label("Liquid Glass")
+    click_label("Dark")
+    require_choice("liquid_glass", "dark", True)
+    command(["xdotool", "key", "--clearmodifiers", "Escape"])
+    time.sleep(0.3)
+    assert "*" not in command(["xdotool", "getwindowname", window]), "Appearance changes dirtied the PDF"
+    (evidence / "native-theme-settings.json").write_text(json.dumps({
+        "schema": 1, "status": "passed", "session": "X11 / Openbox / Xvfb",
+        "entry": "Ctrl+K, Theme settings", "savedChoicesVerified": True,
+        "systemSelectionVerified": True, "systemAppearanceChangeSimulated": False,
+        "pdfUnchanged": True, "scenes": records,
+    }, indent=2) + "\n")
+    return ["native-theme-classic-and-glass-live-switch", "native-theme-light-dark-and-system-selection",
+            "native-theme-reduced-transparency-and-modal-escape"]
+
+
+def restart_theme(app, evidence):
+    from PIL import Image
+    deadline = time.monotonic() + 45
+    path = evidence / "native-theme-restarted.png"
+    while time.monotonic() < deadline:
+        assert app.poll() is None, "Desktop exited while checking saved appearance"
+        found = subprocess.run(["xdotool", "search", "--onlyvisible", "--pid", str(app.pid)],
+                               text=True, capture_output=True, timeout=10)
+        if not found.stdout.strip():
+            time.sleep(0.3)
+            continue
+        window = found.stdout.splitlines()[-1]
+        if "/usr/lib/sunipdf/libpdfium.so" not in Path(f"/proc/{app.pid}/maps").read_text():
+            time.sleep(0.3)
+            continue
+        command(["import", "-window", window, path], timeout=15)
+        with Image.open(path) as image:
+            if image.width < 200 or image.height < 100:
+                continue
+            blue = blue_fixture_mask(image.convert("RGB").getdata())[1]
+            brightness = sum(sum(pixel) / 3 for pixel in image.convert("RGB").crop(
+                (image.width // 2, 16, image.width // 2 + 8, 24)).getdata()) / 64
+            width = image.width
+        if blue <= 20 or brightness >= 100:
+            time.sleep(0.3)
+            continue
+        saved = json.loads((HOME / ".config/sunipdf/settings.json").read_text())
+        assert saved["theme_style"] == "liquid_glass" and saved["theme_mode"] == "dark" and saved["reduce_transparency"]
+        command(["xdotool", "mousemove", "--window", window, width - 30, 26, "click", "1"])
+        assert app.wait(timeout=25) == 0
+        (evidence / "native-theme-restart.json").write_text(json.dumps({
+            "status": "passed", "style": "liquid_glass", "mode": "dark", "reduceTransparency": True,
+            "privatePdfiumLoaded": True, "blueFixturePixels": blue, "titleBarBrightness": brightness,
+            "screenshotSha256": sha(path), "cleanExit": True,
+        }, indent=2) + "\n")
+        return
+    raise AssertionError("Restart did not restore the saved dark Glass appearance with the PDF visible")
 
 
 def window_controls(app, window, evidence):
@@ -321,6 +490,12 @@ def lifecycle(package, evidence, identity):
     command(["runuser", "-u", ACCOUNT, "--", *environment, "dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96", "python3", __file__, "--runtime", "--version", version, "--evidence", evidence], timeout=600)
     runtime_proof = json.loads((evidence / "runtime.json").read_text())
     protected = {Path(runtime_proof["source"]): runtime_proof["sourceSha256"], Path(runtime_proof["settings"]): runtime_proof["settingsSha256"]}
+    update_spec = importlib.util.spec_from_file_location("installed_update_qualification", ROOT / "scripts/test-linux-update-installed.py")
+    update_qualification = importlib.util.module_from_spec(update_spec)
+    update_spec.loader.exec_module(update_qualification)
+    update_proof = update_qualification.verify_updates(package, evidence, source_sha, protected)
+    assert update_proof["status"] == "passed" and update_proof["candidateRestored"]
+    assert verify_installed_inventory() == payload_count
     command(["apt-get", "remove", "-y", "sunipdf"], timeout=120)
     assert not Path("/usr/bin/sunipdf").exists()
     assert all(path.is_file() and sha(path) == value for path, value in protected.items())
@@ -334,10 +509,16 @@ def lifecycle(package, evidence, identity):
               "checks": {"install": True, "cli": True, "pdf_render_save_reopen": True,
                          "ocr_en": True, "ocr_fr": True, "native_gui_pdf_visible": True,
                          "native_x11_window_controls": True, "native_close_unsaved_guard": True,
+                         "native_theme_settings": True, "native_theme_restart_persistence": True,
+                         "verified_public_deb_upgrade": True, "update_refusal_guards": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",
               "installedPayloadFiles": payload_count, "elfDependencies": elf,
               "normalUserExecution": True, "runtimeCases": runtime_proof["cases"]}
+    report["installedUpdateEvidence"] = {"file": "linux-update-installed.json",
+                                        "sha256": sha(evidence / "linux-update-installed.json"),
+                                        "polkitAuthenticationTested": False,
+                                        "desktopUpdaterInteractionTested": False}
     (evidence / "test-deb.json").write_text(json.dumps(report, indent=2) + "\n")
 
 

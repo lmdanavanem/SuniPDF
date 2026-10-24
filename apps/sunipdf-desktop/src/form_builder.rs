@@ -182,8 +182,7 @@ impl FormBuilderState {
             let pt = |x: f32, y: f32| page_rect.min + egui::vec2(x * k, (h - y) * k);
             let rect =
                 egui::Rect::from_two_pos(pt(rect.left, rect.top), pt(rect.right, rect.bottom));
-            let color =
-                crate::theme::palette(painter.ctx().global_style().visuals.dark_mode).accent;
+            let color = crate::theme::palette_for(painter.ctx()).accent;
             painter.rect_filled(rect, 0.0, color.gamma_multiply(0.12));
             painter.rect_stroke(
                 rect,

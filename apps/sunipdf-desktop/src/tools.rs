@@ -365,7 +365,7 @@ impl SuniApp {
             return;
         };
         let lang = self.lang();
-        let muted = crate::theme::palette(self.settings.dark_theme).text_muted;
+        let muted = crate::theme::palette_for(ctx).text_muted;
         let current_page = self.document.as_ref().map(|d| d.page);
         let mut submit = false;
         let mut cancel = false;
@@ -632,7 +632,7 @@ impl SuniApp {
                         ui.label(tr(lang, "stamp.opacity"));
                         ui.scope(|ui| {
                             // Rail visible : le fond « inactif » du thème est la couleur de surface.
-                            let border = crate::theme::palette(ui.visuals().dark_mode).border;
+                            let border = crate::theme::palette_for(ui.ctx()).border;
                             ui.visuals_mut().widgets.inactive.bg_fill = border;
                             ui.spacing_mut().slider_width = 140.0;
                             ui.add(
@@ -923,7 +923,7 @@ impl SuniApp {
                         "tools.split.parts",
                         &[("count", &parts.to_string())],
                     ))
-                    .color(crate::theme::palette(ui.visuals().dark_mode).text_muted),
+                    .color(crate::theme::palette_for(ui.ctx()).text_muted),
                 );
             },
             |ui| {

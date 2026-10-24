@@ -1,6 +1,36 @@
 //! Design system SuniPDF : jetons de couleur, visuels et espacements egui.
 
 use egui::{Color32, CornerRadius, Stroke, Visuals};
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Style {
+    #[default]
+    Classic,
+    LiquidGlass,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Mode {
+    System,
+    #[default]
+    Light,
+    Dark,
+}
+
+/// Appearance state belongs to an egui context, not a process-wide global.
+pub fn appearance(ctx: &egui::Context) -> (Style, bool) {
+    ctx.data(|data| {
+        data.get_temp::<(Style, bool)>(egui::Id::unique("sunipdf-appearance"))
+            .unwrap_or((Style::Classic, false))
+    })
+}
+
+pub fn palette_for(ctx: &egui::Context) -> Palette {
+    palette_for_style(ctx.global_style().visuals.dark_mode, appearance(ctx).0)
+}
 
 pub const BLUE: Color32 = Color32::from_rgb(0x25, 0x63, 0xEB);
 pub const ERROR: Color32 = Color32::from_rgb(0xDC, 0x26, 0x26);
@@ -77,24 +107,83 @@ pub fn palette(dark: bool) -> Palette {
     }
 }
 
+pub fn palette_for_style(dark: bool, style: Style) -> Palette {
+    if style == Style::Classic {
+        return palette(dark);
+    }
+    if dark {
+        Palette {
+            chrome: Color32::from_rgb(0x18, 0x29, 0x3D),
+            surface: Color32::from_rgb(0x21, 0x35, 0x4B),
+            border: Color32::from_rgb(0x4B, 0x62, 0x7C),
+            text: Color32::from_rgb(0xF3, 0xF8, 0xFF),
+            text_muted: Color32::from_rgb(0xB2, 0xC3, 0xD7),
+            canvas: Color32::from_rgb(0x10, 0x1C, 0x2B),
+            accent: Color32::from_rgb(0x85, 0xBA, 0xFF),
+            hover: Color32::from_rgb(0x2E, 0x42, 0x5A),
+            accent_fill: Color32::from_rgb(0x1D, 0x5F, 0xD3),
+            accent_soft: Color32::from_rgb(0x30, 0x48, 0x66),
+            focus: Color32::from_rgb(0x85, 0xBA, 0xFF),
+            error: Color32::from_rgb(0xFF, 0xB4, 0xBB),
+        }
+    } else {
+        Palette {
+            chrome: Color32::from_rgb(0xEC, 0xF3, 0xFA),
+            surface: Color32::from_rgb(0xF7, 0xFA, 0xFD),
+            border: Color32::from_rgb(0xBC, 0xCC, 0xDF),
+            text: Color32::from_rgb(0x12, 0x20, 0x33),
+            text_muted: Color32::from_rgb(0x52, 0x64, 0x7A),
+            canvas: Color32::from_rgb(0xDC, 0xE6, 0xF0),
+            accent: Color32::from_rgb(0x1D, 0x5F, 0xD3),
+            hover: Color32::from_rgb(0xE3, 0xED, 0xF9),
+            accent_fill: Color32::from_rgb(0x1D, 0x5F, 0xD3),
+            accent_soft: Color32::from_rgb(0xD9, 0xE7, 0xFB),
+            focus: Color32::from_rgb(0x1D, 0x5F, 0xD3),
+            error: Color32::from_rgb(0xC5, 0x26, 0x39),
+        }
+    }
+}
+
+#[cfg(test)]
 pub fn apply(ctx: &egui::Context, dark: bool) {
-    let p = palette(dark);
+    apply_appearance(ctx, dark, Style::Classic, false);
+}
+
+pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_transparency: bool) {
+    ctx.data_mut(|data| {
+        data.insert_temp(
+            egui::Id::unique("sunipdf-appearance"),
+            (style, reduce_transparency),
+        );
+    });
+    // set_visuals edits the currently selected style slot.
+    ctx.set_theme(if dark {
+        egui::Theme::Dark
+    } else {
+        egui::Theme::Light
+    });
+    let p = palette_for_style(dark, style);
+    let glass = style == Style::LiquidGlass;
     let mut v = if dark {
         Visuals::dark()
     } else {
         Visuals::light()
     };
-    let r = CornerRadius::same(6);
+    let r = CornerRadius::same(if glass { 14 } else { 6 });
     v.panel_fill = p.chrome;
     v.window_fill = p.surface;
     v.extreme_bg_color = p.surface;
     v.faint_bg_color = p.hover;
     v.override_text_color = Some(p.text);
     v.hyperlink_color = p.accent;
-    v.selection.bg_fill = p.accent.gamma_multiply(if dark { 0.5 } else { 0.25 });
+    v.selection.bg_fill = if glass {
+        p.accent_soft
+    } else {
+        p.accent.gamma_multiply(if dark { 0.5 } else { 0.25 })
+    };
     v.selection.stroke = Stroke::new(1.0, p.accent);
     v.window_stroke = Stroke::new(1.0, p.border);
-    v.window_corner_radius = CornerRadius::same(10);
+    v.window_corner_radius = CornerRadius::same(if glass { 18 } else { 10 });
     v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, p.border);
     v.widgets.noninteractive.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.inactive.bg_fill = p.surface;
@@ -111,6 +200,7 @@ pub fn apply(ctx: &egui::Context, dark: bool) {
     v.widgets.active.weak_bg_fill = p.accent_soft;
     v.widgets.active.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.open.bg_fill = p.hover;
+    v.widgets.open.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.open.weak_bg_fill = p.hover;
     for w in [
         &mut v.widgets.noninteractive,
@@ -123,7 +213,7 @@ pub fn apply(ctx: &egui::Context, dark: bool) {
         // Pas de « saut » de taille au survol.
         w.expansion = 0.0;
     }
-    v.menu_corner_radius = CornerRadius::same(8);
+    v.menu_corner_radius = CornerRadius::same(if glass { 14 } else { 8 });
     v.interact_cursor = Some(egui::CursorIcon::PointingHand);
     v.popup_shadow = egui::epaint::Shadow {
         offset: [0, 4],
@@ -175,15 +265,126 @@ pub fn square_boxes(ui: &mut egui::Ui) {
     }
 }
 
-/// Fond de la zone document (gris neutre, distinct de la page blanche).
-pub fn canvas_bg(dark: bool) -> Color32 {
-    palette(dark).canvas
+/// Chrome geometry remains explicit at the call site so theming cannot hide controls.
+pub fn panel_frame(ctx: &egui::Context) -> egui::Frame {
+    let p = palette_for(ctx);
+    if appearance(ctx).0 == Style::Classic {
+        return egui::Frame::new().fill(p.chrome);
+    }
+    egui::Frame::new()
+        .fill(p.chrome)
+        .stroke(Stroke::new(1.0, p.border))
+        .corner_radius(14)
+}
+
+/// The opaque base keeps underlying document content out of text and controls.
+pub fn material_frame(ctx: &egui::Context) -> egui::Frame {
+    let p = palette_for(ctx);
+    let glass = appearance(ctx).0 == Style::LiquidGlass;
+    let mut frame = egui::Frame::new()
+        .fill(p.surface)
+        .stroke(Stroke::new(1.0, p.border))
+        .corner_radius(if glass { 18 } else { 12 });
+    if glass {
+        frame = frame.shadow(egui::epaint::Shadow {
+            offset: [0, 5],
+            blur: 14,
+            spread: 0,
+            color: Color32::from_black_alpha(if ctx.global_style().visuals.dark_mode {
+                70
+            } else {
+                24
+            }),
+        });
+    }
+    frame
+}
+
+/// Paint before a surface's contents. A fixed mesh and inner rim provide a subtle reflection;
+/// no framebuffer readback, live blur or continuously scheduled repaint is required.
+pub fn paint_material(ui: &egui::Ui, rect: egui::Rect, radius: u8) {
+    let shapes = material_shapes(ui, rect, radius);
+    if shapes.is_empty() {
+        return;
+    }
+    let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
+    painter.add(egui::Shape::Vec(shapes));
+}
+
+/// Reserve the paint order first, then measure actual content without another layout pass.
+pub fn material_scope<R>(
+    ui: &mut egui::Ui,
+    radius: u8,
+    contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    if appearance(ui.ctx()) != (Style::LiquidGlass, false) {
+        return contents(ui);
+    }
+    let painter = ui.painter().clone();
+    let slot = painter.add(egui::Shape::Noop);
+    let result = contents(ui);
+    painter.set(
+        slot,
+        egui::Shape::Vec(material_shapes(ui, ui.min_rect(), radius)),
+    );
+    result
+}
+
+fn material_shapes(ui: &egui::Ui, rect: egui::Rect, radius: u8) -> Vec<egui::Shape> {
+    let (style, reduce_transparency) = appearance(ui.ctx());
+    if style != Style::LiquidGlass
+        || reduce_transparency
+        || !rect.is_positive()
+        || !rect.is_finite()
+    {
+        return Vec::new();
+    }
+    let dark = ui.visuals().dark_mode;
+    let mut shapes = Vec::with_capacity(2);
+    let inset = f32::from(radius).min(rect.width() * 0.25).max(1.0);
+    let top = rect.top() + 1.0;
+    let bottom = (top + 48.0).min(rect.bottom() - 1.0);
+    if bottom > top && rect.width() > inset * 2.0 {
+        let reflection = egui::Rect::from_min_max(
+            egui::pos2(rect.left() + inset, top),
+            egui::pos2(rect.right() - inset, bottom),
+        );
+        let mut mesh = egui::Mesh::default();
+        let bright = Color32::from_white_alpha(if dark { 12 } else { 90 });
+        for (pos, color) in [
+            (reflection.left_top(), bright),
+            (reflection.right_top(), bright),
+            (reflection.left_bottom(), Color32::TRANSPARENT),
+            (reflection.right_bottom(), Color32::TRANSPARENT),
+        ] {
+            mesh.colored_vertex(pos, color);
+        }
+        mesh.add_triangle(0, 1, 2);
+        mesh.add_triangle(2, 1, 3);
+        shapes.push(egui::Shape::mesh(mesh));
+    }
+    shapes.push(egui::Shape::rect_stroke(
+        rect.shrink(1.5),
+        radius.saturating_sub(1),
+        Stroke::new(1.0, Color32::from_white_alpha(if dark { 24 } else { 150 })),
+        egui::StrokeKind::Inside,
+    ));
+    shapes
 }
 
 /// Glyphe d'outil sur sa pastille : couleur brute assombrie (clair) ou éclaircie (sombre) de 35 %,
 /// pour un contraste d'au moins 3,5:1 sur `badge_fill` (testé dans `workspace.rs`).
 pub fn glyph_color(base: Color32, dark: bool) -> Color32 {
     base.lerp_to_gamma(if dark { Color32::WHITE } else { Color32::BLACK }, 0.35)
+}
+
+pub fn glyph_color_for(ctx: &egui::Context, base: Color32) -> Color32 {
+    let dark = ctx.global_style().visuals.dark_mode;
+    if dark && appearance(ctx).0 == Style::LiquidGlass {
+        base.lerp_to_gamma(Color32::WHITE, 0.43)
+    } else {
+        glyph_color(base, dark)
+    }
 }
 
 /// Pastille teintée d'un outil (13 % en clair, 32 % en sombre).
@@ -278,12 +479,20 @@ mod tests {
     }
 
     #[test]
-    fn strong_labels_and_active_controls_paint_readable_text_in_both_languages_and_themes() {
+    fn strong_labels_and_active_controls_paint_readable_text_in_both_languages_and_styles() {
         for language in Language::ALL {
-            for dark in [false, true] {
+            for (dark, style, reduced) in [false, true].into_iter().flat_map(|dark| {
+                [Style::Classic, Style::LiquidGlass]
+                    .into_iter()
+                    .flat_map(move |style| {
+                        [false, true]
+                            .into_iter()
+                            .map(move |reduced| (dark, style, reduced))
+                    })
+            }) {
                 let ctx = egui::Context::default();
-                apply(&ctx, dark);
-                let palette = palette(dark);
+                apply_appearance(&ctx, dark, style, reduced);
+                let palette = palette_for(&ctx);
                 let strong = tr(language, "measure.rectangle.title");
                 let rich = tr(language, "measure.precision");
                 let heading = tr(language, "measure.panel.saved");
@@ -361,5 +570,99 @@ mod tests {
                 }
             }
         }
+    }
+    #[test]
+    fn glass_text_retains_contrast_on_material_states_and_reflections() {
+        for dark in [false, true] {
+            let p = palette_for_style(dark, Style::LiquidGlass);
+            for base in [p.chrome, p.surface, p.hover, p.accent_soft] {
+                // The reflection is brightest at its top; every other point is less intense.
+                let amount = if dark { 12.0 / 255.0 } else { 90.0 / 255.0 };
+                let highlighted = base.lerp_to_gamma(Color32::WHITE, amount);
+                for background in [base, highlighted] {
+                    for foreground in [p.text, p.text_muted, p.error] {
+                        assert!(contrast(foreground, background) >= 4.5,
+                            "unreadable material label: dark={dark}, {foreground:?} on {background:?}");
+                    }
+                }
+            }
+            assert!(contrast(Color32::WHITE, p.accent_fill) >= 4.5);
+            assert!(contrast(p.focus, p.chrome) >= 3.0);
+        }
+    }
+
+    #[test]
+    fn appearance_switching_keeps_contexts_independent_and_uses_the_resolved_mode() {
+        let first = egui::Context::default();
+        let second = egui::Context::default();
+        apply_appearance(&first, true, Style::LiquidGlass, false);
+        apply_appearance(&second, false, Style::Classic, false);
+        assert!(first.global_style().visuals.dark_mode);
+        assert!(!second.global_style().visuals.dark_mode);
+        assert_eq!(appearance(&first), (Style::LiquidGlass, false));
+        assert_eq!(appearance(&second), (Style::Classic, false));
+        let original = palette(false);
+        assert_eq!(palette_for(&second).chrome, original.chrome);
+        assert_eq!(palette_for(&second).surface, original.surface);
+        apply_appearance(&first, false, Style::LiquidGlass, true);
+        assert!(!first.global_style().visuals.dark_mode);
+        assert_eq!(appearance(&first), (Style::LiquidGlass, true));
+        assert_eq!(appearance(&second), (Style::Classic, false));
+    }
+
+    #[test]
+    fn reduced_material_removes_reflections_without_changing_layout_or_text() {
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(900.0, 650.0))),
+            ..Default::default()
+        };
+        let mut heights = Vec::new();
+        for reduced in [false, true] {
+            let ctx = egui::Context::default();
+            apply_appearance(&ctx, true, Style::LiquidGlass, reduced);
+            let mut bounds = Rect::NOTHING;
+            let mut output = ctx.run_ui(input.clone(), |ui| {
+                let response = egui::Frame::new().show(ui, |ui| {
+                    material_scope(ui, 14, |ui| {
+                        ui.label("Theme preview");
+                        ui.button("Example action").rect
+                    })
+                });
+                bounds = response.response.rect;
+            });
+            let materials: Vec<_> = output
+                .shapes
+                .iter()
+                .filter_map(|shape| match &shape.shape {
+                    Shape::Vec(shapes)
+                        if shapes.iter().any(|shape| matches!(shape, Shape::Mesh(_))) =>
+                    {
+                        Some(shapes)
+                    }
+                    _ => None,
+                })
+                .collect();
+            if reduced {
+                assert!(materials.is_empty());
+            } else {
+                assert_eq!(materials.len(), 1);
+                for shape in materials[0] {
+                    assert!(bounds.contains_rect(shape.visual_bounding_rect()));
+                }
+            }
+            assert!(
+                bounds.height() < 100.0,
+                "material scope must not reserve the whole viewport"
+            );
+            assert_painted(
+                &output,
+                "Theme preview",
+                palette_for(&ctx).text,
+                &[palette_for(&ctx).surface],
+            );
+            heights.push(bounds.height());
+            output.textures_delta.clear();
+        }
+        assert_eq!(heights[0], heights[1]);
     }
 }

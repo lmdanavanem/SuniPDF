@@ -730,7 +730,7 @@ impl SuniApp {
             .measure
             .page()
             .or_else(|| self.document.as_ref().map(|d| d.page));
-        let palette = crate::theme::palette(self.settings.dark_theme);
+        let palette = crate::theme::palette_for(ctx);
         let mut finish = false;
         let mut capture_calibration = None;
         ui.scope(|ui| {

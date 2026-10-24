@@ -455,7 +455,7 @@ impl SuniApp {
         }
         let info = self.forms.info.as_ref()?;
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ui.ctx());
         let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
         let clip = ui.clip_rect();
         let mut hit = None;
@@ -1038,7 +1038,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         let (mut fill, mut dismiss) = (false, false);
         Frame::new()
@@ -1073,7 +1073,7 @@ impl SuniApp {
     /// Panneau « Champs du formulaire » : un contrôle accessible par champ.
     pub fn forms_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         let Some(doc) = &self.document else { return };
         let (current_page, form_kind) = (doc.page, doc.info.form);
@@ -1111,7 +1111,7 @@ impl SuniApp {
         });
         ui.separator();
         let banner = |ui: &mut egui::Ui, key: &str| {
-            let (bg, fg) = if p.text == theme::palette(true).text {
+            let (bg, fg) = if ui.visuals().dark_mode {
                 (
                     Color32::from_rgb(0x45, 0x30, 0x0E),
                     Color32::from_rgb(0xFC, 0xD3, 0x4D),

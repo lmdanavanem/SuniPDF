@@ -24,6 +24,23 @@ installed = load("test-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_theme_label_targets_require_unique_complete_visible_text(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        first = "5\t1\t1\t1\t1\t1\t20\t30\t40\t14\t95\tLiquid\n"
+        second = "5\t1\t1\t1\t1\t2\t65\t30\t30\t14\t95\tGlass\n"
+        text = header + first + second
+        self.assertEqual(installed.theme_label_center(text, "Liquid Glass", (120, 80)), (57, 37))
+        dark = first.replace("Liquid", "Dark")
+        description = (first.replace("\t1\t1\t1\t1\t1\t", "\t1\t2\t1\t1\t1\t").replace("Liquid", "Follow")
+                       + second.replace("\t1\t1\t1\t1\t2\t", "\t1\t2\t1\t1\t2\t").replace("Glass", "dark"))
+        self.assertEqual(installed.theme_label_center(header + dark + description, "Dark", (120, 80)), (40, 37))
+        for bad, bounds in ((header + first, (120, 80)), (text, (80, 80)),
+                            (text + first.replace("\t1\t1\t1\t1\t1\t", "\t1\t2\t1\t1\t1\t")
+                             + second.replace("\t1\t1\t1\t1\t2\t", "\t1\t2\t1\t1\t2\t"), (120, 80))):
+            with self.subTest(bounds=bounds, text=bad):
+                with self.assertRaises(AssertionError):
+                    installed.theme_label_center(bad, "Liquid Glass", bounds)
+
     def test_native_fixture_mask_excludes_dark_ui_text_and_non_blue_pixels(self):
         pixels = [(0, 0, 255), (30, 40, 220), (0, 0, 0), (40, 50, 60),
                   (255, 255, 255), (255, 0, 0), (70, 0, 255), (0, 70, 255), (0, 0, 180)]

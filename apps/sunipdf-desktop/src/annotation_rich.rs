@@ -1105,7 +1105,7 @@ impl SuniApp {
                                     ));
                                     if !record.validity.is_current() {
                                         ui.colored_label(
-                                            crate::theme::palette(dark).error,
+                                            crate::theme::palette_for(ctx).error,
                                             tr(lang, "measure.validity.historical"),
                                         );
                                         if let Ok(result) = record.measurement.result() {
@@ -1521,7 +1521,7 @@ impl SuniApp {
                     ui.spinner();
                 }
                 if let Some(error) = &draft.error {
-                    ui.colored_label(crate::theme::palette(dark).error, error);
+                    ui.colored_label(crate::theme::palette_for(ctx).error, error);
                 }
                 if let Some(preview) = &mut draft.preview {
                     preview.show(ui);

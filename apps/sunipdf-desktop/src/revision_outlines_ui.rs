@@ -623,7 +623,7 @@ impl SuniApp {
                         ));
                         if !inspection.complete() {
                             ui.colored_label(
-                                crate::theme::palette(self.settings.dark_theme).error,
+                                crate::theme::palette_for(ctx).error,
                                 tr(lang, "outlines.partial"),
                             );
                         }
@@ -721,8 +721,7 @@ impl SuniApp {
                                                 .changed();
                                             if region.status != "review_required" {
                                                 ui.colored_label(
-                                                    crate::theme::palette(self.settings.dark_theme)
-                                                        .error,
+                                                    crate::theme::palette_for(ctx).error,
                                                     tr(lang, "outlines.edge"),
                                                 );
                                             }
@@ -755,7 +754,7 @@ impl SuniApp {
                     ));
                     if !report.complete() {
                         ui.colored_label(
-                            crate::theme::palette(self.settings.dark_theme).error,
+                            crate::theme::palette_for(ctx).error,
                             tr(lang, "outlines.partial"),
                         );
                     }
@@ -791,7 +790,7 @@ impl SuniApp {
                     }
                 }
                 if let Some(error) = &self.revision_outlines.error {
-                    ui.colored_label(crate::theme::palette(self.settings.dark_theme).error, error);
+                    ui.colored_label(crate::theme::palette_for(ctx).error, error);
                 }
                 if let Some(message) = &self.revision_outlines.message {
                     ui.label(message);

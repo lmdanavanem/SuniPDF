@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Add Settings → Theme with Classic and Liquid Glass styles and independent System, Light and Dark color modes.
+- Apply appearance changes immediately, preserve existing preferences and retain the previous theme when saving fails.
+- Add reduced transparency, consistent themed chrome and keyboard-accessible appearance previews.
+- Download and install Ubuntu updates from the application with independent installed-helper verification, normal administrator authorization and save-protected restart.
+
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.73.0] - 2026-10-24

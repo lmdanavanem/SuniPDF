@@ -82,7 +82,17 @@ fn colors(dark: bool) -> Colors {
 /// Return a close request to the application, which owns unsaved-work protection.
 /// Do not emit `Close` here: root viewport commands can bypass a later input frame.
 pub(crate) fn show(ui: &mut egui::Ui, language: Language, dark: bool, title: &str) -> bool {
-    let palette = colors(dark);
+    let palette = if crate::theme::appearance(ui.ctx()).0 == crate::theme::Style::LiquidGlass {
+        let p = crate::theme::palette_for(ui.ctx());
+        Colors {
+            bar: p.chrome,
+            button: p.surface,
+            hover: p.hover,
+            text: p.text,
+        }
+    } else {
+        colors(dark)
+    };
     let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
     let mut close = false;
     egui::Panel::top("linux-window-title")
@@ -90,6 +100,7 @@ pub(crate) fn show(ui: &mut egui::Ui, language: Language, dark: bool, title: &st
         .frame(egui::Frame::new().fill(palette.bar))
         .show(ui, |ui| {
             let rect = ui.max_rect();
+            crate::theme::paint_material(ui, rect, 14);
             let controls_left = rect.right() - BUTTON_SIZE * 3.0 - 4.0;
             let drag_rect = Rect::from_min_max(rect.min, pos2(controls_left, rect.bottom()));
             let drag = ui.interact(
@@ -226,7 +237,7 @@ fn control_button(
         ui.painter().circle_stroke(
             center,
             BUTTON_RADIUS + 2.0,
-            Stroke::new(2.0, crate::theme::palette(ui.visuals().dark_mode).focus),
+            Stroke::new(2.0, crate::theme::palette_for(ui.ctx()).focus),
         );
     }
     paint_symbol(ui.painter(), center, control, foreground);

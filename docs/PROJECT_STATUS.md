@@ -1,5 +1,13 @@
 # Project status
 
+## Candidate under qualification
+
+[0.74.0](RELEASE_0.74.0.md) adds a dedicated Theme settings panel, Classic and
+Liquid Glass styles, independent System/Light/Dark modes and reduced transparency.
+It also adds verified in-app Ubuntu update downloads and authorized package installation.
+Source, rendered UI, installed Ubuntu interaction and package checks are in progress.
+The published reference below remains valid until this candidate is qualified.
+
 ## 0.73.0 status
 
 Published stable; verified 2026-10-24T17:32:54.306206Z. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0) · [Release scope](RELEASE_0.73.0.md) · [qualification evidence](qa/RELEASE_0.73.0.json).

@@ -338,8 +338,7 @@ impl SuniApp {
                                         }
                                         Err(error) => {
                                             ui.colored_label(
-                                                crate::theme::palette(self.settings.dark_theme)
-                                                    .error,
+                                                crate::theme::palette_for(ctx).error,
                                                 tr(lang, crate::app::error_key(error)),
                                             );
                                         }

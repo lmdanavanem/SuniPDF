@@ -329,7 +329,7 @@ impl SuniApp {
             .map(|t| t.id());
         let lang = self.lang();
         let (dark, icons) = (self.settings.dark_theme, self.has_icons);
-        let muted = theme::palette(dark).text_muted;
+        let muted = theme::palette_for(ctx).text_muted;
         let page_mm = (pt_to_mm(size_pt.0), pt_to_mm(size_pt.1));
         let scope = |ui: &mut egui::Ui, all: &mut bool| {
             dialog::field_label(ui, tr(lang, "pagesetup.scope"));
@@ -411,7 +411,7 @@ impl SuniApp {
                         valid.set(labels.range(page_count).is_some());
                         if !valid.get() {
                             ui.colored_label(
-                                theme::palette(dark).error,
+                                theme::palette_for(ctx).error,
                                 tr(lang, "pagesetup.labels.invalid"),
                             );
                         }
@@ -478,7 +478,7 @@ impl SuniApp {
                                 .color(muted),
                             ),
                             None => {
-                                let error = theme::palette(ui.visuals().dark_mode).error;
+                                let error = theme::palette_for(ctx).error;
                                 ui.colored_label(error, tr(lang, "pagesetup.crop.too_small"))
                             }
                         };

@@ -507,7 +507,12 @@ const LABEL_FONT: f32 = 14.0;
 
 pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui::Response {
     let dark = ui.visuals().dark_mode;
-    let p = theme::palette(dark);
+    let p = theme::palette_for(ui.ctx());
+    let radius = if theme::appearance(ui.ctx()).0 == theme::Style::LiquidGlass {
+        17
+    } else {
+        theme::radius::ROW
+    };
     let alpha = if b.enabled { 1.0 } else { 0.4 };
     let galley = b.show_label.then(|| {
         ui.painter().layout_no_wrap(
@@ -541,13 +546,12 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
             Some(t) => theme::badge_fill(t, dark),
             None => p.accent_soft,
         };
-        painter.rect_filled(
-            rect,
-            theme::radius::ROW,
-            if b.selected { selected_fill } else { fade },
-        );
+        painter.rect_filled(rect, radius, if b.selected { selected_fill } else { fade });
+        if b.selected {
+            theme::paint_material(ui, rect, radius);
+        }
         let icon_color = match b.tint {
-            Some(t) => theme::glyph_color(t, dark),
+            Some(t) => theme::glyph_color_for(ui.ctx(), t),
             None => p.text,
         };
         let (g, f) = b.icon;
@@ -570,7 +574,7 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
             painter.galley(pos, gal, p.text);
         }
         if resp.has_focus() {
-            theme::focus_ring(painter, rect, &p, theme::radius::ROW);
+            theme::focus_ring(painter, rect, &p, radius);
         }
     }
     if b.enabled {
@@ -786,7 +790,7 @@ impl SuniApp {
         let info = ws.info();
         let lang = self.lang();
         let dark = self.settings.dark_theme;
-        let p = theme::palette(dark);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         let layout = self.bar_layout(ui, info);
         let mut run = None;
@@ -985,6 +989,7 @@ mod tests {
         C::PrevTab,
         C::About,
         C::KeyboardShortcuts,
+        C::ThemeSettings,
         // Presse-papiers d'objets : clavier, menu Édition, palette et barre d'objet (comme
         // Annuler / Rétablir), pas dans la barre d'outil (DECISIONS.md).
         C::CopyObjects,
@@ -1238,11 +1243,31 @@ mod tests {
     #[test]
     fn tool_glyph_contrast() {
         for dark in [false, true] {
-            let surface = theme::palette(dark).surface;
-            for info in &TABLE {
-                let bg = over(theme::badge_fill(info.color, dark), surface);
-                let ratio = contrast(theme::glyph_color(info.color, dark), bg);
-                assert!(ratio >= 3.5, "{:?} sombre={dark} : {ratio:.2}:1", info.ws);
+            for style in [theme::Style::Classic, theme::Style::LiquidGlass] {
+                let ctx = egui::Context::default();
+                theme::apply_appearance(&ctx, dark, style, false);
+                let p = theme::palette_for(&ctx);
+                for surface in [p.surface, p.chrome] {
+                    let reflected = if style == theme::Style::LiquidGlass {
+                        over(
+                            Color32::from_white_alpha(if dark { 12 } else { 90 }),
+                            surface,
+                        )
+                    } else {
+                        surface
+                    };
+                    for background in [surface, reflected] {
+                        for info in &TABLE {
+                            let bg = over(theme::badge_fill(info.color, dark), background);
+                            let ratio = contrast(theme::glyph_color_for(&ctx, info.color), bg);
+                            assert!(
+                                ratio >= 3.5,
+                                "{:?} dark={dark} style={style:?}: {ratio:.2}:1",
+                                info.ws
+                            );
+                        }
+                    }
+                }
             }
         }
     }

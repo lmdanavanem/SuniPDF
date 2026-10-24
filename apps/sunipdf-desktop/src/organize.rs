@@ -35,7 +35,7 @@ impl SuniApp {
     /// page sont dans la barre de l'outil Organiser (`workspace.rs`).
     pub fn organize_toolbar(&mut self, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ui.ctx());
         let count = self.document.as_ref().map_or(0, |d| d.info.page_count());
         let selected = self.organize.selected.len();
         ui.horizontal(|ui| {
@@ -75,7 +75,7 @@ impl SuniApp {
 
     pub fn organize_grid(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let Some(doc) = &self.document else { return };
         let count = doc.info.page_count();
         let current = doc.page;
