@@ -1634,7 +1634,7 @@ impl SuniApp {
             BarKind::default()
         };
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         const GAP: f32 = 14.0;
         let max_w = (bounds.width() - 2.0 * GAP - 18.0).max(80.0);
@@ -1924,7 +1924,7 @@ impl SuniApp {
     ) {
         self.validate_free_text();
         let lang = self.lang();
-        let palette = theme::palette(self.settings.dark_theme);
+        let palette = theme::palette_for(ctx);
         let ready = self.form_builder_ready() && !self.form_builder.active();
         let k = self.effective_zoom * crate::app::SCREEN_PER_PDF_POINT;
         let Some(prompt) = self
@@ -2108,7 +2108,7 @@ impl SuniApp {
     fn link_dialog(&mut self, ctx: &egui::Context) {
         let lang = self.lang();
         let count = self.document.as_ref().map_or(1, |d| d.info.page_count());
-        let error = theme::palette(self.settings.dark_theme).error;
+        let error = theme::palette_for(ctx).error;
         let Some(prompt) = self.annotate.adv.link.as_mut() else {
             return;
         };
@@ -2403,7 +2403,7 @@ impl SuniApp {
         let Some(url) = self.annotate.adv.url_confirm.clone() else {
             return;
         };
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let (mut open, mut copy, mut cancel) = (false, false, false);
         let spec = crate::dialog::Spec::new(
             "url-confirm",
@@ -2476,7 +2476,7 @@ enum PanelAction {
 impl SuniApp {
     pub fn comments_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let Some(page) = self.annotate.annotations_page else {
             // La lecture de la page est en route : en-tête seul.
             self.comments_header(ctx, ui, 0, 0);
@@ -2708,7 +2708,7 @@ impl SuniApp {
 
     /// « Auteur · date » d'une annotation, en petit.
     fn meta_line(&self, ui: &mut egui::Ui, d: &AnnotDetail, lang: Language) {
-        let muted = theme::palette(self.settings.dark_theme).text_muted;
+        let muted = theme::palette_for(ui.ctx()).text_muted;
         let date = d.modified.as_deref().and_then(|m| format_pdf_date(m, lang));
         let text = match (&d.author, date) {
             (Some(a), Some(t)) => format!("{a} · {t}"),
@@ -2727,7 +2727,7 @@ impl SuniApp {
         count: usize,
     ) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             ui.add_space(4.0);

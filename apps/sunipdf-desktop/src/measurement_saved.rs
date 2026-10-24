@@ -342,7 +342,7 @@ impl SuniApp {
             tr(lang, "measure.saved.remove"),
         )
         .clicked();
-        let error_color = crate::theme::palette(self.settings.dark_theme).error;
+        let error_color = crate::theme::palette_for(ui.ctx()).error;
         if let Some(data) = data {
             if !can_modify {
                 ui.small(tr(lang, "measure.saved.restricted"));
@@ -529,7 +529,7 @@ impl SuniApp {
                                 ui.label(tr(lang, validity_key(record.validity)));
                                 if !record.validity.is_current() {
                                     ui.colored_label(
-                                        crate::theme::palette(self.settings.dark_theme).error,
+                                        crate::theme::palette_for(ctx).error,
                                         tr(lang, "measure.validity.historical"),
                                     );
                                     ui.small(tr(

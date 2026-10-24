@@ -13,7 +13,9 @@ checks and the [roadmap](ROADMAP.md) for planned work.
   touch/pen input, Narrator and interactive installer/updater dialogs still need native checks.
 - Ubuntu supports 22.04/24.04 amd64. Its checks use Xvfb/software rendering and removal/reinstall
   of the same candidate; previous-version Linux upgrades and physical desktops are unqualified.
-- Ubuntu updates open the release page; installation uses the system package manager.
+- Ubuntu versions through 0.73 open the release page and require manual package installation.
+  The 0.74 source adds direct downloads and authorized installation; one manual upgrade is needed
+  to obtain that flow. Graphical authentication-agent behavior needs native qualification.
   Native printing, certificate signing/trust checks, protected Office import and persistent
   encrypted visual-signature storage remain Windows-only. See [Ubuntu](UBUNTU.md).
 - Windows printing rasterizes at up to 300 dpi. Microsoft Print to PDF output has been checked;

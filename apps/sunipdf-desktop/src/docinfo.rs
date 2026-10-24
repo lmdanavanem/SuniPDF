@@ -86,7 +86,7 @@ impl SuniApp {
 
     pub fn bookmarks_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             ui.add_space(4.0);
@@ -290,7 +290,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let mut apply = false;
         let mut close = false;
         let mut inspect = false;
@@ -494,7 +494,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let mut submit = false;
         let mut close = false;
         let spec = crate::dialog::Spec::new(
@@ -590,7 +590,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        let muted = theme::palette(self.settings.dark_theme).text_muted;
+        let muted = theme::palette_for(ctx).text_muted;
         let mut submit = false;
         let mut close = false;
         let reprotect = self.docinfo.unprotect_for_reprotect;

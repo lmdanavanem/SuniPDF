@@ -99,7 +99,7 @@ pub(crate) fn show(
         return false;
     }
     let previous = prefs.clone();
-    let p = theme::palette(spec.dark);
+    let p = theme::palette_for(ctx);
     let placement = prefs.placement;
     let height = prefs.height_for(
         host.as_ref()
@@ -107,6 +107,7 @@ pub(crate) fn show(
     );
     let popup_open = egui::Popup::is_any_open(ctx);
     let content = |ui: &mut egui::Ui| {
+        theme::paint_material(ui, ui.max_rect(), 14);
         if placement == Placement::Bottom {
             // PanelState remembers the frame's used height. Keep the allocated
             // height even when the bounded body/footer leave a few pixels free,

@@ -15,6 +15,11 @@ Ubuntu users should start with [installation and platform limits](UBUNTU.md). Na
 
 ## Reader controls and tools
 
+Open **Menu → Settings → Theme** to choose **Classic** or **Liquid Glass**, then
+**System**, **Light** or **Dark**. The top-bar appearance button opens the same
+panel. Choices are saved automatically; **Reduce transparency** makes Glass
+surfaces opaque. The PDF itself is unchanged. [Theme guide](APPEARANCE.md).
+
 Version 0.64 provides [plan-set filtering and grouping](PLAN_SETS.md) and
 [reviewed annotation transfer between revisions](REVISION_TRANSFER.md). Open **Tools → Organize pages**
 or use the command palette. Transfer requires saved sources, explicit page matches and review of
@@ -389,8 +394,12 @@ Installed x64 copies use the Windows MSI installer and may show a Windows admini
 replace the application files in their own folder and keep a rollback backup. A failed portable replacement restores the old files.
 Older versions require one manual upgrade to obtain this feature. The updater never restarts the computer automatically.
 
-On Ubuntu, **Download update** opens the release page. Download and verify the DEB, then install it through APT;
-the application does not elevate privileges or configure an APT repository.
+From 0.74 on Ubuntu, **Download update** verifies the DEB inside the application.
+Choose **Install update** and complete Linux's administrator authorization prompt.
+Keep SuniPDF open during installation; your documents remain open. After success,
+**Restart SuniPDF** follows the normal save prompts. Cancellation or failure is reported
+and can be retried. Versions through 0.73 need one manual DEB upgrade to obtain this flow.
+No APT repository is configured. [Ubuntu update details and limits](UBUNTU.md#settings-recovery-and-updates).
 
 ## Home screen
 

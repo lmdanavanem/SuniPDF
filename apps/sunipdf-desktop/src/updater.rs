@@ -1,10 +1,10 @@
-//! Checks platform-specific releases without document data. Windows installs after Quit accepts;
-//! Ubuntu opens the official release page for installation with the user's package manager.
+//! Verified platform updates. Windows installs after a guarded Quit; Ubuntu keeps documents
+//! open while its authenticated package-manager transaction completes.
 
 use semver::Version;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::fs::{self, File};
+use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 #[cfg(windows)]
@@ -34,19 +34,19 @@ pub struct Release {
     pub notes_url: String,
     pub kind: UpdateKind,
     asset_url: String,
-    sha256: String,
-    size: u64,
+    pub(crate) sha256: String,
+    pub(crate) size: u64,
     #[cfg_attr(not(windows), allow(dead_code))]
-    arch: String,
+    pub(crate) arch: String,
 }
 
 #[derive(Debug)]
 pub struct PreparedUpdate {
     pub release: Release,
     #[cfg_attr(not(windows), allow(dead_code))]
-    workspace: Option<TempDir>,
+    pub(crate) workspace: Option<TempDir>,
     #[cfg_attr(not(windows), allow(dead_code))]
-    package: PathBuf,
+    pub(crate) package: PathBuf,
     #[cfg_attr(not(windows), allow(dead_code))]
     target: PathBuf,
 }
@@ -60,6 +60,9 @@ pub enum Phase {
     Available(Release),
     Downloading,
     Ready(PreparedUpdate),
+    Installing(Instant),
+    Installed(String),
+    InstallFailed(PreparedUpdate, String),
     Failed(String),
 }
 
@@ -69,6 +72,8 @@ pub struct Updater {
     rx: Option<Receiver<Result<Phase, String>>>,
     #[cfg(test)]
     check_requests: Option<mpsc::Sender<()>>,
+    #[cfg(test)]
+    restart_requests: Option<mpsc::Sender<()>>,
 }
 
 impl Updater {
@@ -87,7 +92,12 @@ impl Updater {
     pub fn start_check(&mut self, ctx: &egui::Context) {
         if matches!(
             self.phase,
-            Phase::Checking | Phase::Downloading | Phase::Ready(_)
+            Phase::Checking
+                | Phase::Downloading
+                | Phase::Ready(_)
+                | Phase::Installing(_)
+                | Phase::Installed(_)
+                | Phase::InstallFailed(_, _)
         ) {
             return;
         }
@@ -101,17 +111,86 @@ impl Updater {
     }
 
     pub fn download(&mut self, ctx: &egui::Context) {
+        self.download_with(ctx, download_release);
+    }
+
+    fn download_with(
+        &mut self,
+        ctx: &egui::Context,
+        work: impl FnOnce(Release) -> Result<PreparedUpdate, String> + Send + 'static,
+    ) {
         let Phase::Available(release) = &self.phase else {
             return;
         };
         let release = release.clone();
-        if release.kind == UpdateKind::Deb {
-            ctx.open_url(egui::OpenUrl::new_tab(release.notes_url));
+        self.start(ctx, Phase::Downloading, move || {
+            work(release).map(Phase::Ready)
+        });
+    }
+
+    pub fn is_installing(&self) -> bool {
+        matches!(self.phase, Phase::Installing(_))
+    }
+
+    pub fn install_prepared(&mut self, ctx: &egui::Context) {
+        self.install_with(ctx, crate::updater_linux::install);
+    }
+
+    fn install_with(
+        &mut self,
+        ctx: &egui::Context,
+        work: impl FnOnce(&PreparedUpdate) -> Result<(), String> + Send + 'static,
+    ) {
+        if !matches!(self.phase, Phase::Ready(ref prepared) | Phase::InstallFailed(ref prepared, _)
+            if prepared.release.kind == UpdateKind::Deb)
+        {
             return;
         }
-        self.start(ctx, Phase::Downloading, move || {
-            download_release(release).map(Phase::Ready)
+        let prepared = match std::mem::take(&mut self.phase) {
+            Phase::Ready(prepared) | Phase::InstallFailed(prepared, _) => prepared,
+            _ => unreachable!("the phase was checked before ownership transfer"),
+        };
+        self.start(ctx, Phase::Installing(Instant::now()), move || {
+            Ok(match work(&prepared) {
+                Ok(()) => Phase::Installed(prepared.release.version.clone()),
+                Err(error) => Phase::InstallFailed(prepared, error),
+            })
         });
+    }
+
+    pub fn restart_installed(&self) -> Result<(), String> {
+        if !matches!(self.phase, Phase::Installed(_)) {
+            return Err("Install the update successfully before restarting.".into());
+        }
+        #[cfg(test)]
+        {
+            self.restart_requests
+                .as_ref()
+                .ok_or("No test restart receiver")?
+                .send(())
+                .map_err(|e| e.to_string())
+        }
+        #[cfg(not(test))]
+        {
+            crate::updater_linux::restart()
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_install_channels(
+    ) -> (Self, mpsc::Sender<Result<Phase, String>>, Receiver<()>) {
+        let (tx, rx) = mpsc::channel();
+        let (restart_tx, restart_rx) = mpsc::channel();
+        (
+            Self {
+                phase: Phase::Installing(Instant::now()),
+                rx: Some(rx),
+                restart_requests: Some(restart_tx),
+                ..Default::default()
+            },
+            tx,
+            restart_rx,
+        )
     }
 
     fn start(
@@ -417,21 +496,31 @@ fn read_bounded(reader: impl Read, limit: u64) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
-fn download_release(release: Release) -> Result<PreparedUpdate, String> {
-    if release.kind == UpdateKind::Deb || !cfg!(windows) {
-        return Err("Download Ubuntu updates from the official release page and install them with your package manager.".into());
+fn update_workspace(prefix: &str) -> std::io::Result<TempDir> {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(prefix);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(fs::Permissions::from_mode(0o700));
     }
-    let workspace = tempfile::Builder::new()
-        .prefix("SuniPDF-update-")
-        .tempdir()
+    builder.tempdir()
+}
+
+fn download_release(release: Release) -> Result<PreparedUpdate, String> {
+    if release.kind == UpdateKind::Deb {
+        crate::updater_linux::require_system_installation()?;
+    }
+    let workspace = update_workspace("SuniPDF-update-")
         .map_err(|e| format!("Could not create the update folder: {e}"))?;
     let package = workspace.path().join(&release.asset_name);
     let exe = fs::canonicalize(std::env::current_exe().map_err(|e| e.to_string())?)
         .map_err(|e| format!("Could not locate this application: {e}"))?;
-    if !exe
-        .file_name()
-        .and_then(|n| n.to_str())
-        .is_some_and(|n| n.eq_ignore_ascii_case("sunipdf.exe"))
+    if release.kind != UpdateKind::Deb
+        && !exe
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.eq_ignore_ascii_case("sunipdf.exe"))
     {
         return Err("Automatic installation requires the original sunipdf.exe filename.".into());
     }
@@ -449,8 +538,16 @@ fn download_release(release: Release) -> Result<PreparedUpdate, String> {
             return Err("The update download size does not match the release.".into());
         }
     }
-    let mut file =
-        File::create(&package).map_err(|e| format!("Could not create the update package: {e}"))?;
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options
+        .open(&package)
+        .map_err(|e| format!("Could not create the update package: {e}"))?;
     copy_verified(
         response.body_mut().as_reader(),
         &mut file,
@@ -506,6 +603,37 @@ fn copy_verified(
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+#[cfg(test)]
+pub(crate) fn test_prepared_deb() -> PreparedUpdate {
+    let workspace = update_workspace("SuniPDF update $ ; ").unwrap();
+    let version = "0.74.0".to_string();
+    let asset_name = format!("SuniPDF-{version}-linux-amd64.deb");
+    let package = workspace.path().join(&asset_name);
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(&package).unwrap().write_all(b"abc").unwrap();
+    PreparedUpdate {
+        release: Release {
+            version,
+            asset_name,
+            notes_url: format!("{RELEASES_URL}/tag/v0.74.0"),
+            kind: UpdateKind::Deb,
+            asset_url: format!("{RELEASES_URL}/download/v0.74.0/SuniPDF-0.74.0-linux-amd64.deb"),
+            sha256: hex(&Sha256::digest(b"abc")),
+            size: 3,
+            arch: "amd64".into(),
+        },
+        workspace: Some(workspace),
+        package,
+        target: PathBuf::from("/usr/lib/sunipdf"),
+    }
 }
 
 #[cfg(windows)]
@@ -700,11 +828,62 @@ mod tests {
             phase: Phase::Available(release),
             ..Default::default()
         };
-        let mut output = ctx.run_ui(egui::RawInput::default(), |_| updater.download(&ctx));
+        let mut output = ctx.run_ui(egui::RawInput::default(), |_| {
+            updater.download_with(&ctx, |release| {
+                assert_eq!(release.kind, UpdateKind::Deb);
+                Err("Synthetic download failure".into())
+            })
+        });
         output.textures_delta.clear();
-        assert!(matches!(updater.phase, Phase::Available(_)));
-        assert!(updater.rx.is_none());
-        assert!(output.platform_output.commands.iter().any(|command| matches!(command, egui::OutputCommand::OpenUrl(url) if url.url == format!("{RELEASES_URL}/tag/v0.52.0"))));
+        assert!(matches!(updater.phase, Phase::Downloading));
+        assert!(updater.rx.is_some());
+        assert!(!output
+            .platform_output
+            .commands
+            .iter()
+            .any(|command| matches!(command, egui::OutputCommand::OpenUrl(_))));
+        wait_update(&mut updater);
+        assert!(
+            matches!(updater.phase, Phase::Failed(ref error) if error == "Synthetic download failure")
+        );
+    }
+
+    fn wait_update(updater: &mut Updater) {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !updater.poll() {
+            assert!(Instant::now() < deadline, "update test worker timed out");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    #[test]
+    fn ubuntu_install_failure_retains_verified_package_and_success_cleans_it_after_retry() {
+        let ctx = egui::Context::default();
+        let (mut updater, checks) = Updater::test_channels();
+        let prepared = test_prepared_deb();
+        let package = prepared.package.clone();
+        updater.phase = Phase::Ready(prepared);
+        updater.install_with(&ctx, |_| Err("Authorization cancelled".into()));
+        assert!(updater.is_installing());
+        updater.start_check(&ctx);
+        assert!(checks.try_recv().is_err());
+        wait_update(&mut updater);
+        assert!(
+            matches!(updater.phase, Phase::InstallFailed(_, ref error) if error == "Authorization cancelled")
+        );
+        assert_eq!(fs::read(&package).unwrap(), b"abc");
+        updater.start_check(&ctx);
+        assert!(checks.try_recv().is_err());
+        updater.install_with(&ctx, |prepared| {
+            assert_eq!(fs::read(&prepared.package).unwrap(), b"abc");
+            Ok(())
+        });
+        assert!(updater.is_installing());
+        wait_update(&mut updater);
+        assert!(matches!(updater.phase, Phase::Installed(ref version) if version == "0.74.0"));
+        assert!(!package.exists());
+        updater.start_check(&ctx);
+        assert!(checks.try_recv().is_err());
     }
 
     #[test]

@@ -81,15 +81,22 @@ pub fn show<R>(
     body: impl FnOnce(&mut egui::Ui) -> R,
     footer: impl FnOnce(&mut egui::Ui),
 ) -> R {
-    let p = theme::palette(spec.dark);
+    let p = theme::palette_for(ctx);
+    let glass = theme::appearance(ctx).0 == theme::Style::LiquidGlass;
+    let radius = if glass { 18 } else { 14 };
     let tint = spec.tint.unwrap_or(p.accent);
     // État de l'image précédente : la liste était ouverte quand Échap a été pressé.
     let popup_open = egui::Popup::is_any_open(ctx);
     let body_max_h = (ctx.content_rect().height() - CHROME_H).max(120.0);
     egui::Modal::new(egui::Id::unique(spec.id))
         .backdrop_color(Color32::from_black_alpha(if spec.dark { 150 } else { 110 }))
-        .frame(frame(&p, spec.dark))
+        .frame(if glass {
+            theme::material_frame(ctx)
+        } else {
+            frame(&p, spec.dark)
+        })
         .show(ctx, |ui| {
+            theme::paint_material(ui, ui.max_rect(), radius);
             ui.set_width(spec.width);
             ui.spacing_mut().item_spacing = egui::vec2(8.0, 6.0);
             // En-tête.
@@ -169,8 +176,8 @@ pub fn show<R>(
                 .corner_radius(CornerRadius {
                     nw: 0,
                     ne: 0,
-                    sw: 14,
-                    se: 14,
+                    sw: radius,
+                    se: radius,
                 })
                 .inner_margin(Margin {
                     left: 22,
@@ -202,12 +209,17 @@ pub fn show<R>(
 
 /// Bouton d'action principale (fond accent, texte blanc).
 pub fn primary(ui: &mut egui::Ui, text: &str) -> bool {
-    let p = theme::palette(ui.visuals().dark_mode);
+    let p = theme::palette_for(ui.ctx());
+    let radius = if theme::appearance(ui.ctx()).0 == theme::Style::LiquidGlass {
+        16
+    } else {
+        8
+    };
     ui.add(
         Button::new(RichText::new(text).color(Color32::WHITE).size(14.0))
             .fill(p.accent_fill)
             .stroke(Stroke::NONE)
-            .corner_radius(8)
+            .corner_radius(radius)
             .min_size(egui::vec2(96.0, 32.0)),
     )
     .clicked()
@@ -215,11 +227,16 @@ pub fn primary(ui: &mut egui::Ui, text: &str) -> bool {
 
 /// Bouton d'action destructrice (fond rouge).
 pub fn danger(ui: &mut egui::Ui, text: &str) -> bool {
+    let radius = if theme::appearance(ui.ctx()).0 == theme::Style::LiquidGlass {
+        16
+    } else {
+        8
+    };
     ui.add(
         Button::new(RichText::new(text).color(Color32::WHITE).size(14.0))
             .fill(theme::ERROR)
             .stroke(Stroke::NONE)
-            .corner_radius(8)
+            .corner_radius(radius)
             .min_size(egui::vec2(96.0, 32.0)),
     )
     .clicked()
@@ -227,12 +244,17 @@ pub fn danger(ui: &mut egui::Ui, text: &str) -> bool {
 
 /// Bouton secondaire (bordure).
 pub fn secondary(ui: &mut egui::Ui, text: &str) -> bool {
-    let p = theme::palette(ui.visuals().dark_mode);
+    let p = theme::palette_for(ui.ctx());
+    let radius = if theme::appearance(ui.ctx()).0 == theme::Style::LiquidGlass {
+        16
+    } else {
+        8
+    };
     ui.add(
         Button::new(RichText::new(text).size(14.0).color(p.text))
             .fill(p.surface)
             .stroke(Stroke::new(1.0, p.border))
-            .corner_radius(8)
+            .corner_radius(radius)
             .min_size(egui::vec2(96.0, 32.0)),
     )
     .clicked()
@@ -240,7 +262,7 @@ pub fn secondary(ui: &mut egui::Ui, text: &str) -> bool {
 
 /// Libellé de champ (texte atténué, petit), au-dessus d'un contrôle.
 pub fn field_label(ui: &mut egui::Ui, text: &str) {
-    let p = theme::palette(ui.visuals().dark_mode);
+    let p = theme::palette_for(ui.ctx());
     ui.label(RichText::new(text).size(12.5).color(p.text_muted));
 }
 

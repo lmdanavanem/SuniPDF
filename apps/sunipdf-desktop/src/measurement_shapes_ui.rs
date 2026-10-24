@@ -299,7 +299,7 @@ impl SuniApp {
         }
         if dimensions.is_none() {
             ui.colored_label(
-                crate::theme::palette(self.settings.dark_theme).error,
+                crate::theme::palette_for(ui.ctx()).error,
                 tr(lang, "measure.rectangle.invalid_dimensions"),
             );
         }

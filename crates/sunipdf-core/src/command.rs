@@ -114,6 +114,7 @@ pub enum Command {
     HubLeave,
     About,
     KeyboardShortcuts,
+    ThemeSettings,
     ToggleObjects,
     CopyObjects,
     CutObjects,
@@ -172,6 +173,7 @@ pub enum Menu {
     /// Outils du hub « Tous les outils » (entrer dans un outil, le quitter).
     Tools,
     Help,
+    Settings,
 }
 
 #[derive(Debug)]
@@ -1377,6 +1379,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         Help
     ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),
+    cmd!(
+        ThemeSettings,
+        "settings.theme",
+        "appearance.command",
+        None,
+        false,
+        Settings
+    ),
 ];
 
 impl Command {

@@ -1,0 +1,222 @@
+#!/usr/bin/python3 -I
+"""Install only a newer, independently verified public SuniPDF Ubuntu release."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import ssl
+import stat
+import subprocess
+import sys
+import tempfile
+import threading
+import urllib.request
+
+API = "https://api.github.com/repos/lmdanavanem/SuniPDF/releases/tags/"
+RELEASES = "https://github.com/lmdanavanem/SuniPDF/releases"
+MAX_PACKAGE = 256 * 1024 * 1024
+MAX_METADATA = 2 * 1024 * 1024
+MAX_OUTPUT = 64 * 1024
+SAFE_ENV = {
+    "PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "HOME": "/root",
+    "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "DEBIAN_FRONTEND": "noninteractive",
+}
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def version_tuple(value):
+    require(isinstance(value, str) and re.fullmatch(r"(?:0|[1-9][0-9]{0,8})(?:\.(?:0|[1-9][0-9]{0,8})){2}", value),
+            "A canonical stable three-part version is required.")
+    return tuple(int(part) for part in value.split("."))
+
+
+def validate_request(package, digest, version, size):
+    version_tuple(version)
+    require(isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest), "Invalid package SHA256.")
+    require(type(size) is int and 0 < size <= MAX_PACKAGE, "Invalid package size.")
+    text = str(package)
+    require(0 < len(text) <= 4096 and text.startswith("/") and not any(ord(c) < 32 for c in text)
+            and not any(part in (".", "..") for part in text.split("/")), "Invalid absolute package path.")
+    require(Path(text).name == f"SuniPDF-{version}-linux-amd64.deb", "Unexpected update package filename.")
+
+
+def require_authorized_caller():
+    require(sys.platform == "linux" and os.geteuid() == 0, "Use the installed helper through administrator authorization.")
+    uid = os.environ.get("PKEXEC_UID", "")
+    require(re.fullmatch(r"[1-9][0-9]{0,9}", uid) and int(uid) < 2**32 - 1,
+            "The authenticated desktop user is missing.")
+    return int(uid)
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise ValueError("Release verification refused an HTTP redirect.")
+
+
+def unique_object(pairs):
+    value = {}
+    for key, item in pairs:
+        require(key not in value, "Release metadata contains duplicate keys.")
+        value[key] = item
+    return value
+
+
+def validate_release(body, digest, version, size):
+    require(len(body) <= MAX_METADATA, "Release metadata exceeds its size limit.")
+    release = json.loads(body, object_pairs_hook=unique_object,
+                         parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Non-finite release metadata.")))
+    tag = "v" + version
+    require(isinstance(release, dict) and release.get("draft") is False and release.get("prerelease") is False
+            and release.get("tag_name") == tag and release.get("html_url") == RELEASES + "/tag/" + tag,
+            "The requested version is not a public stable SuniPDF release.")
+    assets = release.get("assets")
+    require(isinstance(assets, list) and len(assets) <= 512, "Invalid release assets.")
+    name = f"SuniPDF-{version}-linux-amd64.deb"
+    matches = [asset for asset in assets if isinstance(asset, dict) and asset.get("name") == name]
+    require(len(matches) == 1, "The Ubuntu release asset is missing or ambiguous.")
+    asset = matches[0]
+    require(asset.get("state") == "uploaded" and type(asset.get("size")) is int and asset["size"] == size
+            and asset.get("digest") == "sha256:" + digest
+            and asset.get("browser_download_url") == RELEASES + "/download/" + tag + "/" + name,
+            "The downloaded package does not match the official release identity.")
+
+
+def verify_public_release(digest, version, size):
+    url = API + "v" + version
+    # Ignore user-controlled proxy, CA and Python search-path environment variables.
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.load_verify_locations(cafile="/etc/ssl/certs/ca-certificates.crt")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
+                                         urllib.request.HTTPSHandler(context=context))
+    request = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json",
+                                                   "User-Agent": "SuniPDF-verified-installer"})
+    with opener.open(request, timeout=30) as response:
+        require(response.status == 200 and response.geturl() == url, "Unexpected release verification response.")
+        length = response.headers.get("Content-Length")
+        require(length is None or (length.isdigit() and int(length) <= MAX_METADATA),
+                "Release metadata exceeds its size limit.")
+        body = response.read(MAX_METADATA + 1)
+    validate_release(body, digest, version, size)
+
+
+def copy_verified(package, staged, digest, size, caller_uid):
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    descriptor = os.open(package, flags)
+    try:
+        source = os.fstat(descriptor)
+        require(stat.S_ISREG(source.st_mode) and source.st_uid == caller_uid and source.st_nlink == 1
+                and source.st_mode & 0o077 == 0 and source.st_size == size,
+                "The update must be a private regular file owned by the authenticated user.")
+        hasher = hashlib.sha256()
+        count = 0
+        with os.fdopen(descriptor, "rb", closefd=False) as incoming, open(staged, "xb") as outgoing:
+            os.chmod(staged, 0o600)
+            while chunk := incoming.read(128 * 1024):
+                count += len(chunk)
+                require(count <= size, "The update changed size while being verified.")
+                hasher.update(chunk)
+                outgoing.write(chunk)
+            outgoing.flush()
+            os.fsync(outgoing.fileno())
+        final = os.fstat(descriptor)
+        require(count == size and final.st_size == size and final.st_nlink == 1
+                and hasher.hexdigest() == digest, "The staged update failed SHA256 or size verification.")
+    finally:
+        os.close(descriptor)
+
+
+def run_bounded(arguments, timeout=30):
+    """Drain process output without retaining an unbounded log or using a shell."""
+    process = subprocess.Popen(arguments, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, env=SAFE_ENV, cwd="/", start_new_session=True)
+    output = bytearray()
+
+    def drain():
+        with process.stdout:
+            while chunk := process.stdout.read(4096):
+                output.extend(chunk)
+                if len(output) > MAX_OUTPUT:
+                    del output[:-MAX_OUTPUT]
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    try:
+        result = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGTERM)
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=10)
+        reader.join(timeout=10)
+        raise ValueError("The package operation timed out. Check the package manager before trying again.") from None
+    reader.join(timeout=10)
+    require(not reader.is_alive(), "The package operation did not close its output stream.")
+    text = bytes(output).decode("utf-8", errors="replace").strip()
+    require(result == 0, "Package operation failed: " + text[-4096:])
+    return text
+
+
+def installed_version(runner=run_bounded):
+    text = runner(["/usr/bin/dpkg-query", "--show", "--showformat=${db:Status-Status}\n${Version}\n${Architecture}", "sunipdf"])
+    parts = text.splitlines()
+    require(len(parts) == 3 and parts[0] == "installed" and parts[2] == "amd64",
+            "An installed Ubuntu amd64 SuniPDF package is required.")
+    version_tuple(parts[1])
+    return parts[1]
+
+
+def validate_package(staged, version, runner=run_bounded):
+    for field, expected in (("Package", "sunipdf"), ("Version", version), ("Architecture", "amd64")):
+        actual = runner(["/usr/bin/dpkg-deb", "--field", str(staged), field])
+        require(actual == expected, "Unexpected update package " + field.lower() + ".")
+
+
+def install(package, digest, version, size):
+    caller_uid = require_authorized_caller()
+    validate_request(package, digest, version, size)
+    current = installed_version()
+    require(version_tuple(version) > version_tuple(current), "The update must be newer than the installed version.")
+    verify_public_release(digest, version, size)
+    with tempfile.TemporaryDirectory(prefix="sunipdf-update-", dir="/var/tmp") as directory:
+        stage = Path(directory) / Path(package).name
+        copy_verified(package, stage, digest, size, caller_uid)
+        validate_package(stage, version)
+        # Recheck after network/file work, before entering the package manager.
+        current = installed_version()
+        require(version_tuple(version) > version_tuple(current), "The installed version changed during update preparation.")
+        # Do not terminate dpkg mid-transaction. Lock acquisition and individual
+        # repository requests are bounded; the desktop keeps the operation visible.
+        run_bounded(["/usr/bin/apt-get", "--assume-yes", "--no-remove", "-o", "DPkg::Lock::Timeout=60",
+                     "-o", "Acquire::http::Timeout=30", "-o", "Acquire::https::Timeout=30",
+                     "-o", "Acquire::Retries=2", "install", "--", str(stage)], timeout=None)
+        require(installed_version() == version, "The package manager did not report the requested installed version.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    parser.add_argument("--package", required=True)
+    parser.add_argument("--sha256", required=True)
+    parser.add_argument("--version", required=True)
+    parser.add_argument("--size", type=int, required=True)
+    args = parser.parse_args()
+    try:
+        install(args.package, args.sha256, args.version, args.size)
+    except (OSError, ValueError, RuntimeError, RecursionError) as error:
+        print(json.dumps({"status": "failed", "error": str(error)[:4096]}), file=sys.stderr)
+        return 1
+    print(json.dumps({"status": "installed", "version": args.version}))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

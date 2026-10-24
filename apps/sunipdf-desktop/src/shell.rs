@@ -20,7 +20,7 @@ pub fn command_color(command: Command) -> Color32 {
     }
 }
 
-/// Pastille d'outil peinte dans `rect` : fond teinté, glyphe contrasté (`theme::glyph_color`).
+/// Pastille d'outil peinte dans `rect` : fond teinté, glyphe contrasté (`theme::glyph_color_for`).
 pub fn paint_badge(
     painter: &egui::Painter,
     rect: egui::Rect,
@@ -41,7 +41,7 @@ pub fn paint_badge(
         } else {
             egui::FontId::proportional(font)
         },
-        theme::glyph_color(color, dark),
+        theme::glyph_color_for(painter.ctx(), color),
     );
 }
 
@@ -181,6 +181,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::InsertDate => (glyph::CALENDAR, "📅"),
         Command::HubLeave => (glyph::CLOSE, "✕"),
         Command::KeyboardShortcuts | Command::About => (glyph::INFO, "i"),
+        Command::ThemeSettings => (glyph::SUN, "\u{2600}"),
         Command::ToggleObjects => (glyph::LAYERS, "☰"),
         Command::CopyObjects => (glyph::DUPLICATE, "⎘"),
         Command::CutObjects => (glyph::CUT, "✂"),
@@ -236,7 +237,7 @@ impl SuniApp {
     }
 
     fn pal(&self) -> Palette {
-        theme::palette(self.settings.dark_theme)
+        theme::palette_for_style(self.settings.dark_theme, self.settings.theme_style)
     }
 
     /// Bouton d'accès rapide de la barre d'outils (icône seule, info-bulle « libellé (raccourci) »).
@@ -425,8 +426,7 @@ impl SuniApp {
                     (glyph::MOON, "☾")
                 };
                 if self.icon_button(ui, g, f, tr(lang, "toolbar.theme")) {
-                    let dark = !self.settings.dark_theme;
-                    self.set_theme(ctx, dark);
+                    self.execute(ctx, Command::ThemeSettings);
                 }
                 if self.icon_button(ui, glyph::HELP, "?", tr(lang, "toolbar.help")) {
                     self.execute(ctx, Command::About);
@@ -493,23 +493,10 @@ impl SuniApp {
                                 }
                             }
                         });
-                        ui.menu_button(tr(lang, "menu.settings.theme"), |ui| {
-                            let dark = self.settings.dark_theme;
-                            if ui
-                                .radio(!dark, tr(lang, "menu.settings.theme.light"))
-                                .clicked()
-                            {
-                                self.set_theme(ctx, false);
-                                ui.close();
-                            }
-                            if ui
-                                .radio(dark, tr(lang, "menu.settings.theme.dark"))
-                                .clicked()
-                            {
-                                self.set_theme(ctx, true);
-                                ui.close();
-                            }
-                        });
+                        if ui.button(tr(lang, "menu.settings.theme")).clicked() {
+                            self.execute(ctx, Command::ThemeSettings);
+                            ui.close();
+                        }
                     });
                     self.command_menu(ctx, ui, "menu.help", Menu::Help, &[]);
                 },
@@ -724,7 +711,22 @@ impl SuniApp {
             painter.add(shadow.as_shape(rect, theme::radius::CARD));
         }
         let fill = p.accent_fill.lerp_to_gamma(Color32::BLACK, 0.12 * t);
-        painter.rect_filled(rect, theme::radius::CARD, fill);
+        let card_radius = if self.settings.theme_style == theme::Style::LiquidGlass {
+            20
+        } else {
+            theme::radius::CARD
+        };
+        painter.rect_filled(rect, card_radius, fill);
+        if self.settings.theme_style == theme::Style::LiquidGlass
+            && !self.settings.reduce_transparency
+        {
+            painter.rect_stroke(
+                rect.shrink(1.5),
+                card_radius - 1,
+                Stroke::new(1.0, Color32::from_white_alpha(45)),
+                egui::StrokeKind::Inside,
+            );
+        }
         let circle = egui::pos2(rect.left() + 46.0, rect.center().y);
         painter.circle_filled(circle, 24.0, Color32::from_white_alpha(38));
         let (g, f) = (glyph::FOLDER_OPEN, "📂");
@@ -839,13 +841,19 @@ impl SuniApp {
                 };
                 painter.add(shadow.as_shape(rect, theme::radius::CARD));
             }
+            let card_radius = if self.settings.theme_style == theme::Style::LiquidGlass {
+                18
+            } else {
+                theme::radius::CARD
+            };
             painter.rect(
                 rect,
-                theme::radius::CARD,
+                card_radius,
                 p.surface,
                 Stroke::new(1.0, p.border.lerp_to_gamma(info.color, t)),
                 egui::StrokeKind::Inside,
             );
+            theme::paint_material(ui, rect, card_radius);
             let badge_rect = egui::Rect::from_min_size(
                 egui::pos2(rect.left() + 18.0, rect.center().y - 22.0),
                 egui::vec2(44.0, 44.0),
@@ -1288,10 +1296,8 @@ impl SuniApp {
                                 ui.set_width(ui.available_width());
                                 ui.horizontal(|ui| {
                                     // Couleur de l'outil propriétaire (même code couleur que le hub).
-                                    let tint = theme::glyph_color(
-                                        command_color(*command),
-                                        self.settings.dark_theme,
-                                    );
+                                    let tint =
+                                        theme::glyph_color_for(ui.ctx(), command_color(*command));
                                     ui.label(self.icon(g, f, 15.0).color(tint));
                                     ui.label(tr(lang, info.label_key));
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -1341,7 +1347,7 @@ impl SuniApp {
                     ui.label(muted(tr(lang, "status.engine_starting").into()));
                 }
                 (EngineState::Failed, _, _) => {
-                    let error = theme::palette(ui.visuals().dark_mode).error;
+                    let error = theme::palette_for(ui.ctx()).error;
                     ui.colored_label(error, tr(lang, "error.engine_load"));
                 }
                 (_, _, Some(path)) => {

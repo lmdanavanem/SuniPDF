@@ -40,6 +40,12 @@ pub(crate) fn xdg_directory(
 pub struct Settings {
     pub language: String,
     pub dark_theme: bool,
+    #[serde(deserialize_with = "deserialize_theme_style")]
+    pub theme_style: crate::theme::Style,
+    /// Missing mode preserves the explicit light/dark preference from older versions.
+    #[serde(deserialize_with = "deserialize_theme_mode")]
+    pub theme_mode: Option<crate::theme::Mode>,
+    pub reduce_transparency: bool,
     pub show_thumbnails: bool,
     pub show_tools: bool,
     /// Défilement continu (toutes les pages empilées) plutôt que page unique.
@@ -62,6 +68,9 @@ impl Default for Settings {
         Self {
             language: Language::DEFAULT.code().to_string(),
             dark_theme: false,
+            theme_style: crate::theme::Style::Classic,
+            theme_mode: None,
+            reduce_transparency: false,
             show_thumbnails: true,
             show_tools: true,
             continuous_view: true,
@@ -78,7 +87,49 @@ impl Default for Settings {
     }
 }
 
+fn deserialize_theme_style<'de, D>(deserializer: D) -> Result<crate::theme::Style, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).unwrap_or_default())
+}
+
+fn deserialize_theme_mode<'de, D>(deserializer: D) -> Result<Option<crate::theme::Mode>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
 impl Settings {
+    pub fn effective_theme_mode(&self) -> crate::theme::Mode {
+        self.theme_mode.unwrap_or(if self.dark_theme {
+            crate::theme::Mode::Dark
+        } else {
+            crate::theme::Mode::Light
+        })
+    }
+
+    pub fn commit_appearance(
+        &mut self,
+        style: crate::theme::Style,
+        mode: crate::theme::Mode,
+        reduce_transparency: bool,
+        resolved_dark: bool,
+        writer: impl FnOnce(&Self) -> std::io::Result<()>,
+    ) -> std::io::Result<()> {
+        let mut next = self.clone();
+        next.theme_style = style;
+        next.theme_mode = Some(mode);
+        next.reduce_transparency = reduce_transparency;
+        next.dark_theme = resolved_dark;
+        writer(&next)?;
+        *self = next;
+        Ok(())
+    }
+
     pub fn language(&self) -> Language {
         Language::from_code(&self.language).unwrap_or(Language::DEFAULT)
     }
@@ -148,6 +199,17 @@ impl Settings {
         let Some(path) = Self::path() else {
             return Ok(());
         };
+        self.save_to(&path)
+    }
+
+    #[cfg_attr(test, allow(dead_code))]
+    pub fn save_appearance(&self) -> std::io::Result<()> {
+        let path = Self::path().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "preferences directory is unavailable",
+            )
+        })?;
         self.save_to(&path)
     }
 
@@ -277,5 +339,72 @@ mod tests {
             ),
             PathBuf::from("/home/user/.local/state/sunipdf/recovery")
         );
+    }
+    #[test]
+    fn appearance_migrates_legacy_modes_and_tolerates_future_theme_values() {
+        use crate::theme::{Mode, Style};
+        for dark in [false, true] {
+            let settings: Settings = serde_json::from_value(serde_json::json!({
+                "language": "fr-FR", "dark_theme": dark, "author": "Reviewer"
+            }))
+            .unwrap();
+            assert_eq!(settings.theme_style, Style::Classic);
+            assert_eq!(
+                settings.effective_theme_mode(),
+                if dark { Mode::Dark } else { Mode::Light }
+            );
+            assert!(!settings.reduce_transparency);
+            for value in [
+                serde_json::json!("future_theme"),
+                serde_json::json!(42),
+                serde_json::json!({"future": true}),
+                serde_json::Value::Null,
+            ] {
+                let future: Settings = serde_json::from_value(serde_json::json!({
+                    "language": "fr-FR", "dark_theme": dark, "author": "Reviewer",
+                    "theme_style": value, "theme_mode": value
+                }))
+                .unwrap();
+                assert_eq!(future.language(), Language::French);
+                assert_eq!(future.author, "Reviewer");
+                assert_eq!(future.theme_style, Style::Classic);
+                assert_eq!(
+                    future.effective_theme_mode(),
+                    settings.effective_theme_mode()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn appearance_commit_round_trips_and_failure_preserves_all_preferences() {
+        use crate::theme::{Mode, Style};
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let mut settings = Settings {
+            language: "fr-FR".into(),
+            author: "Reviewer".into(),
+            ..Default::default()
+        };
+        settings
+            .commit_appearance(Style::LiquidGlass, Mode::System, true, true, |next| {
+                next.save_to(&path)
+            })
+            .unwrap();
+        let stored = std::fs::read(&path).unwrap();
+        let back: Settings = serde_json::from_slice(&stored).unwrap();
+        assert_eq!(back, settings);
+        assert_eq!(back.effective_theme_mode(), Mode::System);
+        let before = settings.clone();
+        let result = settings.commit_appearance(Style::Classic, Mode::Light, false, false, |_| {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "fixture refusal",
+            ))
+        });
+        assert!(result.is_err());
+        assert_eq!(settings, before);
+        assert_eq!(std::fs::read(&path).unwrap(), stored);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
     }
 }

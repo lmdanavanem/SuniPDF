@@ -465,7 +465,7 @@ impl SuniApp {
 
     pub(crate) fn measurement_geometry_bar(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let text_color = crate::theme::palette(self.settings.dark_theme).text;
+        let text_color = crate::theme::palette_for(ctx).text;
         let ready = self.measurement_ready();
         let draft = self.annotate.measure.geometry.as_mut().unwrap();
         let valid = draft.replacement.value().is_ok();
@@ -623,14 +623,11 @@ impl SuniApp {
             ui.small(tr(lang, "measure.geometry.fixed_count"));
         }
         if let Some(error) = draft.error {
-            ui.colored_label(
-                crate::theme::palette(self.settings.dark_theme).error,
-                tr(lang, error),
-            );
+            ui.colored_label(crate::theme::palette_for(ctx).error, tr(lang, error));
         }
         if !valid {
             ui.colored_label(
-                crate::theme::palette(self.settings.dark_theme).error,
+                crate::theme::palette_for(ctx).error,
                 tr(lang, "measure.invalid"),
             );
         }

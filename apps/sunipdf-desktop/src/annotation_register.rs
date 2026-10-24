@@ -381,7 +381,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        let text_color = crate::theme::palette(self.settings.dark_theme).text;
+        let text_color = crate::theme::palette_for(ctx).text;
         let mut state = std::mem::take(&mut self.annotate.register);
         if state.report.is_none() && state.pending.is_none() && state.error.is_none() {
             state.generation = state.generation.wrapping_add(1);

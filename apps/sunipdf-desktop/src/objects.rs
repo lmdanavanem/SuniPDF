@@ -103,7 +103,7 @@ impl SuniApp {
 
     pub fn objects_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         let Some(doc) = &self.document else { return };
         let page = doc.page;

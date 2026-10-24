@@ -477,7 +477,7 @@ impl SuniApp {
         }
         self.validate_quantity_context();
         let lang = self.lang();
-        let text_color = crate::theme::palette(self.settings.dark_theme).text;
+        let text_color = crate::theme::palette_for(ctx).text;
         let epoch = self.view.epoch;
         let mut state = std::mem::take(&mut self.annotate.quantities);
         if state.report.is_none() && state.pending.is_none() && state.error.is_none() {
@@ -1199,7 +1199,7 @@ fn draw_formulas(
 }
 
 fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
-    let text_color = crate::theme::palette(ui.visuals().dark_mode).text;
+    let text_color = crate::theme::palette_for(ui.ctx()).text;
     ui.label(tr(lang, "quantity.edit_help"));
     ui.add_enabled_ui(!draft.applying, |ui| {
         ui.horizontal_wrapped(|ui| {
@@ -1316,7 +1316,7 @@ fn custom_field_editor(ui: &mut egui::Ui, field: &mut CustomDraft, lang: Languag
 }
 
 fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
-    let text_color = crate::theme::palette(ui.visuals().dark_mode).text;
+    let text_color = crate::theme::palette_for(ui.ctx()).text;
     ui.label(format!(
         "{}: {} · {}: {}",
         tr(lang, "register.matches"),

@@ -86,7 +86,7 @@ fn compact_tool_row(
     active: bool,
 ) -> egui::Response {
     let dark = ui.visuals().dark_mode;
-    let p = theme::palette(dark);
+    let p = theme::palette_for(ui.ctx());
     let (rect, response) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), 40.0), egui::Sense::click());
     response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, active, label));
@@ -167,7 +167,7 @@ fn compact_tool_row(
 impl SuniApp {
     pub fn tools_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let mut query =
             ctx.data_mut(|data| data.get_temp::<String>(query_id()).unwrap_or_default());
         let previous_query = query.clone();

@@ -380,7 +380,7 @@ impl SuniApp {
                     ui.spinner();
                 }
                 if let Some(error) = &draft.error {
-                    ui.colored_label(theme::palette(dark).error, error);
+                    ui.colored_label(theme::palette_for(ctx).error, error);
                 }
                 if let Some(texture) = &draft.preview {
                     ui.add(
@@ -432,8 +432,7 @@ impl SuniApp {
         page_h_pt: f32,
     ) {
         let lang = self.lang();
-        let dark = self.settings.dark_theme;
-        let p = theme::palette(dark);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         let k = self.effective_zoom * SCREEN_PER_PDF_POINT;
         let fonts = self.edit.system_fonts.clone();

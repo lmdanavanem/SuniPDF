@@ -136,6 +136,9 @@ struct Scene {
     measurements: bool,
     zoom: Zoom,
     table: Option<TableKind>,
+    style: crate::theme::Style,
+    reduce_transparency: bool,
+    settings_open: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -377,8 +380,15 @@ fn capture_scene(
     context.enable_accesskit();
     let (mut app, requests, responses) = crate::app::tests::test_app();
     app.has_icons = crate::icons::install(&context);
-    crate::theme::apply(&context, scene.dark);
     app.settings.dark_theme = scene.dark;
+    app.settings.theme_style = scene.style;
+    app.settings.theme_mode = Some(if scene.dark {
+        crate::theme::Mode::Dark
+    } else {
+        crate::theme::Mode::Light
+    });
+    app.settings.reduce_transparency = scene.reduce_transparency;
+    app.sync_appearance(&context);
     app.settings.set_language(scene.language);
     app.settings.autosave = false;
     app.settings.show_thumbnails = !scene.measurements && scene.table.is_none();
@@ -425,6 +435,9 @@ fn capture_scene(
     let mut pending_texture_frees = Vec::new();
     let mut frame_states = Vec::with_capacity(12);
     for index in 0..12 {
+        if index == 6 && scene.settings_open {
+            app.execute(&context, Command::ThemeSettings);
+        }
         // Earlier frames are not painted; their deferred frees are safe before
         // building the next frame. Keep the final frame's textures until readback.
         for id in pending_texture_frees.drain(..) {
@@ -564,7 +577,7 @@ fn capture_scene(
                         .intersect(shape.clip_rect).intersect(viewport).is_positive())),
             &format!("{}: docked table title {title:?} is not accessible and visible", scene.name),
         )?;
-        let palette = crate::theme::palette(scene.dark);
+        let palette = crate::theme::palette_for(&context);
         for (part, label) in [
             ("title", title),
             ("firstColumnHeader", tr(scene.language, "register.page")),
@@ -700,12 +713,47 @@ fn capture_scene(
             }
         }
     }
-    require(
-        blue_ink > 20,
-        "PDFium fixture ink is missing from the actual UI pixel readback",
-    )?;
+    if scene.settings_open {
+        require(app.appearance.open, "Theme settings did not open")?;
+        for key in [
+            "appearance.theme",
+            "appearance.style",
+            "appearance.classic",
+            "appearance.glass",
+            "appearance.mode",
+            "appearance.system",
+            "appearance.light",
+            "appearance.dark",
+            "appearance.reduce_transparency",
+        ] {
+            let label = tr(scene.language, key);
+            require(
+                tree.nodes.iter().any(|(_, node)| {
+                    node.label() == Some(label)
+                        || (matches!(
+                            node.role(),
+                            egui::accesskit::Role::Label | egui::accesskit::Role::TextRun
+                        ) && node.value() == Some(label))
+                }),
+                &format!("Theme settings accessible label is missing: {label}"),
+            )?;
+            require(frame.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Text(text)
+                if text.galley.text().contains(label)
+                    && shape.clip_rect.contains_rect(Rect::from_min_size(text.pos, text.galley.size()))
+                    && viewport.contains_rect(Rect::from_min_size(text.pos, text.galley.size())))),
+                &format!("Theme settings label is clipped or not painted: {label}"))?;
+        }
+    } else {
+        require(
+            blue_ink > 20,
+            "PDFium fixture ink is missing from the actual UI pixel readback",
+        )?;
+    }
     Ok(json!({
         "name": scene.name, "language": scene.language.code(), "darkTheme": scene.dark,
+        "interfaceStyle": scene.style, "reduceTransparency": scene.reduce_transparency,
+        "themeSettingsOpen": scene.settings_open, "themeSettingsLabelsVerified": scene.settings_open,
+        "pdfFixtureBlueInkVerified": !scene.settings_open,
         "outputPixels": [scene.width, scene.height], "measurementToolsOpen": scene.measurements,
         "dockedTable": table_name, "dockedTableControlsAndRowVerified": scene.table.is_some(),
         "dockedTableTextContrast": table_text_contrast,
@@ -761,6 +809,9 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             measurements: true,
             zoom: Zoom::FitPage,
             table: None,
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
         },
         Scene {
             name: "reader-fr-light-720-zoom149",
@@ -771,6 +822,9 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             measurements: true,
             zoom: Zoom::Fixed(1.49),
             table: None,
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
         },
         Scene {
             name: "reader-en-light-pages",
@@ -781,6 +835,61 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             measurements: false,
             zoom: Zoom::FitPage,
             table: None,
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
+        },
+        Scene {
+            name: "reader-en-glass-light-pages",
+            language: Language::English,
+            dark: false,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
+        },
+        Scene {
+            name: "reader-en-glass-dark-measurements",
+            language: Language::English,
+            dark: true,
+            width: 1280,
+            height: 780,
+            measurements: true,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
+        },
+        Scene {
+            name: "settings-en-glass-light",
+            language: Language::English,
+            dark: false,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: true,
+        },
+        Scene {
+            name: "settings-fr-glass-dark-720-reduced",
+            language: Language::French,
+            dark: true,
+            width: 720,
+            height: 640,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: true,
+            settings_open: true,
         },
     ];
     let mut results = Vec::new();
@@ -820,6 +929,9 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             measurements: false,
             zoom: Zoom::FitPage,
             table: Some(TableKind::Register),
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
         },
         Scene {
             name: "reader-fr-light-720-docked-quantities",
@@ -830,6 +942,22 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             measurements: false,
             zoom: Zoom::FitPage,
             table: Some(TableKind::Quantities),
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
+        },
+        Scene {
+            name: "reader-en-glass-dark-docked-register",
+            language: Language::English,
+            dark: true,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: Some(TableKind::Register),
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
         },
     ] {
         results.push(capture_scene(
@@ -882,5 +1010,5 @@ fn reader_ui_dx12_warp_evidence() {
     if let Err(error) = result {
         panic!("Reader UI evidence failed: {error}");
     }
-    eprintln!("Reader UI offscreen evidence PASS: 5 actual application scenes");
+    eprintln!("Reader UI offscreen evidence PASS: 10 actual application scenes");
 }

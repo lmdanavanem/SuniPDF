@@ -2,6 +2,10 @@
 
 ## Next development
 
+The 0.74 candidate adds [Theme settings and appearance choices](APPEARANCE.md).
+It also adds direct [Ubuntu updates](UBUNTU.md#settings-recovery-and-updates).
+Its qualification is in progress; this interface increment does not close plan-workflow cards.
+
 Priority: independent synchronized reader views. Native plan-link interaction and broader drawing/
 interoperability qualification remain open. Implementation and complete acceptance are tracked separately.
 
