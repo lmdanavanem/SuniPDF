@@ -1,36 +1,34 @@
 # Roadmap
 
-Updated 2026-10-24 for [0.62.0](RELEASE_0.62.0.md), published as stable Latest.
-Current priorities are below; [release evidence](qa/RELEASE_0.62.0.json) records executed checks.
-Custom-field sorting, supported saved-group capture and bounded report formulas are delivered.
-Full backlog cards remain open until all acceptance criteria are evidenced.
+Updated 2026-10-24 for [0.63.0](RELEASE_0.63.0.md), published as stable Latest.
+[Release evidence](qa/RELEASE_0.63.0.json) records actual source, package and public-download checks.
+Full backlog cards remain open until their acceptance criteria are evidenced.
 
-## Delivered in 0.62.0
+## Delivered in 0.63.0
 
-The release adds dimensioned rectangles, formula subtotals and coverage, shared formula evaluation,
-signed numeric CSV handling, final CLI destination checks, transactional restoration, encrypted-signing
-refusal and tab lifecycle/state corrections. Saved measurements bind to page evidence; historical values
-remain visible but cannot supply active quantities or prices without explicit current-reference recalibration.
-Older page defaults and named regions require recalibration or removal. Quantity formatting and control
-contrast have been checked in English/French and light/dark themes.
+Local plan sets retain separate PDFs, stable sheet IDs, metadata, source fingerprints and guarded
+navigation. FDF exchanges typed form values with bounded parsing and preserved button states.
+Deducted polygon areas and constant-depth volumes retain their contours, scale and physical depth;
+cubic quantities and prices reject incompatible edits. AEC-009 is Done for these stated criteria.
+Editable external-reader measurement exchange and physical accuracy remain separate unqualified scopes.
 
-Exact-source CI passed: Windows 904 tests with zero failures and 15 ignored; Linux 885 tests with zero failures
-and 10 ignored in each main and package-build run. Portable upgrade checks passed 46 scenarios and MSI
-lifecycle checks covered 40 baselines. All eight public assets were verified; the published Windows x64 CLI
-passed 48 process commands and 288 assertions. Earlier native development-build rectangle and historical-price
-workflows covered Preview/Apply, Undo/Redo and save/reopen. The post-download check did not repeat GUI or local
-installation testing. See [qualification scope](PROJECT_STATUS.md).
+Exact-source CI passed: Windows 963 tests / 15 ignored; Linux 943 / 10 ignored per run, with no failures.
+Portable updates covered 43 baselines plus 4 guards; MSI covered 41 baselines / 205 logs. All eight public
+assets were verified anonymously. The downloaded Windows CLI passed 68 commands / 968 assertions.
+Ubuntu 22.04/24.04 package checks ran in clean containers. Native development-build workflows and independent
+saved-output inspection have separate evidence and limits in [Project status](PROJECT_STATUS.md).
 
-A bounded whole-command benchmark found the 300-row/eight-formula case faster and the optimization/output
-case 23 ms slower. Investigate the latter without weakening atomic output creation. Native capture timings
-do not establish a general responsiveness gain. Continue measurement qualification on larger licensed
-inputs and deferred private plans; keep physical accuracy separate from internal consistency.
+The earlier [0.62 release](RELEASE_0.62.0.md) added dimensioned rectangles, formula subtotals, historical
+measurement provenance, explicit recalibration, output collision guards and tab/restoration fixes.
+An earlier bounded benchmark found the 300-row/eight-formula case faster and the optimization/output
+case 23 ms slower. Investigate that regression without weakening atomic writes; no general UI gain is established.
 
-## 0.63 candidate
+## Work in progress after 0.63
 
-Local plan sets, bounded FDF exchange, deducted areas and constant-depth volumes are implemented.
-Final-source checks, native workflows and package qualification remain separate release gates.
-AEC-009 and AEC-015 remain In progress; see [candidate scope](RELEASE_0.63.0.md).
+AEC-015 grouped/searchable sheet navigation and AEC-016 reviewed revision transfer are later 0.64
+candidate work. AEC-017 reviewed cross-document links are a separate 0.65 implementation in progress.
+Neither candidate is included in the published 0.63 packages. Their complete source, native workflow,
+package and interoperability evidence must precede delivery claims.
 
 ## Delivered foundation
 
@@ -66,7 +64,7 @@ not only an implementation or a successful build.
 | P1 | Independent interoperability | Record exact reader versions and outcomes for encrypted PDFs, XMP, forms, replies/statuses, ink, FreeText, shapes, redaction and signatures. Structural qpdf checks alone do not establish appearance or trust. |
 | P1 | PDF/A and PDF/UA qualification | Select supported profiles, retain independent validator reports and complete applicable human accessibility checks. Preserving identification metadata is not conformance validation. |
 
-Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.62.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. A later DEB payload inspection on 2026-10-24 independently matched the embedded SuniPDF CLI to both conformance-run hashes. The original run records remain unchanged. No program was executed and no Linux runtime or desktop qualification was added; the desktop hash was recorded only.
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.63.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. A later DEB payload inspection on 2026-10-24 independently matched the embedded SuniPDF CLI to both conformance-run hashes. The original run records remain unchanged. No program was executed and no Linux runtime or desktop qualification was added; the desktop hash was recorded only.
 
 Private real-project plan qualification is **deferred at the owner's request**.
 Known synthetic geometry and retained licensed/public PDFs remain the automated baseline;
@@ -83,11 +81,11 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Register and libraries | Broaden saved-group capture only for reproducible appearances | Native shape-group capture retains relative geometry and supported styles. Foreign, text/image/stamp and extra-semantic records remain explicitly refused. |
 | Quantity calculations | Add unit-bearing custom fields and spreadsheet refresh | Published formula subtotals sum rounded results with separate unit/precision totals and explicit error coverage. Existing prices/currencies remain separate; no implicit conversion or stale export. |
 | Dimensioned drawing | Extend supported geometry | Published rectangles use real width/height, an explicit anchor and local/page/region/automatic scale. Preview, Undo/Redo and save/reopen retain editable polygon geometry. Permanent constraints, other analytic shapes and independent X/Y scales remain extensions. |
-| Area and volume | Depth, deducted areas and retained holes | Unit-safe calculations; reject degenerate or self-intersecting geometry and retain all inputs. |
+| Area and volume | Extend independent qualification of the delivered workflow | Polygon deductions and constant-depth quantities are delivered in 0.63. Editable external-reader interoperability and physical accuracy remain separate. |
 | Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |
 | Visual recognition | Symbol search and boundary-based region proposals | Bounded work, candidate previews, explicit tolerance and user confirmation before creating counts or measurements. |
 | Revisions | Reviewed change outlines and broader alignment workflows | Distinguish drawing changes from rendering noise and retain original/revised identities. |
-| Plan sets | Indexed sheets, batch replacement and cross-document links | Preview matches; retain previous files; report missing, duplicate or ambiguous references and refuse unsafe transfers. |
+| Plan sets | Grouped/searchable navigation, then reviewed revision replacement and links | The published 0.63 release indexes sheets with metadata and guarded navigation. Complete discipline/sheet/revision grouping separately; review matches and retain previous files before any transfer. |
 | Reports | Legends, quantity summaries and issue reports | Generate from actual filtered annotations and document revisions, with no invented or stale totals. |
 
 Named scale regions, batch recalibration, vector snapping, manual counts, saved-geometry
@@ -141,4 +139,4 @@ qualify the frozen source and downloaded packages, then update the feature matri
 notes and [current evidence](PROJECT_STATUS.md). Do not close a card because a related
 feature shipped. [GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized on
 2026-10-24: five existing P1 cards updated and 27 AEC cards added. The preserved views contain 51 Roadmap,
-8 Bugs and 11 Suggestions cards. Partial criteria remain open, and 0.63 work is identified as candidate work.
+8 Bugs and 11 Suggestions cards. Partial criteria remain open; later 0.64/0.65 work is identified as candidate work, separately from published 0.63.

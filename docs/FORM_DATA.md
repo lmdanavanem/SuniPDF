@@ -29,4 +29,14 @@ levels. Inspection limits decompression to 128 MiB per stream. The copy-size lim
 refresh, not to ordinary forms. These uncommon forms require copying and preparation for each rendered region;
 large documents can therefore render more slowly. This is a preservation safeguard, not a performance claim.
 
+## Qualification
+
+The final 0.63.0 development build passed repeated native FDF import, clear, save/reopen and export. Independent
+inspection passed 8 commands and 129 assertions for the saved PDF/FDF, Unicode values, radio appearance
+states, empty-choice clearing, excluded password fields and repeated reimport. All 13 protected input/runtime
+files stayed unchanged. The panel font lacked one tested CJK glyph even though the stored value was preserved.
+The downloaded release CLI subsequently passed the plan/form/volume corpus (20 commands / 680 assertions),
+including repeated FDF imports. This does not qualify arbitrary form definitions or other applications.
+See [release qualification](RELEASE_0.63.0.md).
+
 The file structure follows [ISO 32000-1, sections 12.7.4 and 12.7.7.3](https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf). This is value exchange, not full annotation or document exchange.
