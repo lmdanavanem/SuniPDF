@@ -103,6 +103,7 @@ pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
     pub overlay: crate::revision_overlay::OverlayState,
     pub plan_zones: crate::plan_zones_ui::PlanZonesState,
+    pub visual_search: crate::visual_search_ui::VisualSearchState,
     pub quantity_workbook: crate::quantity_workbook_ui::QuantityWorkbookState,
     pub issue_report: crate::issue_report_ui::IssueReportState,
     pub revision_outlines: crate::revision_outlines_ui::OutlineState,
@@ -202,6 +203,7 @@ impl SuniApp {
             plan_links: Default::default(),
             revision_outlines: Default::default(),
             plan_zones: Default::default(),
+            visual_search: Default::default(),
             quantity_workbook: Default::default(),
             issue_report: Default::default(),
             revision_transfer: Default::default(),
@@ -560,6 +562,13 @@ impl SuniApp {
                     generation,
                     progress,
                 } => self.on_issue_report_progress(epoch, generation, progress),
+                Response::VisualSearch {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_visual_search(ctx, epoch, generation, result);
+                }
                 Response::PlanZones {
                     epoch,
                     generation,
@@ -1454,6 +1463,7 @@ impl SuniApp {
             || self.issue_report.open
             || self.issue_report.busy()
             || self.plan_zones.open
+            || self.visual_search.open
             || self.plan_links.open
             || self.plan_links.busy()
             || self.revision_outlines.open
@@ -1817,6 +1827,7 @@ impl SuniApp {
             || self.issue_report.open
             || self.issue_report.busy()
             || self.plan_zones.open
+            || self.visual_search.open
             || self.plan_links.open
             || self.plan_links.busy()
             || self.revision_outlines.open
@@ -1901,6 +1912,7 @@ impl SuniApp {
             || self.issue_report.busy()
             || self.review.busy
             || self.plan_zones.open
+            || self.visual_search.open
             || self.revision_outlines.open
             || self.revision_outlines.busy()
             || self.revision_transfer.open
@@ -1969,6 +1981,9 @@ impl SuniApp {
         if matches!(command, Command::Quit | Command::CloseDocument) && self.overlay.open {
             self.overlay.close();
         }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.visual_search.open {
+            self.close_visual_search();
+        }
         if matches!(command, Command::Quit | Command::CloseDocument) && self.plan_zones.open {
             self.close_plan_zones();
             return;
@@ -2012,6 +2027,7 @@ impl SuniApp {
             Command::PlanLinks => self.open_plan_links(),
             Command::RevisionOutlines => self.open_revision_outlines(),
             Command::PlanZones => self.open_plan_zones(),
+            Command::VisualSearch => self.open_visual_search(),
             Command::QuantityWorkbook => self.open_current_quantity_workbook(),
             Command::IssueReport => self.open_current_issue_report(),
             Command::RevisionTransfer => self.open_revision_transfer(),
@@ -3498,6 +3514,7 @@ impl SuniApp {
         self.revision_overlay_dialog(&ctx);
         self.revision_outlines_dialog(&ctx);
         self.plan_zones_dialog(&ctx);
+        self.visual_search_dialog(&ctx);
         self.issue_report_dialog(&ctx);
         self.quantity_workbook_dialog(&ctx);
         self.revision_transfer_dialog(&ctx);
@@ -3616,6 +3633,7 @@ pub(crate) mod tests {
             plan_links: Default::default(),
             revision_outlines: Default::default(),
             plan_zones: Default::default(),
+            visual_search: Default::default(),
             quantity_workbook: Default::default(),
             issue_report: Default::default(),
             revision_transfer: Default::default(),

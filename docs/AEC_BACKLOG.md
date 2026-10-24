@@ -4,6 +4,14 @@
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
+## Current development
+
+AEC-011 is **In progress** for the 0.71 visual-symbol-search increment: a selected
+template, explicit page/rotation/similarity settings, cancellable candidate review
+and an atomic batch of confirmed count markers. Development and runtime qualification
+are in progress; native and wider drawing interoperability remain separate gates.
+[Workflow and limits](VISUAL_SEARCH.md).
+
 ## 0.70 increment and remaining qualification
 
 Declare optional units on Number custom fields and retain them in the table, formula previews,

@@ -1,7 +1,7 @@
 # Real Windows Installer regression on a disposable, elevated Windows runner.
 param(
     [Parameter(Mandatory)] [string]$MsiPath,
-    [ValidateSet('0.8.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0', '0.60.0', '0.61.0', '0.62.0', '0.63.0', '0.64.0', '0.67.0', '0.69.0')] [string]$BaselineVersion = '0.8.0'
+    [ValidateSet('0.8.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0', '0.60.0', '0.61.0', '0.62.0', '0.63.0', '0.64.0', '0.67.0', '0.69.0', '0.70.0')] [string]$BaselineVersion = '0.8.0'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'MSI regression is restricted to disposable GitHub Actions runners.' }
@@ -67,6 +67,7 @@ $baselines = @{
     '0.64.0' = @{ hash='D60C0C4EB684267E46F6B4EE83E95969F505FAA79EE6C92E0EC079C70DA7A0A3'; language='1033'; productCode='{4DB49977-D93C-4B1F-AC70-6E2EF121228E}' }
     '0.67.0' = @{ hash='488BCA66581D4DA047D0998CFCB0946CDDB3D3D257187F7219A25AE3B76B8B83'; language='1033'; productCode='{980584EA-2247-43A6-848C-F0F1B13AA8F8}' }
     '0.69.0' = @{ hash='73DA4FC51623B7E1103CF6E7449338F5117452B640770C1FA95E00366B57D9BE'; language='1033'; productCode='{7130AB5C-710B-4B0C-96BA-1D631603BBDF}' }
+    '0.70.0' = @{ hash='4F4E452418E90F27BD26C411B72E347C693BF0065C4867808CF2BF02DF3940A4'; language='1033'; productCode='{8D8C2FCC-3F04-4547-8D19-CF68EB02EB7D}' }
 }
 $baseline = $baselines[$BaselineVersion]
 $oldName = "SuniPDF-$BaselineVersion-win-x64.msi"

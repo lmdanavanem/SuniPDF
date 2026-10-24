@@ -64,7 +64,7 @@ pub fn badge(
 pub fn command_icon(command: Command) -> (&'static str, &'static str) {
     match command {
         Command::CompareFiles | Command::RevisionOverlay => (glyph::PAGES, "◫"),
-        Command::SearchFiles => (glyph::FIND, "⌕"),
+        Command::SearchFiles | Command::VisualSearch => (glyph::FIND, "⌕"),
         Command::CompressImages => (glyph::PHOTO, "⤓"),
         Command::ProcessFiles => (glyph::PAGES, "▣"),
         Command::RichAnnotations => (glyph::EDIT_DOC, "A"),

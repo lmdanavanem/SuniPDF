@@ -258,6 +258,7 @@ pub static TABLE: [WsInfo; 18] = [
                 C::RichAnnotations,
                 C::AnnotationLibrary,
                 C::ToolCount,
+                C::VisualSearch,
                 C::AnnotationRegister,
                 C::PlanZones,
                 C::QuantityTable,

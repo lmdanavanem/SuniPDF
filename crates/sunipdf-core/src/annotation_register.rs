@@ -529,6 +529,58 @@ pub(crate) fn editable(dict: &Dictionary) -> Result<(), EngineError> {
     Ok(())
 }
 
+pub(crate) fn push_count_marker(
+    pdf: &mut lopdf::Document,
+    page: lopdf::ObjectId,
+    geo: &crate::PageGeometry,
+    point: (f32, f32),
+    size: f32,
+    group: &str,
+    author: Option<&str>,
+) -> Result<usize, EngineError> {
+    validate_count_group(group)?;
+    if !size.is_finite() || !(8.0..=72.0).contains(&size) {
+        return Err(bad());
+    }
+    let rect = PointRect {
+        left: point.0 - size / 2.0,
+        bottom: point.1 - size / 2.0,
+        right: point.0 + size / 2.0,
+        top: point.1 + size / 2.0,
+    };
+    checked_rect(geo, rect)?;
+    let mut dict = rich_base("Stamp", rect, geo, author)?;
+    dict.set("Name", Object::Name(b"SuniPDFCount".to_vec()));
+    dict.set("Contents", lopdf::text_string(&format!("Count: {group}")));
+    dict.set(
+        "SuniPDFCount",
+        Object::string_literal(
+            serde_json::to_vec(&StoredCount {
+                version: 1,
+                group: group.to_string(),
+            })
+            .map_err(|_| bad())?,
+        ),
+    );
+    let n = |v| fmt_num(v * size);
+    let content = format!("q /GS gs 0.15 0.25 0.85 RG 1 1 1 rg 1.5 w {} {} m {} {} {} {} {} {} c {} {} {} {} {} {} c {} {} {} {} {} {} c {} {} {} {} {} {} c B {} {} m {} {} l {} {} m {} {} l S Q\n", n(0.9), n(0.5), n(0.9),n(0.721),n(0.721),n(0.9),n(0.5),n(0.9), n(0.279),n(0.9),n(0.1),n(0.721),n(0.1),n(0.5), n(0.1),n(0.279),n(0.279),n(0.1),n(0.5),n(0.1), n(0.721),n(0.1),n(0.9),n(0.279),n(0.9),n(0.5), n(0.3),n(0.5),n(0.7),n(0.5),n(0.5),n(0.3),n(0.5),n(0.7));
+    push_annotation(
+        pdf,
+        page,
+        dict,
+        Some(ap_stream(
+            &Ap {
+                w: size,
+                h: size,
+                content: content.into_bytes(),
+                opacity: 1.0,
+                uses_font: false,
+            },
+            geo,
+        )),
+    )
+}
+
 impl Document<'_> {
     /// One explicitly placed marker contributes exactly one item to its group.
     pub fn add_count_marker(
@@ -546,21 +598,8 @@ impl Document<'_> {
         if !size.is_finite() || !(8.0..=72.0).contains(&size) {
             return Err(bad());
         }
-        let rect = PointRect {
-            left: point.0 - size / 2.0,
-            bottom: point.1 - size / 2.0,
-            right: point.0 + size / 2.0,
-            top: point.1 + size / 2.0,
-        };
         self.edit_annotation_pdf(page_index, |pdf, page, geo| {
-            checked_rect(geo, rect)?;
-            let mut dict = rich_base("Stamp", rect, geo, author)?;
-            dict.set("Name", Object::Name(b"SuniPDFCount".to_vec()));
-            dict.set("Contents", lopdf::text_string(&format!("Count: {group}")));
-            dict.set("SuniPDFCount", Object::string_literal(serde_json::to_vec(&StoredCount { version:1,group:group.to_string() }).map_err(|_|bad())?));
-            let n = |v|fmt_num(v * size);
-            let content = format!("q /GS gs 0.15 0.25 0.85 RG 1 1 1 rg 1.5 w {} {} m {} {} {} {} {} {} c {} {} {} {} {} {} c {} {} {} {} {} {} c {} {} {} {} {} {} c B {} {} m {} {} l {} {} m {} {} l S Q\n", n(0.9), n(0.5), n(0.9),n(0.721),n(0.721),n(0.9),n(0.5),n(0.9), n(0.279),n(0.9),n(0.1),n(0.721),n(0.1),n(0.5), n(0.1),n(0.279),n(0.279),n(0.1),n(0.5),n(0.1), n(0.721),n(0.1),n(0.9),n(0.279),n(0.9),n(0.5), n(0.3),n(0.5),n(0.7),n(0.5),n(0.5),n(0.3),n(0.5),n(0.7));
-            push_annotation(pdf,page,dict,Some(ap_stream(&Ap {w:size,h:size,content:content.into_bytes(),opacity:1.0,uses_font:false},geo)))
+            push_count_marker(pdf, page, geo, point, size, group, author)
         })
     }
 
