@@ -35,6 +35,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      # Canonical temporary paths: path guards refuse links such as /var -> /private/var.
+      - name: Use the runner's canonical temporary directory
+        run: echo "TMPDIR=$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
@@ -53,10 +56,9 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Workspace tests
-        # Canonical temporary paths: path guards refuse links such as /var -> /private/var.
         run: |
           set -o pipefail
-          TMPDIR="$RUNNER_TEMP" cargo test --workspace --locked --no-fail-fast 2>&1 | tee target/workspace-tests.log
+          cargo test --workspace --locked --no-fail-fast 2>&1 | tee target/workspace-tests.log
       - name: Build, sign and verify the DMG
         run: scripts/package-macos.sh
       - name: Upload exact DMG candidate
