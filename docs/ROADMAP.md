@@ -26,6 +26,12 @@ case 23 ms slower. Investigate the latter without weakening atomic output creati
 do not establish a general responsiveness gain. Continue measurement qualification on larger licensed
 inputs and deferred private plans; keep physical accuracy separate from internal consistency.
 
+## 0.63 candidate
+
+Local plan sets, bounded FDF exchange, deducted areas and constant-depth volumes are implemented.
+Final-source checks, native workflows and package qualification remain separate release gates.
+AEC-009 and AEC-015 remain In progress; see [candidate scope](RELEASE_0.63.0.md).
+
 ## Delivered foundation
 
 SuniPDF provides local PDF reading, editing, annotations, forms, OCR, page operations,
@@ -60,7 +66,7 @@ not only an implementation or a successful build.
 | P1 | Independent interoperability | Record exact reader versions and outcomes for encrypted PDFs, XMP, forms, replies/statuses, ink, FreeText, shapes, redaction and signatures. Structural qpdf checks alone do not establish appearance or trust. |
 | P1 | PDF/A and PDF/UA qualification | Select supported profiles, retain independent validator reports and complete applicable human accessibility checks. Preserving identification metadata is not conformance validation. |
 
-Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.62.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. Validator CLI hashes are recorded; the publication verifier did not independently match that executable against the DEB payload.
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.62.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. A later DEB payload inspection on 2026-10-24 independently matched the embedded SuniPDF CLI to both conformance-run hashes. The original run records remain unchanged. No program was executed and no Linux runtime or desktop qualification was added; the desktop hash was recorded only.
 
 Private real-project plan qualification is **deferred at the owner's request**.
 Known synthetic geometry and retained licensed/public PDFs remain the automated baseline;
@@ -133,5 +139,6 @@ A general workflow designer and optional human-readable CLI localization remain 
 For each selected lot: define supported inputs and limits, implement and test failure paths,
 qualify the frozen source and downloaded packages, then update the feature matrix, release
 notes and [current evidence](PROJECT_STATUS.md). Do not close a card because a related
-feature shipped. GitHub Projects updates remain deferred; repository documentation is the
-current record until those tables are synchronized.
+feature shipped. [GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized on
+2026-10-24: five existing P1 cards updated and 27 AEC cards added. The preserved views contain 51 Roadmap,
+8 Bugs and 11 Suggestions cards. Partial criteria remain open, and 0.63 work is identified as candidate work.

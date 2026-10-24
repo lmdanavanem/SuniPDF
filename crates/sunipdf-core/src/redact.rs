@@ -203,6 +203,7 @@ impl<'a> Document<'a> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         })
     }
 

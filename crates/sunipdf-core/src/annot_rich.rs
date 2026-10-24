@@ -554,6 +554,7 @@ impl<'a> Document<'a> {
             page_rotations: vec![None],
             password: None,
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         drop(
             tmp.inner
@@ -990,6 +991,7 @@ impl<'a> Document<'a> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         let indices = if let RichAnnotation::LibraryPlacement { entry, placement } = annotation {
             scratch.apply_library_entry_in_place(page, entry, *placement, author)?

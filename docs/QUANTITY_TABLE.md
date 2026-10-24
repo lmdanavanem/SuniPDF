@@ -1,13 +1,12 @@
 # Quantity tables
 
-[0.61 release scope](RELEASE_0.61.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
+[0.62 release scope](RELEASE_0.62.0.md) · [Measurements](MEASUREMENTS.md) · [Annotation register](MARKUP_REGISTER.md)
 
 Pricing and typed fields shipped in [0.46.0](RELEASE_0.46.0.md). [That release's evidence](qa/RELEASE_0.46.0.json) does not qualify the new custom sorting and report formulas.
 
-The [unreleased subtotal and coverage changes](#unreleased-formula-subtotals-and-coverage)
-and [measurement provenance checks](#unreleased-measurement-provenance)
-are implemented on the working branch and still await regression and desktop qualification.
-They are not included in the published 0.61.0 packages.
+The [subtotal and coverage changes](#formula-subtotals-and-coverage)
+and [measurement provenance checks](#measurement-provenance) are included in the published 0.62.0 packages.
+See [qualification scope](RELEASE_0.62.0.md) for exact-source, native and package results.
 
 ## Open and filter the table
 
@@ -47,7 +46,7 @@ Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quan
 - `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
 - Numeric fields and constants are dimensionless. Addition/subtraction require matching units. Multiplication permits at most one quantity operand; division by a scalar retains the quantity unit, while equal-unit division produces a dimensionless result. Squared/cubed units and inverse units are not inferred.
 - Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
-- Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. In 0.61.0, formula columns do not add new subtotals. Formula calculations do not change the existing quantity/cost totals.
+- Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. Formula subtotals are separate from the existing quantity/cost totals.
 
 Each expression is limited to 512 UTF-8 bytes, 128 tokens and 32 parser nesting levels. Names are unique and at most 64 bytes. Calls, assignments, scripts, external references and arbitrary spreadsheet formulas are refused. Invalid configuration preserves the currently active formulas.
 
@@ -70,10 +69,9 @@ sunipdf-cli quantity-table plan.pdf --sort-custom "Waste %" --formulas formulas.
 
 For a scalar-only expression such as `[Allowance] * 2`, `quantity_unit` can be `null` in JSON. Formula definitions are a separate report configuration, not a new type accepted by `set-quantity-fields`.
 
-## Unreleased formula subtotals and coverage
+## Formula subtotals and coverage
 
-The working branch adds **Formula totals** below the ordinary quantity/cost summary. These
-changes are implemented but not yet qualified in a desktop build or published release.
+**Formula totals** appear below the ordinary quantity/cost summary.
 
 Each subtotal covers all rows selected by the current filters, including rows beyond the visible
 table page. It groups results by formula name, the selected subtotal group, actual result unit
@@ -129,7 +127,7 @@ Typed negative numbers and calculated numeric values remain numeric CSV cells. F
 cells still receive spreadsheet-formula neutralization, including text that resembles a
 negative number. No formula configuration or subtotal is written into the PDF.
 
-## Unreleased measurement provenance
+## Measurement provenance
 
 New saved measurements use version 2 metadata with bounded evidence for their page: effective
 page bounds, user unit, decoded content, reachable resources, initial optional-content visibility
@@ -156,7 +154,7 @@ existing behavior; they do not require measurement provenance.
 To make a historical length or area usable, review its retained points against the drawing,
 confirm an explicit current page reference, then preview and apply recalibration. Historical
 angles must be recreated. Changing only unit, precision, fields or prices cannot make a record
-current. [Desktop recalibration steps](USER_GUIDE.en.md#unreleased-verify-saved-measurement-references)
+current. [Desktop recalibration steps](USER_GUIDE.en.md#verify-saved-measurement-references)
 describe the individual and batch guards. A successful recalibration retains stored fields;
 an eligible stored price becomes active again only when a usable quantity is restored.
 
@@ -238,4 +236,4 @@ The document register is bounded to 1,000 pages, 128 MiB snapshots, 10,000 annot
 
 Decimal inputs allow at most six fractional digits and absolute values up to one trillion; unit prices are nonnegative. The quantity converted for pricing must also fit the supported finite, nonnegative range up to one trillion. Excessive values are refused rather than silently truncated.
 
-AEC-007 remains partial. Formula-derived subtotals are implemented only on the unreleased working branch and still require qualification. Unit-bearing custom fields, currency exchange, a tax engine, cross-document totals, automatic symbol recognition and a full estimating workflow remain outside this slice. Verify the plan revision and calibration separately before using its quantities.
+AEC-007 remains partial. Formula-derived subtotals are delivered in 0.62.0 within the recorded qualification scope. Unit-bearing custom fields, currency exchange, a tax engine, cross-document totals, automatic symbol recognition and a full estimating workflow remain outside this slice. Verify the plan revision and calibration separately before using its quantities.

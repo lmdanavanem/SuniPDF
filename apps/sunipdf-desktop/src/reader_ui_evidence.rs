@@ -799,6 +799,8 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
     table_document.add_measurement_annotation(
         0,
         &sunipdf_core::measurement::Measurement {
+            holes: Vec::new(),
+            depth: None,
             kind: sunipdf_core::measurement::MeasurementKind::Length,
             points: vec![(40.0, 80.0), (140.0, 80.0)],
             calibration: [(40.0, 40.0), (140.0, 40.0)],

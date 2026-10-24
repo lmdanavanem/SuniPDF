@@ -102,6 +102,7 @@ use crate::shortcut_defaults::DEFAULTS as SHORTCUTS;
 pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
     pub overlay: crate::revision_overlay::OverlayState,
+    pub plan_sets: crate::plan_sets::PlanSetState,
     pub processing: crate::processing::ProcessingState,
     pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
@@ -191,6 +192,7 @@ impl SuniApp {
             office: Default::default(),
             review: Default::default(),
             overlay: Default::default(),
+            plan_sets: Default::default(),
             reading_full_screen: false,
             recovery,
             printing: Default::default(),
@@ -526,6 +528,16 @@ impl SuniApp {
                 Response::RevisionOverlayDone { generation, result } => {
                     self.on_revision_overlay(ctx, generation, result);
                 }
+                Response::PlanSetDone { generation, result } => {
+                    self.on_plan_set_result(ctx, generation, result);
+                }
+                Response::PlanSetProgress {
+                    generation,
+                    done,
+                    total,
+                } => {
+                    self.on_plan_set_progress(generation, done, total);
+                }
                 Response::EngineFailed(e) => {
                     self.error = Some(error_key(&e));
                     log::error!("moteur indisponible : {e}");
@@ -644,6 +656,7 @@ impl SuniApp {
                     }
                 }
                 Response::SuspendFailed(error) => {
+                    self.plan_sets.navigation_failed();
                     self.review.pending_page = None;
                     self.opening = None;
                     self.tabs.resuming = None;
@@ -702,6 +715,7 @@ impl SuniApp {
                     self.view.request(crate::view::ScrollRequest::Page(0));
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
+                    self.finish_plan_set_navigation();
                     if let Some((path, page)) = self.review.pending_page.take() {
                         if self
                             .document
@@ -735,6 +749,7 @@ impl SuniApp {
                     self.open_next_pending();
                 }
                 Response::OpenFailed { path, error } => {
+                    let plan_navigation = self.plan_set_navigation_failed(&path);
                     if !matches!(error, EngineError::PasswordRequired) {
                         self.review.pending_page = None;
                     }
@@ -744,7 +759,7 @@ impl SuniApp {
                             self.tabs.tabs.remove(i);
                         }
                     }
-                    if matches!(error, EngineError::PasswordRequired) {
+                    if matches!(error, EngineError::PasswordRequired) && !plan_navigation {
                         let wrong = self
                             .password_prompt
                             .as_ref()
@@ -1382,7 +1397,9 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.overlay.open
+        self.plan_sets.open
+            || self.plan_sets.busy()
+            || self.overlay.open
             || self.library.blocks_document()
             || self.review.busy
             || self.overlay.busy
@@ -1728,7 +1745,9 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.library.open
+        self.plan_sets.open
+            || self.plan_sets.busy()
+            || self.library.open
             || self.review.open
             || self.overlay.open
             || self.annotate.measure.saved.dialog_open()
@@ -1810,6 +1829,9 @@ impl SuniApp {
         {
             return;
         }
+        if command == Command::Quit && self.guard_plan_set_quit() {
+            return;
+        }
         if command == Command::CloseDocument && self.install_on_quit {
             self.cancel_after_save();
         }
@@ -1869,6 +1891,7 @@ impl SuniApp {
             self.form_builder.cancel();
         }
         match command {
+            Command::PlanSets => self.open_plan_sets(),
             Command::CompareFiles => self.open_local_review(true),
             Command::RevisionOverlay => self.open_revision_overlay(),
             Command::SearchFiles => self.open_local_review(false),
@@ -3350,6 +3373,7 @@ impl SuniApp {
         self.signed_save_dialog(&ctx);
         self.feature_dialogs(&ctx);
         self.revision_overlay_dialog(&ctx);
+        self.plan_sets_dialog(&ctx);
         self.autosave_tick();
         self.split_dialog(&ctx);
         self.flatten_dialog(&ctx);
@@ -3459,6 +3483,7 @@ pub(crate) mod tests {
             office: Default::default(),
             review: Default::default(),
             overlay: Default::default(),
+            plan_sets: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),

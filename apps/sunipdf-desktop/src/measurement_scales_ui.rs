@@ -814,7 +814,9 @@ impl SuniApp {
                                     },
                                     change.after,
                                     change.unit.id(),
-                                    if change.kind == MeasurementKind::Area {
+                                    if change.kind == MeasurementKind::Volume {
+                                        "³"
+                                    } else if change.kind == MeasurementKind::Area {
                                         "²"
                                     } else {
                                         ""
@@ -1243,6 +1245,8 @@ mod tests {
                 annotation_id: Some("historical-length".into()),
                 validity,
                 measurement: Measurement {
+                    holes: Vec::new(),
+                    depth: None,
                     kind: MeasurementKind::Length,
                     points: vec![(20.0, 40.0), (60.0, 40.0)],
                     calibration: calibration(4.0).points,
@@ -1288,6 +1292,8 @@ mod tests {
             index: 3,
             annotation_id: Some("length-a".into()),
             measurement: Measurement {
+                holes: Vec::new(),
+                depth: None,
                 kind: MeasurementKind::Length,
                 points: vec![(20.0, 40.0), (60.0, 40.0)],
                 calibration: calibration(4.0).points,

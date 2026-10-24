@@ -1388,16 +1388,12 @@ impl SuniApp {
         }
     }
 
-    fn form_data_dialog(&self, title_key: &str, importing: bool) -> rfd::FileDialog {
-        let dialog = rfd::FileDialog::new()
+    fn form_data_dialog(&self, title_key: &str) -> rfd::FileDialog {
+        rfd::FileDialog::new()
             .set_title(self.t(title_key))
             .add_filter(self.t("forms.filter_xfdf"), &["xfdf"])
-            .add_filter(self.t("forms.filter_json"), &["json"]);
-        if importing {
-            dialog.add_filter(self.t("forms.filter_fdf"), &["fdf"])
-        } else {
-            dialog
-        }
+            .add_filter(self.t("forms.filter_json"), &["json"])
+            .add_filter(self.t("forms.filter_fdf"), &["fdf"])
     }
 
     /// Exporter les valeurs : `<document>.json` proposé à côté du PDF.
@@ -1405,7 +1401,7 @@ impl SuniApp {
         let Some(doc) = &self.document else { return };
         let suggested = doc.info.path.with_extension("xfdf");
         let mut dialog = self
-            .form_data_dialog("forms.save_export", false)
+            .form_data_dialog("forms.save_export")
             .set_file_name(file_name(&suggested));
         if let Some(dir) = suggested.parent().filter(|d| d.is_dir()) {
             dialog = dialog.set_directory(dir);
@@ -1427,7 +1423,7 @@ impl SuniApp {
             self.status_msg = Some(tr(lang, "forms.panel.empty_doc").to_string());
             return;
         }
-        let Some(path) = self.form_data_dialog("forms.pick_import", true).pick_file() else {
+        let Some(path) = self.form_data_dialog("forms.pick_import").pick_file() else {
             return;
         };
         let value = (|| {
@@ -1437,7 +1433,7 @@ impl SuniApp {
             file.take(form_data::IMPORT_LIMIT as u64 + 1)
                 .read_to_end(&mut bytes)
                 .ok()?;
-            form_data::parse_values(
+            form_data::parse_import_values(
                 &bytes,
                 path.extension().and_then(|s| s.to_str()).unwrap_or(""),
             )

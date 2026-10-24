@@ -97,6 +97,8 @@ fn persisted_calibration_roundtrips_and_only_new_measurements_use_changed_scale(
             &Measurement {
                 kind: MeasurementKind::Length,
                 points: vec![(40.0, 80.0), (140.0, 80.0)],
+                holes: Vec::new(),
+                depth: None,
                 calibration: [(40.0, 40.0), (140.0, 40.0)],
                 known_distance: 10.0,
                 unit: MeasurementUnit::Metres,

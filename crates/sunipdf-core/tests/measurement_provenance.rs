@@ -25,6 +25,8 @@ fn engine() -> MutexGuard<'static, Engine> {
 
 fn measure() -> Measurement {
     Measurement {
+        holes: Vec::new(),
+        depth: None,
         kind: MeasurementKind::Length,
         points: vec![(40.0, 80.0), (140.0, 80.0)],
         calibration: [(40.0, 40.0), (140.0, 40.0)],

@@ -130,6 +130,7 @@ impl Document<'_> {
                 page_rotations: self.page_rotations.clone(),
                 password: self.password.clone(),
                 font_cache: Default::default(),
+                form_render_need_appearances: Default::default(),
             };
             scratch.resize_page(page_index, width_pt, height_pt, ResizeMode::ScaleContent)?;
             let new = scratch.page_geometry(page_index)?;
@@ -137,6 +138,7 @@ impl Document<'_> {
                 page_index,
                 scale_matrix(&old, &new, width_pt, height_pt),
             )?;
+            self.form_render_need_appearances.set(None);
             self.inner = scratch.inner;
             self.info = scratch.info;
             self.page_rotations = scratch.page_rotations;

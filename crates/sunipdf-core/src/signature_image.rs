@@ -163,6 +163,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         for (done, &(page, rect)) in targets.iter().enumerate() {
             check_cancel()?;
@@ -170,6 +171,7 @@ impl Document<'_> {
             progress(done + 1, targets.len());
         }
         check_cancel()?;
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(targets.len())

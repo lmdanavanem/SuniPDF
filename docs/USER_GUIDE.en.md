@@ -3,10 +3,10 @@
 SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers the [0.61.0 release](RELEASE_0.61.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
+This guide covers the [0.62.0 release](RELEASE_0.62.0.md) and the explicitly identified [0.63.0 candidate](RELEASE_0.63.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
 
-The working branch contains unreleased improvements described below. They still await tests
-and desktop qualification and are not present in the 0.61.0 download.
+Local plan sets, FDF exchange, deducted areas and volumes belong to the 0.63.0 candidate.
+Their final-source and package qualification remain separate from the published 0.62.0 results.
 
 Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
 
@@ -82,10 +82,10 @@ These formulas do not change the PDF, prices or existing subtotals. Configuratio
 use **Reuse formula configuration → Copy configuration** to keep its JSON, or paste it and choose **Load configuration**
 in another tab. Exports include definitions, calculated values and explicit errors/completeness information.
 
-**Unreleased:** Formula totals sum the rounded results of all filtered rows, with separate
+Formula totals sum the rounded results of all filtered rows, with separate
 groups for each formula, selected group, unit and precision. Read the contributing/error
 counts before using a partial total. When no row succeeds, no total is supplied; missing
-inputs do not become zero. The [subtotal and export specification](QUANTITY_TABLE.md#unreleased-formula-subtotals-and-coverage)
+inputs do not become zero. The [subtotal and export specification](QUANTITY_TABLE.md#formula-subtotals-and-coverage)
 describes the new coverage counters and CSV records. These additions do not modify the PDF.
 
 [Full instructions, limits and CLI](QUANTITY_TABLE.md).
@@ -152,7 +152,7 @@ requires document-modification permission; measurement creation requires annotat
 Rotation and page reordering preserve eligible defaults. Changed crop bounds, decoded page content or reachable
 resources, unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
 default. In 0.61.0, new page defaults use version 2 and resource-dependent version-1 defaults require explicit recalibration or removal.
-The working branch strengthens this check further; see [unreleased reference migration](#unreleased-verify-saved-measurement-references).
+Page-reference checks are described in [reference migration](#verify-saved-measurement-references).
 Supported stale regions can be explicitly cleared and recreated; malformed or unknown records are refused.
 Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
 
@@ -191,10 +191,9 @@ within their documented limits. Check the known distance and drawing revision; a
 physical accuracy. See the [measurement guide](MEASUREMENTS.md) and [plan workspace](PLAN_WORKSPACE.md) for formats,
 permissions and geometry limits. Private real-project plan qualification remains deferred.
 
-### Unreleased: verify saved measurement references
+### Verify saved measurement references
 
-The working branch adds page-reference checks; this workflow is not yet desktop-qualified or
-included in the 0.61.0 packages. **Saved measurements** distinguishes a record bound to the current
+Page-reference checks are included in 0.62.0. **Saved measurements** distinguishes a record bound to the current
 page from a legacy record with an unverified reference or a record whose page no longer matches.
 The check covers page bounds, user unit, decoded content, reachable resources, initial layer
 visibility and page transparency state. A matching reference does not prove physical accuracy.
@@ -220,7 +219,7 @@ before-values in its preview and leaves angles excluded. Recalibration never sil
 New saved page defaults use version 3 and named-region references use version 2. Older defaults
 and regions cannot be reused automatically because they do not verify the additional rendering
 state. Explicitly recalibrate or remove supported old records; malformed or unknown records remain
-refused. [Quantity table provenance and export fields](QUANTITY_TABLE.md#unreleased-measurement-provenance)
+refused. [Quantity table provenance and export fields](QUANTITY_TABLE.md#measurement-provenance)
 explain historical exclusions, inactive prices and formula errors.
 
 ## Prepare a visual signature
@@ -338,7 +337,7 @@ Each open PDF gets a tab in the top strip. Click a tab to show it, its cross to 
 go back to the home screen without closing anything. Ctrl+Tab and Ctrl+Shift+Tab cycle through tabs.
 Unsaved changes are flagged with a dot per tab and confirmed one by one when you quit.
 
-**Unreleased:** If returning to a tab fails, its unsaved document bytes, Undo/Redo history and
+If returning to a tab fails, its unsaved document bytes, Undo/Redo history and
 recovery identity remain available. Select the retained tab to retry; the failed attempt
 cancels a pending close/quit action. Register data reloads after switching, obsolete search
 responses are ignored, and page selection/navigation follows edits completed during suspension.
@@ -551,7 +550,7 @@ form (read, never modified) and the presence of **scripts** (JavaScript calculat
 runs them, calculated fields are not updated).
 
 **Forms** menu: **Clear fields** (texts emptied, boxes unchecked, lists deselected; read-only fields and "always
-one choice" radio groups are kept), **Export form values...** (`.xfdf` or `.json`), **Import values into the form...** (`.json`, `.xfdf`, or value-only `.fdf`).
+one choice" radio groups are kept), **Export form values...** (`.xfdf`, `.json`, or value-only `.fdf`), **Import values into the form...** (`.json`, `.xfdf`, or value-only `.fdf`). See [form value exchange](FORM_DATA.md) for button-state handling and format limits.
 The complete GUI import is refused if a field is unknown or a value is invalid; no partial import occurs. An exported
 read-only value can be imported unchanged, and passwords are never exported. The fields panel keeps changes pending:
 choose **Apply changes** for one undo step, **Discard pending changes** to return to current values, or Save to apply
@@ -753,7 +752,7 @@ Ctrl+S saves to the open file, Ctrl+Shift+S to a new file. Writes are atomic: th
 left half-written (data is flushed to disk before the replacement). A dot after the tab name signals unsaved
 changes; undoing back to the saved state clears it; SuniPDF asks before closing or quitting.
 
-**Unreleased:** A failed document restoration retains the current document and password.
+A failed document restoration retains the current document and password.
 CLI commands also check their no-overwrite policy when creating the final output, so a file
 created while processing is not silently replaced. Commands that allow explicit `--overwrite`
 retain their own source-file restrictions; commands requiring a new copy continue to require one.

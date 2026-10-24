@@ -79,8 +79,12 @@ from CI; it does not establish a new physical-device installation test.
 
 Ubuntu 22.04/24.04 checks used clean containers, a normal user, Xvfb/software rendering and same-version
 remove/reinstall. Windows CI UI checks used offscreen DX12 WARP. Neither proves physical GPU behavior.
-Conformance records retain the validator CLI hashes; the publication verifier did not independently extract
-and compare that executable from the DEB. See [project status](PROJECT_STATUS.md) for the remaining boundaries.
+A later DEB payload check on 2026-10-24 independently hashed the embedded SuniPDF CLI and matched it to both
+recorded conformance runs (SHA256 `db23f6a4fb94cd468294ecf6bb33977accf89cad899f1dfbecec758c398a4866`).
+The DEB stayed unchanged. This was an in-memory payload inspection, with no program execution or new Linux
+runtime qualification. The desktop hash was recorded only; it was not independently matched to a prior
+desktop hash or executed. Original run evidence remains unchanged; see the supplementary section in the
+[release evidence](qa/RELEASE_0.62.0.json) and [project status](PROJECT_STATUS.md).
 
 ## Earlier local development qualification
 

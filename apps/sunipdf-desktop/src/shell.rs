@@ -104,6 +104,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::Undo => (glyph::UNDO, "↶"),
         Command::Redo => (glyph::REDO, "↷"),
         Command::OrganizePages => (glyph::GRID, "▦"),
+        Command::PlanSets => (glyph::LAYERS, "▤"),
         Command::FirstPage | Command::PreviousPage => (glyph::CHEVRON_UP, "▲"),
         Command::NextPage | Command::LastPage => (glyph::CHEVRON_DOWN, "▼"),
         Command::ZoomIn => (glyph::ZOOM_IN, "+"),

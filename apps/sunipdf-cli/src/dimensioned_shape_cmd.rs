@@ -119,6 +119,7 @@ pub fn rectangle(engine: &Engine, args: RectangleArgs) -> Result<serde_json::Val
         result["validity"] = "current".into();
         result["historical_value"] = serde_json::Value::Null;
         result["historical_label"] = serde_json::Value::Null;
+        result["historical_area"] = serde_json::Value::Null;
         result
     };
     let index = doc.add_dimensioned_rectangle(page, &request, args.author.as_deref())?;

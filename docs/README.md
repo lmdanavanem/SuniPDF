@@ -1,6 +1,6 @@
 # SuniPDF documentation
 
-Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0610) or
+Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0620) or
 [Ubuntu installation](UBUNTU.md). This documentation is maintained in English; the application supports English and French.
 
 ## Use SuniPDF
@@ -8,7 +8,8 @@ Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download
 | Task | Guides |
 |---|---|
 | Read and navigate | [Reader workspace](READER_WORKSPACE.md) · [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) · [Bookmarks and pages](BOOKMARKS_AND_PAGE_STRUCTURE.md) |
-| Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) |
+| Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) · [Deducted areas and volumes](MEASUREMENT_VOLUMES.md) |
+| Organize and exchange | [Local plan sets](PLAN_SETS.md) · [Form values](FORM_DATA.md) |
 | Review and quantify | [Counts and annotation register](MARKUP_REGISTER.md) · [Quantity tables](QUANTITY_TABLE.md) · [Revision overlays](REVISION_OVERLAY.md) · [Local comparison and search](LOCAL_REVIEW.md) |
 | Annotate and edit | [Rich annotations](RICH_ANNOTATIONS.md) · [Annotation library](ANNOTATION_LIBRARY.md) · [Object order](OBJECT_ORDER.md) · [Font embedding](FONT_EMBEDDING.md) |
 | Decorate and convert | [Page decorations](PAGE_DECORATIONS.md) · [Office conversion](OFFICE_CONVERSION.md) |
@@ -35,6 +36,8 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
+- [0.63.0 candidate scope](RELEASE_0.63.0.md): implementation and qualification in progress.
+- [0.62.0 release notes](RELEASE_0.62.0.md) and [qualification evidence](qa/RELEASE_0.62.0.json).
 - [0.61.0 release notes](RELEASE_0.61.0.md) and [qualification evidence](qa/RELEASE_0.61.0.json).
 - [0.60.0 release notes](RELEASE_0.60.0.md) and [qualification evidence](qa/RELEASE_0.60.0.json).
 - [Changelog](../CHANGELOG.md): changes by version and links to earlier release documents.

@@ -120,6 +120,7 @@ pub enum QuantityDimension {
     Count,
     Length,
     Area,
+    Volume,
     Angle,
 }
 
@@ -147,11 +148,21 @@ pub enum QuantityUnit {
     SquareInches,
     #[serde(rename = "ft2")]
     SquareFeet,
+    #[serde(rename = "mm3")]
+    CubicMillimetres,
+    #[serde(rename = "cm3")]
+    CubicCentimetres,
+    #[serde(rename = "m3")]
+    CubicMetres,
+    #[serde(rename = "in3")]
+    CubicInches,
+    #[serde(rename = "ft3")]
+    CubicFeet,
     #[serde(rename = "deg")]
     Degrees,
 }
 impl QuantityUnit {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 17] = [
         Self::Each,
         Self::Millimetres,
         Self::Centimetres,
@@ -163,6 +174,11 @@ impl QuantityUnit {
         Self::SquareMetres,
         Self::SquareInches,
         Self::SquareFeet,
+        Self::CubicMillimetres,
+        Self::CubicCentimetres,
+        Self::CubicMetres,
+        Self::CubicInches,
+        Self::CubicFeet,
         Self::Degrees,
     ];
     pub fn id(self) -> &'static str {
@@ -178,6 +194,11 @@ impl QuantityUnit {
             Self::SquareMetres => "m2",
             Self::SquareInches => "in2",
             Self::SquareFeet => "ft2",
+            Self::CubicMillimetres => "mm3",
+            Self::CubicCentimetres => "cm3",
+            Self::CubicMetres => "m3",
+            Self::CubicInches => "in3",
+            Self::CubicFeet => "ft3",
             Self::Degrees => "deg",
         }
     }
@@ -193,6 +214,11 @@ impl QuantityUnit {
             | Self::SquareMetres
             | Self::SquareInches
             | Self::SquareFeet => QuantityDimension::Area,
+            Self::CubicMillimetres
+            | Self::CubicCentimetres
+            | Self::CubicMetres
+            | Self::CubicInches
+            | Self::CubicFeet => QuantityDimension::Volume,
             _ => QuantityDimension::Length,
         }
     }
@@ -206,6 +232,10 @@ impl QuantityUnit {
             Self::SquareCentimetres => 0.0001,
             Self::SquareInches => 0.0254 * 0.0254,
             Self::SquareFeet => 0.3048 * 0.3048,
+            Self::CubicMillimetres => 0.001 * 0.001 * 0.001,
+            Self::CubicCentimetres => 0.01 * 0.01 * 0.01,
+            Self::CubicInches => 0.0254 * 0.0254 * 0.0254,
+            Self::CubicFeet => 0.3048 * 0.3048 * 0.3048,
             _ => 1.0,
         }
     }
@@ -217,6 +247,11 @@ impl QuantityUnit {
             (MeasurementUnit::Metres, MeasurementKind::Area) => Self::SquareMetres,
             (MeasurementUnit::Inches, MeasurementKind::Area) => Self::SquareInches,
             (MeasurementUnit::Feet, MeasurementKind::Area) => Self::SquareFeet,
+            (MeasurementUnit::Millimetres, MeasurementKind::Volume) => Self::CubicMillimetres,
+            (MeasurementUnit::Centimetres, MeasurementKind::Volume) => Self::CubicCentimetres,
+            (MeasurementUnit::Metres, MeasurementKind::Volume) => Self::CubicMetres,
+            (MeasurementUnit::Inches, MeasurementKind::Volume) => Self::CubicInches,
+            (MeasurementUnit::Feet, MeasurementKind::Volume) => Self::CubicFeet,
             (MeasurementUnit::Millimetres, _) => Self::Millimetres,
             (MeasurementUnit::Centimetres, _) => Self::Centimetres,
             (MeasurementUnit::Metres, _) => Self::Metres,

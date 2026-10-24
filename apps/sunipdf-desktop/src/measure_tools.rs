@@ -6,7 +6,10 @@ use crate::{
 };
 use egui::{Color32, Key, Modifiers, Painter, Pos2, Rect, Stroke};
 use std::collections::BTreeMap;
-use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit, PageCalibration};
+use sunipdf_core::measurement::{
+    Measurement, MeasurementDepth, MeasurementKind, MeasurementUnit, PageCalibration, MAX_HOLES,
+    MAX_RING_VERTICES, MAX_TOTAL_VERTICES,
+};
 use sunipdf_i18n::{tr, tr_args};
 
 type Point = (f32, f32);
@@ -44,6 +47,9 @@ pub struct MeasurementState {
     epoch: Option<u64>,
     scales: BTreeMap<usize, Scale>,
     gesture: Gesture,
+    holes: Vec<Vec<Point>>,
+    active_ring: Option<usize>,
+    depth: MeasurementDepth,
     pub(crate) hover: Option<(usize, Point)>,
     error: Option<&'static str>,
 }
@@ -62,6 +68,12 @@ impl Default for MeasurementState {
             epoch: None,
             scales: BTreeMap::new(),
             gesture: Gesture::Idle,
+            holes: Vec::new(),
+            active_ring: None,
+            depth: MeasurementDepth {
+                value: 1.0,
+                unit: MeasurementUnit::Metres,
+            },
             hover: None,
             error: None,
         }
@@ -82,6 +94,8 @@ impl MeasurementState {
         self.rectangle.draft = None;
         self.scales_ui.cancel_region();
         self.gesture = Gesture::Idle;
+        self.holes.clear();
+        self.active_ring = None;
         self.input_distance.clear();
         self.hover = None;
         self.error = None;
@@ -150,6 +164,11 @@ impl MeasurementState {
     }
 
     pub(crate) fn undo_point(&mut self) {
+        if let Some(ring) = self.active_ring.and_then(|index| self.holes.get_mut(index)) {
+            ring.pop();
+            self.error = None;
+            return;
+        }
         match &mut self.gesture {
             Gesture::Calibrate { page, points } => {
                 points.pop();
@@ -161,6 +180,8 @@ impl MeasurementState {
                 points.pop();
                 if points.is_empty() {
                     self.gesture = Gesture::Idle;
+                    self.holes.clear();
+                    self.active_ring = None;
                 }
             }
             Gesture::Idle => {}
@@ -179,6 +200,9 @@ impl MeasurementState {
     }
 
     pub(crate) fn points(&self) -> &[Point] {
+        if let Some(ring) = self.active_ring.and_then(|index| self.holes.get(index)) {
+            return ring;
+        }
         match &self.gesture {
             Gesture::Calibrate { points, .. } | Gesture::Draw { points, .. } => points,
             Gesture::Idle => &[],
@@ -186,6 +210,17 @@ impl MeasurementState {
     }
 
     fn result(&self, page: usize, points: Vec<Point>) -> Option<Measurement> {
+        let mut holes = self.holes.clone();
+        let outer = if let Some(index) = self.active_ring {
+            *holes.get_mut(index)? = points;
+            let Gesture::Draw { points, .. } = &self.gesture else {
+                return None;
+            };
+            points.clone()
+        } else {
+            points
+        };
+        let points = outer;
         let scale = if self.kind == MeasurementKind::Angle {
             // Angle has no physical scale. Reuse real vertices to satisfy core geometry validation.
             Scale {
@@ -194,24 +229,45 @@ impl MeasurementState {
                 unit: self.unit,
             }
         } else {
+            // Region selection accepts one contour. Valid deductions are strictly
+            // inside this outer boundary and must never create connecting edges.
             self.scale_for_points(page, &points).ok()?
         };
-        Some(measurement(
-            self.kind,
-            points,
-            scale,
-            self.unit,
-            self.precision,
-        ))
+        let mut result = measurement(self.kind, points, scale, self.unit, self.precision);
+        result.holes = holes;
+        result.depth = (self.kind == MeasurementKind::Volume).then_some(self.depth);
+        Some(result)
     }
 
     fn ready_result(&self) -> Option<(usize, Measurement)> {
-        let Gesture::Draw { page, points } = &self.gesture else {
+        let Gesture::Draw { page, .. } = &self.gesture else {
             return None;
         };
-        let result = self.result(*page, points.clone())?;
+        let result = self.result(*page, self.points().to_vec())?;
         result.value().ok()?;
         Some((*page, result))
+    }
+
+    fn add_deduction(&mut self) -> bool {
+        if !matches!(self.kind, MeasurementKind::Area | MeasurementKind::Volume)
+            || self.holes.len() >= MAX_HOLES
+            || self.ready_result().is_none()
+        {
+            return false;
+        }
+        self.active_ring = Some(self.holes.len());
+        self.holes.push(Vec::new());
+        self.hover = None;
+        self.error = None;
+        true
+    }
+
+    fn remove_deduction(&mut self) {
+        if let Some(index) = self.active_ring.take() {
+            self.holes.remove(index);
+            self.hover = None;
+            self.error = None;
+        }
     }
 
     fn push_point(&mut self, page: usize, point: Point, shift: bool) -> bool {
@@ -220,6 +276,27 @@ impl MeasurementState {
             return false;
         }
         let point = constrain(self.points().last().copied(), point, shift);
+        if let Some(index) = self.active_ring {
+            let total = self.holes.iter().map(Vec::len).sum::<usize>()
+                + match &self.gesture {
+                    Gesture::Draw { points, .. } => points.len(),
+                    _ => 0,
+                };
+            let ring = &mut self.holes[index];
+            if ring.len() >= MAX_RING_VERTICES || total >= MAX_TOTAL_VERTICES {
+                self.error = Some("measure.deductions.limit");
+                return false;
+            }
+            if ring
+                .last()
+                .is_some_and(|last| distance(*last, point) < 0.01)
+            {
+                return false;
+            }
+            ring.push(point);
+            self.error = None;
+            return true;
+        }
         if !matches!(self.gesture, Gesture::Calibrate { .. }) && self.kind != MeasurementKind::Angle
         {
             let mut proposed = self.points().to_vec();
@@ -236,6 +313,13 @@ impl MeasurementState {
             };
         }
         let calibrating = matches!(self.gesture, Gesture::Calibrate { .. });
+        if !calibrating
+            && self.points().len() + self.holes.iter().map(Vec::len).sum::<usize>()
+                >= MAX_TOTAL_VERTICES
+        {
+            self.error = Some("measure.deductions.limit");
+            return false;
+        }
         let max = if calibrating { 2 } else { 128 };
         match &mut self.gesture {
             Gesture::Calibrate { points, .. } | Gesture::Draw { points, .. } => {
@@ -406,6 +490,8 @@ fn measurement(
     precision: usize,
 ) -> Measurement {
     Measurement {
+        holes: Vec::new(),
+        depth: None,
         kind,
         points,
         calibration: scale.points,
@@ -421,6 +507,7 @@ fn kind_key(kind: MeasurementKind) -> &'static str {
         MeasurementKind::Polyline => "measure.polyline",
         MeasurementKind::Perimeter => "measure.perimeter",
         MeasurementKind::Area => "measure.area",
+        MeasurementKind::Volume => "measure.volume",
         MeasurementKind::Angle => "measure.angle",
     }
 }
@@ -615,9 +702,13 @@ impl SuniApp {
             return;
         };
         let gesture = self.annotate.measure.gesture.clone();
+        let holes = self.annotate.measure.holes.clone();
+        let active_ring = self.annotate.measure.active_ring;
         self.annotate.measure.cancel();
         if !self.open_measurement_preview(page, measurement) {
             self.annotate.measure.gesture = gesture;
+            self.annotate.measure.holes = holes;
+            self.annotate.measure.active_ring = active_ring;
         }
     }
 
@@ -687,6 +778,9 @@ impl SuniApp {
                         .add(egui::DragValue::new(&mut state.precision).range(0..=4))
                         .labelled_by(precision_label.id);
                 });
+                if state.kind == MeasurementKind::Volume {
+                    crate::measurement_area_ui::depth_controls(ui, lang, &mut state.depth);
+                }
             });
 
             ui.add_space(4.0);
@@ -749,11 +843,31 @@ impl SuniApp {
 
             self.measurement_saved_scale_controls(ui);
             self.measurement_advanced_scale_controls(ctx, ui);
-            self.measurement_rectangle_controls(ui);
+            if self.annotate.measure.kind != MeasurementKind::Volume
+                || self.annotate.measure.rectangle.draft.is_some()
+            {
+                self.measurement_rectangle_controls(ui);
+            }
             ui.add_space(4.0);
             ui.separator();
             ui.label(egui::RichText::new(tr(lang, "measure.panel.drawing")).strong().color(palette.text));
             let state = &mut self.annotate.measure;
+            if matches!(state.kind, MeasurementKind::Area | MeasurementKind::Volume)
+                && matches!(state.gesture, Gesture::Draw { .. }) {
+                let previous = state.active_ring;
+                crate::measurement_area_ui::ring_selector(ui, lang, "measure-drawing-ring", &mut state.active_ring, state.holes.len());
+                if previous != state.active_ring { state.hover = None; state.error = None; }
+                if measurement_panel_button(ui, ready && state.holes.len() < MAX_HOLES && state.ready_result().is_some(), tr(lang, "measure.deductions.add")).clicked() {
+                    state.add_deduction();
+                }
+                if measurement_panel_button(ui, ready && state.active_ring.is_some(), tr(lang, "measure.deductions.remove")).clicked() {
+                    state.remove_deduction();
+                }
+                ui.small(tr(lang, "measure.deductions.hint"));
+                if let Some(result) = page.and_then(|page| state.result(page, state.points().to_vec())) {
+                    crate::measurement_area_ui::area_summary(ui, lang, &result);
+                }
+            }
             let hint = match &state.gesture {
                 _ if state.rectangle.draft.is_some() => "measure.rectangle.place_hint",
                 _ if state.scales_ui.region.is_some() => "measure.viewport.draw",
@@ -889,13 +1003,27 @@ impl SuniApp {
             Color32::from_rgb(190, 30, 55)
         };
         let stroke = Stroke::new(2.0, color);
+        if let Gesture::Draw { points: outer, .. } = &state.gesture {
+            for (index, ring) in std::iter::once(outer).chain(state.holes.iter()).enumerate() {
+                if index == state.active_ring.map_or(0, |i| i + 1) {
+                    continue;
+                }
+                let muted = Stroke::new(1.5, color.gamma_multiply(0.65));
+                for pair in ring.windows(2) {
+                    painter.line_segment([screen(pair[0]), screen(pair[1])], muted);
+                }
+                if ring.len() >= 3 {
+                    painter.line_segment([screen(*ring.last().unwrap()), screen(ring[0])], muted);
+                }
+            }
+        }
         for pair in points.windows(2) {
             painter.line_segment([screen(pair[0]), screen(pair[1])], stroke);
         }
         if !calibrating
             && matches!(
                 state.kind,
-                MeasurementKind::Area | MeasurementKind::Perimeter
+                MeasurementKind::Volume | MeasurementKind::Area | MeasurementKind::Perimeter
             )
             && points.len() >= 3
         {
@@ -980,6 +1108,95 @@ mod tests {
     }
 
     #[test]
+    fn rectangle_controls_remain_discoverable_and_leave_volume_deductions_accessible() {
+        for language in ["en-US", "fr-FR"] {
+            let mut deduction_positions = Vec::new();
+            for kind in MeasurementKind::ALL {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.settings.language = language.into();
+                let ctx = egui::Context::default();
+                ctx.enable_accesskit();
+                app.open_measurements(&ctx);
+                app.annotate.measure = calibrated();
+                app.annotate.measure.kind = kind;
+                app.annotate.measure.advance_epoch(app.view.epoch);
+                if matches!(kind, MeasurementKind::Area | MeasurementKind::Volume) {
+                    for point in [(20.0, 30.0), (120.0, 30.0), (120.0, 130.0), (20.0, 130.0)] {
+                        assert!(app.annotate.measure.push_point(0, point, false));
+                    }
+                }
+                let input = egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(300.0, 2400.0))),
+                    ..Default::default()
+                };
+                for frame in 0..2 {
+                    let mut output = ctx.run_ui(input.clone(), |ui| app.measurement_bar(&ctx, ui));
+                    let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+                    let has_rectangle = tree.nodes.iter().any(|(_, node)| {
+                        node.label() == Some(tr(app.lang(), "measure.rectangle.place"))
+                    });
+                    assert_eq!(has_rectangle, kind != MeasurementKind::Volume, "{kind:?}");
+                    if matches!(kind, MeasurementKind::Area | MeasurementKind::Volume) {
+                        let add = tree
+                            .nodes
+                            .iter()
+                            .map(|(_, node)| node)
+                            .find(|node| {
+                                node.label() == Some(tr(app.lang(), "measure.deductions.add"))
+                            })
+                            .unwrap();
+                        assert!(!add.is_disabled());
+                        if frame == 1 {
+                            deduction_positions.push(add.bounds().unwrap().y0);
+                        }
+                    }
+                    output.textures_delta.clear();
+                }
+            }
+            assert!(deduction_positions[1] < deduction_positions[0]);
+
+            let (mut app, _, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            app.open_measurements(&ctx);
+            app.annotate.measure.kind = MeasurementKind::Volume;
+            app.annotate.measure.rectangle.draft =
+                Some(crate::measurement_shapes_ui::RectangleDraft {
+                    page: 0,
+                    epoch: app.view.epoch,
+                    placement: crate::measurement_shapes_ui::RectanglePlacement {
+                        anchor: (20.0, 30.0),
+                        width: 2.0,
+                        height: 3.0,
+                        unit: MeasurementUnit::Metres,
+                        precision: 2,
+                        scale: crate::measurement_shapes_ui::RectangleScaleSelection::Automatic,
+                    },
+                });
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(300.0, 2400.0))),
+                    ..Default::default()
+                },
+                |ui| app.measurement_bar(&ctx, ui),
+            );
+            let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+            assert!(tree.nodes.iter().any(|(_, node)| {
+                node.label() == Some(tr(app.lang(), "measure.rectangle.place"))
+            }));
+            let cancel = tree
+                .nodes
+                .iter()
+                .map(|(_, node)| node)
+                .find(|node| node.label() == Some(tr(app.lang(), "measure.cancel_draft")))
+                .unwrap();
+            assert!(!cancel.is_disabled());
+            output.textures_delta.clear();
+        }
+    }
+
+    #[test]
     fn calibration_requires_explicit_positive_distance_and_stays_on_one_page() {
         let mut state = MeasurementState::default();
         assert!(!state.push_point(0, (10.0, 20.0), false));
@@ -1050,6 +1267,72 @@ mod tests {
         assert!(!state.push_point(0, (120.0, 120.0), false));
         assert_eq!(state.points().len(), 3);
         assert!((state.ready_result().unwrap().1.value().unwrap() - 50.0).abs() < 1e-8);
+    }
+
+    #[test]
+    fn deducted_area_drawing_selects_rings_and_preserves_real_depth_on_unit_changes() {
+        let mut state = calibrated();
+        state.kind = MeasurementKind::Volume;
+        state.depth = MeasurementDepth {
+            value: 20.0,
+            unit: MeasurementUnit::Centimetres,
+        };
+        let outer = [(20.0, 20.0), (220.0, 20.0), (220.0, 220.0), (20.0, 220.0)];
+        for point in outer {
+            assert!(state.push_point(0, point, false));
+        }
+        assert!(state.add_deduction());
+        let hole = [(70.0, 70.0), (120.0, 70.0), (120.0, 120.0), (70.0, 120.0)];
+        for point in hole {
+            assert!(state.push_point(0, point, false));
+        }
+        let measurement = state.ready_result().unwrap().1;
+        assert_eq!(measurement.points, outer);
+        assert_eq!(measurement.holes, vec![hole.to_vec()]);
+        assert!((measurement.area_breakdown().unwrap().net - 375.0).abs() < 1e-8);
+        assert!((measurement.value().unwrap() - 75.0).abs() < 1e-8);
+        state.undo_point();
+        assert_eq!(state.points().len(), 3);
+        assert!(state.push_point(0, hole[3], false));
+        state.unit = MeasurementUnit::Centimetres;
+        let converted = state.ready_result().unwrap().1;
+        assert_eq!(converted.depth, measurement.depth);
+        assert!((converted.value().unwrap() - 75_000_000.0).abs() < 1e-4);
+        state.remove_deduction();
+        assert_eq!(state.points(), outer);
+        assert!(state.ready_result().unwrap().1.holes.is_empty());
+        state.cancel();
+        assert!(state.holes.is_empty() && state.active_ring.is_none());
+    }
+
+    #[test]
+    fn unfinished_touching_or_outside_deductions_cannot_be_previewed() {
+        let mut state = calibrated();
+        state.kind = MeasurementKind::Area;
+        for point in [(20.0, 20.0), (220.0, 20.0), (220.0, 220.0), (20.0, 220.0)] {
+            state.push_point(0, point, false);
+        }
+        assert!(state.add_deduction());
+        assert!(state.ready_result().is_none());
+        assert!(!state.add_deduction());
+        for point in [(20.0, 20.0), (80.0, 30.0), (60.0, 80.0)] {
+            state.push_point(0, point, false);
+        }
+        assert!(
+            state.ready_result().is_none(),
+            "touching outer contour is rejected"
+        );
+        state.remove_deduction();
+        assert!(state.add_deduction());
+        for point in [(250.0, 250.0), (280.0, 250.0), (280.0, 280.0)] {
+            state.push_point(0, point, false);
+        }
+        assert!(state.ready_result().is_none(), "outside ring is rejected");
+        state.remove_deduction();
+        assert!(
+            state.ready_result().is_some(),
+            "removing invalid local ring restores previewability"
+        );
     }
 
     #[test]
@@ -1540,6 +1823,112 @@ mod tests {
         state.push_point(0, (140.0, 40.0), false);
         assert!(
             (state.ready_result().unwrap().1.value().unwrap() - (5.0 + 6.5 / 12.0)).abs() < 1e-10
+        );
+    }
+
+    fn area_with_viewports(
+        viewports: Vec<sunipdf_core::measurement::MeasurementViewport>,
+    ) -> MeasurementState {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+        app.open_measurements(&egui::Context::default());
+        app.request_measurement_page(0);
+        let crate::worker::Request::MeasurementPage {
+            page,
+            epoch,
+            generation,
+        } = requests.recv().unwrap()
+        else {
+            panic!("measurement metadata")
+        };
+        let calibration = PageCalibration {
+            points: [(0.0, 0.0), (100.0, 0.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+        };
+        let mut data = crate::measurement_saved::MeasurementPageData::new(
+            Ok(Some(calibration)),
+            Ok(vec![]),
+            true,
+        );
+        data.viewports = Ok(std::sync::Arc::from(viewports));
+        app.on_measurement_page(page, epoch, generation, Ok(data));
+        let mut state = std::mem::take(&mut app.annotate.measure);
+        state.kind = MeasurementKind::Area;
+        state.gesture = Gesture::Draw {
+            page: 0,
+            points: vec![(0.0, 0.0), (100.0, 0.0), (100.0, 100.0), (0.0, 100.0)],
+        };
+        state
+    }
+
+    #[test]
+    fn scale_selection_accepts_more_than_128_total_vertices_across_separate_rings() {
+        let mut state = area_with_viewports(vec![]);
+        for (x, y) in [(30.0, 30.0), (70.0, 30.0), (50.0, 70.0)] {
+            state.holes.push(
+                (0..64)
+                    .map(|index| {
+                        let angle = index as f32 * std::f32::consts::TAU / 64.0;
+                        (x + 10.0 * angle.cos(), y + 10.0 * angle.sin())
+                    })
+                    .collect(),
+            );
+        }
+        let (_, measurement) = state
+            .ready_result()
+            .expect("196 vertices in four valid rings");
+        assert_eq!(
+            measurement.points.len() + measurement.holes.iter().map(Vec::len).sum::<usize>(),
+            196
+        );
+        assert_eq!(measurement.holes.len(), 3);
+        assert!((90.0..91.0).contains(&measurement.value().unwrap()));
+        state.active_ring = Some(1);
+        assert_eq!(
+            state.ready_result().unwrap().1,
+            measurement,
+            "selected deduction does not change the outer scale contour"
+        );
+    }
+
+    #[test]
+    fn enclosed_scale_region_cannot_be_hidden_by_connecting_outer_and_deduction_vertices() {
+        use sunipdf_core::{measurement::MeasurementViewport, PointRect};
+        let mut state = area_with_viewports(vec![MeasurementViewport {
+            id: "internal-region".into(),
+            name: "Internal detail".into(),
+            bounds: PointRect {
+                left: 2.5,
+                bottom: 45.0,
+                right: 5.0,
+                top: 50.0,
+            },
+            calibration: PageCalibration {
+                points: [(3.0, 46.0), (4.0, 46.0)],
+                known_distance: 1.0,
+                unit: MeasurementUnit::Metres,
+            },
+        }]);
+        state
+            .holes
+            .push(vec![(20.0, 20.0), (40.0, 20.0), (40.0, 40.0), (20.0, 40.0)]);
+        assert!(
+            state.ready_result().is_none(),
+            "automatic choice must reject a region enclosed by the outer boundary"
+        );
+        state.active_ring = Some(0);
+        assert!(
+            state.ready_result().is_none(),
+            "selecting the hole cannot hide that region"
+        );
+        state
+            .scales_ui
+            .selected
+            .insert(0, crate::measurement_scales_ui::PAGE_SCALE.into());
+        assert!(
+            (state.ready_result().unwrap().1.value().unwrap() - 96.0).abs() < 1e-8,
+            "explicit page scale resolves the ambiguity"
         );
     }
 

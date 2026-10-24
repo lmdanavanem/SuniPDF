@@ -846,7 +846,7 @@
     "status": "deferred",
     "reason": "Deferred at the owner request; synthetic evidence does not establish real-project survey accuracy."
   },
-  "limitations": "Bounded synthetic/licensed corpus and specified operations only. No universal PDF/A, PDF/UA, human accessibility or survey-accuracy claim. Windows unsigned; ARM64 has no native runtime qualification. Physical printing, physical GPU interaction and independent update authenticity remain open. Projects synchronization remains deferred. Conformance CLI hashes are recorded, but this script does not unpack the DEB to independently match its executable.",
+  "limitations": "Bounded synthetic/licensed corpus and specified operations only. No universal PDF/A, PDF/UA, human accessibility or survey-accuracy claim. Windows unsigned; ARM64 has no native runtime qualification. Physical printing, physical GPU interaction and independent update authenticity remain open. A later supplementary DEB payload check matches the embedded SuniPDF CLI to both recorded conformance runs. It does not execute the payload or add runtime/desktop qualification; the desktop hash is observed only.",
   "conformance": [
     {
       "run": 40051795422,
@@ -12826,5 +12826,132 @@
         }
       ]
     }
+  },
+  "supplementary_deb_payload_verification": {
+    "verified_at": "2026-10-24T03:13:45.310139+00:00",
+    "status": "passed",
+    "complete": true,
+    "scope": "Independent in-memory DEB payload hashing only; no program execution or new runtime qualification.",
+    "version": "0.62.0",
+    "source": "a6281fd8d54e4bceddc53d43e9527b1cdaa3872e",
+    "historical_evidence_unchanged": true,
+    "verification_script_sha256": "bc2db3eacac4f5c4f85ec0a8d092865a587a079eb1e5255d98d8783940a6642a",
+    "original_release_evidence_sha256": "cddd10fc165d32b9e29aa140879d18dfa4969fbb89226928ed4c266d47f9b435",
+    "package": {
+      "name": "SuniPDF-0.62.0-linux-amd64.deb",
+      "size": 17691536,
+      "sha256": "8d3715146e2221d46d336f9be69cef0a471e6722582597bb22e3c2069fc1f058",
+      "matches_published_package": true,
+      "control": {
+        "Package": "sunipdf",
+        "Version": "0.62.0",
+        "Architecture": "amd64"
+      },
+      "unchanged": true
+    },
+    "cli": {
+      "archive_path": "./usr/lib/sunipdf/sunipdf-cli",
+      "normalized_path": "usr/lib/sunipdf/sunipdf-cli",
+      "size": 10194480,
+      "mode": "0o755",
+      "sha256": "db23f6a4fb94cd468294ecf6bb33977accf89cad899f1dfbecec758c398a4866",
+      "elf": {
+        "class": 64,
+        "byte_order": "little",
+        "machine": 62
+      },
+      "matches_both_conformance_runs": true
+    },
+    "desktop": {
+      "archive_path": "./usr/lib/sunipdf/sunipdf",
+      "normalized_path": "usr/lib/sunipdf/sunipdf",
+      "size": 36770120,
+      "mode": "0o755",
+      "sha256": "8363437965aca854ba38ec9cb2a900d2c422ac719f6b1d5e5747750d00684d21",
+      "elf": {
+        "class": 64,
+        "byte_order": "little",
+        "machine": 62
+      },
+      "historical_binary_hash_comparison": "not available in the supplied release evidence; hash recorded here",
+      "hash_observed_only": true
+    },
+    "conformance_comparisons": [
+      {
+        "evidence_pointer": "/conformance/0/result/cli_sha256",
+        "run": 40051795422,
+        "artifact_id": 12543628937,
+        "source": "a6281fd8d54e4bceddc53d43e9527b1cdaa3872e",
+        "report_sha256": "a3ac69614b439edbc8447b47faaf0863c7f5dd2c36b5a71a63018082f115abe6",
+        "expected_cli_sha256": "db23f6a4fb94cd468294ecf6bb33977accf89cad899f1dfbecec758c398a4866",
+        "actual_cli_sha256": "db23f6a4fb94cd468294ecf6bb33977accf89cad899f1dfbecec758c398a4866",
+        "matches": true,
+        "recorded_packaged_cli_hash_verified": false
+      },
+      {
+        "evidence_pointer": "/conformance/1/result/cli_sha256",
+        "run": 40051802122,
+        "artifact_id": 12544140786,
+        "source": "a6281fd8d54e4bceddc53d43e9527b1cdaa3872e",
+        "report_sha256": "7aa6fac5165ad0f06e39ad7615eab91822838dd7eb2ff09604dcc8d600e1cf98",
+        "expected_cli_sha256": "db23f6a4fb94cd468294ecf6bb33977accf89cad899f1dfbecec758c398a4866",
+        "actual_cli_sha256": "db23f6a4fb94cd468294ecf6bb33977accf89cad899f1dfbecec758c398a4866",
+        "matches": true,
+        "recorded_packaged_cli_hash_verified": false
+      }
+    ],
+    "installed_package_comparisons": [
+      {
+        "evidence_pointer": "/linux/validation/0/deb_sha256",
+        "run": 40051802122,
+        "ubuntu": "24.04",
+        "expected_deb_sha256": "8d3715146e2221d46d336f9be69cef0a471e6722582597bb22e3c2069fc1f058",
+        "matches": true
+      },
+      {
+        "evidence_pointer": "/linux/validation/1/deb_sha256",
+        "run": 40051802122,
+        "ubuntu": "22.04",
+        "expected_deb_sha256": "8d3715146e2221d46d336f9be69cef0a471e6722582597bb22e3c2069fc1f058",
+        "matches": true
+      }
+    ],
+    "packaged_cli_hash_verified": true,
+    "new_program_execution": false,
+    "new_linux_runtime_qualification": false,
+    "new_desktop_qualification": false,
+    "historical_record_note": "The original conformance records retain packaged_cli_hash_verified=false. This later payload comparison resolves that identity gap without changing the historical run results."
+  },
+  "supplementary_projects_synchronization": {
+    "verified_on": "2026-10-24",
+    "method": "Authenticated browser interface; each edited card and all three views checked.",
+    "project_url": "https://github.com/users/lmdanavanem/projects/1",
+    "updated_existing_p1": 5,
+    "added_aec_cards": 27,
+    "aec_statuses": {
+      "inProgress": 14,
+      "todo": 12,
+      "done": 1
+    },
+    "views": {
+      "Roadmap": {
+        "count": 51,
+        "filter": "category:Roadmap"
+      },
+      "Bugs": {
+        "count": 8,
+        "done": 8,
+        "unchanged": true
+      },
+      "Suggestions": {
+        "count": 11,
+        "done": 3,
+        "todo": 8,
+        "unchanged": true
+      }
+    },
+    "saved_views_preserved": true,
+    "no_duplicate_aec_ids": true,
+    "release_boundary": "0.62.0 published; 0.63.0 candidate under qualification. Partial capability cards remain open."
   }
 }

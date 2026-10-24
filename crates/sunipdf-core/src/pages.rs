@@ -561,6 +561,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password,
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         candidate.refresh_page_sizes()?;
         *self = candidate;

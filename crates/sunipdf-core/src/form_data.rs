@@ -93,6 +93,11 @@ fn json_strings(v: &Value) -> Result<Vec<String>, String> {
             .map(|x| match x {
                 Value::String(s) => Ok(s.clone()),
                 Value::Number(n) => Ok(n.to_string()),
+                Value::Object(object) if object.len() == 1 => object
+                    .get("$fdf_text")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+                    .ok_or_else(|| format!("unsupported choice value: {x}")),
                 other => Err(format!("unsupported choice value: {other}")),
             })
             .collect(),
@@ -102,6 +107,22 @@ fn json_strings(v: &Value) -> Result<Vec<String>, String> {
 
 /// Valeur JSON → valeur typée selon le champ (`null` = vide ; nombres acceptés comme texte).
 fn json_to_value(f: &FormField, v: &Value) -> Result<FieldValue, String> {
+    if let Value::Object(object) = v {
+        if object.len() == 1 {
+            if let Some(Value::String(state)) = object.get("$fdf_name") {
+                return fdf_button_value(f, state);
+            }
+            if let Some(Value::String(text)) = object.get("$fdf_text") {
+                return match f.kind {
+                    FieldKind::Text => Ok(FieldValue::Text(text.clone())),
+                    FieldKind::Combo | FieldKind::List => {
+                        Ok(FieldValue::Choice(vec![text.clone()]))
+                    }
+                    _ => Err("FDF text value does not match this field".into()),
+                };
+            }
+        }
+    }
     if f.read_only && value_to_json(f) == *v {
         return Ok(f.value.clone());
     }
@@ -133,6 +154,45 @@ fn json_to_value(f: &FormField, v: &Value) -> Result<FieldValue, String> {
         }
         FieldKind::PushButton | FieldKind::Signature => FieldValue::None,
     })
+}
+
+// FDF names identify appearance states; text strings identify export values. Keep that
+// distinction until the destination field is known, especially for radio buttons with /Opt.
+fn fdf_button_value(field: &FormField, state: &str) -> Result<FieldValue, String> {
+    match field.kind {
+        FieldKind::Checkbox if state == "Off" => Ok(FieldValue::Bool(false)),
+        FieldKind::Checkbox
+            if field
+                .widgets
+                .iter()
+                .any(|widget| widget.on_state.as_deref() == Some(state)) =>
+        {
+            Ok(FieldValue::Bool(true))
+        }
+        FieldKind::Radio if state == "Off" => Ok(FieldValue::Choice(Vec::new())),
+        FieldKind::Radio => {
+            let values: std::collections::BTreeSet<_> = field
+                .widgets
+                .iter()
+                .filter(|widget| widget.on_state.as_deref() == Some(state))
+                .filter_map(|widget| {
+                    widget
+                        .export_value
+                        .as_deref()
+                        .or(widget.on_state.as_deref())
+                })
+                .collect();
+            if values.len() != 1 {
+                return Err("FDF button state is missing or ambiguous in this form".into());
+            }
+            Ok(FieldValue::Choice(vec![values
+                .into_iter()
+                .next()
+                .expect("one value")
+                .into()]))
+        }
+        _ => Err("FDF name value does not match this field".into()),
+    }
 }
 
 /// Plan d'import : chaque entrée de l'objet JSON est rattachée à son champ et validée ; un JSON
@@ -172,6 +232,7 @@ pub fn strict_plan_from_json(info: &FormInfo, json: &Value) -> Result<ImportPlan
 }
 
 pub const IMPORT_LIMIT: usize = 16 * 1024 * 1024;
+pub(crate) const MAX_CHOICE_VALUES: usize = 4096;
 const XFDF_NS: &str = "http://ns.adobe.com/xfdf/";
 
 fn import_error(reason: impl std::fmt::Display) -> EngineError {
@@ -182,6 +243,7 @@ fn import_error(reason: impl std::fmt::Display) -> EngineError {
 pub fn export_values(info: &FormInfo, extension: &str) -> Result<Vec<u8>, EngineError> {
     match extension.to_ascii_lowercase().as_str() {
         "json" | "" => serde_json::to_vec_pretty(&values_to_json(info)).map_err(import_error),
+        "fdf" => crate::form_fdf::export(info),
         "xfdf" => {
             use xml::writer::XmlEvent;
             let mut writer = xml::writer::EmitterConfig::new()
@@ -246,7 +308,7 @@ pub fn export_values(info: &FormInfo, extension: &str) -> Result<Vec<u8>, Engine
                 .map_err(import_error)?;
             Ok(writer.into_inner())
         }
-        _ => Err(import_error("export requires .json or .xfdf")),
+        _ => Err(import_error("export requires .json, .xfdf or .fdf")),
     }
 }
 
@@ -264,13 +326,27 @@ pub fn parse_values(bytes: &[u8], extension: &str) -> Result<Value, EngineError>
     let value = match extension.to_ascii_lowercase().as_str() {
         "json" | "" => serde_json::from_slice(bytes).map_err(import_error)?,
         "xfdf" => parse_xfdf(bytes)?,
-        "fdf" => parse_fdf(bytes)?,
+        "fdf" => parse_fdf(bytes, false)?,
         _ => return Err(import_error("import requires .json, .xfdf or .fdf")),
     };
     if !value.is_object() {
         return Err(import_error("a field name/value object is required"));
     }
     Ok(value)
+}
+
+/// Prepares values for an import plan, retaining FDF button-state types until field matching.
+/// Names use `$fdf_name`; empty strings use `$fdf_text` so a selected empty choice is
+/// distinct from null. Ordinary JSON/XFDF text keeps its existing meaning.
+pub fn parse_import_values(bytes: &[u8], extension: &str) -> Result<Value, EngineError> {
+    if bytes.len() > IMPORT_LIMIT {
+        return Err(import_error("16 MiB import limit exceeded"));
+    }
+    if extension.eq_ignore_ascii_case("fdf") {
+        parse_fdf(bytes, true)
+    } else {
+        parse_values(bytes, extension)
+    }
 }
 
 fn parse_xfdf(bytes: &[u8]) -> Result<Value, EngineError> {
@@ -420,7 +496,7 @@ fn parse_xfdf(bytes: &[u8]) -> Result<Value, EngineError> {
 }
 
 // shortcut: FDF imports only text/name/array values with a normal xref; add other FDF features only with interoperability fixtures.
-fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
+fn parse_fdf(bytes: &[u8], typed_names: bool) -> Result<Value, EngineError> {
     use lopdf::Object;
     if !bytes.starts_with(b"%FDF-") {
         return Err(import_error("FDF header missing"));
@@ -525,18 +601,51 @@ fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
         }
         Ok(())
     }
-    fn scalar(pdf: &lopdf::Document, object: &Object) -> Result<Value, EngineError> {
+    fn account(budget: &mut usize, bytes: usize) -> Result<(), EngineError> {
+        *budget = budget
+            .checked_add(bytes)
+            .filter(|&size| size <= IMPORT_LIMIT)
+            .ok_or_else(|| import_error("expanded FDF values exceed 16 MiB"))?;
+        Ok(())
+    }
+    fn scalar(
+        pdf: &lopdf::Document,
+        object: &Object,
+        typed_names: bool,
+        budget: &mut usize,
+    ) -> Result<Value, EngineError> {
         Ok(match resolve(pdf, object)? {
-            Object::Null => Value::Null,
-            Object::String(_, _) => Value::String(
-                crate::forms::text_of(pdf, resolve(pdf, object)?)
-                    .ok_or_else(|| import_error("invalid FDF text string"))?,
-            ),
+            Object::Null => {
+                account(budget, 64)?;
+                Value::Null
+            }
+            Object::String(bytes, _) => {
+                // PDFDocEncoding can expand to three UTF-8 bytes per input byte.
+                // Account before decoding or cloning a repeated indirect object.
+                account(budget, bytes.len().saturating_mul(3).saturating_add(64))?;
+                let text = crate::forms::text_of(pdf, resolve(pdf, object)?)
+                    .ok_or_else(|| import_error("invalid FDF text string"))?;
+                if typed_names && text.is_empty() {
+                    json!({"$fdf_text": text})
+                } else {
+                    Value::String(text)
+                }
+            }
             Object::Name(name) => {
-                Value::String(String::from_utf8(name.clone()).map_err(import_error)?)
+                account(budget, name.len().saturating_add(64))?;
+                let name = String::from_utf8(name.clone()).map_err(import_error)?;
+                if typed_names {
+                    json!({"$fdf_name": name})
+                } else {
+                    Value::String(name)
+                }
             }
             _ => return Err(import_error("unsupported FDF field value")),
         })
+    }
+    struct Expansion {
+        typed_names: bool,
+        budget: usize,
     }
     fn walk(
         pdf: &lopdf::Document,
@@ -545,6 +654,7 @@ fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
         depth: usize,
         values: &mut serde_json::Map<String, Value>,
         visited: &mut std::collections::HashSet<lopdf::ObjectId>,
+        expansion: &mut Expansion,
     ) -> Result<(), EngineError> {
         if depth > 32 {
             return Err(import_error("FDF field nesting limit exceeded"));
@@ -557,13 +667,33 @@ fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
             }
             let field = resolve(pdf, object)?.as_dict().map_err(import_error)?;
             check_keys(field, &[b"T", b"V", b"Kids"])?;
-            let part = match scalar(pdf, field.get(b"T").map_err(import_error)?)? {
+            if !matches!(
+                resolve(pdf, field.get(b"T").map_err(import_error)?)?,
+                Object::String(_, _)
+            ) {
+                return Err(import_error("FDF field name must be text"));
+            }
+            let part = match scalar(
+                pdf,
+                field.get(b"T").map_err(import_error)?,
+                false,
+                &mut expansion.budget,
+            )? {
                 Value::String(s) => s,
                 _ => return Err(import_error("FDF field name must be text")),
             };
             if part.is_empty() || part.len() > 4096 || part.chars().any(char::is_control) {
                 return Err(import_error("invalid FDF field name"));
             }
+            let full_length = prefix
+                .len()
+                .saturating_add(part.len())
+                .saturating_add(usize::from(!prefix.is_empty()));
+            if full_length > 4096 {
+                return Err(import_error("qualified FDF field name exceeds 4096 bytes"));
+            }
+            // Include the owned key, map entry and decoded value even for empty values.
+            account(&mut expansion.budget, full_length.saturating_add(128))?;
             let name = if prefix.is_empty() {
                 part
             } else {
@@ -580,15 +710,30 @@ fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
                     depth + 1,
                     values,
                     visited,
+                    expansion,
                 )?;
             } else {
                 let value = match field.get(b"V") {
                     Err(_) => Value::Null,
                     Ok(value) => match resolve(pdf, value)? {
-                        Object::Array(a) => Value::Array(
-                            a.iter().map(|o| scalar(pdf, o)).collect::<Result<_, _>>()?,
-                        ),
-                        value => scalar(pdf, value)?,
+                        Object::Array(a) if a.len() <= MAX_CHOICE_VALUES => {
+                            // A shared indirect array is materialized for each field. Bound the
+                            // vector before collect, including empty arrays and null-only values.
+                            account(
+                                &mut expansion.budget,
+                                a.len()
+                                    .saturating_mul(std::mem::size_of::<Value>())
+                                    .saturating_add(64),
+                            )?;
+                            Value::Array(
+                                a.iter()
+                                    .map(|o| {
+                                        scalar(pdf, o, expansion.typed_names, &mut expansion.budget)
+                                    })
+                                    .collect::<Result<_, _>>()?,
+                            )
+                        }
+                        value => scalar(pdf, value, expansion.typed_names, &mut expansion.budget)?,
                     },
                 };
                 if values.insert(name, value).is_some() {
@@ -609,8 +754,9 @@ fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
         .as_dict()
         .map_err(import_error)?;
     check_keys(data, &[b"Fields", b"F", b"ID"])?;
+    let mut budget = 0;
     if let Ok(file) = data.get(b"F") {
-        if !matches!(scalar(&pdf, file)?, Value::String(_)) {
+        if !matches!(scalar(&pdf, file, false, &mut budget)?, Value::String(_)) {
             return Err(import_error("unsupported FDF file reference"));
         }
     }
@@ -625,6 +771,10 @@ fn parse_fdf(bytes: &[u8]) -> Result<Value, EngineError> {
         0,
         &mut values,
         &mut std::collections::HashSet::new(),
+        &mut Expansion {
+            typed_names,
+            budget,
+        },
     )?;
     Ok(Value::Object(values))
 }
@@ -724,6 +874,296 @@ mod tests {
                 },
             ],
         }
+    }
+
+    #[test]
+    fn fdf_export_is_bounded_value_only_and_preserves_unicode_hierarchy_and_choices() {
+        let mut info = info();
+        info.fields[0].name = "address.été.name".into();
+        info.fields[0].value = FieldValue::Text("Zoé 中文 (test) \\ value".into());
+        let bytes = export_values(&info, "fdf").unwrap();
+        assert!(bytes.starts_with(b"%FDF-1.2"));
+        let parsed = parse_import_values(&bytes, "fdf").unwrap();
+        assert_eq!(parsed["address.été.name"], "Zoé 中文 (test) \\ value");
+        assert_eq!(parsed["langues"], json!(["FR", "BE"]));
+        assert!(parsed.get("secret").is_none());
+        assert!(parsed.get("envoyer").is_none());
+        let plan = strict_plan_from_json(&info, &parsed).unwrap();
+        assert_eq!(plan.values.len(), 4);
+        assert!(plan
+            .values
+            .contains(&("ok".into(), FieldValue::Bool(false))));
+        assert!(!plan.values.iter().any(|(name, _)| name == "ref"));
+        let mut pdf_bytes = bytes;
+        pdf_bytes[1..4].copy_from_slice(b"PDF");
+        let pdf = lopdf::Document::load_mem(&pdf_bytes).unwrap();
+        assert!(!pdf
+            .objects
+            .values()
+            .any(|object| matches!(object, lopdf::Object::Stream(_))));
+        let catalog = pdf
+            .get_dictionary(pdf.trailer.get(b"Root").unwrap().as_reference().unwrap())
+            .unwrap();
+        assert_eq!(catalog.len(), 1);
+        let fdf = catalog.get(b"FDF").unwrap().as_dict().unwrap();
+        assert_eq!(
+            fdf.len(),
+            1,
+            "only Fields, without file references or actions"
+        );
+    }
+
+    fn radio_with_states() -> FormField {
+        let rect = crate::PointRect {
+            left: 0.0,
+            bottom: 0.0,
+            right: 10.0,
+            top: 10.0,
+        };
+        FormField {
+            value: FieldValue::Choice(vec!["BE".into()]),
+            widgets: ["FR", "BE"]
+                .into_iter()
+                .enumerate()
+                .map(|(index, export)| crate::forms::FieldWidget {
+                    page: 0,
+                    rect,
+                    display: rect,
+                    on_state: Some(index.to_string()),
+                    export_value: Some(export.into()),
+                })
+                .collect(),
+            ..field("group.selection", FieldKind::Radio)
+        }
+    }
+
+    #[test]
+    fn fdf_radio_names_remain_distinct_from_export_strings_and_read_only_values() {
+        let mut info = FormInfo {
+            fields: vec![radio_with_states()],
+            ..Default::default()
+        };
+        for read_only in [false, true] {
+            info.fields[0].read_only = read_only;
+            let bytes = export_values(&info, "fdf").unwrap();
+            let raw = parse_values(&bytes, "fdf").unwrap();
+            assert_eq!(raw["group.selection"], "1");
+            let typed = parse_import_values(&bytes, "fdf").unwrap();
+            assert_eq!(typed["group.selection"], json!({"$fdf_name": "1"}));
+            let plan = strict_plan_from_json(&info, &typed).unwrap();
+            assert_eq!(plan.values.len(), usize::from(!read_only));
+            if !read_only {
+                assert_eq!(plan.values[0].1, FieldValue::Choice(vec!["BE".into()]));
+            }
+        }
+        info.fields[0].read_only = false;
+        info.fields[0].widgets[1].on_state = Some("0".into());
+        assert!(
+            export_values(&info, "fdf").is_err(),
+            "one state cannot identify two exports"
+        );
+        assert!(
+            strict_plan_from_json(&info, &json!({"group.selection":{"$fdf_name":"0"}})).is_err()
+        );
+        let duplicate = info.fields[0].widgets[1].clone();
+        info.fields[0].widgets.push(crate::forms::FieldWidget {
+            on_state: Some("other".into()),
+            ..duplicate
+        });
+        assert!(
+            export_values(&info, "fdf").is_err(),
+            "export cannot choose an ambiguous selected state"
+        );
+    }
+
+    #[test]
+    fn fdf_export_refuses_conflicting_or_excessive_names_without_partial_output() {
+        let mut info = info();
+        info.fields.push(info.fields[0].clone());
+        assert!(export_values(&info, "fdf").is_err());
+        info.fields.last_mut().unwrap().name = "nom.child".into();
+        assert!(export_values(&info, "fdf").is_err());
+        info.fields.last_mut().unwrap().name = "broken..child".into();
+        assert!(export_values(&info, "fdf").is_err());
+        info.fields.last_mut().unwrap().name = std::iter::repeat_n("deep", 13)
+            .collect::<Vec<_>>()
+            .join(".");
+        assert!(export_values(&info, "fdf").is_err());
+        info.fields.last_mut().unwrap().name = "limited".into();
+        info.fields.last_mut().unwrap().value = FieldValue::Text("x".repeat(IMPORT_LIMIT + 1));
+        assert!(export_values(&info, "fdf").is_err());
+        let many_choices = FormInfo {
+            fields: vec![FormField {
+                value: FieldValue::Choice(vec![String::new(); MAX_CHOICE_VALUES + 1]),
+                multi_select: true,
+                ..field("choices", FieldKind::List)
+            }],
+            ..Default::default()
+        };
+        assert!(export_values(&many_choices, "fdf").is_err());
+    }
+
+    #[test]
+    fn fdf_import_bounds_expanded_references_and_qualified_names() {
+        use lopdf::{dictionary, Object};
+        fn encode(mut pdf: lopdf::Document, fields: Vec<Object>) -> Vec<u8> {
+            pdf.reference_table.cross_reference_type = lopdf::xref::XrefType::CrossReferenceTable;
+            let root = pdf.add_object(dictionary! { "FDF" => dictionary! { "Fields" => fields } });
+            pdf.trailer.set("Root", root);
+            let mut bytes = Vec::new();
+            pdf.save_to(&mut bytes).unwrap();
+            bytes[1..4].copy_from_slice(b"FDF");
+            bytes
+        }
+        let mut pdf = lopdf::Document::with_version("1.2");
+        let shared = pdf.add_object(Object::string_literal("a".repeat(1024 * 1024)));
+        let bytes = encode(
+            pdf,
+            vec![Object::Dictionary(dictionary! {
+                "T" => lopdf::text_string("choice"), "V" => vec![Object::Reference(shared); 20]
+            })],
+        );
+        assert!(bytes.len() < 2 * 1024 * 1024);
+        assert!(parse_import_values(&bytes, "fdf")
+            .unwrap_err()
+            .to_string()
+            .contains("expanded"));
+        let child = Object::Dictionary(
+            dictionary! {"T" => lopdf::text_string("child"), "V" => lopdf::text_string("value")},
+        );
+        let bytes = encode(
+            lopdf::Document::with_version("1.2"),
+            vec![Object::Dictionary(dictionary! {
+                "T" => lopdf::text_string(&"x".repeat(4096)), "Kids" => vec![child]
+            })],
+        );
+        assert!(parse_import_values(&bytes, "fdf")
+            .unwrap_err()
+            .to_string()
+            .contains("qualified"));
+        let bytes = encode(
+            lopdf::Document::with_version("1.2"),
+            vec![Object::Dictionary(dictionary! {
+                "T" => Object::Name(b"invalid-name-type".to_vec()), "V" => lopdf::text_string("value")
+            })],
+        );
+        assert!(parse_import_values(&bytes, "fdf").is_err());
+
+        let mut pdf = lopdf::Document::with_version("1.2");
+        let shared_nulls = pdf.add_object(Object::Array(vec![Object::Null; MAX_CHOICE_VALUES]));
+        let fields = (0..512)
+            .map(|index| {
+                Object::Dictionary(dictionary! {
+                    "T" => lopdf::text_string(&format!("nulls-{index}")),
+                    "V" => Object::Reference(shared_nulls)
+                })
+            })
+            .collect();
+        let bytes = encode(pdf, fields);
+        assert!(bytes.len() < 128 * 1024);
+        assert!(parse_import_values(&bytes, "fdf")
+            .unwrap_err()
+            .to_string()
+            .contains("expanded"));
+
+        let fields = (0..100)
+            .map(|index| {
+                Object::Dictionary(dictionary! {
+                    "T" => lopdf::text_string(&format!("empty-{index}")),
+                    "V" => Object::Array(Vec::new())
+                })
+            })
+            .collect();
+        let bytes = encode(lopdf::Document::with_version("1.2"), fields);
+        let values = parse_import_values(&bytes, "fdf").unwrap();
+        assert_eq!(values.as_object().unwrap().len(), 100);
+        assert!(values
+            .as_object()
+            .unwrap()
+            .values()
+            .all(|value| value == &json!([])));
+    }
+
+    #[test]
+    fn fdf_empty_choice_is_distinct_from_clear_without_changing_json_coercion() {
+        let options = vec![
+            crate::forms::FieldOption {
+                value: String::new(),
+                label: "Empty choice".into(),
+            },
+            crate::forms::FieldOption {
+                value: "other".into(),
+                label: "Other".into(),
+            },
+        ];
+        for (kind, multi_select) in [
+            (FieldKind::Combo, false),
+            (FieldKind::List, false),
+            (FieldKind::List, true),
+        ] {
+            let mut info = FormInfo {
+                fields: vec![FormField {
+                    value: FieldValue::Choice(vec![String::new()]),
+                    options: options.clone(),
+                    multi_select,
+                    ..field("choice", kind)
+                }],
+                ..Default::default()
+            };
+            let bytes = export_values(&info, "fdf").unwrap();
+            let typed = parse_import_values(&bytes, "fdf").unwrap();
+            let plan = strict_plan_from_json(&info, &typed).unwrap();
+            assert_eq!(plan.values[0].1, FieldValue::Choice(vec![String::new()]));
+            assert_eq!(
+                strict_plan_from_json(&info, &json!({"choice": ""}))
+                    .unwrap()
+                    .values[0]
+                    .1,
+                FieldValue::Choice(Vec::new())
+            );
+            assert_eq!(
+                strict_plan_from_json(&info, &json!({"choice": null}))
+                    .unwrap()
+                    .values[0]
+                    .1,
+                FieldValue::Choice(Vec::new())
+            );
+            info.fields[0].value = FieldValue::Choice(Vec::new());
+            let bytes = export_values(&info, "fdf").unwrap();
+            assert_eq!(
+                strict_plan_from_json(&info, &parse_import_values(&bytes, "fdf").unwrap())
+                    .unwrap()
+                    .values[0]
+                    .1,
+                FieldValue::Choice(Vec::new())
+            );
+            info.fields[0].options.remove(0);
+            assert!(strict_plan_from_json(&info, &typed).is_err());
+            info.fields[0].value = FieldValue::Choice(vec!["other".into()]);
+            let bytes = export_values(&info, "fdf").unwrap();
+            assert_eq!(
+                strict_plan_from_json(&info, &parse_import_values(&bytes, "fdf").unwrap())
+                    .unwrap()
+                    .values[0]
+                    .1,
+                FieldValue::Choice(vec!["other".into()])
+            );
+        }
+        let info = FormInfo {
+            fields: vec![FormField {
+                value: FieldValue::Text(String::new()),
+                ..field("empty", FieldKind::Text)
+            }],
+            ..Default::default()
+        };
+        let bytes = export_values(&info, "fdf").unwrap();
+        assert_eq!(
+            strict_plan_from_json(&info, &parse_import_values(&bytes, "fdf").unwrap())
+                .unwrap()
+                .values[0]
+                .1,
+            FieldValue::Text(String::new())
+        );
     }
 
     #[test]
