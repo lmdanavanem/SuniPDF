@@ -94,8 +94,8 @@ requires unsupported glyphs or complex shaping is refused explicitly. This workf
 prepares its PDF preview before exporting any of the three formats, so that refusal
 also prevents its CSV/JSON exports. The register and quantity table's direct data
 exports remain available separately. These reports do not claim PDF/A or PDF/UA
-conformance. Spreadsheet refresh and editable report templates remain separate
-backlog items.
+conformance. [Quantity workbooks](QUANTITY_WORKBOOKS.md) provide a separate reviewed
+spreadsheet refresh workflow. Editable report templates remain a backlog item.
 
 See [quantity tables](QUANTITY_TABLE.md), [rooms and zones](PLAN_ZONES.md),
 [third-party notices](THIRD_PARTY_NOTICES.md) and [the backlog](AEC_BACKLOG.md).
