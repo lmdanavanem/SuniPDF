@@ -728,9 +728,13 @@ fn capture_scene(
         ] {
             let label = tr(scene.language, key);
             require(
-                tree.nodes
-                    .iter()
-                    .any(|(_, node)| node.label().is_some_and(|value| value.contains(label))),
+                tree.nodes.iter().any(|(_, node)| {
+                    node.label() == Some(label)
+                        || (matches!(
+                            node.role(),
+                            egui::accesskit::Role::Label | egui::accesskit::Role::TextRun
+                        ) && node.value() == Some(label))
+                }),
                 &format!("Theme settings accessible label is missing: {label}"),
             )?;
             require(frame.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Text(text)

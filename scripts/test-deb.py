@@ -193,6 +193,22 @@ def theme_label_center(tsv, label, image_size):
     return found[0]
 
 
+THEME_TITLEBAR_PATCH = (40, 16, 48, 24)
+GLASS_DARK_REDUCED_RGB = (24, 41, 61)
+THEME_RGB_TOLERANCE = 3
+
+
+def theme_titlebar_rgb(image):
+    """Sample flat client chrome, away from the centered fixture title and controls."""
+    assert image.width >= 200 and image.height >= 100, "Theme capture is not an application window"
+    pixels = list(image.convert("RGB").crop(THEME_TITLEBAR_PATCH).getdata())
+    return [round(sum(pixel[channel] for pixel in pixels) / len(pixels), 3) for channel in range(3)]
+
+
+def theme_rgb_matches(actual, expected):
+    return all(abs(value - target) <= THEME_RGB_TOLERANCE for value, target in zip(actual, expected))
+
+
 def theme_settings(app, window, evidence):
     """Exercise the installed UI, save real choices, then retain Glass dark for restart."""
     from PIL import Image
@@ -238,8 +254,7 @@ def theme_settings(app, window, evidence):
     def record(name, dark):
         path = capture(name)
         with Image.open(path) as image:
-            sample = image.convert("RGB").crop((image.width // 2, 16, image.width // 2 + 8, 24))
-            brightness = sum(sum(pixel) / 3 for pixel in sample.getdata()) / 64
+            brightness = sum(theme_titlebar_rgb(image)) / 3
         # The modal scrim also covers the title strip; its lighter appearance
         # remains distinctly brighter than the dark material after compositing.
         assert (brightness < 80 if dark else brightness > 100), (name, brightness)
@@ -273,11 +288,22 @@ def theme_settings(app, window, evidence):
     command(["xdotool", "key", "--clearmodifiers", "Escape"])
     time.sleep(0.3)
     assert "*" not in command(["xdotool", "getwindowname", window]), "Appearance changes dirtied the PDF"
+    baseline = capture("native-theme-before-close")
+    with Image.open(baseline) as image:
+        baseline_rgb = theme_titlebar_rgb(image)
+    # theme.rs gives reduced Glass dark an opaque (24, 41, 61) chrome fill.
+    # Classic uses (36, 36, 36). Unreduced Glass overlays white alpha 12,
+    # fading across 38 px: even the maximized patch averages alpha 6/255,
+    # lifting red by about 5.4 levels, outside the 3-level rounding tolerance.
+    assert theme_rgb_matches(baseline_rgb, GLASS_DARK_REDUCED_RGB), ("reduced Glass baseline", baseline_rgb)
     (evidence / "native-theme-settings.json").write_text(json.dumps({
         "schema": 1, "status": "passed", "session": "X11 / Openbox / Xvfb",
         "entry": "Ctrl+K, Theme settings", "savedChoicesVerified": True,
         "systemSelectionVerified": True, "systemAppearanceChangeSimulated": False,
         "pdfUnchanged": True, "scenes": records,
+        "restartBaseline": {"file": baseline.name, "pngSha256": sha(baseline),
+                            "titleBarSampleRect": THEME_TITLEBAR_PATCH, "titleBarRgb": baseline_rgb,
+                            "expectedRgb": GLASS_DARK_REDUCED_RGB, "rgbTolerance": THEME_RGB_TOLERANCE},
     }, indent=2) + "\n")
     return ["native-theme-classic-and-glass-live-switch", "native-theme-light-dark-and-system-selection",
             "native-theme-reduced-transparency-and-modal-escape"]
@@ -287,6 +313,11 @@ def restart_theme(app, evidence):
     from PIL import Image
     deadline = time.monotonic() + 45
     path = evidence / "native-theme-restarted.png"
+    baseline = evidence / "native-theme-before-close.png"
+    with Image.open(baseline) as image:
+        baseline_rgb = theme_titlebar_rgb(image)
+    assert theme_rgb_matches(baseline_rgb, GLASS_DARK_REDUCED_RGB), ("reduced Glass baseline", baseline_rgb)
+    last_rgb = None
     while time.monotonic() < deadline:
         assert app.poll() is None, "Desktop exited while checking saved appearance"
         found = subprocess.run(["xdotool", "search", "--onlyvisible", "--pid", str(app.pid)],
@@ -303,10 +334,12 @@ def restart_theme(app, evidence):
             if image.width < 200 or image.height < 100:
                 continue
             blue = blue_fixture_mask(image.convert("RGB").getdata())[1]
-            brightness = sum(sum(pixel) / 3 for pixel in image.convert("RGB").crop(
-                (image.width // 2, 16, image.width // 2 + 8, 24)).getdata()) / 64
+            last_rgb = theme_titlebar_rgb(image)
+            brightness = sum(last_rgb) / 3
             width = image.width
-        if blue <= 20 or brightness >= 100:
+        if (blue <= 20 or brightness >= 100
+                or not theme_rgb_matches(last_rgb, GLASS_DARK_REDUCED_RGB)
+                or not theme_rgb_matches(last_rgb, baseline_rgb)):
             time.sleep(0.3)
             continue
         saved = json.loads((HOME / ".config/sunipdf/settings.json").read_text())
@@ -317,9 +350,13 @@ def restart_theme(app, evidence):
             "status": "passed", "style": "liquid_glass", "mode": "dark", "reduceTransparency": True,
             "privatePdfiumLoaded": True, "blueFixturePixels": blue, "titleBarBrightness": brightness,
             "screenshotSha256": sha(path), "cleanExit": True,
+            "renderedReducedGlassVerified": True, "titleBarSampleRect": THEME_TITLEBAR_PATCH,
+            "beforeCloseTitleBarRgb": baseline_rgb, "restartedTitleBarRgb": last_rgb,
+            "expectedTitleBarRgb": GLASS_DARK_REDUCED_RGB, "rgbTolerance": THEME_RGB_TOLERANCE,
+            "beforeCloseScreenshotSha256": sha(baseline),
         }, indent=2) + "\n")
         return
-    raise AssertionError("Restart did not restore the saved dark Glass appearance with the PDF visible")
+    raise AssertionError(f"Restart did not restore the saved dark reduced Glass appearance with the PDF visible; title RGB={last_rgb}")
 
 
 def window_controls(app, window, evidence):
