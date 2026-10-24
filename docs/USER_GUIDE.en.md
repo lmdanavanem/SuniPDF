@@ -83,6 +83,13 @@ Select a template rectangle, choose the pages and matching settings, then inspec
 proposed matches. Only explicitly reviewed selections become count markers, in one Undo
 step. Cancelled or limited searches remain incomplete. [Instructions and limits](VISUAL_SEARCH.md).
 
+## Region fill
+
+In version 0.72 or later, open **Tools → Review & measure → Region fill**. Pick an
+enclosed region, close gaps explicitly if needed, then review the actual contour,
+holes and calibrated area preview before creating the measurement. Leaks, ambiguous
+boundaries and partial results cannot be applied. [Instructions and limits](REGION_FILL.md).
+
 ## Aligned revision overlays
 
 1. Open **Revision overlay** from **Tools → Review & measure** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.

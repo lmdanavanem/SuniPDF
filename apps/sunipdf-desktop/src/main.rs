@@ -6,6 +6,7 @@ mod annotation_library;
 mod annotation_register;
 mod annotation_rich;
 mod app;
+mod boundary_fill_ui;
 mod brand;
 mod certificate;
 mod dialog;

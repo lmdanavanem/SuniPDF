@@ -8,7 +8,7 @@ Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download
 | Task | Guides |
 |---|---|
 | Read and navigate | [Reader workspace](READER_WORKSPACE.md) · [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) · [Bookmarks and pages](BOOKMARKS_AND_PAGE_STRUCTURE.md) |
-| Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) · [Deducted areas and volumes](MEASUREMENT_VOLUMES.md) |
+| Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) · [Deducted areas and volumes](MEASUREMENT_VOLUMES.md) · [Region fill](REGION_FILL.md) |
 | Organize and exchange | [Local plan sets](PLAN_SETS.md) · [Reviewed plan links](PLAN_LINKS.md) · [Form values](FORM_DATA.md) |
 | Review and quantify | [Find symbols](VISUAL_SEARCH.md) · [Counts and annotation register](MARKUP_REGISTER.md) · [Quantity tables](QUANTITY_TABLE.md) · [Issue reports](ISSUE_REPORTS.md) · [Quantity workbooks](QUANTITY_WORKBOOKS.md) · [Rooms and zones](PLAN_ZONES.md) · [Revision overlays](REVISION_OVERLAY.md) · [Revision outlines](REVISION_OUTLINES.md) · [Reviewed annotation transfer](REVISION_TRANSFER.md) · [Local comparison and search](LOCAL_REVIEW.md) |
 | Annotate and edit | [Rich annotations](RICH_ANNOTATIONS.md) · [Annotation library](ANNOTATION_LIBRARY.md) · [Object order](OBJECT_ORDER.md) · [Font embedding](FONT_EMBEDDING.md) |

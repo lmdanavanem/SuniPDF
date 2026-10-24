@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+### Region fill
+
+- Inspect an enclosed page region from an explicit seed and manual closures, retaining its actual contour and holes.
+- Review the calibrated area preview before creating one editable measurement; refuse leaks, ambiguous geometry and partial results. Historical generation inputs are retained separately from the measurement record.
+
+The 0.72 development increment is undergoing qualification. See [the workflow and limits](docs/REGION_FILL.md).
+
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.71.0] - 2026-10-24
