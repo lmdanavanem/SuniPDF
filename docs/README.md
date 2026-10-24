@@ -1,6 +1,6 @@
 # SuniPDF documentation
 
-Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0670) or
+Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0700) or
 [Ubuntu installation](UBUNTU.md). This documentation is maintained in English; the application supports English and French.
 
 ## Use SuniPDF
@@ -36,7 +36,9 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
-- [0.69.0 candidate](RELEASE_0.69.0.md): reports and quantity workbooks; qualification in progress.
+- [Visual symbol search development](VISUAL_SEARCH.md): the next workflow, not yet part of a published package.
+- [0.70.0 release notes](RELEASE_0.70.0.md) and [qualification evidence](qa/RELEASE_0.70.0.json).
+- [0.69.0 release notes](RELEASE_0.69.0.md) and [qualification evidence](qa/RELEASE_0.69.0.json).
 - [0.67.0 release notes](RELEASE_0.67.0.md) and [qualification evidence](qa/RELEASE_0.67.0.json).
 - [0.64.0 release notes](RELEASE_0.64.0.md) and [qualification evidence](qa/RELEASE_0.64.0.json).
 - [0.63.0 release notes](RELEASE_0.63.0.md) and [qualification evidence](qa/RELEASE_0.63.0.json).

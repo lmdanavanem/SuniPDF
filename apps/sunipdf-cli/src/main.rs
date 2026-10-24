@@ -22,6 +22,7 @@ mod revision_outlines_cmd;
 mod revision_transfer_cmd;
 mod safe_output;
 mod v010_cmd;
+mod visual_search_cmd;
 
 use clap::{Parser, Subcommand};
 use std::io::Write;
@@ -52,6 +53,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Find local visual symbol candidates and create counts only after explicit review.
+    VisualSearch(visual_search_cmd::VisualSearchArgs),
     /// Prepare, preview and export source-bound issue reports with actual filtered quantities and legends.
     IssueReport(issue_report_cmd::IssueReportArgs),
     /// Export formula-free quantity spreadsheets and review explicit refreshes by annotation ID.
@@ -1621,6 +1624,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::RevisionTransfer(args) => revision_transfer_cmd::run(&engine, args),
         Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
         Command::PlanZones(args) => plan_zones_cmd::run(&engine, args),
+        Command::VisualSearch(args) => visual_search_cmd::run(&engine, args),
         Command::IssueReport(args) => issue_report_cmd::run(&engine, args),
         Command::QuantityWorkbook(args) => quantity_workbook_cmd::run(&engine, args),
         Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
@@ -3039,6 +3043,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::RevisionTransfer(args) => args.output_path(),
         Command::RevisionOutlines(args) => args.output_path(),
         Command::PlanZones(args) => args.output_path(),
+        Command::VisualSearch(args) => args.output_path(),
         Command::IssueReport(args) => args.output_path(),
         Command::QuantityWorkbook(args) => args.output_path(),
         Command::QuantityTable(args) => args.report.out.as_deref(),
@@ -3291,6 +3296,7 @@ fn cli_main() -> ExitCode {
             Command::RevisionTransfer(..)
                 | Command::RevisionOutlines(..)
                 | Command::PlanZones(..)
+                | Command::VisualSearch(..)
                 | Command::IssueReport(..)
                 | Command::QuantityWorkbook(..)
                 | Command::AnnotationRegister(..)

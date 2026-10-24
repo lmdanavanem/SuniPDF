@@ -69,6 +69,7 @@ pub mod stamp;
 mod structure;
 pub mod text;
 pub mod tiles;
+pub mod visual_search;
 
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection, ANNOTATION_KINDS};
 pub use annot_write::{
@@ -473,6 +474,16 @@ impl Document<'_> {
         scale: f32,
         region: PixelRect,
     ) -> Result<RenderedPage, EngineError> {
+        self.render_region_impl(page_index, scale, region, true)
+    }
+
+    pub(crate) fn render_region_impl(
+        &self,
+        page_index: usize,
+        scale: f32,
+        region: PixelRect,
+        include_annotations: bool,
+    ) -> Result<RenderedPage, EngineError> {
         let size = self.page_size(page_index)?;
         let (page_w, page_h) =
             tiles::page_pixels(size, scale).ok_or(EngineError::RenderTooLarge)?;
@@ -487,28 +498,71 @@ impl Document<'_> {
         {
             return Err(EngineError::RenderTooLarge);
         }
+        // PDFium's no-form matrix path ignores set_origin(). For content-only
+        // previews, render the bounded whole page and crop its exact pixels below.
+        // The ordinary reader keeps its existing tiled, origin-based path.
+        if !include_annotations
+            && (page_w > visual_search::MAX_PAGE_SIDE
+                || page_h > visual_search::MAX_PAGE_SIDE
+                || u64::from(page_w) * u64::from(page_h) > visual_search::MAX_PAGE_PIXELS)
+        {
+            return Err(EngineError::RenderTooLarge);
+        }
         let index = PdfPageIndex::try_from(page_index)
             .map_err(|_| EngineError::PageOutOfRange(page_index))?;
-        let render_copy = self.form_render_copy()?;
+        let render_copy = if include_annotations {
+            self.form_render_copy()?
+        } else {
+            None
+        };
         let render_document = render_copy.as_ref().unwrap_or(&self.inner);
         let page = render_document.pages().get(index)?;
         // Taille cible = page entière ; l'origine négative place la région en (0, 0) du bitmap.
         let config = PdfRenderConfig::new()
             .set_target_size(page_w as Pixels, page_h as Pixels)
-            .set_origin(-(region.x as Pixels), -(region.y as Pixels))
-            .render_form_data(true)
-            .render_annotations(true);
+            .set_origin(
+                if include_annotations {
+                    -(region.x as Pixels)
+                } else {
+                    0
+                },
+                if include_annotations {
+                    -(region.y as Pixels)
+                } else {
+                    0
+                },
+            )
+            .render_form_data(include_annotations)
+            .render_annotations(include_annotations);
         let mut bitmap = PdfBitmap::empty(
-            region.width as Pixels,
-            region.height as Pixels,
+            if include_annotations {
+                region.width
+            } else {
+                page_w
+            } as Pixels,
+            if include_annotations {
+                region.height
+            } else {
+                page_h
+            } as Pixels,
             PdfBitmapFormat::default(),
         )?;
         page.render_into_bitmap_with_config(&mut bitmap, &config)?;
+        let mut rgba = bitmap.as_rgba_bytes();
+        if !include_annotations && region != PixelRect::new(0, 0, page_w, page_h) {
+            let mut cropped =
+                Vec::with_capacity(region.width as usize * region.height as usize * 4);
+            for row in region.y..region.bottom() {
+                let start = (row as usize * page_w as usize + region.x as usize) * 4;
+                cropped.extend_from_slice(&rgba[start..start + region.width as usize * 4]);
+            }
+            rgba = cropped;
+        }
         Ok(RenderedPage {
             page_index,
-            width: bitmap.width() as u32,
-            height: bitmap.height() as u32,
-            rgba: bitmap.as_rgba_bytes(),
+            width: region.width,
+            height: region.height,
+            rgba,
         })
     }
 }

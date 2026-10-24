@@ -61,6 +61,7 @@ mod tool_hub;
 mod tools;
 mod updater;
 mod view;
+mod visual_search_ui;
 mod worker;
 mod workspace;
 mod workspace_table;

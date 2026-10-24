@@ -76,6 +76,13 @@ Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Leng
 
 [Full workflow and limits](MEASUREMENT_GEOMETRY.md).
 
+## Visual symbol search
+
+In version 0.71 or later, open **Tools → Review & measure → Find symbols**.
+Select a template rectangle, choose the pages and matching settings, then inspect the
+proposed matches. Only explicitly reviewed selections become count markers, in one Undo
+step. Cancelled or limited searches remain incomplete. [Instructions and limits](VISUAL_SEARCH.md).
+
 ## Aligned revision overlays
 
 1. Open **Revision overlay** from **Tools → Review & measure** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.

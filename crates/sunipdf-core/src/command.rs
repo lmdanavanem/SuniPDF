@@ -6,6 +6,7 @@ pub enum Command {
     QuantityWorkbook,
     IssueReport,
     PlanZones,
+    VisualSearch,
     PlanSets,
     PlanLinks,
     RevisionOutlines,
@@ -212,6 +213,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         IssueReport,
         "tools.issue_report",
         "issue_report.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        VisualSearch,
+        "tools.visual_search",
+        "visual_search.title",
         None,
         true,
         Tools
@@ -1409,7 +1418,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 15);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 16);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 17);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
@@ -1417,6 +1426,11 @@ mod tests {
     fn tools_keep_hub_ids_and_explicit_document_workflow_ids() {
         for info in Command::in_menu(Menu::Tools) {
             match info.command {
+                Command::VisualSearch => {
+                    assert_eq!(info.id, "tools.visual_search");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::VisualSearch));
+                }
                 Command::PlanZones => {
                     assert_eq!(info.id, "tools.plan_zones");
                     assert!(info.needs_document);

@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+### Visual symbol search
+
+- Search selected pages for a template symbol at the same scale, with explicit quarter-turn rotations and similarity settings.
+- Review proposed matches before adding count markers in one undoable batch. Keep incomplete searches, source changes and resource limits explicit.
+
+The 0.71 development increment is undergoing qualification. See [the workflow and limits](docs/VISUAL_SEARCH.md).
+
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.70.0] - 2026-10-24

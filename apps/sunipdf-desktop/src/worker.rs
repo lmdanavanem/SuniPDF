@@ -197,6 +197,14 @@ pub enum BytesOp {
 
 /// Modification de pages, appliquée sous instantané (annulable).
 pub enum EditOp {
+    CommitVisualSearchCounts {
+        epoch: u64,
+        generation: u64,
+        ids: Vec<u32>,
+        group: String,
+        size: f32,
+    },
+    PreparedVisualSearchCounts(sunipdf_core::visual_search::PreparedVisualSearchCounts),
     CommitPlanZones {
         epoch: u64,
         generation: u64,
@@ -501,7 +509,9 @@ impl EditOp {
     fn keeps_measurement_scales(&self) -> bool {
         matches!(
             self,
-            Self::CommitPlanZones { .. }
+            Self::CommitVisualSearchCounts { .. }
+                | Self::PreparedVisualSearchCounts(_)
+                | Self::CommitPlanZones { .. }
                 | Self::PreparedPlanZones(_)
                 | Self::SetPageLabels(_)
                 | Self::ResetPageLabels
@@ -607,6 +617,11 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    VisualSearch {
+        epoch: u64,
+        generation: u64,
+        job: crate::visual_search_ui::Job,
+    },
     QuantityWorkbook {
         epoch: u64,
         generation: u64,
@@ -933,6 +948,11 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    VisualSearch {
+        epoch: u64,
+        generation: u64,
+        result: Result<crate::visual_search_ui::Outcome, EngineError>,
+    },
     QuantityWorkbook {
         epoch: u64,
         generation: u64,
@@ -1307,6 +1327,8 @@ struct State<'a> {
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
     plan_zones: crate::plan_zones_ui::WorkerCache,
+    visual_search: crate::visual_search_ui::WorkerCache,
+    visual_turn: bool,
     quantity_workbook: crate::quantity_workbook_ui::WorkerCache,
     issue_report: crate::issue_report_ui::WorkerCache,
     rectangle_calibration: Option<RectangleCalibrationCapture>,
@@ -1363,7 +1385,7 @@ impl State<'_> {
     fn next_idle_work(&mut self) -> IdleWork {
         if let Some((epoch, job)) = self.wanted.pop() {
             IdleWork::Tile(epoch, job)
-        } else if self.search.is_some() || self.register.is_some() {
+        } else if self.search.is_some() || self.register.is_some() || self.visual_search.active() {
             IdleWork::Background
         } else {
             IdleWork::Wait
@@ -1411,6 +1433,7 @@ impl State<'_> {
         self.wanted.clear();
         self.rich_preview = None;
         self.plan_zones.clear();
+        self.visual_search.clear();
         self.quantity_workbook.clear();
         self.issue_report.clear();
         self.redaction_preview = None;
@@ -1421,6 +1444,33 @@ impl State<'_> {
     /// One bounded unit of background work; called only after requests and visible tiles.
     /// PDFium remains confined to this thread. Jobs never hold a document borrow across turns.
     fn background_step(&mut self) -> Option<Response> {
+        if self.visual_search.active()
+            && (self.visual_turn || (self.search.is_none() && self.register.is_none()))
+        {
+            self.visual_turn = false;
+            let (epoch, generation) = self.visual_search.token()?;
+            let result = match self.document.as_ref() {
+                Some(doc) => self.visual_search.step(doc),
+                None => Err(EngineError::Other("no document".into())),
+            };
+            if result.is_err() {
+                self.visual_search.clear();
+            }
+            return match result {
+                Ok(None) => None,
+                Ok(Some(outcome)) => Some(Response::VisualSearch {
+                    epoch,
+                    generation,
+                    result: Ok(outcome),
+                }),
+                Err(error) => Some(Response::VisualSearch {
+                    epoch,
+                    generation,
+                    result: Err(error),
+                }),
+            };
+        }
+        self.visual_turn = true;
         let register = self.register.is_some() && (self.register_turn || self.search.is_none());
         self.register_turn = !register;
         if register {
@@ -1545,6 +1595,24 @@ impl State<'_> {
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
         let op = match op {
+            EditOp::CommitVisualSearchCounts {
+                epoch,
+                generation,
+                ids,
+                group,
+                size,
+            } => {
+                let result = match self.document.as_ref() {
+                    Some(doc) => self
+                        .visual_search
+                        .prepare_counts(doc, epoch, generation, &ids, &group, size),
+                    None => Err(EngineError::Other("no document".into())),
+                };
+                match result {
+                    Ok(prepared) => EditOp::PreparedVisualSearchCounts(prepared),
+                    Err(error) => return Response::OperationFailed(error),
+                }
+            }
             EditOp::CommitPlanZones { epoch, generation } => {
                 match self.plan_zones.take(epoch, generation) {
                     Ok(p) => EditOp::PreparedPlanZones(p),
@@ -1794,6 +1862,8 @@ mod save_point_tests {
             fonts: None,
             rich_preview: None,
             plan_zones: Default::default(),
+            visual_search: Default::default(),
+            visual_turn: false,
             quantity_workbook: Default::default(),
             issue_report: Default::default(),
             rectangle_calibration: None,
@@ -1941,6 +2011,8 @@ fn checked_pages(mut pages: Vec<usize>, count: usize) -> Result<Vec<usize>, Engi
 
 fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Result<(), EngineError> {
     match op {
+        EditOp::PreparedVisualSearchCounts(p) => doc.apply_visual_search_counts(&p).map(|_| ()),
+        EditOp::CommitVisualSearchCounts { .. } => unreachable!("resolved by worker"),
         EditOp::PreparedPlanZones(p) => doc.apply_plan_zones(p),
         EditOp::CommitPlanZones { .. } => unreachable!("resolved by worker"),
         EditOp::SetPageLabels(range) => doc.set_page_labels(&range),
@@ -2385,6 +2457,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         fonts: None,
         rich_preview: None,
         plan_zones: Default::default(),
+        visual_search: Default::default(),
+        visual_turn: false,
         quantity_workbook: Default::default(),
         issue_report: Default::default(),
         rectangle_calibration: None,
@@ -3594,6 +3668,29 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     result,
                 }
             }
+            Request::VisualSearch {
+                epoch,
+                generation,
+                job,
+            } => {
+                let result = if matches!(&job, crate::visual_search_ui::Job::Discard) {
+                    state.visual_search.discard(epoch, generation);
+                    Ok(crate::visual_search_ui::Outcome::Discarded)
+                } else {
+                    match state.document.as_ref() {
+                        Some(doc) => state.visual_search.run(doc, epoch, generation, job),
+                        None => {
+                            state.visual_search.clear();
+                            Err(EngineError::Other("no document".into()))
+                        }
+                    }
+                };
+                Response::VisualSearch {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::PlanZones {
                 epoch,
                 generation,
@@ -3756,7 +3853,7 @@ mod tests {
     use sunipdf_core::{FieldKind, FieldOption, PixelRect};
 
     #[test]
-    fn organize_thumbnail_failures_are_acknowledged_by_the_engine_worker() {
+    fn document_worker_integrations_preserve_history_permissions_and_responsiveness() {
         let worker = Worker::spawn(egui::Context::default());
         let timeout = std::time::Duration::from_secs(10);
         match worker
@@ -3834,6 +3931,7 @@ mod tests {
         plan_zones_preview_apply_history_reopen_and_stale_guard(&worker);
         issue_reports_preserve_filters_history_source_and_refuse_stale_publication(&worker);
         quantity_workbooks_refresh_reviewed_identities_and_keep_history(&worker);
+        visual_search_reviewed_counts_have_one_undo_and_reject_stale_tokens(&worker);
     }
 
     fn quantity_workbooks_refresh_reviewed_identities_and_keep_history(worker: &Worker) {
@@ -6954,6 +7052,243 @@ mod tests {
         assert_eq!(read().rows[0].annotation_id, id);
     }
 
+    fn visual_search_reviewed_counts_have_one_undo_and_reject_stale_tokens(worker: &Worker) {
+        use crate::visual_search_ui::{Job, Outcome};
+        use sunipdf_core::visual_search::{
+            VisualSearchOptions, VisualSearchReport, VisualSearchStatus,
+        };
+        fn start(worker: &Worker, generation: u64) {
+            worker.send(Request::VisualSearch {
+                epoch: 1700,
+                generation,
+                job: Job::Start {
+                    page: 0,
+                    rect: PointRect {
+                        left: 18.,
+                        bottom: 18.,
+                        right: 34.,
+                        top: 34.,
+                    },
+                    options: VisualSearchOptions {
+                        pages: vec![0],
+                        scale: 1.,
+                        sensitivity: 0.99,
+                        max_comparisons: 10_000_000,
+                        ..Default::default()
+                    },
+                },
+            });
+            assert!(matches!(
+                next_response(worker),
+                Response::VisualSearch {
+                    result: Ok(Outcome::Started { .. }),
+                    ..
+                }
+            ));
+        }
+        fn finish(worker: &Worker) -> VisualSearchReport {
+            match next_response(worker) {
+                Response::VisualSearch {
+                    result: Ok(Outcome::Finished(report)),
+                    ..
+                } => report,
+                Response::VisualSearch {
+                    result: Err(error), ..
+                } => panic!("visual search failed: {error}"),
+                _ => panic!("completed symbol search"),
+            }
+        }
+        fn count(worker: &Worker) -> usize {
+            worker.send(Request::AnnotationRegister {
+                epoch: 1700,
+                generation: 51,
+            });
+            match next_response(worker) {
+                Response::AnnotationRegister {
+                    result: Ok(report), ..
+                } => report.rows.len(),
+                _ => panic!("complete register"),
+            }
+        }
+        fn preview(worker: &Worker, generation: u64, id: u32) -> RenderedPage {
+            worker.send(Request::VisualSearch {
+                epoch: 1700,
+                generation,
+                job: Job::Preview { id },
+            });
+            match next_response(worker) {
+                Response::VisualSearch {
+                    result: Ok(Outcome::Preview { image, .. }),
+                    ..
+                } => image,
+                _ => panic!("candidate review preview"),
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("symbols.pdf");
+        let output = dir.path().join("counted.pdf");
+        let mut pdf = lopdf::Document::with_version("1.7");
+        let pages = pdf.new_object_id();
+        let stream = pdf.add_object(lopdf::Stream::new(
+            lopdf::Dictionary::new(),
+            b"0 g 20 20 3 10 re f 20 20 10 3 re f 70 70 3 10 re f 70 70 10 3 re f".to_vec(),
+        ));
+        let page = pdf.add_object(lopdf::dictionary! { "Type" => "Page", "Parent" => pages,
+        "MediaBox" => vec![0.into(), 0.into(), 120.into(), 120.into()], "Contents" => stream,
+        "Resources" => lopdf::Dictionary::new() });
+        pdf.objects.insert(
+            pages,
+            lopdf::Object::Dictionary(lopdf::dictionary! {
+            "Type" => "Pages", "Kids" => vec![lopdf::Object::Reference(page)], "Count" => 1 }),
+        );
+        let catalog = pdf.add_object(lopdf::dictionary! { "Type" => "Catalog", "Pages" => pages });
+        pdf.trailer.set("Root", catalog);
+        pdf.save(&source).unwrap();
+        let original = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        start(worker, 1);
+        // Foreground rendering must be served before the scan can complete.
+        worker.send(Request::Thumbnail {
+            page: 0,
+            width_px: 120,
+        });
+        assert!(matches!(next_response(worker), Response::Thumbnail { .. }));
+        let report = finish(worker);
+        assert_eq!(report.progress.status, VisualSearchStatus::Complete);
+        assert_eq!(report.candidates.len(), 2);
+        assert_eq!(count(worker), 0, "suggestions do not create counts");
+        let first_bounds = report.candidates[0].rect;
+        let uncounted_preview = preview(worker, 1, report.candidates[0].id);
+        let selected: Vec<_> = report.candidates.iter().map(|c| c.id).collect();
+        worker.send(Request::Edit(EditOp::CommitVisualSearchCounts {
+            epoch: 1700,
+            generation: 1,
+            ids: selected.clone(),
+            group: "Equipment".into(),
+            size: 8.,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        assert_eq!(count(worker), 2);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(
+            count(worker),
+            0,
+            "one Undo removes the whole accepted batch"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(count(worker), 2);
+        worker.send(Request::Edit(EditOp::CommitVisualSearchCounts {
+            epoch: 1700,
+            generation: 1,
+            ids: selected,
+            group: "Equipment".into(),
+            size: 8.,
+        }));
+        assert!(
+            matches!(next_response(worker), Response::OperationFailed(_)),
+            "consumed token cannot add duplicates"
+        );
+        assert_eq!(count(worker), 2);
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(count(worker), 2);
+        start(worker, 2);
+        worker.send(Request::VisualSearch {
+            epoch: 1700,
+            generation: 1,
+            job: Job::Discard,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::VisualSearch {
+                result: Ok(Outcome::Discarded),
+                ..
+            }
+        ));
+        let report = finish(worker);
+        assert_eq!(
+            report.candidates.len(),
+            2,
+            "existing count appearances are excluded from search"
+        );
+        assert_eq!(report.candidates[0].rect, first_bounds);
+        let counted_preview = preview(worker, 2, report.candidates[0].id);
+        assert_eq!(counted_preview.width, uncounted_preview.width);
+        assert_eq!(counted_preview.height, uncounted_preview.height);
+        assert_ne!(
+            counted_preview.rgba, uncounted_preview.rgba,
+            "review previews show existing counts even though detection excludes them"
+        );
+        worker.send(Request::Edit(EditOp::Note {
+            page: 0,
+            x: 100.,
+            y: 100.,
+            text: "later edit".into(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitVisualSearchCounts {
+            epoch: 1700,
+            generation: 2,
+            ids: report.candidates.iter().map(|c| c.id).collect(),
+            group: "Equipment".into(),
+            size: 8.,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                ..
+            })
+        ));
+        assert_eq!(count(worker), 2, "rejected stale apply adds no history");
+        start(worker, 3);
+        worker.send(Request::VisualSearch {
+            epoch: 1700,
+            generation: 3,
+            job: Job::Cancel,
+        });
+        assert_eq!(
+            finish(worker).progress.status,
+            VisualSearchStatus::Cancelled
+        );
+        assert_eq!(count(worker), 2);
+        assert_eq!(std::fs::read(source).unwrap(), original);
+    }
+
     fn next_response(worker: &Worker) -> Response {
         loop {
             let response = worker
@@ -6965,6 +7300,10 @@ mod tests {
             } else if matches!(
                 response,
                 Response::SearchProgress { .. }
+                    | Response::VisualSearch {
+                        result: Ok(crate::visual_search_ui::Outcome::Progress(_)),
+                        ..
+                    }
                     | Response::AnnotationRegisterProgress { .. }
                     | Response::IssueReportProgress { .. }
                     | Response::QuantityWorkbookProgress { .. }
