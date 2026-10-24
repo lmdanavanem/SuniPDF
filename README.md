@@ -7,7 +7,7 @@
   </picture>
 </p>
 
-**Free, open-source PDF reader and editor for Windows and Ubuntu.**
+**Free, open-source PDF reader and editor for Windows, Ubuntu and macOS.**
 
 Read, edit, annotate and measure PDFs on your computer. No account or telemetry.
 The interface defaults to English; French is also available.
@@ -27,21 +27,23 @@ SuniPDF 0.72.0 is the latest stable release, verified 2026-10-24T15:11:57.923546
 | Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64-portable.zip) |
 | Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-arm64-portable.zip) |
 | Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | DMG image from the next release, on the [releases page](https://github.com/lmdanavanem/SuniPDF/releases) |
 
 [Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0) · [qualification evidence](docs/qa/RELEASE_0.72.0.json)
 
-Packages are unsigned. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
-See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUES.md).
+Packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
+See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
 
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
 - **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.72.0-linux-amd64.deb`.
+- **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
 Update notifications appear at startup and can be disabled in About. Windows downloads and verifies the update before
-offering installation; Ubuntu opens the release download for installation through APT. PDF processing and OCR stay local.
+offering installation; Ubuntu opens the release download for installation through APT. On macOS, download the new DMG from the releases page. PDF processing and OCR stay local.
 
 ## What you can do
 

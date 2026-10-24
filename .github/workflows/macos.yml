@@ -1,0 +1,96 @@
+name: macos
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  documentation:
+    name: Classify documentation change
+    runs-on: ubuntu-latest
+    outputs:
+      docs_only: ${{ steps.changes.outputs.docs_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Classify exact documentation change
+        id: changes
+        run: python3 scripts/ci-docs.py classify
+
+  build:
+    name: Build macOS arm64
+    needs: documentation
+    if: needs.documentation.outputs.docs_only != 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: macos15-arm64-native
+          cache-on-failure: true
+          cache-workspace-crates: true
+      - name: Fetch verified macOS PDFium
+        run: scripts/fetch-pdfium.sh arm64
+      - name: Packaging boundary regressions
+        run: python3 scripts/license-inventory.py --self-test
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Workspace tests
+        # Canonical temporary paths: path guards refuse links such as /var -> /private/var.
+        run: |
+          set -o pipefail
+          TMPDIR="$RUNNER_TEMP" cargo test --workspace --locked --no-fail-fast 2>&1 | tee target/workspace-tests.log
+      - name: Build, sign and verify the DMG
+        run: scripts/package-macos.sh
+      - name: Upload exact DMG candidate
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: sunipdf-macos-arm64
+          path: |
+            dist/SuniPDF-*-macos-arm64.dmg
+            dist/SuniPDF-*-macos-arm64.dmg.sha256
+          if-no-files-found: error
+
+  validate:
+    name: Install and run on macOS
+    needs: build
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: sunipdf-macos-arm64
+          path: dist
+      - name: Validate the installed candidate
+        run: |
+          packages=(dist/SuniPDF-*-macos-arm64.dmg)
+          test "${#packages[@]}" -eq 1
+          python3 scripts/test-macos.py --dmg "${packages[0]}" --evidence "$RUNNER_TEMP/macos-evidence"
+      - name: Upload installation and native UI evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: macos-validation
+          path: ${{ runner.temp }}/macos-evidence
+          if-no-files-found: warn

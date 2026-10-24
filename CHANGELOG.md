@@ -1,7 +1,7 @@
 # Changelog
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
-`release.yml` builds draft release assets (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB); publication follows exact-source and package qualification.
+`release.yml` builds draft release assets (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB, macOS arm64 DMG); publication follows exact-source and package qualification.
 
 ## [Unreleased]
 
@@ -10,7 +10,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 - Add batch inspection, previews and publication to the CLI while preserving single-source commands.
 - Replace Linux fallback window buttons with round, accessible controls for minimizing, maximizing/restoring and guarded closing; retain native move and resize gestures.
 - Correct the welcome and About descriptions to include Linux.
-- macOS preview (local build, not published): `scripts/package-macos.sh [--install]` builds an ad hoc signed `SuniPDF.app` with PDFium; same interface with San Francisco text and the bundled icon font; settings and recovery under `~/Library/Application Support/SuniPDF`; PDFs open from the Finder; native menu bar built from the same command registry as the in-app Menu (⌘Q asks about unsaved changes); “Use SuniPDF as Default PDF App” in the SuniPDF menu; ⌘ and ⌃ are distinct shortcut modifiers, ⌘⌫ deletes the page, ⌃Tab switches tabs. Printing, certificate signatures, saved visual signatures, OCR, Office conversion and automatic updates remain unavailable on macOS.
+- Add a macOS Apple silicon package: `release.yml` builds `SuniPDF-<version>-macos-arm64.dmg` (desktop app, CLI, pinned PDFium and verified license inventory, ad hoc signed, not notarized), checked by mounting it, running the packaged CLI and starting the app; `scripts/package-macos.sh [--install]` builds it locally. Same interface with San Francisco text and the bundled icon font, native menu bar, PDFs opened from the Finder and an optional default-PDF-app entry; ⌘ and ⌃ stay distinct shortcut modifiers. Printing, certificate signatures, saved visual signatures, OCR, Office import and in-app updates remain unavailable on macOS ([limits](docs/MACOS.md)).
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
