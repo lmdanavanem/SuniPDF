@@ -97,7 +97,7 @@ pub(crate) fn show(ui: &mut egui::Ui, language: Language, dark: bool, title: &st
                 ui.scope_id().with("window-drag"),
                 Sense::click_and_drag(),
             );
-            if drag.double_clicked_by(egui::PointerButton::Primary) {
+            if title_double_clicked(&drag) {
                 ui.ctx()
                     .send_viewport_cmd(ViewportCommand::Maximized(!maximized));
             } else if drag.drag_started_by(egui::PointerButton::Primary) {
@@ -150,6 +150,49 @@ pub(crate) fn show(ui: &mut egui::Ui, language: Language, dark: bool, title: &st
             }
         });
     close
+}
+
+fn title_double_clicked(response: &egui::Response) -> bool {
+    let ctx = &response.ctx;
+    let id = egui::Id::unique(("linux-title-click-pair", ctx.viewport_id()));
+    let clear = || ctx.data_mut(|data| data.remove::<(f64, Pos2)>(id));
+    if response.drag_started() {
+        clear();
+        return false;
+    }
+    if !response.clicked_by(egui::PointerButton::Primary) {
+        if ctx.input(|i| i.pointer.any_click()) {
+            clear();
+        }
+        return false;
+    }
+    let Some(position) = response.interact_pointer_pos() else {
+        clear();
+        return false;
+    };
+    let time = ctx.input(|i| i.time);
+    let (delay, distance) = ctx.options(|o| {
+        (
+            o.input_options.max_double_click_delay,
+            o.input_options.max_click_dist,
+        )
+    });
+    // Count consecutive title clicks independently of clicks on other window controls.
+    ctx.data_mut(|data| {
+        let paired = data
+            .get_temp::<(f64, Pos2)>(id)
+            .is_some_and(|(previous, point)| {
+                time >= previous
+                    && time - previous < delay
+                    && point.distance_sq(position) < distance * distance
+            });
+        if paired {
+            data.remove::<(f64, Pos2)>(id);
+        } else {
+            data.insert_temp(id, (time, position));
+        }
+        paired
+    })
 }
 
 fn control_button(
@@ -423,6 +466,75 @@ mod tests {
                 assert_eq!(ui.available_rect_before_wrap().min, Pos2::ZERO);
             })
         });
+    }
+
+    #[test]
+    fn title_double_click_remains_a_pair_after_another_window_button() {
+        for (maximized, prior_restore) in [(false, false), (true, false), (false, true)] {
+            let ctx = egui::Context::default();
+            let draw = |ui: &mut egui::Ui| {
+                frame(ui, false, |ui| {
+                    assert!(!show(ui, Language::English, true, "Document.pdf"));
+                });
+            };
+            let timed = |time, events, maximized| {
+                let mut input = input(events, maximized);
+                input.time = Some(time);
+                input
+            };
+            let _ = run_frame(&ctx, timed(0.0, vec![], maximized || prior_restore), draw);
+            if prior_restore {
+                let _ = run_frame(
+                    &ctx,
+                    timed(0.10, pointer(pos2(656.0, 20.0), true), true),
+                    draw,
+                );
+                let restored = run_frame(
+                    &ctx,
+                    timed(0.12, pointer(pos2(656.0, 20.0), false), true),
+                    draw,
+                );
+                assert!(restored
+                    .viewport_output
+                    .values()
+                    .any(|v| v.commands.contains(&ViewportCommand::Maximized(false))));
+            }
+            let _ = run_frame(&ctx, timed(0.14, vec![], maximized), draw);
+            let _ = run_frame(
+                &ctx,
+                timed(0.16, pointer(pos2(220.0, 26.0), true), maximized),
+                draw,
+            );
+            let first = run_frame(
+                &ctx,
+                timed(0.17, pointer(pos2(220.0, 26.0), false), maximized),
+                draw,
+            );
+            assert!(first
+                .viewport_output
+                .values()
+                .all(|v| v.commands.is_empty()));
+            let _ = run_frame(
+                &ctx,
+                timed(0.24, pointer(pos2(220.0, 26.0), true), maximized),
+                draw,
+            );
+            let second = run_frame(
+                &ctx,
+                timed(0.25, pointer(pos2(220.0, 26.0), false), maximized),
+                draw,
+            );
+            let commands: Vec<_> = second
+                .viewport_output
+                .values()
+                .flat_map(|v| v.commands.clone())
+                .collect();
+            assert_eq!(
+                commands,
+                vec![ViewportCommand::Maximized(!maximized)],
+                "prior restore: {prior_restore}"
+            );
+        }
     }
 
     #[test]
