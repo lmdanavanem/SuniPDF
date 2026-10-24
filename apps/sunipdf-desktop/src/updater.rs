@@ -25,6 +25,13 @@ pub enum UpdateKind {
     #[cfg(any(windows, test))]
     Portable,
     Deb,
+    Dmg,
+}
+
+impl UpdateKind {
+    pub fn requires_manual_install(self) -> bool {
+        self == Self::Dmg
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -122,6 +129,9 @@ impl Updater {
         let Phase::Available(release) = &self.phase else {
             return;
         };
+        if release.kind.requires_manual_install() {
+            return;
+        }
         let release = release.clone();
         self.start(ctx, Phase::Downloading, move || {
             work(release).map(Phase::Ready)
@@ -253,6 +263,9 @@ impl Updater {
                 UpdateKind::Deb => {
                     return Err("Install Ubuntu updates with your package manager.".into())
                 }
+                UpdateKind::Dmg => {
+                    return Err("Install macOS updates from the release page.".into())
+                }
             })
             .arg("-ParentPid")
             .arg(std::process::id().to_string())
@@ -279,7 +292,7 @@ impl Updater {
 
     #[cfg(not(windows))]
     pub fn launch_prepared(&mut self) -> Result<(), String> {
-        Err("Install Ubuntu updates with your package manager.".into())
+        Err("This platform does not support installation after quitting.".into())
     }
 }
 
@@ -294,8 +307,10 @@ fn check_latest() -> Result<Phase, String> {
     } else {
         UpdateKind::Portable
     };
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "macos")))]
     let kind = UpdateKind::Deb;
+    #[cfg(target_os = "macos")]
+    let kind = UpdateKind::Dmg;
     let mut response = https_get(
         LATEST_URL,
         "application/vnd.github+json",
@@ -319,7 +334,11 @@ fn architecture_for(platform: &str, arch: &str) -> Result<&'static str, String> 
         ("windows", "x86_64") => Ok("x64"),
         ("windows", "aarch64") => Ok("arm64"),
         ("linux", "x86_64") => Ok("amd64"),
-        _ => Err("Updates are available for Windows x64/ARM64 and Ubuntu amd64.".into()),
+        ("macos", "aarch64") => Ok("arm64"),
+        _ => Err(
+            "Updates are available for Windows x64/ARM64, Ubuntu amd64 and macOS Apple silicon."
+                .into(),
+        ),
     }
 }
 
@@ -355,6 +374,7 @@ fn parse_release(
         #[cfg(any(windows, test))]
         UpdateKind::Portable => matches!(arch, "x64" | "arm64"),
         UpdateKind::Deb => arch == "amd64",
+        UpdateKind::Dmg => arch == "arm64",
     };
     if !supported_architecture {
         return Err("No installer is available for this architecture.".into());
@@ -381,6 +401,7 @@ fn parse_release(
         #[cfg(any(windows, test))]
         UpdateKind::Portable => format!("SuniPDF-{version}-win-{arch}-portable.zip"),
         UpdateKind::Deb => format!("SuniPDF-{version}-linux-{arch}.deb"),
+        UpdateKind::Dmg => format!("SuniPDF-{version}-macos-{arch}.dmg"),
     };
     let mut assets = response.assets.into_iter().filter(|a| a.name == asset_name);
     let asset = assets
@@ -508,6 +529,9 @@ fn update_workspace(prefix: &str) -> std::io::Result<TempDir> {
 }
 
 fn download_release(release: Release) -> Result<PreparedUpdate, String> {
+    if release.kind.requires_manual_install() {
+        return Err("Download the macOS DMG from the official release page and replace SuniPDF in Applications.".into());
+    }
     if release.kind == UpdateKind::Deb {
         crate::updater_linux::require_system_installation()?;
     }
@@ -728,6 +752,7 @@ mod tests {
             UpdateKind::Msi => format!("SuniPDF-{version}-win-{arch}.msi"),
             UpdateKind::Portable => format!("SuniPDF-{version}-win-{arch}-portable.zip"),
             UpdateKind::Deb => format!("SuniPDF-{version}-linux-{arch}.deb"),
+            UpdateKind::Dmg => format!("SuniPDF-{version}-macos-{arch}.dmg"),
         };
         json!({
             "tag_name":tag,"draft":false,"prerelease":false,
@@ -752,6 +777,7 @@ mod tests {
             ("x64", UpdateKind::Portable),
             ("arm64", UpdateKind::Portable),
             ("amd64", UpdateKind::Deb),
+            ("arm64", UpdateKind::Dmg),
         ] {
             let release = parse(release_body("v0.10.0", arch, kind), "0.9.0", arch, kind)
                 .unwrap()
@@ -791,6 +817,47 @@ mod tests {
         )
         .is_err());
         assert!(architecture("x86").is_err());
+    }
+
+    #[test]
+    fn apple_silicon_updates_are_manual_and_never_select_deb_or_windows_packages() {
+        assert_eq!(architecture_for("macos", "aarch64").unwrap(), "arm64");
+        assert!(architecture_for("macos", "x86_64").is_err());
+        for (arch, kind) in [
+            ("amd64", UpdateKind::Deb),
+            ("arm64", UpdateKind::Portable),
+            ("x64", UpdateKind::Msi),
+        ] {
+            assert!(parse(
+                release_body("v0.76.0", arch, kind),
+                "0.75.0",
+                "arm64",
+                UpdateKind::Dmg,
+            )
+            .is_err());
+        }
+        let release = parse(
+            release_body("v0.76.0", "arm64", UpdateKind::Dmg),
+            "0.75.0",
+            "arm64",
+            UpdateKind::Dmg,
+        )
+        .unwrap()
+        .unwrap();
+        assert!(release.kind.requires_manual_install());
+        assert_eq!(release.notes_url, format!("{RELEASES_URL}/tag/v0.76.0"));
+        let mut updater = Updater {
+            phase: Phase::Available(release.clone()),
+            ..Default::default()
+        };
+        updater.download_with(&egui::Context::default(), |_| {
+            panic!("a manual macOS update must never start the installer downloader")
+        });
+        assert!(matches!(updater.phase, Phase::Available(_)));
+        assert!(updater.rx.is_none());
+        assert!(download_release(release)
+            .unwrap_err()
+            .contains("Download the macOS DMG"));
     }
 
     #[test]

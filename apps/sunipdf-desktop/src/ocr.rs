@@ -89,10 +89,16 @@ impl OcrState {
         }
         let mut close = false;
         let mut run = false;
+        let unavailable =
+            crate::workspace::platform_unavailable(sunipdf_core::Command::OcrDocument);
         dialog::show(
             ctx,
             Spec::new("ocr_options", tr(lang, "ocr.title"), dark, has_icons).width(480.0),
             |ui| {
+                if let Some(reason) = unavailable {
+                    ui.label(tr(lang, reason));
+                    return;
+                }
                 ui.label(tr(lang, "ocr.description"));
                 ui.add_space(10.0);
                 ui.horizontal(|ui| {
@@ -125,7 +131,7 @@ impl OcrState {
             |ui| {
                 run = ui
                     .add_enabled(
-                        page_count > 0 && current_page < page_count,
+                        unavailable.is_none() && page_count > 0 && current_page < page_count,
                         egui::Button::new(tr(lang, "ocr.run")),
                     )
                     .clicked();

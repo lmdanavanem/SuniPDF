@@ -297,23 +297,7 @@ fn within(root: &Path, path: &Path) -> bool {
 }
 
 fn open_regular(path: &Path) -> std::io::Result<File> {
-    if !path.metadata()?.is_file() {
-        return Err(std::io::Error::other("Choose a regular file"));
-    }
-    let mut options = std::fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(target_os = "linux")]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        // Linux O_NONBLOCK | O_NOFOLLOW: a file replaced by a FIFO cannot hang
-        // the reader between metadata and open, nor can a final symlink be followed.
-        options.custom_flags(0x800 | 0x20000);
-    }
-    let file = options.open(path)?;
-    if !file.metadata()?.is_file() {
-        return Err(std::io::Error::other("Choose a regular file"));
-    }
-    Ok(file)
+    crate::file_io::open_regular(path)
 }
 
 #[derive(Debug)]
@@ -409,7 +393,28 @@ fn opened_path(file: &File, expected: &Path) -> Result<PathBuf, Problem> {
         let _ = expected;
         std::fs::read_link(format!("/proc/self/fd/{}", file.as_raw_fd())).map_err(Into::into)
     }
-    #[cfg(not(any(windows, target_os = "linux")))]
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::{fd::AsRawFd, unix::ffi::OsStringExt};
+        let _ = expected;
+        let mut buffer = [0_u8; libc::PATH_MAX as usize];
+        // SAFETY: F_GETPATH writes at most PATH_MAX bytes into this live buffer. The
+        // descriptor remains borrowed from file and is neither closed nor transferred.
+        if unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETPATH, buffer.as_mut_ptr()) } == -1 {
+            return Err(std::io::Error::last_os_error().into());
+        }
+        let length = buffer
+            .iter()
+            .position(|&byte| byte == 0)
+            .filter(|&length| length > 0)
+            .ok_or_else(Problem::unsafe_path)?;
+        let path = PathBuf::from(std::ffi::OsString::from_vec(buffer[..length].to_vec()));
+        if !path.is_absolute() {
+            return Err(Problem::unsafe_path());
+        }
+        Ok(path)
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     {
         let _ = file;
         expected.canonicalize().map_err(Into::into)
@@ -876,6 +881,25 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         assert!(open_regular(temp.path()).is_err());
         assert!(load(temp.path()).is_err());
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[test]
+    fn opened_path_tracks_the_descriptor_when_the_original_name_is_replaced() {
+        let temp = tempfile::tempdir().unwrap();
+        let parent = temp.path().canonicalize().unwrap();
+        let root = parent.join("plans");
+        std::fs::create_dir(&root).unwrap();
+        let original = root.join("original.pdf");
+        let moved = parent.join("moved.pdf");
+        std::fs::write(&original, b"original contents").unwrap();
+        let file = open_regular(&original).unwrap();
+        std::fs::rename(&original, &moved).unwrap();
+        std::fs::write(&original, b"replacement contents").unwrap();
+        let actual = opened_path(&file, &original).unwrap();
+        assert_eq!(actual, moved);
+        assert!(!within(&root, &actual));
+        assert_ne!(actual, original);
     }
 
     #[cfg(target_os = "linux")]

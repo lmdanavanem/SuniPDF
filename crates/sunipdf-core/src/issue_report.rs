@@ -104,14 +104,7 @@ fn read_source(path: &Path, cancel: &AtomicBool) -> Result<Vec<u8>, EngineError>
     if !std::fs::metadata(path)?.is_file() {
         return Err(invalid("source must be a regular file"));
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(target_os = "linux")]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0x800 | 0x20000);
-    }
-    let file = options.open(path)?;
+    let file = crate::file_io::open_regular(path)?;
     if !file.metadata()?.is_file() || file.metadata()?.len() > MAX_SOURCE_BYTES as u64 {
         return Err(invalid("source exceeds 128 MiB or is not a regular file"));
     }

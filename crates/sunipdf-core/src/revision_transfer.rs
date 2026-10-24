@@ -477,14 +477,7 @@ pub(crate) fn read_source(path: &Path, cancel: &AtomicBool) -> Result<Vec<u8>, E
     if !before.is_file() || before.len() == 0 || before.len() > MAX_SOURCE_BYTES {
         return Err(invalid("choose a regular PDF no larger than 64 MiB"));
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(target_os = "linux")]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0x800 | 0x20000);
-    }
-    let file = options.open(path)?;
+    let file = crate::file_io::open_regular(path)?;
     let metadata = file.metadata()?;
     if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_SOURCE_BYTES {
         return Err(invalid("source is not a bounded regular file"));

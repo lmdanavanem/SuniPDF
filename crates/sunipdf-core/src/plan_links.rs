@@ -441,14 +441,7 @@ fn manifest_snapshot(path: &Path) -> Result<(PathBuf, Vec<u8>), EngineError> {
     if !canonical.metadata()?.is_file() {
         return Err(failure("choose a regular manifest"));
     }
-    let mut opts = std::fs::OpenOptions::new();
-    opts.read(true);
-    #[cfg(target_os = "linux")]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        opts.custom_flags(0x800 | 0x20000);
-    }
-    let file = opts.open(&canonical)?;
+    let file = crate::file_io::open_regular(&canonical)?;
     let before = file.metadata()?;
     if !before.is_file() || before.len() > plan_set::MAX_MANIFEST_BYTES as u64 {
         return Err(failure("manifest exceeds 2 MiB"));

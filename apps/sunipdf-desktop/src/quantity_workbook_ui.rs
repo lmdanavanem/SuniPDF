@@ -153,14 +153,7 @@ fn load_manifest(
             "Workbook manifest must be a regular file".into(),
         ));
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(target_os = "linux")]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0x800 | 0x20000);
-    }
-    let file = options.open(path)?;
+    let file = sunipdf_core::file_io::open_regular(path)?;
     if !file.metadata()?.is_file() || file.metadata()?.len() > MAX_MANIFEST_BYTES as u64 {
         return Err(EngineError::Other(
             "Workbook manifest exceeds its size limit or is not a regular file".into(),

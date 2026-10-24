@@ -13,6 +13,9 @@ use sunipdf_core::Command;
 use sunipdf_i18n::tr;
 
 pub(crate) fn platform_unavailable(command: Command) -> Option<&'static str> {
+    if cfg!(target_os = "macos") && matches!(command, Command::OcrDocument | Command::HubOcr) {
+        return Some("platform.ocr_unavailable");
+    }
     (!cfg!(windows)
         && matches!(
             command,
@@ -1132,8 +1135,11 @@ mod tests {
         let (mut app, requests, _) = crate::app::tests::test_app();
         let ctx = egui::Context::default();
         app.execute(&ctx, Workspace::ScanOcr.activate().unwrap());
-        assert_eq!(app.annotate.workspace, Some(Workspace::ScanOcr));
-        assert!(app.ocr.open);
+        assert_eq!(
+            app.annotate.workspace,
+            (!cfg!(target_os = "macos")).then_some(Workspace::ScanOcr)
+        );
+        assert_eq!(app.ocr.open, !cfg!(target_os = "macos"));
         app.ocr.open = false;
         app.execute(&ctx, Workspace::PrepareForm.activate().unwrap());
         app.execute(&ctx, C::ToolAddTextField);
@@ -1148,6 +1154,27 @@ mod tests {
                 .any(|r| matches!(r, crate::worker::Request::VerifySignatures)),
             cfg!(windows)
         );
+    }
+
+    #[test]
+    fn unavailable_ocr_commands_do_not_open_or_dispatch_on_macos() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        for command in [C::HubOcr, C::OcrDocument] {
+            assert_eq!(
+                platform_unavailable(command).is_some(),
+                cfg!(target_os = "macos")
+            );
+            if cfg!(target_os = "macos") {
+                assert!(!app.command_enabled(command));
+                app.execute(&egui::Context::default(), command);
+                assert_eq!(
+                    app.status_msg.as_deref(),
+                    Some(app.t("platform.ocr_unavailable"))
+                );
+                assert!(!app.ocr.open);
+                assert!(requests.try_recv().is_err());
+            }
+        }
     }
 
     #[test]

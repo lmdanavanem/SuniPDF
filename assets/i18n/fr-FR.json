@@ -1,4 +1,7 @@
 {
+  "updates.macos.download": "Télécharger pour macOS",
+  "updates.macos.install": "Téléchargez le DMG Apple silicon depuis la page de publication, vérifiez son empreinte, puis remplacez SuniPDF dans Applications. L’installation est manuelle sur macOS.",
+  "platform.ocr_unavailable": "L’OCR n’est pas encore disponible dans le paquet macOS.",
   "updates.linux.install": "Installer la mise à jour",
   "updates.linux.confirm": "Linux vous demandera une autorisation administrateur. Gardez SuniPDF ouvert pendant l’installation du paquet vérifié. Vos documents restent ouverts.",
   "updates.linux.installing": "Installation de la mise à jour… Validez la demande d’autorisation de Linux.",

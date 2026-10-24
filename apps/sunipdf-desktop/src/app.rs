@@ -1399,6 +1399,11 @@ impl SuniApp {
                     "updates.available",
                     &[("version", &release.version)],
                 ));
+                if release.kind.requires_manual_install() {
+                    ui.hyperlink_to(tr(lang, "updates.macos.download"), &release.notes_url);
+                    ui.label(tr(lang, "updates.macos.install"));
+                    return;
+                }
                 download = ui
                     .button(tr(
                         lang,

@@ -1,4 +1,7 @@
 {
+  "updates.macos.download": "Download for macOS",
+  "updates.macos.install": "Download the Apple silicon DMG from the release page, verify its checksum, then replace SuniPDF in Applications. Installation is manual on macOS.",
+  "platform.ocr_unavailable": "OCR is not available in the macOS package yet.",
   "updates.linux.install": "Install update",
   "updates.linux.confirm": "Linux will ask for administrator authorization. Keep SuniPDF open while the package manager installs the verified update. Your documents remain open.",
   "updates.linux.installing": "Installing update… Complete the Linux authorization dialog.",

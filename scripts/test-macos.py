@@ -87,6 +87,9 @@ def validate(dmg, evidence):
         cases.append("ad-hoc-signature-seals-the-bundle-and-image-offers-applications")
         command([sys.executable, "-I", ROOT / "scripts/license-inventory.py", "--macos", "--verify", "--stage", installed])
         cases.append("license-inventory-matches-installed-resources")
+        command([sys.executable, "-I", ROOT / "scripts/macos-bundle.py", "--app", installed / "SuniPDF.app",
+                 "--report", evidence / "bundle.json"])
+        cases.append("apple-silicon-deployment-floor-and-library-closure")
         macos = installed / "SuniPDF.app/Contents/MacOS"
         cli = macos / "sunipdf-cli"
         source = directory / "macOS PDF test.pdf"
@@ -103,6 +106,14 @@ def validate(dmg, evidence):
         if png_size(rendered) != (612, 792):
             raise ValueError("Packaged PDFium rendered an unexpected page size")
         cases.append("packaged-cli-loads-bundled-pdfium-and-renders-fixture")
+        rotated = directory / "rotated copy.pdf"
+        result = json.loads(command([cli, "rotate", source, "--pages", "1", "--degrees", "90", "--out", rotated]))
+        if result.get('rotated') != 1 or json.loads(command([cli, "info", rotated]))['page_count'] != 2:
+            raise ValueError("Packaged CLI did not save and reopen the edited PDF")
+        command([cli, "render", rotated, "--page", 1, "--scale", 1, "--out", evidence / "rotated-page.png"])
+        if png_size(evidence / "rotated-page.png") != (792, 612):
+            raise ValueError("Saved page rotation was not preserved")
+        cases.append("packaged-cli-edits-saves-and-reopens-a-new-copy")
         home = directory / "home"
         home.mkdir()
         desktop_launch(macos / "sunipdf", source, home, evidence)
@@ -110,7 +121,11 @@ def validate(dmg, evidence):
         if sha(source) != original:
             raise ValueError("Validation modified the source PDF")
     proof = {"schema": 1, "version": version, "dmg": dmg.name, "dmgSha256": sha(dmg), "cases": cases,
-             "macos": command(["sw_vers"]).strip()}
+             "macos": command(["sw_vers"]).strip(), "architecture": command(["uname", "-m"]).strip(),
+             "sourceRevision": command(["git", "-C", ROOT, "rev-parse", "HEAD"]).strip(),
+             "runId": os.environ.get("GITHUB_RUN_ID"), "notarized": False,
+             "finderInteractionTested": False, "clipboardInteractionTested": False,
+             "physicalMacTested": False}
     (evidence / "runtime.json").write_text(json.dumps(proof, indent=2) + "\n")
     print(json.dumps(proof, indent=2))
 
