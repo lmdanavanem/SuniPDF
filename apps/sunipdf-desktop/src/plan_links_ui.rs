@@ -1423,10 +1423,45 @@ mod tests {
         app.plan_links.open = true;
         app.plan_links.generation = 12;
         app.plan_links.pending = Some((12, true));
-        assert!(app.guard_plan_links_quit());
+        let ctx = egui::Context::default();
+        app.has_icons = crate::icons::install(&ctx);
+        crate::theme::apply(&ctx, app.settings.dark_theme);
+        let mut input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 780.0),
+            )),
+            ..Default::default()
+        };
+        input
+            .viewports
+            .entry(egui::ViewportId::ROOT)
+            .or_default()
+            .events
+            .push(egui::ViewportEvent::Close);
+        let mut frame = eframe::Frame::_new_kittest();
+        let mut output = ctx.run_ui(input.clone(), |ui| {
+            eframe::App::ui(&mut app, ui, &mut frame)
+        });
+        output.textures_delta.clear();
+        assert!(output
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
+        assert!(!output
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::Close)));
         assert!(app.plan_links.open && app.plan_links.busy());
         assert_eq!(app.plan_links.generation, 12);
-        assert!(requests.try_iter().next().is_none());
+        assert!(!requests.try_iter().any(|request| matches!(
+            request,
+            Request::Close
+                | Request::PlanLinks {
+                    job: Job::Clear,
+                    ..
+                }
+        )));
         let report = PlanLinkReport {
             version: 1,
             inspection: inspection(),
@@ -1435,7 +1470,7 @@ mod tests {
             output_sha256: "d".repeat(64),
         };
         app.on_plan_links(
-            &egui::Context::default(),
+            &ctx,
             12,
             Ok(Outcome::Saved(PlanLinkReceipt {
                 output: "linked.pdf".into(),
@@ -1450,6 +1485,12 @@ mod tests {
             .as_deref()
             .unwrap()
             .contains("linked.pdf"));
+        let mut output = ctx.run_ui(input, |ui| eframe::App::ui(&mut app, ui, &mut frame));
+        output.textures_delta.clear();
+        assert!(!output
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
     }
     fn text_bounds(shape: &egui::Shape, text: &str) -> Option<egui::Rect> {
         match shape {

@@ -393,6 +393,120 @@ mod tests {
         );
     }
 
+    fn request_window_close(app: &mut SuniApp, ctx: &egui::Context) -> egui::FullOutput {
+        app.has_icons = crate::icons::install(ctx);
+        crate::theme::apply(ctx, app.settings.dark_theme);
+        let mut input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 780.0),
+            )),
+            ..Default::default()
+        };
+        input
+            .viewports
+            .entry(egui::ViewportId::ROOT)
+            .or_default()
+            .events
+            .push(egui::ViewportEvent::Close);
+        let mut frame = eframe::Frame::_new_kittest();
+        let mut output = ctx.run_ui(input, |ui| eframe::App::ui(app, ui, &mut frame));
+        output.textures_delta.clear();
+        output
+    }
+
+    fn assert_close_cancelled(output: &egui::FullOutput) {
+        assert!(output
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
+        assert!(!output
+            .viewport_output
+            .values()
+            .any(|v| v.commands.contains(&egui::ViewportCommand::Close)));
+    }
+
+    #[test]
+    fn window_close_preserves_unsaved_manifest_and_unapplied_fields() {
+        for edited in 0..3 {
+            let (mut app, requests, _) = test_app();
+            let ctx = egui::Context::default();
+            let original = sample();
+            app.plan_sets
+                .replace(original.clone(), "set.json".into(), edited == 0);
+            if edited == 1 {
+                app.plan_sets.name = "Unsaved name".into();
+            } else if edited == 2 {
+                app.plan_sets.draft.as_mut().unwrap().revision = "Unsaved revision".into();
+            }
+            assert_close_cancelled(&request_window_close(&mut app, &ctx));
+            assert!(app.plan_sets.open && app.plan_sets.quit_requested);
+            assert_eq!(app.plan_sets.set.as_ref(), Some(&original));
+            assert!(!requests.try_iter().any(|r| matches!(r, Request::Close)));
+            if edited == 1 {
+                assert_eq!(app.plan_sets.name, "Unsaved name");
+            } else if edited == 2 {
+                assert_eq!(
+                    app.plan_sets.draft.as_ref().unwrap().revision,
+                    "Unsaved revision"
+                );
+            }
+            app.plan_sets.replace(original, "set.json".into(), false);
+            let output = request_window_close(&mut app, &ctx);
+            assert!(!output
+                .viewport_output
+                .values()
+                .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
+        }
+    }
+
+    #[test]
+    fn window_close_waits_for_manifest_save_and_keeps_failures_recoverable() {
+        for successful in [false, true] {
+            let (mut app, requests, _) = test_app();
+            let ctx = egui::Context::default();
+            let original = sample();
+            app.plan_sets
+                .replace(original.clone(), "set.json".into(), true);
+            let generation = app.plan_sets.begin(PendingKind::Save);
+            assert_close_cancelled(&request_window_close(&mut app, &ctx));
+            assert!(app.plan_sets.open && app.plan_sets.quit_requested);
+            assert_eq!(app.plan_sets.pending.map(|p| p.0), Some(generation));
+            assert!(!requests.try_iter().any(|r| matches!(r, Request::Close)));
+            let result = if successful {
+                Ok(Outcome::Saved {
+                    set: original.clone(),
+                    path: "saved-set.json".into(),
+                })
+            } else {
+                Err(EngineError::Other("Save failed".into()))
+            };
+            app.on_plan_set_result(&ctx, generation, result);
+            assert!(!app.plan_sets.busy());
+            assert_eq!(app.plan_sets.set.as_ref(), Some(&original));
+            if successful {
+                assert!(!app.plan_sets.dirty && !app.plan_sets.open);
+                assert_eq!(app.plan_sets.path, Some(PathBuf::from("saved-set.json")));
+                assert_eq!(app.plan_sets.message, Some("plan_sets.saved"));
+                let output = request_window_close(&mut app, &ctx);
+                assert!(!output
+                    .viewport_output
+                    .values()
+                    .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
+            } else {
+                assert!(app.plan_sets.dirty && app.plan_sets.open);
+                assert_eq!(app.plan_sets.path, Some(PathBuf::from("set.json")));
+                assert!(app
+                    .plan_sets
+                    .error
+                    .as_deref()
+                    .unwrap()
+                    .contains("Save failed"));
+                assert_close_cancelled(&request_window_close(&mut app, &ctx));
+            }
+        }
+    }
+
     fn verified(path: PathBuf, page: usize) -> Navigation {
         Navigation {
             sheet: VerifiedSheet {
@@ -800,6 +914,10 @@ impl Default for PlanSetState {
 impl PlanSetState {
     pub(crate) fn busy(&self) -> bool {
         self.pending.is_some()
+    }
+
+    pub(crate) fn needs_close_guard(&self) -> bool {
+        self.busy() || self.dirty || self.edited_fields()
     }
 
     fn edited_fields(&self) -> bool {

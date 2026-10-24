@@ -26,6 +26,17 @@ and measurement inputs separately from the existing measurement record.
 
 [Workflow, limits and CLI examples](REGION_FILL.md).
 
+## Closing with unsaved plan work
+
+The window-close action now waits for an active plan-link copy operation and retains
+its completion result. This also protects a clean document whose external copy is
+being saved. An automated viewport-close regression covers the cancellation request
+and the subsequent committed-copy result; native interaction remains separately untested.
+
+Plan sets use the same quit checks when closing the window. Unsaved manifests and
+unapplied metadata remain available for review. An active manifest save finishes
+before quitting; a failed save keeps the draft open for retry.
+
 ## Qualification scope
 
 Source tests and an independent synthetic corpus are being qualified. Downloaded

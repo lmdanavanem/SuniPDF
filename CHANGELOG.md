@@ -9,6 +9,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 - Inspect an enclosed page region from an explicit seed and manual closures, retaining its actual contour and holes.
 - Review the calibrated area preview before creating one editable measurement; refuse leaks, ambiguous geometry and partial results. Historical generation inputs are retained separately from the measurement record.
+- Keep window closing blocked while a plan-link copy is being saved, including when the active document has no unsaved changes; retain the completion result.
+- Preserve unsaved plan-set manifests and unapplied metadata when closing the window; finish active saves before quitting and keep failed saves available for retry.
 
 The 0.72 development increment is undergoing qualification. See [the workflow and limits](docs/REGION_FILL.md).
 

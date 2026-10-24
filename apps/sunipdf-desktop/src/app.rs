@@ -1508,6 +1508,7 @@ impl SuniApp {
             || self.issue_report.busy()
             || self.revision_outlines.busy()
             || self.revision_transfer.busy()
+            || self.plan_links.busy()
             || self.library.blocks_document()
             || self.review.busy
             || self.overlay.busy
@@ -3514,6 +3515,7 @@ impl SuniApp {
         if ctx.input(|i| i.viewport().close_requested())
             && (self.has_unsaved_changes()
                 || self.any_background_dirty().is_some()
+                || self.plan_sets.needs_close_guard()
                 || self.close_must_wait())
             && !self.allow_close
         {

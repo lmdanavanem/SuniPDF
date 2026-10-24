@@ -1,8 +1,31 @@
 # SuniPDF feature matrix
 
-Release scope: **0.70.0**. Published as a stable release. See [qualification scope](RELEASE_0.70.0.md).
-[Project status](PROJECT_STATUS.md) separates source/package evidence from untested native workflows.
+See [project status](PROJECT_STATUS.md) for the current published version and downloads.
+Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
+
+## Region fill in 0.72
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Region detection | Explicit interior point, raster resolution and threshold; optional manual closure segments; actual outer contour with retained holes |
+| Calibrated area | Review the boundary, deductions and selected scale in a real preview before creating one editable area measurement with one Undo |
+| Refusals and history | Leaks, ambiguous boundaries, partial results and excessive geometry cannot be applied; source changes invalidate the candidate; generation inputs remain historical metadata |
+
+Printed text and hatching can create deductions. Raster geometry does not establish physical measurement
+accuracy. AEC-012 remains **In progress**. See the [workflow](REGION_FILL.md) and
+[0.72 publication and qualification status](RELEASE_0.72.0.md).
+
+## Added in 0.71.0
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Find symbols | Same-scale template matching on explicitly selected pages, similarity controls, quarter-turn rotations and candidate previews |
+| Reviewed counts | Matches start unselected; accepted matches create one undoable count-marker batch; existing counts remain and are not automatically deduplicated |
+| Bounded search | Cancellation, incomplete coverage and resource limits remain explicit; source changes invalidate the review; arbitrary angles and automatic scale matching are unsupported |
+
+Published with [qualification evidence](qa/RELEASE_0.71.0.json). Native interaction and broader drawing
+qualification remain open; AEC-011 is **In progress**. See [workflow and limits](VISUAL_SEARCH.md).
 
 ## Added in 0.70.0
 
