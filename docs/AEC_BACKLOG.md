@@ -1,16 +1,18 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.70 release scope](RELEASE_0.70.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.71 release scope](RELEASE_0.71.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
-## Current development
+## Published visual symbol search
 
-AEC-011 is **In progress** for the 0.71 visual-symbol-search increment: a selected
-template, explicit page/rotation/similarity settings, cancellable candidate review
-and an atomic batch of confirmed count markers. Development and runtime qualification
-are in progress; native and wider drawing interoperability remain separate gates.
+AEC-011 is **In progress**. The 0.71 release includes template selection, explicit
+page/rotation/similarity settings, cancellable candidate review and an atomic batch
+of accepted count markers. Windows: 1,114 passed, 15 ignored; Linux: 1,095 passed, 10 ignored; zero failures. 7,409 assertions across 493 recorded commands in ten downloaded-package corpora. See [qualification evidence](qa/RELEASE_0.71.0.json).
+Native interaction and broader drawing qualification remain open.
 [Workflow and limits](VISUAL_SEARCH.md).
+
+## Current region-fill development
 
 AEC-012 is **In progress** for the 0.72 region-fill increment: bounded raster filling,
 explicit manual closures, retained holes and reviewed calibrated area creation.
@@ -124,7 +126,7 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-008 | P2 | Multiple scales and dimensioned drawing | In progress | Named viewports with independent scales, clear overlap rules and explicit scale selection; draw shapes to real dimensions and support snapping to eligible vectors. | AEC-001, AEC-002 |
 | AEC-009 | P2 | Volumes and deducted areas | Done | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. | AEC-002, AEC-003 |
 | AEC-010 | P2 | Rooms and named zones | In progress | Named/hierarchical plan regions, deterministic assignment of annotations to regions and filters/reports by room or floor; expose overlapping/unassigned cases. | AEC-004, AEC-008 |
-| AEC-011 | P2 | Visual symbol search | Planned | Search from a selected symbol locally, with sensitivity, rotation choices, bounded processing and candidate previews. User-accepted matches drive counts; false positives and partial searches remain explicit. | AEC-005, AEC-026 |
+| AEC-011 | P2 | Visual symbol search | In progress | Search from a selected symbol locally, with sensitivity, rotation choices, bounded processing and candidate previews. User-accepted matches drive counts; false positives and partial searches remain explicit. | AEC-005, AEC-026 |
 | AEC-012 | P2 | Boundary-based region filling | In progress | Preview a bounded region from drawing edges, allow manual closure of openings and retain holes. Convert reviewed results to measurements; document resolution/tolerance and refuse leakage or ambiguous boundaries. | AEC-002, AEC-009, AEC-026 |
 | AEC-013 | P2 | Aligned colour overlays | In progress | Register two or more plans using explicit control points and display/export colour-separated overlays. Keep input PDFs intact; ambiguous alignment and unmatched pages require review. | Existing comparison, AEC-026 |
 | AEC-014 | P2 | Revision outlines and tracked differences | In progress | Convert reviewed comparison regions into editable revision outlines and register entries. Preserve original/revised identity and distinguish geometric changes from rendering noise. | Existing comparison, AEC-004, AEC-013 |
@@ -142,4 +144,4 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-028 | P1 | Responsive search and annotation inventory | In progress | Advance long reads page by page with progress, cancellation and visible-page rendering between tasks; do not publish stale partial inventories as complete. | Existing desktop workspace |
 | AEC-029 | P1 | Consistent plan workspace | In progress | Dock or float resizable annotation/quantity tables, persist layout preferences and navigate to actual selected annotations; retain context and small-window access. | Existing desktop workspace |
 
-Implementation details and progress are retained in the CSV. Current delivery priorities are maintained only in the [roadmap](ROADMAP.md). GitHub Projects tracks the published AEC-009/015 criteria and the separate AEC-014/016/017 work; full card acceptance remains distinct from an implemented subset.
+Implementation details and progress are retained in the CSV. Current delivery priorities are maintained only in the [roadmap](ROADMAP.md). GitHub Projects synchronization requires a fresh board readback and is not currently verified. Full card acceptance remains distinct from an implemented subset.

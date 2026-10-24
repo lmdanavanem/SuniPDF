@@ -12,14 +12,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 The 0.72 development increment is undergoing qualification. See [the workflow and limits](docs/REGION_FILL.md).
 
-### Visual symbol search
-
-- Search selected pages for a template symbol at the same scale, with explicit quarter-turn rotations and similarity settings.
-- Review proposed matches before adding count markers in one undoable batch. Keep incomplete searches, source changes and resource limits explicit.
-
-The 0.71 development increment is undergoing qualification. See [the workflow and limits](docs/VISUAL_SEARCH.md).
-
 Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.71.0] - 2026-10-24
+
+- Find same-scale visual symbols across selected pages with explicit quarter-turns and similarity settings.
+- Preview proposed matches and create accepted count markers in one undoable batch.
+- Preserve partial-search status, source checks, cancellation and resource limits in desktop and CLI workflows.
+
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.71.0). Source `fe6b6e912152d605e65a5ffb8b106a05007e0a24`.
+Windows: 1,114 passed, 15 ignored; Linux: 1,095 passed, 10 ignored; zero failures. 7,409 assertions across 493 recorded commands in ten downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.71.0.json).
+Native interaction and broader drawing qualification remain open; AEC-011 is **In progress**.
+[Workflow](docs/VISUAL_SEARCH.md) · [Release scope](docs/RELEASE_0.71.0.md).
 
 ## [0.70.0] - 2026-10-24
 

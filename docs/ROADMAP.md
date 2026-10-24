@@ -2,15 +2,10 @@
 
 ## Current development: region fill
 
-The 0.71 development increment adds local template matching and explicitly reviewed
-count markers under AEC-011. Source, runtime and native qualification are recorded
-separately; the card is not complete merely because its implementation is present.
-See [the workflow](VISUAL_SEARCH.md).
-
 The 0.72 development increment implements boundary-based region filling (AEC-012):
 explicit seeds and closures, actual contours with holes, calibrated previews and
-complete-only area creation. Source, independent corpus and native qualification remain
-separate. See [the workflow and limits](REGION_FILL.md).
+complete-only area creation. Source tests, downloaded-package qualification and
+native interaction remain separate. See [the workflow and limits](REGION_FILL.md).
 
 The next implementation priorities are multi-source plan-link batches (AEC-017) and
 independent synchronized reader views. These remain planned work, with no publication
@@ -18,7 +13,13 @@ date claimed.
 
 ## Published scope
 
-Updated 2026-10-24T10:47:52.733228Z. [0.70.0](RELEASE_0.70.0.md) adds declared numeric-field units and explicit workbook field history. Published as a stable release. [Qualification evidence](qa/RELEASE_0.70.0.json).
+Updated 2026-10-24T13:39:38.272401Z. [0.71.0](RELEASE_0.71.0.md) adds visual symbol search
+and reviewed count-marker batches. Published stable with [qualification evidence](qa/RELEASE_0.71.0.json).
+AEC-011 remains **In progress** pending native interaction and broader drawing
+qualification. See [workflow and limits](VISUAL_SEARCH.md).
+
+[0.70.0](RELEASE_0.70.0.md) added declared numeric-field units and explicit workbook
+field history; its [evidence](qa/RELEASE_0.70.0.json) remains separate.
 
 AEC-007 remains **In progress**: exact units and bounded geometric formulas are implemented, while native interaction and broader qualification remain open. AEC-018 and AEC-019 also retain their open criteria. Currency exchange, taxes, mass/density and broader estimating workflows remain extensions.
 
