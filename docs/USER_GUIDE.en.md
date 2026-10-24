@@ -13,6 +13,12 @@ Ubuntu users should start with [installation and platform limits](UBUNTU.md). Na
 
 ## Reader controls and tools
 
+The 0.64 development candidate also provides [plan-set filtering and grouping](PLAN_SETS.md) and
+[reviewed annotation transfer between revisions](REVISION_TRANSFER.md). Open **Tools → Organize pages**
+or use the command palette. Transfer requires saved sources, explicit page matches and review of
+every destination preview before **Save new copy…**. Existing PDF files remain unchanged. These
+candidate controls still await native and package qualification and are not in the 0.63 release.
+
 Choose **Tools** in the main toolbar. The left dock shows one of **Tools**, **Pages** or **Bookmarks**. The tools panel offers five families and a search field; measurements, the library, quantity tables and revision overlays are under **Review & measure**.
 
 Page navigation, zoom and page/width fit are below the PDF. The zoom percentage stays on one line, including **149%**. **Reading options** provides layout modes, view rotation and full-screen reading; narrow windows move whole control groups to another row. The right rail opens panels. View rotation changes reading orientation only; use **Organize pages** for a saved PDF page rotation.

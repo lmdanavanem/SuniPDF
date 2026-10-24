@@ -600,6 +600,10 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    RevisionTransfer {
+        generation: u64,
+        job: crate::revision_transfer_ui::Job,
+    },
     PlanSet {
         generation: u64,
         job: crate::plan_sets::Job,
@@ -899,6 +903,10 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    RevisionTransferDone {
+        generation: u64,
+        result: Result<crate::revision_transfer_ui::Outcome, EngineError>,
+    },
     PlanSetProgress {
         generation: u64,
         done: usize,
@@ -2300,6 +2308,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     };
     let mut queue: VecDeque<Request> = VecDeque::new();
     let mut navigation_failed = false;
+    let mut revision_transfers = crate::revision_transfer_ui::WorkerCache::default();
     loop {
         // 1. Travail suivant : file locale, sinon requête reçue, sinon une tuile voulue, sinon
         //    blocage. Entre deux tuiles le canal est relu : un nouveau `SetWanted` ou une édition
@@ -2350,6 +2359,24 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             state.rectangle_calibration = None;
         }
         let response = match request {
+            Request::RevisionTransfer { generation, job } => Response::RevisionTransferDone {
+                generation,
+                result: if state.modified()
+                    && state.document.as_ref().is_some_and(|doc| {
+                        revision_transfers.touches_modified(&job, &doc.info().path)
+                    }) {
+                    let _ = revision_transfers.run(
+                        &engine,
+                        generation,
+                        crate::revision_transfer_ui::Job::Discard,
+                    );
+                    Err(EngineError::Other(
+                        "A selected revision has unsaved changes; save it and inspect again".into(),
+                    ))
+                } else {
+                    revision_transfers.run(&engine, generation, job)
+                },
+            },
             Request::PlanSet { generation, job } => {
                 let mut result = crate::plan_sets::run_job(&engine, job, |done, total| {
                     let _ = tx.send(Response::PlanSetProgress {
@@ -3583,6 +3610,199 @@ mod tests {
         quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
         protected_plan_sets_use_one_operation_credentials_and_open_verified_bytes(&worker);
         cooperative_search_and_register_publish_complete_generation_scoped_results(&worker);
+        revision_transfer_candidates_stay_in_worker_and_revalidate_before_publication(&worker);
+    }
+
+    fn revision_transfer_candidates_stay_in_worker_and_revalidate_before_publication(
+        worker: &Worker,
+    ) {
+        use crate::revision_transfer_ui::{Job, Outcome, Sources};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::revision_transfer::{
+            RevisionTransferRequest, TransferAlignment, TransferPagePair, TransferSelection,
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let old = dir.path().join("old.pdf");
+        let new = dir.path().join("new.pdf");
+        let fixture = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&old, &fixture).unwrap();
+        std::fs::write(&new, &fixture).unwrap();
+        worker.send(Request::Open {
+            path: old.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::AddAnnotShape {
+            page: 0,
+            shape: AnnotShape::Square,
+            rect: PointRect {
+                left: 50.0,
+                bottom: 50.0,
+                right: 100.0,
+                top: 100.0,
+            },
+            style: AnnotStyle::default(),
+            author: Some("Local QA".into()),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Save { path: old.clone() });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        let old_bytes = std::fs::read(&old).unwrap();
+        let run = |generation, job| {
+            worker.send(Request::RevisionTransfer { generation, job });
+            match next_response(worker) {
+                Response::RevisionTransferDone {
+                    generation: actual,
+                    result,
+                } => {
+                    assert_eq!(actual, generation);
+                    result
+                }
+                _ => panic!("revision transfer response"),
+            }
+        };
+        let cancel = || Arc::new(AtomicBool::new(false));
+        let inspection = match run(
+            1100,
+            Job::Inspect {
+                sources: Sources::Files([old.clone(), new.clone()]),
+                pairs: vec![(1, 1), (2, 2)],
+                passwords: Default::default(),
+                cancel: cancel(),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Inspected { inspection, .. } => inspection,
+            _ => panic!("inspection"),
+        };
+        let candidate = inspection.pages[0]
+            .candidates
+            .iter()
+            .find(|c| c.refusal.is_none() && c.fingerprint.is_some())
+            .unwrap();
+        let request = RevisionTransferRequest {
+            version: 1,
+            old_sha256: inspection.old_sha256,
+            new_sha256: inspection.new_sha256,
+            acknowledge_repeated_transfer: false,
+            pairs: vec![
+                TransferPagePair {
+                    old_page: 1,
+                    new_page: 1,
+                    old_sheet_id: None,
+                    new_sheet_id: None,
+                    confirmed: true,
+                    alignment: TransferAlignment::Identity,
+                    selections: vec![TransferSelection {
+                        index: candidate.index,
+                        fingerprint: candidate.fingerprint.clone().unwrap(),
+                    }],
+                },
+                TransferPagePair {
+                    old_page: 2,
+                    new_page: 2,
+                    old_sheet_id: None,
+                    new_sheet_id: None,
+                    confirmed: true,
+                    alignment: TransferAlignment::Identity,
+                    selections: vec![],
+                },
+            ],
+        };
+        let prepare = |generation| {
+            run(
+                generation,
+                Job::Prepare {
+                    paths: [old.clone(), new.clone()],
+                    request: request.clone(),
+                    page: 1,
+                    passwords: Default::default(),
+                    cancel: cancel(),
+                },
+            )
+        };
+        assert!(
+            matches!(prepare(1101).unwrap(), Outcome::Preview { token: 1101, page: 1, image, report } if image.width > 0 && report.transferred.len() == 1)
+        );
+        assert!(matches!(
+            run(
+                1102,
+                Job::Render {
+                    token: 1101,
+                    page: 2,
+                    password: Default::default(),
+                    cancel: cancel()
+                }
+            )
+            .unwrap(),
+            Outcome::Preview {
+                token: 1101,
+                page: 2,
+                ..
+            }
+        ));
+        assert!(matches!(
+            run(1103, Job::Discard).unwrap(),
+            Outcome::Discarded
+        ));
+        assert!(run(
+            1104,
+            Job::Save {
+                token: 1101,
+                output: dir.path().join("discarded.pdf"),
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert!(!dir.path().join("discarded.pdf").exists());
+        assert!(prepare(1105).is_ok());
+        let mut changed = fixture.clone();
+        changed.extend_from_slice(b"\n% changed after preview\n");
+        std::fs::write(&new, &changed).unwrap();
+        assert!(run(
+            1106,
+            Job::Save {
+                token: 1105,
+                output: dir.path().join("stale.pdf"),
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert!(!dir.path().join("stale.pdf").exists());
+        std::fs::write(&new, &fixture).unwrap();
+        assert!(prepare(1107).is_ok());
+        assert!(matches!(
+            run(
+                1108,
+                Job::Save {
+                    token: 1107,
+                    output: dir.path().join("cancelled.pdf"),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        assert!(!dir.path().join("cancelled.pdf").exists());
+        assert!(prepare(1109).is_ok());
+        let output = dir.path().join("transferred.pdf");
+        assert!(
+            matches!(run(1110, Job::Save { token: 1109, output: output.clone(), cancel: cancel() }).unwrap(), Outcome::Saved(report) if report.output_path == Some(output.clone()) && report.transferred.len() == 1)
+        );
+        assert!(output.is_file());
+        assert_eq!(std::fs::read(&old).unwrap(), old_bytes);
+        assert_eq!(std::fs::read(&new).unwrap(), fixture);
+        assert!(
+            !worker.has_pending_mutations(),
+            "file transfers do not create source undo steps"
+        );
     }
 
     fn protected_plan_sets_use_one_operation_credentials_and_open_verified_bytes(worker: &Worker) {

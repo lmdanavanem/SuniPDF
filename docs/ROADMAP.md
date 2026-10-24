@@ -28,7 +28,9 @@ case 23 ms slower. Investigate that regression without weakening atomic writes; 
 AEC-015 grouped/searchable sheet navigation and AEC-016 reviewed revision transfer are later 0.64
 candidate work. AEC-017 reviewed cross-document links are a separate 0.65 implementation in progress.
 Neither candidate is included in the published 0.63 packages. Their complete source, native workflow,
-package and interoperability evidence must precede delivery claims.
+package and interoperability evidence must precede delivery claims. The final local 0.64 workspace
+passed 994 test executions (15 ignored), and its CLI passed 14 commands / 94 independent assertions.
+Native and package checks remain in progress; see the [candidate scope](RELEASE_0.64.0.md).
 
 ## Delivered foundation
 

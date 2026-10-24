@@ -54,6 +54,7 @@ pub mod plan_set;
 pub mod quantity_table;
 pub mod redact;
 pub mod revision_overlay;
+pub mod revision_transfer;
 pub mod sanitize;
 pub mod security;
 pub mod signature_image;

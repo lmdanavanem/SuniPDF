@@ -69,6 +69,15 @@ optimization/output case; the cause remains unisolated. They do not establish re
 
 ## Project tracking and remaining gates
 
+### 0.64 development candidate
+
+Reviewed native-shape transfer and grouped/searchable plan navigation are implemented in the
+[0.64 candidate](RELEASE_0.64.0.md). The final local workspace passed 994 test executions, with
+0 failures and 15 ignored results; formatting, Clippy, desktop/CLI build and 1,670 bilingual keys
+passed. The final CLI passed 14 independent process commands and 94 output assertions, including
+source preservation and atomic refusals. Native workflows and exact-source package qualification
+remain in progress. These counts are separate from the published 0.63 evidence above.
+
 [GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized after 0.62 publication
 on 2026-10-24: five existing P1 cards updated and 27 AEC cards added without duplication. The preserved
 views contained 51 Roadmap, 8 Bugs and 11 Suggestions cards. This is the dated tracking baseline;
