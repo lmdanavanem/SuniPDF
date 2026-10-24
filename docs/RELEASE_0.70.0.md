@@ -35,9 +35,14 @@ workbook; their presence does not establish complete quantity coverage.
 
 ## Qualification status
 
-Workspace tests, independent Decimal-based output checks, package generation and
-upgrade qualification remain in progress. Results from another source revision
-do not qualify this candidate.
+The final local source passed formatting, strict workspace Clippy, a complete
+workspace run with 1,094 passed and 15 ignored tests, and desktop/CLI compilation.
+Independent Decimal-based output checks and exact-source package qualification
+remain in progress. Results from another source revision do not qualify this candidate.
+
+The configured upgrade matrices contain 47 portable baselines plus four guards
+and 45 MSI baselines, including the published 0.69.0 packages. These are planned
+checks until the corresponding release workflows complete.
 
 Interactive desktop and native spreadsheet validation remain unavailable in the
 current session. Automated UI layout tests, PDF renders and OOXML parsing cover
