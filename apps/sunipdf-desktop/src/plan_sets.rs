@@ -621,7 +621,12 @@ mod tests {
             .password
             .is_some());
         app.plan_sets.navigation_confirmation = None;
-        assert!(!requests.try_iter().any(|r| matches!(r, Request::Open { .. })), "protected plan navigation must never fall back to re-reading a path through the generic password dialog");
+        assert!(
+            !requests
+                .try_iter()
+                .any(|r| matches!(r, Request::Open { .. })),
+            "protected plan navigation must never fall back to re-reading a path through the generic password dialog"
+        );
     }
 
     #[test]
@@ -1061,7 +1066,7 @@ impl SuniApp {
         }
     }
 
-    fn navigate_plan_sheet(&mut self, navigation: Navigation) {
+    pub(crate) fn navigate_plan_sheet(&mut self, navigation: Navigation) {
         let sheet = &navigation.sheet;
         self.plan_sets.open = false;
         if self.navigation_blocked()

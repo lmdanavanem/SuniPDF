@@ -102,8 +102,11 @@ use crate::shortcut_defaults::DEFAULTS as SHORTCUTS;
 pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
     pub overlay: crate::revision_overlay::OverlayState,
+    pub plan_zones: crate::plan_zones_ui::PlanZonesState,
+    pub revision_outlines: crate::revision_outlines_ui::OutlineState,
     pub revision_transfer: crate::revision_transfer_ui::TransferState,
     pub plan_sets: crate::plan_sets::PlanSetState,
+    pub plan_links: crate::plan_links_ui::PlanLinksState,
     pub processing: crate::processing::ProcessingState,
     pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
@@ -194,6 +197,9 @@ impl SuniApp {
             review: Default::default(),
             overlay: Default::default(),
             plan_sets: Default::default(),
+            plan_links: Default::default(),
+            revision_outlines: Default::default(),
+            plan_zones: Default::default(),
             revision_transfer: Default::default(),
             reading_full_screen: false,
             recovery,
@@ -529,6 +535,23 @@ impl SuniApp {
                 Response::LocalReviewDone(result) => self.on_local_review(ctx, result),
                 Response::RevisionOverlayDone { generation, result } => {
                     self.on_revision_overlay(ctx, generation, result);
+                }
+                Response::PlanZones {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_plan_zones(ctx, epoch, generation, result),
+                Response::PlanLinksDone { generation, result } => {
+                    self.on_plan_links(ctx, generation, result);
+                }
+                Response::RevisionOutlinesProgress {
+                    generation,
+                    progress,
+                } => {
+                    self.on_revision_outlines_progress(generation, progress);
+                }
+                Response::RevisionOutlinesDone { generation, result } => {
+                    self.on_revision_outlines(ctx, generation, *result);
                 }
                 Response::RevisionTransferDone { generation, result } => {
                     self.on_revision_transfer(ctx, generation, result);
@@ -1402,7 +1425,12 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.revision_transfer.open
+        self.plan_zones.open
+            || self.plan_links.open
+            || self.plan_links.busy()
+            || self.revision_outlines.open
+            || self.revision_outlines.busy()
+            || self.revision_transfer.open
             || self.revision_transfer.busy()
             || self.plan_sets.open
             || self.plan_sets.busy()
@@ -1428,7 +1456,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.revision_transfer.busy()
+        self.revision_outlines.busy()
+            || self.revision_transfer.busy()
             || self.library.blocks_document()
             || self.review.busy
             || self.overlay.busy
@@ -1753,7 +1782,12 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.revision_transfer.open
+        self.plan_zones.open
+            || self.plan_links.open
+            || self.plan_links.busy()
+            || self.revision_outlines.open
+            || self.revision_outlines.busy()
+            || self.revision_transfer.open
             || self.revision_transfer.busy()
             || self.plan_sets.open
             || self.plan_sets.busy()
@@ -1828,6 +1862,9 @@ impl SuniApp {
             return;
         }
         if (self.review.busy
+            || self.plan_zones.open
+            || self.revision_outlines.open
+            || self.revision_outlines.busy()
             || self.revision_transfer.open
             || self.revision_transfer.busy()
             || self.overlay.open
@@ -1841,6 +1878,9 @@ impl SuniApp {
         {
             return;
         }
+        if command == Command::Quit && self.guard_plan_links_quit() {
+            return;
+        }
         if command == Command::Quit && self.guard_plan_set_quit() {
             return;
         }
@@ -1848,6 +1888,7 @@ impl SuniApp {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            self.cancel_revision_outlines_for_exit();
             self.cancel_revision_transfer_for_exit();
             self.overlay
                 .cancel
@@ -1876,6 +1917,14 @@ impl SuniApp {
         }
         if matches!(command, Command::Quit | Command::CloseDocument) && self.overlay.open {
             self.overlay.close();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.plan_zones.open {
+            self.close_plan_zones();
+            return;
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.revision_outlines.open
+        {
+            self.close_revision_outlines();
         }
         if matches!(command, Command::Quit | Command::CloseDocument) && self.revision_transfer.open
         {
@@ -1909,6 +1958,9 @@ impl SuniApp {
         }
         match command {
             Command::PlanSets => self.open_plan_sets(),
+            Command::PlanLinks => self.open_plan_links(),
+            Command::RevisionOutlines => self.open_revision_outlines(),
+            Command::PlanZones => self.open_plan_zones(),
             Command::RevisionTransfer => self.open_revision_transfer(),
             Command::CompareFiles => self.open_local_review(true),
             Command::RevisionOverlay => self.open_revision_overlay(),
@@ -3391,8 +3443,11 @@ impl SuniApp {
         self.signed_save_dialog(&ctx);
         self.feature_dialogs(&ctx);
         self.revision_overlay_dialog(&ctx);
+        self.revision_outlines_dialog(&ctx);
+        self.plan_zones_dialog(&ctx);
         self.revision_transfer_dialog(&ctx);
         self.plan_sets_dialog(&ctx);
+        self.plan_links_dialog(&ctx);
         self.autosave_tick();
         self.split_dialog(&ctx);
         self.flatten_dialog(&ctx);
@@ -3503,6 +3558,9 @@ pub(crate) mod tests {
             review: Default::default(),
             overlay: Default::default(),
             plan_sets: Default::default(),
+            plan_links: Default::default(),
+            revision_outlines: Default::default(),
+            plan_zones: Default::default(),
             revision_transfer: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),

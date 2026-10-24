@@ -135,6 +135,20 @@ class GitBoundaryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             DOCS.exact_diff(self.root, 'pull_request', event)
 
+    def test_release_tags_manual_and_unknown_events_never_skip_application_checks(self):
+        (self.root / 'README.md').write_text('# Documentation change\n', encoding='utf-8')
+        self.commit('Docs')
+        event_path = self.root / 'event.json'
+        for event_name, payload in [
+            ('push', self.push_event(ref='refs/tags/v0.65.0')),
+            ('workflow_dispatch', self.push_event()),
+            ('workflow_call', self.push_event()),
+            ('release', {'action': 'published'}),
+        ]:
+            event_path.write_text(json.dumps(payload), encoding='utf-8')
+            with self.subTest(event=event_name):
+                self.assertFalse(DOCS.classify_event(self.root, event_name, event_path)['docs_only'])
+
     def test_source_rename_delete_and_executable_docs_use_full_suite(self):
         for change in ('source', 'rename', 'delete', 'executable'):
             with self.subTest(change=change):
@@ -214,6 +228,21 @@ class DocumentationTests(unittest.TestCase):
 
 
 class WorkflowBoundaryTests(unittest.TestCase):
+    def test_linux_reuses_exact_classifier_without_disabling_release_qualification(self):
+        path = Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'linux.yml'
+        workflow = path.read_text(encoding='utf-8')
+        self.assertNotIn('paths-ignore:', workflow)
+        self.assertIn('fetch-depth: 0', workflow)
+        self.assertIn('docs_only: ${{ steps.changes.outputs.docs_only }}', workflow)
+        self.assertIn('run: python3 scripts/ci-docs.py classify', workflow)
+        self.assertIn('python3 scripts/test-ci-docs.py', workflow)
+        self.assertIn('python3 scripts/ci-docs.py validate', workflow)
+        self.assertIn("    needs: documentation\n    if: needs.documentation.outputs.docs_only != 'true'\n", workflow)
+        self.assertEqual(workflow.count('    needs: build\n'), 2)
+        self.assertIn('cargo test --workspace --locked -j 2 --no-fail-fast', workflow)
+        self.assertIn('python3 scripts/test-conformance.py', workflow)
+        self.assertIn("ubuntu: ['22.04', '24.04']", workflow)
+
     def test_required_job_and_every_application_step_have_explicit_boundary(self):
         path = Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'ci.yml'
         workflow = path.read_text(encoding='utf-8')

@@ -686,6 +686,12 @@ impl std::fmt::Debug for QuantityTarget {
 }
 
 impl QuantityTable {
+    pub fn plan_zones(&self) -> &[crate::plan_zones::PagePlanZones] {
+        &self.register.plan_zones
+    }
+    pub fn zone_coverage(&self, filter: &RegisterFilter) -> annotation_register::ZoneCoverage {
+        self.register.zone_coverage(filter)
+    }
     pub fn rows(&self) -> &[QuantityRow] {
         &self.rows
     }
@@ -759,6 +765,7 @@ impl QuantityTable {
         &self,
         options: &QuantityOptions,
     ) -> Result<QuantityEvaluation, EngineError> {
+        self.register.validate_zone_filter(&options.filter)?;
         let rows = self.select(options);
         let formulas = evaluate_formulas(&rows, options)?;
         let summary = self.summary_for_rows(&rows, options, &formulas)?;
@@ -864,6 +871,7 @@ impl QuantityTable {
     }
     /// Computes once per report/filter revision; result rows keep their source identities.
     pub fn formula_values(&self, options: &QuantityOptions) -> Result<FormulaValues, EngineError> {
+        self.register.validate_zone_filter(&options.filter)?;
         evaluate_formulas(&self.select(options), options)
     }
     pub fn json(&self, options: &QuantityOptions) -> Result<Value, EngineError> {
@@ -891,7 +899,7 @@ impl QuantityTable {
                 .as_object()
                 .is_some_and(|values| values.values().all(|value| value["error"].is_null()))
         });
-        json!({"schema":"sunipdf-quantity-table","version":1,"complete":true,"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":evaluated.summary,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows})
+        json!({"schema":"sunipdf-quantity-table","version":1,"complete":options.filter.zone.is_none()||self.zone_coverage(&options.filter).complete,"zone_coverage":self.zone_coverage(&options.filter),"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":evaluated.summary,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows})
     }
     pub fn csv(&self, options: &QuantityOptions) -> Result<String, EngineError> {
         if !self.can_export {
@@ -965,6 +973,12 @@ impl QuantityTable {
             ]
             .into_iter()
             .map(str::to_owned),
+        );
+        let zone_start = header.len();
+        header.extend(
+            ["zone_status", "zone_id", "zone_path"]
+                .into_iter()
+                .map(str::to_owned),
         );
         let width = header.len();
         let line = |mut values: Vec<String>, numeric_columns: &[usize]| {
@@ -1050,6 +1064,9 @@ impl QuantityTable {
                 ]);
             }
             values.resize(width, String::new());
+            values[zone_start] = r.zone.status.id().into();
+            values[zone_start + 1] = r.zone.zone_id.clone().unwrap_or_default();
+            values[zone_start + 2] = serde_json::to_string(&r.zone.path).expect("zone path");
             values[provenance_start] = row
                 .measurement_validity
                 .map(|state| state.id().to_owned())
@@ -1121,7 +1138,7 @@ impl QuantityTable {
         let mut metadata = vec![String::new(); 22];
         metadata[0] = "metadata".into();
         metadata[1] = self.source_sha256().into();
-        metadata[21]=json!({"version":1,"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"matched_rows":summary.matched_rows,"quantity_rows":summary.quantity_rows,"additive_quantity_rows":summary.additive_quantity_rows,"angular_rows":summary.angular_rows,"unquantified_rows":summary.unquantified_rows,"excluded_quantity_rows":summary.excluded_quantity_rows,"unverified_measurement_rows":summary.unverified_measurement_rows,"legacy_measurement_rows":summary.legacy_measurement_rows,"stale_measurement_rows":summary.stale_measurement_rows}).to_string();
+        metadata[21]=json!({"version":1,"zone_coverage":self.zone_coverage(&options.filter),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"matched_rows":summary.matched_rows,"quantity_rows":summary.quantity_rows,"additive_quantity_rows":summary.additive_quantity_rows,"angular_rows":summary.angular_rows,"unquantified_rows":summary.unquantified_rows,"excluded_quantity_rows":summary.excluded_quantity_rows,"unverified_measurement_rows":summary.unverified_measurement_rows,"legacy_measurement_rows":summary.legacy_measurement_rows,"stale_measurement_rows":summary.stale_measurement_rows}).to_string();
         out.push_str(&line(metadata, &[]));
         out
     }
@@ -1653,6 +1670,7 @@ mod tests {
             review_status: None,
             fields: Default::default(),
             count_group: Some("=unsafe".into()),
+            zone: Default::default(),
         };
         let quantity = Some(QuantityValue { value, unit });
         let line_total = line_total(quantity.as_ref(), priced.as_ref()).unwrap();
@@ -1673,6 +1691,7 @@ mod tests {
     fn test_table(rows: Vec<QuantityRow>) -> QuantityTable {
         QuantityTable {
             register: AnnotationRegister {
+                plan_zones: Vec::new(),
                 source_sha256: "revision-a".into(),
                 page_count: 1,
                 rows: rows.iter().map(|row| row.register.clone()).collect(),
@@ -2366,6 +2385,7 @@ mod tests {
         );
         let table = QuantityTable {
             register: AnnotationRegister {
+                plan_zones: Vec::new(),
                 source_sha256: "test-source".into(),
                 page_count: 1,
                 rows: rows.iter().map(|r| r.register.clone()).collect(),

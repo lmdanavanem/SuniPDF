@@ -874,6 +874,9 @@ fn capture_primitive(
     geo: &crate::geometry::PageGeometry,
 ) -> Result<(LibraryPrimitive, String), EngineError> {
     use lopdf::Object;
+    if dict.has(b"SuniPDFRevisionOutline") {
+        return Err(invalid("revision outlines cannot be captured or transferred without preserving their source-bound provenance"));
+    }
     let unsupported = || {
         invalid("only unmodified native shapes, lines, polygons and clouds can be captured; text, images, replies and custom appearances are not supported")
     };

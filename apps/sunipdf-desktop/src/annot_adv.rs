@@ -395,6 +395,7 @@ pub fn thread_replies(details: &[AnnotDetail], root: usize) -> Vec<&AnnotDetail>
 pub enum LinkAction {
     GoTo(usize),
     Confirm(String),
+    Remote(sunipdf_core::plan_links::RemotePageTarget),
     Blocked,
     Unsupported,
 }
@@ -404,6 +405,7 @@ pub fn link_action(target: &LinkTarget) -> LinkAction {
         LinkTarget::Page(n) => LinkAction::GoTo(*n),
         LinkTarget::Destination(destination) => LinkAction::GoTo(destination.page),
         LinkTarget::Named(_) => LinkAction::Unsupported,
+        LinkTarget::RemotePage(target) => LinkAction::Remote(target.clone()),
         LinkTarget::Uri(u) if is_safe_external_uri(u) => LinkAction::Confirm(u.trim().to_string()),
         LinkTarget::Uri(_) => LinkAction::Blocked,
         LinkTarget::Unsupported => LinkAction::Unsupported,
@@ -1044,6 +1046,7 @@ impl SuniApp {
                 None => {}
             },
             LinkAction::Confirm(u) => self.annotate.adv.url_confirm = Some(u),
+            LinkAction::Remote(target) => self.confirm_remote_plan_link(target),
             LinkAction::Blocked => {
                 self.status_msg = Some(tr(lang, "status.link_blocked").to_string());
             }
@@ -3884,6 +3887,18 @@ mod tests {
     #[test]
     fn a_link_click_never_opens_anything_by_itself() {
         assert_eq!(link_action(&LinkTarget::Page(3)), LinkAction::GoTo(3));
+        let remote = sunipdf_core::plan_links::RemotePageTarget {
+            relative_path: "plans/floor.pdf".into(),
+            page: 2,
+            sheet_id: "floor-sheet".into(),
+            sha256: "a".repeat(64),
+            byte_len: 100,
+        };
+        assert_eq!(
+            link_action(&LinkTarget::RemotePage(remote.clone())),
+            LinkAction::Remote(remote),
+            "local plan links must use manifest confirmation, never the URI launcher"
+        );
         assert_eq!(
             link_action(&LinkTarget::Uri("  https://example.org/a?b=1 ".into())),
             LinkAction::Confirm("https://example.org/a?b=1".into())

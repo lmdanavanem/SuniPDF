@@ -94,6 +94,8 @@ pub fn table(engine: &Engine, args: TableArgs) -> Result<Value, EngineError> {
     }
     let options = QuantityOptions {
         filter: RegisterFilter {
+            zone: register_cmd::selected_zone(&args_report, document.page_count())?,
+            zone_status: args_report.zone_status,
             query: args_report.query,
             page: args_report.page,
             author: args_report.author,
@@ -135,6 +137,7 @@ pub fn table(engine: &Engine, args: TableArgs) -> Result<Value, EngineError> {
         sunipdf_core::write_new_copy(&out, &bytes)?;
         Ok(serde_json::json!({
             "out":out,"format":args_report.format,"source_sha256":table.source_sha256(),
+            "complete":export.json["complete"],"zone_coverage":export.json["zone_coverage"],
             "original_unchanged":true
         }))
     } else {

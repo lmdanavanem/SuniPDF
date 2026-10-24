@@ -7,7 +7,7 @@
 use crate::local_review::{check_permission, digest, read_pdf};
 use crate::{Document, Engine, EngineError, RenderedPage};
 use image::ImageEncoder;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -30,7 +30,8 @@ fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
 }
 
 /// Uniform scale and clockwise rotation around the revision's top-left origin, then translation.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct OverlayTransform {
     pub translation: [f64; 2],
     pub rotation_degrees: f64,
@@ -120,8 +121,8 @@ impl OverlayTransform {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
-#[serde(tag = "mode", rename_all = "snake_case")]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case", deny_unknown_fields)]
 pub enum OverlayAlignment {
     Manual {
         transform: OverlayTransform,

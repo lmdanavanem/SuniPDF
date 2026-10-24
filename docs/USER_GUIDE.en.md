@@ -3,7 +3,9 @@
 SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers the [0.64.0 release](RELEASE_0.64.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
+This guide describes the workflows in this source revision. [Release qualification](RELEASE_0.67.0.md)
+and [Project status](PROJECT_STATUS.md) distinguish source, native and distributed-package checks.
+English is the default interface language; French is available in Settings.
 
 Local plan sets, FDF exchange, deducted areas and constant-depth volumes remain included.
 Their source, native development-build workflows and distributed packages have separate recorded qualification.
@@ -28,6 +30,20 @@ The right side shows one context panel at a time. A measurement draft blocks ope
 [Full reader layout and tool routes](READER_WORKSPACE.md).
 
 ## Plan workspace
+
+Use **Plan links** under **Tools → Organize pages** to find exact sheet references in searchable
+text. Inspect each source and destination preview, choose ambiguous targets explicitly, then save
+a new copy. [Reviewed plan links](PLAN_LINKS.md) explains manifest checks and navigation.
+
+**Revision outlines** compares a selected old/new page pair. Classify each proposed region as a
+content change, rendering noise or uncertain, confirm the decision, and review the actual annotated
+copy before saving. The original PDFs remain unchanged. [Revision outlines](REVISION_OUTLINES.md)
+describes alignment, coverage and editable annotation provenance.
+
+Navigate to a plan page and open **Rooms and zones** under **Tools → Review & measure**. Define
+named rectangles and optional parents, preview their assignments, then apply and save. The register
+and quantity table share zone filters; ambiguous coverage is shown and blocks misleading filtered
+totals. [Rooms and zones](PLAN_ZONES.md) documents hierarchy, stale geometry and CLI exchange.
 
 The annotation register and quantity table can be docked below the PDF or displayed in a floating window.
 Resize the dock and choose its placement; these preferences are saved. Select a row to follow the actual annotation

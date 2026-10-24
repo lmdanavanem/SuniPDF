@@ -156,6 +156,59 @@ fn fields(status: &str, discipline: &str, custom: &str) -> Result<RegisterFields
     Ok(out)
 }
 
+pub(crate) fn filter_summary(
+    filter: &RegisterFilter,
+    plan_zones: &[sunipdf_core::plan_zones::PagePlanZones],
+    lang: sunipdf_i18n::Language,
+) -> Vec<String> {
+    let mut summary = Vec::new();
+    for (key, value) in [
+        ("register.search", &filter.query),
+        ("register.author", &filter.author),
+        ("register.business_status", &filter.business_status),
+        ("register.discipline", &filter.discipline),
+        ("register.review_status", &filter.review_status),
+        ("register.modified", &filter.modified),
+        ("register.kind", &filter.kind),
+        ("register.count_group", &filter.count_group),
+    ] {
+        if !value.trim().is_empty() {
+            summary.push(format!("{}: {value}", tr(lang, key)));
+        }
+    }
+    if let Some(page) = filter.page {
+        summary.push(format!("{}: {page}", tr(lang, "register.page_filter")));
+    }
+    if filter.include_replies {
+        summary.push(tr(lang, "register.include_replies").into());
+    }
+    if let Some(zone) = &filter.zone {
+        let name = plan_zones
+            .iter()
+            .find(|page| page.page == zone.page)
+            .and_then(|page| page.zones.iter().find(|item| item.id == zone.id))
+            .map_or(zone.id.as_str(), |item| item.name.as_str());
+        summary.push(format!(
+            "{}: {} · {name}{}",
+            tr(lang, "zones.filter"),
+            zone.page,
+            if zone.descendants {
+                format!(" ({})", tr(lang, "zones.include_children"))
+            } else {
+                String::new()
+            }
+        ));
+    }
+    if let Some(status) = filter.zone_status {
+        summary.push(format!(
+            "{}: {}",
+            tr(lang, "register.zone"),
+            tr(lang, &format!("zones.status.{}", status.id()))
+        ));
+    }
+    summary
+}
+
 impl SuniApp {
     pub(crate) fn open_annotation_register(&mut self) {
         if self.annotate.quantities.blocks_document() || self.annotate.measure.is_active_draft() {
@@ -326,12 +379,16 @@ impl SuniApp {
         let mut apply = false;
         let mut cancel_edit = false;
         let mut quantities = false;
+        let mut zones = false;
         let mut cancel_collection = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
         let row_actions_enabled = enabled && state.edit.is_none();
         let can_refresh = enabled && state.edit.is_none();
-        let can_export = can_refresh && report.is_some();
+        let can_export = can_refresh
+            && report
+                .as_ref()
+                .is_some_and(|r| r.validate_zone_filter(&state.filter).is_ok());
         let can_close = state.edit.as_ref().is_none_or(|e| !e.applying);
         let width = (ctx.content_rect().width() - 60.0).clamp(420.0, 1050.0);
         let selection = self
@@ -365,6 +422,9 @@ impl SuniApp {
                     cancel_collection = ui.button(tr(lang, "register.cancel")).clicked();
                 }
                 if let Some(report) = &report {
+                    if let Err(error) = report.validate_zone_filter(&state.filter) {
+                        ui.colored_label(crate::theme::ERROR, error.to_string());
+                    }
                     let selected =
                         state
                             .selection
@@ -382,7 +442,18 @@ impl SuniApp {
                     let totals = &selected.totals;
                     // Group totals are available without pushing the first result below the fold.
                     ui.horizontal_wrapped(|ui| {
-                        ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
+                        let active_filters =
+                            filter_summary(&state.filter, &report.plan_zones, lang);
+                        let filter_label = if active_filters.is_empty() {
+                            tr(lang, "workspace.table.filters").into()
+                        } else {
+                            format!(
+                                "{} · {}",
+                                tr(lang, "workspace.table.filters"),
+                                active_filters.len()
+                            )
+                        };
+                        ui.menu_button(filter_label, |ui| {
                             egui::Grid::new("register-filters")
                                 .num_columns(4)
                                 .show(ui, |ui| {
@@ -454,18 +525,54 @@ impl SuniApp {
                                     state.offset = 0;
                                 }
                             });
-                        });
+                            ui.separator();
+                            crate::plan_zones_ui::zone_filter_ui(
+                                ui,
+                                lang,
+                                &mut state.filter,
+                                &report.plan_zones,
+                            );
+                            zones = ui
+                                .add_enabled(
+                                    can_refresh,
+                                    egui::Button::new(tr(lang, "zones.manage")),
+                                )
+                                .clicked();
+                        })
+                        .response
+                        .on_hover_text(active_filters.join("\n"));
 
-                        if !totals.is_empty() {
-                            ui.menu_button(tr(lang, "workspace.table.summary"), |ui| {
+                        let coverage = report.zone_coverage(&state.filter);
+                        let coverage_label = egui::RichText::new(if coverage.complete {
+                            tr(lang, "workspace.table.summary").into()
+                        } else {
+                            format!("{} !", tr(lang, "workspace.table.summary"))
+                        })
+                        .color(if coverage.complete {
+                            text_color
+                        } else {
+                            crate::theme::ERROR
+                        });
+                        let coverage_menu = ui.menu_button(coverage_label, |ui| {
+                            crate::plan_zones_ui::coverage_ui(ui, lang, &coverage);
+                            if !totals.is_empty() {
+                                ui.separator();
                                 for (group, count) in totals.iter().take(20) {
                                     ui.label(format!("{group}: {count}"));
                                 }
                                 if totals.len() > 20 {
                                     ui.label(tr(lang, "register.more_groups"));
                                 }
-                            });
-                        }
+                            }
+                        });
+                        coverage_menu.response.on_hover_text(tr(
+                            lang,
+                            if coverage.complete {
+                                "zones.coverage"
+                            } else {
+                                "zones.incomplete"
+                            },
+                        ));
                         if ui
                             .add_enabled(
                                 state.offset > 0,
@@ -505,6 +612,7 @@ impl SuniApp {
                                     "review_status",
                                     "business_status",
                                     "discipline",
+                                    "zone",
                                 ] {
                                     ui.strong(
                                         egui::RichText::new(tr(lang, &format!("register.{key}")))
@@ -565,6 +673,9 @@ impl SuniApp {
                                         )
                                         .on_hover_text(value);
                                     }
+                                    ui.label(crate::plan_zones_ui::assignment_label(
+                                        lang, &row.zone,
+                                    ));
                                     ui.horizontal(|ui| {
                                         if ui
                                             .add_enabled(
@@ -721,18 +832,20 @@ impl SuniApp {
                 .set_file_name(format!("annotation-register.{format}"))
                 .save_file()
             {
-                let result = if format == "csv" {
-                    Ok(report
-                        .csv(&state.filter, state.sort, state.descending)
-                        .into_bytes())
-                } else {
-                    serde_json::to_vec_pretty(&report.json(
-                        &state.filter,
-                        state.sort,
-                        state.descending,
-                    ))
-                    .map_err(|e| EngineError::Other(e.to_string()))
-                };
+                let result = report.validate_zone_filter(&state.filter).and_then(|_| {
+                    if format == "csv" {
+                        report
+                            .csv(&state.filter, state.sort, state.descending)
+                            .map(String::into_bytes)
+                    } else {
+                        serde_json::to_vec_pretty(&report.json(
+                            &state.filter,
+                            state.sort,
+                            state.descending,
+                        ))
+                        .map_err(|e| EngineError::Other(e.to_string()))
+                    }
+                });
                 match result.and_then(|bytes| sunipdf_core::write_new_copy(&path, &bytes)) {
                     Ok(()) => self.status_msg = Some(tr(lang, "register.exported").into()),
                     Err(error) => state.error = Some(error.to_string()),
@@ -748,6 +861,9 @@ impl SuniApp {
             state.edit = None;
         }
         self.annotate.register = state;
+        if zones {
+            self.open_plan_zones();
+        }
         if quantities {
             self.annotate.register.open = false;
             self.open_quantity_table();
@@ -826,6 +942,7 @@ mod tests {
                 review_status: None,
                 fields: RegisterFields::default(),
                 count_group: Some(format!("Group {}", index % 20)),
+                zone: Default::default(),
             })
             .collect();
         Arc::new(report)

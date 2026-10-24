@@ -75,6 +75,8 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
     match command {
         Command::RevisionOverlay(args) => Some(&mut args.password),
         Command::RevisionTransfer(args) => Some(&mut args.sources_mut().password),
+        Command::RevisionOutlines(args) => Some(&mut args.sources_mut().password),
+        Command::PlanZones(args) => Some(args.password_mut()),
         Command::QuantityTable(args) => Some(&mut args.report.password),
         Command::SetQuantityFields(args) => Some(&mut args.target.password),
         Command::ClearQuantityFields(args) => Some(&mut args.password),
@@ -167,6 +169,7 @@ impl PasswordSources {
         if [
             matches!(command, Command::RevisionOverlay(args) if args.revision_password_stdin),
             matches!(command, Command::RevisionTransfer(args) if args.new_password_stdin()),
+            matches!(command, Command::RevisionOutlines(args) if args.new_password_stdin()),
             self.password_stdin,
             self.user_password_stdin,
             self.owner_password_stdin,
@@ -211,8 +214,12 @@ impl PasswordSources {
                 )?);
             }
         }
-        if let Command::RevisionTransfer(args) = command {
-            let sources = args.sources_mut();
+        let revision_sources = match command {
+            Command::RevisionTransfer(args) => Some(args.sources_mut()),
+            Command::RevisionOutlines(args) => Some(args.sources_mut()),
+            _ => None,
+        };
+        if let Some(sources) = revision_sources {
             if sources.new_password_env.is_some() || sources.new_password_stdin {
                 if sources.new_password.is_some() {
                     return Err(invalid("choose one source for the new PDF password"));
