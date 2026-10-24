@@ -4,7 +4,7 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
-## Region fill in 0.72
+## Added in 0.72.0
 
 | Area | Implemented behavior and limits |
 |---|---|
@@ -14,7 +14,10 @@ The historical sections retain the limits and results of their own releases.
 
 Printed text and hatching can create deductions. Raster geometry does not establish physical measurement
 accuracy. AEC-012 remains **In progress**. See the [workflow](REGION_FILL.md) and
-[0.72 publication and qualification status](RELEASE_0.72.0.md).
+[0.72 release scope](RELEASE_0.72.0.md).
+
+Published stable with [qualification evidence](qa/RELEASE_0.72.0.json). Native interaction and broader drawing
+qualification remain open.
 
 ## Added in 0.71.0
 

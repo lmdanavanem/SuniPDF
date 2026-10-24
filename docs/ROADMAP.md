@@ -1,25 +1,23 @@
 # Roadmap
 
-## Current development: region fill
+## Next development
 
-The 0.72 development increment implements boundary-based region filling (AEC-012):
-explicit seeds and closures, actual contours with holes, calibrated previews and
-complete-only area creation. Source tests, downloaded-package qualification and
-native interaction remain separate. See [the workflow and limits](REGION_FILL.md).
-
-The next implementation priorities are multi-source plan-link batches (AEC-017) and
-independent synchronized reader views. These remain planned work, with no publication
-date claimed.
+Priority order: multi-source plan-link batches (AEC-017), then independent synchronized reader views.
+These are planned implementation increments; no publication date or completed criteria are claimed.
+Implementation, source validation, package qualification and native interaction remain separate scopes.
 
 ## Published scope
 
-Updated 2026-10-24T13:39:38.272401Z. [0.71.0](RELEASE_0.71.0.md) adds visual symbol search
-and reviewed count-marker batches. Published stable with [qualification evidence](qa/RELEASE_0.71.0.json).
-AEC-011 remains **In progress** pending native interaction and broader drawing
-qualification. See [workflow and limits](VISUAL_SEARCH.md).
+Updated 2026-10-24T15:11:57.923546Z. [0.72.0](RELEASE_0.72.0.md) adds reviewed region-fill areas: explicit seeds and
+manual closures, actual contours with holes, calibrated previews and complete-only creation with one Undo.
+Published stable with [qualification evidence](qa/RELEASE_0.72.0.json). AEC-012 remains **In progress** pending native interaction and broader
+drawing/interoperability qualification. Resolution, threshold and printed content affect the inferred
+boundary; no physical accuracy is claimed. [Workflow and limits](REGION_FILL.md).
 
-[0.70.0](RELEASE_0.70.0.md) added declared numeric-field units and explicit workbook
-field history; its [evidence](qa/RELEASE_0.70.0.json) remains separate.
+[0.71.0](RELEASE_0.71.0.md) retains [Find symbols](VISUAL_SEARCH.md) and reviewed count-marker batches.
+AEC-011 remains **In progress** for its outstanding qualification; its historical evidence is separate.
+[0.70.0](RELEASE_0.70.0.md) added declared numeric-field units and explicit workbook field history;
+its [evidence](qa/RELEASE_0.70.0.json) remains separate.
 
 AEC-007 remains **In progress**: exact units and bounded geometric formulas are implemented, while native interaction and broader qualification remain open. AEC-018 and AEC-019 also retain their open criteria. Currency exchange, taxes, mass/density and broader estimating workflows remain extensions.
 
