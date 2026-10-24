@@ -26,6 +26,9 @@ zeroize = "1"
 xml-rs = "1.0"
 allsorts = { version = "=0.17.0", default-features = false, features = ["flate2_rust"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 # Share Windows COM types with wgpu-hal and gpu-allocator.
 windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Registry", "Win32_Storage_FileSystem", "Win32_System_SystemInformation"] }

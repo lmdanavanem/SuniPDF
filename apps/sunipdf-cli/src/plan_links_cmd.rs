@@ -155,14 +155,7 @@ fn read_json_file(path: &Path, maximum: usize) -> Result<Vec<u8>, EngineError> {
     if !std::fs::metadata(path)?.is_file() {
         return Err(invalid("JSON input must be a regular file"));
     }
-    let mut options = std::fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(target_os = "linux")]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(0x800 | 0x20000);
-    }
-    let file = options.open(path)?;
+    let file = sunipdf_core::file_io::open_regular(path)?;
     let metadata = file.metadata()?;
     if !metadata.is_file() || metadata.len() > maximum {
         return Err(invalid(

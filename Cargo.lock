@@ -3851,7 +3851,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sunipdf-cli"
-version = "0.74.0"
+version = "0.75.0"
 dependencies = [
  "clap",
  "image",
@@ -3865,13 +3865,14 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-core"
-version = "0.74.0"
+version = "0.75.0"
 dependencies = [
  "allsorts",
  "base64",
  "chrono",
  "getrandom 0.4.3",
  "image",
+ "libc",
  "log",
  "lopdf",
  "pdfium-render",
@@ -3888,7 +3889,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-desktop"
-version = "0.74.0"
+version = "0.75.0"
 dependencies = [
  "block2 0.6.2",
  "chrono",
@@ -3918,7 +3919,7 @@ dependencies = [
 
 [[package]]
 name = "sunipdf-i18n"
-version = "0.74.0"
+version = "0.75.0"
 dependencies = [
  "serde_json",
 ]

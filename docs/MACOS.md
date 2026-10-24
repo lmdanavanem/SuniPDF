@@ -1,7 +1,7 @@
 # SuniPDF on macOS
 [User guide](USER_GUIDE.en.md)
 
-The macOS package targets **macOS 12 or later on Apple silicon (arm64)**. It contains the desktop application and `sunipdf-cli`. Intel Macs are not included in this package. See the [releases page](https://github.com/lmdanavanem/SuniPDF/releases) for available downloads.
+The macOS package targets **Apple Silicon (arm64)**, with a macOS 12 deployment minimum checked against every bundled binary. Qualification runs on macOS 15; older systems and individual Mac models have not been tested. It contains the desktop application and `sunipdf-cli`. See the [releases page](https://github.com/lmdanavanem/SuniPDF/releases) for available downloads.
 
 ## Install
 
@@ -11,7 +11,7 @@ Download `SuniPDF-<version>-macos-arm64.dmg` and its `.sha256` file from the rel
 shasum -a 256 -c SuniPDF-<version>-macos-arm64.dmg.sha256
 ```
 
-Open the DMG and drag **SuniPDF** to **Applications**. The application is ad hoc signed but not notarized: on first launch, macOS blocks it once. Open **System Settings > Privacy & Security** and choose **Open Anyway**.
+Open the DMG and drag **SuniPDF** to **Applications**. The application is ad hoc signed but not notarized, so macOS may block the first launch. After attempting to open it, use **System Settings > Privacy & Security > Open Anyway** if that option is offered.
 
 The command-line interface is inside the application bundle:
 
@@ -36,7 +36,7 @@ The following features currently require Windows or Linux and are unavailable in
 - OCR. Searchable text cannot be added to scanned pages on macOS yet.
 - Office-document import through the protected Windows conversion workflow. PDF-to-Office exports remain available within their documented limits.
 - Persistent encrypted storage of visual signatures. Drawing, importing and placing a visual signature for the current session remain available.
-- In-app updates. Download the new DMG from the releases page and replace the application.
+- Automatic update installation. The application can notify you about a newer release and open its official download page. Download the new DMG, quit SuniPDF after saving your documents and replace the application in Applications.
 
 The application must not alter signed documents through actions prohibited by its existing signature guards. A visual signature is an annotation and does not provide a digital certificate signature.
 
@@ -46,4 +46,6 @@ Preferences, annotation-library settings and recovery files use `~/Library/Appli
 
 ## Validation scope
 
-Package validation builds the DMG on macOS 15, verifies its checksum, code signature and license inventory, then copies the application out of the image as a user would, runs the bundled command-line interface against a fixture with the bundled PDFium, and starts the desktop application with a PDF. These checks do not qualify every Mac model, display, accessibility tool or printer.
+Package validation builds the DMG on macOS 15, verifies its checksum, ad hoc code signature, license inventory, arm64 binaries, deployment minimum and library dependencies. It then copies the application out of the image, opens and renders a PDF with the packaged CLI, saves and reopens a rotated copy and starts the desktop application with a PDF. The source PDF must remain unchanged. The user guide is included in the app resources with links pinned to the release tag.
+
+These checks do not establish notarization, interactive Finder opening, clipboard interoperability, physical Mac testing or compatibility with every display, accessibility tool and printer. Their scope is recorded in the release evidence.

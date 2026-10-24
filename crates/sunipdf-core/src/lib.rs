@@ -25,6 +25,7 @@ pub mod convert;
 pub mod edit;
 mod error;
 pub mod export_office;
+pub mod file_io;
 mod font_embed;
 pub mod fonts;
 pub mod form_data;

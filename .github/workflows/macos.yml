@@ -52,7 +52,10 @@ jobs:
       - name: Fetch verified macOS PDFium
         run: scripts/fetch-pdfium.sh arm64
       - name: Packaging boundary regressions
-        run: python3 scripts/license-inventory.py --self-test
+        run: |
+          python3 scripts/license-inventory.py --self-test
+          python3 scripts/macos-bundle.py --self-test
+          python3 scripts/package-guides.py --self-test
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Workspace tests
@@ -61,6 +64,13 @@ jobs:
           cargo test --workspace --locked --no-fail-fast 2>&1 | tee target/workspace-tests.log
       - name: Build, sign and verify the DMG
         run: scripts/package-macos.sh
+      - name: Upload native workspace results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: macos-workspace-tests
+          path: target/workspace-tests.log
+          if-no-files-found: warn
       - name: Upload exact DMG candidate
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:

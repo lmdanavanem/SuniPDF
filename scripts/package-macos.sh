@@ -69,6 +69,8 @@ cat > "$app/Contents/Info.plist" <<EOF
 EOF
 
 metadata="$work"
+python3 -I scripts/package-guides.py --source-root "$root" --stage "$app/Contents/Resources" --tag "v$version"
+python3 -I scripts/macos-bundle.py --app "$app" --report "$work/bundle.json"
 cargo metadata --locked --format-version 1 > "$metadata/all.json"
 cargo metadata --locked --format-version 1 --filter-platform aarch64-apple-darwin > "$metadata/macos.json"
 rustc -Vv > "$metadata/rust.txt"

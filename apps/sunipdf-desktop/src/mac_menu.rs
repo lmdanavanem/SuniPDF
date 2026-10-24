@@ -33,6 +33,7 @@ const MENUS: &[(&str, Menu, &[Command])] = &[
     ("menu.convert", Menu::Convert, &[]),
     ("menu.security", Menu::Security, &[]),
     ("menu.help", Menu::Help, &[]),
+    ("menu.settings", Menu::Settings, &[]),
 ];
 
 /// Étiquette d'une entrée (`tag`) → commande et besoin d'un document ouvert.
@@ -105,6 +106,7 @@ define_class!(
                 entry.is_some_and(|(command, needs_document)| {
                     command == Command::Quit
                         || (!BLOCKED.load(Ordering::Relaxed)
+                            && crate::workspace::platform_unavailable(command).is_none()
                             && (!needs_document || HAS_DOCUMENT.load(Ordering::Relaxed)))
                 })
             }
