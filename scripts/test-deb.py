@@ -166,7 +166,9 @@ def colored_fixture_mask(pixels, color):
     assert color in ("blue", "red")
     def matches(pixel):
         r, g, b = pixel
-        return (b > 180 and r < 70 and g < 70) if color == "blue" else (r > 180 and g < 70 and b < 70)
+        # Keep antialiased fixture letters at fit-page zoom while excluding neutral
+        # interface text. Saturated-core-only thresholds remove most small glyphs.
+        return (b > 180 and b - r > 70 and b - g > 70) if color == "blue" else (r > 180 and r - g > 70 and r - b > 70)
     mask = bytes(0 if matches(pixel) else 255 for pixel in pixels)
     return mask, mask.count(0)
 
@@ -206,7 +208,7 @@ def reader_views(app, window, evidence):
                     crop = rgb.crop(bounds)
                     mask, count = colored_fixture_mask(crop.getdata(), color)
                     mask_path = evidence / f"{name}-{side}-{color}-mask.png"
-                    Image.frombytes("L", crop.size, mask).resize((crop.width * 2, crop.height * 2)).save(mask_path)
+                    Image.frombytes("L", crop.size, mask).resize((crop.width * 3, crop.height * 3), resample=Image.NEAREST).save(mask_path)
                     displayed = command(["tesseract", mask_path, "stdout", "-l", "eng", "--psm", 11], timeout=20)
                     checks.append({"side": side, "color": color, "inkPixels": count,
                                    "pdfText": displayed, "passed": reader_fixture_visible(color, count, displayed),

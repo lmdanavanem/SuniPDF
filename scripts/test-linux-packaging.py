@@ -35,9 +35,10 @@ class LinuxPackagingTests(unittest.TestCase):
                 self.assertFalse(installed.reader_fixture_visible(color, 10000, ("SuniPDF page " + right + "\n") * 2))
 
     def test_split_reader_masks_distinguish_page_ink(self):
-        pixels = [(0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 255, 255), (80, 90, 230)]
-        self.assertEqual(installed.colored_fixture_mask(pixels, "blue"), (bytes([0, 255, 255, 255, 255]), 1))
-        self.assertEqual(installed.colored_fixture_mask(pixels, "red"), (bytes([255, 0, 255, 255, 255]), 1))
+        pixels = [(0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 255, 255),
+                  (120, 120, 255), (255, 120, 120), (190, 200, 220)]
+        self.assertEqual(installed.colored_fixture_mask(pixels, "blue"), (bytes([0, 255, 255, 255, 0, 255, 255]), 2))
+        self.assertEqual(installed.colored_fixture_mask(pixels, "red"), (bytes([255, 0, 255, 255, 255, 0, 255]), 2))
 
     def test_ocr_quotes_are_literal_and_cannot_swallow_later_control_rows(self):
         header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
