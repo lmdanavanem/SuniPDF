@@ -38,6 +38,22 @@ const PREFETCH_PAGES: usize = 1;
 /// Silence après un changement d'échelle avant de redemander des tuiles (zoom en cours).
 const SETTLE_SECS: f64 = 0.15;
 
+/// Alternate pane requests within the existing total bound, without duplicate tiles.
+fn merge_reader_jobs(panes: &[Vec<TileJob>; 2]) -> Vec<TileJob> {
+    let mut jobs: Vec<TileJob> = Vec::with_capacity(MAX_WANTED);
+    for index in 0..panes[0].len().max(panes[1].len()) {
+        for pane in panes {
+            if let Some(job) = pane.get(index).filter(|job| !jobs.contains(*job)) {
+                jobs.push(*job);
+                if jobs.len() == MAX_WANTED {
+                    return jobs;
+                }
+            }
+        }
+    }
+    jobs
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ViewMode {
     Single,
@@ -197,6 +213,40 @@ impl GeometryCache {
 }
 
 impl ViewState {
+    /// Move only pane-local state. The document epoch, texture cache and worker queue stay shared.
+    pub(crate) fn swap_navigation(&mut self, other: &mut Self) {
+        macro_rules! swap {
+            ($($field:ident),+ $(,)?) => { $(std::mem::swap(&mut self.$field, &mut other.$field);)+ };
+        }
+        swap!(
+            mode,
+            reading,
+            pending,
+            nav_lock,
+            offset,
+            inner,
+            k_prev,
+            avail_prev,
+            first_prev,
+            wheel_anchor,
+            settle_at,
+            hover_page,
+            geometry
+        );
+    }
+
+    pub(crate) fn invalidate_navigation(&mut self, page: usize, geometry_changed: bool) {
+        self.geometry = GeometryCache::default();
+        self.k_prev = None;
+        self.settle_at = None;
+        self.wheel_anchor = None;
+        if geometry_changed {
+            self.pending = Some(ScrollRequest::Page(page));
+            self.nav_lock = Some(NavLock { expected_y: None });
+            self.reading.history.reset();
+        }
+    }
+
     pub fn new(continuous: bool) -> Self {
         Self {
             mode: if continuous {
@@ -1021,9 +1071,30 @@ impl SuniApp {
 
     /// Zone document : fenêtre de pages, zoom, défilement, tuiles, interactions.
     pub fn document_view(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        self.validate_free_text();
-        self.validate_form_builder();
-        if self.view.reading.rotation != ViewRotation::Upright
+        self.begin_reader_frame();
+        self.document_view_pane(ctx, ui, 0, true);
+        self.view.pool.evict(POOL_BUDGET_BYTES);
+    }
+
+    pub(crate) fn begin_reader_frame(&mut self) {
+        self.view.pool.begin_frame();
+        self.view.missing_visible = 0;
+        self.edit.page_view = None;
+    }
+
+    pub(crate) fn document_view_pane(
+        &mut self,
+        ctx: &egui::Context,
+        ui: &mut egui::Ui,
+        pane: usize,
+        interactive: bool,
+    ) {
+        if interactive {
+            self.validate_free_text();
+            self.validate_form_builder();
+        }
+        if interactive
+            && self.view.reading.rotation != ViewRotation::Upright
             && (self.annotate.tool != crate::annotate::Tool::Select
                 || self.sign.placing.is_some()
                 || self.edit.text_prompt.is_some()
@@ -1061,13 +1132,14 @@ impl SuniApp {
         let doc_rect = ui.max_rect();
         let now = ctx.input(|i| i.time);
         let limits = TileLimits::for_texture_side(ctx.input(|i| i.max_texture_side));
-        self.view.pool.begin_frame();
-        self.view.missing_visible = 0;
-        self.edit.page_view = None;
-        self.refresh_forms_if_needed();
+        if interactive {
+            self.refresh_forms_if_needed();
+        }
 
         // 1. Zoom (molette ancrée sur le pointeur), plafonné.
-        self.apply_wheel_zoom(ctx);
+        if interactive {
+            self.apply_wheel_zoom(ctx);
+        }
         let (z, limited) = self.view.geometry.zoom(ZoomKey {
             zoom: self.zoom,
             mode,
@@ -1100,14 +1172,23 @@ impl SuniApp {
             rotation,
         });
         let forced = self.resolve_scroll(&layout, &sizes[window.clone()], avail, k);
-        let pinned = self.pinned_pages();
+        let pinned = if interactive {
+            self.pinned_pages()
+        } else {
+            Vec::new()
+        };
 
         // 4. Zone de défilement : seules les pages visibles sont dessinées.
         // PDF navigation and hit testing use bounded document coordinates, without elastic overscroll.
         ui.spacing_mut().scroll.kinetic.rubber_band = false;
         let mut area = egui::ScrollArea::both()
-            .id_salt("doc-scroll")
-            .auto_shrink([false, false]);
+            .id_salt(("doc-scroll", pane))
+            .auto_shrink([false, false])
+            .scroll_source(if interactive {
+                egui::scroll_area::ScrollSource::default()
+            } else {
+                egui::scroll_area::ScrollSource::NONE
+            });
         if let Some(o) = forced {
             area = area.scroll_offset(o);
         }
@@ -1135,7 +1216,7 @@ impl SuniApp {
                     total: count,
                     name: &name,
                 };
-                if let Some(e) = self.paint_slot(ctx, ui, &slot) {
+                if let Some(e) = self.paint_slot(ctx, ui, &slot, pane, interactive) {
                     event.get_or_insert(e);
                 }
             }
@@ -1162,9 +1243,17 @@ impl SuniApp {
         }
         if mode != ViewMode::Single
             && self.view.nav_lock.is_none()
-            && self.annotate.measure.geometry.is_none()
+            && (!interactive || self.annotate.measure.geometry.is_none())
         {
-            self.track_page(layout.dominant(viewport.min.y, viewport.max.y));
+            let page = layout.dominant(viewport.min.y, viewport.max.y);
+            if interactive {
+                self.track_page(page);
+            } else if let Some(doc) = &mut self.document {
+                if doc.page != page {
+                    doc.page = page;
+                    self.page_input = doc.info.page_input(page);
+                }
+            }
         }
         if let Some(doc) = &self.document {
             self.view
@@ -1178,9 +1267,11 @@ impl SuniApp {
             Some(p) if !self.edit.objects_open => p,
             _ => self.document.as_ref().map_or(current, |d| d.page),
         };
-        self.refresh_objects_if_needed(objects_page);
-        // Après la zone : la page survolée de cette image est connue (sélection d'annotation, liens).
-        self.refresh_annotations_if_needed();
+        if interactive {
+            self.refresh_objects_if_needed(objects_page);
+            // Après la zone : la page survolée de cette image est connue (sélection d'annotation, liens).
+            self.refresh_annotations_if_needed();
+        }
         self.flush_wanted(
             ctx,
             &PlanInput {
@@ -1191,8 +1282,11 @@ impl SuniApp {
                 limits,
             },
             now,
+            pane,
         );
-        self.view.pool.evict(POOL_BUDGET_BYTES);
+        if !interactive {
+            return;
+        }
         if let Some((page, ev)) = event {
             // Maj lue au moment du clic (`self.edit.shift` n'est pas mis à jour si `handle_input`
             // est sorti plus tôt).
@@ -1237,6 +1331,8 @@ impl SuniApp {
         ctx: &egui::Context,
         ui: &mut egui::Ui,
         s: &Slot,
+        pane: usize,
+        interactive: bool,
     ) -> Option<(usize, DragEvent)> {
         let painter = ui.painter().clone();
         let dark = self.settings.dark_theme;
@@ -1253,6 +1349,24 @@ impl SuniApp {
         let clip = ui.clip_rect().intersect(s.rect);
         if let (true, Some(page_px)) = (clip.is_positive(), s.page_px) {
             self.paint_tiles(ui, &painter, s, page_px, clip);
+        }
+        if !interactive {
+            let label = tr_args(
+                self.lang(),
+                "a11y.page_image",
+                &[
+                    ("current", &(s.page + 1).to_string()),
+                    ("total", &s.total.to_string()),
+                    ("name", s.name),
+                ],
+            );
+            ui.interact(
+                s.rect,
+                egui::Id::unique(("page-interact", pane, s.page)),
+                egui::Sense::hover(),
+            )
+            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, false, &label));
+            return None;
         }
         let h = s.size_pt.height_pt;
         let source_size = s.rotation.source_size(s.rect.size());
@@ -1302,7 +1416,7 @@ impl SuniApp {
 
         let interact = ui.interact(
             s.rect,
-            egui::Id::unique(("page-interact", s.page)),
+            egui::Id::unique(("page-interact", pane, s.page)),
             egui::Sense::click_and_drag(),
         );
         let alt = tr_args(
@@ -1510,14 +1624,31 @@ impl SuniApp {
         } else {
             0..doc.info.page_count()
         };
-        let layout = Layout::for_rotation(
-            &doc.info.page_sizes[window.clone()],
-            window.start,
-            k,
-            self.view.avail_prev,
-            self.view.mode,
-            self.view.reading.rotation,
-        );
+        let key = LayoutKey {
+            first: window.start,
+            count: window.len(),
+            scale: k,
+            avail: self.view.avail_prev,
+            mode: self.view.mode,
+            rotation: self.view.reading.rotation,
+        };
+        // Split synchronization samples this location every frame. Reuse the layout
+        // already built for painting instead of rescanning a long document on scroll.
+        let fallback;
+        let layout = match &self.view.geometry.layout {
+            Some((cached_key, layout)) if *cached_key == key => layout.as_ref(),
+            _ => {
+                fallback = Layout::for_rotation(
+                    &doc.info.page_sizes[window.clone()],
+                    window.start,
+                    k,
+                    self.view.avail_prev,
+                    self.view.mode,
+                    self.view.reading.rotation,
+                );
+                &fallback
+            }
+        };
         let point =
             ((offset - vec2(layout.page_left(doc.page), layout.page_top(doc.page))) / k).to_pos2();
         let origin = self
@@ -1649,7 +1780,7 @@ impl SuniApp {
     }
 
     /// Envoie la liste des tuiles voulues si elle a changé ; rien pendant un zoom en cours.
-    fn flush_wanted(&mut self, ctx: &egui::Context, input: &PlanInput, now: f64) {
+    fn flush_wanted(&mut self, ctx: &egui::Context, input: &PlanInput, now: f64, pane: usize) {
         if let Some(t) = self.view.settle_at {
             if now < t {
                 ctx.request_repaint_after(std::time::Duration::from_secs_f64(t - now));
@@ -1659,6 +1790,10 @@ impl SuniApp {
         }
         let v = &self.view;
         let jobs = wanted_jobs(input, &|j| v.pool.has_fresh(j) || v.failed.contains(j));
+        if self.reader_views.collecting {
+            self.reader_views.wanted[pane] = jobs;
+            return;
+        }
         if should_send(&v.sent, &jobs, &|j| v.pool.has_fresh(j)) {
             log::debug!(
                 "tuiles voulues : {} ; pool {} textures, {} octets",
@@ -1672,6 +1807,19 @@ impl SuniApp {
             });
             self.view.sent = jobs;
         }
+    }
+
+    pub(crate) fn finish_reader_frame(&mut self) {
+        let jobs = merge_reader_jobs(&self.reader_views.wanted);
+        let v = &self.view;
+        if should_send(&v.sent, &jobs, &|job| v.pool.has_fresh(job)) {
+            self.worker.send(Request::SetWanted {
+                epoch: v.epoch,
+                jobs: jobs.clone(),
+            });
+            self.view.sent = jobs;
+        }
+        self.view.pool.evict(POOL_BUDGET_BYTES);
     }
 
     /// Page qui occupe l'écran (défilement continu) : champ, barre d'état, miniature, commentaires.
@@ -2820,7 +2968,7 @@ mod tests {
                             ..Default::default()
                         },
                         |ui| {
-                            if let Some((page, event)) = app.paint_slot(&ctx, ui, &slot) {
+                            if let Some((page, event)) = app.paint_slot(&ctx, ui, &slot, 0, true) {
                                 app.measurement_geometry_event(page, event);
                             }
                         },
@@ -3313,6 +3461,19 @@ mod tests {
             should_send(&[a], &[], &|_| false),
             "liste vide : annule le reste"
         );
+    }
+
+    #[test]
+    fn split_tile_demand_is_fair_deduplicated_and_uses_one_total_budget() {
+        let left: Vec<_> = (0..24).map(|n| job(0, 1000, n * 100)).collect();
+        let right: Vec<_> = (0..24).map(|n| job(1, 1000, n * 100)).collect();
+        let merged = merge_reader_jobs(&[left.clone(), right.clone()]);
+        assert_eq!(merged.len(), MAX_WANTED);
+        assert_eq!(merged.iter().filter(|j| j.page == 0).count(), 12);
+        assert_eq!(merged.iter().filter(|j| j.page == 1).count(), 12);
+        assert_eq!(&merged[..4], &[left[0], right[0], left[1], right[1]]);
+        assert_eq!(merge_reader_jobs(&[left.clone(), left.clone()]), left);
+        assert_eq!(merge_reader_jobs(&[Vec::new(), right.clone()]), right);
     }
 
     /// Mesure seulement : `cargo test -p sunipdf-desktop -j 2 -- --ignored --nocapture layout_cost`

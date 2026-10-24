@@ -1,17 +1,17 @@
 # SuniPDF — User Guide
 
-SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
+SuniPDF is a PDF reader and editor for Windows 10/11, Ubuntu Linux and Apple Silicon Macs. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide describes the workflows in this source revision. [Release qualification](RELEASE_0.67.0.md)
-and [Project status](PROJECT_STATUS.md) distinguish source, native and distributed-package checks.
+This guide describes the workflows in this source revision. [Project status](PROJECT_STATUS.md)
+links the current release qualification and distinguishes source, native and distributed-package checks.
 English is the default interface language; French is available in Settings.
 
 Local plan sets, FDF exchange, deducted areas and constant-depth volumes remain included.
 Their source, native development-build workflows and distributed packages have separate recorded qualification.
 Earlier release results do not qualify these packages.
 
-Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
+Start with the installation and platform limits for [Ubuntu](UBUNTU.md) or [macOS](MACOS.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
 
 ## Reader controls and tools
 
@@ -33,6 +33,11 @@ Page navigation, zoom and page/width fit are below the PDF. The zoom percentage 
 The right side shows one context panel at a time. A measurement draft blocks opening another context panel until it is finished or cancelled. Explicitly leaving the measurement tool or changing tools cancels its local draft and preserves confirmed page scales.
 
 [Full reader layout and tool routes](READER_WORKSPACE.md).
+
+Use **Reading options → Split document view** to keep two locations in the same
+PDF visible. Click a pane to activate it; page, zoom and editing controls follow
+that pane. **Synchronize views** links navigation when needed. **Close split view**
+leaves the active document open. [Split-view workflow](READER_WORKSPACE.md#two-independent-views).
 
 ## Plan workspace
 

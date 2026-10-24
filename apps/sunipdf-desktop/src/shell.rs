@@ -122,6 +122,9 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::ViewContinuous => (glyph::SCROLL, "⇕"),
         Command::ViewSinglePage => (glyph::DOCUMENT, "▯"),
         Command::ViewTwoPage => (glyph::PAGES, "◫"),
+        Command::ViewSplit => (glyph::PAGES, "◫"),
+        Command::ViewSync => (glyph::SCROLL, "⇕"),
+        Command::ViewSwitchPane => (glyph::PAGES, "◫"),
         Command::ViewBook => (glyph::BOOKMARK, "▣"),
         Command::CopyText => (glyph::DOCUMENT, "⎘"),
         Command::ToolSelect => (glyph::SELECT, "I"),
@@ -1001,6 +1004,9 @@ impl SuniApp {
                     Command::ViewContinuous,
                     Command::ViewTwoPage,
                     Command::ViewBook,
+                    Command::ViewSplit,
+                    Command::ViewSync,
+                    Command::ViewSwitchPane,
                     Command::RotateViewClockwise,
                     Command::RotateViewCounterClockwise,
                     Command::FullScreenReading,
@@ -1018,6 +1024,8 @@ impl SuniApp {
                         }
                         Command::ViewTwoPage => self.view.mode == crate::view::ViewMode::TwoPage,
                         Command::ViewBook => self.view.mode == crate::view::ViewMode::Book,
+                        Command::ViewSplit => self.reader_views.enabled,
+                        Command::ViewSync => self.reader_views.synchronized,
                         Command::FullScreenReading => self.reading_full_screen,
                         _ => false,
                     };

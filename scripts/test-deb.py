@@ -143,11 +143,12 @@ def gui(evidence, source):
                     break
             assert success, "Native screenshot did not contain the fixture's PDF text and blue rectangle"
             window = command(["xdotool", "search", "--onlyvisible", "--pid", app.pid]).splitlines()[-1]
+            views = reader_views(app, window, evidence)
             themes = theme_settings(app, window, evidence)
             controls = window_controls(app, window, evidence)
             app = subprocess.Popen(["/usr/bin/sunipdf", str(source)], stdout=log, stderr=subprocess.STDOUT)
             restart_theme(app, evidence)
-            return themes + controls + ["native-theme-persists-after-restart"]
+            return views + themes + controls + ["native-theme-persists-after-restart"]
         finally:
             if app.poll() is None:
                 app.terminate()
@@ -158,6 +159,94 @@ def gui(evidence, source):
                     app.wait()
             manager.terminate()
             manager.wait(timeout=10)
+
+
+def colored_fixture_mask(pixels, color):
+    """Isolate actual fixture ink; ordinary interface text cannot satisfy PDF evidence."""
+    assert color in ("blue", "red")
+    def matches(pixel):
+        r, g, b = pixel
+        # Keep antialiased fixture letters at fit-page zoom while excluding neutral
+        # interface text. Saturated-core-only thresholds remove most small glyphs.
+        return (b > 180 and b - r > 70 and b - g > 70) if color == "blue" else (r > 180 and r - g > 70 and r - b > 70)
+    mask = bytes(0 if matches(pixel) else 255 for pixel in pixels)
+    return mask, mask.count(0)
+
+
+def reader_fixture_visible(color, count, text):
+    page = r"[1Il]" if color == "blue" else "2"
+    # A closed split must contain exactly one fixture title, not two synchronized
+    # panes that would also satisfy a simple substring check.
+    return count > 500 and len(re.findall(r"\bSuniPDF\s+page\s+" + page + r"\b", text, re.I)) == 1
+
+
+def reader_views(app, window, evidence):
+    """Operate the installed two-pane reader through its public command palette."""
+    from PIL import Image
+    records = []
+
+    def palette(label):
+        assert app.poll() is None, "Reader exited during split interaction"
+        command(["xdotool", "windowactivate", "--sync", window, "key", "--clearmodifiers", "ctrl+k"])
+        time.sleep(0.25)
+        command(["xdotool", "type", "--clearmodifiers", "--delay", 35, label])
+        command(["xdotool", "key", "--clearmodifiers", "Return"])
+        time.sleep(0.5)
+
+    def capture(name, expected):
+        path = evidence / (name + ".png")
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            assert app.poll() is None, "Reader exited before both panes rendered"
+            command(["import", "-window", window, path], timeout=15)
+            checks = []
+            with Image.open(path) as image:
+                rgb = image.convert("RGB")
+                for side, color in expected:
+                    bounds = (0, 0, rgb.width // 2, rgb.height) if side == "left" else (
+                        rgb.width // 2, 0, rgb.width, rgb.height) if side == "right" else (0, 0, rgb.width, rgb.height)
+                    crop = rgb.crop(bounds)
+                    mask, count = colored_fixture_mask(crop.getdata(), color)
+                    mask_path = evidence / f"{name}-{side}-{color}-mask.png"
+                    Image.frombytes("L", crop.size, mask).resize((crop.width * 3, crop.height * 3), resample=Image.NEAREST).save(mask_path)
+                    displayed = command(["tesseract", mask_path, "stdout", "-l", "eng", "--psm", 11], timeout=20)
+                    checks.append({"side": side, "color": color, "inkPixels": count,
+                                   "pdfText": displayed, "passed": reader_fixture_visible(color, count, displayed),
+                                   "maskSha256": sha(mask_path)})
+            if all(check["passed"] for check in checks):
+                records.append({"scene": name, "pngSha256": sha(path), "checks": checks})
+                return
+            time.sleep(0.5)
+        raise AssertionError(f"Split PDF ink/text missing in {name}: {checks}")
+
+    # Hide the navigation dock so thumbnail ink cannot satisfy a reader-pane check.
+    palette("Thumbnails")
+    settings_path = HOME / ".config/sunipdf/settings.json"
+    if json.loads(settings_path.read_text()).get("show_thumbnails"):
+        palette("Thumbnails")
+    settings = json.loads(settings_path.read_text())
+    assert not settings.get("show_thumbnails") and not settings.get("show_tools"), "Navigation dock remains visible"
+    palette("Single Page")
+    palette("Fit Page")
+    palette("Split document view")
+    palette("Switch active view")
+    palette("Next Page")
+    palette("Fit Page")
+    capture("native-reader-split-independent", [("left", "blue"), ("right", "red")])
+    palette("Synchronize views")
+    capture("native-reader-split-synchronized", [("left", "red"), ("right", "red")])
+    palette("Split document view")
+    palette("Previous Page")
+    palette("Fit Page")
+    capture("native-reader-split-closed", [("whole", "blue")])
+    assert "*" not in command(["xdotool", "getwindowname", window]), "Reader operations dirtied the PDF"
+    palette("Thumbnails")
+    (evidence / "native-reader-views.json").write_text(json.dumps({
+        "status": "passed", "scenes": records, "documentStillOpen": True,
+        "method": "Installed application command palette, X11 captures and color-isolated PDF text OCR",
+        "limits": "Same two-page fixture; no physical GPU, Wayland, pointer editing or human accessibility qualification"
+    }, indent=2) + "\n", encoding="utf-8")
+    return ["native-reader-independent-pages", "native-reader-synchronize-pages", "native-reader-close-split-keeps-document"]
 
 
 class ThemeLabelMissing(AssertionError):
@@ -587,6 +676,8 @@ def lifecycle(package, evidence, identity):
                          "ocr_en": True, "ocr_fr": True, "native_gui_pdf_visible": True,
                          "native_x11_window_controls": True, "native_close_unsaved_guard": True,
                          "native_theme_settings": True, "native_theme_restart_persistence": True,
+                         "native_reader_independent_and_synchronized_pages": True,
+                         "native_reader_close_split_preserves_document": True,
                          "verified_public_deb_upgrade": True, "update_refusal_guards": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",

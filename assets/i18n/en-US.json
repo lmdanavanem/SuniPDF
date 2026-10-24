@@ -2005,5 +2005,13 @@
   "window.minimize": "Minimize window",
   "window.maximize": "Maximize window",
   "window.restore": "Restore window",
-  "window.close": "Close window"
+  "window.close": "Close window",
+  "menu.view.split": "Split document view",
+  "menu.view.sync": "Synchronize views",
+  "menu.view.switch_pane": "Switch active view",
+  "reader.split_hint": "Controls apply to the active view.",
+  "reader.close_split": "Close split view",
+  "reader.pane": "View {number}",
+  "reader.location": "Page {page} · {zoom}%",
+  "reader.activate_hint": "Click a view to activate it. Reading controls and tools follow the active view."
 }

@@ -24,6 +24,22 @@ installed = load("test-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_split_reader_evidence_rejects_other_page_and_interface_text(self):
+        for color, right, wrong in (("blue", "1", "2"), ("red", "2", "1")):
+            with self.subTest(color=color):
+                self.assertTrue(installed.reader_fixture_visible(color, 501, "SuniPDF page " + right))
+                self.assertFalse(installed.reader_fixture_visible(color, 501, "SuniPDF page " + wrong))
+                self.assertFalse(installed.reader_fixture_visible(color, 500, "SuniPDF page " + right))
+                self.assertFalse(installed.reader_fixture_visible(color, 10000, "Page " + right))
+                self.assertFalse(installed.reader_fixture_visible(color, 10000, "SuniPDF page " + right + "0"))
+                self.assertFalse(installed.reader_fixture_visible(color, 10000, ("SuniPDF page " + right + "\n") * 2))
+
+    def test_split_reader_masks_distinguish_page_ink(self):
+        pixels = [(0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 255, 255),
+                  (120, 120, 255), (255, 120, 120), (190, 200, 220)]
+        self.assertEqual(installed.colored_fixture_mask(pixels, "blue"), (bytes([0, 255, 255, 255, 0, 255, 255]), 2))
+        self.assertEqual(installed.colored_fixture_mask(pixels, "red"), (bytes([255, 0, 255, 255, 255, 0, 255]), 2))
+
     def test_ocr_quotes_are_literal_and_cannot_swallow_later_control_rows(self):
         header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
         quote = '5\t1\t1\t1\t1\t1\t10\t10\t20\t14\t0\t"em\n'

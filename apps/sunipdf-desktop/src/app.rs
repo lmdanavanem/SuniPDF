@@ -132,6 +132,7 @@ pub struct SuniApp {
     pub effective_zoom: f32,
     /// Vue du document : mode, défilement, tuiles et textures (`view.rs`).
     pub view: crate::view::ViewState,
+    pub reader_views: crate::reader_views::ReaderViews,
     pub page_input: String,
     pub error: Option<&'static str>,
     password_prompt: Option<PasswordPrompt>,
@@ -266,6 +267,7 @@ impl SuniApp {
                 .unwrap_or_default(),
             worker: Worker::spawn(cc.egui_ctx.clone()),
             view: crate::view::ViewState::new(settings.continuous_view),
+            reader_views: Default::default(),
             settings,
             engine: EngineState::Starting,
             document: None,
@@ -384,6 +386,7 @@ impl SuniApp {
             self.worker.send(Request::Close);
         }
         self.view.reset();
+        self.reader_views = Default::default();
         self.page_input.clear();
         self.thumbnails.clear();
         self.thumbs_pending.clear();
@@ -793,6 +796,7 @@ impl SuniApp {
                     self.annotate.clear_reading();
                     self.annotate.annotations_page = None;
                     self.view.reset();
+                    self.reader_views = Default::default();
                     self.forms.reset_for_document();
                     // Première page en haut, centrée si le document mêle des tailles de page.
                     self.view.request(crate::view::ScrollRequest::Page(0));
@@ -960,6 +964,8 @@ impl SuniApp {
                         // Retouche : l'image reste affichée jusqu'aux nouvelles tuiles.
                         self.view
                             .on_document_changed(pages_unchanged, same_sizes, doc.page);
+                        self.reader_views
+                            .document_changed(&doc.info, pages_unchanged, same_sizes);
                         if measurement_scales_unchanged && same_sizes {
                             self.annotate.measure.advance_epoch(self.view.epoch);
                         } else {
@@ -1296,6 +1302,7 @@ impl SuniApp {
                     }
                 }
                 Response::MutationFinished => self.worker.finish_mutation(),
+                Response::SelectionFinished => self.worker.finish_selection(),
             }
         }
         self.flush_pending_save();
@@ -2143,6 +2150,9 @@ impl SuniApp {
                 | Command::ViewSinglePage
                 | Command::ViewTwoPage
                 | Command::ViewBook
+                | Command::ViewSplit
+                | Command::ViewSync
+                | Command::ViewSwitchPane
                 | Command::HistoryBack
                 | Command::HistoryForward
         ) {
@@ -2308,6 +2318,11 @@ impl SuniApp {
             Command::FitPage => self.zoom = Zoom::FitPage,
             Command::ViewContinuous => self.set_view_mode(ViewMode::Continuous),
             Command::ViewSinglePage => self.set_view_mode(ViewMode::Single),
+            Command::ViewSplit => self.toggle_reader_split(),
+            Command::ViewSync => self.toggle_reader_sync(),
+            Command::ViewSwitchPane => {
+                self.activate_reader_pane(1 - self.reader_views.active);
+            }
             Command::ViewTwoPage => self.set_view_mode(ViewMode::TwoPage),
             Command::ViewBook => self.set_view_mode(ViewMode::Book),
             Command::ToggleThumbnails => {
@@ -2637,6 +2652,8 @@ impl SuniApp {
                         Command::ViewSinglePage => self.view.mode == ViewMode::Single,
                         Command::ViewTwoPage => self.view.mode == ViewMode::TwoPage,
                         Command::ViewBook => self.view.mode == ViewMode::Book,
+                        Command::ViewSplit => self.reader_views.enabled,
+                        Command::ViewSync => self.reader_views.synchronized,
                         _ => false,
                     };
                 let clicked = if let Some(reason) = unavailable {
@@ -2696,7 +2713,7 @@ impl SuniApp {
             });
             return;
         }
-        self.document_view(ctx, ui);
+        self.reader_workspace(ctx, ui);
     }
 
     pub(crate) fn retain_thumbnail_window(&mut self, visible: std::ops::Range<usize>) {
@@ -3855,6 +3872,7 @@ pub(crate) mod tests {
             zoom: Zoom::FitWidth,
             effective_zoom: 1.0,
             view: crate::view::ViewState::new(true),
+            reader_views: Default::default(),
             page_input: "1".into(),
             error: None,
             password_prompt: None,
