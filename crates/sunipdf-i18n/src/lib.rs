@@ -94,8 +94,6 @@ fn mac_text(text: &str) -> String {
         .replace("Ctrl+click", "⌘-click")
         .replace("Ctrl+clic", "⌘-clic")
         .replace("Ctrl+", "⌘")
-        .replace(" for Windows", " for macOS")
-        .replace(" pour Windows", " pour macOS")
 }
 
 /// Traduction d'une clé. Clé inconnue → renvoie la clé (jamais de panique).
@@ -183,10 +181,6 @@ mod tests {
         assert_eq!(mac_text("Suppr"), "⌦");
         assert_eq!(mac_text("Ctrl+Del"), "⌘⌫");
         assert_eq!(mac_text("Delete page"), "Delete page");
-        assert_eq!(
-            mac_text("PDF reader and editor for Windows"),
-            "PDF reader and editor for macOS"
-        );
     }
 
     #[test]
