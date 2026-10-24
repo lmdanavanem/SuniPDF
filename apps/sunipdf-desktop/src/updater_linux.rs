@@ -304,6 +304,16 @@ mod tests {
     fn package_handoff_refuses_public_permissions_links_and_missing_installer_context() {
         use std::os::unix::fs::PermissionsExt;
         let prepared = crate::updater::test_prepared_deb();
+        let directory = prepared.workspace.as_ref().unwrap().path();
+        assert_eq!(
+            fs::metadata(directory).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        assert!(arguments(&prepared).is_ok());
+        fs::set_permissions(directory, fs::Permissions::from_mode(0o755)).unwrap();
+        assert!(arguments(&prepared).is_err());
+        fs::set_permissions(directory, fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(arguments(&prepared).is_ok());
         fs::set_permissions(&prepared.package, fs::Permissions::from_mode(0o644)).unwrap();
         assert!(arguments(&prepared).is_err());
         fs::set_permissions(&prepared.package, fs::Permissions::from_mode(0o600)).unwrap();

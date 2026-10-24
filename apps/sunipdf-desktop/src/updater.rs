@@ -496,13 +496,22 @@ fn read_bounded(reader: impl Read, limit: u64) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
+fn update_workspace(prefix: &str) -> std::io::Result<TempDir> {
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(prefix);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(fs::Permissions::from_mode(0o700));
+    }
+    builder.tempdir()
+}
+
 fn download_release(release: Release) -> Result<PreparedUpdate, String> {
     if release.kind == UpdateKind::Deb {
         crate::updater_linux::require_system_installation()?;
     }
-    let workspace = tempfile::Builder::new()
-        .prefix("SuniPDF-update-")
-        .tempdir()
+    let workspace = update_workspace("SuniPDF-update-")
         .map_err(|e| format!("Could not create the update folder: {e}"))?;
     let package = workspace.path().join(&release.asset_name);
     let exe = fs::canonicalize(std::env::current_exe().map_err(|e| e.to_string())?)
@@ -598,10 +607,7 @@ fn hex(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 pub(crate) fn test_prepared_deb() -> PreparedUpdate {
-    let workspace = tempfile::Builder::new()
-        .prefix("SuniPDF update $ ; ")
-        .tempdir()
-        .unwrap();
+    let workspace = update_workspace("SuniPDF update $ ; ").unwrap();
     let version = "0.74.0".to_string();
     let asset_name = format!("SuniPDF-{version}-linux-amd64.deb");
     let package = workspace.path().join(&asset_name);
