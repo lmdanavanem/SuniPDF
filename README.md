@@ -18,15 +18,15 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.64.0
+## Download 0.67.0
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.64.0/SuniPDF-0.64.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.64.0/SuniPDF-0.64.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.64.0/SuniPDF-0.64.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.64.0/SuniPDF-0.64.0-linux-amd64.deb) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.67.0/SuniPDF-0.67.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.67.0/SuniPDF-0.67.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.67.0/SuniPDF-0.67.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.67.0/SuniPDF-0.67.0-linux-amd64.deb) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.64.0) · [Qualification evidence](docs/qa/RELEASE_0.64.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.67.0) · [Qualification evidence](docs/qa/RELEASE_0.67.0.json)
 
 Packages are unsigned. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -34,7 +34,7 @@ See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUE
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.64.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.67.0-linux-amd64.deb`.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
@@ -56,20 +56,20 @@ offering installation; Ubuntu opens the release download for installation throug
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.64.0
+## New in 0.67.0
 
-Review and transfer supported native annotations between saved PDF revisions. Confirm each page match,
-inspect every destination preview and save a new copy while preserving the originals. Plan sets now
-filter by metadata, filename and physical page, group by discipline/revision/file and sort identifiers naturally.
+Create reviewed links between indexed plan sheets, turn classified revision differences into editable
+outlines, and define named page zones shared by annotation-register and quantity filters. Each workflow
+retains explicit source checks, review steps and coverage limits.
 
-The published release passed exact-source CI: 994 Windows tests and 974 Linux tests,
-with ignored results recorded separately. All eight public assets were downloaded anonymously and verified.
-The downloaded Windows CLI passed 82 commands / 1,062 assertions with its bundled runtime.
-Native development-build workflows, Windows upgrades and Ubuntu installation have separate qualification evidence.
+The release passed exact-source CI: 1,045 Windows tests and 1,026 Linux tests, with ignored results
+recorded separately. Upgrade checks covered 45 portable baselines plus four guards and 43 MSI baselines.
+All eight public assets were downloaded anonymously and verified. The downloaded Windows x64 package
+passed 238 recorded commands / 3,603 assertions across six corpora. The exact DEB was installed and
+checked on Ubuntu 22.04 and 24.04. Native interaction with the new
+0.67 plan workflows remains untested; earlier development checks do not qualify these workflows.
 
-[Release notes](docs/RELEASE_0.64.0.md) · [Qualification scope](docs/PROJECT_STATUS.md)
-
-Reviewed cross-document links and broader revision workflows remain tracked in the [roadmap](docs/ROADMAP.md).
+[Release notes](docs/RELEASE_0.67.0.md) | [Qualification scope](docs/PROJECT_STATUS.md).
 
 Earlier releases added dimensioned rectangles, explicit historical-measurement recalibration, custom-field
 sorting, reusable supported annotation groups and bounded formulas with subtotals. Independent PDF/A/PDF/UA
