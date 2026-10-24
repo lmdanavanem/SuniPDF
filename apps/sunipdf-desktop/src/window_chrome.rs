@@ -298,6 +298,16 @@ fn resize_handles(ctx: &egui::Context, rect: Rect) {
 mod tests {
     use super::*;
 
+    fn run_frame(
+        ctx: &egui::Context,
+        input: egui::RawInput,
+        draw: impl FnMut(&mut egui::Ui),
+    ) -> egui::FullOutput {
+        let mut output = ctx.run_ui(input, draw);
+        output.textures_delta.clear();
+        output
+    }
+
     fn input(events: Vec<egui::Event>, maximized: bool) -> egui::RawInput {
         let mut input = egui::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(720.0, 480.0))),
@@ -337,8 +347,8 @@ mod tests {
             let draw = |ui: &mut egui::Ui| {
                 close = show(ui, Language::English, true, "SuniPDF");
             };
-            let _ = ctx.run_ui(input(vec![], maximized), draw);
-            let down = ctx.run_ui(input(pointer(pos2(x, 20.0), true), maximized), |ui| {
+            let _ = run_frame(&ctx, input(vec![], maximized), draw);
+            let down = run_frame(&ctx, input(pointer(pos2(x, 20.0), true), maximized), |ui| {
                 close = show(ui, Language::English, true, "SuniPDF");
             });
             assert!(!close);
@@ -346,9 +356,13 @@ mod tests {
                 .viewport_output
                 .values()
                 .all(|output| output.commands.is_empty()));
-            let up = ctx.run_ui(input(pointer(pos2(x, 20.0), false), maximized), |ui| {
-                close = show(ui, Language::English, true, "SuniPDF");
-            });
+            let up = run_frame(
+                &ctx,
+                input(pointer(pos2(x, 20.0), false), maximized),
+                |ui| {
+                    close = show(ui, Language::English, true, "SuniPDF");
+                },
+            );
             let commands: Vec<_> = up
                 .viewport_output
                 .values()
@@ -390,7 +404,7 @@ mod tests {
     fn frame_preserves_content_size_and_full_screen_has_no_resize_gutter() {
         for maximized in [false, true] {
             let ctx = egui::Context::default();
-            let _ = ctx.run_ui(input(vec![], maximized), |ui| {
+            let _ = run_frame(&ctx, input(vec![], maximized), |ui| {
                 frame(ui, false, |ui| {
                     assert_eq!(
                         ui.available_rect_before_wrap(),
@@ -404,7 +418,7 @@ mod tests {
             });
         }
         let ctx = egui::Context::default();
-        let _ = ctx.run_ui(input(vec![], false), |ui| {
+        let _ = run_frame(&ctx, input(vec![], false), |ui| {
             frame(ui, true, |ui| {
                 assert_eq!(ui.available_rect_before_wrap().min, Pos2::ZERO);
             })
@@ -418,7 +432,7 @@ mod tests {
         let draw = |ui: &mut egui::Ui| {
             assert!(!show(ui, Language::English, true, "Document.pdf — SuniPDF"));
         };
-        let first = ctx.run_ui(input(vec![], false), draw);
+        let first = run_frame(&ctx, input(vec![], false), draw);
         let nodes = &first.platform_output.accesskit_update.unwrap().nodes;
         for key in ["window.minimize", "window.maximize", "window.close"] {
             let label = tr(Language::English, key);
@@ -428,8 +442,9 @@ mod tests {
                 .any(|(_, node)| node.role() == egui::accesskit::Role::Button
                     && node.label() == Some(label)));
         }
-        let _ = ctx.run_ui(input(pointer(pos2(200.0, 20.0), true), false), draw);
-        let moved = ctx.run_ui(
+        let _ = run_frame(&ctx, input(pointer(pos2(200.0, 20.0), true), false), draw);
+        let moved = run_frame(
+            &ctx,
             input(vec![egui::Event::PointerMoved(pos2(240.0, 24.0))], false),
             draw,
         );

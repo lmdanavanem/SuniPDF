@@ -587,7 +587,14 @@ fn protected_batch_preserves_encryption_and_requires_all_passwords_and_permissio
 fn signed_source_is_explicitly_stopped_without_writing_outputs() {
     let engine = engine();
     let mut signed = Pdf::load_mem(&pdf("B-20")).unwrap();
-    signed.add_object(dictionary! {"Type"=>"Sig", "Filter"=>"Adobe.PPKLite"});
+    let signature = signed.add_object(dictionary! {"Type"=>"Sig", "Filter"=>"Adobe.PPKLite"});
+    let field = signed.add_object(dictionary! {
+        "FT"=>"Sig", "T"=>Object::string_literal("Approval"), "V"=>signature
+    });
+    signed.catalog_mut().unwrap().set(
+        "AcroForm",
+        dictionary! {"Fields"=>vec![Object::Reference(field)]},
+    );
     let mut bytes = Vec::new();
     signed.save_to(&mut bytes).unwrap();
     let f = fixture_source(&engine, Some(&bytes), None);
