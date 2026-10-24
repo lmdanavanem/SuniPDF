@@ -1624,14 +1624,31 @@ impl SuniApp {
         } else {
             0..doc.info.page_count()
         };
-        let layout = Layout::for_rotation(
-            &doc.info.page_sizes[window.clone()],
-            window.start,
-            k,
-            self.view.avail_prev,
-            self.view.mode,
-            self.view.reading.rotation,
-        );
+        let key = LayoutKey {
+            first: window.start,
+            count: window.len(),
+            scale: k,
+            avail: self.view.avail_prev,
+            mode: self.view.mode,
+            rotation: self.view.reading.rotation,
+        };
+        // Split synchronization samples this location every frame. Reuse the layout
+        // already built for painting instead of rescanning a long document on scroll.
+        let fallback;
+        let layout = match &self.view.geometry.layout {
+            Some((cached_key, layout)) if *cached_key == key => layout.as_ref(),
+            _ => {
+                fallback = Layout::for_rotation(
+                    &doc.info.page_sizes[window.clone()],
+                    window.start,
+                    k,
+                    self.view.avail_prev,
+                    self.view.mode,
+                    self.view.reading.rotation,
+                );
+                &fallback
+            }
+        };
         let point =
             ((offset - vec2(layout.page_left(doc.page), layout.page_top(doc.page))) / k).to_pos2();
         let origin = self
