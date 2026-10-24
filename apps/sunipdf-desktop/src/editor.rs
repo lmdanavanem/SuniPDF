@@ -1416,7 +1416,7 @@ impl SuniApp {
             return;
         }
         let lang = self.lang();
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let has_icons = self.has_icons;
         let mut apply = false;
         let mut paragraph = false;
@@ -1686,7 +1686,7 @@ impl SuniApp {
     /// un texte droit à l'écran).
     pub fn text_prompt_dialog(&mut self, ctx: &egui::Context) {
         let lang = self.lang();
-        let muted = theme::palette(self.settings.dark_theme).text_muted;
+        let muted = theme::palette_for(ctx).text_muted;
         let Some(prompt) = self.edit.text_prompt.as_mut().filter(|p| !p.inline) else {
             return;
         };

@@ -6,6 +6,7 @@ mod annotation_library;
 mod annotation_register;
 mod annotation_rich;
 mod app;
+mod appearance_ui;
 mod boundary_fill_ui;
 mod brand;
 mod certificate;
@@ -61,6 +62,7 @@ mod theme;
 mod tool_hub;
 mod tools;
 mod updater;
+mod updater_linux;
 mod view;
 mod visual_search_ui;
 #[cfg(any(target_os = "linux", test))]

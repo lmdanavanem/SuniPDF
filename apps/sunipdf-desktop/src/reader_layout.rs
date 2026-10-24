@@ -134,15 +134,20 @@ impl SuniApp {
         let Some(selected) = self.navigation_panel() else {
             return;
         };
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let max_width = (ui.available_width() - 220.0).clamp(160.0, 320.0);
         let min_width = 220.0_f32.min(max_width);
         egui::Panel::left("navigation-dock")
             .resizable(true)
             .default_size(240.0_f32.min(max_width))
             .size_range(min_width..=max_width)
-            .frame(egui::Frame::new().fill(p.surface).inner_margin(8))
+            .frame(if theme::appearance(ctx).0 == theme::Style::LiquidGlass {
+                theme::material_frame(ctx).inner_margin(8)
+            } else {
+                egui::Frame::new().fill(p.surface).inner_margin(8)
+            })
             .show(ui, |ui| {
+                theme::paint_material(ui, ui.max_rect(), 18);
                 let lang = self.lang();
                 let mut run = None;
                 ui.horizontal_wrapped(|ui| {
@@ -192,14 +197,19 @@ impl SuniApp {
         if self.context_panel() != Some(ContextPanel::Measurements) {
             return;
         }
-        let p = theme::palette(self.settings.dark_theme);
+        let p = theme::palette_for(ctx);
         let max_width = (ui.available_width() * 0.42).clamp(260.0, 380.0);
         egui::Panel::right("measurement-properties")
             .resizable(true)
             .default_size(300.0_f32.min(max_width))
             .size_range(260.0..=max_width)
-            .frame(egui::Frame::new().fill(p.surface).inner_margin(10))
+            .frame(if theme::appearance(ctx).0 == theme::Style::LiquidGlass {
+                theme::material_frame(ctx).inner_margin(10)
+            } else {
+                egui::Frame::new().fill(p.surface).inner_margin(10)
+            })
             .show(ui, |ui| {
+                theme::paint_material(ui, ui.max_rect(), 18);
                 let mut leave = false;
                 ui.horizontal(|ui| {
                     ui.label(

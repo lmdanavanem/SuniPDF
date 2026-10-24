@@ -47,13 +47,24 @@ try {
     if ($reportFile.Length -gt 128KB -or $reportFile.LastWriteTimeUtc -lt $started) { throw 'Reader UI report is oversized or stale.' }
     $report = [IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
     if ($report.status -cne 'passed' -or $report.sourceSha -cne $env:GITHUB_SHA -or
-        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 5) { throw 'Reader UI report did not qualify the current source.' }
-    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities')
+        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 10) { throw 'Reader UI report did not qualify the current source.' }
+    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities', 'reader-en-glass-light-pages', 'reader-en-glass-dark-measurements', 'reader-en-glass-dark-docked-register', 'settings-en-glass-light', 'settings-fr-glass-dark-720-reduced')
     foreach ($scene in $report.scenes) {
         if ($scene.name -cnotin $expected -or $scene.png -cne "$($scene.name).png" -or
             -not $scene.actualApplicationRenderUi -or $scene.actualPdfiumTiles -lt 1 -or
-            $scene.pdfFixtureBlueInkPixels -le 20 -or $scene.pngSha256 -cnotmatch '^[a-f0-9]{64}$') {
+            $scene.pngSha256 -cnotmatch '^[a-f0-9]{64}$') {
             throw 'Reader UI scene metadata is invalid.'
+        }
+        if ($scene.name -like 'settings-*') {
+            if (-not $scene.themeSettingsOpen -or -not $scene.themeSettingsLabelsVerified -or $scene.pdfFixtureBlueInkVerified) {
+                throw 'Settings evidence is missing its visible accessible controls or overstates obscured PDF coverage.'
+            }
+        } elseif ($scene.themeSettingsOpen -or -not $scene.pdfFixtureBlueInkVerified -or $scene.pdfFixtureBlueInkPixels -le 20) {
+            throw 'Reader evidence must retain visible actual PDF ink.'
+        }
+        $expectedStyle = if ($scene.name -like '*glass*') { 'liquid_glass' } else { 'classic' }
+        if ($scene.interfaceStyle -cne $expectedStyle -or [bool]$scene.reduceTransparency -ne ($scene.name -like '*reduced')) {
+            throw 'Reader evidence appearance does not match its named scenario.'
         }
         $png = Join-Path $root "target/reader-ui-evidence/$($scene.png)"
         if ((Get-FileHash -LiteralPath $png -Algorithm SHA256).Hash.ToLowerInvariant() -cne $scene.pngSha256) {
@@ -63,5 +74,5 @@ try {
             throw 'Docked table evidence is incomplete.'
         }
     }
-    if (@($report.scenes.name | Select-Object -Unique).Count -ne 5) { throw 'Reader UI scene names are not unique.' }
+    if (@($report.scenes.name | Select-Object -Unique).Count -ne 10) { throw 'Reader UI scene names are not unique.' }
 } finally { Pop-Location }

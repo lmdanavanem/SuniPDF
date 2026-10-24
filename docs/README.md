@@ -7,6 +7,7 @@ Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download
 
 | Task | Guides |
 |---|---|
+| Personalize the interface | [Themes and appearance](APPEARANCE.md) |
 | Read and navigate | [Reader workspace](READER_WORKSPACE.md) · [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) · [Bookmarks and pages](BOOKMARKS_AND_PAGE_STRUCTURE.md) |
 | Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) · [Deducted areas and volumes](MEASUREMENT_VOLUMES.md) · [Region fill](REGION_FILL.md) |
 | Organize and exchange | [Local plan sets](PLAN_SETS.md) · [Reviewed plan links](PLAN_LINKS.md) · [Form values](FORM_DATA.md) |
@@ -36,6 +37,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
+- [0.74.0 candidate scope](RELEASE_0.74.0.md).
 - [0.73.0 release notes](RELEASE_0.73.0.md) and [qualification evidence](qa/RELEASE_0.73.0.json).
 - [0.72.0 release notes](RELEASE_0.72.0.md) and [qualification evidence](qa/RELEASE_0.72.0.json).
 - [0.71.0 release notes](RELEASE_0.71.0.md) and [qualification evidence](qa/RELEASE_0.71.0.json).

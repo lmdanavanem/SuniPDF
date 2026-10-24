@@ -24,6 +24,46 @@ installed = load("test-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_ocr_quotes_are_literal_and_cannot_swallow_later_control_rows(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        quote = '5\t1\t1\t1\t1\t1\t10\t10\t20\t14\t0\t"em\n'
+        target = "5\t1\t2\t1\t1\t1\t74\t30\t90\t14\t95\ttransparency\n"
+        self.assertEqual(installed.theme_label_center(header + quote + target, "transparency", (200, 80)), (119, 37))
+        with self.assertRaises(installed.ThemeLabelMissing):
+            installed.theme_label_center(header + quote, "transparency", (200, 80))
+        with self.assertRaises(AssertionError) as ambiguous:
+            installed.theme_label_center(header + target + target.replace("\t1\t2\t1\t1\t1\t", "\t1\t3\t1\t1\t1\t"), "transparency", (200, 80))
+        self.assertNotIsInstance(ambiguous.exception, installed.ThemeLabelMissing)
+
+    def test_checkbox_target_accepts_unique_word_beside_merged_glyph_only(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        first = "5\t1\t1\t1\t1\t1\t20\t30\t50\t14\t88\t\u2610Reduce\n"
+        second = "5\t1\t1\t1\t1\t2\t74\t30\t90\t14\t95\ttransparency\n"
+        self.assertEqual(installed.theme_label_center(header + first + second, "transparency", (200, 80)), (119, 37))
+        duplicate = second.replace("\t1\t1\t1\t1\t2\t", "\t1\t2\t1\t1\t2\t")
+        for text, bounds in ((header + first, (200, 80)), (header + first + second, (160, 80)),
+                             (header + first + second + duplicate, (200, 80)),
+                             (header + second.replace("transparency", "transparencies"), (200, 80))):
+            with self.subTest(text=text, bounds=bounds), self.assertRaises(AssertionError):
+                installed.theme_label_center(text, "transparency", bounds)
+
+    def test_theme_label_targets_require_unique_complete_visible_text(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        first = "5\t1\t1\t1\t1\t1\t20\t30\t40\t14\t95\tLiquid\n"
+        second = "5\t1\t1\t1\t1\t2\t65\t30\t30\t14\t95\tGlass\n"
+        text = header + first + second
+        self.assertEqual(installed.theme_label_center(text, "Liquid Glass", (120, 80)), (57, 37))
+        dark = first.replace("Liquid", "Dark")
+        description = (first.replace("\t1\t1\t1\t1\t1\t", "\t1\t2\t1\t1\t1\t").replace("Liquid", "Follow")
+                       + second.replace("\t1\t1\t1\t1\t2\t", "\t1\t2\t1\t1\t2\t").replace("Glass", "dark"))
+        self.assertEqual(installed.theme_label_center(header + dark + description, "Dark", (120, 80)), (40, 37))
+        for bad, bounds in ((header + first, (120, 80)), (text, (80, 80)),
+                            (text + first.replace("\t1\t1\t1\t1\t1\t", "\t1\t2\t1\t1\t1\t")
+                             + second.replace("\t1\t1\t1\t1\t2\t", "\t1\t2\t1\t1\t2\t"), (120, 80))):
+            with self.subTest(bounds=bounds, text=bad):
+                with self.assertRaises(AssertionError):
+                    installed.theme_label_center(bad, "Liquid Glass", bounds)
+
     def test_native_fixture_mask_excludes_dark_ui_text_and_non_blue_pixels(self):
         pixels = [(0, 0, 255), (30, 40, 220), (0, 0, 0), (40, 50, 60),
                   (255, 255, 255), (255, 0, 0), (70, 0, 255), (0, 70, 255), (0, 0, 180)]

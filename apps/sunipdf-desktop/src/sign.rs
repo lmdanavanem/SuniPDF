@@ -566,7 +566,7 @@ impl SuniApp {
         let lang = self.lang();
         let dark = self.settings.dark_theme;
         let has_icons = self.has_icons;
-        let p = theme::palette(dark);
+        let p = theme::palette_for(ctx);
         let dir_text = signatures_dir().map_or_else(String::new, |d| d.display().to_string());
         let mut kind = kind_open;
         let fonts = self.edit.system_fonts.clone();

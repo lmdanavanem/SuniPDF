@@ -23,6 +23,7 @@ RUNTIME_DEPENDENCIES = (
     "libwayland-egl1", "libegl1", "libgl1", "libvulkan1", "libdbus-1-3",
     "xdg-desktop-portal", "xdg-desktop-portal-gtk | xdg-desktop-portal-gnome | xdg-desktop-portal-kde",
     "zenity", "tesseract-ocr (>= 4)", "tesseract-ocr-eng", "tesseract-ocr-fra",
+    "pkexec", "python3", "ca-certificates",
 )
 
 
@@ -156,6 +157,14 @@ def shared_dependencies(stage, temporary):
     return match[1]
 
 
+def package_update_helper(stage):
+    # Normalize the executable shebang even when packaging a Windows checkout.
+    write(stage / "usr/lib/sunipdf/install-update",
+          (ROOT / "packaging/linux/install-update").read_text(encoding="utf-8"), executable=True)
+    write(stage / "usr/share/polkit-1/actions/org.sunipdf.update.policy",
+          (ROOT / "packaging/linux/org.sunipdf.update.policy").read_text(encoding="utf-8"))
+
+
 def package(binary_dir, output):
     if sys.platform != "linux" or run(["dpkg", "--print-architecture"]) != "amd64":
         raise ValueError("Build the Debian package on a Linux amd64 runner")
@@ -182,6 +191,7 @@ def package(binary_dir, output):
             write(stage / "usr/bin" / name, '#!/bin/sh\nexec /usr/lib/sunipdf/' + name + ' "$@"\n', executable=True)
         require_elf_amd64(pdfium / "lib/libpdfium.so")
         copy(pdfium / "lib/libpdfium.so", stage / "usr/lib/sunipdf/libpdfium.so")
+        package_update_helper(stage)
         copy(ROOT / "assets/linux/sunipdf.desktop", stage / "usr/share/applications/sunipdf.desktop")
         run(["desktop-file-validate", stage / "usr/share/applications/sunipdf.desktop"])
         for size in (16, 24, 32, 48, 64, 128, 256, 512):
