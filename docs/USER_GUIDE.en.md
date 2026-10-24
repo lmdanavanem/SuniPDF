@@ -3,9 +3,9 @@
 SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers the [0.63.0 release](RELEASE_0.63.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
+This guide covers the [0.64.0 release](RELEASE_0.64.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
 
-Local plan sets, FDF exchange, deducted areas and constant-depth volumes are included in 0.63.0.
+Local plan sets, FDF exchange, deducted areas and constant-depth volumes remain included.
 Their source, native development-build workflows and distributed packages have separate recorded qualification.
 Earlier release results do not qualify these packages.
 
@@ -13,11 +13,11 @@ Ubuntu users should start with [installation and platform limits](UBUNTU.md). Na
 
 ## Reader controls and tools
 
-The 0.64 development candidate also provides [plan-set filtering and grouping](PLAN_SETS.md) and
+Version 0.64 provides [plan-set filtering and grouping](PLAN_SETS.md) and
 [reviewed annotation transfer between revisions](REVISION_TRANSFER.md). Open **Tools → Organize pages**
 or use the command palette. Transfer requires saved sources, explicit page matches and review of
-every destination preview before **Save new copy…**. Existing PDF files remain unchanged. These
-candidate controls still await native and package qualification and are not in the 0.63 release.
+every destination preview before **Save new copy…**. Existing PDF files remain unchanged.
+[Release notes](RELEASE_0.64.0.md) distinguish native, downloaded CLI and installer evidence.
 
 Choose **Tools** in the main toolbar. The left dock shows one of **Tools**, **Pages** or **Bookmarks**. The tools panel offers five families and a search field; measurements, the library, quantity tables and revision overlays are under **Review & measure**.
 

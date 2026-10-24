@@ -1,6 +1,6 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.63.0.md)
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.64.0.md)
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
@@ -34,17 +34,32 @@ remain separate unqualified scopes. Variable-depth solids are not requirements o
 
 AEC-015 includes local manifests for selected PDFs, stable identities, metadata, source fingerprints,
 validation, refresh/relink, new-copy export and guarded navigation. Source PDFs and unsaved tabs are
-preserved. It remains **In progress** because grouped/searchable navigation by discipline, sheet and
-revision is later 0.64 candidate work. Revision replacement and links are separate cards.
+preserved. Grouped/searchable navigation was not part of 0.63; the qualified 0.64 increment below
+completes these indexed-set criteria. Revision replacement and links remain separate cards.
 
 [Release evidence](qa/RELEASE_0.63.0.json) records 963 Windows tests / 15 ignored, 943 Linux tests /
 10 ignored per run, qualified packages and eight verified public downloads. The downloaded Windows CLI
 passed 68 commands / 968 assertions, including the 20-command / 680-assertion plan/form/volume corpus.
 [Release notes](RELEASE_0.63.0.md) preserve native, installer, hardware and interoperability limits.
 
-AEC-016 revision transfer is later 0.64 candidate work; AEC-017 reviewed cross-document links are a
-separate 0.65 implementation in progress. Neither is included in 0.63. Their source, native and
-package evidence must be completed before delivery. No entire P1/P2 category is closed.
+## Delivered in 0.64
+
+AEC-015 is **Done for its stated indexed plan-set criteria**. Filtering, natural sorting and groups by
+discipline/revision/file retain stable IDs and physical-page navigation. Native group/navigation checks,
+automated manifest persistence and downloaded-package reference checks passed. Missing, changed and
+duplicate references remain explicit. This does not close the separate revision-replacement or link cards.
+
+AEC-016 includes reviewed transfer of supported native shapes between explicit page pairs, real previews,
+preserved originals and new-copy output. It remains **In progress** for broader batch scope. Unsupported
+semantic annotations are excluded rather than silently copied.
+
+[Release evidence](qa/RELEASE_0.64.0.json) records exact-source CI, eight verified downloads and
+82 commands / 1,062 assertions on the downloaded Windows CLI. Native development-build output
+inspection passed 27 independent assertions. See [qualification limits](RELEASE_0.64.0.md).
+
+AEC-017 reviewed cross-document links, AEC-014 reviewed revision outlines and AEC-010 named zones
+are development work planned for combined 0.67 qualification. They remain In progress and are not
+included in 0.64. No entire P1/P2 category is closed.
 
 ## Capabilities and acceptance
 
@@ -61,12 +76,12 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-007 | P2 | Custom columns and formulas | In progress | Typed text/choice/date/number/formula columns, grouped totals and unit-price calculations; bounded expressions without executable code, explicit units/currency/rounding and reproducible exports. Prices are supplied by the user. | AEC-003, AEC-004 |
 | AEC-008 | P2 | Multiple scales and dimensioned drawing | In progress | Named viewports with independent scales, clear overlap rules and explicit scale selection; draw shapes to real dimensions and support snapping to eligible vectors. | AEC-001, AEC-002 |
 | AEC-009 | P2 | Volumes and deducted areas | Done | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. | AEC-002, AEC-003 |
-| AEC-010 | P2 | Rooms and named zones | Planned | Named/hierarchical plan regions, deterministic assignment of annotations to regions and filters/reports by room or floor; expose overlapping/unassigned cases. | AEC-004, AEC-008 |
+| AEC-010 | P2 | Rooms and named zones | In progress | Named/hierarchical plan regions, deterministic assignment of annotations to regions and filters/reports by room or floor; expose overlapping/unassigned cases. | AEC-004, AEC-008 |
 | AEC-011 | P2 | Visual symbol search | Planned | Search from a selected symbol locally, with sensitivity, rotation choices, bounded processing and candidate previews. User-accepted matches drive counts; false positives and partial searches remain explicit. | AEC-005, AEC-026 |
 | AEC-012 | P2 | Boundary-based region filling | Planned | Preview a bounded region from drawing edges, allow manual closure of openings and retain holes. Convert reviewed results to measurements; document resolution/tolerance and refuse leakage or ambiguous boundaries. | AEC-002, AEC-009, AEC-026 |
 | AEC-013 | P2 | Aligned colour overlays | In progress | Register two or more plans using explicit control points and display/export colour-separated overlays. Keep input PDFs intact; ambiguous alignment and unmatched pages require review. | Existing comparison, AEC-026 |
-| AEC-014 | P2 | Revision outlines and tracked differences | Planned | Convert reviewed comparison regions into editable revision outlines and register entries. Preserve original/revised identity and distinguish geometric changes from rendering noise. | Existing comparison, AEC-004, AEC-013 |
-| AEC-015 | P2 | Plan sets | In progress | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. | Labels/bookmarks baseline |
+| AEC-014 | P2 | Revision outlines and tracked differences | In progress | Convert reviewed comparison regions into editable revision outlines and register entries. Preserve original/revised identity and distinguish geometric changes from rendering noise. | Existing comparison, AEC-004, AEC-013 |
+| AEC-015 | P2 | Plan sets | Done | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. | Labels/bookmarks baseline |
 | AEC-016 | P2 | Batch sheet replacement | In progress | Match and review incoming revisions, transfer only supported markups under an explicit geometric mapping, retain previous files and produce a per-sheet result report. Refuse unsafe transfers without partial overwrites. | AEC-013, AEC-015 |
 | AEC-017 | P2 | Batch cross-document links | In progress | Detect sheet references in searchable text/OCR, preview proposed destinations and create reviewed links in new copies. Ambiguous references, unsafe paths and missing files remain unresolved. | AEC-015, existing OCR/links |
 | AEC-018 | P2 | Legends and issue reports | Planned | Generate legends, grouped quantity/issue summaries and PDF/CSV/JSON reports tied to the actual filtered annotations and document revisions. No invented or stale totals. | AEC-004, AEC-007, AEC-010 |
@@ -80,4 +95,4 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-028 | P1 | Responsive search and annotation inventory | In progress | Advance long reads page by page with progress, cancellation and visible-page rendering between tasks; do not publish stale partial inventories as complete. | Existing desktop workspace |
 | AEC-029 | P1 | Consistent plan workspace | In progress | Dock or float resizable annotation/quantity tables, persist layout preferences and navigate to actual selected annotations; retain context and small-window access. | Existing desktop workspace |
 
-Implementation details and progress are retained in the CSV. Current delivery priorities are maintained only in the [roadmap](ROADMAP.md). GitHub Projects was synchronized on 2026-10-24, including the published AEC-009 scope and later AEC-015/016/017 work.
+Implementation details and progress are retained in the CSV. Current delivery priorities are maintained only in the [roadmap](ROADMAP.md). GitHub Projects tracks the published AEC-009/015 criteria and the separate AEC-014/016/017 work; full card acceptance remains distinct from an implemented subset.
