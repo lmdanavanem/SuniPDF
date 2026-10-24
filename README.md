@@ -67,7 +67,11 @@ recorded separately. All eight public assets were downloaded anonymously and ver
 Windows x64 CLI passed 68 commands and 968 assertions with its bundled runtime. Windows upgrades and
 Ubuntu installation have separate qualification evidence.
 
-[Release notes](docs/RELEASE_0.63.0.md) ? [Qualification scope](docs/PROJECT_STATUS.md)
+[Release notes](docs/RELEASE_0.63.0.md) · [Qualification scope](docs/PROJECT_STATUS.md)
+
+The 0.64 development candidate adds [reviewed revision transfers](docs/REVISION_TRANSFER.md) and
+[grouped plan navigation](docs/PLAN_SETS.md). Local source and CLI checks passed; native and package
+qualification remain in progress. These changes are not included in the 0.63 downloads above.
 
 Earlier releases added dimensioned rectangles, explicit historical-measurement recalibration, custom-field
 sorting, reusable supported annotation groups and bounded formulas with subtotals. Independent PDF/A/PDF/UA

@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Prepare 0.64.0: transfer explicitly selected native shapes between reviewed revision pages, retaining the revised PDF's content and writing a new copy. Preview every mapped destination, enforce source fingerprints and permissions, and refuse unsafe geometry, semantic data and duplicate outputs.
+- Add plan-set search, grouping by discipline/revision/file, natural numeric sorting and an unresolved-reference filter. Keep stable sheet identities and block navigation from a selection hidden by filtering.
+- Reject reusable-shape capture and revision transfer when incoming review replies exist elsewhere in the source PDF. Retain readable bounded transfer history and detect redirected filesystem aliases before publication.
+- Add the published 0.63.0 portable and MSI packages to upgrade regression baselines.
+
+[0.64 candidate qualification](docs/RELEASE_0.64.0.md) distinguishes local checks from pending native and package evidence.
+
 ## [0.63.0] - 2026-10-24
 
 Published as stable Latest after exact-source CI and package qualification. Windows: 963 passed / 15 ignored; Linux: 943 passed / 10 ignored. All eight public assets were verified anonymously; the downloaded x64 CLI passed 68 commands / 968 assertions. Portable upgrades cover 43 baselines plus 4 guards; MSI covers 41 baselines / 205 logs. Native development-build checks have their own documented scope.

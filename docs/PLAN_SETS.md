@@ -6,8 +6,9 @@ The source PDFs stay separate and unchanged. The index does not merge PDFs or co
 
 The published 0.63.0 release passed exact-source tests and public-package checks. A separate native
 development-build run covered manifest opening and sheet navigation; see [release qualification](RELEASE_0.63.0.md).
-Grouped/searchable sheet navigation remains open. Automatic revision matching and annotation transfer
-are separate capabilities.
+The 0.64 development candidate adds grouped navigation and a separate
+[reviewed annotation transfer](REVISION_TRANSFER.md) workflow. Its final local source checks passed;
+native and package qualification remain pending.
 
 ## References and sheet metadata
 
@@ -35,6 +36,18 @@ Open **Tools → Organize pages → Plan sets**, or find **Plan sets** in the co
 selects the root folder; **Open manifest** loads an existing index. Use **Add PDFs**, select a sheet and edit
 **Sheet number**, **Sheet title**, **Discipline** or **Revision**, then choose **Apply metadata**. **Reset edits**
 discards unapplied field edits, while **Remove sheet from set** removes only its indexed entry.
+
+The development view filters sheet number, title, discipline, revision, filename and physical page by
+all entered search terms. Group by discipline, revision or file, and select a column heading to change
+the sort direction. Number sorting compares digit runs naturally (A-2 before A-10); revision labels do
+not establish revision chronology. **Issues only** retains unresolved or invalid references. The view
+shows its filtered count and displays at most 50 rows per page. Filtering or sorting never rewrites the
+manifest, changes physical page identities or drops an unapplied metadata edit. An active filter that
+hides the selected sheet disables **Open sheet** until the selection is visible again.
+
+**Transfer revision annotations** opens the reviewed revision workflow using the current index. It requires
+explicit old/new files, checked references and reviewed page matches. It does not replace source files
+or automatically accept a revision. See [supported annotations and limits](REVISION_TRANSFER.md).
 
 Use **Validate references** before **Open sheet**, then **Save new manifest copy**. **Close** retains the draft
 in memory. Quitting with unsaved index changes offers a new copy or explicit discard. Existing document tabs

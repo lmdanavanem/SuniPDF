@@ -6,6 +6,10 @@ physical device or third-party reader. Planned work is tracked in the [roadmap](
 
 ## Delivered in 0.63.0
 
+The separate [0.64 development candidate](RELEASE_0.64.0.md) implements reviewed native-shape transfer
+and plan-set filtering, grouping and natural sorting. Its final local tests passed; native and
+package qualification remain pending. These extensions are not part of the current release below.
+
 Exact-source CI, package checks and public downloads are verified. The downloaded Windows CLI passed
 68 commands / 968 assertions; local native workflows have separate bounded evidence. See [0.63 qualification](RELEASE_0.63.0.md).
 
