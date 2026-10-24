@@ -57,7 +57,9 @@ Click a pane or its **View 1** / **View 2** heading to activate it. The bottom p
 and zoom controls, keyboard navigation and editing tools apply to the active pane.
 **Switch active view** in the command palette switches without a mouse. Each pane
 keeps its own location, zoom, reading layout, orientation and navigation history.
-Finish or cancel unfinished editing input before switching panes.
+Finish or cancel unfinished editing input before switching panes. The first click
+inside an inactive pane focuses it; click again to use the selected editing tool.
+A pending document edit or object selection must finish before focus can move.
 
 Enable **Synchronize views** to follow the active pane's page, position, zoom and
 view rotation in the other pane. Turn synchronization off to navigate independently
@@ -68,8 +70,8 @@ The split workspace is retained when switching document tabs during the session.
 It is not saved as PDF content or restored after restarting the application.
 This feature supports two views of one document; use document tabs for other files.
 
-The split feature is introduced in the [0.76 development candidate](RELEASE_0.76.0.md).
-Check [Project status](PROJECT_STATUS.md) for the currently published packages.
+The split feature is available in [0.76.0](RELEASE_0.76.0.md).
+See [qualification evidence](qa/RELEASE_0.76.0.json) and [Project status](PROJECT_STATUS.md) for the tested scope.
 
 ## Scope
 

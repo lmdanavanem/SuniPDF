@@ -2,18 +2,27 @@
 
 ## Next development
 
-Published 0.74 adds [Theme settings and appearance choices](APPEARANCE.md).
-It also adds direct [Ubuntu updates](UBUNTU.md#settings-recovery-and-updates).
-Its [package qualification](RELEASE_0.74.0.md) is complete within the recorded scope; this interface increment does not close plan-workflow cards. Apple Silicon packages are published in [0.75](RELEASE_0.75.0.md), with native installation checks and documented platform limits.
+Independent synchronized reader views are delivered in [0.76.0](RELEASE_0.76.0.md):
+two locations in one PDF, one active editing context and pane positions retained
+when switching tabs during the session.
+This increment does not close other plan-workflow cards.
 
-In development: [0.76 independent synchronized reader views](RELEASE_0.76.0.md)
-for two locations in one PDF, with one active editing context. Source and package
-qualification remain pending. Native plan-link interaction and broader drawing/
-interoperability qualification remain open. Implementation and complete acceptance are tracked separately.
+Native plan-link interaction and broader drawing/interoperability qualification
+remain priorities. AEC-011 visual search and AEC-012 region fill retain their open
+native and broader-drawing criteria. Implementation and complete acceptance are
+tracked separately.
 
 ## Published scope
 
-[0.75.0](RELEASE_0.75.0.md) is the current stable release, adding Apple Silicon packages on top of the themes and direct Ubuntu updates introduced in 0.74. Earlier evidence below retains its original scope.
+[0.76.0](RELEASE_0.76.0.md) is the current stable release, with independent reader
+views and optional page, zoom, scroll and orientation synchronization. Its
+[qualification evidence](qa/RELEASE_0.76.0.json) records exact-source checks,
+Windows upgrades, native Ubuntu split-reader checks and Apple Silicon packages.
+
+[0.75](RELEASE_0.75.0.md) introduced Apple Silicon packages.
+[0.74](RELEASE_0.74.0.md) introduced [Theme settings](APPEARANCE.md) and direct
+[Ubuntu updates](UBUNTU.md#settings-recovery-and-updates). Earlier evidence below
+retains its original scope.
 
 Updated 2026-10-24T17:32:54.306206Z. [0.73.0](RELEASE_0.73.0.md) adds reviewed multi-source plan-link batches and clearer
 Linux window controls. Published stable with [qualification evidence](qa/RELEASE_0.73.0.json). AEC-017 remains **In progress**.

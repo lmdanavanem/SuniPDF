@@ -7,14 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
-## [0.76.0] - Unreleased
+## [0.76.0] - 2026-10-24
 
-- Add two reader panes for one open PDF, with independent page, zoom and scroll state.
-- Route reading and editing controls to the active pane, with optional view synchronization.
-- Share bounded rendering resources and preserve pane positions across document tabs.
+- Add two reader panes for one open PDF, with independent page, zoom, scroll position and navigation history.
+- Route reading and editing controls to the active pane; optionally synchronize page, zoom, scroll position and view rotation.
+- Preserve unfinished editing input when switching is blocked, and focus an inactive pane before an editing click can act.
+- Share bounded rendering resources and preserve pane positions across document tabs for the current session.
+- Keep the active location and document open when closing the split.
 - Include published 0.75 packages in Windows upgrade regression coverage.
 
-Development candidate: [scope and pending qualification](docs/RELEASE_0.76.0.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.76.0). See [qualification and limits](docs/RELEASE_0.76.0.md).
 
 ## [0.75.0] - 2026-10-24
 
