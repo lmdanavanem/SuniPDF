@@ -185,7 +185,7 @@ pub static TABLE: [WsInfo; 18] = [
             ],
             &[C::CropPages, C::ResizePages, C::PageLabels],
             &[C::SplitDocument, C::ExtractPages],
-            &[C::PlanSets, C::PlanLinks],
+            &[C::PlanSets, C::RevisionTransfer, C::PlanLinks],
         ],
     },
     WsInfo {

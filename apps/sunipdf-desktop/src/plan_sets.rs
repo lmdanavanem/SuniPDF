@@ -305,6 +305,27 @@ mod tests {
     }
 
     #[test]
+    fn filtered_selection_never_opens_a_hidden_sheet_or_discards_its_draft() {
+        let mut state = PlanSetState::default();
+        state.replace(sample(), "set.json".into(), false);
+        assert!(state.selected_visible());
+        let original = state.selected.clone();
+        state.draft.as_mut().unwrap().revision = "Unsaved revision".into();
+        state.view.options.query = "A-2".into();
+        assert!(!state.selected_visible());
+        assert_eq!(state.selected, original);
+        assert_eq!(state.draft.as_ref().unwrap().revision, "Unsaved revision");
+        state.view.options.query.clear();
+        assert!(state.selected_visible());
+        state.view.options.group = crate::plan_set_view::Group::Revision;
+        state.view.options.query = "none".into();
+        state.replace(sample(), "other-set.json".into(), false);
+        assert!(state.selected_visible());
+        assert!(state.view.options.query.is_empty());
+        assert!(state.view.options.group == crate::plan_set_view::Group::None);
+    }
+
+    #[test]
     fn metadata_edits_preserve_source_identity_and_invalid_drafts_are_atomic() {
         let original = sample();
         let mut state = PlanSetState::default();
@@ -743,6 +764,7 @@ pub struct PlanSetState {
     page: usize,
     navigation: Option<(PathBuf, usize)>,
     navigation_confirmation: Option<PendingNavigation>,
+    view: crate::plan_set_view::View,
 }
 
 impl Default for PlanSetState {
@@ -770,6 +792,7 @@ impl Default for PlanSetState {
             page: 0,
             navigation: None,
             navigation_confirmation: None,
+            view: Default::default(),
         }
     }
 }
@@ -788,6 +811,16 @@ impl PlanSetState {
                     .find(|sheet| sheet.id == draft.id)
                     .is_none_or(|sheet| *draft != SheetDraft::from(sheet))
             })
+    }
+
+    fn selected_visible(&mut self) -> bool {
+        let (Some(set), Some(id)) = (&self.set, &self.selected) else {
+            return false;
+        };
+        self.view
+            .indices(set, self.report.as_ref())
+            .iter()
+            .any(|&index| set.sheets[index].id == *id)
     }
 
     fn select(&mut self, id: Option<String>) {
@@ -818,6 +851,7 @@ impl PlanSetState {
         self.dirty = dirty;
         self.report = None;
         self.page = 0;
+        self.view = Default::default();
         self.select(selection);
     }
 
@@ -1236,7 +1270,7 @@ impl SuniApp {
             && matches!(self.engine, EngineState::Ready);
         let fields_edited = self.plan_sets.edited_fields();
         let has_set = self.plan_sets.set.is_some();
-        let has_selection = self.plan_sets.selected.is_some();
+        let has_selection = self.plan_sets.selected_visible();
         let (mut replacement, mut add, mut inspect, mut save, mut navigate, mut close, mut cancel) =
             (None, false, false, false, false, false, false);
         let (mut apply, mut reset, mut remove, mut refresh, mut confirmed_refresh) =
@@ -1246,6 +1280,7 @@ impl SuniApp {
         let mut discard_quit = false;
         let mut navigate_existing = None;
         let mut cancel_navigation = false;
+        let mut transfer_revisions = false;
         dialog::show(
             ctx,
             Spec::new(
@@ -1340,6 +1375,12 @@ impl SuniApp {
                                 egui::Button::new(tr(lang, "plan_sets.open_sheet")),
                             )
                             .clicked();
+                        transfer_revisions = ui
+                            .add_enabled(
+                                has_set && !fields_edited,
+                                egui::Button::new(tr(lang, "transfer.title")),
+                            )
+                            .clicked();
                     });
                 });
                 if self.plan_sets.replacement.is_some() {
@@ -1416,8 +1457,72 @@ impl SuniApp {
                             }
                         });
                     }
-                    let max_page = set.sheets.len().saturating_sub(1) / 50;
+                    let previous_options = self.plan_sets.view.options.clone();
+                    ui.add_enabled_ui(ready && !fields_edited, |ui| {
+                        ui.label(tr(lang, "plan_sets.filter"));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.plan_sets.view.options.query)
+                                .char_limit(256)
+                                .desired_width(f32::INFINITY)
+                                .hint_text(tr(lang, "plan_sets.filter_hint")),
+                        );
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr(lang, "plan_sets.group_by"));
+                            egui::ComboBox::from_id_salt("plan_set_group")
+                                .selected_text(tr(lang, self.plan_sets.view.options.group.key()))
+                                .show_ui(ui, |ui| {
+                                    for group in crate::plan_set_view::Group::ALL {
+                                        ui.selectable_value(
+                                            &mut self.plan_sets.view.options.group,
+                                            group,
+                                            tr(lang, group.key()),
+                                        );
+                                    }
+                                });
+                            ui.checkbox(
+                                &mut self.plan_sets.view.options.issues_only,
+                                tr(lang, "plan_sets.issues_only"),
+                            );
+                            if ui.button(tr(lang, "plan_sets.clear_view")).clicked() {
+                                self.plan_sets.view.options = Default::default();
+                            }
+                        });
+                    });
+                    if self.plan_sets.view.options != previous_options {
+                        self.plan_sets.page = 0;
+                    }
+                    let indices = self
+                        .plan_sets
+                        .view
+                        .indices(set, self.plan_sets.report.as_ref());
+                    let filtered_count = indices.len();
+                    let selection_visible =
+                        self.plan_sets.selected.as_ref().is_some_and(|id| {
+                            indices.iter().any(|&index| set.sheets[index].id == *id)
+                        });
+                    let max_page = filtered_count.saturating_sub(1) / 50;
                     self.plan_sets.page = self.plan_sets.page.min(max_page);
+                    let visible_indices: Vec<usize> = indices
+                        .iter()
+                        .skip(self.plan_sets.page * 50)
+                        .take(50)
+                        .copied()
+                        .collect();
+                    ui.small(tr_args(
+                        lang,
+                        "plan_sets.filtered_count",
+                        &[
+                            ("shown", filtered_count.to_string().as_str()),
+                            ("total", set.sheets.len().to_string().as_str()),
+                        ],
+                    ));
+                    if filtered_count == 0 {
+                        ui.label(tr(lang, "plan_sets.no_matches"));
+                    }
+                    if self.plan_sets.selected.is_some() && !selection_visible {
+                        ui.small(tr(lang, "plan_sets.hidden_selection"));
+                    }
+                    ui.small(tr(lang, "plan_sets.sort_help"));
                     ui.horizontal(|ui| {
                         if ui
                             .add_enabled(
@@ -1449,20 +1554,68 @@ impl SuniApp {
                                 .striped(true)
                                 .min_col_width(70.0)
                                 .show(ui, |ui| {
-                                    for key in [
-                                        "plan_sets.number",
-                                        "plan_sets.sheet_title",
-                                        "plan_sets.discipline",
-                                        "plan_sets.revision",
-                                        "plan_sets.page",
-                                        "plan_sets.status",
+                                    for (key, sort) in [
+                                        ("plan_sets.number", crate::plan_set_view::Sort::Number),
+                                        (
+                                            "plan_sets.sheet_title",
+                                            crate::plan_set_view::Sort::Title,
+                                        ),
+                                        (
+                                            "plan_sets.discipline",
+                                            crate::plan_set_view::Sort::Discipline,
+                                        ),
+                                        (
+                                            "plan_sets.revision",
+                                            crate::plan_set_view::Sort::Revision,
+                                        ),
+                                        ("plan_sets.page", crate::plan_set_view::Sort::Page),
                                     ] {
-                                        ui.strong(tr(lang, key));
+                                        let label = if self.plan_sets.view.options.sort == sort {
+                                            format!(
+                                                "{} {}",
+                                                tr(lang, key),
+                                                if self.plan_sets.view.options.descending {
+                                                    "↓"
+                                                } else {
+                                                    "↑"
+                                                }
+                                            )
+                                        } else {
+                                            tr(lang, key).to_owned()
+                                        };
+                                        if ui
+                                            .add_enabled(
+                                                ready && !fields_edited,
+                                                egui::Button::new(label),
+                                            )
+                                            .clicked()
+                                        {
+                                            self.plan_sets.view.toggle_sort(sort);
+                                            self.plan_sets.page = 0;
+                                        }
                                     }
+                                    ui.strong(tr(lang, "plan_sets.status"));
                                     ui.end_row();
-                                    for sheet in
-                                        set.sheets.iter().skip(self.plan_sets.page * 50).take(50)
-                                    {
+                                    let mut previous_group = None;
+                                    for index in &visible_indices {
+                                        let sheet = &set.sheets[*index];
+                                        let group = self.plan_sets.view.options.group;
+                                        if group != crate::plan_set_view::Group::None {
+                                            let label = group.label(sheet, set);
+                                            let normalized = label.to_lowercase();
+                                            if previous_group.as_ref() != Some(&normalized) {
+                                                ui.strong(if label.is_empty() {
+                                                    tr(lang, "plan_sets.group_empty")
+                                                } else {
+                                                    label
+                                                });
+                                                for _ in 0..5 {
+                                                    ui.label("");
+                                                }
+                                                ui.end_row();
+                                                previous_group = Some(normalized);
+                                            }
+                                        }
                                         let selected =
                                             self.plan_sets.selected.as_deref() == Some(&sheet.id);
                                         if ui
@@ -1618,6 +1771,15 @@ impl SuniApp {
         if let Some(id) = select {
             self.plan_sets.select(Some(id));
         }
+        if transfer_revisions {
+            if let (Some(set), Some(path)) =
+                (self.plan_sets.set.clone(), self.plan_sets.path.clone())
+            {
+                if self.open_revision_transfer_for_set(set, path) {
+                    self.plan_sets.open = false;
+                }
+            }
+        }
         if apply {
             if let Err(error) = self.plan_sets.apply_fields() {
                 self.plan_sets.error = Some(error.to_string());
@@ -1721,7 +1883,7 @@ impl SuniApp {
                 });
             }
         }
-        if navigate {
+        if navigate && self.plan_sets.selected_visible() {
             if let (Some(set), Some(path), Some(sheet_id)) = (
                 self.plan_sets.set.clone(),
                 self.plan_sets.path.clone(),

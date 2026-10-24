@@ -1,145 +1,94 @@
 # Project status
 
-**0.62.0 is published as stable Latest**, verified on 2026-10-24.
-[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.62.0) · [Release notes](RELEASE_0.62.0.md) · [Machine-readable evidence](qa/RELEASE_0.62.0.json).
+**0.63.0 is published as stable Latest, with source, package and public-download verification complete.**
+Updated 2026-10-24. [Published downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.63.0) ·
+[0.63 evidence](qa/RELEASE_0.63.0.json) · [0.63 scope](RELEASE_0.63.0.md).
 
-Source `a6281fd8d54e4bceddc53d43e9527b1cdaa3872e`, tag `v0.62.0`.
-The published qualification below applies to that source and its exact packages.
+## 0.63 qualification
 
-## 0.63 candidate implementation
+The release source was merged as `f35c2c7930546b9a2bc1e24a886ca0c19621941f` through
+[PR #39](https://github.com/lmdanavanem/SuniPDF/pull/39). Its tree matches the locally qualified source.
+Release ID `422499992` was published at 04:28:05 UTC on 2026-10-24; anonymous Latest checks passed before and after public-package execution.
 
-- Local plan-set manifests index selected PDFs with stable sheet IDs, physical page references, editable
-  metadata and SHA256/length pins. Desktop and CLI operations expose unavailable or changed references,
-  save new manifest copies with confined rebasing, and leave the source PDFs unchanged.
-- Sheet navigation checks verified bytes. A matching clean tab can be reused; unsaved tabs require an
-  explicit choice, with different page counts refusing an indexed jump. One-operation passwords remain
-  in memory and never enter the manifest. Revision equivalence and automatic cross-document links are
-  separate work. [Plan-set workflow](PLAN_SETS.md).
-- FDF form export covers supported text, checkbox, radio and choice values. Import retains the distinction
-  between button appearance-state names and text values, with shared serialization/expansion bounds and
-  destination-field validation. [Value exchange and exclusions](FORM_DATA.md).
-- Deducted areas and constant-depth volumes retain separate outer/interior contours and an explicit
-  physical depth. Desktop selection, point editing, preview and history preserve the full geometry;
-  the CLI writes guarded new copies. Gross/deducted/net results, cubic quantity units and compatible
-  unit prices preserve physical dimensions. Historical quantities remain inactive.
-- Automatic scale selection uses the outer boundary, and stored geometry is checked after coordinate
-  conversion. Invalid topology, ambiguous scale regions and incompatible prices refuse the operation.
-  [Calculation and geometry limits](MEASUREMENT_VOLUMES.md).
-
-AEC-009 and AEC-015 are **In progress**. Final local candidate checks passed on 2026-10-24:
-**963 workspace tests passed, 0 failed and 15 ignored**; formatting, workspace Clippy and the desktop/CLI
-build passed. A whole-process CLI corpus passed **20 commands and 680 assertions**, with its binary hash
-unchanged. The source fingerprint remained
-`74e6ad2caf2cf54172d0ab48ee6201e092f0c5bcf15c3bdb4550901a6d874964` throughout the final pipeline.
-Final native workflows are still being checked; exact-source CI, package/install/update checks and publication
-remain pending. These local results are separate from the published 0.62 evidence below. See the
-[candidate qualification and limits](RELEASE_0.63.0.md).
-
-## Published qualification
-
-| Check | Result |
+| Check | Recorded result |
 |---|---|
-| Windows workspace | 904 passed, 0 failed, 15 ignored |
-| Linux main workspace | 885 passed, 0 failed, 10 ignored |
-| Linux package-build workspace | 885 passed, 0 failed, 10 ignored |
-| Interface translations | 1536 matching English/French keys |
-| Portable updater | 46 scenarios: 42 upgrades and 4 guards |
-| MSI lifecycle in CI | 40 baselines / 200 verified logs |
-| Conformance corpus | 12 fixtures / 42 stages in each main and release run |
-| Public downloads | Eight anonymous downloads verified against qualified SHA256 values and sidecars |
-| Published Windows x64 CLI | 48 process commands / 288 assertions / 0 failures |
-| Code Scanning | No open alerts at qualification |
+| Final local Windows workspace | 963 passed, 0 failed, 15 ignored |
+| Formatting, workspace Clippy and desktop/CLI build | Passed |
+| Whole-process CLI corpus | 20 commands / 680 assertions / 0 failures |
+| Native Windows plan set | Manifest open, reference statuses and existing clean-tab navigation passed |
+| Native Windows volume | Deduction vertex insertion, Preview/Apply, Undo/Redo and save/reopen passed |
+| Native Windows FDF | Repeated imports, clear, save/reopen and FDF export passed |
+| Independent native-volume output | 65 assertions passed; source, geometry, depth, appearance and quantity retained |
+| Independent native-FDF output | 8 commands / 129 assertions passed; 13 protected files unchanged |
+| Main CI / Linux / CodeQL / release workflows | All four passed on the release source |
+| Windows / Linux source tests | Windows 963 passed / 15 ignored; Linux 943 passed / 10 ignored per run; zero failures |
+| Translation catalogues | 1,619 matching keys |
+| Portable updates | 43 baselines plus 4 guards: 47 scenarios passed |
+| MSI lifecycle | 41 baselines / 205 logs passed |
+| Ubuntu package | 22.04 and 24.04 clean-container installation, CLI, OCR, reader, remove/reinstall checks passed |
+| Public downloads | Eight assets and checksum sidecars verified anonymously; stable Latest verified |
+| Actual downloaded Windows CLI | 68 commands / 968 assertions, zero failures; package and helpers unchanged |
+| DEB payload identity | Embedded CLI matched both conformance runs; no execution performed by this supplemental check |
+| Reader UI CI | Five actual application/PDFium scenes; offscreen DX12 WARP, not physical GPU interaction |
+| Security scanning | Zero open alerts after individual fixture/false-positive review |
 
-Exact-source workflows: [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/40051795382) · [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/40051795422) · [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40051802122) · [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/40051795764).
-Ignored tests are not passed qualification. Separate runs are not combined into a larger total.
+The final local source fingerprint was
+`74e6ad2caf2cf54172d0ab48ee6201e092f0c5bcf15c3bdb4550901a6d874964`.
+The CLI SHA256 was `750e713e2bf81c52cfadc22ce2498e6a466bafce7cda3efac8b8f44c72bf5583`;
+the desktop SHA256 was `ad827ad2f2180948e5c8d549c3fa34d15690e0d7300a657a7e109b87d078b235`.
+These hashes identify the local development builds. The separately downloaded CLI has SHA256
+`cf7b8a03da2fecfca99388065d835c6760178dcedb849b07fc5ee8ee3574e658`. Its runtime check did not
+launch the distributed GUI or install the package locally; installer evidence is from CI. Ignored tests are not passed checks;
+separate runs and earlier failed attempts are not summed.
 
-The published Windows x64 portable package was executed with its adjacent runtimes and no development-runtime
-overrides. The run covered historical and changed-page exclusions, explicit recalibration, retained prices and
-custom fields, signed numeric CSV, save/reopen, independent PDF metadata, qpdf, rendering, license inventory
-and native-library loading. All assertions passed, the package stayed unchanged, and anonymous Latest checks
-identified 0.62.0 before and after. No GUI launch, installation or local update was performed in this run;
-MSI lifecycle and upgrade results above come from CI.
+## Implemented scope
 
-Windows CI UI checks use offscreen DX12 WARP. Ubuntu 22.04/24.04 checks install and run the package as a normal
-user in clean containers, with Xvfb/software Glow and same-version removal/reinstallation. These checks do
-not establish physical GPU or previous-version Ubuntu upgrade behavior. The JSON retains actual UI,
-performance and package-validation records.
+- [Local plan sets](PLAN_SETS.md): selected PDFs, stable sheet identities, editable metadata, confined
+  relative paths, source fingerprints and guarded navigation. Refresh/relink and manifest copies preserve
+  source PDFs and existing tab edits. Grouped/searchable navigation remains open in AEC-015.
+- [FDF exchange](FORM_DATA.md): typed button states, Unicode values, explicit empty-choice/clear behavior,
+  bounded expansion and transactional appearance refresh, including repeated imports.
+- [Deducted areas and volumes](MEASUREMENT_VOLUMES.md): separate contours, physical depth,
+  gross/deducted/net results, cubic prices and formulas, source provenance and atomic validation.
+  AEC-009 is Done for its stated polygon deductions and constant-depth calculation criteria. Editable external-reader interoperability
+  and physical measurement accuracy remain separate, unqualified scopes.
 
-The conformance corpus covers PDF/A-1b, PDF/A-2b and PDF/UA-1, source preservation, specified rewrites and
-first-page PDFium/Poppler checks, with positive and expected-negative outcomes. A later DEB payload check
-on 2026-10-24 independently matched the embedded SuniPDF CLI SHA256 to both recorded conformance runs.
-The package remained unchanged. This in-memory inspection did not execute Linux programs or add runtime
-or desktop qualification; the desktop hash was observed only. Historical run records remain unchanged
-and the supplementary result is retained in the release evidence. This is bounded evidence, not universal
-conformance, human accessibility or private-plan qualification.
+The native volume run validated vertex insertion; it did not establish handle dragging. The native form
+panel lacked one tested CJK glyph, while independent inspection confirmed the exact stored Unicode value.
+The full [release notes](RELEASE_0.63.0.md) retain behavior and limits.
 
-## Delivered in 0.62.0
+## Previous release evidence
 
-Published changes include:
+[0.62.0](RELEASE_0.62.0.md) was published from `a6281fd8d54e4bceddc53d43e9527b1cdaa3872e`.
+Its [evidence](qa/RELEASE_0.62.0.json) retains exact-source CI, eight verified public downloads, Windows
+x64 CLI qualification and the later DEB payload identity check. Those results belong to 0.62.0.
+Earlier local benchmarks found a faster 300-row/eight-formula case and a 23 ms regression in the
+optimization/output case; the cause remains unisolated. They do not establish release-build or UI performance.
+[0.61 evidence](qa/RELEASE_0.61.0.json), [0.60 evidence](qa/RELEASE_0.60.0.json) and
+[earlier status history](archive/PROJECT_STATUS_PRE_0.60.md) remain available.
 
-- Dimensioned rectangles use an explicit displayed-page anchor, real width/height and local, page, region or automatic calibration. Preview/Apply, one Undo step, save/reopen and CLI operations share geometry and storage-precision guards.
-- Formula subtotals reuse the evaluated row cells, sum their rounded results and separate formula/group/unit/precision buckets. Coverage, error categories and missing totals stay explicit.
-- Quantity exports retain version 1 coverage semantics, add additive/angular/excluded counters and preserve signed numeric CSV cells while protecting free-text cells.
-- Quantity-table construction reuses one permissions read and avoids copying all page annotation entries for every row. A bounded same-machine development-build comparison is recorded below; export and edit permission checks remain explicit.
-- Saved measurement provenance distinguishes current, legacy-unverified and changed-page records. Historical values remain inspectable but cannot supply reusable scales, active quantities, costs or quantity-dependent formulas. Explicit current-reference recalibration is required for lengths and areas; historical angles must be recreated.
-- Page references now include initial layer visibility and the page transparency group as well as bounds, user unit, decoded content and reachable resources. Earlier saved defaults and named-region references require explicit recalibration or removal; metadata edits alone cannot promote them.
-- Measurement edits and batch recalibration reject incompatible preserved price dimensions or pricing overflow before committing. Compatible unit conversions retain the explicit price basis; a failed batch leaves all its records unchanged.
-- CLI output creation refuses a destination created during processing unless that command explicitly permits replacement. Document restoration preserves the live document and credential on failure; encrypted certificate signing also refuses automatically unlocked inputs.
-- Failed tab resumes retain unsaved bytes, history and recovery identity for retry. Register reloads, search generations, measurement invalidation and page/navigation state follow edits completed during suspension.
+## Project tracking and remaining gates
 
-## Earlier local development qualification
+### 0.64 development candidate
 
-Qualification of the implementation preceding the release-version change is recorded separately:
+Reviewed native-shape transfer and grouped/searchable plan navigation are implemented in the
+[0.64 candidate](RELEASE_0.64.0.md). The final local workspace passed 994 test executions, with
+0 failures and 15 ignored results; formatting, Clippy, desktop/CLI build and 1,670 bilingual keys
+passed. The final CLI passed 14 independent process commands and 94 output assertions, including
+source preservation and atomic refusals. Native workflows and exact-source package qualification
+remain in progress. These counts are separate from the published 0.63 evidence above.
 
-| Local check | Recorded result |
-|---|---|
-| Windows workspace | 904 passed, 0 failed, 15 ignored |
-| Independent corpus runs | Three explicitly executed tests passed before the final visual-only changes |
-| Format, Clippy and documentation | Passed |
-| Interface translations | 1536 matching English/French keys |
-| Final CLI qualification | 44 commands / 276 assertions |
-| Independent output and source checks | 19 passed |
-| Native Windows | Rectangle creation, Preview/Apply, Undo/Redo, save/reopen and historical-price recalibration exercised |
-| Final visual checks | English/French, light/dark controls and formatted quantity values checked |
+[GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized after 0.62 publication
+on 2026-10-24: five existing P1 cards updated and 27 AEC cards added without duplication. The preserved
+views contained 51 Roadmap, 8 Bugs and 11 Suggestions cards. This is the dated tracking baseline;
+subsequent publication updates mark AEC-009 Done for its stated scope and keep AEC-015, AEC-016 and
+AEC-017 in progress for later 0.64/0.65 work. The 27 AEC cards comprise 15 In progress, 10 Planned and
+2 Done. Those candidates
+are not part of 0.63, and partial evidence does not close broader P1 cards.
 
-The quantity-table benchmark used 300 annotations and eight constant formulas, five samples after warmup,
-and matching local development profiles: median complete-command time changed from 5.593 s to 0.279 s.
-The optimization-and-output case regressed from 0.053 s to 0.076 s; its cause remains unisolated.
-These observations do not qualify optimized release packages or establish general UI smoothness.
-
-Exact-source CI, platform packaging, upgrade checks and public-download verification are recorded above.
-The earlier local measurements do not qualify release-build performance. Measurement page binding does not establish physical
-accuracy, authenticate every drawing revision or replace independent reader qualification.
-
-## Previous release
-
-- Custom-field sorting in the register and typed sorting in quantity tables, with stable ties and missing values last.
-- Capture of supported saved native shapes into source-attributed, reusable annotation groups.
-- Bounded report formulas, explicit unit/error handling and reusable configuration with source-bound CSV/JSON.
-- Independent conformance/reader checks and preservation of the existing compression state of XML metadata during optimization.
-
-The complete [0.61.0 evidence](qa/RELEASE_0.61.0.json) remains available as a historical record.
-
-## Project tracking
-
-[GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized after publication on
-2026-10-24: five existing P1 cards updated and 27 AEC cards added without duplication. Roadmap contains
-51 cards, Bugs 8 and Suggestions 11. Existing bug/suggestion statuses and saved views were preserved.
-Partial capabilities remain open; candidate 0.63 work is not marked as a published release.
-
-## Remaining work
-
-Qualification remains limited to the specified synthetic/licensed inputs and operations. Private real-project
-plans remain deferred. There is no universal PDF/A, PDF/UA, accessibility or survey-accuracy claim. The 0.62.0
-CI performance evidence covers cached model operations; earlier local development checks add bounded
-whole-command and native action/capture observations, without complete frame-latency qualification. Windows remains unsigned;
-ARM64 has no native runtime qualification. Ubuntu uses Xvfb/software Glow and same-version reinstall tests.
-Physical printing, broader native interaction, human accessibility and independent update authenticity remain
-open. The repository backlog records the acceptance criteria for each remaining item.
-
-Unit-bearing fields, broader annotation capture and geometric area/volume extensions remain in the
-[roadmap](ROADMAP.md). Whole backlog cards and [1.0 gates](RELEASE_1.0_CRITERIA.md)
-stay open until their full acceptance criteria are met. See [known limits](KNOWN_ISSUES.md).
-
-[0.60 evidence](qa/RELEASE_0.60.0.json) and [earlier project history](archive/PROJECT_STATUS_PRE_0.60.md)
-are preserved; their old status statements are historical.
+Private real-project plans remain deferred. Independent update signing, production code signing,
+physical printing, native ARM64 execution, human accessibility and broader reader/conformance checks
+remain open. Windows packages are unsigned; Ubuntu CI uses containers and software rendering.
+There is no universal PDF/A, PDF/UA, survey-accuracy or physical-device claim.
+See the [roadmap](ROADMAP.md), [capability backlog](AEC_BACKLOG.md),
+[known limits](KNOWN_ISSUES.md) and [1.0 gates](RELEASE_1.0_CRITERIA.md).

@@ -5,9 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-## [0.63.0] - In preparation
+- Prepare 0.64.0: transfer explicitly selected native shapes between reviewed revision pages, retaining the revised PDF's content and writing a new copy. Preview every mapped destination, enforce source fingerprints and permissions, and refuse unsafe geometry, semantic data and duplicate outputs.
+- Add plan-set search, grouping by discipline/revision/file, natural numeric sorting and an unresolved-reference filter. Keep stable sheet identities and block navigation from a selection hidden by filtering.
+- Reject reusable-shape capture and revision transfer when incoming review replies exist elsewhere in the source PDF. Retain readable bounded transfer history and detect redirected filesystem aliases before publication.
+- Add the published 0.63.0 portable and MSI packages to upgrade regression baselines.
 
-Implemented candidate scope; final-source integration, native workflows and package qualification remain pending. No 0.63.0 release is published, and earlier release results do not qualify this candidate.
+[0.64 candidate qualification](docs/RELEASE_0.64.0.md) distinguishes local checks from pending native and package evidence.
+
+## [0.63.0] - 2026-10-24
+
+Published as stable Latest after exact-source CI and package qualification. Windows: 963 passed / 15 ignored; Linux: 943 passed / 10 ignored. All eight public assets were verified anonymously; the downloaded x64 CLI passed 68 commands / 968 assertions. Portable upgrades cover 43 baselines plus 4 guards; MSI covers 41 baselines / 205 logs. Native development-build checks have their own documented scope.
 
 - Add local plan-set manifests with stable sheet identities, editable metadata, source fingerprints, explicit validation and guarded sheet navigation. Create, refresh, relink and save new manifest copies through the desktop or CLI without modifying source PDFs; preserve unsaved tabs and use passwords only for the requested operation.
 - Export supported form values as FDF and retain typed button appearance-state semantics during import. Bound serialized and expanded input, and refuse ambiguous or unsupported structures before writing.
@@ -16,7 +23,7 @@ Implemented candidate scope; final-source integration, native workflows and pack
 - Preserve button appearance states when displaying forms requesting refresh and when importing values repeatedly. Keep appearance writes transactional and preserve signed or restricted source files during display.
 - Keep thin measurement contours visible in small preview images and bring volume/deduction controls closer together.
 
-[Preparation notes and remaining gates](docs/RELEASE_0.63.0.md).
+[Release notes and qualification limits](docs/RELEASE_0.63.0.md).
 
 ## [0.62.0] - 2026-10-24
 

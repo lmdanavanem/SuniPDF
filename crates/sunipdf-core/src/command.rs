@@ -5,6 +5,7 @@
 pub enum Command {
     PlanSets,
     PlanLinks,
+    RevisionTransfer,
     CompareFiles,
     RevisionOverlay,
     SearchFiles,
@@ -199,6 +200,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         PlanLinks,
         "file.plan_links",
         "plan_links.title",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        RevisionTransfer,
+        "file.revision_transfer",
+        "transfer.title",
         None,
         false,
         File
@@ -1363,7 +1372,7 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 12);
+        assert_eq!(Command::in_menu(Menu::File).count(), 14);
         assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }

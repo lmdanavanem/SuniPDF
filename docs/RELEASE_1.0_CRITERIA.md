@@ -1,6 +1,6 @@
 # SuniPDF 1.0 acceptance criteria
 
-The current stable release is [0.62.0](RELEASE_0.62.0.md), with [recorded qualification](qa/RELEASE_0.62.0.json).
+The current stable release is [0.63.0](RELEASE_0.63.0.md), with [recorded qualification](qa/RELEASE_0.63.0.json).
 The gates below remain open before 1.0. Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.
@@ -15,9 +15,10 @@ signature, XFA or PDF-conformance support.
 | ARM64 support | Run the actual public package on real Windows ARM64 and record OS/device/results | Cross-compilation and PE inspection only; keep runtime support experimental until qualified |
 | PDF/A and PDF/UA claims | Name supported profiles, retain independent validator reports, and perform applicable human accessibility checks | Recorded positive/negative PDF/A-1b, PDF/A-2b and PDF/UA-1 checks are bounded; human accessibility and broader coverage remain open |
 
-Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.62.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans.
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.63.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans.
 The [conformance protocol](CONFORMANCE.md) defines supported operations and limits.
-These results partially address the corpus/interoperability gates; the gates remain open.
+The released DEB CLI was subsequently matched by hash to both conformance runs; this extra inspection
+performed no Linux execution. These results partially address the corpus/interoperability gates; the gates remain open.
 
 For every gate, an unsupported or unavailable result must stay explicit. A partial report, a successful
 build, an ignored test or a signed test fixture must not close an unverified acceptance criterion.

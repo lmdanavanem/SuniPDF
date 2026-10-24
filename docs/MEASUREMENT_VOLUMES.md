@@ -1,6 +1,6 @@
 # Deducted areas and constant-depth volumes
 
-This increment adds holes to polygon area measurements and volumes calculated from a net area and an explicitly entered physical depth. It uses the same calibration, preview, editing, history and quantity infrastructure as other measurements. Candidate regression tests have been written; their execution, native UI qualification and release evidence are still pending.
+This increment adds holes to polygon area measurements and volumes calculated from a net area and an explicitly entered physical depth. It uses the same calibration, preview, editing, history and quantity infrastructure as other measurements. The published 0.63.0 release passed source and public-package checks, with separate native development-build workflow evidence. See [release qualification](RELEASE_0.63.0.md) for evidence and limits.
 
 ## Calculation and units
 
@@ -23,7 +23,7 @@ In Measurements, choose polygon area or volume and confirm the scale. Draw the o
 
 The geometry editor treats the outer boundary and each deduction as separate selectable rings. Removing a deduction changes the net area; it does not remove the outer boundary. Translations and rotations must move every ring together. A depth-only change preserves the polygon geometry. An unfinished or invalid ring cannot be committed.
 
-Preview is bound to the source document. A changed source requires a fresh preview. A successful operation is one history entry, so Undo and Redo restore the annotation and its metadata together. Save the PDF to retain the result on disk. These are implementation contracts; the candidate's native workflow checks must be recorded separately before release.
+Preview is bound to the source document. A changed source requires a fresh preview. A successful operation is one history entry, so Undo and Redo restore the annotation and its metadata together. Save the PDF to retain the result on disk. The native check exercised deduction vertex insertion, Preview/Apply, Undo/Redo and save/reopen; it did not establish every pointer gesture or external-reader behavior.
 
 Appearances draw the outer and interior outlines, without a filled polygon or opaque label background. They do not conceal the plan inside a deduction. The volume label is a numerical quantity, not a rendered 3D solid.
 
@@ -65,4 +65,4 @@ Only current measurements contribute quantities, line costs and quantity-depende
 
 This feature covers polygon deductions and a single constant depth. It does not implement variable depth, sloped solids, automatic material classification, automatic recognition of openings, a 3D model, or persistent rectangular constraints during later polygon edits. Other PDF applications can display the saved appearance; editable measurement interoperability requires separate qualification.
 
-The candidate includes focused core, CLI and desktop regression cases for 90 m² / 18 m³ calculations, depth-unit equivalence, invalid topology, rotation and crop, storage precision, encrypted permissions, incompatible prices, recalibration, history and reopening. Test definitions are not execution evidence. Record the final build, test results and real application checks before marking this increment qualified.
+The final source workspace and CLI corpus passed regression cases for 90 m² / 18 m³ calculations, depth-unit equivalence, invalid topology, rotation and crop, storage precision, encrypted permissions, incompatible prices, recalibration, history and reopening. A native deduction edit was saved and reopened, then checked independently: 65 assertions confirmed retained geometry, physical depth, quantity, appearance and source preservation. The downloaded release CLI also passed the plan/form/volume corpus (20 commands / 680 assertions). This is bounded synthetic-document evidence; private project plans, physical measurement accuracy and editable interoperability remain unqualified. [Qualification scope](RELEASE_0.63.0.md).

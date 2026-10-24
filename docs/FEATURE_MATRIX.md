@@ -1,8 +1,23 @@
 # SuniPDF feature matrix
 
-Current release scope: **0.62.0**. Features below are implemented within the stated limits.
+Current release scope: **0.63.0**. Features below are implemented within the stated limits.
 [Project status](PROJECT_STATUS.md) records executed checks; implementation does not imply qualification on every document,
 physical device or third-party reader. Planned work is tracked in the [roadmap](ROADMAP.md).
+
+## Delivered in 0.63.0
+
+The separate [0.64 development candidate](RELEASE_0.64.0.md) implements reviewed native-shape transfer
+and plan-set filtering, grouping and natural sorting. Its final local tests passed; native and
+package qualification remain pending. These extensions are not part of the current release below.
+
+Exact-source CI, package checks and public downloads are verified. The downloaded Windows CLI passed
+68 commands / 968 assertions; local native workflows have separate bounded evidence. See [0.63 qualification](RELEASE_0.63.0.md).
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Plan sets | Local manifests, stable sheet IDs, metadata, fingerprints, explicit validation/refresh/relink and guarded navigation; grouped/searchable navigation and revision transfer remain open |
+| Deducted areas and volumes | Strict interior holes, retained physical depth, gross/deducted/net calculations, cubic quantities/prices and full-contour editing; constant depth only, editable third-party measurement exchange unqualified |
+| FDF | Value-only export/import with typed button states, Unicode, distinct empty-choice/clear semantics, bounded expansion and preserved appearances during repeated imports |
 
 ## Delivered in 0.62.0
 
@@ -36,7 +51,7 @@ See [project status](PROJECT_STATUS.md) and
 | Search and selection | Cancellable page-by-page full-text search, highlighting, logical cross-page selection, double-click words and edge autoscroll; arbitrary untagged column order is not inferred |
 | Thumbnails and outlines | Virtualized thumbnails; bookmark add/rename/retarget/move/delete with Undo; bounded to 4,096 bookmarks and 32 levels, with cycles refused |
 | Recovery | Snapshots every 60 seconds and on tab suspension; original files unchanged, encryption retained, no passwords stored; recovery through Save As |
-| Appearance and commands | Light/dark themes, English/French interface, configurable shortcuts, Ctrl+K command palette and 18 tools in five task families |
+| Appearance and commands | Light/dark themes, English/French interface, configurable shortcuts, Ctrl+K command palette and tools in five task families |
 | Printing | Windows dialog, ranges/copies/orientation, current edits, bounded raster output and cancellation; physical printer qualification remains open; unavailable in Ubuntu |
 
 [Reader workspace](READER_WORKSPACE.md) · [User guide](USER_GUIDE.en.md) · [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md)
@@ -92,7 +107,7 @@ Private real-project plan qualification remains deferred.
 |---|---|
 | Fill forms | AcroForm text, checkbox, radio, ordinary/editable combo and single/multiple list widgets; hierarchical/multi-widget fields, regenerated appearances, Apply/Discard and read-error retry |
 | Create fields | The same five field types through mouse-drawn or numeric rectangles, unique names, rotated/cropped pages and Undo; existing-field redesign is not included |
-| Form interchange | JSON/XFDF export and bounded JSON/XFDF/value-only FDF import; no scripts, attachments or rich-text interchange |
+| Form interchange | JSON/XFDF/value-only FDF export and bounded import; typed button states, Unicode and explicit empty-choice/clear handling; no scripts, attachments or rich-text interchange |
 | Flatten | Form fields and supported annotation appearances; non-widget annotations without usable appearances are preserved where supported; malformed/unsafe graphs are refused atomically |
 | XFA and accessibility | XFA detected and read-only; scripts never run; PDF/UA tagging/conformance and full assistive-technology qualification remain open |
 | Image/PDF conversion | PNG/JPEG/BMP/GIF/TIFF/WebP to PDF, all eight JPEG EXIF orientations, PDF to PNG and text; bounded raster allocations and positive finite page sizes |

@@ -18,15 +18,15 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.62.0
+## Download 0.63.0
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.62.0/SuniPDF-0.62.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.62.0/SuniPDF-0.62.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.62.0/SuniPDF-0.62.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.62.0/SuniPDF-0.62.0-linux-amd64.deb) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.63.0/SuniPDF-0.63.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.63.0/SuniPDF-0.63.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.63.0/SuniPDF-0.63.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.63.0/SuniPDF-0.63.0-linux-amd64.deb) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.62.0) · [Qualification evidence](docs/qa/RELEASE_0.62.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.63.0) · [Qualification evidence](docs/qa/RELEASE_0.63.0.json)
 
 Packages are unsigned. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -34,7 +34,7 @@ See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUE
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.62.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.63.0-linux-amd64.deb`.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
@@ -47,36 +47,35 @@ offering installation; Ubuntu opens the release download for installation throug
 |---|---|
 | Read | Tabs, continuous and two-page views, bookmarks, search, text selection, page labels and tiled rendering |
 | Annotate and edit | Notes, highlights, ink, shapes, text, images, object transforms, reply threads and reusable annotation templates |
-| Measure plans | Lengths, perimeters, areas, dimensioned rectangles, angles, counts, saved page scales, named scale regions, eligible vector snapping and saved-vertex editing |
+| Measure plans | Lengths, perimeters, areas with deductions, constant-depth volumes, dimensioned rectangles, angles, counts, saved page scales, named scale regions, eligible vector snapping and saved-vertex editing |
 | Review quantities | Docked or floating registers, typed fields, explicit unit prices, formulas with grouped subtotals and CSV/JSON exports |
-| Organize and compare | Reorder, rotate, crop, merge, split and extract pages; local comparison and aligned revision overlays |
-| Fill and sign | AcroForm filling and creation, visual signatures; certificate signatures on Windows within documented limits |
+| Organize and compare | Reorder, rotate, crop, merge, split and extract pages; local plan sets, comparison and aligned revision overlays |
+| Fill and sign | AcroForm filling and creation, JSON/XFDF/FDF value exchange, visual signatures; certificate signatures on Windows within documented limits |
 | Convert and protect | Local English/French OCR, image compression, PDF/image/Office conversion, encryption, redaction and sanitized copies |
 | Recover and automate | Automatic recovery snapshots, Undo/Redo and a JSON command-line interface |
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.62.0
+## New in 0.63.0
 
-Draw rectangles from real dimensions, recalibrate historical measurements explicitly, and use formula subtotals
-with visible error coverage. Saving and tab recovery have stronger safeguards; quantity cells and light/dark
-controls are easier to read. Historical values remain visible without contributing active quantities or prices.
+Keep separate PDFs in a local plan set, validate their references and navigate to indexed sheets without
+replacing unsaved tabs. Exchange typed form values as FDF. Measure deducted polygon areas and constant-depth
+volumes, with explicit units, separate contours and dimension-safe quantity prices.
 
-The release passed exact-source CI, Windows/Ubuntu packaging and upgrade checks. All eight public assets
-were downloaded anonymously and verified; the published Windows x64 CLI passed 48 process commands and
-288 assertions using its bundled runtime. Installation and UI qualification have their own documented scope.
+The published release passed exact-source CI: 963 Windows tests and 943 Linux tests, with ignored tests
+recorded separately. All eight public assets were downloaded anonymously and verified. The downloaded
+Windows x64 CLI passed 68 commands and 968 assertions with its bundled runtime. Windows upgrades and
+Ubuntu installation have separate qualification evidence.
 
-[Release notes](docs/RELEASE_0.62.0.md) · [Qualification scope](docs/PROJECT_STATUS.md)
+[Release notes](docs/RELEASE_0.63.0.md) · [Qualification scope](docs/PROJECT_STATUS.md)
 
-The [0.61.0 release](docs/RELEASE_0.61.0.md) introduced custom-field sorting, supported saved annotation groups
-and bounded report formulas. Independent PDF/A/PDF/UA fixtures and PDFium/Poppler checks cover specified
-files and operations; see [conformance limits](docs/CONFORMANCE.md).
+The 0.64 development candidate adds [reviewed revision transfers](docs/REVISION_TRANSFER.md) and
+[grouped plan navigation](docs/PLAN_SETS.md). Local source and CLI checks passed; native and package
+qualification remain in progress. These changes are not included in the 0.63 downloads above.
 
-## Preparing 0.63.0
-
-The candidate adds local plan sets, FDF form value exchange, deducted polygon areas and constant-depth
-volumes. Final-source checks and exact-package qualification are in progress. Published downloads above
-remain 0.62.0. [Candidate scope and limits](docs/RELEASE_0.63.0.md).
+Earlier releases added dimensioned rectangles, explicit historical-measurement recalibration, custom-field
+sorting, reusable supported annotation groups and bounded formulas with subtotals. Independent PDF/A/PDF/UA
+fixtures and PDFium/Poppler checks cover specified files and operations; see [conformance limits](docs/CONFORMANCE.md).
 
 ## Documentation and development
 

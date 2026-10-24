@@ -5,7 +5,7 @@ use crate::{AnnotShape, AnnotStyle, Document, EngineError, FontFamily, PointRect
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 
 pub const MAX_LIBRARY_BYTES: usize = 16 * 1024 * 1024;
@@ -706,6 +706,19 @@ pub struct LibraryCaptureSelection {
     pub fingerprint: String,
 }
 
+/// Validated native geometry in its original displayed coordinates. Unlike a library entry,
+/// this representation has not been moved to a local origin.
+#[derive(Debug, Clone)]
+pub(crate) struct OriginalCapture {
+    pub index: usize,
+    pub subtype: String,
+    pub fingerprint: Option<String>,
+    pub source_nm: Option<String>,
+    pub author: Option<String>,
+    pub primitive: Option<LibraryPrimitive>,
+    pub refusal: Option<String>,
+}
+
 fn capture_object(
     pdf: &lopdf::Document,
     object: &lopdf::Object,
@@ -1231,7 +1244,166 @@ fn capture_subtype(dict: &lopdf::Dictionary) -> String {
         .unwrap_or_default()
 }
 
+/// Finds incoming reply/review links across the whole object graph, including direct annotation
+/// dictionaries on other pages. References are not traversed recursively: each indirect object
+/// is visited once. Limits fail closed rather than losing an uninspected part of a thread.
+fn capture_replied_indices(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+) -> Result<HashSet<usize>, EngineError> {
+    use lopdf::Object;
+    const MAX_NODES: usize = 200_000;
+    const MAX_DEPTH: usize = 32;
+    let mut targets: HashMap<lopdf::ObjectId, Vec<usize>> = HashMap::new();
+    for (index, entry) in capture_annotation_entries(pdf, page)?.iter().enumerate() {
+        if let Some(id) = pdf
+            .dereference(entry)
+            .map_err(crate::security::lopdf_err)?
+            .0
+        {
+            targets.entry(id).or_default().push(index);
+        }
+    }
+    if pdf.objects.len() > MAX_NODES {
+        return Err(invalid(
+            "reply inspection exceeds the document object limit",
+        ));
+    }
+    fn visit(
+        pdf: &lopdf::Document,
+        object: &Object,
+        targets: &HashMap<lopdf::ObjectId, Vec<usize>>,
+        blocked: &mut HashSet<usize>,
+        remaining: &mut usize,
+        depth: usize,
+    ) -> Result<(), EngineError> {
+        if *remaining == 0 || depth > MAX_DEPTH {
+            return Err(invalid(
+                "reply inspection exceeds the document structure limit",
+            ));
+        }
+        *remaining -= 1;
+        let dictionary = match object {
+            Object::Dictionary(dictionary) => Some(dictionary),
+            Object::Stream(stream) => Some(&stream.dict),
+            _ => None,
+        };
+        if let Some(dictionary) = dictionary {
+            if let Ok(parent) = dictionary.get(b"IRT") {
+                if !matches!(parent, Object::Reference(_)) {
+                    return Err(invalid(
+                        "reply target must be an indirect annotation reference",
+                    ));
+                }
+                let (id, target) = pdf
+                    .dereference(parent)
+                    .map_err(crate::security::lopdf_err)?;
+                if target.as_dict().is_err() {
+                    return Err(invalid("reply target is not an annotation dictionary"));
+                }
+                if let Some(indices) = id.and_then(|id| targets.get(&id)) {
+                    blocked.extend(indices.iter().copied());
+                }
+            }
+            for (_, value) in dictionary.iter() {
+                visit(pdf, value, targets, blocked, remaining, depth + 1)?;
+            }
+        } else if let Object::Array(values) = object {
+            for value in values {
+                visit(pdf, value, targets, blocked, remaining, depth + 1)?;
+            }
+        }
+        Ok(())
+    }
+    let mut blocked = HashSet::new();
+    let mut remaining = MAX_NODES;
+    for object in pdf.objects.values() {
+        visit(pdf, object, &targets, &mut blocked, &mut remaining, 0)?;
+    }
+    Ok(blocked)
+}
+
+fn capture_without_thread(
+    pdf: &lopdf::Document,
+    dict: &lopdf::Dictionary,
+    geo: &crate::geometry::PageGeometry,
+    replies: &HashSet<usize>,
+    index: usize,
+) -> Result<(LibraryPrimitive, String), EngineError> {
+    if replies.contains(&index) {
+        return Err(invalid(
+            "annotations with replies or review history cannot be captured or transferred",
+        ));
+    }
+    capture_primitive(pdf, dict, geo)
+}
+
 impl Document<'_> {
+    pub(crate) fn capture_original_annotations(
+        &self,
+        page: usize,
+    ) -> Result<Vec<OriginalCapture>, EngineError> {
+        self.capture_original_selection(page, None)
+    }
+
+    pub(crate) fn capture_original_annotation(
+        &self,
+        page: usize,
+        index: usize,
+    ) -> Result<OriginalCapture, EngineError> {
+        self.capture_original_selection(page, Some(index))?
+            .pop()
+            .ok_or_else(|| invalid("capture annotation is unavailable"))
+    }
+
+    fn capture_original_selection(
+        &self,
+        page: usize,
+        selected: Option<usize>,
+    ) -> Result<Vec<OriginalCapture>, EngineError> {
+        let (pdf, page_id, geo) = self.capture_source(page)?;
+        let entries = capture_annotation_entries(&pdf, page_id)?;
+        let replies = capture_replied_indices(&pdf, page_id)?;
+        entries
+            .iter()
+            .enumerate()
+            .filter(|(index, _)| selected.is_none_or(|wanted| wanted == *index))
+            .map(|(index, _entry)| {
+                let dict = capture_annotation(&pdf, page_id, index)?;
+                let source_nm = crate::annot_write::text_of(&pdf, dict, b"NM");
+                let author = crate::annot_write::text_of(&pdf, dict, b"T");
+                let captured = (|| {
+                    if (dict.has(b"T") && author.is_none())
+                        || source_nm
+                            .as_deref()
+                            .is_none_or(|v| !text_valid(v, 1024, false) || v.is_empty())
+                        || author.as_deref().is_some_and(|v| {
+                            !text_valid(v, 1024, false) || v.trim() != v || v.is_empty()
+                        })
+                    {
+                        return Err(invalid(
+                            "annotation identity or author is not safely transferable",
+                        ));
+                    }
+                    capture_without_thread(&pdf, dict, &geo, &replies, index)
+                })();
+                let (primitive, fingerprint, refusal) = match captured {
+                    Ok((primitive, fingerprint)) => (Some(primitive), Some(fingerprint), None),
+                    Err(error) => (None, None, Some(error.to_string())),
+                };
+                Ok(OriginalCapture {
+                    index,
+                    subtype: capture_subtype(dict),
+                    fingerprint,
+                    source_nm,
+                    author,
+                    primitive,
+                    refusal,
+                })
+            })
+            .collect()
+    }
+
     fn capture_source(
         &self,
         page: usize,
@@ -1265,12 +1437,13 @@ impl Document<'_> {
         page: usize,
     ) -> Result<Vec<LibraryCaptureCandidate>, EngineError> {
         let (pdf, page_id, geo) = self.capture_source(page)?;
+        let replies = capture_replied_indices(&pdf, page_id)?;
         let count = capture_annotation_entries(&pdf, page_id)?.len();
         (0..count)
             .map(|index| {
                 let dict = capture_annotation(&pdf, page_id, index)?;
                 let subtype = capture_subtype(dict);
-                let result = capture_primitive(&pdf, dict, &geo);
+                let result = capture_without_thread(&pdf, dict, &geo, &replies, index);
                 Ok(LibraryCaptureCandidate {
                     index,
                     subtype,
@@ -1301,6 +1474,7 @@ impl Document<'_> {
             return Err(invalid("declare a source for captured annotations"));
         }
         let (pdf, page_id, geo) = self.capture_source(page)?;
+        let replies = capture_replied_indices(&pdf, page_id)?;
         let mut seen = HashSet::new();
         let mut primitives = Vec::new();
         for selected in selections {
@@ -1308,7 +1482,8 @@ impl Document<'_> {
                 return Err(invalid("duplicate annotation selection"));
             }
             let dict = capture_annotation(&pdf, page_id, selected.index)?;
-            let (primitive, fingerprint) = capture_primitive(&pdf, dict, &geo)?;
+            let (primitive, fingerprint) =
+                capture_without_thread(&pdf, dict, &geo, &replies, selected.index)?;
             if fingerprint != selected.fingerprint {
                 return Err(invalid("source annotation changed; refresh the selection"));
             }
@@ -1476,6 +1651,40 @@ impl Document<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn document_reply_inspection_is_bounded_and_does_not_follow_reference_cycles() {
+        use lopdf::{dictionary, Object};
+        let mut pdf = lopdf::Document::with_version("1.7");
+        let parent = pdf.add_object(dictionary! {"Type"=>"Annot","Subtype"=>"Square"});
+        let page =
+            pdf.add_object(dictionary! {"Type"=>"Page","Annots"=>vec![Object::Reference(parent)]});
+        let cycle = pdf.new_object_id();
+        pdf.objects.insert(cycle, Object::Reference(cycle));
+        // Non-IRT references are opaque leaves; cycles do not recurse or allocate.
+        assert!(capture_replied_indices(&pdf, page).unwrap().is_empty());
+        let reply = pdf.add_object(dictionary! {"Type"=>"Annot","Subtype"=>"Text","IRT"=>parent});
+        assert_eq!(
+            capture_replied_indices(&pdf, page).unwrap(),
+            HashSet::from([0])
+        );
+        pdf.objects.remove(&reply);
+        let mut nested = Object::Null;
+        for _ in 0..34 {
+            nested = Object::Array(vec![nested]);
+        }
+        let deep = pdf.add_object(nested);
+        assert!(capture_replied_indices(&pdf, page)
+            .unwrap_err()
+            .to_string()
+            .contains("structure limit"));
+        pdf.objects.remove(&deep);
+        pdf.add_object(Object::Array(vec![Object::Null; 200_001]));
+        assert!(capture_replied_indices(&pdf, page)
+            .unwrap_err()
+            .to_string()
+            .contains("structure limit"));
+    }
     use serde_json::json;
 
     #[test]
