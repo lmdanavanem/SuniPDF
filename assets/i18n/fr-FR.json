@@ -2005,5 +2005,13 @@
   "window.minimize": "Réduire la fenêtre",
   "window.maximize": "Agrandir la fenêtre",
   "window.restore": "Restaurer la fenêtre",
-  "window.close": "Fermer la fenêtre"
+  "window.close": "Fermer la fenêtre",
+  "menu.view.split": "Diviser la vue du document",
+  "menu.view.sync": "Synchroniser les vues",
+  "menu.view.switch_pane": "Changer de vue active",
+  "reader.split_hint": "Les commandes agissent sur la vue active.",
+  "reader.close_split": "Fermer la vue divisée",
+  "reader.pane": "Vue {number}",
+  "reader.location": "Page {page} · {zoom}%",
+  "reader.activate_hint": "Cliquez sur une vue pour l’activer. Les commandes de lecture et les outils suivent la vue active."
 }

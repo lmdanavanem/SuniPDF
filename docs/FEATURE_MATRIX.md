@@ -4,6 +4,12 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## In development: 0.76.0
+
+- Two reader panes for the same PDF, independent navigation and zoom, active-pane editing and optional synchronization.
+- Shared document revision, Undo/Redo history and bounded rendering cache; per-tab session locations.
+- [Workflow](READER_WORKSPACE.md#two-independent-views) and [pending qualification](RELEASE_0.76.0.md). Different-document split views and restart persistence are outside this increment.
+
 ## Added in 0.75.0
 
 - Native Apple Silicon DMG, macOS menu bar, Finder opening, Command shortcuts and system clipboard support.

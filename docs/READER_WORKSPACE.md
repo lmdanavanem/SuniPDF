@@ -46,6 +46,31 @@ Use **Zoom Out**, the zoom list or **Zoom In**. The percentage, including an int
 
 View rotation changes reading orientation only. To change the PDF's page rotation, use **Organize pages** and save the document. The right icon rail opens Pages, Bookmarks, Comments, Objects and Find; page navigation and zoom use the bottom controls. The status area shows readiness or operation messages.
 
+## Two independent views
+
+Choose **Reading options → Split document view**, or find **Split document view**
+in the command palette (**Ctrl+K**, **Command+K** on macOS). Two panes display
+the same open PDF. They appear side by side when space permits and stack vertically
+in a narrower document area.
+
+Click a pane or its **View 1** / **View 2** heading to activate it. The bottom page
+and zoom controls, keyboard navigation and editing tools apply to the active pane.
+**Switch active view** in the command palette switches without a mouse. Each pane
+keeps its own location, zoom, reading layout, orientation and navigation history.
+Finish or cancel unfinished editing input before switching panes.
+
+Enable **Synchronize views** to follow the active pane's page, position, zoom and
+view rotation in the other pane. Turn synchronization off to navigate independently
+again. Both panes show the same document changes and share one Undo/Redo history.
+
+**Close split view** keeps the currently active location and leaves the PDF open.
+The split workspace is retained when switching document tabs during the session.
+It is not saved as PDF content or restored after restarting the application.
+This feature supports two views of one document; use document tabs for other files.
+
+The split feature is introduced in the [0.76 development candidate](RELEASE_0.76.0.md).
+Check [Project status](PROJECT_STATUS.md) for the currently published packages.
+
 ## Scope
 
 The 0.50 release reorganized reading, navigation and measurement operations. The [0.60 workspace](PLAN_WORKSPACE.md) adds eligible vector snapping, scale regions and batch recalibration. PDF permissions and draft/preview guards still apply.

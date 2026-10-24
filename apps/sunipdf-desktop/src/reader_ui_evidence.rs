@@ -139,6 +139,13 @@ struct Scene {
     style: crate::theme::Style,
     reduce_transparency: bool,
     settings_open: bool,
+    split: Option<SplitScene>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SplitScene {
+    Independent,
+    Synchronized,
 }
 
 #[derive(Clone, Copy)]
@@ -153,6 +160,7 @@ fn fulfill_requests(
     requests: &mpsc::Receiver<Request>,
     responses: &mpsc::Sender<Response>,
     tiles: &mut Vec<TileJob>,
+    wanted_batches: &mut Vec<(u64, Vec<TileJob>)>,
 ) -> EvidenceResult<()> {
     for (index, request) in requests.try_iter().enumerate() {
         require(index < 128, "Reader UI exceeded its fixture request bound")?;
@@ -162,6 +170,11 @@ fn fulfill_requests(
                     jobs.len() <= 32,
                     "Reader UI exceeded its tile request bound",
                 )?;
+                require(
+                    wanted_batches.len() < 128,
+                    "Reader UI exceeded its render queue replacement bound",
+                )?;
+                wanted_batches.push((epoch, jobs.clone()));
                 for job in jobs {
                     require(
                         job.region.width <= 4096 && job.region.height <= 4096,
@@ -244,6 +257,7 @@ fn fulfill_requests(
                 generation,
                 result: document.quantity_table(),
             },
+            Request::FinishSelection => Response::SelectionFinished,
             Request::FinishMutation | Request::SetRecovery(_) => continue,
             _ => {
                 return Err(
@@ -254,6 +268,243 @@ fn fulfill_requests(
         responses.send(response)?;
     }
     Ok(())
+}
+
+fn painted_pdf_regions(
+    frame: &egui::FullOutput,
+    viewport: Rect,
+    texture_ids: &[egui::TextureId],
+) -> Vec<Rect> {
+    frame
+        .shapes
+        .iter()
+        .filter_map(|shape| match &shape.shape {
+            egui::Shape::Mesh(mesh) if texture_ids.contains(&mesh.texture_id) => {
+                let bounds = mesh
+                    .calc_bounds()
+                    .intersect(shape.clip_rect)
+                    .intersect(viewport);
+                bounds.is_positive().then_some(bounds)
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Count fixture colour only inside actual PDF meshes, never matching nearby UI accents.
+fn fixture_ink_pixels(pixels: &[u8], size: [u32; 2], regions: &[Rect], page: usize) -> u64 {
+    let [width, height] = size;
+    let viewport = Rect::from_min_size(egui::Pos2::ZERO, vec2(width as f32, height as f32));
+    let Some(visible) = regions.iter().copied().reduce(Rect::union) else {
+        return 0;
+    };
+    let visible = visible.intersect(viewport);
+    let mut ink = 0;
+    for y in visible.top().ceil().max(0.0) as u32..visible.bottom().floor().max(0.0) as u32 {
+        for x in visible.left().ceil().max(0.0) as u32..visible.right().floor().max(0.0) as u32 {
+            if !regions
+                .iter()
+                .any(|rect| rect.contains(pos2(x as f32 + 0.5, y as f32 + 0.5)))
+            {
+                continue;
+            }
+            let offset = ((y * width + x) * 4) as usize;
+            let pixel = &pixels[offset..offset + 4];
+            let matches = match page {
+                0 => pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 180,
+                1 => pixel[0] > 180 && pixel[1] < 80 && pixel[2] < 80,
+                _ => false,
+            };
+            ink += u64::from(matches);
+        }
+    }
+    ink
+}
+
+#[test]
+fn fixture_ink_is_limited_to_the_requested_page_and_clipped_pdf_regions() {
+    let pixels = [
+        [255, 0, 0, 255],
+        [0, 0, 255, 255],
+        [255, 0, 0, 255],
+        [0, 0, 255, 255],
+    ]
+    .concat();
+    let region = Rect::from_min_max(pos2(-10.0, -10.0), pos2(2.0, 1.0));
+    assert_eq!(fixture_ink_pixels(&pixels, [4, 1], &[region], 0), 1);
+    assert_eq!(fixture_ink_pixels(&pixels, [4, 1], &[region], 1), 1);
+    assert_eq!(fixture_ink_pixels(&pixels, [4, 1], &[region], 2), 0);
+    assert_eq!(fixture_ink_pixels(&pixels, [4, 1], &[], 0), 0);
+}
+
+fn split_snapshot(app: &crate::app::SuniApp) -> Value {
+    let Some(other) = app.reader_views.other.as_ref() else {
+        return Value::Null;
+    };
+    let active = json!({
+        "pageIndex": app.document.as_ref().map(|document| document.page),
+        "effectiveZoom": app.effective_zoom,
+        "offset": [app.view.offset.x, app.view.offset.y],
+        "rendering": app.view.is_rendering(),
+    });
+    let inactive = json!({
+        "pageIndex": other.page, "effectiveZoom": other.effective_zoom,
+        "offset": [other.view.offset.x, other.view.offset.y],
+        "rendering": other.view.is_rendering(),
+    });
+    let panes = if app.reader_views.active == 0 {
+        [active, inactive]
+    } else {
+        [inactive, active]
+    };
+    json!({
+        "enabled": app.reader_views.enabled, "activePane": app.reader_views.active,
+        "synchronized": app.reader_views.synchronized, "documentEpoch": app.view.epoch,
+        "panes": panes,
+    })
+}
+
+struct SplitProof<'a> {
+    frame: &'a egui::FullOutput,
+    pixels: &'a [u8],
+    size: [u32; 2],
+    tiles: &'a [TileJob],
+    wanted_batches: &'a [(u64, Vec<TileJob>)],
+    frame_states: &'a [Value],
+}
+
+fn verify_split_scene(
+    app: &crate::app::SuniApp,
+    mode: SplitScene,
+    proof: SplitProof<'_>,
+    texture_ids_for: impl Fn(&[TileJob]) -> Vec<egui::TextureId>,
+) -> EvidenceResult<Value> {
+    let synchronized = mode == SplitScene::Synchronized;
+    require(
+        app.reader_views.enabled && app.reader_views.synchronized == synchronized,
+        "Split reader mode does not match its scene",
+    )?;
+    let other = app
+        .reader_views
+        .other
+        .as_ref()
+        .ok_or("Split reader lost its second pane")?;
+    require(
+        !other.view.is_rendering(),
+        "Second reader pane did not settle",
+    )?;
+    require(
+        proof.frame_states[5]["split"]["panes"][0]["pageIndex"] == 0
+            && proof.frame_states[5]["split"]["panes"][1]["pageIndex"] == 1,
+        "Independent reader pages did not remain distinct before synchronization",
+    )?;
+    require(
+        proof.wanted_batches.iter().any(|(_, jobs)| {
+            jobs.iter().any(|job| job.page == 0) && jobs.iter().any(|job| job.page == 1)
+        }),
+        "Two reader panes never shared one replacement render queue",
+    )?;
+    require(
+        proof
+            .wanted_batches
+            .iter()
+            .all(|(epoch, _)| *epoch == app.view.epoch)
+            && proof
+                .frame_states
+                .iter()
+                .all(|state| state["epoch"] == app.view.epoch),
+        "Split reader requests changed or mixed the shared document epoch",
+    )?;
+    require(
+        app.reader_views.active == 0
+            && app
+                .document
+                .as_ref()
+                .is_some_and(|document| document.page == 0)
+            && other.page == usize::from(!synchronized),
+        "Reader navigation changed the wrong pane",
+    )?;
+    let expected_zooms = if synchronized {
+        [0.4, 0.4]
+    } else if proof.size[0] <= 720 {
+        [0.3, 0.25]
+    } else {
+        [0.5, 0.4]
+    };
+    for (actual, expected) in [app.effective_zoom, other.effective_zoom]
+        .into_iter()
+        .zip(expected_zooms)
+    {
+        require(
+            (actual - expected).abs() < 0.001,
+            "Reader pane physical zoom does not match its independent or synchronized setting",
+        )?;
+    }
+    let viewport = Rect::from_min_size(
+        egui::Pos2::ZERO,
+        vec2(proof.size[0] as f32, proof.size[1] as f32),
+    );
+    let [first, second] = app.reader_views.rects;
+    require(
+        !first.intersect(second).is_positive()
+            && [first, second].into_iter().all(|rect| {
+                viewport.contains_rect(rect) && rect.width() >= 100.0 && rect.height() >= 120.0
+            }),
+        "Split reader canvases overlap, leave the window or become unusably small",
+    )?;
+    let tree = proof
+        .frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .ok_or("Split reader has no accessibility tree")?;
+    let labels = [
+        tr(app.lang(), "reader.close_split").to_owned(),
+        tr(app.lang(), "menu.view.sync").to_owned(),
+        sunipdf_i18n::tr_args(app.lang(), "reader.pane", &[("number", "1")]),
+        sunipdf_i18n::tr_args(app.lang(), "reader.pane", &[("number", "2")]),
+    ];
+    for label in labels {
+        require(
+            tree.nodes.iter().any(|(_, node)| node.label() == Some(label.as_str()))
+                && proof.frame.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Text(text)
+                    if text.galley.text() == label
+                        && shape.clip_rect.contains_rect(Rect::from_min_size(text.pos, text.galley.size()))
+                        && viewport.contains_rect(Rect::from_min_size(text.pos, text.galley.size())))),
+            &format!("Split reader control {label:?} is clipped or absent from the accessible UI"),
+        )?;
+    }
+    let mut panes = Vec::new();
+    for (index, rect) in [first, second].into_iter().enumerate() {
+        let page = if synchronized { 0 } else { index };
+        let jobs: Vec<_> = proof
+            .tiles
+            .iter()
+            .copied()
+            .filter(|job| job.page == page)
+            .collect();
+        let regions = painted_pdf_regions(proof.frame, rect, &texture_ids_for(&jobs));
+        let ink = fixture_ink_pixels(proof.pixels, proof.size, &regions, page);
+        require(
+            ink > 20,
+            &format!("Reader pane {index} does not paint the expected page {page} fixture ink"),
+        )?;
+        panes.push(json!({
+            "index": index, "pageIndex": page, "effectiveZoom": expected_zooms[index],
+            "bounds": [rect.min.x, rect.min.y, rect.max.x, rect.max.y],
+            "visiblePdfRegions": regions.iter().map(|region| [region.min.x, region.min.y, region.max.x, region.max.y]).collect::<Vec<_>>(),
+            "fixtureInk": if page == 0 { "blue" } else { "red" }, "fixtureInkPixels": ink,
+        }));
+    }
+    Ok(json!({
+        "enabled": true, "synchronized": synchronized, "activePane": app.reader_views.active,
+        "independentBeforeSynchronization": true, "combinedRenderQueueVerified": true,
+        "sharedDocumentEpochVerified": true,
+        "bothPanesPaintExpectedPdf": true, "paneZoomsVerified": true,
+        "controlsVisibleAndAccessibleVerified": true,
+        "configurationMethod": "Application commands and reader state; offscreen rendering, no native pointer input",
+        "settleState": split_snapshot(app), "panes": panes,
+    }))
 }
 
 fn readback(
@@ -391,7 +642,8 @@ fn capture_scene(
     app.sync_appearance(&context);
     app.settings.set_language(scene.language);
     app.settings.autosave = false;
-    app.settings.show_thumbnails = !scene.measurements && scene.table.is_none();
+    app.settings.show_thumbnails =
+        !scene.measurements && scene.table.is_none() && scene.split.is_none();
     app.show_tools = scene.measurements;
     app.settings.show_tools = scene.measurements;
     let mut info = document.info().clone();
@@ -399,6 +651,21 @@ fn capture_scene(
     app.document = Some(OpenDocument { info, page: 0 });
     app.tabs.tabs[0].path = PathBuf::from("fixtures/two-pages.pdf");
     app.zoom = scene.zoom;
+    if scene.split.is_some() {
+        app.view.mode = crate::view::ViewMode::Single;
+        app.execute(&context, Command::ViewSplit);
+        require(app.reader_views.enabled, "Split reader did not open")?;
+        let other = app
+            .reader_views
+            .other
+            .as_mut()
+            .ok_or("Split reader did not retain its second pane")?;
+        other.page = 1;
+        other.page_input = "2".to_owned();
+        other.zoom = Zoom::Fixed(if scene.width <= 720 { 0.25 } else { 0.4 });
+        other.view.mode = crate::view::ViewMode::Single;
+        other.view.request(crate::view::ScrollRequest::Page(1));
+    }
     // The mixed-orientation fixture centers its portrait page within a wider
     // continuous layout. Navigate the narrow zoomed scene to known page content
     // so the viewport includes the blue rectangle at (72, 142) from the top left.
@@ -431,12 +698,22 @@ fn capture_scene(
         egui_wgpu::RendererOptions::PREDICTABLE,
     );
     let mut tiles = Vec::new();
+    let mut wanted_batches = Vec::new();
     let mut final_frame = None;
     let mut pending_texture_frees = Vec::new();
     let mut frame_states = Vec::with_capacity(12);
     for index in 0..12 {
         if index == 6 && scene.settings_open {
             app.execute(&context, Command::ThemeSettings);
+        }
+        if index == 6 && scene.split == Some(SplitScene::Synchronized) {
+            app.execute(&context, Command::ViewSync);
+            app.zoom = Zoom::Fixed(0.4);
+            app.view.request(crate::view::ScrollRequest::Destination {
+                page: 0,
+                x_pt: 72.0,
+                y_from_top_pt: 142.0,
+            });
         }
         // Earlier frames are not painted; their deferred frees are safe before
         // building the next frame. Keep the final frame's textures until readback.
@@ -461,10 +738,17 @@ fn capture_scene(
             }
         }
         pending_texture_frees.extend(frame.textures_delta.free.drain());
-        fulfill_requests(document, &requests, &responses, &mut tiles)?;
+        fulfill_requests(
+            document,
+            &requests,
+            &responses,
+            &mut tiles,
+            &mut wanted_batches,
+        )?;
         frame_states.push(json!({
             "frame": index, "rendering": app.view.is_rendering(), "epoch": app.view.epoch,
             "effectiveZoom": app.effective_zoom, "tableHeight": app.settings.tables.height,
+            "split": split_snapshot(&app),
         }));
         final_frame = Some(frame);
     }
@@ -642,24 +926,13 @@ fn capture_scene(
             "Docked table incorrectly blocks document interactions",
         )?;
     }
-    let tile_ids: Vec<_> = tiles
-        .iter()
-        .filter_map(|job| app.view.pool.exact(job).map(|handle| handle.id()))
-        .collect();
-    let regions: Vec<_> = frame
-        .shapes
-        .iter()
-        .filter_map(|shape| match &shape.shape {
-            egui::Shape::Mesh(mesh) if tile_ids.contains(&mesh.texture_id) => {
-                let bounds = mesh
-                    .calc_bounds()
-                    .intersect(shape.clip_rect)
-                    .intersect(viewport);
-                bounds.is_positive().then_some(bounds)
-            }
-            _ => None,
-        })
-        .collect();
+    let texture_ids_for = |jobs: &[TileJob]| -> Vec<_> {
+        jobs.iter()
+            .filter_map(|job| app.view.pool.exact(job).map(|handle| handle.id()))
+            .collect()
+    };
+    let tile_ids = texture_ids_for(&tiles);
+    let regions = painted_pdf_regions(&frame, viewport, &tile_ids);
     require(
         !regions.is_empty(),
         "Real PDF tiles were not painted in the document canvas",
@@ -697,22 +970,24 @@ fn capture_scene(
         .iter()
         .map(|rect| [rect.min.x, rect.min.y, rect.max.x, rect.max.y])
         .collect();
-    let mut blue_ink = 0_u64;
-    for y in visible.top().ceil() as u32..visible.bottom().floor() as u32 {
-        for x in visible.left().ceil() as u32..visible.right().floor() as u32 {
-            if !regions
-                .iter()
-                .any(|rect| rect.contains(pos2(x as f32 + 0.5, y as f32 + 0.5)))
-            {
-                continue;
-            }
-            let offset = ((y * scene.width + x) * 4) as usize;
-            let pixel = &pixels[offset..offset + 4];
-            if pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 180 {
-                blue_ink += 1;
-            }
-        }
-    }
+    let blue_ink = fixture_ink_pixels(&pixels, [scene.width, scene.height], &regions, 0);
+    let split_evidence = if let Some(split) = scene.split {
+        verify_split_scene(
+            &app,
+            split,
+            SplitProof {
+                frame: &frame,
+                pixels: &pixels,
+                size: [scene.width, scene.height],
+                tiles: &tiles,
+                wanted_batches: &wanted_batches,
+                frame_states: &frame_states,
+            },
+            texture_ids_for,
+        )?
+    } else {
+        Value::Null
+    };
     if scene.settings_open {
         require(app.appearance.open, "Theme settings did not open")?;
         for key in [
@@ -763,6 +1038,7 @@ fn capture_scene(
             "destination": [x_pt, y_from_top_pt], "method": "ScrollRequest::Destination"
         })),
         "actualPdfiumTiles": tiles.len(), "visiblePdfRegions": visible_regions,
+        "splitReader": split_evidence,
         "pdfFixtureBlueInkPixels": blue_ink, "readerLabelsVerified": true,
         "zoom149SingleLineVerified": matches!(scene.zoom, Zoom::Fixed(zoom) if (zoom - 1.49).abs() < 0.001),
         "png": png_name, "rgbaSha256": sha256(&pixels), "pngSha256": sha256(&std::fs::read(png)?)
@@ -812,6 +1088,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::Classic,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "reader-fr-light-720-zoom149",
@@ -825,6 +1102,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::Classic,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "reader-en-light-pages",
@@ -838,6 +1116,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::Classic,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "reader-en-glass-light-pages",
@@ -851,6 +1130,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::LiquidGlass,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "reader-en-glass-dark-measurements",
@@ -864,6 +1144,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::LiquidGlass,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "settings-en-glass-light",
@@ -877,6 +1158,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::LiquidGlass,
             reduce_transparency: false,
             settings_open: true,
+            split: None,
         },
         Scene {
             name: "settings-fr-glass-dark-720-reduced",
@@ -890,6 +1172,49 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::LiquidGlass,
             reduce_transparency: true,
             settings_open: true,
+            split: None,
+        },
+        Scene {
+            name: "reader-en-dark-split-independent",
+            language: Language::English,
+            dark: true,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::Fixed(0.5),
+            table: None,
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
+            split: Some(SplitScene::Independent),
+        },
+        Scene {
+            name: "reader-fr-light-720-split-independent",
+            language: Language::French,
+            dark: false,
+            width: 720,
+            height: 640,
+            measurements: false,
+            zoom: Zoom::Fixed(0.3),
+            table: None,
+            style: crate::theme::Style::Classic,
+            reduce_transparency: false,
+            settings_open: false,
+            split: Some(SplitScene::Independent),
+        },
+        Scene {
+            name: "reader-en-glass-light-split-synchronized",
+            language: Language::English,
+            dark: false,
+            width: 1280,
+            height: 780,
+            measurements: false,
+            zoom: Zoom::Fixed(0.5),
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
+            split: Some(SplitScene::Synchronized),
         },
     ];
     let mut results = Vec::new();
@@ -932,6 +1257,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::Classic,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "reader-fr-light-720-docked-quantities",
@@ -945,6 +1271,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::Classic,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
         Scene {
             name: "reader-en-glass-dark-docked-register",
@@ -958,6 +1285,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             style: crate::theme::Style::LiquidGlass,
             reduce_transparency: false,
             settings_open: false,
+            split: None,
         },
     ] {
         results.push(capture_scene(
@@ -1010,5 +1338,5 @@ fn reader_ui_dx12_warp_evidence() {
     if let Err(error) = result {
         panic!("Reader UI evidence failed: {error}");
     }
-    eprintln!("Reader UI offscreen evidence PASS: 10 actual application scenes");
+    eprintln!("Reader UI offscreen evidence PASS: 13 actual application scenes");
 }

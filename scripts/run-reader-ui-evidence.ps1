@@ -47,8 +47,8 @@ try {
     if ($reportFile.Length -gt 128KB -or $reportFile.LastWriteTimeUtc -lt $started) { throw 'Reader UI report is oversized or stale.' }
     $report = [IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
     if ($report.status -cne 'passed' -or $report.sourceSha -cne $env:GITHUB_SHA -or
-        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 10) { throw 'Reader UI report did not qualify the current source.' }
-    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities', 'reader-en-glass-light-pages', 'reader-en-glass-dark-measurements', 'reader-en-glass-dark-docked-register', 'settings-en-glass-light', 'settings-fr-glass-dark-720-reduced')
+        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 13) { throw 'Reader UI report did not qualify the current source.' }
+    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities', 'reader-en-glass-light-pages', 'reader-en-glass-dark-measurements', 'reader-en-glass-dark-docked-register', 'settings-en-glass-light', 'settings-fr-glass-dark-720-reduced', 'reader-en-dark-split-independent', 'reader-fr-light-720-split-independent', 'reader-en-glass-light-split-synchronized')
     foreach ($scene in $report.scenes) {
         if ($scene.name -cnotin $expected -or $scene.png -cne "$($scene.name).png" -or
             -not $scene.actualApplicationRenderUi -or $scene.actualPdfiumTiles -lt 1 -or
@@ -73,6 +73,34 @@ try {
         if ($scene.name -like '*docked*' -and (-not $scene.dockedTableControlsAndRowVerified -or $scene.dockedTable -cnotin @('annotations','quantities'))) {
             throw 'Docked table evidence is incomplete.'
         }
+        if ($scene.name -like '*split-*') {
+            $split = $scene.splitReader
+            $synchronized = $scene.name -ceq 'reader-en-glass-light-split-synchronized'
+            if (-not $split.enabled -or [bool]$split.synchronized -ne $synchronized -or
+                -not $split.independentBeforeSynchronization -or -not $split.combinedRenderQueueVerified -or
+                -not $split.sharedDocumentEpochVerified -or $null -eq $split.settleState.documentEpoch -or
+                -not $split.bothPanesPaintExpectedPdf -or -not $split.paneZoomsVerified -or
+                -not $split.controlsVisibleAndAccessibleVerified -or
+                @($split.panes).Count -ne 2 -or @($split.settleState.panes).Count -ne 2 -or
+                $split.activePane -ne 0) {
+                throw 'Split reader evidence is incomplete or does not match its synchronization scenario.'
+            }
+            for ($index = 0; $index -lt 2; $index++) {
+                $pane = $split.panes[$index]
+                $settled = $split.settleState.panes[$index]
+                $expectedPage = if ($synchronized) { 0 } else { $index }
+                $expectedInk = if ($expectedPage -eq 0) { 'blue' } else { 'red' }
+                if ($pane.index -ne $index -or $pane.pageIndex -ne $expectedPage -or
+                    $settled.pageIndex -ne $expectedPage -or $settled.rendering -or
+                    $pane.fixtureInk -cne $expectedInk -or $pane.fixtureInkPixels -le 20 -or
+                    @($pane.visiblePdfRegions).Count -lt 1 -or
+                    [Math]::Abs($pane.effectiveZoom - $settled.effectiveZoom) -ge 0.001) {
+                    throw 'Split reader pane did not retain its expected page, zoom and actual PDF fixture pixels.'
+                }
+            }
+        } elseif ($null -ne $scene.splitReader) {
+            throw 'Non-split scene unexpectedly reports split reader qualification.'
+        }
     }
-    if (@($report.scenes.name | Select-Object -Unique).Count -ne 10) { throw 'Reader UI scene names are not unique.' }
+    if (@($report.scenes.name | Select-Object -Unique).Count -ne 13) { throw 'Reader UI scene names are not unique.' }
 } finally { Pop-Location }

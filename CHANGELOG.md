@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+## [0.76.0] - Unreleased
+
+- Add two reader panes for one open PDF, with independent page, zoom and scroll state.
+- Route reading and editing controls to the active pane, with optional view synchronization.
+- Share bounded rendering resources and preserve pane positions across document tabs.
+- Include published 0.75 packages in Windows upgrade regression coverage.
+
+Development candidate: [scope and pending qualification](docs/RELEASE_0.76.0.md).
+
 ## [0.75.0] - 2026-10-24
 
 - Add a native Apple Silicon DMG with the desktop application, CLI, pinned PDF engine and user guide.

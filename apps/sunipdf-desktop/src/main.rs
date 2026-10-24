@@ -49,6 +49,7 @@ mod quantity_workbook_ui;
 mod reader_layout;
 #[cfg(all(test, windows))]
 mod reader_ui_evidence;
+mod reader_views;
 mod reading;
 mod recovery;
 mod redact;

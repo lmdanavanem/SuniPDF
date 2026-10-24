@@ -6,7 +6,9 @@ Published 0.74 adds [Theme settings and appearance choices](APPEARANCE.md).
 It also adds direct [Ubuntu updates](UBUNTU.md#settings-recovery-and-updates).
 Its [package qualification](RELEASE_0.74.0.md) is complete within the recorded scope; this interface increment does not close plan-workflow cards. Apple Silicon packages are published in [0.75](RELEASE_0.75.0.md), with native installation checks and documented platform limits.
 
-Priority: independent synchronized reader views. Native plan-link interaction and broader drawing/
+In development: [0.76 independent synchronized reader views](RELEASE_0.76.0.md)
+for two locations in one PDF, with one active editing context. Source and package
+qualification remain pending. Native plan-link interaction and broader drawing/
 interoperability qualification remain open. Implementation and complete acceptance are tracked separately.
 
 ## Published scope

@@ -935,6 +935,7 @@ pub enum Request {
         path: PathBuf,
     },
     FinishMutation,
+    FinishSelection,
     Close,
 }
 
@@ -1247,12 +1248,14 @@ pub enum Response {
         result: Result<Vec<RedactMark>, EngineError>,
     },
     MutationFinished,
+    SelectionFinished,
 }
 
 pub struct Worker {
     tx: Sender<Request>,
     rx: Receiver<Response>,
     pending_mutations: Cell<usize>,
+    pending_selections: Cell<usize>,
 }
 
 impl Worker {
@@ -1265,6 +1268,7 @@ impl Worker {
                 tx,
                 rx,
                 pending_mutations: Cell::new(0),
+                pending_selections: Cell::new(0),
             },
             requests,
             responses,
@@ -1282,10 +1286,15 @@ impl Worker {
             tx,
             rx,
             pending_mutations: Cell::new(0),
+            pending_selections: Cell::new(0),
         }
     }
 
     pub fn send(&self, request: Request) {
+        let selection = matches!(
+            &request,
+            Request::ObjectAt { .. } | Request::ObjectInfo { .. } | Request::Pick { .. }
+        );
         let mutation = matches!(
             &request,
             Request::Edit(_)
@@ -1305,11 +1314,27 @@ impl Worker {
                 | Request::MarkRecovered { .. }
                 | Request::ProcessFiles(_)
         );
-        if self.tx.send(request).is_ok() && mutation {
-            self.pending_mutations.set(self.pending_mutations.get() + 1);
-            // La borne FIFO est acquittée même si l'opération ne change rien ou échoue.
-            let _ = self.tx.send(Request::FinishMutation);
+        if self.tx.send(request).is_ok() {
+            if mutation {
+                self.pending_mutations.set(self.pending_mutations.get() + 1);
+                // La borne FIFO est acquittée même si l'opération ne change rien ou échoue.
+                let _ = self.tx.send(Request::FinishMutation);
+            }
+            if selection {
+                self.pending_selections
+                    .set(self.pending_selections.get() + 1);
+                let _ = self.tx.send(Request::FinishSelection);
+            }
         }
+    }
+
+    pub(crate) fn has_pending_selections(&self) -> bool {
+        self.pending_selections.get() != 0
+    }
+
+    pub(crate) fn finish_selection(&self) {
+        self.pending_selections
+            .set(self.pending_selections.get().saturating_sub(1));
     }
 
     pub fn has_pending_mutations(&self) -> bool {
@@ -3943,6 +3968,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
             }
             Request::FinishMutation => Response::MutationFinished,
+            Request::FinishSelection => Response::SelectionFinished,
             Request::Close => {
                 if let Some(slot) = state.recovery.take() {
                     if let Err(error) = slot.remove() {
@@ -7705,6 +7731,8 @@ mod tests {
                 .expect("worker response");
             if matches!(response, Response::MutationFinished) {
                 worker.finish_mutation();
+            } else if matches!(response, Response::SelectionFinished) {
+                worker.finish_selection();
             } else if matches!(
                 response,
                 Response::SearchProgress { .. }

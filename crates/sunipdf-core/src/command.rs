@@ -43,6 +43,9 @@ pub enum Command {
     ViewContinuous,
     ViewSinglePage,
     ViewTwoPage,
+    ViewSplit,
+    ViewSync,
+    ViewSwitchPane,
     ViewBook,
     PrintDocument,
     RecoverDocuments,
@@ -1305,6 +1308,16 @@ pub const REGISTRY: &[CommandInfo] = &[
         View
     ),
     cmd!(ViewBook, "view.book", "menu.view.book", None, true, View),
+    cmd!(ViewSplit, "view.split", "menu.view.split", None, true, View),
+    cmd!(ViewSync, "view.sync", "menu.view.sync", None, true, View),
+    cmd!(
+        ViewSwitchPane,
+        "view.switch_pane",
+        "menu.view.switch_pane",
+        None,
+        true,
+        View
+    ),
     cmd!(
         ToolAddTextField,
         "form.add_text_field",

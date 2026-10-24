@@ -676,6 +676,7 @@ impl SuniApp {
             .as_ref()
             .and_then(crate::editor::Selection::single);
         match c {
+            Command::ViewSync | Command::ViewSwitchPane => self.reader_views.enabled,
             Command::DeleteObject => {
                 self.edit.selection.is_some() || self.annotate.adv.selected.is_some()
             }
@@ -981,6 +982,9 @@ mod tests {
         C::ViewContinuous,
         C::ViewSinglePage,
         C::ViewTwoPage,
+        C::ViewSplit,
+        C::ViewSync,
+        C::ViewSwitchPane,
         C::ViewBook,
         C::PrintDocument,
         C::RecoverDocuments,

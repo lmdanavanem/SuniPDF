@@ -17,6 +17,7 @@ pub struct TabState {
     scroll_to_page: Option<usize>,
     pub view_mode: crate::view::ViewMode,
     pub reading: crate::reading::ReadingState,
+    pub reader_views: crate::reader_views::ReaderViews,
     pub page_input: String,
     pub thumbnails: HashMap<usize, egui::TextureHandle>,
     pub thumb_px: u32,
@@ -64,6 +65,8 @@ impl SuniApp {
         let scroll = self.view.offset;
         let view_mode = self.view.mode;
         let reading = std::mem::take(&mut self.view.reading);
+        self.reader_views.suspended();
+        let reader_views = std::mem::take(&mut self.reader_views);
         // Textures libérées (GPU des onglets inactifs), époque suivante : tuiles en vol ignorées.
         self.view.reset();
         self.thumbs_pending.clear();
@@ -85,6 +88,7 @@ impl SuniApp {
             scroll_to_page: None,
             view_mode,
             reading,
+            reader_views,
             page_input: std::mem::take(&mut self.page_input),
             thumbnails: std::mem::take(&mut self.thumbnails),
             thumb_px: std::mem::replace(&mut self.thumb_px, 0),
@@ -117,6 +121,7 @@ impl SuniApp {
         self.effective_zoom = t.effective_zoom;
         self.view.reset();
         self.view.reading = t.reading;
+        self.reader_views = t.reader_views;
         if let Some(page) = t.scroll_to_page {
             self.view.request(crate::view::ScrollRequest::Page(page));
         } else if self.view.mode == t.view_mode {
@@ -287,6 +292,8 @@ impl SuniApp {
             .organize
             .anchor
             .filter(|page| *page < state.info.page_count());
+        ui.reader_views
+            .document_changed(&state.info, state.pages_unchanged, same_sizes);
         if let Some(doc) = &mut ui.document {
             doc.page = doc.page.min(state.info.page_count().saturating_sub(1));
             ui.page_input = state.info.page_input(doc.page);
@@ -315,6 +322,12 @@ impl SuniApp {
         self.tabs.active = Some(index);
         match ui {
             Some(mut ui) => {
+                let same_sizes = ui
+                    .document
+                    .as_ref()
+                    .is_some_and(|doc| doc.info.page_sizes == state.info.page_sizes);
+                ui.reader_views
+                    .document_changed(&state.info, state.pages_unchanged, same_sizes);
                 if let Some(doc) = &mut ui.document {
                     if doc.info.page_sizes != state.info.page_sizes {
                         ui.annotate.measure.invalidate(self.view.epoch);
