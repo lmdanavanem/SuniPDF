@@ -4,8 +4,10 @@ A plan set is a local JSON index of explicitly selected PDF files and their shee
 byte length and SHA256, its page count, and editable sheet number, title, discipline and revision fields.
 The source PDFs stay separate and unchanged. The index does not merge PDFs or copy their page contents.
 
-This workflow is implemented on the development branch and awaits final-source and package qualification.
-It provides explicit indexing and reference checks, not automatic revision matching or annotation transfer.
+The published 0.63.0 release passed exact-source tests and public-package checks. A separate native
+development-build run covered manifest opening and sheet navigation; see [release qualification](RELEASE_0.63.0.md).
+Grouped/searchable sheet navigation remains open. Automatic revision matching and annotation transfer
+are separate capabilities.
 
 ## References and sheet metadata
 

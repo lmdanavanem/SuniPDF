@@ -5,9 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-## [0.63.0] - In preparation
+## [0.63.0] - 2026-10-24
 
-Implemented candidate scope; final-source integration, native workflows and package qualification remain pending. No 0.63.0 release is published, and earlier release results do not qualify this candidate.
+Published as stable Latest after exact-source CI and package qualification. Windows: 963 passed / 15 ignored; Linux: 943 passed / 10 ignored. All eight public assets were verified anonymously; the downloaded x64 CLI passed 68 commands / 968 assertions. Portable upgrades cover 43 baselines plus 4 guards; MSI covers 41 baselines / 205 logs. Native development-build checks have their own documented scope.
 
 - Add local plan-set manifests with stable sheet identities, editable metadata, source fingerprints, explicit validation and guarded sheet navigation. Create, refresh, relink and save new manifest copies through the desktop or CLI without modifying source PDFs; preserve unsaved tabs and use passwords only for the requested operation.
 - Export supported form values as FDF and retain typed button appearance-state semantics during import. Bound serialized and expanded input, and refuse ambiguous or unsupported structures before writing.
@@ -16,7 +16,7 @@ Implemented candidate scope; final-source integration, native workflows and pack
 - Preserve button appearance states when displaying forms requesting refresh and when importing values repeatedly. Keep appearance writes transactional and preserve signed or restricted source files during display.
 - Keep thin measurement contours visible in small preview images and bring volume/deduction controls closer together.
 
-[Preparation notes and remaining gates](docs/RELEASE_0.63.0.md).
+[Release notes and qualification limits](docs/RELEASE_0.63.0.md).
 
 ## [0.62.0] - 2026-10-24
 

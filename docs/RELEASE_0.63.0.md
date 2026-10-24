@@ -1,9 +1,9 @@
 # SuniPDF 0.63.0
 
-Status: **candidate; local source and CLI checks passed, not published**. This candidate combines local
-plan sets, bounded FDF value exchange, deducted areas and constant-depth volumes. Final native checks,
-exact-source CI, package qualification and publication remain pending. Results recorded for 0.62.0 or
-earlier releases do not qualify this candidate.
+Status: **published stable Latest on 2026-10-24**. [Download packages](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.63.0)
+and [recorded evidence](qa/RELEASE_0.63.0.json). Release ID `422499992`, source
+`f35c2c7930546b9a2bc1e24a886ca0c19621941f`, published by `lmdanavanem`.
+This release combines local plan sets, bounded FDF value exchange, deducted areas and constant-depth volumes.
 
 ## Local plan sets
 
@@ -64,18 +64,28 @@ measurements in new PDF copies with expected-record guards. [Calculations and li
 Small preview images use filtered reduction so thin contours remain visible. The rectangle controls remain available in every measurement mode except Volume; an active rectangle
 placement keeps them visible even in Volume mode. This leaves the volume and deduction controls easier to reach.
 
-## Candidate qualification
+## Qualification
 
-Local checks completed on 2026-10-24 against the final candidate source:
+Checks completed on 2026-10-24; local, CI and downloaded-package scopes are distinguished below:
 
 | Check | Recorded result |
 |---|---|
 | Windows workspace | 963 passed, 0 failed, 15 ignored |
 | Formatting, workspace Clippy and desktop/CLI build | Passed |
 | Whole-process CLI corpus | 20 commands, 680 assertions, 0 failures |
-| Final native workflow checks | In progress |
-| Exact-source CI and package/install/update qualification | Pending |
-| Publication and downloaded-package verification | Pending |
+| Native Windows workflows | Plan navigation; volume deduction editing, Preview/Apply, Undo/Redo and save/reopen; repeated FDF import, save/reopen and export passed |
+| Independent native-output inspection | Volume: 65 assertions; FDF: 8 commands / 129 assertions; all passed |
+| Exact-source CI, Linux, CodeQL and release workflows | All four passed |
+| Windows release source | 963 passed, 0 failed, 15 ignored, 86 suites |
+| Linux source and release runs | 943 passed, 0 failed, 10 ignored per run |
+| Translation catalogues | 1,619 matching keys |
+| Portable update qualification | 43 baselines and 4 rejection guards: 47 scenarios |
+| MSI qualification | 41 baselines, 205 installer logs |
+| Ubuntu package | Install, render/save/reopen, OCR EN/FR, reader, remove/reinstall on 22.04 and 24.04 clean containers |
+| Public assets and Latest | Eight assets/checksums verified anonymously; stable Latest verified before and after runtime checks |
+| Downloaded Windows x64 CLI | 68 process commands, 968 assertions, 0 failures; bundled runtime and package unchanged |
+| Conformance payload identity | Embedded DEB CLI matches both 12-case / 42-stage conformance runs |
+| Code scanning | 0 open alerts after review; test fixtures and a guarded false positive classified individually |
 
 The source fingerprint stayed unchanged during the final pipeline:
 `74e6ad2caf2cf54172d0ab48ee6201e092f0c5bcf15c3bdb4550901a6d874964`.
@@ -87,10 +97,31 @@ Regression coverage includes reference identity and relocation, protected PDFs, 
 parser bounds, area/volume calculations, topology refusals, rotation/crop, prices, stale previews,
 Undo/Redo and save/reopen. The CLI corpus additionally checks repeated FDF import, plan manifests,
 volume pricing/unit conversion, stale exclusions, no-overwrite behavior and independent output inspection.
-Final native checks and actual package, installation, update and download verification remain release gates.
+The final native checks used desktop SHA256
+`ad827ad2f2180948e5c8d549c3fa34d15690e0d7300a657a7e109b87d078b235`. Original QA inputs and binaries
+remained unchanged. Independent PDF/FDF inspection and qpdf corroborated the native saved outputs. These
+checks did not exercise the final distributed package, a physical printer or arbitrary external readers.
+The native volume edit validated vertex insertion; handle dragging was not established by that run.
+Unicode form values were preserved, while the panel font lacked one tested CJK glyph.
 
-AEC-009 and AEC-015 remain **In progress**. Constant-depth polygon volumes do not provide variable-depth
-solids or automatic opening detection. Plan-set metadata does not establish revision equivalence.
+The downloaded Windows CLI SHA256 is
+`cf7b8a03da2fecfca99388065d835c6760178dcedb849b07fc5ee8ee3574e658`.
+Its 68-command run combines provenance/quantity checks (48 commands / 288 assertions) and the plan-set,
+FDF and area/volume corpus (20 commands / 680 assertions). It did not execute the downloaded desktop or
+install it locally; installer and UI evidence have their separate CI and native development-build scopes.
+The five reader UI CI scenes use actual application rendering and PDFium tiles with offscreen DX12 WARP.
+They do not establish physical GPU or native-window interaction.
+
+A subsequent bounded DEB inspection matched the embedded CLI SHA256
+`7b5880ddff0b484c226ad69391a3512c2ed38926e1814a878d08ca6bce4769fc` to both conformance runs.
+It performed no Linux execution. The DEB itself matches the two Ubuntu installation reports; its desktop
+hash was recorded without a prior desktop-binary comparison. Original conformance reports are preserved.
+
+AEC-009 is **Done for its stated polygon deductions and constant-depth calculation criteria**. Editable
+measurement exchange with other readers and physical survey accuracy remain separate unqualified scopes.
+AEC-015 remains **In progress**: grouped/searchable sheet navigation by discipline, sheet and revision is
+still open in the published release. Grouping/search and revision transfer are later candidate work,
+not part of 0.63. Plan-set metadata does not establish revision equivalence.
 Real-project A0/A1 qualification, physical printing and measurement checks, independent update authenticity,
 code-signing and the remaining accessibility/interoperability gates stay open.
 [Backlog](AEC_BACKLOG.md) · [1.0 criteria](RELEASE_1.0_CRITERIA.md).

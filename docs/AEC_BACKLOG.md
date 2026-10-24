@@ -1,6 +1,6 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.62.0.md)
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.63.0.md)
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
@@ -23,23 +23,28 @@ AEC-008 includes a shared dimensioned-rectangle constructor, CLI scale selection
 
 [Release evidence](qa/RELEASE_0.62.0.json) records verified public packages and the published Windows x64 CLI run: 48 process commands / 288 assertions. This post-download run did not repeat GUI or local installation testing. Physical-device and broader interoperability gates remain separate.
 
-## 0.63 candidate increments awaiting qualification
+## Delivered in 0.63
 
-AEC-009 now has an implemented core, CLI and desktop increment for polygon deductions and constant-depth
-volumes. It retains all contours and physical depth, shows gross/deducted/net results, supports cubic
-quantity units and uses guarded preview, history and source provenance. Invalid topology and incompatible
-prices are refused. Exact-source tests, native workflows and independent-reader qualification remain open;
-the card is **In progress**, not complete.
+AEC-009 is **Done for its stated polygon deductions and constant-depth calculation criteria**. Core,
+CLI and desktop retain contours and physical depth, show gross/deducted/net results and support cubic
+quantity units. Invalid topology and incompatible prices refuse atomically. Source tests, native
+development-build workflows and public-package checks passed; independent native-volume output inspection
+passed 65 assertions. Editable measurement exchange with external readers and physical survey accuracy
+remain separate unqualified scopes. Variable-depth solids are not requirements of this card.
 
-AEC-015 now has a local manifest workflow for explicitly selected PDFs, editable sheet metadata, source
-fingerprints, reference validation, new-copy export and guarded navigation. Unsaved document tabs retain
-their bytes and history. Explicit refresh/relink preserves physical page references for user review;
-automatic revision matching, replacement and cross-document linking remain separate work. Final integration,
-native and package checks remain open, so this card is also **In progress**.
+AEC-015 includes local manifests for selected PDFs, stable identities, metadata, source fingerprints,
+validation, refresh/relink, new-copy export and guarded navigation. Source PDFs and unsaved tabs are
+preserved. It remains **In progress** because grouped/searchable navigation by discipline, sheet and
+revision is later 0.64 candidate work. Revision replacement and links are separate cards.
 
-These increments and bounded FDF value exchange are described in the [0.63 preparation notes](RELEASE_0.63.0.md).
-No 0.63 package is published or qualified here. Private A0/A1 plan, physical-device, signing and broader
-interoperability criteria remain open. Earlier release evidence does not close these gates.
+[Release evidence](qa/RELEASE_0.63.0.json) records 963 Windows tests / 15 ignored, 943 Linux tests /
+10 ignored per run, qualified packages and eight verified public downloads. The downloaded Windows CLI
+passed 68 commands / 968 assertions, including the 20-command / 680-assertion plan/form/volume corpus.
+[Release notes](RELEASE_0.63.0.md) preserve native, installer, hardware and interoperability limits.
+
+AEC-016 revision transfer is later 0.64 candidate work; AEC-017 reviewed cross-document links are a
+separate 0.65 implementation in progress. Neither is included in 0.63. Their source, native and
+package evidence must be completed before delivery. No entire P1/P2 category is closed.
 
 ## Capabilities and acceptance
 
@@ -55,15 +60,15 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-006 | P1 | Reusable annotation libraries | In progress | Save/reuse/share styles, image stamps, symbols and supported annotation groups in a documented open format. Bound imports, validate assets/licenses and refuse scripts or unsafe references. Decoration presets alone do not satisfy this card. | Existing annotations and presets |
 | AEC-007 | P2 | Custom columns and formulas | In progress | Typed text/choice/date/number/formula columns, grouped totals and unit-price calculations; bounded expressions without executable code, explicit units/currency/rounding and reproducible exports. Prices are supplied by the user. | AEC-003, AEC-004 |
 | AEC-008 | P2 | Multiple scales and dimensioned drawing | In progress | Named viewports with independent scales, clear overlap rules and explicit scale selection; draw shapes to real dimensions and support snapping to eligible vectors. | AEC-001, AEC-002 |
-| AEC-009 | P2 | Volumes and deducted areas | In progress | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. Implemented constant-depth polygon increment; final-source, native and interoperability qualification pending. | AEC-002, AEC-003 |
+| AEC-009 | P2 | Volumes and deducted areas | Done | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. | AEC-002, AEC-003 |
 | AEC-010 | P2 | Rooms and named zones | Planned | Named/hierarchical plan regions, deterministic assignment of annotations to regions and filters/reports by room or floor; expose overlapping/unassigned cases. | AEC-004, AEC-008 |
 | AEC-011 | P2 | Visual symbol search | Planned | Search from a selected symbol locally, with sensitivity, rotation choices, bounded processing and candidate previews. User-accepted matches drive counts; false positives and partial searches remain explicit. | AEC-005, AEC-026 |
 | AEC-012 | P2 | Boundary-based region filling | Planned | Preview a bounded region from drawing edges, allow manual closure of openings and retain holes. Convert reviewed results to measurements; document resolution/tolerance and refuse leakage or ambiguous boundaries. | AEC-002, AEC-009, AEC-026 |
 | AEC-013 | P2 | Aligned colour overlays | In progress | Register two or more plans using explicit control points and display/export colour-separated overlays. Keep input PDFs intact; ambiguous alignment and unmatched pages require review. | Existing comparison, AEC-026 |
 | AEC-014 | P2 | Revision outlines and tracked differences | Planned | Convert reviewed comparison regions into editable revision outlines and register entries. Preserve original/revised identity and distinguish geometric changes from rendering noise. | Existing comparison, AEC-004, AEC-013 |
-| AEC-015 | P2 | Plan sets | In progress | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. Local manifest, metadata and guarded navigation increment implemented; final-source, native and portability qualification pending. | Labels/bookmarks baseline |
-| AEC-016 | P2 | Batch sheet replacement | Planned | Match and review incoming revisions, transfer only supported markups under an explicit geometric mapping, retain previous files and produce a per-sheet result report. Refuse unsafe transfers without partial overwrites. | AEC-013, AEC-015 |
-| AEC-017 | P2 | Batch cross-document links | Planned | Detect sheet references in searchable text/OCR, preview proposed destinations and create reviewed links in new copies. Ambiguous references, unsafe paths and missing files remain unresolved. | AEC-015, existing OCR/links |
+| AEC-015 | P2 | Plan sets | In progress | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. | Labels/bookmarks baseline |
+| AEC-016 | P2 | Batch sheet replacement | In progress | Match and review incoming revisions, transfer only supported markups under an explicit geometric mapping, retain previous files and produce a per-sheet result report. Refuse unsafe transfers without partial overwrites. | AEC-013, AEC-015 |
+| AEC-017 | P2 | Batch cross-document links | In progress | Detect sheet references in searchable text/OCR, preview proposed destinations and create reviewed links in new copies. Ambiguous references, unsafe paths and missing files remain unresolved. | AEC-015, existing OCR/links |
 | AEC-018 | P2 | Legends and issue reports | Planned | Generate legends, grouped quantity/issue summaries and PDF/CSV/JSON reports tied to the actual filtered annotations and document revisions. No invented or stale totals. | AEC-004, AEC-007, AEC-010 |
 | AEC-019 | P2 | Spreadsheet quantity refresh | Planned | Export CSV/XLSX snapshots and refresh explicitly identified quantities with source revision and units. Use documented open spreadsheet formats; avoid macros, formula injection and silent spreadsheet overwrites. | AEC-003, AEC-007 |
 | AEC-022 | P3 | CAD/BIM and room import | Planned | Start with documented open exchanges such as IFC and licensed fixtures. Import identifiable spaces/plan metadata with reviewed mapping. Optional adapters for proprietary formats require separate SDK and licensing checks. | AEC-010, AEC-015 |
@@ -75,4 +80,4 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-028 | P1 | Responsive search and annotation inventory | In progress | Advance long reads page by page with progress, cancellation and visible-page rendering between tasks; do not publish stale partial inventories as complete. | Existing desktop workspace |
 | AEC-029 | P1 | Consistent plan workspace | In progress | Dock or float resizable annotation/quantity tables, persist layout preferences and navigate to actual selected annotations; retain context and small-window access. | Existing desktop workspace |
 
-Implementation details and progress are retained in the CSV. Current delivery priorities are maintained only in the [roadmap](ROADMAP.md). GitHub Projects synchronization remains deferred.
+Implementation details and progress are retained in the CSV. Current delivery priorities are maintained only in the [roadmap](ROADMAP.md). GitHub Projects was synchronized on 2026-10-24, including the published AEC-009 scope and later AEC-015/016/017 work.
