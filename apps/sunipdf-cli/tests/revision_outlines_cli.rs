@@ -194,10 +194,8 @@ fn identical_pages_create_no_proposals_and_reviewed_changes_round_trip_in_a_new_
     );
     let original_new = Document::load(&fixture.new).unwrap();
     assert_eq!(
-        document.get_page_content(page).unwrap(),
-        original_new
-            .get_page_content(original_new.get_pages()[&1])
-            .unwrap()
+        document.get_page_content(page),
+        original_new.get_page_content(original_new.get_pages()[&1])
     );
     ok(cli().arg("annotations").arg(&output).output().unwrap(), 0);
     let saved = std::fs::read(&output).unwrap();
@@ -395,6 +393,35 @@ fn distinct_protected_sources_keep_physical_page_mapping_alignment_and_encryptio
         "translated page edges remain outside comparison coverage"
     );
     let inspection = &inspected["inspection"];
+    let anchored = ok(
+        protected_command("inspect")
+            .args([
+                "--old-page",
+                "2",
+                "--new-page",
+                "3",
+                "--old-points",
+                "80,100 120,100",
+                "--new-points",
+                "120,100 160,100",
+                "--long-side",
+                "400",
+                "--merge-gap-pixels",
+                "0",
+            ])
+            .output()
+            .unwrap(),
+        2,
+    );
+    assert_eq!(anchored["inspection"]["transform"], inspection["transform"]);
+    assert_eq!(
+        anchored["inspection"]["changed_pixels"],
+        inspection["changed_pixels"]
+    );
+    assert_eq!(
+        anchored["inspection"]["regions"][0]["rect"],
+        inspection["regions"][0]["rect"]
+    );
     assert_eq!(inspection["old_geometry"]["page"], 2);
     assert_eq!(inspection["new_geometry"]["page"], 3);
     assert_eq!(inspection["transform"]["translation"], json!([40.0, 0.0]));
@@ -431,8 +458,11 @@ fn distinct_protected_sources_keep_physical_page_mapping_alignment_and_encryptio
     let mut saved = Document::load(&output).unwrap();
     assert!(saved.is_encrypted());
     assert!(saved.decrypt(&old_secret).is_err());
-    let mut saved = Document::load(&output).unwrap();
-    saved.decrypt(&new_secret).unwrap();
+    let saved = Document::load_mem_with_options(
+        &std::fs::read(&output).unwrap(),
+        lopdf::LoadOptions::with_password(&new_secret),
+    )
+    .unwrap();
     let original = Document::load(&new_plain).unwrap();
     let saved_pages = saved.get_pages();
     let original_pages = original.get_pages();
@@ -440,8 +470,8 @@ fn distinct_protected_sources_keep_physical_page_mapping_alignment_and_encryptio
     for number in 1..=3 {
         let page = saved_pages[&number];
         assert_eq!(
-            saved.get_page_content(page).unwrap(),
-            original.get_page_content(original_pages[&number]).unwrap()
+            saved.get_page_content(page),
+            original.get_page_content(original_pages[&number])
         );
         let annotations = saved.get_dictionary(page).unwrap().get(b"Annots").ok();
         if number == 3 {

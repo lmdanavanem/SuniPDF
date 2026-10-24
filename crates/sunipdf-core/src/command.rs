@@ -3,6 +3,7 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    PlanZones,
     PlanSets,
     PlanLinks,
     RevisionOutlines,
@@ -197,6 +198,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        PlanZones,
+        "tools.plan_zones",
+        "zones.title",
+        None,
+        true,
+        Tools
+    ),
     cmd!(
         RevisionOutlines,
         "file.revision_outlines",
@@ -1382,7 +1391,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 15);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 14);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 

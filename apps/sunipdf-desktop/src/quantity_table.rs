@@ -513,7 +513,17 @@ impl SuniApp {
                     }
                     draw_editor(ui, edit, lang);
                 } else if let Some(report) = &report {
-                    let mut changed = false;
+                    let mut changed = crate::plan_zones_ui::zone_filter_ui(
+                        ui,
+                        lang,
+                        &mut state.options.filter,
+                        report.plan_zones(),
+                    );
+                    crate::plan_zones_ui::coverage_ui(
+                        ui,
+                        lang,
+                        &report.zone_coverage(&state.options.filter),
+                    );
                     ui.horizontal_wrapped(|ui| {
                         ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
                             ui.add_enabled_ui(idle, |ui| {
@@ -723,6 +733,7 @@ impl SuniApp {
                                     "quantity.source",
                                     "register.kind",
                                     "register.contents",
+                                    "register.zone",
                                     "quantity.quantity",
                                     "quantity.unit",
                                     "quantity.price",
@@ -769,6 +780,13 @@ impl SuniApp {
                                             .contents
                                             .as_deref()
                                             .unwrap_or(tr(lang, "quantity.missing")),
+                                    );
+                                    short_label(
+                                        ui,
+                                        &crate::plan_zones_ui::assignment_label(
+                                            lang,
+                                            &row.register.zone,
+                                        ),
                                     );
                                     ui.vertical(|ui| {
                                         ui.set_min_width(140.0);

@@ -76,6 +76,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         Command::RevisionOverlay(args) => Some(&mut args.password),
         Command::RevisionTransfer(args) => Some(&mut args.sources_mut().password),
         Command::RevisionOutlines(args) => Some(&mut args.sources_mut().password),
+        Command::PlanZones(args) => Some(args.password_mut()),
         Command::QuantityTable(args) => Some(&mut args.report.password),
         Command::SetQuantityFields(args) => Some(&mut args.target.password),
         Command::ClearQuantityFields(args) => Some(&mut args.password),

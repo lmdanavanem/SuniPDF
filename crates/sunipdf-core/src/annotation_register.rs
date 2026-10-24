@@ -100,6 +100,9 @@ pub struct RegisterRow {
     pub review_status: Option<String>,
     pub fields: RegisterFields,
     pub count_group: Option<String>,
+    /// Derived from this snapshot; never imported as a persisted location claim.
+    #[serde(default)]
+    pub zone: crate::plan_zones::ZoneAssignment,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -116,6 +119,8 @@ pub struct RegisterFilter {
     pub include_replies: bool,
     /// Optional custom text field overriding the built-in sort; missing values stay last.
     pub custom_sort: Option<String>,
+    pub zone: Option<crate::plan_zones::ZoneFilter>,
+    pub zone_status: Option<crate::plan_zones::ZoneAssignmentStatus>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -163,6 +168,7 @@ pub struct AnnotationRegister {
     pub source_sha256: String,
     pub page_count: usize,
     pub rows: Vec<RegisterRow>,
+    pub plan_zones: Vec<crate::plan_zones::PagePlanZones>,
     pub(crate) source_snapshot: Arc<Vec<u8>>,
 }
 
@@ -175,7 +181,74 @@ pub struct RegisterTarget {
     source_snapshot: Arc<Vec<u8>>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ZoneCoverage {
+    pub complete: bool,
+    pub counts: BTreeMap<String, usize>,
+}
+
 impl AnnotationRegister {
+    pub fn validate_zone_filter(&self, filter: &RegisterFilter) -> Result<(), EngineError> {
+        if let Some(zone) = &filter.zone {
+            if filter.page.is_some_and(|page| page != zone.page) {
+                return Err(EngineError::Other(
+                    "plan zone filter: page selection conflicts with the zone page".into(),
+                ));
+            }
+            let page = self
+                .plan_zones
+                .iter()
+                .find(|p| p.page == zone.page)
+                .ok_or_else(|| {
+                    EngineError::Other("plan zone filter: page has no named zones".into())
+                })?;
+            if page.validity != crate::plan_zones::ZoneValidity::Current
+                || !page.zones.iter().any(|z| z.id == zone.id)
+            {
+                return Err(EngineError::Other(
+                    "plan zone filter: zone is missing or stale; refresh the zones".into(),
+                ));
+            }
+            if self.rows.iter().any(|r| {
+                r.page == zone.page
+                    && matches!(
+                        r.zone.status,
+                        crate::plan_zones::ZoneAssignmentStatus::GeometryUnknown
+                            | crate::plan_zones::ZoneAssignmentStatus::Stale
+                            | crate::plan_zones::ZoneAssignmentStatus::Boundary
+                            | crate::plan_zones::ZoneAssignmentStatus::Overlap
+                    )
+            }) {
+                return Err(EngineError::Other(
+                    "plan zone filter: unresolved locations prevent a complete room report".into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+    pub fn zone_coverage(&self, filter: &RegisterFilter) -> ZoneCoverage {
+        let mut counts = BTreeMap::new();
+        let mut complete = self.validate_zone_filter(filter).is_ok();
+        let page = filter.zone.as_ref().map(|z| z.page).or(filter.page);
+        for row in self
+            .rows
+            .iter()
+            .filter(|r| page.is_none_or(|p| p == r.page) && (filter.include_replies || !r.is_reply))
+        {
+            *counts.entry(row.zone.status.id().into()).or_default() += 1;
+            if matches!(
+                row.zone.status,
+                crate::plan_zones::ZoneAssignmentStatus::Boundary
+                    | crate::plan_zones::ZoneAssignmentStatus::Overlap
+                    | crate::plan_zones::ZoneAssignmentStatus::GeometryUnknown
+                    | crate::plan_zones::ZoneAssignmentStatus::Stale
+            ) {
+                complete = false;
+            }
+        }
+        ZoneCoverage { complete, counts }
+    }
+
     pub fn target(&self, row: &RegisterRow) -> RegisterTarget {
         RegisterTarget {
             source_sha256: self.source_sha256.clone(),
@@ -215,6 +288,11 @@ impl AnnotationRegister {
             .filter(|(_, r)| {
                 (filter.include_replies || !r.is_reply)
                     && filter.page.is_none_or(|p| p == r.page)
+                    && filter
+                        .zone
+                        .as_ref()
+                        .is_none_or(|z| z.matches(r.page, &r.zone))
+                    && filter.zone_status.is_none_or(|s| s == r.zone.status)
                     && exact(&filter.author, r.author.as_deref())
                     && (filter.modified.is_empty()
                         || r.modified
@@ -241,6 +319,10 @@ impl AnnotationRegister {
                         .into_iter()
                         .flatten()
                         .any(|s| s.to_lowercase().contains(&query))
+                        || r.zone
+                            .path
+                            .iter()
+                            .any(|z| z.name.to_lowercase().contains(&query))
                         || r.fields.custom.iter().any(|(k, v)| {
                             k.to_lowercase().contains(&query) || v.to_lowercase().contains(&query)
                         }))
@@ -298,7 +380,7 @@ impl AnnotationRegister {
                 counts.entry(group).or_default().push(serde_json::json!({"page":r.page,"index":r.index,"annotation_id":r.annotation_id}));
             }
         }
-        serde_json::json!({"schema":"sunipdf-annotation-register","version":1,"complete":true,
+        serde_json::json!({"schema":"sunipdf-annotation-register","version":1,"complete":filter.zone.is_none() || self.zone_coverage(filter).complete,"zone_coverage":self.zone_coverage(filter),"zone_filter_error":self.validate_zone_filter(filter).err().map(|e|e.to_string()),
             "source_sha256":self.source_sha256,"page_count":self.page_count,"total_annotations":self.rows.len(),
             "coordinate_system":"displayed-page-points-bottom-left","filter":filter,"sort":sort.id(),"descending":descending,
             "matched_annotations":rows.len(),"rows":rows,
@@ -306,9 +388,15 @@ impl AnnotationRegister {
     }
 
     /// Every value is quoted; dangerous spreadsheet prefixes are escaped even after whitespace/BOM.
-    pub fn csv(&self, filter: &RegisterFilter, sort: RegisterSort, descending: bool) -> String {
+    pub fn csv(
+        &self,
+        filter: &RegisterFilter,
+        sort: RegisterSort,
+        descending: bool,
+    ) -> Result<String, EngineError> {
+        self.validate_zone_filter(filter)?;
         let mut output = String::from(
-            "source_sha256,page,index,annotation_id,kind,author,modified,review_status,business_status,discipline,subject,contents,count_group,quantity,rect,custom_fields,is_reply,hidden,locked\r\n",
+            "source_sha256,page,index,annotation_id,kind,author,modified,review_status,business_status,discipline,subject,contents,count_group,quantity,rect,custom_fields,is_reply,hidden,locked,zone_status,zone_id,zone_path\r\n",
         );
         for r in self.select(filter, sort, descending) {
             let cells = [
@@ -332,6 +420,9 @@ impl AnnotationRegister {
                 Some(r.is_reply.to_string()),
                 Some(r.hidden.to_string()),
                 Some(r.locked.to_string()),
+                Some(r.zone.status.id().into()),
+                r.zone.zone_id.clone(),
+                Some(serde_json::to_string(&r.zone.path).expect("zone path")),
             ];
             output.push_str(
                 &cells
@@ -342,7 +433,7 @@ impl AnnotationRegister {
             );
             output.push_str("\r\n");
         }
-        output
+        Ok(output)
     }
 }
 
@@ -595,6 +686,7 @@ pub struct RegisterReader<'a> {
     page_count: usize,
     pages: std::collections::VecDeque<(u32, lopdf::ObjectId)>,
     rows: Vec<RegisterRow>,
+    plan_zones: Vec<crate::plan_zones::PagePlanZones>,
     budget: usize,
     names: HashMap<String, usize>,
     failed: bool,
@@ -620,6 +712,7 @@ impl<'a> RegisterReader<'a> {
             page_count,
             pages: pages.into_iter().collect(),
             rows: Vec::new(),
+            plan_zones: Vec::new(),
             budget: 0,
             names: HashMap::new(),
             failed: false,
@@ -651,11 +744,16 @@ impl<'a> RegisterReader<'a> {
             rows,
             budget,
             names,
+            plan_zones,
             ..
         } = self;
         let page = page_no as usize;
         let geo = doc.page_geometry(page - 1)?;
         let page_dict = pdf.get_dictionary(page_id).map_err(lopdf_err)?;
+        let zones = crate::plan_zones::read_page(pdf, page_dict, &geo, page)?;
+        if !zones.zones.is_empty() {
+            plan_zones.push(zones.clone());
+        }
         let entries = match page_dict.get(b"Annots") {
             Err(_) => return Ok(self.pages.is_empty()),
             Ok(raw) => pdf
@@ -787,6 +885,7 @@ impl<'a> RegisterReader<'a> {
                 },
                 fields,
                 count_group,
+                zone: crate::plan_zones::assign_zone(&zones, rect),
             });
         }
         // Bound hostile reply cycles/depth before deriving the last standard Review state.
@@ -819,6 +918,7 @@ impl<'a> RegisterReader<'a> {
             source_sha256,
             page_count,
             rows,
+            plan_zones,
             names,
             bytes,
             ..
@@ -835,6 +935,7 @@ impl<'a> RegisterReader<'a> {
             source_sha256,
             page_count,
             rows,
+            plan_zones,
             source_snapshot: bytes,
         })
     }

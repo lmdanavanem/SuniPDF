@@ -72,6 +72,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::AnnotationLibrary => (glyph::ALL_APPS, "▦"),
         Command::ToolCount => (glyph::ADD, "+"),
         Command::QuantityTable => (glyph::NUMBERS, "#"),
+        Command::PlanZones => ("\u{E707}", "▧"),
         Command::AnnotationRegister => (glyph::PAGES, "▤"),
         Command::EraseInkStrokes => (glyph::ERASE, "⌫"),
         Command::OfficeToPdf => (glyph::IMPORT, "⤵"),

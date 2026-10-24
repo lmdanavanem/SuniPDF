@@ -102,6 +102,7 @@ use crate::shortcut_defaults::DEFAULTS as SHORTCUTS;
 pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
     pub overlay: crate::revision_overlay::OverlayState,
+    pub plan_zones: crate::plan_zones_ui::PlanZonesState,
     pub revision_outlines: crate::revision_outlines_ui::OutlineState,
     pub revision_transfer: crate::revision_transfer_ui::TransferState,
     pub plan_sets: crate::plan_sets::PlanSetState,
@@ -198,6 +199,7 @@ impl SuniApp {
             plan_sets: Default::default(),
             plan_links: Default::default(),
             revision_outlines: Default::default(),
+            plan_zones: Default::default(),
             revision_transfer: Default::default(),
             reading_full_screen: false,
             recovery,
@@ -534,6 +536,11 @@ impl SuniApp {
                 Response::RevisionOverlayDone { generation, result } => {
                     self.on_revision_overlay(ctx, generation, result);
                 }
+                Response::PlanZones {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_plan_zones(ctx, epoch, generation, result),
                 Response::PlanLinksDone { generation, result } => {
                     self.on_plan_links(ctx, generation, result);
                 }
@@ -1418,7 +1425,8 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.plan_links.open
+        self.plan_zones.open
+            || self.plan_links.open
             || self.plan_links.busy()
             || self.revision_outlines.open
             || self.revision_outlines.busy()
@@ -1774,7 +1782,8 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.plan_links.open
+        self.plan_zones.open
+            || self.plan_links.open
             || self.plan_links.busy()
             || self.revision_outlines.open
             || self.revision_outlines.busy()
@@ -1853,6 +1862,7 @@ impl SuniApp {
             return;
         }
         if (self.review.busy
+            || self.plan_zones.open
             || self.revision_outlines.open
             || self.revision_outlines.busy()
             || self.revision_transfer.open
@@ -1908,6 +1918,10 @@ impl SuniApp {
         if matches!(command, Command::Quit | Command::CloseDocument) && self.overlay.open {
             self.overlay.close();
         }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.plan_zones.open {
+            self.close_plan_zones();
+            return;
+        }
         if matches!(command, Command::Quit | Command::CloseDocument) && self.revision_outlines.open
         {
             self.close_revision_outlines();
@@ -1946,6 +1960,7 @@ impl SuniApp {
             Command::PlanSets => self.open_plan_sets(),
             Command::PlanLinks => self.open_plan_links(),
             Command::RevisionOutlines => self.open_revision_outlines(),
+            Command::PlanZones => self.open_plan_zones(),
             Command::RevisionTransfer => self.open_revision_transfer(),
             Command::CompareFiles => self.open_local_review(true),
             Command::RevisionOverlay => self.open_revision_overlay(),
@@ -3429,6 +3444,7 @@ impl SuniApp {
         self.feature_dialogs(&ctx);
         self.revision_overlay_dialog(&ctx);
         self.revision_outlines_dialog(&ctx);
+        self.plan_zones_dialog(&ctx);
         self.revision_transfer_dialog(&ctx);
         self.plan_sets_dialog(&ctx);
         self.plan_links_dialog(&ctx);
@@ -3544,6 +3560,7 @@ pub(crate) mod tests {
             plan_sets: Default::default(),
             plan_links: Default::default(),
             revision_outlines: Default::default(),
+            plan_zones: Default::default(),
             revision_transfer: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),

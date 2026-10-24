@@ -54,6 +54,15 @@ pub struct RegisterArgs {
     pub kind: String,
     #[arg(long, default_value = "")]
     pub count_group: String,
+    /// Match an assigned zone on one physical page: PAGE:ID.
+    #[arg(long, value_parser = zone_selection)]
+    pub zone: Option<sunipdf_core::plan_zones::ZoneFilter>,
+    /// Include descendants of --zone; each matched annotation still occurs only once.
+    #[arg(long, requires = "zone")]
+    pub zone_descendants: bool,
+    /// Match assignment state, without interpreting unknown geometry as an empty zone.
+    #[arg(long, value_parser = zone_status)]
+    pub zone_status: Option<sunipdf_core::plan_zones::ZoneAssignmentStatus>,
     #[arg(long)]
     pub include_replies: bool,
     #[arg(long,default_value="page",value_parser=["page","author","modified","kind","review_status","business_status","discipline","count_group"])]
@@ -66,6 +75,52 @@ pub struct RegisterArgs {
     pub descending: bool,
     #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
     pub password: Option<String>,
+}
+
+fn zone_selection(value: &str) -> Result<sunipdf_core::plan_zones::ZoneFilter, String> {
+    let (page, id) = value.split_once(':').ok_or("zone requires PAGE:ID")?;
+    let page = page
+        .parse::<usize>()
+        .ok()
+        .filter(|page| *page > 0)
+        .ok_or("zone physical page numbers start at 1")?;
+    if id.is_empty()
+        || id.len() > 64
+        || !id
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_-".contains(&b))
+    {
+        return Err(
+            "zone ID requires 1 to 64 ASCII letters, digits, underscores or hyphens".into(),
+        );
+    }
+    Ok(sunipdf_core::plan_zones::ZoneFilter {
+        page,
+        id: id.into(),
+        descendants: false,
+    })
+}
+
+fn zone_status(value: &str) -> Result<sunipdf_core::plan_zones::ZoneAssignmentStatus, String> {
+    sunipdf_core::plan_zones::ZoneAssignmentStatus::ALL
+        .into_iter()
+        .find(|status| status.id() == value)
+        .ok_or_else(|| {
+            "zone status must be assigned, boundary, overlap, unassigned, geometry_unknown or stale"
+                .into()
+        })
+}
+
+pub fn selected_zone(
+    args: &RegisterArgs,
+    pages: usize,
+) -> Result<Option<sunipdf_core::plan_zones::ZoneFilter>, EngineError> {
+    let mut zone = args.zone.clone();
+    if let Some(selected) = &mut zone {
+        crate::page_index(selected.page, pages)?;
+        selected.descendants = args.zone_descendants;
+    }
+    Ok(zone)
 }
 
 fn custom_sort_name(value: &str) -> Result<String, String> {
@@ -137,6 +192,7 @@ pub fn register(engine: &Engine, args: RegisterArgs) -> Result<serde_json::Value
         crate::page_index(page, doc.page_count())?;
     }
     let report = doc.annotation_register()?;
+    let zone = selected_zone(&args, doc.page_count())?;
     let filter = RegisterFilter {
         query: args.query,
         page: args.page,
@@ -149,21 +205,24 @@ pub fn register(engine: &Engine, args: RegisterArgs) -> Result<serde_json::Value
         count_group: args.count_group,
         include_replies: args.include_replies,
         custom_sort: args.sort_custom,
+        zone,
+        zone_status: args.zone_status,
     };
     let sort = RegisterSort::ALL
         .into_iter()
         .find(|s| s.id() == args.sort)
         .ok_or(EngineError::InvalidFormat)?;
+    report.validate_zone_filter(&filter)?;
     let json = report.json(&filter, sort, args.descending);
     if let Some(out) = args.out {
         let bytes = if args.format == "csv" {
-            report.csv(&filter, sort, args.descending).into_bytes()
+            report.csv(&filter, sort, args.descending)?.into_bytes()
         } else {
             serde_json::to_vec_pretty(&json).map_err(|e| EngineError::Other(e.to_string()))?
         };
         sunipdf_core::write_new_copy(&out, &bytes)?;
         Ok(
-            serde_json::json!({"out":out,"format":args.format,"matched_annotations":json["matched_annotations"],"source_sha256":report.source_sha256,"original_unchanged":true}),
+            serde_json::json!({"out":out,"format":args.format,"complete":json["complete"],"zone_coverage":json["zone_coverage"],"matched_annotations":json["matched_annotations"],"source_sha256":report.source_sha256,"original_unchanged":true}),
         )
     } else if args.format == "csv" {
         Err(EngineError::Other("CSV export requires --out".into()))

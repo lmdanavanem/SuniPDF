@@ -197,6 +197,11 @@ pub enum BytesOp {
 
 /// Modification de pages, appliquée sous instantané (annulable).
 pub enum EditOp {
+    CommitPlanZones {
+        epoch: u64,
+        generation: u64,
+    },
+    PreparedPlanZones(sunipdf_core::plan_zones::PreparedPlanZones),
     SetPageLabels(PageLabelRange),
     ResetPageLabels,
     AddFormField {
@@ -496,7 +501,9 @@ impl EditOp {
     fn keeps_measurement_scales(&self) -> bool {
         matches!(
             self,
-            Self::SetPageLabels(_)
+            Self::CommitPlanZones { .. }
+                | Self::PreparedPlanZones(_)
+                | Self::SetPageLabels(_)
                 | Self::ResetPageLabels
                 | Self::AddFormField { .. }
                 | Self::Markup { .. }
@@ -600,6 +607,11 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    PlanZones {
+        epoch: u64,
+        generation: u64,
+        job: crate::plan_zones_ui::Job,
+    },
     RevisionOutlines {
         generation: u64,
         job: crate::revision_outlines_ui::Job,
@@ -911,6 +923,11 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    PlanZones {
+        epoch: u64,
+        generation: u64,
+        result: Result<Option<crate::plan_zones_ui::PageData>, EngineError>,
+    },
     RevisionOutlinesProgress {
         generation: u64,
         progress: sunipdf_core::revision_outlines::OutlineProgress,
@@ -1259,6 +1276,7 @@ struct State<'a> {
     clip: Option<ObjectClip>,
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
+    plan_zones: crate::plan_zones_ui::WorkerCache,
     rectangle_calibration: Option<RectangleCalibrationCapture>,
     redaction_preview: Option<(u64, u64, sunipdf_core::redact::PreparedRedaction)>,
     search: Option<SearchJob>,
@@ -1360,6 +1378,7 @@ impl State<'_> {
         self.cache.clear();
         self.wanted.clear();
         self.rich_preview = None;
+        self.plan_zones.clear();
         self.redaction_preview = None;
         self.search = None;
         self.register = None;
@@ -1492,6 +1511,12 @@ impl State<'_> {
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
         let op = match op {
+            EditOp::CommitPlanZones { epoch, generation } => {
+                match self.plan_zones.take(epoch, generation) {
+                    Ok(p) => EditOp::PreparedPlanZones(p),
+                    Err(e) => return Response::OperationFailed(e),
+                }
+            }
             EditOp::CommitRichAnnotationPreview { epoch, generation } => {
                 match self.rich_preview.take() {
                     Some((saved_epoch, saved_generation, prepared))
@@ -1734,6 +1759,7 @@ mod save_point_tests {
             clip: None,
             fonts: None,
             rich_preview: None,
+            plan_zones: Default::default(),
             rectangle_calibration: None,
             redaction_preview: None,
             search: None,
@@ -1879,6 +1905,8 @@ fn checked_pages(mut pages: Vec<usize>, count: usize) -> Result<Vec<usize>, Engi
 
 fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Result<(), EngineError> {
     match op {
+        EditOp::PreparedPlanZones(p) => doc.apply_plan_zones(p),
+        EditOp::CommitPlanZones { .. } => unreachable!("resolved by worker"),
         EditOp::SetPageLabels(range) => doc.set_page_labels(&range),
         EditOp::ResetPageLabels => doc.reset_page_labels(),
         EditOp::AddFormField {
@@ -2320,6 +2348,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         clip: None,
         fonts: None,
         rich_preview: None,
+        plan_zones: Default::default(),
         rectangle_calibration: None,
         redaction_preview: None,
         search: None,
@@ -3453,6 +3482,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         doc.capture_library_entry(page, &selections, id, name, provenance)
                     }),
             },
+            Request::PlanZones {
+                epoch,
+                generation,
+                job,
+            } => Response::PlanZones {
+                epoch,
+                generation,
+                result: match state.document.as_ref() {
+                    Some(doc) => state.plan_zones.run(doc, epoch, generation, job),
+                    None => {
+                        state.plan_zones.clear();
+                        Err(EngineError::Other("no document".into()))
+                    }
+                },
+            },
             Request::QuantityTable { epoch, generation } => Response::QuantityTable {
                 epoch,
                 generation,
@@ -3675,6 +3719,130 @@ mod tests {
         cooperative_search_and_register_publish_complete_generation_scoped_results(&worker);
         revision_transfer_candidates_stay_in_worker_and_revalidate_before_publication(&worker);
         revision_outlines_keep_candidates_in_worker_and_revalidate_saved_sources(&worker);
+        plan_zones_preview_apply_history_reopen_and_stale_guard(&worker);
+    }
+
+    fn plan_zones_preview_apply_history_reopen_and_stale_guard(worker: &Worker) {
+        use crate::plan_zones_ui::Job;
+        use sunipdf_core::plan_zones::{PlanZone, ZoneAssignmentStatus};
+        fn read(worker: &Worker, generation: u64, job: Job) -> crate::plan_zones_ui::PageData {
+            worker.send(Request::PlanZones {
+                epoch: 980,
+                generation,
+                job,
+            });
+            match next_response(worker) {
+                Response::PlanZones {
+                    result: Ok(Some(data)),
+                    ..
+                } => data,
+                _ => panic!("expected zone page"),
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.pdf");
+        let output = dir.path().join("zones.pdf");
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&source, &original).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::AddCountMarker {
+            page: 0,
+            point: (40., 40.),
+            size: 8.,
+            group: "Lights".into(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let zones = vec![PlanZone {
+            id: "room-1".into(),
+            name: "Room one".into(),
+            parent_id: None,
+            bounds: [10., 10., 100., 100.],
+        }];
+        let preview = read(
+            worker,
+            1,
+            Job::Preview {
+                page: 0,
+                zones: zones.clone(),
+                reset_stale: false,
+            },
+        );
+        assert_eq!(
+            preview.preview.unwrap().assignments[0].after.status,
+            ZoneAssignmentStatus::Assigned
+        );
+        worker.send(Request::Edit(EditOp::CommitPlanZones {
+            epoch: 980,
+            generation: 1,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        assert_eq!(read(worker, 2, Job::Read { page: 0 }).page.zones, zones);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(read(worker, 3, Job::Read { page: 0 }).page.zones.is_empty());
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(worker, 4, Job::Read { page: 0 }).page.zones, zones);
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(read(worker, 5, Job::Read { page: 0 }).page.zones, zones);
+        read(
+            worker,
+            6,
+            Job::Preview {
+                page: 0,
+                zones: Vec::new(),
+                reset_stale: false,
+            },
+        );
+        worker.send(Request::Edit(EditOp::Note {
+            page: 0,
+            x: 140.,
+            y: 140.,
+            text: "Later edit".into(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitPlanZones {
+            epoch: 980,
+            generation: 6,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(read(worker, 7, Job::Read { page: 0 }).page.zones, zones);
+        assert_eq!(std::fs::read(&source).unwrap(), original);
     }
 
     fn revision_outlines_keep_candidates_in_worker_and_revalidate_saved_sources(worker: &Worker) {

@@ -34,6 +34,7 @@ mod pagesetup;
 mod plan_links_ui;
 mod plan_set_view;
 mod plan_sets;
+mod plan_zones_ui;
 mod printing;
 mod processing;
 mod quantity_table;

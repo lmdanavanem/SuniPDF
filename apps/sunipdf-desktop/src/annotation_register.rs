@@ -326,12 +326,16 @@ impl SuniApp {
         let mut apply = false;
         let mut cancel_edit = false;
         let mut quantities = false;
+        let mut zones = false;
         let mut cancel_collection = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
         let row_actions_enabled = enabled && state.edit.is_none();
         let can_refresh = enabled && state.edit.is_none();
-        let can_export = can_refresh && report.is_some();
+        let can_export = can_refresh
+            && report
+                .as_ref()
+                .is_some_and(|r| r.validate_zone_filter(&state.filter).is_ok());
         let can_close = state.edit.as_ref().is_none_or(|e| !e.applying);
         let width = (ctx.content_rect().width() - 60.0).clamp(420.0, 1050.0);
         let selection = self
@@ -365,6 +369,25 @@ impl SuniApp {
                     cancel_collection = ui.button(tr(lang, "register.cancel")).clicked();
                 }
                 if let Some(report) = &report {
+                    ui.horizontal_wrapped(|ui| {
+                        zones = ui
+                            .add_enabled(can_refresh, egui::Button::new(tr(lang, "zones.manage")))
+                            .clicked();
+                    });
+                    crate::plan_zones_ui::zone_filter_ui(
+                        ui,
+                        lang,
+                        &mut state.filter,
+                        &report.plan_zones,
+                    );
+                    crate::plan_zones_ui::coverage_ui(
+                        ui,
+                        lang,
+                        &report.zone_coverage(&state.filter),
+                    );
+                    if let Err(error) = report.validate_zone_filter(&state.filter) {
+                        ui.colored_label(crate::theme::ERROR, error.to_string());
+                    }
                     let selected =
                         state
                             .selection
@@ -505,6 +528,7 @@ impl SuniApp {
                                     "review_status",
                                     "business_status",
                                     "discipline",
+                                    "zone",
                                 ] {
                                     ui.strong(
                                         egui::RichText::new(tr(lang, &format!("register.{key}")))
@@ -565,6 +589,9 @@ impl SuniApp {
                                         )
                                         .on_hover_text(value);
                                     }
+                                    ui.label(crate::plan_zones_ui::assignment_label(
+                                        lang, &row.zone,
+                                    ));
                                     ui.horizontal(|ui| {
                                         if ui
                                             .add_enabled(
@@ -721,18 +748,20 @@ impl SuniApp {
                 .set_file_name(format!("annotation-register.{format}"))
                 .save_file()
             {
-                let result = if format == "csv" {
-                    Ok(report
-                        .csv(&state.filter, state.sort, state.descending)
-                        .into_bytes())
-                } else {
-                    serde_json::to_vec_pretty(&report.json(
-                        &state.filter,
-                        state.sort,
-                        state.descending,
-                    ))
-                    .map_err(|e| EngineError::Other(e.to_string()))
-                };
+                let result = report.validate_zone_filter(&state.filter).and_then(|_| {
+                    if format == "csv" {
+                        report
+                            .csv(&state.filter, state.sort, state.descending)
+                            .map(String::into_bytes)
+                    } else {
+                        serde_json::to_vec_pretty(&report.json(
+                            &state.filter,
+                            state.sort,
+                            state.descending,
+                        ))
+                        .map_err(|e| EngineError::Other(e.to_string()))
+                    }
+                });
                 match result.and_then(|bytes| sunipdf_core::write_new_copy(&path, &bytes)) {
                     Ok(()) => self.status_msg = Some(tr(lang, "register.exported").into()),
                     Err(error) => state.error = Some(error.to_string()),
@@ -748,6 +777,9 @@ impl SuniApp {
             state.edit = None;
         }
         self.annotate.register = state;
+        if zones {
+            self.open_plan_zones();
+        }
         if quantities {
             self.annotate.register.open = false;
             self.open_quantity_table();
@@ -826,6 +858,7 @@ mod tests {
                 review_status: None,
                 fields: RegisterFields::default(),
                 count_group: Some(format!("Group {}", index % 20)),
+                zone: Default::default(),
             })
             .collect();
         Arc::new(report)
