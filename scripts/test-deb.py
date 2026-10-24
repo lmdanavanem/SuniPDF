@@ -214,6 +214,7 @@ def theme_settings(app, window, evidence):
     from PIL import Image
     settings_path = HOME / ".config/sunipdf/settings.json"
     records = []
+    target_index = 0
 
     def wait_for(description, predicate):
         deadline = time.monotonic() + 20
@@ -237,8 +238,11 @@ def theme_settings(app, window, evidence):
         return path
 
     def click_label(label):
+        nonlocal target_index
+        target_index += 1
         path = capture("native-theme-target")
         tsv = command(["tesseract", path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=30)
+        (evidence / f"native-theme-target-{target_index:02d}.tsv").write_text(tsv + "\n", encoding="utf-8")
         with Image.open(path) as image:
             x, y = theme_label_center(tsv, label, image.size)
         command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
@@ -272,7 +276,10 @@ def theme_settings(app, window, evidence):
     click_label("Dark")
     require_choice("liquid_glass", "dark", False)
     record("native-theme-glass-dark", True)
-    click_label("Reduce transparency")
+    # OCR can attach the adjacent checkbox glyph to "Reduce". Target the unique
+    # complete second word of the same clickable label; persistence and rendered
+    # reduced-Glass checks below still require the real checkbox to change.
+    click_label("transparency")
     require_choice("liquid_glass", "dark", True)
     record("native-theme-glass-dark-reduced", True)
     click_label("System")

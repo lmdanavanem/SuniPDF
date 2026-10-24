@@ -24,6 +24,18 @@ installed = load("test-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_checkbox_target_accepts_unique_word_beside_merged_glyph_only(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        first = "5\t1\t1\t1\t1\t1\t20\t30\t50\t14\t88\t\u2610Reduce\n"
+        second = "5\t1\t1\t1\t1\t2\t74\t30\t90\t14\t95\ttransparency\n"
+        self.assertEqual(installed.theme_label_center(header + first + second, "transparency", (200, 80)), (119, 37))
+        duplicate = second.replace("\t1\t1\t1\t1\t2\t", "\t1\t2\t1\t1\t2\t")
+        for text, bounds in ((header + first, (200, 80)), (header + first + second, (160, 80)),
+                             (header + first + second + duplicate, (200, 80)),
+                             (header + second.replace("transparency", "transparencies"), (200, 80))):
+            with self.subTest(text=text, bounds=bounds), self.assertRaises(AssertionError):
+                installed.theme_label_center(text, "transparency", bounds)
+
     def test_theme_label_targets_require_unique_complete_visible_text(self):
         header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
         first = "5\t1\t1\t1\t1\t1\t20\t30\t40\t14\t95\tLiquid\n"
