@@ -29,6 +29,14 @@ The right side shows one context panel at a time. A measurement draft blocks ope
 
 ## Plan workspace
 
+The 0.65 development candidate adds [reviewed links to plan sheets](PLAN_LINKS.md), available from
+**File** or **Tools → Organize pages**. Select a saved plan-set manifest and source PDF, inspect exact
+sheet references, resolve ambiguous destinations and explicitly approve the links to create. Preview
+the actual source and destination pages, then save a new PDF beside the source. Following an authored
+link verifies the selected manifest and destination before opening the target sheet. Existing sources
+remain unchanged. [Candidate qualification](RELEASE_0.65.0.md) records completed local and native
+checks and outstanding package checks; this feature is not included in the 0.63 downloads.
+
 The annotation register and quantity table can be docked below the PDF or displayed in a floating window.
 Resize the dock and choose its placement; these preferences are saved. Select a row to follow the actual annotation
 and open its contextual properties. Read-only tables can remain open while navigating the document; finish or cancel
