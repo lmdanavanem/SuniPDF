@@ -521,7 +521,7 @@ mod tests {
             other.view.request(ScrollRequest::Page(1));
             let ctx = egui::Context::default();
             let epoch = app.view.epoch;
-            let output = ctx.run_ui(
+            let mut output = ctx.run_ui(
                 egui::RawInput {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(width, 800.0))),
                     time: Some(1.0),
@@ -529,7 +529,7 @@ mod tests {
                 },
                 |ui| app.reader_workspace(&ctx, ui),
             );
-            drop(output);
+            output.textures_delta.clear();
             let queues: Vec<_> = requests
                 .try_iter()
                 .filter_map(|request| match request {
@@ -561,7 +561,7 @@ mod tests {
         let mut time = 0.0;
         let mut run = |app: &mut SuniApp, events| {
             time += 0.5;
-            let _ = ctx.run_ui(
+            let mut output = ctx.run_ui(
                 egui::RawInput {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 800.0))),
                     events,
@@ -570,6 +570,7 @@ mod tests {
                 },
                 |ui| app.reader_workspace(&ctx, ui),
             );
+            output.textures_delta.clear();
         };
         for _ in 0..3 {
             run(&mut app, vec![]);
@@ -605,7 +606,7 @@ mod tests {
         let mut app = split_app();
         let ctx = egui::Context::default();
         let frame = |app: &mut SuniApp, events| {
-            let _ = ctx.run_ui(
+            let mut output = ctx.run_ui(
                 egui::RawInput {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 800.0))),
                     events,
@@ -613,6 +614,7 @@ mod tests {
                 },
                 |ui| app.reader_workspace(&ctx, ui),
             );
+            output.textures_delta.clear();
         };
         frame(&mut app, vec![]);
         let point = app.reader_views.rects[1].center();

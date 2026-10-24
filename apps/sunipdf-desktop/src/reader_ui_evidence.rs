@@ -926,9 +926,15 @@ fn capture_scene(
             "Docked table incorrectly blocks document interactions",
         )?;
     }
+    // Texture lookup updates the pool's LRU bookkeeping. Snapshot the identities once so
+    // subsequent pane verification can inspect the application without borrowing it mutably.
+    let texture_ids: std::collections::HashMap<_, _> = tiles
+        .iter()
+        .filter_map(|job| app.view.pool.exact(job).map(|handle| (*job, handle.id())))
+        .collect();
     let texture_ids_for = |jobs: &[TileJob]| -> Vec<_> {
         jobs.iter()
-            .filter_map(|job| app.view.pool.exact(job).map(|handle| handle.id()))
+            .filter_map(|job| texture_ids.get(job).copied())
             .collect()
     };
     let tile_ids = texture_ids_for(&tiles);

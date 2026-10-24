@@ -32,6 +32,7 @@ class LinuxPackagingTests(unittest.TestCase):
                 self.assertFalse(installed.reader_fixture_visible(color, 500, "SuniPDF page " + right))
                 self.assertFalse(installed.reader_fixture_visible(color, 10000, "Page " + right))
                 self.assertFalse(installed.reader_fixture_visible(color, 10000, "SuniPDF page " + right + "0"))
+                self.assertFalse(installed.reader_fixture_visible(color, 10000, ("SuniPDF page " + right + "\n") * 2))
 
     def test_split_reader_masks_distinguish_page_ink(self):
         pixels = [(0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 255, 255), (80, 90, 230)]

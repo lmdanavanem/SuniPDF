@@ -173,7 +173,9 @@ def colored_fixture_mask(pixels, color):
 
 def reader_fixture_visible(color, count, text):
     page = r"[1Il]" if color == "blue" else "2"
-    return count > 500 and re.search(r"\bSuniPDF\s+page\s+" + page + r"\b", text, re.I) is not None
+    # A closed split must contain exactly one fixture title, not two synchronized
+    # panes that would also satisfy a simple substring check.
+    return count > 500 and len(re.findall(r"\bSuniPDF\s+page\s+" + page + r"\b", text, re.I)) == 1
 
 
 def reader_views(app, window, evidence):
