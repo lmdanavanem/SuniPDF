@@ -24,6 +24,7 @@ mod measure_tools;
 mod measurement_geometry;
 mod measurement_saved;
 mod measurement_scales_ui;
+mod measurement_shapes_ui;
 mod objects;
 mod ocr;
 mod office;

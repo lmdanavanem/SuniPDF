@@ -78,9 +78,15 @@ pub enum RichAnnotation {
         placement: crate::annotation_library::LibraryPlacement,
     },
     Measurement(crate::measurement::Measurement),
+    DimensionedRectangle(crate::measurement::DimensionedRectangle),
     UpdateMeasurement {
         target: crate::measurement::MeasurementTarget,
         measurement: crate::measurement::Measurement,
+    },
+    RecalibrateMeasurement {
+        target: crate::measurement::MeasurementTarget,
+        measurement: crate::measurement::Measurement,
+        calibration: crate::measurement::PageCalibration,
     },
     Attachment {
         rect: PointRect,
@@ -333,18 +339,48 @@ pub(crate) fn same_document(
     current: &[u8],
     password: Option<&str>,
 ) -> Result<bool, EngineError> {
+    same_document_context(original, current, password, false)
+}
+
+/// Local measurement references may survive annotation-only edits. Keep the page tree, content,
+/// resources, scales, trailer roots and encryption exact; only page /Annots roots are ignored.
+/// Prepared edits deliberately use `same_document` instead, including all annotations.
+pub(crate) fn same_document_for_local_reference(
+    original: &[u8],
+    current: &[u8],
+    password: Option<&str>,
+) -> Result<bool, EngineError> {
+    same_document_context(original, current, password, true)
+}
+
+fn same_document_context(
+    original: &[u8],
+    current: &[u8],
+    password: Option<&str>,
+    ignore_page_annotations: bool,
+) -> Result<bool, EngineError> {
     if original == current {
         return Ok(true);
     }
     if original.len() > 128 * 1024 * 1024 || current.len() > 128 * 1024 * 1024 {
         return Ok(false);
     }
-    let envelope = |bytes: &[u8]| -> Result<Option<(Dictionary, Option<Object>)>, EngineError> {
+    type EncryptionEnvelope = (Dictionary, Option<Object>, Option<[u8; 32]>);
+    let envelope = |bytes: &[u8]| -> Result<Option<EncryptionEnvelope>, EngineError> {
         let raw = lopdf::Document::load_mem(bytes).map_err(lopdf_err)?;
-        if !raw.is_encrypted() {
+        let (dictionary, key_identity) = if raw.is_encrypted() {
+            (raw.get_encrypted().map_err(lopdf_err)?.clone(), None)
+        } else if let Some(state) = &raw.encryption_state {
+            // Loading an empty-user-password PDF removes /Encrypt and its object. Compare the
+            // retained effective security state and key identity instead of treating it as plain.
+            use sha2::{Digest, Sha256};
+            (
+                state.encode().map_err(|_| bad())?,
+                Some(Sha256::digest(state.file_encryption_key()).into()),
+            )
+        } else {
             return Ok(None);
-        }
-        let dictionary = raw.get_encrypted().map_err(lopdf_err)?.clone();
+        };
         let mut pending = vec![(&dictionary, 0usize)];
         let mut nodes = 0usize;
         while let Some((dictionary, depth)) = pending.pop() {
@@ -378,13 +414,21 @@ pub(crate) fn same_document(
             ),
             Err(_) => None,
         };
-        Ok(Some((dictionary, id)))
+        Ok(Some((dictionary, id, key_identity)))
     };
     if envelope(original)? != envelope(current)? {
         return Ok(false);
     }
     let normalize = |bytes: &[u8]| -> Result<lopdf::Document, EngineError> {
-        prepared_document_graph(crate::security::load(bytes, password)?)
+        let mut pdf = crate::security::load(bytes, password)?;
+        if ignore_page_annotations {
+            for page in pdf.get_pages().values() {
+                pdf.get_dictionary_mut(*page)
+                    .map_err(lopdf_err)?
+                    .remove(b"Annots");
+            }
+        }
+        prepared_document_graph(pdf)
     };
     let original = normalize(original)?;
     let current = normalize(current)?;
@@ -883,6 +927,9 @@ impl<'a> Document<'a> {
             RichAnnotation::Measurement(measurement) => {
                 self.add_measurement_annotation(page, measurement, author)
             }
+            RichAnnotation::DimensionedRectangle(request) => {
+                self.add_dimensioned_rectangle(page, request, author)
+            }
             RichAnnotation::UpdateMeasurement {
                 target,
                 measurement,
@@ -893,6 +940,18 @@ impl<'a> Document<'a> {
                     ));
                 }
                 self.update_measurement_annotation(target, measurement)
+            }
+            RichAnnotation::RecalibrateMeasurement {
+                target,
+                measurement,
+                calibration,
+            } => {
+                if target.page() != page {
+                    return Err(EngineError::Other(
+                        "measurement belongs to another page".into(),
+                    ));
+                }
+                self.recalibrate_measurement_annotation(target, measurement, calibration)
             }
             RichAnnotation::Attachment {
                 rect,
@@ -1127,6 +1186,44 @@ mod tests {
             "the encryption dictionary, key identity and permissions belong to the prepared source"
         );
         assert!(!same_document(input, &a, Some("same-user")).unwrap());
+    }
+
+    #[test]
+    fn prepared_binding_tracks_auto_decrypted_empty_user_protection() {
+        let input = include_bytes!("../tests/fixtures/two-pages.pdf");
+        for aes256 in [false, true] {
+            let protection = crate::Protection {
+                user_password: String::new(),
+                owner_password: "first-owner".into(),
+                aes256,
+                ..Default::default()
+            };
+            let original = crate::security::protect(input, None, &protection).unwrap();
+            let parsed = lopdf::Document::load_mem(&original).unwrap();
+            assert!(!parsed.is_encrypted());
+            assert!(parsed.encryption_state.is_some());
+            assert!(same_document(&original, &original, None).unwrap());
+            let resaved =
+                crate::security::save(crate::security::load(&original, None).unwrap()).unwrap();
+            assert!(same_document(&original, &resaved, None).unwrap());
+            assert!(!same_document(input, &original, None).unwrap());
+            for change_owner in [false, true] {
+                let replacement = crate::Protection {
+                    owner_password: if change_owner {
+                        "second-owner".into()
+                    } else {
+                        protection.owner_password.clone()
+                    },
+                    allow_print: change_owner,
+                    ..protection.clone()
+                };
+                let reprotected = crate::security::protect(input, None, &replacement).unwrap();
+                assert!(
+                    !same_document(&original, &reprotected, None).unwrap(),
+                    "aes256={aes256}, changed_owner={change_owner}"
+                );
+            }
+        }
     }
 
     #[test]

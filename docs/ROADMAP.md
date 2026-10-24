@@ -5,6 +5,27 @@ Current priorities are below; [release evidence](qa/RELEASE_0.61.0.json) records
 Custom-field sorting, supported saved-group capture and bounded report formulas are delivered.
 Full backlog cards remain open until all acceptance criteria are evidenced.
 
+## Unreleased work awaiting qualification
+
+The working branch implements formula subtotals and coverage, shared formula evaluation,
+signed numeric CSV handling, final CLI destination checks, transactional document restoration,
+encrypted-signing refusal and tab lifecycle/state corrections. It also binds saved measurements
+to bounded page evidence, exposes historical values separately and requires explicit current-reference
+recalibration before their quantities or prices can contribute. Saved defaults and named regions now
+include initial layer visibility and page transparency state; older references require recalibration
+or removal. These are not published features.
+Core/CLI static checks precede the latest compatibility adjustment, tests remain in progress,
+and the changed desktop application has not yet been built or qualified.
+
+Before closing these items, run the final-source regression suite and static checks, exercise
+tab failure/retry and table interactions in the native application, verify save/reopen and
+Undo/Redo, and retain package-specific results. Compare any performance claim against the same
+workload and build conditions; reduced formula evaluation alone is not a frame-latency result.
+Measurement qualification must cover legacy records, same-size drawing changes, resource/layer
+changes, read-only inspection, explicit recalibration, historical-angle refusal and excluded
+quantity/cost/formula results. Verify Undo/Redo and save/reopen without silently promoting history.
+See [current implementation status](PROJECT_STATUS.md#unreleased-working-branch).
+
 ## Delivered foundation
 
 SuniPDF provides local PDF reading, editing, annotations, forms, OCR, page operations,
@@ -54,7 +75,7 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Area | Remaining extension | Required behavior |
 |---|---|---|
 | Register and libraries | Broaden saved-group capture only for reproducible appearances | Native shape-group capture retains relative geometry and supported styles. Foreign, text/image/stamp and extra-semantic records remain explicitly refused. |
-| Quantity calculations | Add formula subtotals, unit-bearing custom fields and spreadsheet refresh | The 0.61 release supplies bounded non-executable expressions, exact quantity units, rounding and explicit errors. Existing prices/currencies remain separate; no implicit conversion or stale export. |
+| Quantity calculations | Qualify formula subtotals; add unit-bearing custom fields and spreadsheet refresh | The working branch sums rounded formula results with separate unit/precision totals and explicit error coverage. Native table/export and final-source regressions remain pending. Existing prices/currencies remain separate; no implicit conversion or stale export. |
 | Dimensioned drawing | Draw supported shapes from real dimensions | Use the existing scale regions and snapping; show the selected scale and retain editable geometry. |
 | Area and volume | Depth, deducted areas and retained holes | Unit-safe calculations; reject degenerate or self-intersecting geometry and retain all inputs. |
 | Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |

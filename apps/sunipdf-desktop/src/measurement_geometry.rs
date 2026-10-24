@@ -546,6 +546,7 @@ mod tests {
             page: 0,
             epoch: 7,
             original: MeasurementRecord {
+                validity: sunipdf_core::measurement::MeasurementValidity::Current,
                 index: 0,
                 annotation_id: Some("measure-0".into()),
                 measurement: measurement.clone(),
@@ -605,6 +606,7 @@ mod tests {
             page: 0,
             epoch: 7,
             original: MeasurementRecord {
+                validity: sunipdf_core::measurement::MeasurementValidity::Current,
                 index: 3,
                 annotation_id: Some("editable-vertices".into()),
                 measurement: measurement.clone(),

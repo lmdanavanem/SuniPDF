@@ -550,20 +550,26 @@ impl Document<'_> {
         bytes: Vec<u8>,
         password: Option<String>,
     ) -> Result<(), EngineError> {
-        self.password = password;
-        self.restore(bytes)
+        // Loading and geometry discovery can both fail. Keep credentials, page metadata and
+        // document-owned font tokens together until the replacement is completely usable.
+        let mut candidate = Self {
+            inner: self
+                .pdfium
+                .load_pdf_from_byte_vec(bytes, password.as_deref())?,
+            pdfium: self.pdfium,
+            info: self.info.clone(),
+            page_rotations: self.page_rotations.clone(),
+            password,
+            font_cache: Default::default(),
+        };
+        candidate.refresh_page_sizes()?;
+        *self = candidate;
+        Ok(())
     }
 
     /// Recharge le document depuis un instantané produit par [`Document::snapshot`].
     pub fn restore(&mut self, bytes: Vec<u8>) -> Result<(), EngineError> {
-        let inner = self
-            .pdfium
-            .load_pdf_from_byte_vec(bytes, self.password.as_deref())?;
-        self.inner = inner;
-        // Les jetons de police appartenaient à l'ancien document.
-        self.font_cache.clear();
-        self.refresh_page_sizes()?;
-        Ok(())
+        self.restore_with_password(bytes, self.password.clone())
     }
 
     /// Enregistre l'état courant (atomiquement) dans `output`. Le chemin peut être l'original.

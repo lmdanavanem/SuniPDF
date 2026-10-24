@@ -139,6 +139,30 @@ fn quantity_table_roundtrip_targets_units_legacy_fields_permissions_and_atomicit
         .find(|row| row["index"] == index && row["page"] == 1)
         .unwrap();
     assert_eq!(result["values"]["With waste"]["value"], "11.00");
+    let subtotal = &calculated.json["summary"]["formula_groups"][0];
+    assert_eq!(subtotal["matched_rows"], 3);
+    assert_eq!(subtotal["contributing_rows"], 1);
+    assert_eq!(subtotal["error_rows"], 2);
+    assert_eq!(subtotal["errors"]["missing_quantity"], 1);
+    assert_eq!(subtotal["errors"]["unit_mismatch"], 1);
+    assert_eq!(subtotal["totals"][0]["amount"], "11.00");
+    assert_eq!(subtotal["totals"][0]["unit"], "m");
+    assert_eq!(subtotal["complete"], false);
+    let summary = &calculated.json["summary"];
+    assert_eq!(summary["quantity_rows"], 2);
+    assert_eq!(summary["unquantified_rows"], 1);
+    assert_eq!(summary["angular_rows"], 0);
+    assert_eq!(summary["excluded_quantity_rows"], 1);
+    assert_eq!(
+        summary["quantity_rows"].as_u64().unwrap() + summary["unquantified_rows"].as_u64().unwrap(),
+        summary["matched_rows"].as_u64().unwrap()
+    );
+    assert_eq!(
+        summary["additive_quantity_rows"].as_u64().unwrap()
+            + summary["excluded_quantity_rows"].as_u64().unwrap(),
+        summary["matched_rows"].as_u64().unwrap()
+    );
+    assert!(calculated.csv.contains("\"formula_subtotal\""));
     equal_pdf(&unchanged, &doc.snapshot().unwrap(), None);
     assert!(doc.set_quantity_fields(&target, &fields()).is_err());
     assert!(doc
@@ -184,6 +208,10 @@ fn quantity_table_roundtrip_targets_units_legacy_fields_permissions_and_atomicit
         row.fields.unit_price.as_ref().unwrap().per_unit,
         QuantityUnit::Metres
     );
+    let recalculated = converted.summary(&formula_options).unwrap();
+    assert!(recalculated.formula_groups[0].totals.is_empty());
+    assert_eq!(recalculated.formula_groups[0].errors["unit_mismatch"], 2);
+    assert_eq!(recalculated.formula_groups[0].error_rows, 3);
     let mut invalid = fields();
     invalid.unit_price.as_mut().unwrap().per_unit = QuantityUnit::SquareMetres;
     let snapshot = doc.snapshot().unwrap();

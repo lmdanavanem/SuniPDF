@@ -2,13 +2,70 @@ use lopdf::{dictionary, Object};
 use sunipdf_core::certificate::{
     identity_info, sign_pdf, verify_signatures, CertSignOptions, SignatureStatus,
 };
-#[cfg(windows)]
-use sunipdf_core::{security, Protection};
+use sunipdf_core::{security, EngineError, Protection};
 #[cfg(windows)]
 #[path = "support/certificate_identity.rs"]
 mod test_identity;
 
 const PDF: &[u8] = include_bytes!("fixtures/two-pages.pdf");
+
+#[test]
+fn encrypted_signing_is_refused_before_identity_loading_even_with_an_empty_user_password() {
+    for aes256 in [false, true] {
+        for user_password in ["", "reader"] {
+            let input = security::protect(
+                PDF,
+                None,
+                &Protection {
+                    user_password: user_password.into(),
+                    owner_password: "owner".into(),
+                    allow_modify: false,
+                    aes256,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let original = input.clone();
+            let parsed = lopdf::Document::load_mem(&input).unwrap();
+            if user_password.is_empty() {
+                assert!(!parsed.is_encrypted());
+                assert!(parsed.encryption_state.is_some());
+            } else {
+                assert!(parsed.is_encrypted());
+            }
+
+            // An invalid identity distinguishes the PDF guard from a later PFX/provider error.
+            let error = sign_pdf(
+                &input,
+                b"not a certificate",
+                "not used",
+                &CertSignOptions::default(),
+            )
+            .unwrap_err();
+            assert!(
+                matches!(error, EngineError::Other(ref message)
+                    if message == "signing encrypted PDFs is not supported"),
+                "aes256={aes256}, empty_user={}: {error}",
+                user_password.is_empty()
+            );
+            assert_eq!(input, original);
+            let restored = security::unprotect(&input, "owner").unwrap();
+            let restored = lopdf::Document::load_mem(&restored).unwrap();
+            let source = lopdf::Document::load_mem(PDF).unwrap();
+            assert_eq!(restored.get_pages().len(), source.get_pages().len());
+            for (actual, expected) in restored
+                .get_pages()
+                .into_values()
+                .zip(source.get_pages().into_values())
+            {
+                assert_eq!(
+                    restored.get_page_content(actual),
+                    source.get_page_content(expected)
+                );
+            }
+        }
+    }
+}
 
 #[cfg(windows)]
 #[test]

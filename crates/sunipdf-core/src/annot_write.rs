@@ -528,8 +528,13 @@ pub(crate) fn load_annot(
     page: ObjectId,
     index: usize,
 ) -> Result<(Slot, Dictionary), EngineError> {
-    let entries = annots_entries(pdf, page);
-    match entries.get(index) {
+    let entry = pdf
+        .get_dictionary(page)
+        .ok()
+        .and_then(|dict| get(pdf, dict, b"Annots"))
+        .and_then(|value| value.as_array().ok())
+        .and_then(|entries| entries.get(index));
+    match entry {
         Some(Object::Reference(id)) => pdf
             .get_dictionary(*id)
             .map(|d| (Slot::Indirect(*id), d.clone()))
@@ -2083,6 +2088,60 @@ fn link_of(
 mod tests {
     use super::*;
     use crate::Rotation;
+
+    #[test]
+    fn annotation_slot_updates_preserve_neighbors_and_support_indirect_arrays() {
+        for indirect_array in [false, true] {
+            for indirect_annotation in [false, true] {
+                let mut pdf = lopdf::Document::with_version("1.7");
+                let mut original = Dictionary::new();
+                original.set("Contents", Object::string_literal("original"));
+                let annotation = if indirect_annotation {
+                    Object::Reference(pdf.add_object(original.clone()))
+                } else {
+                    Object::Dictionary(original.clone())
+                };
+                let entries = Object::Array(vec![annotation, Object::Dictionary(original)]);
+                let entries = if indirect_array {
+                    Object::Reference(pdf.add_object(entries))
+                } else {
+                    entries
+                };
+                let mut page_dict = Dictionary::new();
+                page_dict.set("Annots", entries);
+                let page = pdf.add_object(page_dict);
+                let (slot, mut selected) = load_annot(&pdf, page, 0).unwrap();
+                assert_eq!(matches!(slot, Slot::Indirect(_)), indirect_annotation);
+                selected.set("Contents", Object::string_literal("changed"));
+                assert_eq!(
+                    load_annot(&pdf, page, 0)
+                        .unwrap()
+                        .1
+                        .get(b"Contents")
+                        .unwrap()
+                        .as_str()
+                        .unwrap(),
+                    b"original"
+                );
+                store_annot(&mut pdf, page, slot, selected).unwrap();
+                for (index, expected) in [(0, b"changed".as_slice()), (1, b"original".as_slice())] {
+                    assert_eq!(
+                        load_annot(&pdf, page, index)
+                            .unwrap()
+                            .1
+                            .get(b"Contents")
+                            .unwrap()
+                            .as_str()
+                            .unwrap(),
+                        expected
+                    );
+                }
+                assert!(load_annot(&pdf, page, 2).is_err());
+                pdf.get_dictionary_mut(page).unwrap().set("Annots", 12);
+                assert!(load_annot(&pdf, page, 0).is_err());
+            }
+        }
+    }
 
     #[test]
     fn dates_and_names() {

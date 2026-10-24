@@ -293,7 +293,10 @@ fn malformed_or_future_metadata_is_never_silently_used_replaced_or_removed() {
             let raw = dict.get(KEY).unwrap().as_str().unwrap();
             let mut value: serde_json::Value = serde_json::from_slice(raw).unwrap();
             match change {
-                "version" => value["version"] = 3.into(),
+                "version" => {
+                    let future_version = value["version"].as_u64().unwrap() + 1;
+                    value["version"] = future_version.into();
+                }
                 "unit" => value["unit"] = "unknown".into(),
                 "zero" => value["known_distance"] = 0.into(),
                 "points" => value["points"] = serde_json::json!([[40, 40], [40, 40]]),
@@ -430,7 +433,7 @@ fn resource_only_form_edits_invalidate_page_and_region_scales_and_legacy_scales_
         let dict = pdf.get_dictionary_mut(page).unwrap();
         let mut record: serde_json::Value =
             serde_json::from_slice(dict.get(KEY).unwrap().as_str().unwrap()).unwrap();
-        assert_eq!(record["version"], 2);
+        assert_eq!(record["version"], 3);
         record["version"] = 1.into();
         dict.set(KEY, Object::string_literal(record.to_string()));
     });

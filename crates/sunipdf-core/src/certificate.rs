@@ -564,7 +564,9 @@ pub fn sign_pdf(
     options: &CertSignOptions,
 ) -> Result<Vec<u8>, EngineError> {
     let prev = lopdf::Document::load_mem(input).map_err(lopdf_err)?;
-    if prev.is_encrypted() {
+    // An empty user password is decrypted while loading: /Encrypt disappears, but its
+    // security state remains. These inputs are still encrypted PDFs, not signing candidates.
+    if prev.is_encrypted() || prev.encryption_state.is_some() {
         return Err(EngineError::Other(
             "signing encrypted PDFs is not supported".into(),
         ));

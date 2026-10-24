@@ -291,6 +291,7 @@ mod tests {
                     };
                     assert!(app.annotate.measure.use_calibration(0, &scale));
                     let record = MeasurementRecord {
+                        validity: sunipdf_core::measurement::MeasurementValidity::Current,
                         index: 0,
                         annotation_id: Some("saved-measurement".into()),
                         measurement: Measurement {

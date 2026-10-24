@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Implemented on the working branch; validation and desktop qualification are still in progress.
+These changes are not part of the published 0.61.0 packages.
+
+- Add formula subtotals for all filtered rows, grouped by formula, selected group, result unit and precision. Sum the rounded row results with checked arithmetic; retain explicit coverage and error counts without inventing a zero when every row fails.
+- Evaluate formula cells once per table refresh or export and reuse them for summaries. Keep typed signed values numeric in CSV while neutralizing spreadsheet formulas in free text.
+- Read document permissions once when building a quantity table and access each annotation without cloning the entire page annotation array. Keep fresh permission and source checks when exporting or applying edits.
+- Preserve version 1 quantity coverage fields and add separate additive, angular and excluded-row counts.
+- Bind new saved measurements to the current page bounds, user unit, decoded content, reachable resources and initial rendering state. Show legacy or changed-page records as historical; retain their points and values while excluding them from usable quantities, costs and quantity-dependent formulas.
+- Require an explicit current reference and Preview/Apply to recalibrate historical lengths and areas; recreate historical angles. Unit, precision, price or custom-field edits cannot restore page provenance. Strengthen saved page scales and named regions, requiring older references to be recalibrated or removed.
+- Reject measurement edits and batch recalibration atomically if the resulting dimension or quantity cannot use the preserved unit price, including pricing overflow. Compatible unit conversions retain the stored price and its explicit price basis.
+- Enforce the CLI's no-overwrite policy at final output creation, including files created while processing; retain command-specific source protections and explicit replacement rules.
+- Make document restoration transactional, retaining the current document and password when loading or refreshing the replacement fails. Refuse certificate signing of encrypted PDFs, including files automatically unlocked with an empty user password.
+- Retain unsaved tab bytes, Undo/Redo history and recovery identity after a failed tab resume, allowing retry. Reload cancelled register work and invalidate obsolete search results and measurement caches.
+- Synchronize page selection, labels, navigation history and scroll destination when an edit completes during tab suspension, including the suspension-failure path.
+
 ## [0.61.0] - 2026-10-23
 
 - Sort register custom text fields and typed quantity fields, keeping missing values last.

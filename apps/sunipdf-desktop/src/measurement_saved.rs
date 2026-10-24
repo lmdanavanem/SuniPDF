@@ -10,8 +10,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use sunipdf_core::{
     measurement::{
-        MeasurementKind, MeasurementRecord, MeasurementViewport, PageCalibration,
-        VectorSnapGeometry,
+        MeasurementKind, MeasurementRecord, MeasurementValidity, MeasurementViewport,
+        PageCalibration, VectorSnapGeometry,
     },
     Command, EngineError,
 };
@@ -19,6 +19,14 @@ use sunipdf_i18n::{tr, tr_args};
 
 const MAX_CACHED_PAGES: usize = 8;
 const MAX_PENDING_PAGES: usize = 4;
+
+pub(crate) fn validity_key(validity: MeasurementValidity) -> &'static str {
+    match validity {
+        MeasurementValidity::Current => "measure.validity.current",
+        MeasurementValidity::LegacyUnverified => "measure.validity.legacy_unverified",
+        MeasurementValidity::Stale => "measure.validity.stale",
+    }
+}
 
 #[derive(Clone)]
 pub(crate) struct MeasurementPageData {
@@ -85,7 +93,9 @@ pub(crate) struct SavedMeasurements {
 
 impl SavedMeasurements {
     pub(crate) fn can_edit(&self, page: usize, record: &MeasurementRecord) -> bool {
-        self.pages.get(&page).is_some_and(|data| data.can_annotate) && self.contains(page, record)
+        record.validity.is_current()
+            && self.pages.get(&page).is_some_and(|data| data.can_annotate)
+            && self.contains(page, record)
     }
 
     pub(crate) fn contains(&self, page: usize, record: &MeasurementRecord) -> bool {
@@ -476,12 +486,17 @@ impl SuniApp {
                                     if ui
                                         .add_enabled(
                                             enabled
+                                                && record.validity.is_current()
                                                 && data.as_ref().is_some_and(|d| d.can_annotate),
                                             egui::Button::new(tr(lang, "measure.geometry.open")),
                                         )
                                         .on_disabled_hover_text(tr(
                                             lang,
-                                            "measure.saved.restricted",
+                                            if record.validity.is_current() {
+                                                "measure.saved.restricted"
+                                            } else {
+                                                "measure.validity.geometry_blocked"
+                                            },
                                         ))
                                         .clicked()
                                     {
@@ -510,6 +525,21 @@ impl SuniApp {
                                         use_scale = Some(record.clone());
                                     }
                                 });
+                                ui.label(tr(lang, validity_key(record.validity)));
+                                if !record.validity.is_current() {
+                                    ui.colored_label(
+                                        crate::theme::palette(self.settings.dark_theme).error,
+                                        tr(lang, "measure.validity.historical"),
+                                    );
+                                    ui.small(tr(
+                                        lang,
+                                        if measurement.kind == MeasurementKind::Angle {
+                                            "measure.validity.recreate_angle"
+                                        } else {
+                                            "measure.validity.recalibrate_help"
+                                        },
+                                    ));
+                                }
                                 ui.label(tr_args(
                                     lang,
                                     "measure.saved.detail",
@@ -637,7 +667,8 @@ impl SuniApp {
         else {
             return false;
         };
-        record.measurement.kind != MeasurementKind::Angle
+        record.validity.is_current()
+            && record.measurement.kind != MeasurementKind::Angle
             && record.measurement.calibration.iter().all(|&(x, y)| {
                 x.is_finite()
                     && y.is_finite()
@@ -666,6 +697,7 @@ mod tests {
 
     fn record(kind: MeasurementKind) -> MeasurementRecord {
         MeasurementRecord {
+            validity: MeasurementValidity::Current,
             index: 3,
             annotation_id: Some("plan-measurement-1".into()),
             measurement: Measurement {
@@ -953,6 +985,58 @@ mod tests {
                 );
             }
             self.frame(app, vec![]);
+        }
+    }
+
+    #[test]
+    fn historical_records_require_an_explicit_current_reference_before_preview() {
+        for language in ["en-US", "fr-FR"] {
+            for validity in [
+                MeasurementValidity::LegacyUnverified,
+                MeasurementValidity::Stale,
+            ] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                ready(&mut app);
+                app.settings.language = language.into();
+                let mut original = record(MeasurementKind::Length);
+                original.validity = validity;
+                app.annotate
+                    .measure
+                    .saved
+                    .pages
+                    .insert(0, data(Some(calibration(10.0)), vec![original.clone()]));
+                assert!(!app.annotate.measure.saved.can_edit(0, &original));
+                assert!(!app.use_saved_measurement_scale(0, &original));
+                assert!(!app.start_measurement_geometry(0, original.clone()));
+                assert!(app.open_saved_measurement_editor(0, original.clone()));
+                app.request_rich_preview();
+                assert!(requests.try_recv().is_err());
+                let mut controls = Controls::new();
+                controls.click(&mut app, "measure.validity.recalibrate");
+                app.request_rich_preview();
+                assert!(
+                    requests.try_recv().is_err(),
+                    "a saved page default cannot silently verify an old record"
+                );
+                app.annotate.measure.use_calibration(0, &calibration(25.0));
+                controls.click(&mut app, "measure.validity.recalibrate");
+                controls.click(&mut app, "rich.preview");
+                let request = requests.recv().unwrap();
+                assert!(matches!(request, Request::PreviewMeasurementRecalibration {
+                    page: 0, record, measurement, calibration: reference, ..
+                } if record == original
+                    && measurement.points == original.measurement.points
+                    && reference == calibration(25.0)
+                    && measurement.known_distance == 25.0));
+                assert_eq!(
+                    app.annotate.measure.saved.pages[&0]
+                        .records
+                        .as_ref()
+                        .unwrap()[0],
+                    original,
+                    "preview must not promote the cached historical record",
+                );
+            }
         }
     }
 
@@ -1474,6 +1558,63 @@ mod tests {
         assert!(!app.use_saved_measurement_scale(0, &valid));
         assert!(app.annotate.measure.local_calibration(0).is_none());
         assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn in_flight_edits_update_suspended_calibration_without_discarding_safe_session_scales() {
+        for safe in [true, false] {
+            let (mut app, _, responses) = crate::app::tests::test_app();
+            ready(&mut app);
+            let ctx = egui::Context::default();
+            app.annotate.measure.use_calibration(0, &calibration(25.0));
+            app.annotate
+                .measure
+                .saved
+                .pages
+                .insert(0, data(Some(calibration(10.0)), vec![]));
+            let Response::DocumentChanged(mut state) = changed(&app) else {
+                unreachable!()
+            };
+            state.measurement_scales_unchanged = safe;
+            let info = state.info.clone();
+            assert!(app.suspend_active());
+            responses.send(Response::DocumentChanged(state)).unwrap();
+            app.handle_responses(&ctx);
+            let suspended_ui = app.tabs.tabs[0].ui.as_ref().unwrap();
+            assert_eq!(
+                suspended_ui.annotate.measure.local_calibration(0).is_some(),
+                safe
+            );
+            assert!(suspended_ui.annotate.measure.saved.calibration(0).is_none());
+            app.on_suspended(crate::worker::SuspendedDoc {
+                bytes: vec![],
+                password: None,
+                path: info.path.clone(),
+                undo: vec![],
+                redo: vec![],
+                save_point: None,
+                modified: true,
+                signature_source: None,
+            });
+            app.switch_to(0);
+            app.on_resumed(
+                DocState {
+                    info,
+                    can_undo: true,
+                    can_redo: false,
+                    pages_unchanged: false,
+                    measurement_scales_unchanged: false,
+                    modified: true,
+                    has_signatures: false,
+                },
+                &ctx,
+            );
+            assert_eq!(app.annotate.measure.local_calibration(0).is_some(), safe);
+            assert!(
+                app.annotate.measure.saved.calibration(0).is_none(),
+                "saved PDF scales must be reread, not removed from the document"
+            );
+        }
     }
 
     #[test]

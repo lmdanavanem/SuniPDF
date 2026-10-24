@@ -4,6 +4,27 @@ Current release scope: **0.61.0**. Features below are implemented within the sta
 [Project status](PROJECT_STATUS.md) records executed checks; implementation does not imply qualification on every document,
 physical device or third-party reader. Planned work is tracked in the [roadmap](ROADMAP.md).
 
+## Unreleased implementation
+
+The additions below exist on the working branch. Tests and desktop qualification are pending;
+they are not included in the 0.61.0 feature tables or published packages.
+
+| Area | Implemented change awaiting qualification |
+|---|---|
+| Formula summaries | Sum rounded row results across all filtered rows; separate formula/group/unit/precision, expose contributing/error counts and error categories, and leave totals absent when all rows fail |
+| Quantity exports | Reuse one formula evaluation for cells and summaries; preserve version 1 coverage meanings, add additive/angular/excluded counts, and retain signed numeric CSV values with free-text formula neutralization |
+| Measurement provenance | Distinguish current, legacy-unverified and changed-page records using bounded page evidence; retain historical values and vertices for review while excluding them from usable quantities, costs and quantity-dependent formulas |
+| Explicit recalibration | Historical lengths and areas require a current session reference, review and Preview/Apply; historical angles require recreation. Unit/precision/field changes do not restore provenance; non-current records cannot supply a reusable scale or enter geometry editing |
+| Saved reference migration | New page defaults and named regions include initial layer visibility and page transparency state; older references require explicit recalibration or removal instead of automatic reuse |
+| CLI output | Refuse an existing destination at final creation, including a file created during processing; explicit replacement remains subject to each command's source/output guards |
+| Document restoration | Open and validate a replacement before changing the current document or password; failure retains the live state |
+| Certificate signing | Reject encrypted inputs even when an empty user password allowed automatic decryption |
+| Tab lifecycle | Failed resume retains bytes, history and recovery identity for retry; cancelled register work reloads and obsolete searches/caches are invalidated; edits during suspension synchronize page, label, selection and navigation state |
+
+See [working-branch status](PROJECT_STATUS.md#unreleased-working-branch) and
+[formula subtotal details](QUANTITY_TABLE.md#unreleased-formula-subtotals-and-coverage), plus
+[historical measurement handling](QUANTITY_TABLE.md#unreleased-measurement-provenance).
+
 ## Reading and recovery
 
 | Feature | Supported behavior and limits |

@@ -13,6 +13,7 @@ pub fn prepare_signature_image(
     out: &Path,
     background: &str,
     threshold: u8,
+    overwrite: bool,
 ) -> Result<serde_json::Value, EngineError> {
     use sunipdf_core::signature_image as sig;
     if !out
@@ -43,7 +44,7 @@ pub fn prepare_signature_image(
     };
     let prepared = sig::trim(&prepared, 6)
         .ok_or_else(|| failure("No visible signature remains; adjust the background settings"))?;
-    sig::save_png(&prepared, out)?;
+    crate::output::staged(out, overwrite, |path| sig::save_png(&prepared, path))?;
     Ok(
         serde_json::json!({"out":out,"width":prepared.width(),"height":prepared.height(),"background":background,"threshold":if background=="keep" {None}else {Some(threshold)},"input_written":false,"cryptographic_signature":false}),
     )

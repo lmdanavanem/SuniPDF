@@ -65,6 +65,12 @@ impl FindState {
         self.error = None;
         self.generation = self.generation.wrapping_add(1);
     }
+
+    pub(crate) fn document_changed(&mut self) {
+        self.reset_in_flight();
+        self.matches.clear();
+        self.current = 0;
+    }
 }
 
 #[derive(Default)]
@@ -104,7 +110,7 @@ pub struct SuniApp {
     pub ocr: crate::ocr::OcrState,
     pub form_builder: crate::form_builder::FormBuilderState,
     pub certificate: crate::certificate::CertificateState,
-    has_signatures: bool,
+    pub(crate) has_signatures: bool,
     signed_save_confirm: Option<bool>,
     pub settings: Settings,
     pub shortcuts: crate::shortcuts::State,
@@ -793,6 +799,18 @@ impl SuniApp {
                     modified,
                     has_signatures,
                 }) => {
+                    if self.document.is_none() {
+                        self.on_suspending_document_changed(DocState {
+                            info,
+                            can_undo,
+                            can_redo,
+                            pages_unchanged,
+                            measurement_scales_unchanged,
+                            modified,
+                            has_signatures,
+                        });
+                        continue;
+                    }
                     self.measurement_scale_changed();
                     self.annotate.register.invalidate();
                     self.annotate.quantities.invalidate();
@@ -800,6 +818,11 @@ impl SuniApp {
                     self.docinfo.inspection = None;
                     if self.edit.paragraph.as_ref().is_some_and(|d| d.applying) {
                         self.edit.paragraph = None;
+                    }
+                    // A rich commit succeeds with DocumentChanged, before the FIFO
+                    // MutationFinished marker. Close it before advancing the epoch.
+                    if self.annotate.adv.rich.as_ref().is_some_and(|d| d.applying) {
+                        self.annotate.adv.rich = None;
                     }
                     self.form_builder.cancel();
                     self.annotate.adv.free_text = None;
@@ -826,13 +849,11 @@ impl SuniApp {
                     {
                         self.cancel_placing();
                     }
-                    if self.document.is_none() {
-                        continue;
-                    }
                     self.can_undo = can_undo;
                     self.can_redo = can_redo;
                     let count = info.page_count();
                     self.organize.selected.retain(|p| *p < count);
+                    self.organize.anchor = self.organize.anchor.filter(|page| *page < count);
                     if let Some(doc) = &mut self.document {
                         let same_sizes = doc.info.page_sizes == info.page_sizes;
                         doc.info = info;
@@ -850,8 +871,7 @@ impl SuniApp {
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
                     self.thumbs_failed.clear();
-                    self.find.searched = None;
-                    self.find.matches.clear();
+                    self.find.document_changed();
                     self.annotate.selection = None;
                     self.annotate.annotations_page = None;
                     // Indices d'annotation et zones de lien : relus ; la sélection est reprise par
@@ -1048,10 +1068,13 @@ impl SuniApp {
                         epoch: self.view.epoch,
                     });
                 }
-                Response::ResumeFailed(error) => {
+                Response::ResumeFailed { error, suspended } => {
                     log::error!("reprise d'onglet impossible : {error}");
-                    self.on_resume_failed();
+                    self.on_resume_failed(suspended);
+                    self.deferred_close = None;
+                    self.cancel_after_save();
                     self.error = Some(error_key(&error));
+                    self.update_title(ctx);
                 }
                 Response::Properties(props) => {
                     self.docinfo.metadata_edit = props.metadata.clone();
@@ -3520,6 +3543,64 @@ pub(crate) mod tests {
                 height_pt: 792.0,
             }],
             form: sunipdf_core::FormKind::AcroForm,
+        }
+    }
+
+    #[test]
+    fn document_edits_discard_obsolete_search_results_and_allow_a_fresh_query() {
+        for suspended in [false, true] {
+            let (mut app, requests, responses) = test_app();
+            let ctx = egui::Context::default();
+            let info = app.document.as_ref().unwrap().info.clone();
+            app.find.open = true;
+            app.find.query = "before edit".into();
+            app.request_search_if_needed();
+            let generation = app.find.generation;
+            app.find.matches.push(sunipdf_core::TextMatch {
+                page: 0,
+                rects: vec![],
+            });
+            if suspended {
+                assert!(app.suspend_active());
+            }
+            responses
+                .send(Response::DocumentChanged(DocState {
+                    info,
+                    can_undo: true,
+                    can_redo: false,
+                    pages_unchanged: true,
+                    measurement_scales_unchanged: false,
+                    modified: true,
+                    has_signatures: false,
+                }))
+                .unwrap();
+            app.handle_responses(&ctx);
+            if suspended {
+                responses
+                    .send(Response::SuspendFailed(EngineError::InvalidFormat))
+                    .unwrap();
+                app.handle_responses(&ctx);
+            }
+            responses
+                .send(Response::SearchResults {
+                    generation,
+                    matches: vec![sunipdf_core::TextMatch {
+                        page: 0,
+                        rects: vec![],
+                    }],
+                })
+                .unwrap();
+            app.handle_responses(&ctx);
+            assert!(app.find.matches.is_empty());
+            assert!(!app.find.in_flight);
+            assert_eq!(app.find.query, "before edit");
+            let _ = requests.try_iter().collect::<Vec<_>>();
+            app.request_search_if_needed();
+            assert!(requests.try_iter().any(|request| matches!(
+                request,
+                Request::Search { generation: next, query, .. }
+                    if next != generation && query == "before edit"
+            )));
         }
     }
 

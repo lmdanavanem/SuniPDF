@@ -2735,6 +2735,7 @@ mod tests {
                 app.effective_zoom = 0.8;
                 let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
                 let record = MeasurementRecord {
+                    validity: sunipdf_core::measurement::MeasurementValidity::Current,
                     index: 0,
                     annotation_id: Some("rotated-measurement".into()),
                     measurement: Measurement {

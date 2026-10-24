@@ -234,7 +234,23 @@ pub fn recalibrate(engine: &Engine, args: RecalibrateArgs) -> Result<Value, Engi
         })
         .collect::<Result<Vec<_>, EngineError>>()?;
     let plan = doc.preview_recalibration(&requests)?;
-    let changes:Vec<_>=plan.changes().iter().map(|c|json!({"page":c.page+1,"index":c.index,"before":c.before,"after":c.after,"unit":c.unit.id(),"kind":c.kind.id()})).collect();
+    let changes: Vec<_> = plan
+        .changes()
+        .iter()
+        .map(|change| {
+            let current = change.before_validity.is_current();
+            json!({
+                "page": change.page + 1,
+                "index": change.index,
+                "before": current.then_some(change.before),
+                "before_validity": change.before_validity.id(),
+                "historical_before": (!current).then_some(change.before),
+                "after": change.after,
+                "unit": change.unit.id(),
+                "kind": change.kind.id()
+            })
+        })
+        .collect();
     if let Some(out) = &args.out {
         doc.apply_recalibration(&plan)?;
         sunipdf_core::write_new_copy(out, &doc.snapshot()?)?;

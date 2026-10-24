@@ -9,7 +9,9 @@ use sunipdf_core::annot_rich::{
     RichAnnotation, RichAnnotationPreview, RichFreeTextStyle, StampKind, VertexAnnotKind,
 };
 use sunipdf_core::annotation_library::{LibraryEntry, LibraryPlacement, LibraryProvenance};
-use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
+use sunipdf_core::measurement::{
+    Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit, PageCalibration,
+};
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
 use sunipdf_i18n::{tr, tr_args};
 
@@ -82,7 +84,9 @@ pub struct RichDraft {
     pub error: Option<String>,
     interactive_measurement: bool,
     measurement_edit: Option<MeasurementRecord>,
+    measurement_recalibration: Option<PageCalibration>,
     measurement_geometry_edit: bool,
+    rectangle: Option<crate::measurement_shapes_ui::RectanglePlacement>,
     author: Option<String>,
     library_entry: Option<LibraryEntry>,
     library_placement: LibraryPlacement,
@@ -129,6 +133,9 @@ impl RichDraft {
             && (self.mode != RichMode::FreeText || matches!(self.font, TextFont::Standard(_)))
     }
     fn valid_inputs(&self) -> bool {
+        if let Some(rectangle) = &self.rectangle {
+            return self.mode == RichMode::Measurement && rectangle.valid();
+        }
         match self.mode {
             RichMode::FreeText => {
                 !self.text.trim().is_empty() && (!self.replace || self.font_chosen)
@@ -149,6 +156,9 @@ impl RichDraft {
         }
     }
     fn operation(&self) -> Option<RichAnnotation> {
+        if self.rectangle.is_some() {
+            return None;
+        }
         let style = AnnotStyle {
             rgb: rgb_tuple(self.rgb),
             fill_rgb: self.fill.then_some(rgb_tuple(self.fill_rgb)),
@@ -260,14 +270,26 @@ impl RichDraft {
         };
         measurement.value().ok()?;
         if self.measurement_edit.as_ref().is_some_and(|record| {
-            measurement.kind != record.measurement.kind
+            (!record.validity.is_current() && self.measurement_recalibration.is_none())
+                || (self.measurement_recalibration.is_some()
+                    && measurement.kind == MeasurementKind::Angle)
+                || measurement.kind != record.measurement.kind
                 || (!self.measurement_geometry_edit
                     && measurement.points != record.measurement.points)
                 || !crate::measurement_geometry::geometry_count_valid(
                     measurement.kind,
                     measurement.points.len(),
                 )
-                || measurement.calibration != record.measurement.calibration
+                || (self.measurement_recalibration.is_none()
+                    && measurement.calibration != record.measurement.calibration)
+                || self
+                    .measurement_recalibration
+                    .as_ref()
+                    .is_some_and(|calibration| {
+                        measurement.calibration != calibration.points
+                            || measurement.known_distance != calibration.known_distance
+                            || measurement.unit != calibration.unit
+                    })
                 || (self.measurement_geometry_edit
                     && (measurement.known_distance != record.measurement.known_distance
                         || measurement.unit != record.measurement.unit
@@ -276,6 +298,27 @@ impl RichDraft {
             return None;
         }
         Some(measurement)
+    }
+
+    fn use_current_measurement_reference(&mut self, calibration: PageCalibration) -> bool {
+        if self.measurement_edit.is_none()
+            || self.measurement_geometry_edit
+            || self.measure_kind == MeasurementKind::Angle
+            || calibration.validate().is_err()
+        {
+            return false;
+        }
+        self.calibration = calibration
+            .points
+            .iter()
+            .map(|(x, y)| format!("{x},{y}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.known_distance = calibration.known_distance;
+        self.measure_unit = calibration.unit;
+        self.measurement_recalibration = Some(calibration);
+        self.clear_preview();
+        true
     }
 
     fn load_measurement(&mut self, measurement: &Measurement) {
@@ -407,6 +450,33 @@ impl SuniApp {
         };
         draft.page = page;
         draft.load_measurement(&measurement);
+        self.request_rich_preview();
+        true
+    }
+
+    pub(crate) fn open_dimensioned_rectangle_preview(
+        &mut self,
+        page: usize,
+        rectangle: crate::measurement_shapes_ui::RectanglePlacement,
+    ) -> bool {
+        if self.annotate.adv.rich.is_some()
+            || !rectangle.valid()
+            || !self
+                .document
+                .as_ref()
+                .is_some_and(|document| document.page == page)
+        {
+            return false;
+        }
+        self.open_rich_draft(false);
+        let Some(draft) = self.annotate.adv.rich.as_mut() else {
+            return false;
+        };
+        draft.page = page;
+        draft.mode = RichMode::Measurement;
+        draft.interactive_measurement = true;
+        draft.measure_kind = MeasurementKind::Area;
+        draft.rectangle = Some(rectangle);
         self.request_rich_preview();
         true
     }
@@ -575,7 +645,9 @@ impl SuniApp {
             error: None,
             interactive_measurement: false,
             measurement_edit: None,
+            measurement_recalibration: None,
             measurement_geometry_edit: false,
+            rectangle: None,
             author: self.annot_author(),
             library_entry: None,
             library_placement: LibraryPlacement {
@@ -616,10 +688,10 @@ impl SuniApp {
     fn rich_context_current(&mut self) -> bool {
         let current = self.annotate.adv.rich.as_ref().is_some_and(|draft| {
             draft.epoch == self.view.epoch
-                && self
-                    .document
-                    .as_ref()
-                    .is_some_and(|document| draft.page < document.info.page_count())
+                && self.document.as_ref().is_some_and(|document| {
+                    draft.page < document.info.page_count()
+                        && (draft.rectangle.is_none() || document.page == draft.page)
+                })
                 && self.opening.is_none()
                 && self.tabs.resuming.is_none()
         });
@@ -648,16 +720,38 @@ impl SuniApp {
         else {
             return;
         };
-        let request = if let Some(record) = &draft.measurement_edit {
+        let request = if let Some(rectangle) = &draft.rectangle {
+            if !rectangle.valid() {
+                return;
+            }
+            Request::PreviewDimensionedRectangle {
+                page: draft.page,
+                rectangle: rectangle.clone(),
+                author: draft.author.clone(),
+                epoch: draft.epoch,
+                generation: self.annotate.adv.rich_generation.wrapping_add(1),
+            }
+        } else if let Some(record) = &draft.measurement_edit {
             let Some(measurement) = draft.measurement() else {
                 return;
             };
-            Request::PreviewMeasurementEdit {
-                page: draft.page,
-                record: record.clone(),
-                measurement,
-                epoch: draft.epoch,
-                generation: self.annotate.adv.rich_generation.wrapping_add(1),
+            if let Some(calibration) = &draft.measurement_recalibration {
+                Request::PreviewMeasurementRecalibration {
+                    page: draft.page,
+                    record: record.clone(),
+                    measurement,
+                    calibration: calibration.clone(),
+                    epoch: draft.epoch,
+                    generation: self.annotate.adv.rich_generation.wrapping_add(1),
+                }
+            } else {
+                Request::PreviewMeasurementEdit {
+                    page: draft.page,
+                    record: record.clone(),
+                    measurement,
+                    epoch: draft.epoch,
+                    generation: self.annotate.adv.rich_generation.wrapping_add(1),
+                }
             }
         } else {
             let Some(annotation) = draft.operation() else {
@@ -688,6 +782,7 @@ impl SuniApp {
         if !self.rich_context_current() || epoch != self.view.epoch {
             return;
         }
+        let lang = self.lang();
         let Some(draft) =
             self.annotate.adv.rich.as_mut().filter(|draft| {
                 draft.epoch == epoch && draft.generation == generation && draft.busy
@@ -709,7 +804,31 @@ impl SuniApp {
                     egui::TextureOptions::LINEAR,
                 ));
             }
-            Err(error) => draft.error = Some(error.to_string()),
+            Err(error) => {
+                let message = error.to_string();
+                draft.error = Some(if draft.rectangle.is_some() {
+                    match &error {
+                        EngineError::Other(reason) => {
+                            if reason == crate::worker::RECTANGLE_REFERENCE_REQUIRED {
+                                tr(lang, "measure.rectangle.confirm_reference").into()
+                            } else if let Some(cause) =
+                                reason.strip_prefix(crate::worker::RECTANGLE_CAPTURE_FAILED)
+                            {
+                                sunipdf_i18n::tr_args(
+                                    lang,
+                                    "measure.rectangle.capture_failed",
+                                    &[("reason", cause)],
+                                )
+                            } else {
+                                message
+                            }
+                        }
+                        _ => message,
+                    }
+                } else {
+                    message
+                });
+            }
         }
     }
 
@@ -758,6 +877,12 @@ impl SuniApp {
         let dark = self.settings.dark_theme;
         let has_icons = self.has_icons;
         let fonts = self.edit.system_fonts.clone();
+        let current_calibration = self
+            .annotate
+            .adv
+            .rich
+            .as_ref()
+            .and_then(|draft| self.annotate.measure.local_calibration(draft.page));
         let Some(draft) = self.annotate.adv.rich.as_mut() else {
             return;
         };
@@ -893,13 +1018,60 @@ impl SuniApp {
                             ui.small(tr(lang, "library.bounds"));
                         }
                         RichMode::Measurement => {
-                            if draft.interactive_measurement {
+                            if let Some(rectangle) = &draft.rectangle {
+                                rectangle.summary(ui, lang);
+                            } else if draft.interactive_measurement {
                                 ui.label(tr(lang, measure_key(draft.measure_kind)));
+                                if let Some(record) = &draft.measurement_edit {
+                                    ui.label(tr(
+                                        lang,
+                                        crate::measurement_saved::validity_key(record.validity),
+                                    ));
+                                    if !record.validity.is_current() {
+                                        ui.colored_label(
+                                            crate::theme::palette(dark).error,
+                                            tr(lang, "measure.validity.historical"),
+                                        );
+                                        if let Ok(result) = record.measurement.result() {
+                                            ui.label(result["label"].as_str().unwrap_or_default());
+                                        }
+                                        ui.small(tr(lang, "rich.points"));
+                                        ui.monospace(&draft.points);
+                                        if draft.measure_kind == MeasurementKind::Angle {
+                                            ui.label(tr(lang, "measure.validity.recreate_angle"));
+                                        } else {
+                                            ui.label(tr(lang, "measure.validity.recalibrate_help"));
+                                            if ui
+                                                .add_enabled(
+                                                    current_calibration.is_some(),
+                                                    egui::Button::new(tr(
+                                                        lang,
+                                                        "measure.validity.recalibrate",
+                                                    )),
+                                                )
+                                                .on_disabled_hover_text(tr(
+                                                    lang,
+                                                    "measure.validity.reference_required",
+                                                ))
+                                                .clicked()
+                                            {
+                                                if let Some(calibration) = current_calibration.clone() {
+                                                    changed |= draft.use_current_measurement_reference(calibration);
+                                                }
+                                            }
+                                            if draft.measurement_recalibration.is_some() {
+                                                ui.small(tr(lang, "measure.validity.reference_selected"));
+                                            } else if current_calibration.is_none() {
+                                                ui.small(tr(lang, "measure.validity.reference_required"));
+                                            }
+                                        }
+                                    }
+                                }
                                 if let Some(result) =
                                     draft.measurement().and_then(|m| m.result().ok())
                                 {
                                     ui.heading(result["label"].as_str().unwrap_or_default());
-                                } else {
+                                } else if draft.measurement_edit.as_ref().is_none_or(|record| record.validity.is_current()) {
                                     ui.label(tr(lang, "measure.invalid"));
                                 }
                                 if draft.measurement_geometry_edit {
@@ -930,7 +1102,9 @@ impl SuniApp {
                                         .clicked();
                                 } else if draft.measurement_edit.is_some() {
                                     if draft.measure_kind != MeasurementKind::Angle {
-                                        ui.horizontal_wrapped(|ui| {
+                                        let scalar_editable = draft.measurement_recalibration.is_none()
+                                            && draft.measurement_edit.as_ref().is_some_and(|record| record.validity.is_current());
+                                        ui.add_enabled_ui(scalar_editable, |ui| ui.horizontal_wrapped(|ui| {
                                             ui.label(tr(lang, "measure.known_distance"));
                                             changed |= ui
                                                 .add(
@@ -956,11 +1130,13 @@ impl SuniApp {
                                                 draft.set_measure_unit(unit);
                                                 changed = true;
                                             }
-                                        });
+                                        }));
                                         ui.small(tr(lang, "measure.edit.reference"));
                                         ui.monospace(&draft.calibration);
                                     }
-                                    ui.horizontal(|ui| {
+                                    let precision_editable = draft.measurement_recalibration.is_some()
+                                        || draft.measurement_edit.as_ref().is_some_and(|record| record.validity.is_current());
+                                    ui.add_enabled_ui(precision_editable, |ui| ui.horizontal(|ui| {
                                         ui.label(tr(lang, "measure.precision"));
                                         changed |= ui
                                             .add(
@@ -968,7 +1144,7 @@ impl SuniApp {
                                                     .range(0..=4),
                                             )
                                             .changed();
-                                    });
+                                    }));
                                     ui.small(tr(lang, "measure.edit.geometry"));
                                 }
                             } else {
@@ -1403,6 +1579,115 @@ mod tests {
     use super::*;
 
     #[test]
+    fn rectangle_reference_guidance_is_localized_and_capture_failures_keep_the_reason() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            let rectangle = crate::measurement_shapes_ui::RectanglePlacement {
+                anchor: (50.0, 100.0),
+                width: 2.0,
+                height: 3.0,
+                unit: MeasurementUnit::Metres,
+                precision: 2,
+                scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,
+            };
+            assert!(app.open_dimensioned_rectangle_preview(0, rectangle));
+            for reason in [
+                crate::worker::RECTANGLE_REFERENCE_REQUIRED.to_string(),
+                format!(
+                    "{}local references are limited to documents up to 128 MiB",
+                    crate::worker::RECTANGLE_CAPTURE_FAILED
+                ),
+            ] {
+                let (epoch, generation) = match requests.recv().unwrap() {
+                    Request::PreviewDimensionedRectangle {
+                        epoch, generation, ..
+                    } => (epoch, generation),
+                    _ => panic!("rectangle preview request"),
+                };
+                app.on_rich_preview(
+                    &egui::Context::default(),
+                    epoch,
+                    generation,
+                    Err(EngineError::Other(reason.clone())),
+                );
+                let message = app
+                    .annotate
+                    .adv
+                    .rich
+                    .as_ref()
+                    .unwrap()
+                    .error
+                    .as_ref()
+                    .unwrap();
+                if reason == crate::worker::RECTANGLE_REFERENCE_REQUIRED {
+                    assert_eq!(
+                        message,
+                        tr(app.lang(), "measure.rectangle.confirm_reference")
+                    );
+                    app.request_rich_preview();
+                } else {
+                    assert_eq!(
+                        message,
+                        &sunipdf_i18n::tr_args(
+                            app.lang(),
+                            "measure.rectangle.capture_failed",
+                            &[(
+                                "reason",
+                                "local references are limited to documents up to 128 MiB"
+                            )]
+                        )
+                    );
+                }
+                assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+            }
+            assert!(requests.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn dimensioned_rectangle_preview_does_not_enter_the_free_vertex_editor_or_accept_a_changed_page(
+    ) {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let size = app.document.as_ref().unwrap().info.page_sizes[0];
+        app.document.as_mut().unwrap().info.page_sizes.push(size);
+        let rectangle = crate::measurement_shapes_ui::RectanglePlacement {
+            anchor: (50.0, 100.0),
+            width: 2.0,
+            height: 3.0,
+            unit: MeasurementUnit::Metres,
+            precision: 2,
+            scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,
+        };
+        assert!(app.open_dimensioned_rectangle_preview(0, rectangle));
+        let (epoch, generation) = match requests.recv().unwrap() {
+            Request::PreviewDimensionedRectangle {
+                rectangle,
+                epoch,
+                generation,
+                ..
+            } => {
+                assert_eq!((rectangle.width, rectangle.height), (2.0, 3.0));
+                (epoch, generation)
+            }
+            _ => panic!("dedicated rectangle preview"),
+        };
+        let draft = app.annotate.adv.rich.as_ref().unwrap();
+        assert!(draft.valid_inputs());
+        assert!(
+            draft.operation().is_none(),
+            "generic vertices cannot replace physical dimensions"
+        );
+        app.document.as_mut().unwrap().page = 1;
+        app.on_rich_preview(&egui::Context::default(), epoch, generation, Ok(preview()));
+        app.apply_rich_draft();
+        assert!(requests
+            .try_iter()
+            .all(|request| !matches!(request, Request::Edit(_))));
+        assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+    }
+
+    #[test]
     fn interactive_measurement_bridge_preserves_geometry_and_only_requests_a_preview() {
         let (mut app, requests, _) = crate::app::tests::test_app();
         let measurement = Measurement {
@@ -1591,6 +1876,69 @@ mod tests {
     }
 
     #[test]
+    fn historical_measurement_metadata_edits_cannot_reestablish_page_provenance() {
+        use sunipdf_core::measurement::MeasurementValidity;
+        for validity in [
+            MeasurementValidity::LegacyUnverified,
+            MeasurementValidity::Stale,
+        ] {
+            for kind in [MeasurementKind::Length, MeasurementKind::Angle] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                app.open_rich_annotations(&egui::Context::default());
+                let measurement = Measurement {
+                    kind,
+                    points: if kind == MeasurementKind::Angle {
+                        vec![(40.0, 70.0), (140.0, 70.0), (140.0, 170.0)]
+                    } else {
+                        vec![(40.0, 70.0), (140.0, 70.0)]
+                    },
+                    calibration: [(40.0, 40.0), (140.0, 40.0)],
+                    known_distance: 10.0,
+                    unit: MeasurementUnit::Metres,
+                    precision: 2,
+                };
+                let draft = app.annotate.adv.rich.as_mut().unwrap();
+                draft.load_measurement(&measurement);
+                draft.measurement_edit = Some(MeasurementRecord {
+                    index: 0,
+                    annotation_id: Some("historical-measurement".into()),
+                    measurement: measurement.clone(),
+                    validity,
+                });
+                draft.precision = 3;
+                draft.set_measure_unit(MeasurementUnit::Feet);
+                draft.known_distance *= 2.0;
+                assert!(!draft.valid_inputs());
+                assert!(draft.measurement().is_none());
+                let calibration = PageCalibration {
+                    points: [(50.0, 50.0), (150.0, 50.0)],
+                    known_distance: 20.0,
+                    unit: MeasurementUnit::Metres,
+                };
+                assert_eq!(
+                    draft.use_current_measurement_reference(calibration.clone()),
+                    kind != MeasurementKind::Angle,
+                );
+                if kind == MeasurementKind::Length {
+                    let replacement = draft.measurement().unwrap();
+                    assert_eq!(replacement.points, measurement.points);
+                    assert_eq!(replacement.calibration, calibration.points);
+                    assert_eq!(replacement.known_distance, 20.0);
+                    draft.known_distance = 21.0;
+                    assert!(
+                        draft.measurement().is_none(),
+                        "the explicit reference stays authoritative"
+                    );
+                } else {
+                    assert!(!draft.valid_inputs(), "historical angles must be recreated");
+                }
+                app.request_rich_preview();
+                assert!(requests.try_recv().is_err());
+            }
+        }
+    }
+
+    #[test]
     fn saved_measurement_unit_changes_preserve_physical_size_and_references_recalculate() {
         for kind in [MeasurementKind::Length, MeasurementKind::Area] {
             let (mut app, _, _) = crate::app::tests::test_app();
@@ -1608,6 +1956,7 @@ mod tests {
                 precision: 2,
             };
             let record = MeasurementRecord {
+                validity: sunipdf_core::measurement::MeasurementValidity::Current,
                 index: 3,
                 annotation_id: Some("measurement-3".into()),
                 measurement: measurement.clone(),
@@ -1654,6 +2003,7 @@ mod tests {
             precision: 3,
         };
         let record = MeasurementRecord {
+            validity: sunipdf_core::measurement::MeasurementValidity::Current,
             index: 7,
             annotation_id: Some("saved-geometry".into()),
             measurement: measurement.clone(),
@@ -1849,6 +2199,199 @@ mod tests {
         app.annotate.adv.invalidate();
         app.on_rich_preview(&ctx, epoch, generation, Ok(preview()));
         assert!(app.annotate.adv.rich.is_none());
+    }
+
+    fn document_changed(app: &SuniApp) -> crate::worker::Response {
+        crate::worker::Response::DocumentChanged(crate::worker::DocState {
+            info: app.document.as_ref().unwrap().info.clone(),
+            can_undo: true,
+            can_redo: false,
+            pages_unchanged: true,
+            measurement_scales_unchanged: true,
+            modified: true,
+            has_signatures: false,
+        })
+    }
+
+    #[test]
+    fn successful_rich_apply_closes_before_mutation_finished_and_ignores_late_preview() {
+        use crate::worker::Response;
+
+        for mode in [
+            RichMode::FreeText,
+            RichMode::Polygon,
+            RichMode::Polyline,
+            RichMode::Cloud,
+            RichMode::Stamp,
+            RichMode::Measurement,
+        ] {
+            let (mut app, requests, responses) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            if mode == RichMode::Measurement {
+                assert!(app.open_dimensioned_rectangle_preview(
+                    0,
+                    crate::measurement_shapes_ui::RectanglePlacement {
+                        anchor: (50.0, 100.0),
+                        width: 2.0,
+                        height: 3.0,
+                        unit: MeasurementUnit::Metres,
+                        precision: 2,
+                        scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,
+                    },
+                ));
+            } else {
+                app.open_rich_annotations(&ctx);
+                let draft = app.annotate.adv.rich.as_mut().unwrap();
+                draft.mode = mode;
+                draft.text = "Applied draft".into();
+                app.request_rich_preview();
+            }
+            let (epoch, generation) = match requests.recv().unwrap() {
+                Request::PreviewRichAnnotation {
+                    epoch, generation, ..
+                }
+                | Request::PreviewDimensionedRectangle {
+                    epoch, generation, ..
+                } => (epoch, generation),
+                _ => panic!("expected prepared annotation request"),
+            };
+            responses
+                .send(Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result: Ok(preview()),
+                })
+                .unwrap();
+            app.handle_responses(&ctx);
+            app.apply_rich_draft();
+            assert!(matches!(
+                requests.recv().unwrap(),
+                Request::Edit(EditOp::CommitRichAnnotationPreview {
+                    epoch: sent_epoch,
+                    generation: sent_generation,
+                }) if sent_epoch == epoch && sent_generation == generation
+            ));
+            assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+            assert!(app.annotate.adv.rich.as_ref().unwrap().applying);
+            assert!(app.worker.has_pending_mutations());
+
+            // Deliver the success separately, as it can arrive a frame before
+            // the mutation marker. The modal must already be gone in that frame.
+            responses.send(document_changed(&app)).unwrap();
+            app.handle_responses(&ctx);
+            assert!(app.annotate.adv.rich.is_none());
+            assert_ne!(app.view.epoch, epoch);
+            assert!(app.worker.has_pending_mutations());
+            assert!(app.dirty && app.can_undo && !app.can_redo);
+            assert_eq!(app.annotate.adv.reselect, Some((0, 7)));
+            assert!(!app.annotate.adv.dialog_open());
+            app.rich_annotation_dialog(&ctx);
+
+            responses.send(Response::MutationFinished).unwrap();
+            responses
+                .send(Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result: Ok(preview()),
+                })
+                .unwrap();
+            app.handle_responses(&ctx);
+            assert!(!app.worker.has_pending_mutations());
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(!requests.try_iter().any(|request| matches!(
+                request,
+                Request::Edit(_) | Request::DiscardRichAnnotationPreview { .. }
+            )));
+        }
+    }
+
+    #[test]
+    fn failed_rich_apply_retains_editable_draft_and_allows_a_fresh_preview() {
+        use crate::worker::Response;
+
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.open_rich_annotations(&ctx);
+        app.annotate.adv.rich.as_mut().unwrap().text = "Keep this input".into();
+        app.request_rich_preview();
+        let (epoch, generation) = match requests.recv().unwrap() {
+            Request::PreviewRichAnnotation {
+                epoch, generation, ..
+            } => (epoch, generation),
+            _ => panic!("preview request"),
+        };
+        responses
+            .send(Response::RichAnnotationPreview {
+                epoch,
+                generation,
+                result: Ok(preview()),
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        app.apply_rich_draft();
+        assert!(matches!(requests.recv().unwrap(), Request::Edit(_)));
+        assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+        responses
+            .send(Response::OperationFailed(EngineError::Other(
+                "commit refused".into(),
+            )))
+            .unwrap();
+        app.handle_responses(&ctx);
+        let draft = app.annotate.adv.rich.as_ref().unwrap();
+        assert_eq!(draft.text, "Keep this input");
+        assert!(!draft.applying && !draft.prepared && !draft.busy);
+        assert!(draft.error.as_ref().unwrap().contains("commit refused"));
+        assert!(!app.dirty && !app.can_undo);
+        app.request_rich_preview();
+        assert!(requests.try_recv().is_err(), "wait for the FIFO marker");
+        responses.send(Response::MutationFinished).unwrap();
+        app.handle_responses(&ctx);
+        app.request_rich_preview();
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::PreviewRichAnnotation { generation: next, .. } if next != generation
+        ));
+    }
+
+    #[test]
+    fn unrelated_document_change_preserves_an_unapplied_rich_draft_and_cancel() {
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        app.open_rich_annotations(&ctx);
+        app.annotate.adv.rich.as_mut().unwrap().text = "Unapplied input".into();
+        responses.send(document_changed(&app)).unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(
+            app.annotate.adv.rich.as_ref().unwrap().text,
+            "Unapplied input"
+        );
+        let _ = requests.try_iter().collect::<Vec<_>>();
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 900.0),
+            )),
+            ..Default::default()
+        };
+        let mut output = ctx.run_ui(input.clone(), |_| app.rich_annotation_dialog(&ctx));
+        output.textures_delta.clear();
+        let draft = app.annotate.adv.rich.as_ref().unwrap();
+        assert!(!draft.applying && !draft.prepared && !draft.busy);
+        assert_eq!(draft.error.as_deref(), Some(tr(app.lang(), "rich.stale")));
+        let mut input = input;
+        input.events.push(egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        });
+        let mut output = ctx.run_ui(input, |_| app.rich_annotation_dialog(&ctx));
+        output.textures_delta.clear();
+        assert!(app.annotate.adv.rich.is_none());
+        assert!(requests
+            .try_iter()
+            .all(|request| !matches!(request, Request::Edit(_))));
     }
 
     #[test]
