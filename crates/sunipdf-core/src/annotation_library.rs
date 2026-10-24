@@ -1350,6 +1350,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         let indices = scratch.apply_library_entry_in_place(page, entry, placement, author)?;
         let candidate = scratch.snapshot()?;

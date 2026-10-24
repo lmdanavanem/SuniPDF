@@ -155,6 +155,8 @@ fn rectangle(
     }
     let measurement = Measurement {
         kind: MeasurementKind::Area,
+        holes: Vec::new(),
+        depth: None,
         points: roundtrip,
         calibration: stored_calibration,
         known_distance,

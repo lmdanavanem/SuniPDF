@@ -72,6 +72,12 @@ The [0.61.0 release](docs/RELEASE_0.61.0.md) introduced custom-field sorting, su
 and bounded report formulas. Independent PDF/A/PDF/UA fixtures and PDFium/Poppler checks cover specified
 files and operations; see [conformance limits](docs/CONFORMANCE.md).
 
+## Preparing 0.63.0
+
+The candidate adds local plan sets, FDF form value exchange, deducted polygon areas and constant-depth
+volumes. Final-source checks and exact-package qualification are in progress. Published downloads above
+remain 0.62.0. [Candidate scope and limits](docs/RELEASE_0.63.0.md).
+
 ## Documentation and development
 
 - [Documentation index](docs/README.md): usage guides, engineering references and release history.

@@ -37,6 +37,9 @@ fn no_measurement_export(output: Output) -> Value {
     assert_eq!(result["export_unavailable"], true);
     for field in [
         "points",
+        "holes",
+        "depth",
+        "area",
         "calibration",
         "known_distance",
         "value",
@@ -415,7 +418,7 @@ fn every_kind_can_be_edited_and_wrong_expected_identity_geometry_or_page_is_reje
         ("annotation_id", Value::String("another-annotation".into())),
         ("kind", Value::String("polyline".into())),
         ("points", serde_json::json!([[40, 80], [150, 80]])),
-        ("version", Value::from(3)),
+        ("version", Value::from(4)),
         ("validity", Value::String("stale".into())),
         ("index", Value::from(123)),
         ("annotation_id", Value::Null),

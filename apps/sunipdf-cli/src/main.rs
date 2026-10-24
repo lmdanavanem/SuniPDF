@@ -11,6 +11,7 @@ mod measurement_workspace_cmd;
 mod output;
 mod overlay_cmd;
 mod password_input;
+mod plan_set_cmd;
 mod quantity_cmd;
 mod register_cmd;
 mod safe_output;
@@ -55,6 +56,8 @@ enum Command {
     ClearQuantityFields(quantity_cmd::TargetArgs),
     /// Manage local annotation templates and groups, or place them in a new PDF copy.
     AnnotationLibrary(library_cmd::LibraryArgs),
+    /// Manage explicit local PDF references and indexed sheet metadata without modifying PDFs.
+    PlanSet(plan_set_cmd::PlanSetArgs),
     /// Place one persistent manual count marker in a new PDF copy.
     Count(register_cmd::CountArgs),
     /// Filter/export the document's markup register and count totals, without editing the PDF.
@@ -84,12 +87,21 @@ enum Command {
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
-        #[arg(long, value_parser=["length","polyline","perimeter","area","angle"])]
+        #[arg(long, value_parser=["length","polyline","perimeter","area","volume","angle"])]
         kind: String,
         /// Displayed-page vertices: "x,y x,y ...", in points; angle vertex is the middle point.
         #[arg(long)]
         points: String,
-        /// Two reference points: "x,y x,y". Required for lengths/areas unless using a saved scale; angles need none.
+        /// Interior deduction ring: "x,y x,y ...". Repeat for up to 16 disjoint holes in an area or volume.
+        #[arg(long = "hole")]
+        holes: Vec<String>,
+        /// Positive physical depth for a volume; requires an explicit --depth-unit.
+        #[arg(long, requires = "depth_unit")]
+        depth: Option<f64>,
+        /// Unit of --depth, independent of the result unit and the page calibration.
+        #[arg(long, requires = "depth", value_parser = ["mm", "cm", "m", "in", "ft"])]
+        depth_unit: Option<String>,
+        /// Two reference points: "x,y x,y". Required for lengths, areas and volumes unless using a saved scale; angles need none.
         #[arg(
             long,
             requires = "known_distance",
@@ -1003,7 +1015,7 @@ enum Command {
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Export non-password field values as JSON or XFDF (selected by output extension).
+    /// Export non-password field values as JSON, XFDF or FDF (selected by output extension).
     FormExport {
         file: PathBuf,
         #[arg(long)]
@@ -1273,6 +1285,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
     }
     match &cli.command {
         Command::AnnotationLibrary(args) => return library_cmd::run(args),
+        Command::PlanSet(args) => return plan_set_cmd::run(args),
         Command::PrepareSignatureImage {
             file,
             out,
@@ -1319,6 +1332,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
     match cli.command {
         Command::Commands
         | Command::AnnotationLibrary(..)
+        | Command::PlanSet(..)
         | Command::PrepareSignatureImage { .. }
         | Command::Inspect { .. }
         | Command::Fonts { .. }
@@ -1632,6 +1646,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             file,
             kind,
             points,
+            holes,
+            depth,
+            depth_unit,
             calibration,
             known_distance,
             use_page_calibration,
@@ -1650,6 +1667,8 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let kind = MeasurementKind::from_id(&kind)
                 .ok_or_else(|| EngineError::Other("invalid measurement kind".into()))?;
             let points = measurement_cmd::points(&points, 128)?;
+            let holes = measurement_cmd::holes(&holes, points.len())?;
+            let depth = measurement_cmd::depth(depth, depth_unit.as_deref())?;
             let (calibration, known_distance) = if use_page_calibration {
                 measurement_cmd::saved_scale(&doc, page_number, unit)?
             } else if kind == MeasurementKind::Angle && calibration.is_none() {
@@ -1673,6 +1692,8 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let measurement = Measurement {
                 kind,
                 points,
+                holes,
+                depth,
                 calibration,
                 known_distance,
                 unit,
@@ -1687,10 +1708,17 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 // Creation binds this geometry to the current page in the shared engine.
                 // Do not inventory unrelated imported annotations just to report this result.
                 let mut result = measurement.result()?;
-                result["version"] = 2.into();
+                result["version"] = if measurement.kind == MeasurementKind::Volume
+                    || !measurement.holes.is_empty()
+                {
+                    3.into()
+                } else {
+                    2.into()
+                };
                 result["validity"] = "current".into();
                 result["historical_value"] = serde_json::Value::Null;
                 result["historical_label"] = serde_json::Value::Null;
+                result["historical_area"] = serde_json::Value::Null;
                 result
             };
             sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
@@ -2987,6 +3015,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::SetQuantityFields(args) => Some(&args.target.out),
         Command::ClearQuantityFields(args) => Some(&args.out),
         Command::AnnotationLibrary(args) => args.output_path(),
+        Command::PlanSet(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),
         Command::AnnotationRegister(args) => args.out.as_deref(),
@@ -3224,7 +3253,7 @@ fn cli_main() -> ExitCode {
     let local_review_check = matches!(
         &cli.command,
         Command::SearchFiles { .. } | Command::Compare { .. } | Command::Inspect { .. }
-    );
+    ) || matches!(&cli.command, Command::PlanSet(args) if args.is_inspection());
     match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
@@ -3701,6 +3730,67 @@ mod tests {
         ])
         .is_ok());
         assert!(parse_cli(["sunipdf-cli", "measure", "source.pdf", "--out", "new.pdf"]).is_err());
+    }
+
+    #[test]
+    fn volume_flags_require_an_explicit_depth_unit_and_keep_holes_distinct() {
+        let creation = [
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "volume",
+            "--points",
+            "40,80 140,80 140,180 40,180",
+            "--use-page-calibration",
+            "--out",
+            "new.pdf",
+        ];
+        let parsed = parse_cli(creation.into_iter().chain([
+            "--hole",
+            "60,100 70,100 70,120 60,120",
+            "--hole",
+            "100,100 110,100 110,120 100,120",
+            "--depth",
+            "20",
+            "--depth-unit",
+            "cm",
+        ]))
+        .unwrap();
+        assert!(
+            matches!(parsed.command, Command::Measure {holes, depth: Some(depth), depth_unit: Some(unit), ..} if holes.len() == 2 && depth == 20.0 && unit == "cm")
+        );
+        for flags in [vec!["--depth", "20"], vec!["--depth-unit", "cm"]] {
+            assert!(parse_cli(creation.into_iter().chain(flags)).is_err());
+        }
+        let editing = [
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--expected-record",
+            "expected.json",
+            "--out",
+            "new.pdf",
+        ];
+        for flags in [
+            vec!["--hole", "60,100 80,100 80,150 60,150"],
+            vec!["--clear-holes"],
+            vec!["--kind", "area", "--clear-depth"],
+        ] {
+            assert!(parse_cli(editing.into_iter().chain(flags)).is_ok());
+        }
+        for flags in [
+            vec!["--hole", "60,100 80,100 80,150 60,150", "--clear-holes"],
+            vec!["--depth", "20"],
+            vec!["--depth-unit", "cm"],
+            vec!["--depth", "20", "--depth-unit", "cm", "--clear-depth"],
+        ] {
+            assert!(parse_cli(editing.into_iter().chain(flags)).is_err());
+        }
     }
 
     #[test]

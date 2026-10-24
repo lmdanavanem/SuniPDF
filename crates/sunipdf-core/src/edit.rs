@@ -697,6 +697,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         {
             let mut page = scratch.page_handle(page_index)?;
@@ -721,6 +722,7 @@ impl Document<'_> {
             drop(object);
             regenerate_content(&mut page)?;
         }
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(())

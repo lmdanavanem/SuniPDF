@@ -377,6 +377,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         let mut report = OcrReport::default();
         for (done, &page) in pages.iter().enumerate() {
@@ -397,6 +398,7 @@ impl Document<'_> {
         }
         check_cancel(cancel)?;
         if report.words > 0 {
+            self.form_render_need_appearances.set(None);
             self.inner = scratch.inner;
             self.font_cache.clear();
         }

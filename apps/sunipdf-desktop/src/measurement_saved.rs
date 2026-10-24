@@ -58,6 +58,7 @@ impl MeasurementPageData {
                                 let unit = match m.kind {
                                     MeasurementKind::Angle => "deg".into(),
                                     MeasurementKind::Area => format!("{}2", m.unit.id()),
+                                    MeasurementKind::Volume => format!("{}3", m.unit.id()),
                                     _ => m.unit.id().into(),
                                 };
                                 format!("{:.*} {}", m.precision, value, unit)
@@ -701,6 +702,8 @@ mod tests {
             index: 3,
             annotation_id: Some("plan-measurement-1".into()),
             measurement: Measurement {
+                holes: Vec::new(),
+                depth: None,
                 kind,
                 points: vec![(50.0, 100.0), (150.0, 100.0)],
                 calibration: calibration(10.0).points,

@@ -295,6 +295,8 @@ mod tests {
                         index: 0,
                         annotation_id: Some("saved-measurement".into()),
                         measurement: Measurement {
+                            holes: Vec::new(),
+                            depth: None,
                             kind: MeasurementKind::Length,
                             points: vec![(20.0, 20.0), (220.0, 20.0)],
                             calibration: scale.points,

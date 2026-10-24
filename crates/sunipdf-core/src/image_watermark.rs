@@ -135,6 +135,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         for (&page, &width) in targets.iter().zip(&widths) {
             let size = scratch.page_size(page)?;
@@ -157,6 +158,7 @@ impl Document<'_> {
             };
             scratch.move_object(page, index, x - b.left, y - b.bottom)?;
         }
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(targets.len())

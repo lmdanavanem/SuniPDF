@@ -7,6 +7,8 @@ use sunipdf_core::{
 
 fn measurement() -> Measurement {
     Measurement {
+        holes: Vec::new(),
+        depth: None,
         kind: MeasurementKind::Area,
         points: vec![(40.0, 70.0), (140.0, 70.0), (140.0, 120.0), (40.0, 120.0)],
         calibration: [(40.0, 40.0), (140.0, 40.0)],

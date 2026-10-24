@@ -13,6 +13,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
+pub use crate::measurement_area::{
+    MeasurementArea, MAX_HOLES, MAX_RING_VERTICES, MAX_TOTAL_VERTICES,
+};
 pub use crate::measurement_batch::{RecalibrationChange, RecalibrationPlan, RecalibrationRequest};
 pub use crate::measurement_distance::parse_measurement_distance;
 pub use crate::measurement_shapes::{
@@ -30,15 +33,17 @@ pub enum MeasurementKind {
     Polyline,
     Perimeter,
     Area,
+    Volume,
     Angle,
 }
 
 impl MeasurementKind {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Length,
         Self::Polyline,
         Self::Perimeter,
         Self::Area,
+        Self::Volume,
         Self::Angle,
     ];
     pub fn id(self) -> &'static str {
@@ -47,6 +52,7 @@ impl MeasurementKind {
             Self::Polyline => "polyline",
             Self::Perimeter => "perimeter",
             Self::Area => "area",
+            Self::Volume => "volume",
             Self::Angle => "angle",
         }
     }
@@ -100,10 +106,37 @@ pub struct Measurement {
     pub kind: MeasurementKind,
     /// Displayed-page points, bottom-left origin. Angle uses the middle point as its vertex.
     pub points: Vec<(f32, f32)>,
+    /// Strictly interior, disjoint deductions in displayed-page coordinates.
+    pub holes: Vec<Vec<(f32, f32)>>,
+    /// Real, constant physical depth. Changing the result unit never changes this input.
+    pub depth: Option<MeasurementDepth>,
     pub calibration: [(f32, f32); 2],
     pub known_distance: f64,
     pub unit: MeasurementUnit,
     pub precision: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MeasurementDepth {
+    pub value: f64,
+    pub unit: MeasurementUnit,
+}
+
+impl MeasurementDepth {
+    fn in_unit(self, unit: MeasurementUnit) -> Result<f64, EngineError> {
+        if !self.value.is_finite() || !(1e-9..=1e9).contains(&self.value) {
+            return Err(bad());
+        }
+        let value = self.value * self.unit.metres() / unit.metres();
+        if !value.is_finite() || value <= 0.0 {
+            return Err(bad());
+        }
+        Ok(value)
+    }
+
+    fn json(self) -> Value {
+        json!({"value":self.value,"unit":self.unit.id()})
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -188,7 +221,9 @@ pub(crate) fn bind_provenance(
         .and_then(Object::as_str)
         .map_err(lopdf_err)?;
     let mut metadata: Value = serde_json::from_slice(raw).map_err(|_| bad())?;
-    metadata["version"] = 2.into();
+    if metadata["version"] != 3 {
+        metadata["version"] = 2.into();
+    }
     metadata["provenance"] = serde_json::to_value(provenance).map_err(|_| bad())?;
     annotation.set(
         "SuniPDFMeasurement",
@@ -199,7 +234,7 @@ pub(crate) fn bind_provenance(
 
 fn stored_provenance(metadata: &Value) -> Result<Option<MeasurementPageProvenance>, EngineError> {
     let version = metadata["version"].as_u64().ok_or_else(bad)?;
-    if !matches!(version, 1 | 2) || metadata["coordinate_system"] != "pdf-user-space" {
+    if !matches!(version, 1..=3) || metadata["coordinate_system"] != "pdf-user-space" {
         return Err(bad());
     }
     let fields = [
@@ -214,9 +249,11 @@ fn stored_provenance(metadata: &Value) -> Result<Option<MeasurementPageProvenanc
         "rect",
     ];
     if metadata.as_object().is_none_or(|object| {
-        object.len() != fields.len() + usize::from(version == 2)
+        object.len() != fields.len() + usize::from(version >= 2) + 2 * usize::from(version == 3)
             || object.keys().any(|key| {
-                !fields.contains(&key.as_str()) && !(version == 2 && key == "provenance")
+                !fields.contains(&key.as_str())
+                    && !(version >= 2 && key == "provenance")
+                    && !(version == 3 && matches!(key.as_str(), "holes" | "depth"))
             })
     }) {
         return Err(bad());
@@ -281,20 +318,22 @@ impl MeasurementRecord {
             .annotation_id
             .as_ref()
             .map_or(Value::Null, |name| name.as_str().into());
-        result["version"] = 2.into();
+        result["version"] = self.measurement.metadata_version().into();
         result["validity"] = self.validity.id().into();
         result["historical_value"] = Value::Null;
         result["historical_label"] = Value::Null;
+        result["historical_area"] = Value::Null;
         if !self.validity.is_current() {
             result["historical_value"] = result["value"].take();
             result["historical_label"] = result["label"].take();
+            result["historical_area"] = result["area"].take();
         }
         Ok(result)
     }
 }
 
 fn bad() -> EngineError {
-    EngineError::Other("invalid measurement: use finite in-page points, a positive two-point calibration and simple non-degenerate geometry (at most 128 vertices)".into())
+    EngineError::Other("invalid measurement: use finite in-page points, a positive two-point calibration and simple geometry; surfaces allow 16 strictly interior holes, 128 vertices per ring and 512 total, and volumes require a positive physical depth".into())
 }
 
 fn stale() -> EngineError {
@@ -442,29 +481,23 @@ fn distance(a: (f32, f32), b: (f32, f32)) -> f64 {
     (f64::from(b.0) - f64::from(a.0)).hypot(f64::from(b.1) - f64::from(a.1))
 }
 
-fn cross(a: (f32, f32), b: (f32, f32), c: (f32, f32)) -> f64 {
-    (f64::from(b.0) - f64::from(a.0)) * (f64::from(c.1) - f64::from(a.1))
-        - (f64::from(b.1) - f64::from(a.1)) * (f64::from(c.0) - f64::from(a.0))
-}
-
-fn intersects(a: (f32, f32), b: (f32, f32), c: (f32, f32), d: (f32, f32)) -> bool {
-    a.0.min(b.0) <= c.0.max(d.0)
-        && c.0.min(d.0) <= a.0.max(b.0)
-        && a.1.min(b.1) <= c.1.max(d.1)
-        && c.1.min(d.1) <= a.1.max(b.1)
-        && cross(a, b, c) * cross(a, b, d) <= 0.0
-        && cross(c, d, a) * cross(c, d, b) <= 0.0
-}
-
 impl Measurement {
-    /// The numerical result is in `unit`, squared units for area, and degrees for angles.
-    pub fn value(&self) -> Result<f64, EngineError> {
+    fn computation(&self) -> Result<(f64, Option<MeasurementArea>), EngineError> {
+        let surface = matches!(self.kind, MeasurementKind::Area | MeasurementKind::Volume);
         if self.precision > 4
-            || self.points.len() > 128
+            || self.points.len() > MAX_RING_VERTICES
             || self.points.len() < 2
+            || self.holes.len() > MAX_HOLES
+            || self.holes.iter().any(|ring| ring.len() > MAX_RING_VERTICES)
+            || self.points.len() + self.holes.iter().map(Vec::len).sum::<usize>()
+                > MAX_TOTAL_VERTICES
+            || (!surface && (!self.holes.is_empty() || self.depth.is_some()))
+            || (self.kind == MeasurementKind::Area && self.depth.is_some())
+            || (self.kind == MeasurementKind::Volume && self.depth.is_none())
             || self
                 .points
                 .iter()
+                .chain(self.holes.iter().flatten())
                 .chain(self.calibration.iter())
                 .any(|p| !p.0.is_finite() || !p.1.is_finite())
             || !self.known_distance.is_finite()
@@ -484,7 +517,7 @@ impl Measurement {
         let n = self.points.len();
         let closed = matches!(
             self.kind,
-            MeasurementKind::Area | MeasurementKind::Perimeter
+            MeasurementKind::Area | MeasurementKind::Volume | MeasurementKind::Perimeter
         );
         if (self.kind == MeasurementKind::Length && n != 2)
             || (self.kind == MeasurementKind::Angle && n != 3)
@@ -492,43 +525,12 @@ impl Measurement {
         {
             return Err(bad());
         }
-        if closed {
-            if distance(self.points[0], self.points[n - 1]) < 0.01 {
-                return Err(bad());
-            }
-            let twice_area = (1..n - 1)
-                .map(|i| cross(self.points[0], self.points[i], self.points[i + 1]))
-                .sum::<f64>()
-                .abs();
-            if twice_area < 1e-6 {
-                return Err(bad());
-            }
-            for i in 0..n {
-                let (a, b, c) = (
-                    self.points[(i + n - 1) % n],
-                    self.points[i],
-                    self.points[(i + 1) % n],
-                );
-                let dot = (f64::from(a.0) - f64::from(b.0)) * (f64::from(c.0) - f64::from(b.0))
-                    + (f64::from(a.1) - f64::from(b.1)) * (f64::from(c.1) - f64::from(b.1));
-                if cross(a, b, c).abs() < 1e-6 && dot > 0.0 {
-                    return Err(bad());
-                }
-                for j in i + 1..n {
-                    if j == i + 1 || (i == 0 && j == n - 1) {
-                        continue;
-                    }
-                    if intersects(
-                        self.points[i],
-                        self.points[(i + 1) % n],
-                        self.points[j],
-                        self.points[(j + 1) % n],
-                    ) {
-                        return Err(bad());
-                    }
-                }
-            }
+        if self.kind == MeasurementKind::Perimeter {
+            crate::measurement_area::ring_area(&self.points)?;
         }
+        let area = surface
+            .then(|| crate::measurement_area::breakdown(self, scale))
+            .transpose()?;
         let value = match self.kind {
             MeasurementKind::Length | MeasurementKind::Polyline | MeasurementKind::Perimeter => {
                 let mut length: f64 = self
@@ -541,15 +543,10 @@ impl Measurement {
                 }
                 length * scale
             }
-            MeasurementKind::Area => {
-                // Translating first avoids cancellation on drawings with large coordinate offsets.
-                (1..n - 1)
-                    .map(|i| cross(self.points[0], self.points[i], self.points[i + 1]))
-                    .sum::<f64>()
-                    .abs()
-                    * 0.5
-                    * scale
-                    * scale
+            MeasurementKind::Area => area.as_ref().ok_or_else(bad)?.net,
+            MeasurementKind::Volume => {
+                area.as_ref().ok_or_else(bad)?.net
+                    * self.depth.ok_or_else(bad)?.in_unit(self.unit)?
             }
             MeasurementKind::Angle => {
                 let [a, b, c] = [self.points[0], self.points[1], self.points[2]];
@@ -564,21 +561,40 @@ impl Measurement {
         if !value.is_finite() || !(1e-9..=1e12).contains(&value) {
             return Err(bad());
         }
-        Ok(value)
+        Ok((value, area))
+    }
+
+    /// Length units, squared units for area, cubic units for volume, or degrees for angles.
+    pub fn value(&self) -> Result<f64, EngineError> {
+        self.computation().map(|(value, _)| value)
+    }
+
+    pub fn area_breakdown(&self) -> Result<MeasurementArea, EngineError> {
+        self.computation()?.1.ok_or_else(bad)
+    }
+
+    fn metadata_version(&self) -> u32 {
+        if self.kind == MeasurementKind::Volume || !self.holes.is_empty() {
+            3
+        } else {
+            2
+        }
     }
 
     pub fn result(&self) -> Result<Value, EngineError> {
-        let value = self.value()?;
+        let (value, area) = self.computation()?;
         let unit = match self.kind {
             MeasurementKind::Angle => "deg".to_string(),
             MeasurementKind::Area => format!("{}2", self.unit.id()),
+            MeasurementKind::Volume => format!("{}3", self.unit.id()),
             _ => self.unit.id().to_string(),
         };
         Ok(json!({"kind":self.kind.id(), "value":value, "unit":unit,
             "precision":self.precision, "label":format!("{:.*} {}", self.precision, value, unit),
             "calibration":{"points":self.calibration, "known_distance":self.known_distance,
                 "unit":self.unit.id(), "units_per_point":self.known_distance / distance(self.calibration[0], self.calibration[1])},
-            "points":self.points}))
+            "points":self.points, "holes":self.holes, "depth":self.depth.map(MeasurementDepth::json),
+            "area":area, "area_unit":area.as_ref().map(|_|format!("{}2",self.unit.id()))}))
     }
 }
 
@@ -595,12 +611,36 @@ pub(crate) fn measurement_after_storage(
     };
     let mut stored = measurement.clone();
     stored.points = measurement.points.iter().copied().map(roundtrip).collect();
+    stored.holes = measurement
+        .holes
+        .iter()
+        .map(|ring| ring.iter().copied().map(roundtrip).collect())
+        .collect();
     stored.calibration = measurement.calibration.map(roundtrip);
     let after = stored.value()?;
     let close = |original: f64, saved: f64| {
         saved.is_finite() && (original - saved).abs() <= original.abs() * 1e-5
     };
-    let mut precise = close(before, after)
+    // Lengths and areas alone cannot detect a uniform translation caused by large crop
+    // origins. Match the absolute per-coordinate tolerance used for saved page/rect guards.
+    let positions_match = measurement
+        .points
+        .iter()
+        .chain(measurement.holes.iter().flatten())
+        .chain(measurement.calibration.iter())
+        .zip(
+            stored
+                .points
+                .iter()
+                .chain(stored.holes.iter().flatten())
+                .chain(stored.calibration.iter()),
+        )
+        .all(|(original, saved)| {
+            (f64::from(original.0) - f64::from(saved.0)).abs() <= 0.001
+                && (f64::from(original.1) - f64::from(saved.1)).abs() <= 0.001
+        });
+    let mut precise = positions_match
+        && close(before, after)
         && close(
             distance(measurement.calibration[0], measurement.calibration[1]),
             distance(stored.calibration[0], stored.calibration[1]),
@@ -615,13 +655,36 @@ pub(crate) fn measurement_after_storage(
     }
     if matches!(
         measurement.kind,
-        MeasurementKind::Area | MeasurementKind::Perimeter
+        MeasurementKind::Area | MeasurementKind::Volume | MeasurementKind::Perimeter
     ) {
         let last = measurement.points.len() - 1;
         precise &= close(
             distance(measurement.points[last], measurement.points[0]),
             distance(stored.points[last], stored.points[0]),
         );
+    }
+    for (original, saved) in measurement.holes.iter().zip(&stored.holes) {
+        for i in 0..original.len() {
+            let next = (i + 1) % original.len();
+            precise &= close(
+                distance(original[i], original[next]),
+                distance(saved[i], saved[next]),
+            );
+        }
+    }
+    if matches!(
+        measurement.kind,
+        MeasurementKind::Area | MeasurementKind::Volume
+    ) {
+        let original = measurement.area_breakdown()?;
+        let saved = stored.area_breakdown()?;
+        precise &= close(original.gross, saved.gross)
+            && close(original.net, saved.net)
+            && original
+                .deductions
+                .iter()
+                .zip(saved.deductions)
+                .all(|(a, b)| close(*a, b));
     }
     if !precise {
         return Err(EngineError::Other("measurement coordinates lose precision when stored; use a longer calibration reference or a different page position".into()));
@@ -641,7 +704,11 @@ pub(crate) fn annotation_components(
     if measurement
         .points
         .iter()
+        .chain(measurement.holes.iter().flatten())
         .chain(measurement.calibration.iter())
+        .chain(stored.points.iter())
+        .chain(stored.holes.iter().flatten())
+        .chain(stored.calibration.iter())
         .any(|&(x, y)| x < 0.0 || y < 0.0 || x > pw || y > ph)
     {
         return Err(bad());
@@ -685,9 +752,15 @@ pub(crate) fn annotation_components(
         .map(|&(x, y)| geo.to_user(x, y))
         .collect();
     let user_calibration = measurement.calibration.map(|(x, y)| geo.to_user(x, y));
+    let user_holes: Vec<Vec<_>> = measurement
+        .holes
+        .iter()
+        .map(|ring| ring.iter().map(|&(x, y)| geo.to_user(x, y)).collect())
+        .collect();
     let ur = geo.rect_to_user(rect);
     if user_points
         .iter()
+        .chain(user_holes.iter().flatten())
         .chain(user_calibration.iter())
         .any(|p| !p.0.is_finite() || !p.1.is_finite() || p.0.abs() > 1e8 || p.1.abs() > 1e8)
         || [ur.left, ur.bottom, ur.right, ur.top]
@@ -696,13 +769,19 @@ pub(crate) fn annotation_components(
     {
         return Err(bad());
     }
-    let metadata = json!({"version":1,"coordinate_system":"pdf-user-space", "kind":measurement.kind.id(),
+    let mut metadata = json!({"version":1,"coordinate_system":"pdf-user-space", "kind":measurement.kind.id(),
             "points":user_points,"calibration":user_calibration,"known_distance":measurement.known_distance,
             "unit":measurement.unit.id(),"precision":measurement.precision,"rect":[ur.left,ur.bottom,ur.right,ur.top]});
-    annotation.set(
-        "SuniPDFMeasurement",
-        Object::string_literal(metadata.to_string()),
-    );
+    if measurement.metadata_version() == 3 {
+        metadata["version"] = 3.into();
+        metadata["holes"] = json!(user_holes);
+        metadata["depth"] = json!(measurement.depth.map(MeasurementDepth::json));
+    }
+    let metadata = metadata.to_string();
+    if metadata.len() > 32768 {
+        return Err(bad());
+    }
+    annotation.set("SuniPDFMeasurement", Object::string_literal(metadata));
     annotation.set("Name", Object::Name(b"SuniPDFMeasurement".to_vec()));
     annotation.set("Contents", lopdf::text_string(label));
     let mut content = String::from("q /GS gs 0.05 0.25 0.75 RG 1.25 w 1 J 1 j\n");
@@ -716,14 +795,31 @@ pub(crate) fn annotation_components(
     }
     if matches!(
         measurement.kind,
-        MeasurementKind::Area | MeasurementKind::Perimeter
+        MeasurementKind::Area | MeasurementKind::Volume | MeasurementKind::Perimeter
     ) {
         content.push_str("h\n");
     }
-    content.push_str("S\n1 1 1 rg 2 1 ");
+    content.push_str("S\n");
+    for ring in &measurement.holes {
+        for (i, &(x, y)) in ring.iter().enumerate() {
+            content.push_str(&format!(
+                "{} {} {}\n",
+                fmt_num(x - rect.left),
+                fmt_num(y - rect.bottom),
+                if i == 0 { "m" } else { "l" }
+            ));
+        }
+        content.push_str("h S\n");
+    }
+    // Deducted surfaces and volumes remain outline-only, including a transparent label.
+    if measurement.metadata_version() != 3 {
+        content.push_str(&format!(
+            "1 1 1 rg 2 1 {} 14 re f\n",
+            fmt_num(label_width - 2.0)
+        ));
+    }
     content.push_str(&format!(
-        "{} 14 re f\n0.05 0.25 0.75 rg BT /Helv 10 Tf 4 4 Td ({label}) Tj ET Q\n",
-        fmt_num(label_width - 2.0)
+        "0.05 0.25 0.75 rg BT /Helv 10 Tf 4 4 Td ({label}) Tj ET Q\n"
     ));
     Ok((
         annotation,
@@ -979,10 +1075,46 @@ impl Document<'_> {
                 .as_array()
                 .filter(|a| a.len() == 2)
                 .ok_or_else(bad)?;
+            let (holes, depth) = if value["version"] == 3 {
+                let holes = value["holes"]
+                    .as_array()
+                    .filter(|rings| rings.len() <= MAX_HOLES)
+                    .ok_or_else(bad)?
+                    .iter()
+                    .map(|ring| {
+                        ring.as_array()
+                            .filter(|points| points.len() <= MAX_RING_VERTICES)
+                            .ok_or_else(bad)?
+                            .iter()
+                            .map(point)
+                            .collect::<Result<Vec<_>, _>>()
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let depth = if value["depth"].is_null() {
+                    None
+                } else {
+                    let object = value["depth"]
+                        .as_object()
+                        .filter(|o| {
+                            o.len() == 2 && o.contains_key("value") && o.contains_key("unit")
+                        })
+                        .ok_or_else(bad)?;
+                    Some(MeasurementDepth {
+                        value: object["value"].as_f64().ok_or_else(bad)?,
+                        unit: MeasurementUnit::from_id(object["unit"].as_str().ok_or_else(bad)?)
+                            .ok_or_else(bad)?,
+                    })
+                };
+                (holes, depth)
+            } else {
+                (Vec::new(), None)
+            };
             let measurement = Measurement {
                 kind: MeasurementKind::from_id(value["kind"].as_str().ok_or_else(bad)?)
                     .ok_or_else(bad)?,
                 points,
+                holes,
+                depth,
                 calibration: [point(&calibration[0])?, point(&calibration[1])?],
                 known_distance: value["known_distance"].as_f64().ok_or_else(bad)?,
                 unit: MeasurementUnit::from_id(value["unit"].as_str().ok_or_else(bad)?)
@@ -1013,6 +1145,8 @@ mod tests {
     fn calibrated_geometry_and_unit_conversions_refuse_ambiguous_quantities() {
         let mut m = Measurement {
             kind: MeasurementKind::Area,
+            holes: Vec::new(),
+            depth: None,
             points: vec![(0.0, 0.0), (100.0, 0.0), (100.0, 50.0), (0.0, 50.0)],
             calibration: [(0.0, 0.0), (100.0, 0.0)],
             known_distance: 10.0,

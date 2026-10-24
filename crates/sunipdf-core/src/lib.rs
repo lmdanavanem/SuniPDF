@@ -27,6 +27,7 @@ pub mod export_office;
 mod font_embed;
 pub mod fonts;
 pub mod form_data;
+mod form_fdf;
 pub mod forms;
 pub mod geometry;
 pub mod header_footer;
@@ -37,6 +38,7 @@ mod link_destination;
 pub mod links;
 pub mod local_review;
 pub mod measurement;
+mod measurement_area;
 mod measurement_batch;
 mod measurement_distance;
 mod measurement_shapes;
@@ -48,6 +50,7 @@ mod page_calibration;
 pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
+pub mod plan_set;
 pub mod quantity_table;
 pub mod redact;
 pub mod revision_overlay;
@@ -213,6 +216,9 @@ pub struct Document<'a> {
     password: Option<String>,
     /// Polices système déjà incorporées dans ce document (vidé à chaque rechargement).
     font_cache: std::collections::HashMap<PathBuf, Vec<PdfFontToken>>,
+    /// Rendering may generate form appearances. Cache only the need for an isolated
+    /// copy, never rendered PDF bytes; edits must always render the current document.
+    form_render_need_appearances: std::cell::Cell<Option<bool>>,
 }
 
 /// Forme SASLprep du mot de passe si elle diffère de la saisie (sinon rien à réessayer).
@@ -361,6 +367,7 @@ impl Engine {
             pdfium: &self.pdfium,
             password: password.map(str::to_owned),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
             info: DocumentInfo {
                 path: path.to_path_buf(),
                 title,
@@ -410,6 +417,15 @@ impl Document<'_> {
 
     /// Rend une page à `scale` pixels par point (1.0 = 72 dpi ; 96/72 = 100 % à l'écran).
     pub fn render_page(&self, page_index: usize, scale: f32) -> Result<RenderedPage, EngineError> {
+        self.render_page_impl(page_index, scale, true)
+    }
+
+    fn render_page_impl(
+        &self,
+        page_index: usize,
+        scale: f32,
+        isolate_form_appearances: bool,
+    ) -> Result<RenderedPage, EngineError> {
         let size = self.page_size(page_index)?;
         if !(scale.is_finite() && scale > 0.0) {
             return Err(EngineError::RenderTooLarge);
@@ -421,7 +437,13 @@ impl Document<'_> {
         }
         let index = PdfPageIndex::try_from(page_index)
             .map_err(|_| EngineError::PageOutOfRange(page_index))?;
-        let page = self.inner.pages().get(index)?;
+        let render_copy = if isolate_form_appearances {
+            self.form_render_copy()?
+        } else {
+            None
+        };
+        let render_document = render_copy.as_ref().unwrap_or(&self.inner);
+        let page = render_document.pages().get(index)?;
         let config = PdfRenderConfig::new()
             .set_target_size(width as Pixels, height as Pixels)
             .render_form_data(true)
@@ -459,7 +481,9 @@ impl Document<'_> {
         }
         let index = PdfPageIndex::try_from(page_index)
             .map_err(|_| EngineError::PageOutOfRange(page_index))?;
-        let page = self.inner.pages().get(index)?;
+        let render_copy = self.form_render_copy()?;
+        let render_document = render_copy.as_ref().unwrap_or(&self.inner);
+        let page = render_document.pages().get(index)?;
         // Taille cible = page entière ; l'origine négative place la région en (0, 0) du bitmap.
         let config = PdfRenderConfig::new()
             .set_target_size(page_w as Pixels, page_h as Pixels)

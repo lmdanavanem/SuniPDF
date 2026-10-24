@@ -1,15 +1,15 @@
 # SuniPDF feature matrix
 
-Current release scope: **0.61.0**. Features below are implemented within the stated limits.
+Current release scope: **0.62.0**. Features below are implemented within the stated limits.
 [Project status](PROJECT_STATUS.md) records executed checks; implementation does not imply qualification on every document,
 physical device or third-party reader. Planned work is tracked in the [roadmap](ROADMAP.md).
 
-## Unreleased implementation
+## Delivered in 0.62.0
 
-The additions below exist on the working branch. Tests and desktop qualification are pending;
-they are not included in the 0.61.0 feature tables or published packages.
+The additions below are included in the published release. Their bounded qualification is recorded
+in [release evidence](qa/RELEASE_0.62.0.json).
 
-| Area | Implemented change awaiting qualification |
+| Area | Delivered behavior |
 |---|---|
 | Formula summaries | Sum rounded row results across all filtered rows; separate formula/group/unit/precision, expose contributing/error counts and error categories, and leave totals absent when all rows fail |
 | Quantity exports | Reuse one formula evaluation for cells and summaries; preserve version 1 coverage meanings, add additive/angular/excluded counts, and retain signed numeric CSV values with free-text formula neutralization |
@@ -21,9 +21,9 @@ they are not included in the 0.61.0 feature tables or published packages.
 | Certificate signing | Reject encrypted inputs even when an empty user password allowed automatic decryption |
 | Tab lifecycle | Failed resume retains bytes, history and recovery identity for retry; cancelled register work reloads and obsolete searches/caches are invalidated; edits during suspension synchronize page, label, selection and navigation state |
 
-See [working-branch status](PROJECT_STATUS.md#unreleased-working-branch) and
-[formula subtotal details](QUANTITY_TABLE.md#unreleased-formula-subtotals-and-coverage), plus
-[historical measurement handling](QUANTITY_TABLE.md#unreleased-measurement-provenance).
+See [project status](PROJECT_STATUS.md) and
+[formula subtotal details](QUANTITY_TABLE.md#formula-subtotals-and-coverage), plus
+[historical measurement handling](QUANTITY_TABLE.md#measurement-provenance).
 
 ## Reading and recovery
 
@@ -52,7 +52,7 @@ See [working-branch status](PROJECT_STATUS.md#unreleased-working-branch) and
 | Batch recalibration | Preview selected page defaults and supported saved measurements, then apply atomically with one Undo; up to 512 pages, 4,096 records and 128 MiB per document; signed or stale inputs refused |
 | Counts and register | Persistent count markers, groups, review status, discipline and custom text fields; built-in or lexical custom-field sorting, missing values last, navigation and guarded CSV/JSON export |
 | Quantity tables | Actual count/measurement quantities, typed fields, numeric/date/text/choice sorting and explicit prices; quantity totals retain their units, monetary totals keep currencies and rounding groups separate; missing values stay distinct from zero |
-| Report formulas | Up to eight tab-local arithmetic columns using decimal constants, numeric fields and an exact-unit quantity; six-decimal checked arithmetic, explicit cell errors and JSON configuration reuse; no formula subtotals or PDF field mutation |
+| Report formulas | Up to eight tab-local arithmetic columns using decimal constants, numeric fields and an exact-unit quantity; six-decimal checked arithmetic, explicit cell errors and JSON configuration reuse; subtotals separate groups, units and precision; no PDF field mutation |
 | Table workspace | Docked or floating tables with saved placement/height, row-to-annotation navigation and cached filtering/sorting/totals |
 | Annotation library | Local templates and flat groups of up to 16 primitives; capture supported saved native shapes/lines/polygons/clouds with declared provenance and exact appearance checks; placement preview, fresh identities, one Undo and bounded JSON import/export; arbitrary/text/image/stamp capture, measurements and review threads excluded |
 | Comparison | Local text/geometry comparison and two-page magenta/cyan overlays; manual or two-point alignment and new PNG/JSON exports; automatic registration and change outlines remain open |

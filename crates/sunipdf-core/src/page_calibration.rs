@@ -28,6 +28,8 @@ impl PageCalibration {
     pub fn validate(&self) -> Result<(), EngineError> {
         Measurement {
             kind: MeasurementKind::Length,
+            holes: Vec::new(),
+            depth: None,
             points: self.points.to_vec(),
             calibration: self.points,
             known_distance: self.known_distance,

@@ -23,6 +23,24 @@ AEC-008 includes a shared dimensioned-rectangle constructor, CLI scale selection
 
 [Release evidence](qa/RELEASE_0.62.0.json) records verified public packages and the published Windows x64 CLI run: 48 process commands / 288 assertions. This post-download run did not repeat GUI or local installation testing. Physical-device and broader interoperability gates remain separate.
 
+## 0.63 candidate increments awaiting qualification
+
+AEC-009 now has an implemented core, CLI and desktop increment for polygon deductions and constant-depth
+volumes. It retains all contours and physical depth, shows gross/deducted/net results, supports cubic
+quantity units and uses guarded preview, history and source provenance. Invalid topology and incompatible
+prices are refused. Exact-source tests, native workflows and independent-reader qualification remain open;
+the card is **In progress**, not complete.
+
+AEC-015 now has a local manifest workflow for explicitly selected PDFs, editable sheet metadata, source
+fingerprints, reference validation, new-copy export and guarded navigation. Unsaved document tabs retain
+their bytes and history. Explicit refresh/relink preserves physical page references for user review;
+automatic revision matching, replacement and cross-document linking remain separate work. Final integration,
+native and package checks remain open, so this card is also **In progress**.
+
+These increments and bounded FDF value exchange are described in the [0.63 preparation notes](RELEASE_0.63.0.md).
+No 0.63 package is published or qualified here. Private A0/A1 plan, physical-device, signing and broader
+interoperability criteria remain open. Earlier release evidence does not close these gates.
+
 ## Capabilities and acceptance
 
 P1 covers foundations and qualification; P2 extends plan workflows; P3 requires a separate integration or research effort. The [1.0 gates](RELEASE_1.0_CRITERIA.md) apply independently.
@@ -37,13 +55,13 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-006 | P1 | Reusable annotation libraries | In progress | Save/reuse/share styles, image stamps, symbols and supported annotation groups in a documented open format. Bound imports, validate assets/licenses and refuse scripts or unsafe references. Decoration presets alone do not satisfy this card. | Existing annotations and presets |
 | AEC-007 | P2 | Custom columns and formulas | In progress | Typed text/choice/date/number/formula columns, grouped totals and unit-price calculations; bounded expressions without executable code, explicit units/currency/rounding and reproducible exports. Prices are supplied by the user. | AEC-003, AEC-004 |
 | AEC-008 | P2 | Multiple scales and dimensioned drawing | In progress | Named viewports with independent scales, clear overlap rules and explicit scale selection; draw shapes to real dimensions and support snapping to eligible vectors. | AEC-001, AEC-002 |
-| AEC-009 | P2 | Volumes and deducted areas | Planned | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. | AEC-002, AEC-003 |
+| AEC-009 | P2 | Volumes and deducted areas | In progress | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. Implemented constant-depth polygon increment; final-source, native and interoperability qualification pending. | AEC-002, AEC-003 |
 | AEC-010 | P2 | Rooms and named zones | Planned | Named/hierarchical plan regions, deterministic assignment of annotations to regions and filters/reports by room or floor; expose overlapping/unassigned cases. | AEC-004, AEC-008 |
 | AEC-011 | P2 | Visual symbol search | Planned | Search from a selected symbol locally, with sensitivity, rotation choices, bounded processing and candidate previews. User-accepted matches drive counts; false positives and partial searches remain explicit. | AEC-005, AEC-026 |
 | AEC-012 | P2 | Boundary-based region filling | Planned | Preview a bounded region from drawing edges, allow manual closure of openings and retain holes. Convert reviewed results to measurements; document resolution/tolerance and refuse leakage or ambiguous boundaries. | AEC-002, AEC-009, AEC-026 |
 | AEC-013 | P2 | Aligned colour overlays | In progress | Register two or more plans using explicit control points and display/export colour-separated overlays. Keep input PDFs intact; ambiguous alignment and unmatched pages require review. | Existing comparison, AEC-026 |
 | AEC-014 | P2 | Revision outlines and tracked differences | Planned | Convert reviewed comparison regions into editable revision outlines and register entries. Preserve original/revised identity and distinguish geometric changes from rendering noise. | Existing comparison, AEC-004, AEC-013 |
-| AEC-015 | P2 | Plan sets | Planned | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. | Labels/bookmarks baseline |
+| AEC-015 | P2 | Plan sets | In progress | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. Local manifest, metadata and guarded navigation increment implemented; final-source, native and portability qualification pending. | Labels/bookmarks baseline |
 | AEC-016 | P2 | Batch sheet replacement | Planned | Match and review incoming revisions, transfer only supported markups under an explicit geometric mapping, retain previous files and produce a per-sheet result report. Refuse unsafe transfers without partial overwrites. | AEC-013, AEC-015 |
 | AEC-017 | P2 | Batch cross-document links | Planned | Detect sheet references in searchable text/OCR, preview proposed destinations and create reviewed links in new copies. Ambiguous references, unsafe paths and missing files remain unresolved. | AEC-015, existing OCR/links |
 | AEC-018 | P2 | Legends and issue reports | Planned | Generate legends, grouped quantity/issue summaries and PDF/CSV/JSON reports tied to the actual filtered annotations and document revisions. No invented or stale totals. | AEC-004, AEC-007, AEC-010 |

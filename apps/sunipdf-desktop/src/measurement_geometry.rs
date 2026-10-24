@@ -16,7 +16,9 @@ pub(crate) fn geometry_count_valid(kind: MeasurementKind, count: usize) -> bool 
         MeasurementKind::Length => count == 2,
         MeasurementKind::Angle => count == 3,
         MeasurementKind::Polyline => (2..=MAX_VERTICES).contains(&count),
-        MeasurementKind::Perimeter | MeasurementKind::Area => (3..=MAX_VERTICES).contains(&count),
+        MeasurementKind::Perimeter | MeasurementKind::Area | MeasurementKind::Volume => {
+            (3..=MAX_VERTICES).contains(&count)
+        }
     }
 }
 
@@ -26,6 +28,8 @@ pub(crate) struct GeometryDraft {
     pub epoch: u64,
     pub original: MeasurementRecord,
     pub replacement: Measurement,
+    ring: Option<usize>,
+    drawing_ring: bool,
     dragging: Option<usize>,
     selected: Option<usize>,
     adding: bool,
@@ -33,13 +37,80 @@ pub(crate) struct GeometryDraft {
 }
 
 impl GeometryDraft {
+    fn points(&self) -> &[(f32, f32)] {
+        self.ring.map_or(&self.replacement.points, |index| {
+            &self.replacement.holes[index]
+        })
+    }
+
+    fn points_mut(&mut self) -> &mut Vec<(f32, f32)> {
+        if let Some(index) = self.ring {
+            &mut self.replacement.holes[index]
+        } else {
+            &mut self.replacement.points
+        }
+    }
+
+    fn add_deduction(&mut self) -> bool {
+        if !matches!(
+            self.replacement.kind,
+            MeasurementKind::Area | MeasurementKind::Volume
+        ) || self.replacement.holes.len() >= sunipdf_core::measurement::MAX_HOLES
+            || self.replacement.value().is_err()
+            || self.dragging.is_some()
+        {
+            return false;
+        }
+        self.ring = Some(self.replacement.holes.len());
+        self.replacement.holes.push(Vec::new());
+        self.drawing_ring = true;
+        self.selected = None;
+        self.adding = false;
+        self.error = None;
+        true
+    }
+
+    fn remove_deduction(&mut self) {
+        if let Some(index) = self.ring.take() {
+            self.replacement.holes.remove(index);
+        }
+        self.drawing_ring = false;
+        self.selected = None;
+        self.adding = false;
+        self.error = None;
+    }
+
+    fn append_deduction_point(&mut self, point: (f32, f32)) -> bool {
+        let total = self.replacement.points.len()
+            + self.replacement.holes.iter().map(Vec::len).sum::<usize>();
+        if self.points().len() >= MAX_VERTICES
+            || total >= sunipdf_core::measurement::MAX_TOTAL_VERTICES
+        {
+            self.error = Some("measure.deductions.limit");
+            return false;
+        }
+        if !self.drawing_ring
+            || !point.0.is_finite()
+            || !point.1.is_finite()
+            || self.points().len() >= MAX_VERTICES
+            || total >= sunipdf_core::measurement::MAX_TOTAL_VERTICES
+            || self
+                .points()
+                .last()
+                .is_some_and(|last| (last.0 - point.0).hypot(last.1 - point.1) < 0.01)
+        {
+            return false;
+        }
+        self.points_mut().push(point);
+        self.error = None;
+        true
+    }
     fn hit_vertex(&self, point: (f32, f32), screen_scale: f32) -> Option<usize> {
         if !screen_scale.is_finite() || screen_scale <= 0.0 {
             return None;
         }
         let mut hits: Vec<_> = self
-            .replacement
-            .points
+            .points()
             .iter()
             .enumerate()
             .map(|(index, &(x, y))| (index, (point.0 - x).hypot(point.1 - y) * screen_scale))
@@ -59,23 +130,27 @@ impl GeometryDraft {
     fn vertex_changes_allowed(&self) -> bool {
         matches!(
             self.replacement.kind,
-            MeasurementKind::Polyline | MeasurementKind::Perimeter | MeasurementKind::Area
+            MeasurementKind::Polyline
+                | MeasurementKind::Perimeter
+                | MeasurementKind::Area
+                | MeasurementKind::Volume
         )
     }
 
     fn can_add(&self) -> bool {
-        self.vertex_changes_allowed() && self.replacement.points.len() < MAX_VERTICES
+        self.vertex_changes_allowed()
+            && self.points().len() < MAX_VERTICES
+            && self.replacement.points.len()
+                + self.replacement.holes.iter().map(Vec::len).sum::<usize>()
+                < sunipdf_core::measurement::MAX_TOTAL_VERTICES
     }
 
     fn can_remove(&self) -> bool {
         self.vertex_changes_allowed()
             && self
                 .selected
-                .is_some_and(|index| index < self.replacement.points.len())
-            && geometry_count_valid(
-                self.replacement.kind,
-                self.replacement.points.len().saturating_sub(1),
-            )
+                .is_some_and(|index| index < self.points().len())
+            && geometry_count_valid(self.replacement.kind, self.points().len().saturating_sub(1))
     }
 
     fn remove_selected(&mut self) -> bool {
@@ -84,13 +159,17 @@ impl GeometryDraft {
         }
         let index = self.selected.unwrap();
         let mut candidate = self.replacement.clone();
-        candidate.points.remove(index);
+        if let Some(ring) = self.ring {
+            candidate.holes[ring].remove(index);
+        } else {
+            candidate.points.remove(index);
+        }
         if candidate.value().is_err() {
             self.error = Some("measure.geometry.remove_refused");
             return false;
         }
         self.replacement = candidate;
-        self.selected = Some(index.min(self.replacement.points.len() - 1));
+        self.selected = Some(index.min(self.points().len() - 1));
         self.adding = false;
         self.error = None;
         true
@@ -106,7 +185,7 @@ impl GeometryDraft {
         {
             return false;
         }
-        let points = &self.replacement.points;
+        let points = self.points();
         if points
             .iter()
             .any(|&(x, y)| (point.0 - x).hypot(point.1 - y) * scale <= HANDLE_HIT_RADIUS)
@@ -115,7 +194,7 @@ impl GeometryDraft {
         }
         let closed = matches!(
             self.replacement.kind,
-            MeasurementKind::Area | MeasurementKind::Perimeter
+            MeasurementKind::Volume | MeasurementKind::Area | MeasurementKind::Perimeter
         );
         let segments = points.len() - usize::from(!closed);
         let mut hits = Vec::new();
@@ -161,7 +240,11 @@ impl GeometryDraft {
             return false;
         }
         let mut candidate = self.replacement.clone();
-        candidate.points.insert(index + 1, projected);
+        if let Some(ring) = self.ring {
+            candidate.holes[ring].insert(index + 1, projected);
+        } else {
+            candidate.points.insert(index + 1, projected);
+        }
         if candidate.value().is_err() {
             return false;
         }
@@ -174,6 +257,8 @@ impl GeometryDraft {
 
     fn changed(&self) -> bool {
         self.replacement.points != self.original.measurement.points
+            || self.replacement.holes != self.original.measurement.holes
+            || self.replacement.depth != self.original.measurement.depth
     }
 }
 
@@ -218,6 +303,8 @@ impl SuniApp {
             epoch: self.view.epoch,
             replacement: record.measurement.clone(),
             original: record,
+            ring: None,
+            drawing_ring: false,
             dragging: None,
             selected: None,
             adding: false,
@@ -245,7 +332,7 @@ impl SuniApp {
                     .as_mut()
                     .filter(|d| d.page == page)
                 {
-                    if !draft.adding {
+                    if !draft.adding && !draft.drawing_ring {
                         draft.dragging = draft.hit_vertex(point, scale);
                         if draft.dragging.is_some() {
                             draft.selected = draft.dragging;
@@ -267,6 +354,32 @@ impl SuniApp {
                 }
             }
             DragEvent::Click(point) => {
+                if !self
+                    .document
+                    .as_ref()
+                    .and_then(|document| document.info.page_sizes.get(page))
+                    .is_some_and(|size| {
+                        point.0.is_finite()
+                            && point.1.is_finite()
+                            && point.0 >= 0.0
+                            && point.1 >= 0.0
+                            && point.0 <= size.width_pt
+                            && point.1 <= size.height_pt
+                    })
+                {
+                    return;
+                }
+                let point = if self
+                    .annotate
+                    .measure
+                    .geometry
+                    .as_ref()
+                    .is_some_and(|draft| draft.drawing_ring)
+                {
+                    self.snap_measurement_point(page, point, false)
+                } else {
+                    point
+                };
                 let scale = self.effective_zoom * SCREEN_PER_PDF_POINT;
                 if let Some(draft) = self
                     .annotate
@@ -275,7 +388,9 @@ impl SuniApp {
                     .as_mut()
                     .filter(|d| d.page == page)
                 {
-                    if draft.adding {
+                    if draft.drawing_ring {
+                        draft.append_deduction_point(point);
+                    } else if draft.adding {
                         if !draft.insert_on_segment(point, scale) {
                             draft.error = Some("measure.geometry.insert_refused");
                         }
@@ -311,7 +426,7 @@ impl SuniApp {
             .filter(|d| d.page == page)
         {
             if let Some(index) = draft.dragging {
-                draft.replacement.points[index] = (
+                draft.points_mut()[index] = (
                     point.0.clamp(0.0, size.width_pt),
                     point.1.clamp(0.0, size.height_pt),
                 );
@@ -330,6 +445,7 @@ impl SuniApp {
         if !draft.changed()
             || draft.dragging.is_some()
             || draft.adding
+            || draft.drawing_ring
             || draft.replacement.value().is_err()
         {
             return false;
@@ -353,8 +469,12 @@ impl SuniApp {
         let ready = self.measurement_ready();
         let draft = self.annotate.measure.geometry.as_mut().unwrap();
         let valid = draft.replacement.value().is_ok();
-        let can_finish =
-            ready && draft.changed() && valid && draft.dragging.is_none() && !draft.adding;
+        let can_finish = ready
+            && draft.changed()
+            && valid
+            && draft.dragging.is_none()
+            && !draft.adding
+            && !draft.drawing_ring;
         ui.label(
             egui::RichText::new(tr(lang, "measure.geometry.open"))
                 .strong()
@@ -365,66 +485,139 @@ impl SuniApp {
             lang,
             "measure.geometry.details",
             &[
-                ("points", &draft.replacement.points.len().to_string()),
+                ("points", &draft.points().len().to_string()),
                 ("unit", draft.replacement.unit.id()),
                 ("precision", &draft.replacement.precision.to_string()),
             ],
         ));
         ui.add_enabled_ui(ready && draft.dragging.is_none(), |ui| {
-            ui.vertical(|ui| {
-                ui.label(tr(lang, "measure.geometry.vertex"));
-                egui::ComboBox::from_id_salt("measurement-geometry-vertex")
-                    .width(ui.available_width())
-                    .truncate()
-                    .selected_text(draft.selected.map_or_else(
-                        || tr(lang, "measure.geometry.select_vertex").to_owned(),
-                        |index| (index + 1).to_string(),
-                    ))
-                    .show_ui(ui, |ui| {
-                        for index in 0..draft.replacement.points.len() {
-                            if ui
-                                .selectable_value(
-                                    &mut draft.selected,
-                                    Some(index),
-                                    (index + 1).to_string(),
-                                )
-                                .changed()
-                            {
-                                draft.adding = false;
-                                draft.error = None;
-                            }
-                        }
-                    });
-                if crate::measure_tools::measurement_panel_button(
-                    ui,
-                    draft.can_add() || draft.adding,
-                    tr(
+            if matches!(
+                draft.replacement.kind,
+                MeasurementKind::Area | MeasurementKind::Volume
+            ) {
+                let previous = draft.ring;
+                ui.add_enabled_ui(!draft.drawing_ring, |ui| {
+                    crate::measurement_area_ui::ring_selector(
+                        ui,
                         lang,
-                        if draft.adding {
-                            "measure.geometry.stop_adding"
-                        } else {
-                            "measure.geometry.add_vertex"
-                        },
-                    ),
-                )
-                .clicked()
-                {
-                    draft.adding = !draft.adding;
+                        "measurement-geometry-ring",
+                        &mut draft.ring,
+                        draft.replacement.holes.len(),
+                    )
+                });
+                if previous != draft.ring {
+                    draft.selected = None;
+                    draft.adding = false;
                     draft.error = None;
                 }
                 if crate::measure_tools::measurement_panel_button(
                     ui,
-                    draft.can_remove(),
-                    tr(lang, "measure.geometry.remove_vertex"),
+                    valid
+                        && draft.replacement.holes.len() < sunipdf_core::measurement::MAX_HOLES
+                        && !draft.drawing_ring,
+                    tr(lang, "measure.deductions.add"),
                 )
                 .clicked()
                 {
-                    draft.remove_selected();
+                    draft.add_deduction();
                 }
+                if crate::measure_tools::measurement_panel_button(
+                    ui,
+                    draft.ring.is_some(),
+                    tr(lang, "measure.deductions.remove"),
+                )
+                .clicked()
+                {
+                    draft.remove_deduction();
+                }
+                if draft.drawing_ring {
+                    ui.small(tr(lang, "measure.deductions.hint"));
+                    if crate::measure_tools::measurement_panel_button(
+                        ui,
+                        !draft.points().is_empty(),
+                        tr(lang, "measure.undo_point"),
+                    )
+                    .clicked()
+                    {
+                        draft.points_mut().pop();
+                    }
+                    if crate::measure_tools::measurement_panel_button(
+                        ui,
+                        valid,
+                        tr(lang, "measure.deductions.finish"),
+                    )
+                    .clicked()
+                    {
+                        draft.drawing_ring = false;
+                    }
+                }
+                crate::measurement_area_ui::area_summary(ui, lang, &draft.replacement);
+            }
+            ui.add_enabled_ui(!draft.drawing_ring, |ui| {
+                ui.vertical(|ui| {
+                    ui.label(tr(lang, "measure.geometry.vertex"));
+                    egui::ComboBox::from_id_salt("measurement-geometry-vertex")
+                        .width(ui.available_width())
+                        .truncate()
+                        .selected_text(draft.selected.map_or_else(
+                            || tr(lang, "measure.geometry.select_vertex").to_owned(),
+                            |index| (index + 1).to_string(),
+                        ))
+                        .show_ui(ui, |ui| {
+                            for index in 0..draft.points().len() {
+                                if ui
+                                    .selectable_value(
+                                        &mut draft.selected,
+                                        Some(index),
+                                        (index + 1).to_string(),
+                                    )
+                                    .changed()
+                                {
+                                    draft.adding = false;
+                                    draft.error = None;
+                                }
+                            }
+                        });
+                    if crate::measure_tools::measurement_panel_button(
+                        ui,
+                        draft.can_add() || draft.adding,
+                        tr(
+                            lang,
+                            if draft.adding {
+                                "measure.geometry.stop_adding"
+                            } else {
+                                "measure.geometry.add_vertex"
+                            },
+                        ),
+                    )
+                    .clicked()
+                    {
+                        draft.adding = !draft.adding;
+                        draft.error = None;
+                    }
+                    if crate::measure_tools::measurement_panel_button(
+                        ui,
+                        draft.can_remove(),
+                        tr(lang, "measure.geometry.remove_vertex"),
+                    )
+                    .clicked()
+                    {
+                        draft.remove_selected();
+                    }
+                });
             });
         });
         if draft.adding {
             ui.label(tr(lang, "measure.geometry.add_hint"));
+        }
+        if draft.drawing_ring
+            && ready
+            && !ctx.egui_wants_keyboard_input()
+            && !egui::Popup::is_any_open(ctx)
+            && ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Backspace))
+        {
+            draft.points_mut().pop();
+            draft.error = None;
         }
         if !draft.vertex_changes_allowed() {
             ui.small(tr(lang, "measure.geometry.fixed_count"));
@@ -491,13 +684,28 @@ impl SuniApp {
             )
         };
         let color = Color32::from_rgb(20, 115, 225);
-        let points = &draft.replacement.points;
+        let points = draft.points();
+        for (index, ring) in std::iter::once(&draft.replacement.points)
+            .chain(draft.replacement.holes.iter())
+            .enumerate()
+        {
+            if index == draft.ring.map_or(0, |index| index + 1) {
+                continue;
+            }
+            let stroke = Stroke::new(1.5, color.gamma_multiply(0.65));
+            for pair in ring.windows(2) {
+                painter.line_segment([screen(pair[0]), screen(pair[1])], stroke);
+            }
+            if ring.len() >= 3 {
+                painter.line_segment([screen(*ring.last().unwrap()), screen(ring[0])], stroke);
+            }
+        }
         for pair in points.windows(2) {
             painter.line_segment([screen(pair[0]), screen(pair[1])], Stroke::new(2.0, color));
         }
         if matches!(
             draft.replacement.kind,
-            MeasurementKind::Area | MeasurementKind::Perimeter
+            MeasurementKind::Volume | MeasurementKind::Area | MeasurementKind::Perimeter
         ) && points.len() >= 3
         {
             painter.line_segment(
@@ -535,6 +743,8 @@ mod tests {
     #[test]
     fn geometry_hit_radius_stays_constant_on_screen_and_nearest_vertex_wins() {
         let measurement = Measurement {
+            holes: Vec::new(),
+            depth: None,
             kind: MeasurementKind::Length,
             points: vec![(50.0, 100.0), (150.0, 100.0)],
             calibration: [(10.0, 20.0), (110.0, 20.0)],
@@ -543,6 +753,8 @@ mod tests {
             precision: 3,
         };
         let draft = GeometryDraft {
+            ring: None,
+            drawing_ring: false,
             page: 0,
             epoch: 7,
             original: MeasurementRecord {
@@ -595,6 +807,13 @@ mod tests {
 
     fn editable(kind: MeasurementKind, points: Vec<(f32, f32)>) -> GeometryDraft {
         let measurement = Measurement {
+            holes: Vec::new(),
+            depth: (kind == MeasurementKind::Volume).then_some(
+                sunipdf_core::measurement::MeasurementDepth {
+                    value: 0.2,
+                    unit: MeasurementUnit::Metres,
+                },
+            ),
             kind,
             points,
             calibration: [(10.0, 10.0), (110.0, 10.0)],
@@ -603,6 +822,8 @@ mod tests {
             precision: 3,
         };
         GeometryDraft {
+            ring: None,
+            drawing_ring: false,
             page: 0,
             epoch: 7,
             original: MeasurementRecord {
@@ -660,6 +881,36 @@ mod tests {
     }
 
     #[test]
+    fn deduction_only_edits_are_changes_and_leave_the_original_outer_and_depth_intact() {
+        let mut draft = editable(
+            MeasurementKind::Volume,
+            vec![(20.0, 20.0), (220.0, 20.0), (220.0, 220.0), (20.0, 220.0)],
+        );
+        let original = draft.original.clone();
+        assert!(draft.add_deduction());
+        for point in [(70.0, 70.0), (170.0, 70.0), (170.0, 170.0), (70.0, 170.0)] {
+            assert!(draft.append_deduction_point(point));
+        }
+        assert!(draft.changed());
+        assert!(draft.replacement.value().is_ok());
+        draft.drawing_ring = false;
+        assert!(draft.insert_on_segment((120.0, 70.0), 1.0));
+        assert_eq!(draft.replacement.holes[0].len(), 5);
+        assert!(draft.remove_selected());
+        assert_eq!(draft.replacement.holes[0].len(), 4);
+        assert_eq!(draft.original, original);
+        assert_eq!(draft.replacement.points, original.measurement.points);
+        assert_eq!(draft.replacement.depth, original.measurement.depth);
+        assert_eq!(
+            draft.replacement.calibration,
+            original.measurement.calibration
+        );
+        draft.remove_deduction();
+        assert!(!draft.changed());
+        assert_eq!(draft.replacement, original.measurement);
+    }
+
+    #[test]
     fn vertex_insertion_refuses_endpoints_crossings_and_screen_ambiguity_at_any_zoom() {
         for scale in [0.25, 1.0, 4.0] {
             let mut draft = editable(
@@ -684,7 +935,10 @@ mod tests {
         for kind in MeasurementKind::ALL {
             let minimum = if matches!(
                 kind,
-                MeasurementKind::Area | MeasurementKind::Perimeter | MeasurementKind::Angle
+                MeasurementKind::Volume
+                    | MeasurementKind::Area
+                    | MeasurementKind::Perimeter
+                    | MeasurementKind::Angle
             ) {
                 3
             } else {

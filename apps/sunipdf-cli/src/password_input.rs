@@ -78,6 +78,7 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         Command::SetQuantityFields(args) => Some(&mut args.target.password),
         Command::ClearQuantityFields(args) => Some(&mut args.password),
         Command::AnnotationLibrary(args) => args.password(),
+        Command::PlanSet(args) => args.password(),
         Command::Count(args) => Some(&mut args.password),
         Command::AnnotationRegister(args) => Some(&mut args.password),
         Command::AnnotationFields(args) => Some(&mut args.password),

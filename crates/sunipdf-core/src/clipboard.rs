@@ -499,6 +499,7 @@ impl<'a> Document<'a> {
             page_rotations: Vec::new(),
             password: None,
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         let source_geo = source.page_geometry(0)?;
         let source_infos = source.page_objects(0)?;
@@ -719,6 +720,7 @@ impl<'a> Document<'a> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         let before = self.page_objects(page_index)?;
         let after = scratch.page_objects(page_index)?;
@@ -742,6 +744,7 @@ impl<'a> Document<'a> {
             }
         }
         let indices = (before.len()..after.len()).collect();
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(indices)

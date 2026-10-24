@@ -4,8 +4,8 @@ use serde_json::Value;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use sunipdf_core::measurement::{
-    Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit, MeasurementValidity,
-    PageCalibration,
+    Measurement, MeasurementDepth, MeasurementKind, MeasurementRecord, MeasurementUnit,
+    MeasurementValidity, PageCalibration, MAX_HOLES, MAX_RING_VERTICES, MAX_TOTAL_VERTICES,
 };
 use sunipdf_core::{Document, Engine, EngineError};
 
@@ -13,7 +13,7 @@ type Calibration = ([(f32, f32); 2], f64);
 
 #[derive(Args)]
 #[command(group(ArgGroup::new("measurement_changes").required(true).multiple(true)
-    .args(["kind", "points", "calibration", "use_page_calibration", "unit", "precision"])))]
+    .args(["kind", "points", "holes", "clear_holes", "depth", "clear_depth", "calibration", "use_page_calibration", "unit", "precision"])))]
 pub struct EditArgs {
     pub file: PathBuf,
     /// Physical page number, starting at 1.
@@ -25,11 +25,26 @@ pub struct EditArgs {
     /// One complete measurement record from measurements JSON (maximum 64 KiB).
     #[arg(long)]
     pub expected_record: PathBuf,
-    #[arg(long, value_parser = ["length", "polyline", "perimeter", "area", "angle"])]
+    #[arg(long, value_parser = ["length", "polyline", "perimeter", "area", "volume", "angle"])]
     pub kind: Option<String>,
     /// Replacement displayed-page vertices: "x,y x,y ..."; omitted vertices are preserved.
     #[arg(long)]
     pub points: Option<String>,
+    /// Replace all deduction rings: "x,y x,y ...". Repeat for each hole; omission preserves existing holes.
+    #[arg(long = "hole", conflicts_with = "clear_holes")]
+    pub holes: Vec<String>,
+    /// Explicitly remove every deduction ring; does not change the outer boundary or depth.
+    #[arg(long, conflicts_with = "holes")]
+    pub clear_holes: bool,
+    /// Replace physical depth; requires --depth-unit. Omission preserves the existing depth.
+    #[arg(long, requires = "depth_unit", conflicts_with = "clear_depth")]
+    pub depth: Option<f64>,
+    /// Unit of the replacement depth, independent of --unit; requires --depth.
+    #[arg(long, requires = "depth", conflicts_with = "clear_depth", value_parser = ["mm", "cm", "m", "in", "ft"])]
+    pub depth_unit: Option<String>,
+    /// Explicitly remove depth, for example with --kind area; a volume must retain a depth.
+    #[arg(long, conflicts_with_all = ["depth", "depth_unit"])]
+    pub clear_depth: bool,
     /// Replacement reference points: "x,y x,y"; requires --known-distance.
     #[arg(
         long,
@@ -88,11 +103,12 @@ fn json_points(value: &Value, maximum: usize) -> Result<Vec<(f32, f32)>, EngineE
 }
 
 pub(crate) fn parse_record(value: Value) -> Result<MeasurementRecord, EngineError> {
-    let validity = match value["version"].as_u64() {
+    let version = value["version"].as_u64();
+    let validity = match version {
         Some(1) if value.get("validity").is_none() || value["validity"] == "legacy_unverified" => {
             MeasurementValidity::LegacyUnverified
         }
-        Some(2) => {
+        Some(2 | 3) => {
             serde_json::from_value(value["validity"].clone()).map_err(|_| invalid_record())?
         }
         _ => return Err(invalid_record()),
@@ -101,6 +117,33 @@ pub(crate) fn parse_record(value: Value) -> Result<MeasurementRecord, EngineErro
         .as_str()
         .filter(|id| !id.is_empty() && id.len() <= 256)
         .ok_or_else(invalid_record)?;
+    let holes = match value.get("holes") {
+        Some(Value::Array(rings)) if rings.len() <= MAX_HOLES => rings
+            .iter()
+            .map(|ring| json_points(ring, MAX_RING_VERTICES))
+            .collect::<Result<Vec<_>, _>>()?,
+        None if version != Some(3) => Vec::new(),
+        _ => return Err(invalid_record()),
+    };
+    let depth = match value.get("depth") {
+        Some(Value::Null) => None,
+        Some(Value::Object(object))
+            if object.len() == 2 && object.contains_key("value") && object.contains_key("unit") =>
+        {
+            Some(MeasurementDepth {
+                value: object["value"].as_f64().ok_or_else(invalid_record)?,
+                unit: object["unit"]
+                    .as_str()
+                    .and_then(MeasurementUnit::from_id)
+                    .ok_or_else(invalid_record)?,
+            })
+        }
+        None if version != Some(3) => None,
+        _ => return Err(invalid_record()),
+    };
+    if version != Some(3) && (!holes.is_empty() || depth.is_some()) {
+        return Err(invalid_record());
+    }
     let record = MeasurementRecord {
         index: value["index"]
             .as_u64()
@@ -114,6 +157,8 @@ pub(crate) fn parse_record(value: Value) -> Result<MeasurementRecord, EngineErro
                 .and_then(MeasurementKind::from_id)
                 .ok_or_else(invalid_record)?,
             points: json_points(&value["points"], 128)?,
+            holes,
+            depth,
             calibration: json_points(&value["calibration"]["points"], 2)?
                 .try_into()
                 .map_err(|_| invalid_record())?,
@@ -156,6 +201,47 @@ pub fn points(spec: &str, maximum: usize) -> Result<Vec<(f32, f32)>, EngineError
         )));
     }
     annot_cmd::parse_stroke(spec)
+}
+
+pub fn holes(specs: &[String], outer_vertices: usize) -> Result<Vec<Vec<(f32, f32)>>, EngineError> {
+    if specs.len() > MAX_HOLES {
+        return Err(EngineError::Other(format!(
+            "a surface is limited to {MAX_HOLES} deduction rings"
+        )));
+    }
+    let mut total = outer_vertices;
+    specs
+        .iter()
+        .map(|spec| {
+            let ring = points(spec, MAX_RING_VERTICES)?;
+            total = total.saturating_add(ring.len());
+            if total > MAX_TOTAL_VERTICES {
+                return Err(EngineError::Other(format!(
+                    "a surface is limited to {MAX_TOTAL_VERTICES} total vertices"
+                )));
+            }
+            Ok(ring)
+        })
+        .collect()
+}
+
+pub fn depth(
+    value: Option<f64>,
+    unit: Option<&str>,
+) -> Result<Option<MeasurementDepth>, EngineError> {
+    match (value, unit) {
+        (None, None) => Ok(None),
+        (Some(value), Some(unit)) if value.is_finite() && (1e-9..=1e9).contains(&value) => {
+            Ok(Some(MeasurementDepth {
+                value,
+                unit: MeasurementUnit::from_id(unit).ok_or_else(invalid_record)?,
+            }))
+        }
+        _ => Err(EngineError::Other(
+            "depth requires a finite positive value from 1e-9 to 1e9 and an explicit --depth-unit"
+                .into(),
+        )),
+    }
 }
 
 pub fn page_selection(page: Option<usize>, count: usize) -> Result<Vec<usize>, EngineError> {
@@ -212,6 +298,16 @@ pub fn edit(engine: &Engine, args: EditArgs) -> Result<Value, EngineError> {
     }
     if let Some(spec) = args.points {
         replacement.points = points(&spec, 128)?;
+    }
+    if args.clear_holes {
+        replacement.holes.clear();
+    } else if !args.holes.is_empty() {
+        replacement.holes = holes(&args.holes, replacement.points.len())?;
+    }
+    if args.clear_depth {
+        replacement.depth = None;
+    } else if args.depth.is_some() || args.depth_unit.is_some() {
+        replacement.depth = depth(args.depth, args.depth_unit.as_deref())?;
     }
     if let Some(unit) = args.unit {
         let unit = MeasurementUnit::from_id(&unit).ok_or_else(invalid_record)?;
@@ -275,6 +371,8 @@ mod tests {
             measurement: Measurement {
                 kind: MeasurementKind::Area,
                 points: vec![(10.0, 10.0), (50.0, 10.0), (50.0, 40.0)],
+                holes: Vec::new(),
+                depth: None,
                 calibration: [(10.0, 10.0), (50.0, 10.0)],
                 known_distance: 4.0,
                 unit: MeasurementUnit::Metres,
@@ -288,7 +386,7 @@ mod tests {
         let record = sample();
         assert_eq!(parse_record(record.result().unwrap()).unwrap(), record);
         for (key, value) in [
-            ("version", 3.into()),
+            ("version", 4.into()),
             ("validity", Value::Null),
             ("validity", "unknown".into()),
             ("annotation_id", Value::Null),
@@ -330,5 +428,44 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("64 KiB"));
+    }
+
+    #[test]
+    fn volume_record_roundtrips_without_losing_deductions_or_physical_depth() {
+        let mut record = sample();
+        record.measurement.kind = MeasurementKind::Volume;
+        record.measurement.points =
+            vec![(10.0, 10.0), (110.0, 10.0), (110.0, 110.0), (10.0, 110.0)];
+        record.measurement.holes =
+            vec![vec![(30.0, 30.0), (50.0, 30.0), (50.0, 80.0), (30.0, 80.0)]];
+        record.measurement.depth = Some(MeasurementDepth {
+            value: 20.0,
+            unit: MeasurementUnit::Centimetres,
+        });
+        let result = record.result().unwrap();
+        assert_eq!(result["version"], 3);
+        assert_eq!(parse_record(result.clone()).unwrap(), record);
+        for key in ["holes", "depth"] {
+            let mut missing = result.clone();
+            missing.as_object_mut().unwrap().remove(key);
+            assert!(parse_record(missing).is_err(), "missing {key}");
+        }
+        let mut old_version = result.clone();
+        old_version["version"] = 2.into();
+        assert!(parse_record(old_version).is_err());
+        for replacement in [
+            serde_json::json!({"value":20,"unit":"m2"}),
+            serde_json::json!({"value":0,"unit":"cm"}),
+            serde_json::json!({"value":20,"unit":"cm","other":1}),
+        ] {
+            let mut malformed = result.clone();
+            malformed["depth"] = replacement;
+            assert!(parse_record(malformed).is_err());
+        }
+        assert!(holes(&vec!["1,1 2,1 2,2".into(); MAX_HOLES + 1], 4).is_err());
+        assert!(holes(&["1,1 2,1 2,2".into()], MAX_TOTAL_VERTICES).is_err());
+        assert!(depth(Some(20.0), None).is_err());
+        assert!(depth(None, Some("cm")).is_err());
+        assert!(depth(Some(f64::NAN), Some("cm")).is_err());
     }
 }

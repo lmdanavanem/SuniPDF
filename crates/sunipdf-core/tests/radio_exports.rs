@@ -5,6 +5,9 @@ use lopdf::{dictionary, Object};
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 use sunipdf_core::{form_data, security, Engine, FieldValue, FillMode, Protection};
+#[cfg(windows)]
+#[path = "support/certificate_identity.rs"]
+mod test_identity;
 
 static SERIAL: Mutex<()> = Mutex::new(());
 static ENGINE: OnceLock<EnginePtr> = OnceLock::new();
@@ -20,6 +23,25 @@ fn engine() -> &'static Engine {
 
 fn choice(value: &str) -> FieldValue {
     FieldValue::Choice(vec![value.into()])
+}
+
+fn assert_snapshot_unchanged(before: &[u8], after: &[u8], password: Option<&str>) {
+    let load = |bytes: &[u8]| {
+        lopdf::Document::load_mem_with_options(
+            bytes,
+            lopdf::LoadOptions::with_password(password.unwrap_or("")),
+        )
+        .unwrap()
+    };
+    let before = load(before);
+    let after = load(after);
+    // AES output can use fresh IVs on each serialization. Compare every decoded object,
+    // including signature contents/ranges, field values, permissions and appearances.
+    assert_eq!(after.objects, before.objects);
+    assert_eq!(
+        after.trailer.get(b"Root").unwrap(),
+        before.trailer.get(b"Root").unwrap()
+    );
 }
 
 fn fdf(value: &str) -> Vec<u8> {
@@ -80,6 +102,544 @@ fn button_appearance_names(pdf: &lopdf::Document) -> Vec<Option<Vec<Vec<u8>>>> {
             Some(keys)
         })
         .collect()
+}
+
+fn set_need_appearances(pdf: &mut lopdf::Document) {
+    let acro = pdf.catalog().unwrap().get(b"AcroForm").unwrap().clone();
+    let mut acro = pdf.dereference(&acro).unwrap().1.as_dict().unwrap().clone();
+    acro.set("NeedAppearances", true);
+    let id = pdf.add_object(acro);
+    pdf.catalog_mut().unwrap().set("AcroForm", id);
+}
+
+fn typed_fdf(fields: Vec<lopdf::Dictionary>) -> Vec<u8> {
+    let mut pdf = lopdf::Document::with_version("1.2");
+    pdf.reference_table.cross_reference_type = lopdf::xref::XrefType::CrossReferenceTable;
+    let fields: Vec<_> = fields
+        .into_iter()
+        .map(|field| Object::Reference(pdf.add_object(field)))
+        .collect();
+    let root = pdf.add_object(dictionary! {
+        "FDF" => dictionary! {"Fields" => fields},
+    });
+    pdf.trailer.set("Root", root);
+    let mut bytes = Vec::new();
+    pdf.save_to(&mut bytes).unwrap();
+    bytes[1..4].copy_from_slice(b"FDF");
+    bytes
+}
+
+#[test]
+fn need_appearances_fdf_round_trips_keep_radio_states_and_empty_choices() {
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
+    for encrypted in [false, true] {
+        let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
+        set_need_appearances(&mut pdf);
+        let country = pdf
+            .objects
+            .iter()
+            .find_map(|(&id, object)| {
+                let field = object.as_dict().ok()?;
+                (lopdf::decode_text_string(field.get(b"T").ok()?).ok()? == "pays").then_some(id)
+            })
+            .unwrap();
+        let field = pdf.get_dictionary_mut(country).unwrap();
+        field.set("Opt", vec![lopdf::text_string(""), lopdf::text_string("A")]);
+        field.set("V", lopdf::text_string("A"));
+        let appearances = button_appearance_names(&pdf);
+        let mut bytes = Vec::new();
+        pdf.save_to(&mut bytes).unwrap();
+        if encrypted {
+            bytes = security::protect(
+                &bytes,
+                None,
+                &Protection {
+                    user_password: "user".into(),
+                    owner_password: "owner".into(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        }
+        let password = encrypted.then_some("owner");
+        let source_dir = tempfile::tempdir().unwrap();
+        let source_path = source_dir.path().join("refresh.pdf");
+        std::fs::write(&source_path, &bytes).unwrap();
+        let mut doc = if encrypted {
+            engine
+                .open_bytes(bytes.clone(), password, &source_path)
+                .unwrap()
+        } else {
+            engine.open(&source_path, password).unwrap()
+        };
+        assert!(
+            !doc.form_info()
+                .unwrap()
+                .field(fixture::FIELD_NAME)
+                .unwrap()
+                .read_only,
+            "the original radio group is unambiguous"
+        );
+        let before_render = doc.snapshot().unwrap();
+        let started = std::time::Instant::now();
+        for _ in 0..3 {
+            doc.render_page(0, 0.25).unwrap();
+            doc.render_region(
+                0,
+                0.25,
+                sunipdf_core::PixelRect {
+                    x: 0,
+                    y: 0,
+                    width: 64,
+                    height: 64,
+                },
+            )
+            .unwrap();
+        }
+        eprintln!(
+            "form render copy: bytes={}, encrypted={encrypted}, six renders={:?}",
+            bytes.len(),
+            started.elapsed()
+        );
+        assert_snapshot_unchanged(&before_render, &doc.snapshot().unwrap(), password);
+        let info = doc.form_info().unwrap();
+        assert!(
+            !info.field(fixture::FIELD_NAME).unwrap().read_only,
+            "rendering before the first import must preserve editable radio states"
+        );
+        let readonly = info.field("ref").unwrap().clone();
+        let mut wanted = info.clone();
+        wanted.fields.retain(|field| {
+            matches!(field.name.as_str(), "nom" | "pays") || field.name == fixture::FIELD_NAME
+        });
+        for field in &mut wanted.fields {
+            field.value = match field.name.as_str() {
+                "nom" => FieldValue::Text("Élodie 雪 — première valeur".into()),
+                "pays" => choice(""),
+                _ => choice(fixture::EXPORTS[1]),
+            };
+        }
+        let first = form_data::export_values(&wanted, "fdf").unwrap();
+        let clear = typed_fdf(vec![
+            dictionary! {"T" => lopdf::text_string(fixture::FIELD_NAME), "V" => Object::Name(b"Off".to_vec())},
+            dictionary! {"T" => lopdf::text_string("pays"), "V" => Object::Null},
+        ]);
+        // Repeat the original import after clearing, reopening and rendering between every
+        // operation. Names in FDF must keep mapping to /Opt exports after serialization.
+        for (step, values) in [&first, &clear, &first].into_iter().enumerate() {
+            let parsed = form_data::parse_import_values(values, "fdf").unwrap();
+            let plan =
+                form_data::strict_plan_from_json(&doc.form_info().unwrap(), &parsed).unwrap();
+            doc.fill_form(&plan.values, FillMode::Strict).unwrap();
+            let info = doc.form_info().unwrap();
+            assert_eq!(info.field("ref").unwrap(), &readonly);
+            assert_eq!(
+                info.field("nom").unwrap().value,
+                FieldValue::Text("Élodie 雪 — première valeur".into())
+            );
+            let radio = info.field(fixture::FIELD_NAME).unwrap();
+            assert!(!radio.read_only, "step {step}, encrypted={encrypted}");
+            assert_eq!(
+                radio.value,
+                if step == 1 {
+                    FieldValue::Choice(Vec::new())
+                } else {
+                    choice(fixture::EXPORTS[1])
+                }
+            );
+            assert_eq!(
+                info.field("pays").unwrap().value,
+                if step == 1 {
+                    FieldValue::Choice(Vec::new())
+                } else {
+                    choice("")
+                }
+            );
+            let exported = form_data::export_values(&info, "fdf").unwrap();
+            let exported = form_data::parse_import_values(&exported, "fdf").unwrap();
+            assert!(form_data::strict_plan_from_json(&info, &exported).is_ok());
+            if step == 0 {
+                let started = std::time::Instant::now();
+                for _ in 0..3 {
+                    doc.render_page(0, 0.25).unwrap();
+                    doc.render_region(
+                        0,
+                        0.25,
+                        sunipdf_core::PixelRect {
+                            x: 0,
+                            y: 0,
+                            width: 64,
+                            height: 64,
+                        },
+                    )
+                    .unwrap();
+                }
+                eprintln!(
+                    "prepared form: encrypted={encrypted}, six renders={:?}",
+                    started.elapsed()
+                );
+            }
+            let saved = doc.snapshot().unwrap();
+            assert_eq!(
+                lopdf::Document::load_mem(&saved).unwrap().is_encrypted(),
+                encrypted
+            );
+            let saved_pdf = lopdf::Document::load_mem_with_options(
+                &saved,
+                lopdf::LoadOptions::with_password(password.unwrap_or("")),
+            )
+            .unwrap();
+            assert_eq!(button_appearance_names(&saved_pdf), appearances);
+            let acro = saved_pdf.catalog().unwrap().get(b"AcroForm").unwrap();
+            let acro = saved_pdf.dereference(acro).unwrap().1.as_dict().unwrap();
+            assert!(!acro.get(b"NeedAppearances").unwrap().as_bool().unwrap());
+            doc = engine
+                .open_bytes(saved, password, Path::new("reopened.pdf"))
+                .unwrap();
+            doc.render_page(0, 0.25).unwrap();
+            assert!(
+                !doc.form_info()
+                    .unwrap()
+                    .field(fixture::FIELD_NAME)
+                    .unwrap()
+                    .read_only
+            );
+        }
+        // A restore may replace a cached ordinary document with one requesting a global
+        // refresh. Its diagnostic must be recomputed even if PDFium reuses a handle.
+        for _ in 0..3 {
+            doc.restore(bytes.clone()).unwrap();
+            let original = doc.snapshot().unwrap();
+            doc.render_page(0, 0.25).unwrap();
+            assert_snapshot_unchanged(&original, &doc.snapshot().unwrap(), password);
+            assert!(
+                !doc.form_info()
+                    .unwrap()
+                    .field(fixture::FIELD_NAME)
+                    .unwrap()
+                    .read_only
+            );
+            doc.fill_form(
+                &[(fixture::FIELD_NAME.into(), choice(fixture::EXPORTS[2]))],
+                FillMode::Strict,
+            )
+            .unwrap();
+        }
+        assert_eq!(std::fs::read(&source_path).unwrap(), bytes);
+    }
+}
+
+#[test]
+fn need_appearances_rendering_preserves_restricted_document_and_password() {
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
+    let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
+    set_need_appearances(&mut pdf);
+    let mut bytes = Vec::new();
+    pdf.save_to(&mut bytes).unwrap();
+    let bytes = security::protect(
+        &bytes,
+        None,
+        &Protection {
+            user_password: "viewer".into(),
+            owner_password: "owner".into(),
+            allow_copy: false,
+            allow_modify: false,
+            allow_annotate: false,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let mut doc = engine
+        .open_bytes(bytes.clone(), Some("viewer"), Path::new("restricted.pdf"))
+        .unwrap();
+    let before = doc.snapshot().unwrap();
+    let info = doc.form_info().unwrap();
+    doc.render_page(0, 0.25).unwrap();
+    doc.render_region(
+        0,
+        0.25,
+        sunipdf_core::PixelRect {
+            x: 0,
+            y: 0,
+            width: 32,
+            height: 32,
+        },
+    )
+    .unwrap();
+    assert_snapshot_unchanged(&before, &doc.snapshot().unwrap(), Some("viewer"));
+    assert_eq!(doc.form_info().unwrap(), info);
+    assert_eq!(doc.password(), Some("viewer"));
+    assert!(doc
+        .restore_with_password(bytes, Some("incorrect".into()))
+        .is_err());
+    assert_snapshot_unchanged(&before, &doc.snapshot().unwrap(), Some("viewer"));
+    assert_eq!(doc.password(), Some("viewer"));
+}
+
+#[cfg(windows)]
+#[test]
+fn need_appearances_rendering_preserves_signed_source_and_signature_dictionary() {
+    use sunipdf_core::certificate::{
+        sign_pdf, verify_signatures, CertSignOptions, SignatureStatus,
+    };
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
+    let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
+    set_need_appearances(&mut pdf);
+    let mut bytes = Vec::new();
+    pdf.save_to(&mut bytes).unwrap();
+    let original_signature_fields = engine
+        .open_bytes(bytes.clone(), None, Path::new("unsigned.pdf"))
+        .unwrap()
+        .signature_count();
+    let signed = sign_pdf(
+        &bytes,
+        &test_identity::identity(),
+        "test-only",
+        &CertSignOptions::default(),
+    )
+    .unwrap();
+    assert_eq!(
+        verify_signatures(&signed, None).unwrap()[0].status,
+        SignatureStatus::Valid
+    );
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("signed.pdf");
+    std::fs::write(&path, &signed).unwrap();
+    let doc = engine.open(&path, None).unwrap();
+    assert_eq!(doc.signature_count(), original_signature_fields + 1);
+    let before = doc.snapshot().unwrap();
+    let info = doc.form_info().unwrap();
+    doc.render_page(0, 0.25).unwrap();
+    doc.render_region(
+        0,
+        0.25,
+        sunipdf_core::PixelRect {
+            x: 0,
+            y: 0,
+            width: 64,
+            height: 64,
+        },
+    )
+    .unwrap();
+    assert_snapshot_unchanged(&before, &doc.snapshot().unwrap(), None);
+    assert_eq!(doc.form_info().unwrap(), info);
+    assert_eq!(std::fs::read(&path).unwrap(), signed);
+    assert_eq!(
+        verify_signatures(&std::fs::read(&path).unwrap(), None).unwrap()[0].status,
+        SignatureStatus::Valid
+    );
+}
+
+#[test]
+fn appearance_refresh_after_annotation_style_or_field_creation_keeps_radios_editable() {
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
+    for create_field in [false, true] {
+        let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
+        set_need_appearances(&mut pdf);
+        let appearances = button_appearance_names(&pdf);
+        let mut bytes = Vec::new();
+        pdf.save_to(&mut bytes).unwrap();
+        let mut doc = engine
+            .open_bytes(bytes, None, Path::new("edit-before-import.pdf"))
+            .unwrap();
+        doc.render_page(0, 0.25).unwrap();
+        let rect = sunipdf_core::PointRect {
+            left: 30.0,
+            bottom: 30.0,
+            right: 140.0,
+            top: 50.0,
+        };
+        if create_field {
+            doc.add_form_field(0, "additional", sunipdf_core::FieldKind::Text, rect)
+                .unwrap();
+        } else {
+            doc.add_markup(
+                0,
+                sunipdf_core::MarkupKind::Highlight,
+                &[rect],
+                (255, 255, 0),
+            )
+            .unwrap();
+            let index = doc.annotations(0).unwrap().last().unwrap().index;
+            doc.set_annotation_style(
+                0,
+                index,
+                &sunipdf_core::AnnotStyle {
+                    rgb: (255, 0, 0),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        }
+        let info = doc.form_info().unwrap();
+        assert!(!info.field(fixture::FIELD_NAME).unwrap().read_only);
+        assert_eq!(
+            button_appearance_names(&lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap()),
+            appearances
+        );
+        let mut wanted = info.clone();
+        wanted
+            .fields
+            .retain(|field| field.name == fixture::FIELD_NAME);
+        wanted.fields[0].value = choice(fixture::EXPORTS[2]);
+        let exported = form_data::export_values(&wanted, "fdf").unwrap();
+        let parsed = form_data::parse_import_values(&exported, "fdf").unwrap();
+        let plan = form_data::strict_plan_from_json(&info, &parsed).unwrap();
+        doc.fill_form(&plan.values, FillMode::Strict).unwrap();
+        assert_eq!(
+            doc.form_info()
+                .unwrap()
+                .field(fixture::FIELD_NAME)
+                .unwrap()
+                .value,
+            choice(fixture::EXPORTS[2])
+        );
+    }
+}
+
+#[test]
+fn need_appearances_refreshes_unedited_text_on_another_page() {
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
+    let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
+    set_need_appearances(&mut pdf);
+    let text_field = pdf
+        .objects
+        .iter()
+        .find_map(|(&id, object)| {
+            let field = object.as_dict().ok()?;
+            (lopdf::decode_text_string(field.get(b"T").ok()?).ok()? == "nom").then_some(id)
+        })
+        .unwrap();
+    let first_page = pdf.get_pages()[&1];
+    let mut second = pdf.get_dictionary(first_page).unwrap().clone();
+    let parent = second.get(b"Parent").unwrap().as_reference().unwrap();
+    second.set("Annots", vec![Object::Reference(text_field)]);
+    second.remove(b"Contents");
+    let second_page = pdf.add_object(second);
+    let tree = pdf.get_dictionary_mut(parent).unwrap();
+    tree.get_mut(b"Kids")
+        .unwrap()
+        .as_array_mut()
+        .unwrap()
+        .push(Object::Reference(second_page));
+    tree.set("Count", 2);
+    pdf.get_dictionary_mut(first_page)
+        .unwrap()
+        .get_mut(b"Annots")
+        .unwrap()
+        .as_array_mut()
+        .unwrap()
+        .retain(|object| object.as_reference().ok() != Some(text_field));
+    let field = pdf.get_dictionary_mut(text_field).unwrap();
+    field.set("P", second_page);
+    field.set("Ff", 1);
+    field.set("V", lopdf::text_string("REFRESHED VALUE"));
+    let mut bytes = Vec::new();
+    pdf.save_to(&mut bytes).unwrap();
+    let mut doc = engine
+        .open_bytes(bytes, None, Path::new("refresh-other-page.pdf"))
+        .unwrap();
+    let untouched = doc.form_info().unwrap().field("nom").unwrap().clone();
+    assert!(untouched.read_only);
+    assert_eq!(untouched.widgets[0].page, 1);
+    doc.fill_form(
+        &[(fixture::FIELD_NAME.into(), choice(fixture::EXPORTS[0]))],
+        FillMode::Strict,
+    )
+    .unwrap();
+    assert_eq!(doc.form_info().unwrap().field("nom").unwrap(), &untouched);
+    let pdf = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    let (_, field) = pdf
+        .objects
+        .iter()
+        .find(|(_, object)| {
+            object
+                .as_dict()
+                .ok()
+                .and_then(|field| field.get(b"T").ok())
+                .and_then(|name| lopdf::decode_text_string(name).ok())
+                .as_deref()
+                == Some("nom")
+        })
+        .unwrap();
+    let ap = field.as_dict().unwrap().get(b"AP").unwrap();
+    let ap = pdf.dereference(ap).unwrap().1.as_dict().unwrap();
+    let normal = pdf
+        .dereference(ap.get(b"N").unwrap())
+        .unwrap()
+        .1
+        .as_stream()
+        .unwrap();
+    assert!(normal.dict.has(b"BBox"));
+    assert!(!normal
+        .decompressed_content()
+        .unwrap_or_else(|_| normal.content.clone())
+        .is_empty());
+}
+
+#[test]
+fn need_appearances_does_not_make_ambiguous_buttons_editable() {
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
+    let mut pdf = lopdf::Document::load_mem(&fixture::source(false)).unwrap();
+    set_need_appearances(&mut pdf);
+    let widget = pdf
+        .get_dictionary(fixture::field_id(&pdf))
+        .unwrap()
+        .get(b"Kids")
+        .unwrap()
+        .as_array()
+        .unwrap()[1]
+        .as_reference()
+        .unwrap();
+    let widget = pdf.get_dictionary_mut(widget).unwrap();
+    let normal = widget
+        .get_mut(b"AP")
+        .unwrap()
+        .as_dict_mut()
+        .unwrap()
+        .get_mut(b"N")
+        .unwrap()
+        .as_dict_mut()
+        .unwrap();
+    normal.set("1", normal.get(b"virement").unwrap().clone());
+    let appearances = button_appearance_names(&pdf);
+    let states = button_states(&pdf);
+    let mut bytes = Vec::new();
+    pdf.save_to(&mut bytes).unwrap();
+    let mut doc = engine
+        .open_bytes(bytes, None, Path::new("ambiguous-refresh.pdf"))
+        .unwrap();
+    doc.render_page(0, 0.25).unwrap();
+    assert!(
+        doc.form_info()
+            .unwrap()
+            .field(fixture::FIELD_NAME)
+            .unwrap()
+            .read_only
+    );
+    doc.fill_form(
+        &[("nom".into(), FieldValue::Text("updated text".into()))],
+        FillMode::Strict,
+    )
+    .unwrap();
+    let info = doc.form_info().unwrap();
+    assert!(info.field(fixture::FIELD_NAME).unwrap().read_only);
+    assert!(doc
+        .fill_form(
+            &[(fixture::FIELD_NAME.into(), choice("Cash"))],
+            FillMode::Strict
+        )
+        .is_err());
+    assert_eq!(doc.form_info().unwrap(), info);
+    let pdf = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    assert_eq!(button_appearance_names(&pdf), appearances);
+    assert_eq!(button_states(&pdf), states);
 }
 
 #[test]

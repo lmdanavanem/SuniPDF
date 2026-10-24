@@ -22,7 +22,7 @@ pub fn read_form_values(path: &Path) -> Result<serde_json::Value, EngineError> {
     } else {
         path.extension().and_then(|s| s.to_str()).unwrap_or("")
     };
-    form_data::parse_values(&bytes, extension)
+    form_data::parse_import_values(&bytes, extension)
 }
 
 pub fn compress(

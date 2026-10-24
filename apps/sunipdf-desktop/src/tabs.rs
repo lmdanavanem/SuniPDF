@@ -348,6 +348,7 @@ impl SuniApp {
         self.can_undo = state.can_undo;
         self.can_redo = state.can_redo;
         self.dirty = state.modified;
+        self.finish_plan_set_navigation();
         self.update_title(ctx);
         self.worker.send(Request::Bookmarks);
         if self.tabs.quit_pending {
@@ -362,6 +363,7 @@ impl SuniApp {
 
     /// Keep the tab, its UI and its complete journal available for an explicit retry.
     pub fn on_resume_failed(&mut self, suspended: SuspendedDoc) {
+        self.plan_sets.navigation_failed();
         if let Some(i) = self.tabs.resuming.take() {
             if let Some(tab) = self.tabs.tabs.get_mut(i) {
                 tab.dirty = suspended.modified;

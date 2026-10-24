@@ -3,6 +3,7 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    PlanSets,
     CompareFiles,
     RevisionOverlay,
     SearchFiles,
@@ -193,6 +194,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        PlanSets,
+        "file.plan_sets",
+        "plan_sets.title",
+        None,
+        false,
+        File
+    ),
     cmd!(
         RevisionOverlay,
         "file.revision_overlay",
@@ -1345,7 +1354,7 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 11);
+        assert_eq!(Command::in_menu(Menu::File).count(), 12);
         assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }

@@ -568,6 +568,8 @@ fn geometry_drag_survives_scroll_in_continuous_spread_and_book_views() {
             index: 0,
             annotation_id: Some("scroll-measurement".into()),
             measurement: Measurement {
+                holes: Vec::new(),
+                depth: None,
                 kind: MeasurementKind::Length,
                 points: vec![(80.0, 550.0), (180.0, 550.0)],
                 calibration: [(30.0, 40.0), (130.0, 40.0)],
@@ -660,6 +662,103 @@ fn geometry_drag_survives_scroll_in_continuous_spread_and_book_views() {
     }
 }
 
+#[test]
+fn canvas_volume_deductions_reach_preview_and_cancel_without_editing_the_document() {
+    for language in ["en-US", "fr-FR"] {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.settings.language = language.into();
+        let mut canvas = Canvas::new(&mut app);
+        canvas.calibrate(&mut app, "10");
+        canvas.control(&mut app, "measure.length");
+        canvas.control(&mut app, "measure.volume");
+        assert_eq!(app.annotate.measure.kind, MeasurementKind::Volume);
+        for point in [(80.0, 450.0), (280.0, 450.0), (280.0, 650.0), (80.0, 650.0)] {
+            canvas.point(&mut app, point, false);
+        }
+        canvas.control(&mut app, "measure.deductions.add");
+        for point in [
+            (130.0, 500.0),
+            (180.0, 500.0),
+            (180.0, 550.0),
+            (130.0, 550.0),
+        ] {
+            canvas.point(&mut app, point, false);
+        }
+        canvas.control(&mut app, "measure.undo_point");
+        canvas.point(&mut app, (130.0, 550.0), false);
+        canvas.control(&mut app, "measure.finish");
+        let (_, measurement, _, _) = take_preview(&requests);
+        assert_eq!(measurement.kind, MeasurementKind::Volume);
+        assert_eq!(measurement.holes.len(), 1);
+        assert_eq!(measurement.points.len(), 4);
+        assert_eq!(measurement.holes[0].len(), 4);
+        assert!((measurement.area_breakdown().unwrap().net - 375.0).abs() < 0.1);
+        assert_eq!(measurement.depth.unwrap().unit, MeasurementUnit::Metres);
+        canvas.control(&mut app, "dialog.password.cancel");
+        assert!(app.annotate.adv.rich.is_none());
+        assert_no_edit_or_preview(&requests);
+    }
+}
+
+#[test]
+fn canvas_deduction_geometry_buttons_preserve_outer_contour_and_can_remove_a_local_ring() {
+    for language in ["en-US", "fr-FR"] {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.settings.language = language.into();
+        let mut canvas = Canvas::new(&mut app);
+        let mut original = vertex_record(vec![
+            (80.0, 450.0),
+            (280.0, 450.0),
+            (280.0, 650.0),
+            (80.0, 650.0),
+        ]);
+        original.measurement.kind = MeasurementKind::Area;
+        begin_saved_geometry(&mut app, &requests, original.clone());
+        canvas.control(&mut app, "measure.deductions.add");
+        for point in [
+            (130.0, 500.0),
+            (180.0, 500.0),
+            (180.0, 550.0),
+            (130.0, 550.0),
+        ] {
+            canvas.point(&mut app, point, false);
+        }
+        canvas.control(&mut app, "measure.deductions.finish");
+        canvas.control(&mut app, "measure.geometry.preview");
+        let (replacement, epoch, generation) = requests
+            .try_iter()
+            .find_map(|request| match request {
+                Request::PreviewMeasurementEdit {
+                    record,
+                    measurement,
+                    epoch,
+                    generation,
+                    ..
+                } => {
+                    assert_eq!(record, original);
+                    Some((measurement, epoch, generation))
+                }
+                _ => None,
+            })
+            .expect("hole-only edit reaches guarded preview");
+        assert_eq!(replacement.points, original.measurement.points);
+        assert_eq!(replacement.holes.len(), 1);
+        app.on_rich_preview(&canvas.ctx, epoch, generation, Ok(preview_image(0)));
+        canvas.control(&mut app, "measure.geometry.adjust");
+        canvas.control(&mut app, "measure.deductions.outer");
+        let ring = sunipdf_i18n::tr_args(app.lang(), "measure.deductions.ring", &[("number", "1")]);
+        canvas.control_text(&mut app, &ring);
+        canvas.control(&mut app, "measure.deductions.remove");
+        assert_eq!(
+            app.annotate.measure.geometry.as_ref().unwrap().replacement,
+            original.measurement
+        );
+        canvas.key(&mut app, Key::Escape);
+        assert!(app.annotate.measure.geometry.is_none());
+        assert_no_edit_or_preview(&requests);
+    }
+}
+
 fn begin_saved_geometry(
     app: &mut SuniApp,
     requests: &Receiver<Request>,
@@ -696,6 +795,8 @@ fn vertex_record(points: Vec<(f32, f32)>) -> MeasurementRecord {
         index: 3,
         annotation_id: Some("vertex-edit".into()),
         measurement: Measurement {
+            holes: Vec::new(),
+            depth: None,
             kind: MeasurementKind::Polyline,
             points,
             calibration: [(30.0, 40.0), (130.0, 40.0)],

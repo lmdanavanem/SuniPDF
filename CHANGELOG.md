@@ -5,10 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-## [0.62.0] - In preparation
+## [0.63.0] - In preparation
 
-Local Windows x64 development qualification passed. Exact-version CI, release packaging,
-download verification and stable publication are pending. The published download remains 0.61.0.
+Implemented candidate scope; final-source integration, native workflows and package qualification remain pending. No 0.63.0 release is published, and earlier release results do not qualify this candidate.
+
+- Add local plan-set manifests with stable sheet identities, editable metadata, source fingerprints, explicit validation and guarded sheet navigation. Create, refresh, relink and save new manifest copies through the desktop or CLI without modifying source PDFs; preserve unsaved tabs and use passwords only for the requested operation.
+- Export supported form values as FDF and retain typed button appearance-state semantics during import. Bound serialized and expanded input, and refuse ambiguous or unsupported structures before writing.
+- Add polygon area deductions and constant-depth volume measurements, with selectable contours, explicit depth units, gross/deducted/net summaries and guarded Preview/Apply/Undo. Preserve all rings and physical depth through editing, recalibration and reopening.
+- Add cubic quantity units and dimension-safe pricing. Keep historical quantities inactive, reject incompatible prices atomically, and select measurement scales from the outer boundary without joining separate rings.
+- Preserve button appearance states when displaying forms requesting refresh and when importing values repeatedly. Keep appearance writes transactional and preserve signed or restricted source files during display.
+- Keep thin measurement contours visible in small preview images and bring volume/deduction controls closer together.
+
+[Preparation notes and remaining gates](docs/RELEASE_0.63.0.md).
+
+## [0.62.0] - 2026-10-24
+
+Published as stable Latest with exact-source CI, Windows/Ubuntu packages, upgrade checks and
+anonymous verification of all eight public assets. See the release notes for qualification limits.
 
 - Create a dimensioned rectangle from a displayed-page anchor and real width/height, using local, page, region or automatic calibration. Preview its four-vertex area, apply with one Undo step, save and reopen; the CLI shares the same checks.
 

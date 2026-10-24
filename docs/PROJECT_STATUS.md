@@ -6,6 +6,35 @@
 Source `a6281fd8d54e4bceddc53d43e9527b1cdaa3872e`, tag `v0.62.0`.
 The published qualification below applies to that source and its exact packages.
 
+## 0.63 candidate implementation
+
+- Local plan-set manifests index selected PDFs with stable sheet IDs, physical page references, editable
+  metadata and SHA256/length pins. Desktop and CLI operations expose unavailable or changed references,
+  save new manifest copies with confined rebasing, and leave the source PDFs unchanged.
+- Sheet navigation checks verified bytes. A matching clean tab can be reused; unsaved tabs require an
+  explicit choice, with different page counts refusing an indexed jump. One-operation passwords remain
+  in memory and never enter the manifest. Revision equivalence and automatic cross-document links are
+  separate work. [Plan-set workflow](PLAN_SETS.md).
+- FDF form export covers supported text, checkbox, radio and choice values. Import retains the distinction
+  between button appearance-state names and text values, with shared serialization/expansion bounds and
+  destination-field validation. [Value exchange and exclusions](FORM_DATA.md).
+- Deducted areas and constant-depth volumes retain separate outer/interior contours and an explicit
+  physical depth. Desktop selection, point editing, preview and history preserve the full geometry;
+  the CLI writes guarded new copies. Gross/deducted/net results, cubic quantity units and compatible
+  unit prices preserve physical dimensions. Historical quantities remain inactive.
+- Automatic scale selection uses the outer boundary, and stored geometry is checked after coordinate
+  conversion. Invalid topology, ambiguous scale regions and incompatible prices refuse the operation.
+  [Calculation and geometry limits](MEASUREMENT_VOLUMES.md).
+
+AEC-009 and AEC-015 are **In progress**. Final local candidate checks passed on 2026-10-24:
+**963 workspace tests passed, 0 failed and 15 ignored**; formatting, workspace Clippy and the desktop/CLI
+build passed. A whole-process CLI corpus passed **20 commands and 680 assertions**, with its binary hash
+unchanged. The source fingerprint remained
+`74e6ad2caf2cf54172d0ab48ee6201e092f0c5bcf15c3bdb4550901a6d874964` throughout the final pipeline.
+Final native workflows are still being checked; exact-source CI, package/install/update checks and publication
+remain pending. These local results are separate from the published 0.62 evidence below. See the
+[candidate qualification and limits](RELEASE_0.63.0.md).
+
 ## Published qualification
 
 | Check | Result |
@@ -37,9 +66,12 @@ not establish physical GPU or previous-version Ubuntu upgrade behavior. The JSON
 performance and package-validation records.
 
 The conformance corpus covers PDF/A-1b, PDF/A-2b and PDF/UA-1, source preservation, specified rewrites and
-first-page PDFium/Poppler checks, with positive and expected-negative outcomes. Validator CLI hashes are
-recorded, but the publication verifier did not independently extract and compare that executable from the
-DEB. This is bounded evidence, not universal conformance, human accessibility or private-plan qualification.
+first-page PDFium/Poppler checks, with positive and expected-negative outcomes. A later DEB payload check
+on 2026-10-24 independently matched the embedded SuniPDF CLI SHA256 to both recorded conformance runs.
+The package remained unchanged. This in-memory inspection did not execute Linux programs or add runtime
+or desktop qualification; the desktop hash was observed only. Historical run records remain unchanged
+and the supplementary result is retained in the release evidence. This is bounded evidence, not universal
+conformance, human accessibility or private-plan qualification.
 
 ## Delivered in 0.62.0
 
@@ -87,6 +119,13 @@ accuracy, authenticate every drawing revision or replace independent reader qual
 - Independent conformance/reader checks and preservation of the existing compression state of XML metadata during optimization.
 
 The complete [0.61.0 evidence](qa/RELEASE_0.61.0.json) remains available as a historical record.
+
+## Project tracking
+
+[GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized after publication on
+2026-10-24: five existing P1 cards updated and 27 AEC cards added without duplication. Roadmap contains
+51 cards, Bugs 8 and Suggestions 11. Existing bug/suggestion statuses and saved views were preserved.
+Partial capabilities remain open; candidate 0.63 work is not marked as a published release.
 
 ## Remaining work
 

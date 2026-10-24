@@ -21,7 +21,7 @@ The [dimensioned rectangle workflow](MEASUREMENTS.md#dimensioned-rectangles) use
 
 Region selection validates the whole rectangle, including boundary crossings and enclosed regions. Automatic selection never chooses an arbitrary overlapping region. A saved page scale is an explicit override; a temporary reference must still match the captured content, geometry, scales and protection. Annotation-only changes may retain the local reference; applying a prepared candidate still requires its complete source state to match. Invalid geometry, an unavailable scale, unsupported page units or insufficient PDF permissions refuse the operation without adding an annotation. Save/reopen and quantity exports use the measurement's own persisted scale and provenance, independent of later page-default changes.
 
-This increment covers axis-aligned rectangles. Subsequent polygon editing is unconstrained; circles, holes, deducted areas, depth and volumes remain separate backlog items. Automated cases are included; qualification of the exact candidate and native UI remains a separate release gate.
+This increment covers axis-aligned rectangles. Subsequent polygon editing is unconstrained; circles remain a separate backlog item. The rectangle increment is published in [0.62.0](RELEASE_0.62.0.md). Deducted areas and constant-depth volumes belong to the [0.63.0 candidate](MEASUREMENT_VOLUMES.md), with their own qualification gates.
 
 ## Recalibrate a selected batch
 

@@ -41,6 +41,16 @@ pub struct SignatureSource {
 }
 
 impl SignatureSource {
+    pub(crate) fn sha256_hex(&self) -> String {
+        self.sha256
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect()
+    }
+
+    pub(crate) fn matches_sha256(&self, expected: &str) -> bool {
+        self.sha256_hex().eq_ignore_ascii_case(expected)
+    }
     fn new(bytes: Vec<u8>) -> Self {
         Self {
             sha256: Sha256::digest(&bytes).into(),
@@ -590,6 +600,10 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    PlanSet {
+        generation: u64,
+        job: crate::plan_sets::Job,
+    },
     LocalReview(crate::local_review::Job),
     RevisionOverlay {
         generation: u64,
@@ -638,6 +652,7 @@ pub enum Request {
         path: PathBuf,
         password: Option<String>,
     },
+    OpenPlanSheet(crate::plan_sets::Navigation),
     /// Remplace la liste des tuiles voulues (priorité décroissante) ; `epoch` revient dans `Tile`.
     SetWanted {
         epoch: u64,
@@ -884,6 +899,15 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    PlanSetProgress {
+        generation: u64,
+        done: usize,
+        total: usize,
+    },
+    PlanSetDone {
+        generation: u64,
+        result: Result<crate::plan_sets::Outcome, EngineError>,
+    },
     LocalReviewProgress {
         done: usize,
         total: usize,
@@ -2317,6 +2341,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         if matches!(
             &request,
             Request::Open { .. }
+                | Request::OpenPlanSheet(_)
                 | Request::Resume(_)
                 | Request::ResumeDoc(_)
                 | Request::Suspend
@@ -2325,6 +2350,24 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             state.rectangle_calibration = None;
         }
         let response = match request {
+            Request::PlanSet { generation, job } => {
+                let mut result = crate::plan_sets::run_job(&engine, job, |done, total| {
+                    let _ = tx.send(Response::PlanSetProgress {
+                        generation,
+                        done,
+                        total,
+                    });
+                    ctx.request_repaint();
+                });
+                if let Ok(crate::plan_sets::Outcome::Navigate(navigation)) = &mut result {
+                    navigation.active_source = state
+                        .document
+                        .as_ref()
+                        .zip(state.signature_source.as_ref())
+                        .map(|(doc, source)| (doc.info().path.clone(), source.sha256_hex()));
+                }
+                Response::PlanSetDone { generation, result }
+            }
             Request::RevisionOverlay { generation, job } => Response::RevisionOverlayDone {
                 generation,
                 result: crate::revision_overlay::run_job(&engine, job),
@@ -2346,7 +2389,10 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 navigation_failed = false;
                 continue;
             }
-            Request::Open { .. } | Request::Resume(_) | Request::ResumeDoc(_)
+            Request::Open { .. }
+            | Request::OpenPlanSheet(_)
+            | Request::Resume(_)
+            | Request::ResumeDoc(_)
                 if navigation_failed =>
             {
                 continue
@@ -2595,6 +2641,35 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Ok(output)
                 })();
                 Response::SignedCopy(result)
+            }
+            Request::OpenPlanSheet(navigation) => {
+                let sheet = navigation.sheet;
+                let path = sheet.path;
+                let result = engine
+                    .open_bytes(
+                        sheet.bytes.clone(),
+                        navigation.password.as_ref().map(|p| p.as_str()),
+                        &path,
+                    )
+                    .and_then(|doc| {
+                        if sheet.page == 0 || sheet.page > doc.page_count() {
+                            return Err(EngineError::PageOutOfRange(sheet.page.saturating_sub(1)));
+                        }
+                        Ok((doc, SignatureSource::new(sheet.bytes)))
+                    });
+                match result {
+                    Ok((doc, source)) => {
+                        state.document = Some(doc);
+                        state.signature_source = Some(source);
+                        state.invalidate();
+                        state.undo.clear();
+                        state.redo.clear();
+                        state.save_point = Some(0);
+                        state.last_nudge = None;
+                        Response::Opened(state.doc_state().expect("verified plan sheet"))
+                    }
+                    Err(error) => Response::OpenFailed { path, error },
+                }
             }
             Request::Open { path, password } => match std::fs::read(&path)
                 .map_err(EngineError::from)
@@ -3501,11 +3576,120 @@ mod tests {
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
         page_calibration_edits_have_history_and_survive_reopening(&worker);
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
+        deducted_measurements_round_trip_through_guarded_worker_history(&worker);
         dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(&worker);
         library_groups_use_one_preview_and_one_history_step(&worker);
         revision_overlay_jobs_preserve_sources_and_guard_exports(&worker);
         quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
+        protected_plan_sets_use_one_operation_credentials_and_open_verified_bytes(&worker);
         cooperative_search_and_register_publish_complete_generation_scoped_results(&worker);
+    }
+
+    fn protected_plan_sets_use_one_operation_credentials_and_open_verified_bytes(worker: &Worker) {
+        use crate::plan_sets::{Job, Outcome};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::plan_set::PlanSet;
+        use zeroize::Zeroizing;
+
+        fn next_plan(worker: &Worker, expected: u64) -> Result<Outcome, EngineError> {
+            loop {
+                match next_response(worker) {
+                    Response::PlanSetProgress { generation, .. } => {
+                        assert_eq!(generation, expected)
+                    }
+                    Response::PlanSetDone { generation, result } => {
+                        assert_eq!(generation, expected);
+                        return result;
+                    }
+                    _ => panic!("unexpected plan-set response"),
+                }
+            }
+        }
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("plans.json");
+        let source = dir.path().join("protected.pdf");
+        let bytes = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        let password = ["local", "plan", "fixture"].join("-");
+        let encrypted = security::protect(
+            &bytes,
+            None,
+            &Protection {
+                user_password: password.clone(),
+                owner_password: format!("{password}-owner"),
+                allow_copy: false,
+                aes256: true,
+                ..Protection::default()
+            },
+        )
+        .unwrap();
+        std::fs::write(&source, &encrypted).unwrap();
+        let original = PlanSet::new("Protected plan set").unwrap();
+        worker.send(Request::PlanSet {
+            generation: 701,
+            job: Job::Add {
+                set: original.clone(),
+                path: path.clone(),
+                sources: vec![source.clone()],
+                password: None,
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        });
+        assert!(matches!(
+            next_plan(worker, 701),
+            Err(EngineError::PasswordRequired)
+        ));
+        worker.send(Request::PlanSet {
+            generation: 702,
+            job: Job::Add {
+                set: original,
+                path: path.clone(),
+                sources: vec![source.clone()],
+                password: Some(Zeroizing::new(password.clone())),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        });
+        let Outcome::Changed { set, report } = next_plan(worker, 702).unwrap() else {
+            panic!("expected added sheets")
+        };
+        assert!(report.complete());
+        assert_eq!(set.sheets.len(), 2);
+        assert!(
+            !String::from_utf8(sunipdf_core::plan_set::encode(&set).unwrap())
+                .unwrap()
+                .contains(&password)
+        );
+        assert_eq!(std::fs::read(&source).unwrap(), encrypted);
+        worker.send(Request::PlanSet {
+            generation: 703,
+            job: Job::Navigate {
+                sheet_id: set.sheets[1].id.clone(),
+                set,
+                path,
+                password: Some(Zeroizing::new(password)),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        });
+        let Outcome::Navigate(navigation) = next_plan(worker, 703).unwrap() else {
+            panic!("expected verified navigation")
+        };
+        assert_eq!(navigation.sheet.bytes, encrypted);
+        assert_eq!(navigation.sheet.page, 2);
+        assert!(navigation.password.is_some());
+        // The selected PDF changes after verification: opening must use the captured bytes.
+        std::fs::write(&source, b"changed after the plan-set check").unwrap();
+        worker.send(Request::OpenPlanSheet(navigation));
+        assert!(
+            matches!(next_response(worker), Response::Opened(state) if state.info.page_count() == 2 && !state.modified)
+        );
+        assert_eq!(
+            std::fs::read(source).unwrap(),
+            b"changed after the plan-set check"
+        );
     }
 
     fn cooperative_search_and_register_publish_complete_generation_scoped_results(worker: &Worker) {
@@ -4203,6 +4387,8 @@ mod tests {
             page: 0,
             annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
                 sunipdf_core::measurement::Measurement {
+                    holes: Vec::new(),
+                    depth: None,
                     kind: MeasurementKind::Length,
                     points: vec![(40.0, 100.0), (140.0, 100.0)],
                     calibration: calibration.points,
@@ -4332,6 +4518,8 @@ mod tests {
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
         let measurement = Measurement {
+            holes: Vec::new(),
+            depth: None,
             kind: MeasurementKind::Length,
             points: vec![(50.0, 100.0), (150.0, 100.0)],
             calibration: [(50.0, 60.0), (150.0, 60.0)],
@@ -4582,6 +4770,156 @@ mod tests {
         assert!(matches!(next_response(worker), Response::Opened(_)));
         assert_eq!(read(), recalibrated);
         assert_eq!(std::fs::read(source).unwrap(), bytes);
+    }
+
+    fn deducted_measurements_round_trip_through_guarded_worker_history(worker: &Worker) {
+        use sunipdf_core::measurement::{
+            Measurement, MeasurementDepth, MeasurementKind, MeasurementUnit,
+        };
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let source_bytes = std::fs::read(&source).unwrap();
+        let temp = tempfile::tempdir().unwrap();
+        for kind in [MeasurementKind::Area, MeasurementKind::Volume] {
+            worker.send(Request::Open {
+                path: source.clone(),
+                password: None,
+            });
+            assert!(matches!(next_response(worker), Response::Opened(_)));
+            let measurement = Measurement {
+                kind,
+                points: vec![(40.0, 40.0), (240.0, 40.0), (240.0, 240.0), (40.0, 240.0)],
+                holes: vec![vec![
+                    (90.0, 90.0),
+                    (140.0, 90.0),
+                    (140.0, 140.0),
+                    (90.0, 140.0),
+                ]],
+                depth: (kind == MeasurementKind::Volume).then_some(MeasurementDepth {
+                    value: 20.0,
+                    unit: MeasurementUnit::Centimetres,
+                }),
+                calibration: [(40.0, 20.0), (140.0, 20.0)],
+                known_distance: 10.0,
+                unit: MeasurementUnit::Metres,
+                precision: 2,
+            };
+            worker.send(Request::PreviewRichAnnotation {
+                page: 0,
+                annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
+                    measurement.clone(),
+                ),
+                author: None,
+                epoch: 171,
+                generation: 1,
+            });
+            assert!(matches!(
+                next_response(worker),
+                Response::RichAnnotationPreview { result: Ok(_), .. }
+            ));
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 171,
+                generation: 1,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(DocState { can_undo: true, .. })
+            ));
+            let read = || {
+                worker.send(Request::MeasurementPage {
+                    page: 0,
+                    epoch: 171,
+                    generation: 1,
+                });
+                match next_response(worker) {
+                    Response::MeasurementPage {
+                        result: Ok(data), ..
+                    } => data.records.unwrap(),
+                    _ => panic!("deducted measurement records"),
+                }
+            };
+            let original = read();
+            assert_eq!(original.len(), 1);
+            assert!(original[0].validity.is_current());
+            assert_eq!(original[0].measurement, measurement);
+            let mut replacement = original[0].measurement.clone();
+            replacement.holes[0][1].0 = 150.0;
+            worker.send(Request::PreviewMeasurementEdit {
+                page: 0,
+                record: original[0].clone(),
+                measurement: replacement.clone(),
+                epoch: 171,
+                generation: 2,
+            });
+            assert!(matches!(
+                next_response(worker),
+                Response::RichAnnotationPreview { result: Ok(_), .. }
+            ));
+            assert_eq!(
+                read(),
+                original,
+                "a hole-only preview leaves the original unchanged"
+            );
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 171,
+                generation: 2,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            let edited = read();
+            assert_eq!(edited.len(), 1);
+            assert_eq!(edited[0].annotation_id, original[0].annotation_id);
+            assert_eq!(edited[0].measurement, replacement);
+            worker.send(Request::Undo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert_eq!(
+                read(),
+                original,
+                "one Undo restores every ring and the physical depth"
+            );
+            worker.send(Request::Redo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert_eq!(read(), edited);
+            worker.send(Request::PreviewMeasurementEdit {
+                page: 0,
+                record: original[0].clone(),
+                measurement: measurement.clone(),
+                epoch: 171,
+                generation: 3,
+            });
+            assert!(
+                matches!(
+                    next_response(worker),
+                    Response::RichAnnotationPreview { result: Err(_), .. }
+                ),
+                "old hole geometry cannot target the new record"
+            );
+            assert_eq!(read(), edited);
+            let output = temp.path().join(format!("deducted-{}.pdf", kind.id()));
+            worker.send(Request::Save {
+                path: output.clone(),
+            });
+            assert!(matches!(next_response(worker), Response::Saved { .. }));
+            worker.send(Request::Open {
+                path: output,
+                password: None,
+            });
+            assert!(matches!(next_response(worker), Response::Opened(_)));
+            assert_eq!(
+                read(),
+                edited,
+                "all rings, depth and provenance survive saving and reopening"
+            );
+        }
+        assert_eq!(std::fs::read(source).unwrap(), source_bytes);
     }
 
     fn page_calibration_edits_have_history_and_survive_reopening(worker: &Worker) {

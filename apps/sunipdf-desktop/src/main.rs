@@ -21,6 +21,7 @@ mod local_review;
 #[cfg(test)]
 mod measure_integration_tests;
 mod measure_tools;
+mod measurement_area_ui;
 mod measurement_geometry;
 mod measurement_saved;
 mod measurement_scales_ui;
@@ -30,6 +31,7 @@ mod ocr;
 mod office;
 mod organize;
 mod pagesetup;
+mod plan_sets;
 mod printing;
 mod processing;
 mod quantity_table;

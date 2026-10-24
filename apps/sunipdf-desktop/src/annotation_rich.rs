@@ -10,7 +10,8 @@ use sunipdf_core::annot_rich::{
 };
 use sunipdf_core::annotation_library::{LibraryEntry, LibraryPlacement, LibraryProvenance};
 use sunipdf_core::measurement::{
-    Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit, PageCalibration,
+    Measurement, MeasurementDepth, MeasurementKind, MeasurementRecord, MeasurementUnit,
+    PageCalibration,
 };
 use sunipdf_core::{AnnotStyle, EngineError, FontFamily, PointRect, TextStyle};
 use sunipdf_i18n::{tr, tr_args};
@@ -68,6 +69,8 @@ pub struct RichDraft {
     pub image_path: Option<PathBuf>,
     pub measure_kind: MeasurementKind,
     pub measure_unit: MeasurementUnit,
+    measure_holes: Vec<Vec<(f32, f32)>>,
+    measure_depth: Option<MeasurementDepth>,
     pub calibration: String,
     pub known_distance: f64,
     pub precision: usize,
@@ -76,7 +79,7 @@ pub struct RichDraft {
     pub target: Option<usize>,
     pub replace: bool,
     pub font_chosen: bool,
-    pub preview: Option<egui::TextureHandle>,
+    pub preview: Option<RichPreview>,
     pub prepared: bool,
     pub preview_index: usize,
     pub busy: bool,
@@ -94,6 +97,75 @@ pub struct RichDraft {
     library_source: String,
     library_license: String,
     library_credit: String,
+}
+
+pub struct RichPreview {
+    texture: egui::TextureHandle,
+    source: sunipdf_core::RenderedPage,
+    logical_size: egui::Vec2,
+    pixels_per_point: f32,
+}
+
+fn filtered_rich_preview(
+    source: &sunipdf_core::RenderedPage,
+    pixels_per_point: f32,
+) -> Result<(egui::ColorImage, egui::Vec2), EngineError> {
+    let pixels = u64::from(source.width) * u64::from(source.height);
+    if pixels == 0
+        || pixels > 4 * 1024 * 1024
+        || source.rgba.len() as u64 != pixels * 4
+        || !pixels_per_point.is_finite()
+        || pixels_per_point <= 0.0
+    {
+        return Err(EngineError::RenderTooLarge);
+    }
+    let source_size = egui::vec2(source.width as f32, source.height as f32);
+    let fit = (600.0 / source_size.x).min(240.0 / source_size.y).min(1.0);
+    let logical_size = source_size * fit;
+    let pixel_scale = (fit * pixels_per_point).min(1.0);
+    let width = (source.width as f32 * pixel_scale).round().max(1.0) as u32;
+    let height = (source.height as f32 * pixel_scale).round().max(1.0) as u32;
+    let image = image::RgbaImage::from_raw(source.width, source.height, source.rgba.clone())
+        .ok_or(EngineError::RenderTooLarge)?;
+    // A texture's bilinear sampler skips thin strokes when minifying by several pixels.
+    // Filter the whole footprint before upload; the PDF candidate remains untouched.
+    let image = if (width, height) == image.dimensions() {
+        image
+    } else {
+        image::imageops::resize(&image, width, height, image::imageops::FilterType::Triangle)
+    };
+    Ok((
+        egui::ColorImage::from_rgba_unmultiplied([width as usize, height as usize], image.as_raw()),
+        logical_size,
+    ))
+}
+
+impl RichPreview {
+    fn new(ctx: &egui::Context, source: sunipdf_core::RenderedPage) -> Result<Self, EngineError> {
+        let pixels_per_point = ctx.pixels_per_point();
+        let (image, logical_size) = filtered_rich_preview(&source, pixels_per_point)?;
+        Ok(Self {
+            texture: ctx.load_texture(
+                "rich-annotation-preview",
+                image,
+                egui::TextureOptions::LINEAR,
+            ),
+            source,
+            logical_size,
+            pixels_per_point,
+        })
+    }
+
+    fn show(&mut self, ui: &mut egui::Ui) {
+        let density = ui.ctx().pixels_per_point();
+        if density != self.pixels_per_point {
+            if let Ok((image, _)) = filtered_rich_preview(&self.source, density) {
+                self.texture.set(image, egui::TextureOptions::LINEAR);
+                self.pixels_per_point = density;
+            }
+        }
+        ui.add(egui::Image::new(&self.texture).fit_to_exact_size(self.logical_size));
+    }
 }
 
 fn points(text: &str, limit: usize) -> Option<Vec<(f32, f32)>> {
@@ -261,6 +333,8 @@ impl RichDraft {
     fn measurement(&self) -> Option<Measurement> {
         let calibration: [(f32, f32); 2] = points(&self.calibration, 2)?.try_into().ok()?;
         let measurement = Measurement {
+            holes: self.measure_holes.clone(),
+            depth: self.measure_depth,
             kind: self.measure_kind,
             points: points(&self.points, 128)?,
             calibration,
@@ -275,7 +349,8 @@ impl RichDraft {
                     && measurement.kind == MeasurementKind::Angle)
                 || measurement.kind != record.measurement.kind
                 || (!self.measurement_geometry_edit
-                    && measurement.points != record.measurement.points)
+                    && (measurement.points != record.measurement.points
+                        || measurement.holes != record.measurement.holes))
                 || !crate::measurement_geometry::geometry_count_valid(
                     measurement.kind,
                     measurement.points.len(),
@@ -293,6 +368,7 @@ impl RichDraft {
                 || (self.measurement_geometry_edit
                     && (measurement.known_distance != record.measurement.known_distance
                         || measurement.unit != record.measurement.unit
+                        || measurement.depth != record.measurement.depth
                         || measurement.precision != record.measurement.precision))
         }) {
             return None;
@@ -326,6 +402,8 @@ impl RichDraft {
         self.interactive_measurement = true;
         self.measure_kind = measurement.kind;
         self.measure_unit = measurement.unit;
+        self.measure_holes = measurement.holes.clone();
+        self.measure_depth = measurement.depth;
         self.known_distance = measurement.known_distance;
         self.precision = measurement.precision;
         self.points = measurement
@@ -520,6 +598,7 @@ impl SuniApp {
             || replacement.unit != original.measurement.unit
             || replacement.known_distance != original.measurement.known_distance
             || replacement.precision != original.measurement.precision
+            || replacement.depth != original.measurement.depth
             || replacement.value().is_err()
             || !self.open_saved_measurement_editor(page, original)
         {
@@ -628,6 +707,8 @@ impl SuniApp {
             stamp: StampKind::Approved,
             image_path: None,
             measure_kind: MeasurementKind::Length,
+            measure_holes: Vec::new(),
+            measure_depth: None,
             measure_unit: MeasurementUnit::Metres,
             calibration: String::new(),
             known_distance: 0.0,
@@ -791,18 +872,13 @@ impl SuniApp {
             return;
         };
         draft.busy = false;
-        match result {
-            Ok(preview) => {
-                draft.preview_index = preview.index;
+        match result.and_then(|preview| {
+            RichPreview::new(ctx, preview.image).map(|image| (preview.index, image))
+        }) {
+            Ok((index, preview)) => {
+                draft.preview_index = index;
                 draft.prepared = true;
-                draft.preview = Some(ctx.load_texture(
-                    "rich-annotation-preview",
-                    egui::ColorImage::from_rgba_unmultiplied(
-                        [preview.image.width as usize, preview.image.height as usize],
-                        &preview.image.rgba,
-                    ),
-                    egui::TextureOptions::LINEAR,
-                ));
+                draft.preview = Some(preview);
             }
             Err(error) => {
                 let message = error.to_string();
@@ -1074,6 +1150,16 @@ impl SuniApp {
                                 } else if draft.measurement_edit.as_ref().is_none_or(|record| record.validity.is_current()) {
                                     ui.label(tr(lang, "measure.invalid"));
                                 }
+                                if matches!(draft.measure_kind, MeasurementKind::Area | MeasurementKind::Volume) {
+                                    if let Some(measurement) = draft.measurement() {
+                                        crate::measurement_area_ui::area_summary(ui, lang, &measurement);
+                                    }
+                                }
+                                if let Some(depth) = &mut draft.measure_depth {
+                                    ui.add_enabled_ui(draft.measurement_edit.as_ref().is_none_or(|record| record.validity.is_current()) && !draft.measurement_geometry_edit, |ui| {
+                                        changed |= crate::measurement_area_ui::depth_controls(ui, lang, depth);
+                                    });
+                                }
                                 if draft.measurement_geometry_edit {
                                     ui.small(tr(lang, "measure.geometry.preserved"));
                                     ui.monospace(&draft.calibration);
@@ -1086,7 +1172,7 @@ impl SuniApp {
                                                 &draft
                                                     .measurement()
                                                     .map_or(0, |measurement| {
-                                                        measurement.points.len()
+                                                        measurement.points.len() + measurement.holes.iter().map(Vec::len).sum::<usize>()
                                                     })
                                                     .to_string(),
                                             ),
@@ -1162,6 +1248,13 @@ impl SuniApp {
                                         }
                                     });
                                 changed |= old != draft.measure_kind;
+                                if old != draft.measure_kind {
+                                    draft.measure_depth = (draft.measure_kind == MeasurementKind::Volume).then_some(MeasurementDepth { value: 1.0, unit: draft.measure_unit });
+                                    if !matches!(draft.measure_kind, MeasurementKind::Area | MeasurementKind::Volume) { draft.measure_holes.clear(); }
+                                }
+                                if let Some(depth) = &mut draft.measure_depth {
+                                    changed |= crate::measurement_area_ui::depth_controls(ui, lang, depth);
+                                }
                                 ui.label(tr(lang, "rich.points"));
                                 changed |= ui
                                     .add(
@@ -1430,15 +1523,8 @@ impl SuniApp {
                 if let Some(error) = &draft.error {
                     ui.colored_label(crate::theme::palette(dark).error, error);
                 }
-                if let Some(texture) = &draft.preview {
-                    ui.add(
-                        egui::Image::new(texture).fit_to_exact_size(
-                            texture.size_vec2()
-                                * (600.0 / texture.size_vec2().x)
-                                    .min(240.0 / texture.size_vec2().y)
-                                    .min(1.0),
-                        ),
-                    );
+                if let Some(preview) = &mut draft.preview {
+                    preview.show(ui);
                 }
             },
             |ui| {
@@ -1570,6 +1656,7 @@ fn measure_key(kind: MeasurementKind) -> &'static str {
         MeasurementKind::Polyline => "measure.polyline",
         MeasurementKind::Perimeter => "measure.perimeter",
         MeasurementKind::Area => "measure.area",
+        MeasurementKind::Volume => "measure.volume",
         MeasurementKind::Angle => "measure.angle",
     }
 }
@@ -1577,6 +1664,102 @@ fn measure_key(kind: MeasurementKind) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn filtered_preview_preserves_thin_closed_contours_at_display_density() {
+        for (offset_x, offset_y) in [(0, 0), (1, 2), (2, 1), (3, 3)] {
+            let mut raster = image::RgbaImage::from_pixel(880, 1032, image::Rgba([255; 4]));
+            let rings = [
+                (20 + offset_x, 20 + offset_y, 860 + offset_x, 980 + offset_y),
+                (
+                    210 + offset_x,
+                    256 + offset_y,
+                    360 + offset_x,
+                    555 + offset_y,
+                ),
+            ];
+            for &(left, top, right, bottom) in &rings {
+                for x in left..=right {
+                    for y in [top, top + 1, bottom, bottom + 1] {
+                        raster.put_pixel(x, y, image::Rgba([13, 64, 191, 255]));
+                    }
+                }
+                for y in top..=bottom {
+                    for x in [left, left + 1, right, right + 1] {
+                        raster.put_pixel(x, y, image::Rgba([13, 64, 191, 255]));
+                    }
+                }
+            }
+            let source = sunipdf_core::RenderedPage {
+                page_index: 0,
+                width: raster.width(),
+                height: raster.height(),
+                rgba: raster.into_raw(),
+            };
+            let original = source.rgba.clone();
+            for density in [1.0, 1.25, 2.0] {
+                let (image, logical) = filtered_rich_preview(&source, density).unwrap();
+                assert!((logical.x / logical.y - 880.0 / 1032.0).abs() < 0.00001);
+                assert_eq!(logical.y, 240.0);
+                assert_eq!(image.size[1], (240.0_f32 * density).round() as usize);
+                let sx = image.size[0] as f32 / source.width as f32;
+                let sy = image.size[1] as f32 / source.height as f32;
+                let visible_near = |x: usize, y: usize| {
+                    (y.saturating_sub(1)..=(y + 1).min(image.size[1] - 1)).any(|y| {
+                        (x.saturating_sub(1)..=(x + 1).min(image.size[0] - 1)).any(|x| {
+                            let pixel = image.pixels[y * image.size[0] + x];
+                            i16::from(pixel.b()) - i16::from(pixel.r()) > 12
+                        })
+                    })
+                };
+                for &(left, top, right, bottom) in &rings {
+                    let left = (left as f32 * sx).round() as usize;
+                    let right = (right as f32 * sx).round() as usize;
+                    let top = (top as f32 * sy).round() as usize;
+                    let bottom = (bottom as f32 * sy).round() as usize;
+                    for x in left + 2..right - 2 {
+                        assert!(visible_near(x, top), "top contour disappeared at {density}");
+                        assert!(
+                            visible_near(x, bottom),
+                            "bottom contour disappeared at {density}"
+                        );
+                    }
+                    for y in top + 2..bottom - 2 {
+                        assert!(
+                            visible_near(left, y),
+                            "left contour disappeared at {density}"
+                        );
+                        assert!(
+                            visible_near(right, y),
+                            "right contour disappeared at {density}"
+                        );
+                    }
+                }
+            }
+            assert_eq!(
+                source.rgba, original,
+                "display filtering never changes the source raster"
+            );
+        }
+    }
+
+    #[test]
+    fn preview_filter_bounds_inputs_and_keeps_small_images_at_original_size() {
+        let mut source = preview().image;
+        let (image, logical) = filtered_rich_preview(&source, 2.0).unwrap();
+        assert_eq!(image.size, [4, 2]);
+        assert_eq!(logical, egui::vec2(4.0, 2.0));
+        for density in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            assert!(filtered_rich_preview(&source, density).is_err());
+        }
+        source.rgba.pop();
+        assert!(filtered_rich_preview(&source, 1.0).is_err());
+        source.width = u32::MAX;
+        source.height = u32::MAX;
+        assert!(filtered_rich_preview(&source, 1.0).is_err());
+        source.width = 0;
+        assert!(filtered_rich_preview(&source, 1.0).is_err());
+    }
 
     #[test]
     fn rectangle_reference_guidance_is_localized_and_capture_failures_keep_the_reason() {
@@ -1691,6 +1874,8 @@ mod tests {
     fn interactive_measurement_bridge_preserves_geometry_and_only_requests_a_preview() {
         let (mut app, requests, _) = crate::app::tests::test_app();
         let measurement = Measurement {
+            holes: Vec::new(),
+            depth: None,
             kind: MeasurementKind::Area,
             points: vec![(40.0, 40.0), (140.0, 40.0), (140.0, 140.0)],
             calibration: [(40.0, 20.0), (140.0, 20.0)],
@@ -1725,6 +1910,59 @@ mod tests {
             "a live preview cannot be replaced"
         );
         assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn volume_preview_keeps_deductions_depth_and_rejects_the_previous_preview_after_an_edit() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        let measurement = Measurement {
+            kind: MeasurementKind::Volume,
+            points: vec![(40.0, 40.0), (240.0, 40.0), (240.0, 240.0), (40.0, 240.0)],
+            holes: vec![vec![
+                (90.0, 90.0),
+                (140.0, 90.0),
+                (140.0, 140.0),
+                (90.0, 140.0),
+            ]],
+            depth: Some(MeasurementDepth {
+                value: 20.0,
+                unit: MeasurementUnit::Centimetres,
+            }),
+            calibration: [(40.0, 20.0), (140.0, 20.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+            precision: 2,
+        };
+        assert!(app.open_measurement_preview(0, measurement.clone()));
+        let (epoch, generation) = match requests.recv().unwrap() {
+            Request::PreviewRichAnnotation {
+                annotation: RichAnnotation::Measurement(sent),
+                epoch,
+                generation,
+                ..
+            } => {
+                assert_eq!(sent, measurement);
+                (epoch, generation)
+            }
+            _ => panic!("volume preview"),
+        };
+        let draft = app.annotate.adv.rich.as_mut().unwrap();
+        draft.set_measure_unit(MeasurementUnit::Centimetres);
+        assert_eq!(draft.measurement().unwrap().holes, measurement.holes);
+        assert_eq!(draft.measurement().unwrap().depth, measurement.depth);
+        draft.busy = false;
+        app.request_rich_preview();
+        let newer = match requests.recv().unwrap() {
+            Request::PreviewRichAnnotation { generation, .. } => generation,
+            _ => panic!("new preview"),
+        };
+        assert_ne!(newer, generation);
+        app.on_rich_preview(&egui::Context::default(), epoch, generation, Ok(preview()));
+        app.apply_rich_draft();
+        assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+        assert!(requests.try_recv().is_err());
+        app.on_rich_preview(&egui::Context::default(), epoch, newer, Ok(preview()));
+        assert!(app.annotate.adv.rich.as_ref().unwrap().prepared);
     }
 
     #[test]
@@ -1886,6 +2124,8 @@ mod tests {
                 let (mut app, requests, _) = crate::app::tests::test_app();
                 app.open_rich_annotations(&egui::Context::default());
                 let measurement = Measurement {
+                    holes: Vec::new(),
+                    depth: None,
                     kind,
                     points: if kind == MeasurementKind::Angle {
                         vec![(40.0, 70.0), (140.0, 70.0), (140.0, 170.0)]
@@ -1944,6 +2184,8 @@ mod tests {
             let (mut app, _, _) = crate::app::tests::test_app();
             app.open_rich_annotations(&egui::Context::default());
             let measurement = Measurement {
+                holes: Vec::new(),
+                depth: None,
                 kind,
                 points: if kind == MeasurementKind::Length {
                     vec![(40.0, 70.0), (140.0, 70.0)]
@@ -1995,6 +2237,8 @@ mod tests {
         let (mut app, requests, _) = crate::app::tests::test_app();
         app.open_rich_annotations(&egui::Context::default());
         let measurement = Measurement {
+            holes: Vec::new(),
+            depth: None,
             kind: MeasurementKind::Polyline,
             points: vec![(40.0, 70.0), (140.0, 70.0), (140.0, 170.0)],
             calibration: [(40.0, 40.0), (140.0, 40.0)],

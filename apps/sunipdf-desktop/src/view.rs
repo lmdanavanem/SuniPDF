@@ -2739,6 +2739,8 @@ mod tests {
                     index: 0,
                     annotation_id: Some("rotated-measurement".into()),
                     measurement: Measurement {
+                        holes: Vec::new(),
+                        depth: None,
                         kind: MeasurementKind::Length,
                         points: vec![(200.0, 500.0), (300.0, 500.0)],
                         calibration: [(30.0, 40.0), (130.0, 40.0)],

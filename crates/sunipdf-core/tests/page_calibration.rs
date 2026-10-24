@@ -30,6 +30,8 @@ fn scale(distance: f64) -> PageCalibration {
 
 fn measurement(calibration: &PageCalibration) -> Measurement {
     Measurement {
+        holes: Vec::new(),
+        depth: None,
         kind: MeasurementKind::Length,
         points: vec![(40.0, 80.0), (90.0, 80.0)],
         calibration: calibration.points,
