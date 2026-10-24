@@ -1,8 +1,11 @@
 # Issue and quantity reports
 
-The 0.69 candidate adds reports derived from the current annotation register and
-quantity table. Qualification is in progress; this page does not describe a
-published package. See [release qualification](RELEASE_0.69.0.md).
+SuniPDF 0.69 adds reports derived from the current annotation register and quantity
+table. See the [release notes](RELEASE_0.69.0.md) and
+[qualification evidence](qa/RELEASE_0.69.0.json).
+
+Native interaction with this workflow remains untested. Automated output checks
+do not establish native desktop or universal reader interoperability; AEC-018 stays In progress.
 
 ## Review before export
 
@@ -39,8 +42,9 @@ coverage and error information; a partial report does not establish complete tot
 
 The overall `complete` flag checks the applicable measurement, zone and formula
 conditions. It does not imply that every annotation has a quantity, a recognized
-legend style or a price. Check the quantity coverage and each cost group's
-`complete` and `missing_prices` fields before using the report as an estimate.
+legend style or a price. Check quantity coverage, each quantity group's
+`missing_prices` count and each currency/precision subtotal's `complete` flag
+before using the report as an estimate.
 
 Export creates a new file. Existing destinations and the source document cannot be
 overwritten. Generating a report does not edit the source PDF or add an Undo step.

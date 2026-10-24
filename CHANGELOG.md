@@ -7,10 +7,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+## [0.69.0] - 2026-10-24
+
 - Prepare readable PDF, CSV and JSON reports from the exact annotation-register or quantity-table selection. Show quantity and cost summaries, coverage, issue groups and actual style legends, with complete source details in a separate technical appendix. See the [report guide](docs/ISSUE_REPORTS.md).
 - Export quantity workbooks with structured rows, totals, changes and provenance. Review refreshes from a separate manifest using stable annotation identities, preserving missing and ambiguous records for later review. See the [workbook guide](docs/QUANTITY_WORKBOOKS.md).
 
-These developments are combined in the [0.69 candidate](docs/RELEASE_0.69.0.md); qualification is in progress.
+The report and workbook increments are combined in this release; 0.68 was an intermediate
+development build. Windows: 1,083 passed, 15 ignored; Linux: 1,064 passed, 10 ignored. Eight independent package corpora passed 5,027 assertions across 326 commands. [Qualification evidence](docs/qa/RELEASE_0.69.0.json).
+
+Native desktop interaction and native spreadsheet interoperability remain untested. AEC-018 and
+AEC-019 remain In progress. Packages are unsigned, and the existing ARM64, physical-device,
+accessibility and private-plan qualification limits remain open.
+
+[Release notes and qualification limits](docs/RELEASE_0.69.0.md).
 
 ## [0.67.0] - 2026-10-24
 
