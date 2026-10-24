@@ -5,15 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.70.0] - 2026-10-24
+
 ### Quantity fields and revision history
 
 - Declare optional units on numeric custom fields, with consistent column definitions and exact geometric products and quotients within each unit family. Keep missing values, incompatible dimensions and unsupported calculations explicit.
 - Preserve field values and units across PDF saves, quantity reports and workbook refreshes. Version 2 XLSX comparisons include before/after custom fields; existing unitless version 1 data and comparison identities remain compatible.
 - Show computed units in quantity and workbook previews, and retain the existing numeric/text export safeguards.
 
-See the [0.70.0 candidate scope](docs/RELEASE_0.70.0.md). Package qualification remains in progress.
+Publication: [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.70.0). Exact source: `3909bfaab7ad0ce1e1b287040187eadf742e3657`.
 
-Further work remains in the [roadmap](docs/ROADMAP.md).
+The local development source passed formatting, strict workspace Clippy and desktop/CLI compilation, with **1,094 tests passed, zero failed and 15 ignored**. The English and French catalogs contain **1,871 matching keys**. The independent units corpus passed **1,992 assertions across 96 commands** (71 development CLI 0.70 commands, four packaged CLI 0.69 compatibility commands and 21 qpdf checks). These results are scoped to the recorded development binaries; they do not qualify a downloaded 0.70 release package.
+
+Qualification: Windows: 1,094 passed, 15 ignored; Linux: 1,075 passed, 10 ignored; zero failures. 7,019 assertions in nine downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.70.0.json).
+
+AEC-007, AEC-018 and AEC-019 remain **In progress**. Native desktop interaction, native spreadsheet interoperability and broader reader qualification remain open. Packages remain unsigned; ARM64 hardware, physical printing, human accessibility and private project plans retain their separate limits. No overall performance improvement, universal interoperability or PDF/A/PDF/UA conformance is claimed.
+
+[Release scope and qualification](docs/RELEASE_0.70.0.md).
 
 ## [0.69.0] - 2026-10-24
 

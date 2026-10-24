@@ -1,7 +1,7 @@
 # SuniPDF 0.70.0
 
-Candidate qualification is in progress. The published download remains
-[0.69.0](RELEASE_0.69.0.md).
+Publication: published stable, 2026-10-24T10:44:17Z. Release 422651863, source `3909bfaab7ad0ce1e1b287040187eadf742e3657`.
+[Downloads and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.70.0) · [Qualification evidence](qa/RELEASE_0.70.0.json).
 
 ## Units for numeric custom fields
 
@@ -33,22 +33,27 @@ Older readers reject unsupported version 2 data rather than silently dropping
 its units. Review unresolved and unquantified entries before using a refreshed
 workbook; their presence does not establish complete quantity coverage.
 
-## Qualification status
+## Qualification
 
-The final local source passed formatting, strict workspace Clippy, a complete
-workspace run with 1,094 passed and 15 ignored tests, and desktop/CLI compilation.
-Independent Decimal-based output checks and exact-source package qualification
-remain in progress. Results from another source revision do not qualify this candidate.
+The local development source passed formatting, strict workspace Clippy and desktop/CLI compilation, with **1,094 tests passed, zero failed and 15 ignored**. The English and French catalogs contain **1,871 matching keys**. The independent units corpus passed **1,992 assertions across 96 commands** (71 development CLI 0.70 commands, four packaged CLI 0.69 compatibility commands and 21 qpdf checks). These results are scoped to the recorded development binaries; they do not qualify a downloaded 0.70 release package.
 
-The configured upgrade matrices contain 47 portable baselines plus four guards
-and 45 MSI baselines, including the published 0.69.0 packages. These are planned
-checks until the corresponding release workflows complete.
+| Evidence scope | Verified result |
+|---|---|
+| Publication | 2026-10-24T10:44:17Z, release 422651863, published stable / Latest verified |
+| Immutable release source | `3909bfaab7ad0ce1e1b287040187eadf742e3657`, tree `656860a197516ecd1ba0cb5387b5972e091f7d1a`, [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408084), [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408057), [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084420845), [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408173) |
+| Exact-source Windows CI | 1,094 passed, zero failed, 15 ignored; [workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408084) |
+| Exact-source Linux CI | 1,075 passed, zero failed, 10 ignored; [workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408057) |
+| Code scanning | [CodeQL passed](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408173); zero open alerts at verification |
+| Public assets | Eight files: four packages and four SHA256 sidecars. Anonymous downloads, package hashes and matching sidecars verified; [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Downloaded-package corpora | 7,019 assertions across 422 recorded commands in nine corpora. Tool identities and distinct current/legacy reader scopes are recorded in [qualification evidence](qa/RELEASE_0.70.0.json); repeated draft/public runs are not additive coverage |
+| Portable/MSI qualification | 47 portable upgrades and four guards passed; [qualification evidence](qa/RELEASE_0.70.0.json), 45 MSI baselines passed with 225 installation logs; [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Ubuntu installation | Ubuntu 22.04 and 24.04 installation checks passed in clean containers with software rendering; [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Rendered-artifact review | Passed for the specified rendered pages from the exact package. Artifact inspection only; no native desktop interaction. See [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Native desktop and spreadsheet interaction | Not tested in the current session; no interactive qualification claim |
 
-Interactive desktop and native spreadsheet validation remain unavailable in the
-current session. Automated UI layout tests, PDF renders and OOXML parsing cover
-different checks and do not replace those interactions. Packages remain unsigned;
-physical ARM64 execution, printing, human accessibility and private project plans
-retain their separate qualification limits.
+Upgrade qualification passed for **47 portable baselines plus four guards** and **45 MSI baselines**,
+including published 0.69.0 packages. Repeated runs are not additive coverage.
 
-This release does not add arbitrary spreadsheet formulas, mass or density units,
-automatic unit conversion, authenticated manifests or XLSX import.
+AEC-007, AEC-018 and AEC-019 remain **In progress**. Native desktop interaction, native spreadsheet interoperability and broader reader qualification remain open. Packages remain unsigned; ARM64 hardware, physical printing, human accessibility and private project plans retain their separate limits. No overall performance improvement, universal interoperability or PDF/A/PDF/UA conformance is claimed.
+
+This release does not add arbitrary spreadsheet formulas, mass or density units, automatic unit conversion, authenticated manifests or XLSX import.

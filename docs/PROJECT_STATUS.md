@@ -1,84 +1,67 @@
 # Project status
 
-**SuniPDF 0.69.0 is published as the stable Latest release.**
-Updated 2026-10-24. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.69.0) ·
-[Release scope](RELEASE_0.69.0.md) · [Qualification evidence](qa/RELEASE_0.69.0.json).
+## 0.70.0 status
 
-## Current scope: reports and workbooks
+Publication: published stable, verified 2026-10-24T10:47:52.733228Z. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.70.0) · [Release scope](RELEASE_0.70.0.md) · [Qualification evidence](qa/RELEASE_0.70.0.json).
 
-0.69 combines the report and workbook increments. The intermediate 0.68 development build is not
-described as a separate published release.
+Declare optional units on Number custom fields and retain them in the table, formula previews,
+PDF/CSV/JSON reports and XLSX refreshes. Columns with the same name require one type and unit.
+Changing a unit changes its declaration without converting the value or calibrating a measurement.
 
-- Reports preserve the exact register or quantity-table selection across PDF, CSV and JSON. The PDF
-  starts with readable quantities, separate cost totals and explicit coverage; legends and annotation
-  details follow, with full source identities and settings in a technical appendix.
-- XLSX snapshots contain structured rows, totals, changes and provenance. A separate refresh manifest
-  supports reviewed comparisons through unique annotation identities. Missing and ambiguous entries
-  remain explicit; current quantities are recalculated from the PDF.
-- Outputs are new files. Copy permissions, source identity, cancellation and existing-file guards apply.
-  A derived report or workbook does not inherit the source PDF's encryption or digital signatures.
+Checked decimal formulas combine lengths, areas and volumes within one exact unit family:
+`2 m * 3 m = 6 m2`, then `6 m2 * 0.25 m = 1.5 m3`. Mixed families, inverse dimensions,
+powers above three, mass and density remain unsupported. Missing values do not become zero.
 
-See [issue reports](ISSUE_REPORTS.md) and [quantity workbooks](QUANTITY_WORKBOOKS.md) for supported
-inputs, bounds and exclusions. These exports do not establish PDF/A or PDF/UA conformance.
+Version 2 XLSX Changes sheets expose typed **Before custom fields** and **After custom fields**
+as inert text. Absent comparison sides stay empty. Unitless version 1 data keeps its serialization,
+comparison hashes and original workbook columns. Unit-bearing data uses version 2; unsupported
+versions are refused rather than treated as dimensionless data.
 
-## Release qualification
+## Qualification scopes
 
-These results identify the exact release source and downloaded packages. Development, CI,
-package checks and native interaction are recorded separately; repeated corpora are not added together.
+The local development source passed formatting, strict workspace Clippy and desktop/CLI compilation, with **1,094 tests passed, zero failed and 15 ignored**. The English and French catalogs contain **1,871 matching keys**. The independent units corpus passed **1,992 assertions across 96 commands** (71 development CLI 0.70 commands, four packaged CLI 0.69 compatibility commands and 21 qpdf checks). These results are scoped to the recorded development binaries; they do not qualify a downloaded 0.70 release package.
 
 | Evidence scope | Verified result |
 |---|---|
-| Frozen source and merge | [PR #45](https://github.com/lmdanavanem/SuniPDF/pull/45), source `d09621b54d2ceb0addaa07e4b7115db009ef7dd7`, tree `1cd7ecc368d2ae0cba6e55702dde256de9bcbd5d` |
-| Exact-source Windows/Linux CI | [Windows CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40079860771): 1,083 passed, 15 ignored; [Linux CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40079860777): 1,064 passed, 10 ignored; zero failures |
-| Formatting, Clippy and localization | Formatting and strict workspace Clippy passed; 1,868 localization keys matched. [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/40079860721) passed; zero open scanning alerts at verification |
-| Independent PDF/OOXML checks | Eight corpora exercised the exact package: PDF structure/readers, quantity calculations, revisions, links, outlines, zones, reports and OOXML workbooks. See the versioned tools and hashes in [Qualification evidence](qa/RELEASE_0.69.0.json) |
-| Published assets and hashes | Eight anonymous downloads verified against SHA256 and four sidecars; tag, source, stable Latest status and [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/40079873187) verified |
-| Downloaded runtime checks | 5,027 assertions; 279 CLI invocations, 45 qpdf checks and two validators. Draft and public repetitions are separate runs, not additive coverage. Five rendered PDF pages visually reviewed; no native interaction |
-| Upgrade and Ubuntu installation checks | 46 portable upgrades plus four guards; 44 MSI baselines with 220 logs; Ubuntu 22.04 and 24.04 installation checks passed |
-| Native desktop and spreadsheet interaction | Not tested; no interactive qualification claim |
+| Publication | 2026-10-24T10:44:17Z, release 422651863, published stable / Latest verified |
+| Immutable release source | `3909bfaab7ad0ce1e1b287040187eadf742e3657`, tree `656860a197516ecd1ba0cb5387b5972e091f7d1a`, [ci](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408084), [linux](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408057), [release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084420845), [codeql](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408173) |
+| Exact-source Windows CI | 1,094 passed, zero failed, 15 ignored; [workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408084) |
+| Exact-source Linux CI | 1,075 passed, zero failed, 10 ignored; [workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408057) |
+| Code scanning | [CodeQL passed](https://github.com/lmdanavanem/SuniPDF/actions/runs/40084408173); zero open alerts at verification |
+| Public assets | Eight files: four packages and four SHA256 sidecars. Anonymous downloads, package hashes and matching sidecars verified; [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Downloaded-package corpora | 7,019 assertions across 422 recorded commands in nine corpora. Tool identities and distinct current/legacy reader scopes are recorded in [qualification evidence](qa/RELEASE_0.70.0.json); repeated draft/public runs are not additive coverage |
+| Portable/MSI qualification | 47 portable upgrades and four guards passed; [qualification evidence](qa/RELEASE_0.70.0.json), 45 MSI baselines passed with 225 installation logs; [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Ubuntu installation | Ubuntu 22.04 and 24.04 installation checks passed in clean containers with software rendering; [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Rendered-artifact review | Passed for the specified rendered pages from the exact package. Artifact inspection only; no native desktop interaction. See [qualification evidence](qa/RELEASE_0.70.0.json) |
+| Native desktop and spreadsheet interaction | Not tested in the current session; no interactive qualification claim |
 
-The release evidence records completed checks and retained limitations. Earlier development
-results are not counted as qualification of the changed report layout.
+Upgrade qualification passed for **47 portable baselines plus four guards** and **45 MSI baselines**,
+including published 0.69.0 packages. Repeated runs are not additive coverage.
 
-## Native and interoperability limits
+## Open capabilities and release gates
 
-Native interaction with the 0.69 report and workbook workflows has **not been tested**. Native
-spreadsheet interoperability also remains untested. PDF text/raster inspection, automated OOXML
-validation and offscreen UI tests do not replace those interactions or establish universal reader
-compatibility. Complex text shaping and editable report templates are outside the report workflow;
-arbitrary XLSX import, external spreadsheet edit preservation and automatic synchronization are outside
-the workbook refresh workflow.
+AEC-007, AEC-018 and AEC-019 remain **In progress**. Native desktop and spreadsheet interaction
+and broader reader qualification remain open. Editable report templates, arbitrary XLSX import,
+external spreadsheet edit preservation and automatic synchronization are outside these increments.
 
-Native interaction with the new 0.67 plan-link, revision-outline and zone workflows has **not been
-tested**: the local application-control channel was unavailable. Earlier 0.65 plan-link and 0.66
-revision-outline development checks are historical results for their own binaries; they do not
-qualify these workflows in 0.67. Offscreen UI tests, CLI outputs, source inspection and Ubuntu
-container reader smoke tests do not replace this missing interactive check.
+The 0.67 plan-link, revision-outline and zone workflows also retain their native and interoperability
+limits: AEC-017, AEC-014 and AEC-010 remain In progress. AEC-016 retains broader batch-transfer work.
+AEC-009 and AEC-015 remain Done only for their stated constant-depth/deduction and indexed-plan-set
+criteria. See the [backlog](AEC_BACKLOG.md) and [roadmap](ROADMAP.md) for the complete criteria.
 
-## Capability tracking
+No entire P1/P2 category is closed. Packages are unsigned; ARM64 hardware execution, physical
+printing, human accessibility and private project plans retain their separate open or deferred gates.
+Automated UI, PDF/OOXML and container checks do not replace native interaction or physical-device
+validation. No universal interoperability, survey accuracy or PDF/A/PDF/UA conformance is claimed;
+ignored tests remain ignored. See [known issues](KNOWN_ISSUES.md) and [1.0 criteria](RELEASE_1.0_CRITERIA.md).
 
-- AEC-018 remains **In progress**. The report increment is implemented, while native interaction and
-  remaining report interoperability qualification stay open. Editable report templates are a separate
-  extension; this release does not claim them.
-- AEC-019 remains **In progress**. XLSX snapshots and manifest-based refresh are implemented, while
-  native desktop/spreadsheet interaction and remaining interoperability qualification stay open.
-- [Plan links](PLAN_LINKS.md): one indexed source PDF, up to 32 selected pages and 512 exact searchable
-  references, explicit destination review, guarded relative paths and new-copy output. AEC-017 remains
-  In progress for broader batch processing and remaining qualification.
-- [Revision outlines](REVISION_OUTLINES.md): one explicit old/new page pair, manual or two-point
-  alignment, classified raster proposals and individually reviewed editable outlines. Uncertain,
-  noise-only, filtered and unmapped regions remain explicit. AEC-014 remains In progress.
-- [Rooms and zones](PLAN_ZONES.md): up to 64 rectangular zones per page, eight hierarchy levels,
-  full-bounds annotation assignment and shared quantity/register coverage. No inferred room areas or
-  measurement recalibration. AEC-010 remains In progress.
-- AEC-015 remains Done for indexed plan-set navigation; AEC-009 remains Done for polygon deductions
-  and constant physical depth. AEC-016 retains its broader batch-transfer criteria.
+GitHub Projects requires a fresh board readback before its synchronization can be claimed. This
+page records no current synchronization. English is the default UI; detailed engine refusals may
+remain English in French mode.
 
-The [backlog](AEC_BACKLOG.md) and [roadmap](ROADMAP.md) retain complete acceptance criteria separately
-from implemented increments. GitHub Projects requires its own live readback before claiming a current
-synchronization; this page does not supply one.
+## Performance evidence
 
-## Historical performance baseline
+0.70 package benchmark: A paired comparison of the packaged 0.69/0.70 Windows CLIs retained identical semantic results. Median process times were 51.5 to 51.4 ms for document information, 80.6 to 78.9 ms for search, 352.1 to 352.2 ms for the 1,500-row register, and 113.6 to 108.4 ms for 300 rows with eight formulas. These four synthetic workloads do not establish overall or GUI performance. See [qualification evidence](qa/RELEASE_0.70.0.json).
 
 A paired development-build benchmark compared 0.64 with 0.67 on six whole-CLI-process workloads,
 with one warmup and five measured repetitions per case. Median times increased by 0.5% for document
@@ -87,17 +70,11 @@ for 300 quantities with eight formulas. Optimization/output decreased by 0.8%. T
 measurements establish no overall speed improvement, GUI responsiveness result or release-package
 performance claim. Rendering and table costs need further profiling without weakening source checks.
 
-## Earlier release evidence
+## Historical release evidence
 
+The [0.69 release notes](RELEASE_0.69.0.md) and [0.69 qualification record](qa/RELEASE_0.69.0.json)
+retain its publication, exact-source CI, packages, corpora and native-interaction limits.
 [0.67](RELEASE_0.67.0.md), [0.64](RELEASE_0.64.0.md), [0.63](RELEASE_0.63.0.md),
-[0.62](RELEASE_0.62.0.md), [0.61](RELEASE_0.61.0.md) and [earlier status history](archive/PROJECT_STATUS_PRE_0.60.md)
-retain their own source, package, test and native-validation records. Their counts are not results for 0.69.
-
-## Remaining gates
-
-No complete P1/P2 category is closed. Packages remain unsigned. ARM64 execution, physical printers,
-human accessibility and private project plans retain their separate open or deferred qualification.
-Container/software-rendering checks do not establish physical desktop/GPU coverage. Synthetic and
-licensed corpora do not establish universal interoperability, survey accuracy or PDF/A/PDF/UA compliance.
-Ignored tests are not passed checks. English is the default interface; detailed engine refusals may remain
-English in French mode. See [known issues](KNOWN_ISSUES.md) and [1.0 criteria](RELEASE_1.0_CRITERIA.md).
+[0.62](RELEASE_0.62.0.md), [0.61](RELEASE_0.61.0.md) and the
+[earlier status archive](archive/PROJECT_STATUS_PRE_0.60.md) retain their own evidence.
+Historical counts and native checks do not qualify 0.70 and are not added to its totals.

@@ -9,6 +9,7 @@ and [measurement provenance checks](#measurement-provenance) are included in the
 See [qualification scope](RELEASE_0.62.0.md) for exact-source, native and package results.
 
 Optional units on numeric custom fields and geometric formula products require 0.70.0 or later.
+See [0.70 release scope](RELEASE_0.70.0.md) and [qualification evidence](qa/RELEASE_0.70.0.json); 0.70.0 is published as a stable release.
 
 ## Open and filter the table
 
@@ -57,7 +58,7 @@ Open **Custom columns → Formula columns**, enter a unique column name and expr
 
 Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quantity` and exact case-sensitive numeric field references such as `[Waste %]`. Only typed **Number** fields participate; register text fields and other formula results are not inputs. For example, `quantity * (1 + [Waste %] / 100)` applies a dimensionless allowance to each row's actual quantity.
 
-- `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
+- `quantity_unit` constrains the input token `quantity`, not the computed result unit. `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
 - Numeric fields use their explicitly declared unit; fields with **No unit** and constants are dimensionless. Addition/subtraction require identical units. A scalar can multiply a unit-bearing value, and division by a scalar retains the unit. Equal-unit division produces a dimensionless result.
 - Products and quotients within one exact geometric family support length, area and volume: `m * m` gives `m2`, `m2 * m` gives `m3`, and `m3 / m` gives `m2`. The same rules apply separately to `mm`, `cm`, `in` and `ft`. Mixed families such as `m * cm`, inverse units and powers above three are refused. Counts and angles do not implicitly become dimensionless; mass and density units are unsupported.
 - Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
@@ -269,7 +270,7 @@ All PDF mutations and explicit exports require new destinations, even with `--ov
 
 ## Bounds and remaining scope
 
-The document register is bounded to 1,000 pages, 128 MiB snapshots, 10,000 annotation entries and 4,096 entries per page, with separate text budgets. Quantity-field JSON and expected-row files are limited to 64 KiB; quantity metadata is limited to 4 MiB per document. A document supports at most 16 typed column names. Names use at most 64 UTF-8 bytes; text values at most 1,024 bytes; choices have 1–32 distinct nonempty options of at most 64 bytes. Invalid dates, duplicate names, inconsistent column types/options, unsupported metadata versions and ambiguous identities are refused.
+The document register is bounded to 1,000 pages, 128 MiB snapshots, 10,000 annotation entries and 4,096 entries per page, with separate text budgets. Quantity-field JSON and expected-row files are limited to 64 KiB; quantity metadata is limited to 4 MiB per document. A document supports at most 16 typed column names. Names use at most 64 UTF-8 bytes; text values at most 1,024 bytes; choices have 1–32 distinct nonempty options of at most 64 bytes. Invalid dates, duplicate names, inconsistent column types/units/options, unsupported metadata versions and ambiguous identities are refused.
 
 Decimal inputs allow at most six fractional digits and absolute values up to one trillion; unit prices are nonnegative. The quantity converted for pricing must also fit the supported finite, nonnegative range up to one trillion. Excessive values are refused rather than silently truncated.
 
